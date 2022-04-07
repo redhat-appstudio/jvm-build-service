@@ -1,4 +1,4 @@
-package com.github.stuartwdouglas.mavenproxy.health;
+package com.redhat.hacbs.artifactcache.health;
 
 import javax.enterprise.context.ApplicationScoped;
 

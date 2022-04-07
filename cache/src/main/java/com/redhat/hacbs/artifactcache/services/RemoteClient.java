@@ -1,4 +1,4 @@
-package com.github.stuartwdouglas.mavenproxy.resources;
+package com.redhat.hacbs.artifactcache.services;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -12,7 +12,7 @@ public interface RemoteClient {
 
     @GET
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
+    byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target);
 
     @GET

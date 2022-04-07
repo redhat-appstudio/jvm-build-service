@@ -1,4 +1,4 @@
-package com.github.stuartwdouglas.mavenproxy.test.health;
+package com.redhat.hacbs.artifactcache.test.health;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;

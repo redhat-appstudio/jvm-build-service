@@ -1,4 +1,4 @@
-package com.github.stuartwdouglas.mavenproxy.resources;
+package com.redhat.hacbs.sidecar.resources;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -7,17 +7,19 @@ import javax.ws.rs.PathParam;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import com.redhat.hacbs.sidecar.services.RemoteClient;
+
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
 
 @Path("/maven2")
 @Blocking
-public class MavenResourceManager {
+public class MavenProxyResource {
 
     final RemoteClient remoteClient;
     final String buildPolicy;
 
-    public MavenResourceManager(@RestClient RemoteClient remoteClient,
+    public MavenProxyResource(@RestClient RemoteClient remoteClient,
             @ConfigProperty(name = "build-policy") String buildPolicy) {
         this.remoteClient = remoteClient;
         this.buildPolicy = buildPolicy;

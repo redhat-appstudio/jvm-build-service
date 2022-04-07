@@ -1,4 +1,4 @@
-package com.github.stuartwdouglas.mavenproxy.resources;
+package com.redhat.hacbs.artifactcache.resources;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -6,15 +6,17 @@ import javax.ws.rs.PathParam;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import com.redhat.hacbs.artifactcache.services.RemoteClient;
+
 import io.smallrye.common.annotation.Blocking;
 
 @Path("/maven2")
 @Blocking
-public class MavenResourceManager {
+public class CacheMavenResource {
 
     final RemoteClient remoteClient;
 
-    public MavenResourceManager(@RestClient RemoteClient remoteClient) {
+    public CacheMavenResource(@RestClient RemoteClient remoteClient) {
         this.remoteClient = remoteClient;
     }
 
