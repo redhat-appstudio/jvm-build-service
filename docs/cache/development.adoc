@@ -1,0 +1,71 @@
+= Development Documentation
+
+This documentation is targeting developers who want to contribute to the caching service.
+
+== Required Tools
+
+* Maven
+* Podman
+
+== Running in Development Mode
+
+----
+mvn quarkus:dev -pl cache
+----
+
+This will start the caching service on localhost on the `8080` port.
+
+TIP: You can access the Quarkus development UI at http://localhost:8080/q/dev/.
+
+
+== Building The Container Image
+
+TIP: To get more information on how images can be built please refer to the link:https://quarkus.io/guides/container-image[upstream documentation].
+
+Run following command to build the container image:
+
+----
+mvn clean package -pl cache -Dquarkus.container-image.build=true
+----
+
+The image will be built using Podman and available locally under the `quay.io/redhat-appstudio/hacbs-jvm-cache`
+name.
+
+To push the container image to the registry, run:
+
+----
+mvn clean package -pl cache -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true
+----
+
+[WARNING]
+.Quay Repository Access
+==== 
+To be able to push the image to the link:https://quay.io/repository/redhat-appstudio/hacbs-jvm-cache?tab=info[main repository]
+you will need to be granted access to it.
+====
+
+=== Image Tag
+
+The image will be tagged with the current project's version. To specify additional tags the `-Dquarkus.container-image.additional-tags`
+can be used, for example:
+
+----
+-Dquarkus.container-image.additional-tags=latest
+----
+
+=== Custom Repository
+
+In order to be able to build test images, you can use a different repository to push it to. This can be achieved by overriding the
+names, for example on the CLI invocation, like this:
+
+----
+mvn clean package -pl cache -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.container-image.group=goldmann
+----
+
+This will build the image under the `quay.io/goldmann/hacbs-jvm-cache` and push it to this repository.
+
+Available arguments related to the image name are:
+
+`quarkus.container-image.registry`:: Registry name. By default: `quay.io`.
+`quarkus.container-image.group`:: Group (organization) in the registry. By default: `redhat-appstudio`.
+`quarkus.container-image.name`:: Name of the image. By default: `hacbs-jvm-cache`.
