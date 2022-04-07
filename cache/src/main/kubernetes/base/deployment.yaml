@@ -13,20 +13,19 @@ spec:
         app: hacbs-jvm-cache
     spec:
       containers:
-        - name: webhooks
+        - name: hacbs-jvm-cache
           image: hacbs-jvm-cache
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http
               protocol: TCP
-
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 8080
-            initialDelaySeconds: 3
-            periodSeconds: 3
+          # livenessProbe:
+          #   httpGet:
+          #     path: /q/health/live
+          #     port: 8080
+          #   initialDelaySeconds: 3
+          #   periodSeconds: 3
           resources:
             requests:
               memory: "128Mi"

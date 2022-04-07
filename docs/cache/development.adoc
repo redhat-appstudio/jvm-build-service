@@ -126,3 +126,27 @@ the caching service in your local development environment.
 ----
 kubectl apply -k cache/src/main/kubernetes/overlays/development
 ----
+
+== Hacks
+
+This section contains hacks that can be useful while developing the component.
+
+=== Running In Development Profile On Local Cluster
+
+You can run the application in development profile in your cluster by adding this snippet into your
+development Kustomize file:
+
+.kustomization.yaml
+[source,yaml]
+----
+patches:
+  - patch: |-
+      - op: add
+        path: "/spec/template/spec/containers/0/env"
+        value:
+          - name: QUARKUS_PROFILE
+            value: "dev"
+    target:
+      kind: Deployment
+      name: hacbs-jvm-cache
+----
