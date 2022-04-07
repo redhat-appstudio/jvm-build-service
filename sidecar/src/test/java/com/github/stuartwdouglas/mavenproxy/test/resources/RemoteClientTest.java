@@ -4,11 +4,11 @@ import static org.hamcrest.CoreMatchers.is;
 
 import javax.ws.rs.WebApplicationException;
 
-import com.github.stuartwdouglas.mavenproxy.resources.MavenResourceManager;
-import com.github.stuartwdouglas.mavenproxy.resources.RemoteClient;
-
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+
+import com.github.stuartwdouglas.mavenproxy.resources.MavenResourceManager;
+import com.github.stuartwdouglas.mavenproxy.resources.RemoteClient;
 
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;

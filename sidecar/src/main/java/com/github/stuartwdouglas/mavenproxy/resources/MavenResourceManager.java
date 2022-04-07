@@ -17,16 +17,17 @@ public class MavenResourceManager {
     final RemoteClient remoteClient;
     final String buildPolicy;
 
-    public MavenResourceManager(@RestClient RemoteClient remoteClient, @ConfigProperty(name = "build-policy") String buildPolicy) {
+    public MavenResourceManager(@RestClient RemoteClient remoteClient,
+            @ConfigProperty(name = "build-policy") String buildPolicy) {
         this.remoteClient = remoteClient;
         this.buildPolicy = buildPolicy;
         Log.infof("Constructing resource manager with build policy %s", buildPolicy);
     }
 
-
     @GET
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact, @PathParam("version") String version, @PathParam("target") String target) throws Exception {
+    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
+            @PathParam("version") String version, @PathParam("target") String target) throws Exception {
         Log.infof("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
         return remoteClient.get(buildPolicy, group, artifact, version, target);
     }
