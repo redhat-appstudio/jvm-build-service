@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.redhat.hacbs</groupId>
+    <artifactId>hacbs-repository-parent</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+
+    <properties>
+        <compiler-plugin.version>3.8.1</compiler-plugin.version>
+        <failsafe.useModulePath>false</failsafe.useModulePath>
+        <maven.compiler.release>11</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+        <quarkus.platform.version>2.7.5.Final</quarkus.platform.version>
+        <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
+    </properties>
+
+    <modules>
+        <module>sidecar</module>
+        <module>cache</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>${quarkus.platform.artifact-id}</artifactId>
+                <version>${quarkus.platform.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>net.revelc.code.formatter</groupId>
+                <artifactId>formatter-maven-plugin</artifactId>
+                <version>2.18.0</version>
+                <dependencies>
+                    <!-- Just use the Quarkus format for now-->
+                    <dependency>
+                        <artifactId>quarkus-ide-config</artifactId>
+                        <groupId>io.quarkus</groupId>
+                        <version>2.8.0.Final</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <!-- store outside of target to speed up formatting when mvn clean is used -->
+                    <cachedir>.cache/formatter-maven-plugin-${formatter-maven-plugin.version}</cachedir>
+                    <configFile>eclipse-format.xml</configFile>
+                    <lineEnding>LF</lineEnding>
+                    <skip>${format.skip}</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>net.revelc.code</groupId>
+                <artifactId>impsort-maven-plugin</artifactId>
+                <version>1.6.2</version>
+                <configuration>
+                    <!-- store outside of target to speed up formatting when mvn clean is used -->
+                    <cachedir>.cache/impsort-maven-plugin-${impsort-maven-plugin.version}</cachedir>
+                    <removeUnused>true</removeUnused>
+                    <skip>${format.skip}</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
