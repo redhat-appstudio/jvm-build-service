@@ -39,3 +39,6 @@ nb-configuration.xml
 .jbang
 .sdkmanrc
 .envrc
+
+# Kustomize overlays for development
+cache/src/main/kubernetes/overlays/development

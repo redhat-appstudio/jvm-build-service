@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hacbs-jvm-cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hacbs-jvm-cache
+  template:
+    metadata:
+      labels:
+        app: hacbs-jvm-cache
+    spec:
+      containers:
+        - name: webhooks
+          image: hacbs-jvm-cache
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
