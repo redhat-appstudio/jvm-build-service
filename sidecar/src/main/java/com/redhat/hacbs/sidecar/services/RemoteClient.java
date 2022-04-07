@@ -1,4 +1,4 @@
-package com.github.stuartwdouglas.mavenproxy.resources;
+package com.redhat.hacbs.sidecar.services;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;

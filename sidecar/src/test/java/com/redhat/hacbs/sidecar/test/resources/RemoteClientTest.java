@@ -1,4 +1,4 @@
-package com.github.stuartwdouglas.mavenproxy.test.resources;
+package com.redhat.hacbs.sidecar.test.resources;
 
 import static org.hamcrest.CoreMatchers.is;
 
@@ -7,8 +7,8 @@ import javax.ws.rs.WebApplicationException;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import com.github.stuartwdouglas.mavenproxy.resources.MavenResourceManager;
-import com.github.stuartwdouglas.mavenproxy.resources.RemoteClient;
+import com.redhat.hacbs.sidecar.resources.MavenProxyResource;
+import com.redhat.hacbs.sidecar.services.RemoteClient;
 
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
@@ -16,7 +16,7 @@ import io.quarkus.test.junit.mockito.InjectMock;
 import io.restassured.RestAssured;
 
 @QuarkusTest
-@TestHTTPEndpoint(MavenResourceManager.class)
+@TestHTTPEndpoint(MavenProxyResource.class)
 public class RemoteClientTest {
 
     @InjectMock

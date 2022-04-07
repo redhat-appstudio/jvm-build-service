@@ -1,4 +1,4 @@
-package com.github.stuartwdouglas.mavenproxy.resources;
+package com.redhat.hacbs.artifactcache.services;
 
 import java.nio.file.Path;
 
