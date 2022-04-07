@@ -1,0 +1,152 @@
+= Development Documentation
+
+This documentation is targeting developers who want to contribute to the caching service.
+
+== Required Tools
+
+* Maven
+* Podman
+
+== Building The Container Image
+
+TIP: To get more information on how images can be built please refer to the link:https://quarkus.io/guides/container-image[upstream documentation].
+
+Run following command to build the container image:
+
+----
+mvn clean package -pl cache -Dquarkus.container-image.build=true
+----
+
+The image will be built using Podman and available locally under the `quay.io/redhat-appstudio/hacbs-jvm-cache`
+name.
+
+To push the container image to the registry, run:
+
+----
+mvn clean package -pl cache -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true
+----
+
+[WARNING]
+.Quay Repository Access
+==== 
+To be able to push the image to the link:https://quay.io/repository/redhat-appstudio/hacbs-jvm-cache?tab=info[main repository]
+you will need to be granted access to it.
+====
+
+=== Image Tag
+
+The image will be tagged with the current project's version. To specify additional tags the `-Dquarkus.container-image.additional-tags`
+can be used, for example:
+
+----
+-Dquarkus.container-image.additional-tags=latest
+----
+
+=== Development Images
+
+Development images are used to test changes made locally. To be able to use them in a Kubernetes environment we need to
+push them to a registry first. This must be a different one from the official registry.
+
+Luckily this can be achieved by overriding the names, for example with the `mvn` invocation, like this:
+
+----
+mvn clean package -pl cache -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.container-image.group=goldmann
+----
+
+This will build the image under the `quay.io/goldmann/hacbs-jvm-cache` and push it to this repository.
+
+Available arguments related to the image name are:
+
+`quarkus.container-image.registry`:: Registry name. By default: `quay.io`.
+`quarkus.container-image.group`:: Group (organization) in the registry. By default: `redhat-appstudio`.
+`quarkus.container-image.name`:: Name of the image. By default: `hacbs-jvm-cache`.
+
+== Running Locally in Development Mode
+
+----
+mvn quarkus:dev -pl cache
+----
+
+This will start the caching service on localhost on the `8080` port.
+
+TIP: You can access the Quarkus development UI at http://localhost:8080/q/dev/.
+
+== Deploying To Kubernetes
+
+Kubernetes definition files are managed by link:https://kustomize.io/[Kustomize]. To generate
+descriptors for the caching service you can run following command:
+
+----
+kubectl kustomize cache/src/main/kubernetes/overlays/production
+----
+
+This will generate required resources to deploy the production version and print
+them out to standard output.
+
+To apply these resources onto a cluster, run the following command:
+
+----
+kubectl apply -k cache/src/main/kubernetes/overlays/production
+----
+
+[NOTE]
+====
+Please note the `-k` switch. This will generate the resources with Kustomize instead of
+applying these files directly as wit would be done with the `-f` flag.
+====
+
+=== Using Development Images
+
+We can use Kustomize to point to the development images we discussed above. To do this,
+create a `development` directory under `cache/src/main/kubernetes/overlays`:
+
+----
+mkdir cache/src/main/kubernetes/overlays/development
+----
+
+and create a file `kustomization.yaml` with following content:
+
+.kustomization.yaml
+[source,yaml]
+----
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+bases:
+  - "../../base"
+images:
+  - name: hacbs-jvm-cache
+    newName: quay.io/goldmann/hacbs-jvm-cache
+    newTag: latest
+----
+
+In this file you can customize the descriptors that will be used to deploy
+the caching service in your local development environment.
+
+----
+kubectl apply -k cache/src/main/kubernetes/overlays/development
+----
+
+== Hacks
+
+This section contains hacks that can be useful while developing the component.
+
+=== Running In Development Profile On Local Cluster
+
+You can run the application in development profile in your cluster by adding this snippet into your
+development Kustomize file:
+
+.kustomization.yaml
+[source,yaml]
+----
+patches:
+  - patch: |-
+      - op: add
+        path: "/spec/template/spec/containers/0/env"
+        value:
+          - name: QUARKUS_PROFILE
+            value: "dev"
+    target:
+      kind: Deployment
+      name: hacbs-jvm-cache
+----

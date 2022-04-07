@@ -18,10 +18,10 @@ public class MavenResourceManager {
         this.remoteClient = remoteClient;
     }
 
-
     @GET
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact, @PathParam("version") String version, @PathParam("target") String target) throws Exception {
+    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
+            @PathParam("version") String version, @PathParam("target") String target) throws Exception {
         System.out.println(group + "/" + artifact + "/" + version + "/" + target);
         return remoteClient.get(group, artifact, version, target);
     }

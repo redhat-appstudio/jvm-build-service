@@ -12,7 +12,8 @@ public interface RemoteClient {
 
     @GET
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,       @PathParam("version") String version, @PathParam("target") String target);
+    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
+            @PathParam("version") String version, @PathParam("target") String target);
 
     @GET
     @Path("{group:.*?}/{target}")
