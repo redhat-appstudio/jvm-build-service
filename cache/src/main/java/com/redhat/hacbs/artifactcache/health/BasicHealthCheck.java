@@ -1,5 +1,6 @@
 package com.redhat.hacbs.artifactcache.health;
 
+import java.lang.management.ManagementFactory;
 import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -25,8 +26,16 @@ public class BasicHealthCheck implements HealthCheck {
     @Override
     public HealthCheckResponse call() {
         if (buildPolicies.isEmpty()) {
-            return HealthCheckResponse.down(BASIC_HEALTH_CHECK);
+            return HealthCheckResponse.named(BASIC_HEALTH_CHECK)
+                    .down()
+                    .withData("reason", "No policies defined")
+                    .build();
         }
-        return HealthCheckResponse.up(BASIC_HEALTH_CHECK);
+        return HealthCheckResponse.named(BASIC_HEALTH_CHECK)
+                .up()
+                // In seconds
+                .withData("uptime", ManagementFactory.getRuntimeMXBean().getUptime() / 1000)
+                .withData("startTime", ManagementFactory.getRuntimeMXBean().getStartTime())
+                .build();
     }
 }
