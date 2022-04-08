@@ -1,0 +1,46 @@
+= Cache Configuration
+
+This documentation explains how to configure the cache.
+
+== Configuration and Quarkus
+
+The cache is a Quarkus application and is configured via standard Quarkus configuration keys. This means that any config
+key listed here can be overriden by both system properties, or by environment variables.
+
+Note that to use environment variables you need to uppercase the config key and change all special characters to lowercase.
+For example to override the `build-policy.default.store-list` config property you would set an environment variable
+called `BUILD_POLICY_DEFAULT_STORE_LIST`.
+
+== Configuring Build Policies
+
+To function the cache must have at least one build policy configured, build policies are installed by listing
+them in the `build-policies` config key.
+
+By default this cache is configured to have a `default` and `central-only` configuration as follows:
+`build-policies=default,central-only`.
+
+Note that if no build config is provided by the client then the `default` build config will be used.
+
+Every build policy should be configured to reference a list of remote artifact stores. When resolving artifacts these
+stores are checked in order. To configure the remote stores you can use the `build-policy.$NAME.store-list` config key,
+for example the default policy mentioned above looks like: `build-policy.default.store-list=central,redhat`.
+
+=== Configuring Remote Artifact Stores
+
+The following remote stores are supported:
+
+* maven2
+* s3 (not actually implemented yet)
+
+Each remote store must be given a name, and the names are referenced by the build policies as mentioned above. To configure
+a remote artifact store you can use the following two properties:
+
+* `store.$NAME.url`
+* `store.$NAME.type`
+
+The central config store that is part of the default config is configured as follows:
+
+```
+store.central.url=https://repo.maven.apache.org/maven2
+store.central.type=maven2
+```
