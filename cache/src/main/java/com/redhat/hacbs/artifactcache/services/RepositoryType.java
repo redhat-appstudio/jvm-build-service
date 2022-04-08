@@ -2,6 +2,16 @@ package com.redhat.hacbs.artifactcache.services;
 
 public enum RepositoryType {
 
-    MAVEN2,
-    S3
+    MAVEN2(false),
+    S3(true);
+
+    final boolean buildPolicyUsed;
+
+    RepositoryType(boolean buildPolicyUsed) {
+        this.buildPolicyUsed = buildPolicyUsed;
+    }
+
+    public boolean isBuildPolicyUsed() {
+        return buildPolicyUsed;
+    }
 }

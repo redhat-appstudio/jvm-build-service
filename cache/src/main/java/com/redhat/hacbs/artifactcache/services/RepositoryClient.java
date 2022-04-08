@@ -16,7 +16,8 @@ public interface RepositoryClient {
      * @param target The target file
      * @return empty if the file is not present, otherwise the file data
      */
-    Optional<RepositoryResult> getArtifactFile(String group, String artifact, String version, String target);
+    Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
+            String target);
 
     /**
      * Retrieves a metadata file from the repository
@@ -25,16 +26,18 @@ public interface RepositoryClient {
      * @param target The target file
      * @return empty if the file is not present, otherwise the file data
      */
-    Optional<RepositoryResult> getMetadataFile(String group, String target);
+    Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target);
 
     class RepositoryResult {
 
         final InputStream data;
+        final long size;
         final Optional<String> expectedSha;
         final Map<String, String> metadata;
 
-        public RepositoryResult(InputStream data, Optional<String> expectedSha, Map<String, String> metadata) {
+        public RepositoryResult(InputStream data, long size, Optional<String> expectedSha, Map<String, String> metadata) {
             this.data = data;
+            this.size = size;
             this.expectedSha = expectedSha;
             this.metadata = metadata;
         }
@@ -49,6 +52,10 @@ public interface RepositoryClient {
 
         public Map<String, String> getMetadata() {
             return metadata;
+        }
+
+        public long getSize() {
+            return size;
         }
     }
 }

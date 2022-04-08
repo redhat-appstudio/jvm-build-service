@@ -14,6 +14,9 @@ import com.redhat.hacbs.artifactcache.services.mavenclient.MavenClient;
 
 import io.quarkus.logging.Log;
 
+/**
+ * Class that consumes the repository config and creates the runtime representation of the repositories
+ */
 class RepositoryManager {
 
     private static final String REPOSITORY = "repository.";
@@ -39,13 +42,14 @@ class RepositoryManager {
                     case S3:
                         client = new RepositoryClient() {
                             @Override
-                            public Optional<RepositoryResult> getArtifactFile(String group, String artifact, String version,
+                            public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact,
+                                    String version,
                                     String target) {
                                 throw new RuntimeException("NOT IMPLEMENTED YET");
                             }
 
                             @Override
-                            public Optional<RepositoryResult> getMetadataFile(String group, String target) {
+                            public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
                                 throw new RuntimeException("NOT IMPLEMENTED YET");
                             }
                         };
@@ -55,7 +59,7 @@ class RepositoryManager {
                 }
                 ret.add(new Repository(repo, uri.get(), type, client));
             } else {
-                Log.warn("Repository %s was listed but has no config and will be ignored");
+                Log.warnf("Repository %s was listed but has no config and will be ignored", repo);
             }
         }
         if (ret.isEmpty()) {
