@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import javax.enterprise.inject.Produces;
+import javax.inject.Singleton;
 
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -29,6 +30,7 @@ class BuildPolicyManager {
     public static final String BUILD_POLICY = "build-policy.";
 
     @Produces
+    @Singleton
     Map<String, BuildPolicy> createBuildPolicies(@ConfigProperty(name = "build-policies") Set<String> buildPolicies,
             Config config) {
         Map<String, BuildPolicy> ret = new HashMap<>();
