@@ -29,6 +29,7 @@
     <modules>
         <module>sidecar</module>
         <module>cache</module>
+        <module>operator</module>
     </modules>
 
     <dependencyManagement>

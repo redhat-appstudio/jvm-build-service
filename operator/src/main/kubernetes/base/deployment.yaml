@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hacbs-jvm-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hacbs-jvm-operator
+  template:
+    metadata:
+      labels:
+        app: hacbs-jvm-operator
+    spec:
+      containers:
+        - name: hacbs-jvm-operator
+          image: hacbs-jvm-operator
+          imagePullPolicy: Always
+          # livenessProbe:
+          #   httpGet:
+          #     path: /q/health/live
+          #     port: 8080
+          #   initialDelaySeconds: 10
+          #   periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "500m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      serviceAccountName: hacbs-jvm-operator
