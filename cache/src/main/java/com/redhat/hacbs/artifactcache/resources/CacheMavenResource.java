@@ -1,38 +1,54 @@
 package com.redhat.hacbs.artifactcache.resources;
 
+import java.io.InputStream;
+
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 
-import org.eclipse.microprofile.rest.client.inject.RestClient;
+import com.redhat.hacbs.artifactcache.services.LocalCache;
 
-import com.redhat.hacbs.artifactcache.services.RemoteClient;
-
+import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
 
 @Path("/maven2")
 @Blocking
 public class CacheMavenResource {
 
-    final RemoteClient remoteClient;
+    final LocalCache cache;
 
-    public CacheMavenResource(@RestClient RemoteClient remoteClient) {
-        this.remoteClient = remoteClient;
+    public CacheMavenResource(LocalCache cache) {
+        this.cache = cache;
     }
 
     @GET
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
+    public InputStream get(@DefaultValue("default") @HeaderParam("X-build-policy") String buildPolicy,
+            @PathParam("group") String group,
+            @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
-        System.out.println(group + "/" + artifact + "/" + version + "/" + target);
-        return remoteClient.get(group, artifact, version, target);
+        Log.infof("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
+        var result = cache.getArtifactFile(buildPolicy, group, artifact, version, target);
+        if (result.isPresent()) {
+            return result.get().getData();
+        }
+        throw new NotFoundException();
     }
 
     @GET
     @Path("{group:.*?}/{target}")
-    public byte[] get(@PathParam("group") String group, @PathParam("target") String target) throws Exception {
-        System.out.println(group + "/" + target);
-        return remoteClient.get(group, target);
+    public InputStream get(@DefaultValue("default") @HeaderParam("X-build-policy") String buildPolicy,
+            @PathParam("group") String group,
+            @PathParam("target") String target) throws Exception {
+        Log.infof("Retrieving file %s/%s", group, target);
+        var result = cache.getMetadataFile(buildPolicy, group, target);
+        if (result.isPresent()) {
+            return result.get().getData();
+        }
+        throw new NotFoundException();
     }
 
 }

@@ -1,26 +1,198 @@
 package com.redhat.hacbs.artifactcache.services;
 
+import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 import javax.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-@Singleton
-public class LocalCache {
+import io.quarkus.logging.Log;
+import io.quarkus.runtime.Startup;
 
+/**
+ * The cache implementation, this acts as a normal client
+ */
+@Singleton
+@Startup
+public class LocalCache implements RepositoryClient {
+
+    public static final String CACHEMISS = ".cachemiss";
+    public static final String DOWNLOADS = ".downloads";
     final Path path;
-    final long outOfSpaceThreshold;
+    final List<Repository> repositories;
+
+    /**
+     * Tracks in progress downloads to prevent concurrency issues
+     */
+    final ConcurrentMap<String, DownloadingFile> inProgress = new ConcurrentHashMap<>();
 
     public LocalCache(@ConfigProperty(name = "cache-path") Path path,
-            @ConfigProperty(name = "cache-disk-percentage-allowed") double allowedPercentage) throws Exception {
+            List<Repository> repositories) throws Exception {
         this.path = path;
-        long totalSpace = path.getFileSystem().getFileStores().iterator().next().getUsableSpace();
-        outOfSpaceThreshold = (long) (totalSpace * allowedPercentage);
+        Log.infof("Creating cache with path %s", path.toAbsolutePath());
+        //TODO: we don't actually use this at the moment
+        this.repositories = repositories;
+        for (var repository : repositories) {
+            Path repoPath = path.resolve(repository.getName());
+            Files.createDirectories(repoPath);
+            Files.createDirectories(repoPath.resolve(DOWNLOADS));
+        }
     }
 
-    public void doStuff() {
+    @Override
+    public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
+            String target) {
+        //TODO: we don't really care about the policy when using standard maven repositories
+        String targetFile = group.replaceAll("\\.", File.separator) + File.separator + artifact
+                + File.separator + version + File.separator + target;
+        return handleFile(buildPolicy, targetFile, (c) -> c.getArtifactFile(buildPolicy, group, artifact, version, target));
+    }
 
+    private Optional<RepositoryResult> handleFile(String buildPolicy, String gavBasedTarget,
+            Function<RepositoryClient, Optional<RepositoryResult>> clientInvocation) {
+        try {
+            for (var repo : repositories) {
+                String targetFile;
+                if (repo.getType().isBuildPolicyUsed()) {
+                    targetFile = buildPolicy + File.separator + gavBasedTarget;
+                } else {
+                    targetFile = gavBasedTarget;
+                }
+                String targetMissingFile = targetFile + CACHEMISS;
+                String repoTarget = repo.getName() + File.separator + targetFile;
+                var check = inProgress.get(repoTarget);
+                if (check != null) {
+                    check.awaitReady();
+                }
+                Path actual = path.resolve(repoTarget);
+                if (Files.exists(actual)) {
+                    //we need to double check, there is a small window for a race here
+                    //it should not matter as we do an atomic move, but better to be safe
+                    check = inProgress.get(repoTarget);
+                    if (check != null) {
+                        check.awaitReady();
+                    }
+                    return Optional.of(
+                            new RepositoryResult(Files.newInputStream(actual), Files.size(actual), Optional.empty(), Map.of()));
+                }
+                //now we check for the missing file marker
+                String missingFileMarker = repo.getName() + File.separator + targetMissingFile;
+                Path missing = path.resolve(missingFileMarker);
+                if (!Files.exists(missing)) {
+                    DownloadingFile newFile = new DownloadingFile(targetFile);
+                    var existing = inProgress.putIfAbsent(targetFile, newFile);
+                    if (existing != null) {
+                        //another thread is downloading this
+                        existing.awaitReady();
+                        //the result may have been a miss, so we need to check the file is there
+                        if (Files.exists(actual)) {
+                            return Optional.of(new RepositoryResult(Files.newInputStream(actual), Files.size(actual),
+                                    Optional.empty(), Map.of()));
+                        }
+                    } else {
+                        Optional<RepositoryResult> result = newFile.download(clientInvocation, repo.getClient(), actual,
+                                missing, path.resolve(repo.getName()).resolve(DOWNLOADS));
+                        if (result.isPresent()) {
+                            return result;
+                        }
+                    }
+                }
+            }
+            return Optional.empty();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
+        String targetFile = buildPolicy + File.separator + group.replaceAll("\\.", File.separator) + File.separator + target;
+        return handleFile(buildPolicy, targetFile, (c) -> c.getMetadataFile(buildPolicy, group, target));
+    }
+
+    /**
+     * Represents a file that is in the process of being downloaded into the cache
+     */
+    final class DownloadingFile {
+
+        final String key;
+        boolean ready = false;
+
+        DownloadingFile(String key) {
+            this.key = key;
+        }
+
+        void awaitReady() {
+            synchronized (this) {
+                while (!ready) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+
+        Optional<RepositoryResult> download(Function<RepositoryClient, Optional<RepositoryResult>> clientInvocation,
+                RepositoryClient repositoryClient, Path downloadTarget, Path missingFileMarker, Path downloadTempDir) {
+            try {
+                var result = clientInvocation.apply(repositoryClient);
+                if (result.isPresent()) {
+                    MessageDigest md = MessageDigest.getInstance("SHA-1");
+                    Path tempFile = Files.createTempFile(downloadTempDir, "download", ".part");
+                    try (InputStream in = result.get().getData(); OutputStream out = Files.newOutputStream(tempFile)) {
+                        byte[] buffer = new byte[1024];
+                        int r;
+                        while ((r = in.read(buffer)) > 0) {
+                            out.write(buffer, 0, r);
+                            md.update(buffer, 0, r);
+                        }
+                    }
+                    if (result.get().getExpectedSha().isPresent()) {
+                        byte[] digest = md.digest();
+                        StringBuilder sb = new StringBuilder(40);
+                        for (int i = 0; i < digest.length; ++i) {
+                            sb.append(Integer.toHexString((digest[i] & 0xFF) | 0x100).substring(1, 3));
+                        }
+                        if (!sb.toString().equals(result.get().getExpectedSha().get())) {
+                            //TODO: handle this better
+                            Log.error("Filed to cache " + downloadTarget + " calculated sha '" + sb.toString()
+                                    + "' did not match expected '" + result.get().getExpectedSha().get() + "'");
+                            return clientInvocation.apply(repositoryClient);
+                        }
+                    }
+
+                    Files.createDirectories(downloadTarget.getParent());
+                    Files.move(tempFile, downloadTarget, StandardCopyOption.ATOMIC_MOVE);
+                    return Optional.of(new RepositoryResult(Files.newInputStream(downloadTarget), result.get().getSize(),
+                            result.get().getExpectedSha(), result.get().getMetadata()));
+                } else {
+                    Files.createFile(missingFileMarker);
+                    return Optional.empty();
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                inProgress.remove(key);
+                synchronized (this) {
+                    ready = true;
+                    notifyAll();
+                }
+            }
+        }
     }
 
 }
