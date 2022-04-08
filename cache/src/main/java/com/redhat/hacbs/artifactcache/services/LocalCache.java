@@ -19,8 +19,4 @@ public class LocalCache {
         outOfSpaceThreshold = (long) (totalSpace * allowedPercentage);
     }
 
-    public void doStuff() {
-
-    }
-
 }
