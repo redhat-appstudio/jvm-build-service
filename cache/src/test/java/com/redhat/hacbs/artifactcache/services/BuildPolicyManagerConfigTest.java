@@ -1,8 +1,8 @@
 package com.redhat.hacbs.artifactcache.services;
 
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -13,14 +13,14 @@ import io.smallrye.config.SmallRyeConfig;
 import io.smallrye.config.SmallRyeConfigBuilder;
 
 @QuarkusTest
-public class RepositoryManagerConfigTest {
+public class BuildPolicyManagerConfigTest {
 
     @Test
     public void testAllRepositoriesMissingIsError() {
         SmallRyeConfig config = new SmallRyeConfigBuilder().build();
-        RepositoryManager manager = new RepositoryManager();
+        BuildPolicyManager manager = new BuildPolicyManager();
         Assertions.assertThrows(IllegalStateException.class, () -> {
-            manager.createRepositoryInfo(List.of("central", "redhat"), config);
+            manager.createBuildPolicies(Set.of("default"), config);
         });
     }
 
@@ -28,10 +28,13 @@ public class RepositoryManagerConfigTest {
     public void testCentralConfiguredRedhatMissing() throws Exception {
         SmallRyeConfig config = new SmallRyeConfigBuilder()
                 .withSources(new PropertiesConfigSource(
-                        Map.of("repository.central.url", "https://repo.maven.apache.org/maven2"), "test", 1))
+                        Map.of("store.central.url", "https://repo.maven.apache.org/maven2", "build-policy.default.store-list",
+                                "central,redhat"),
+                        "test", 1))
                 .build();
-        RepositoryManager manager = new RepositoryManager();
-        var result = manager.createRepositoryInfo(List.of("central", "redhat"), config);
+        BuildPolicyManager manager = new BuildPolicyManager();
+        var policies = manager.createBuildPolicies(Set.of("default", "central-only"), config);
+        var result = policies.get("default").getRepositories();
         Assertions.assertEquals(1, result.size());
         Repository central = result.get(0);
         Assertions.assertEquals(new URI("https://repo.maven.apache.org/maven2"), central.getUri());
@@ -40,12 +43,13 @@ public class RepositoryManagerConfigTest {
     @Test
     public void testCentralAndRedHatConfigured() throws Exception {
         SmallRyeConfig config = new SmallRyeConfigBuilder()
-                .withSources(new PropertiesConfigSource(Map.of("repository.central.url", "https://repo.maven.apache.org/maven2",
-                        "repository.redhat.url", "https://maven.repository.redhat.com/ga"), "test", 1))
+                .withSources(new PropertiesConfigSource(Map.of("store.central.url", "https://repo.maven.apache.org/maven2",
+                        "store.redhat.url", "https://maven.repository.redhat.com/ga", "build-policy.default.store-list",
+                        "central,redhat"), "test", 1))
                 .build();
-        RepositoryManager manager = new RepositoryManager();
-        var result = manager.createRepositoryInfo(List.of("central", "redhat"), config);
-        Assertions.assertEquals(2, result.size());
+        BuildPolicyManager manager = new BuildPolicyManager();
+        var policies = manager.createBuildPolicies(Set.of("default", "central-only"), config);
+        var result = policies.get("default").getRepositories();
         Repository central = result.get(0);
         Assertions.assertEquals(new URI("https://repo.maven.apache.org/maven2"), central.getUri());
         Repository rht = result.get(1);

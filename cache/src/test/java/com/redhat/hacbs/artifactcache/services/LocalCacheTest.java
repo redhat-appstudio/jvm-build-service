@@ -89,7 +89,8 @@ public class LocalCacheTest {
         Path temp = Files.createTempDirectory("cache-test");
         try {
             LocalCache localCache = new LocalCache(temp,
-                    List.of(new Repository("test", new URI("http://test.com"), RepositoryType.MAVEN2, MOCK_CLIENT)));
+                    Map.of("default", new BuildPolicy(
+                            List.of(new Repository("test", new URI("http://test.com"), RepositoryType.MAVEN2, MOCK_CLIENT)))));
 
             consumer.accept(localCache);
 

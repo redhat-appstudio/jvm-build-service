@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +30,7 @@ public class LocalCache implements RepositoryClient {
     public static final String CACHEMISS = ".cachemiss";
     public static final String DOWNLOADS = ".downloads";
     final Path path;
-    final List<Repository> repositories;
+    final Map<String, BuildPolicy> buildPolicies;
 
     /**
      * Tracks in progress downloads to prevent concurrency issues
@@ -39,15 +38,17 @@ public class LocalCache implements RepositoryClient {
     final ConcurrentMap<String, DownloadingFile> inProgress = new ConcurrentHashMap<>();
 
     public LocalCache(@ConfigProperty(name = "cache-path") Path path,
-            List<Repository> repositories) throws Exception {
+            Map<String, BuildPolicy> buildPolicies) throws Exception {
         this.path = path;
         Log.infof("Creating cache with path %s", path.toAbsolutePath());
         //TODO: we don't actually use this at the moment
-        this.repositories = repositories;
-        for (var repository : repositories) {
-            Path repoPath = path.resolve(repository.getName());
-            Files.createDirectories(repoPath);
-            Files.createDirectories(repoPath.resolve(DOWNLOADS));
+        this.buildPolicies = buildPolicies;
+        for (var e : buildPolicies.entrySet()) {
+            for (var repository : e.getValue().getRepositories()) {
+                Path repoPath = path.resolve(repository.getName());
+                Files.createDirectories(repoPath);
+                Files.createDirectories(repoPath.resolve(DOWNLOADS));
+            }
         }
     }
 
@@ -62,9 +63,14 @@ public class LocalCache implements RepositoryClient {
 
     private Optional<RepositoryResult> handleFile(String buildPolicy, String gavBasedTarget,
             Function<RepositoryClient, Optional<RepositoryResult>> clientInvocation) {
+        BuildPolicy policy = buildPolicies.get(buildPolicy);
+        if (policy == null) {
+            return Optional.empty();
+        }
         try {
-            for (var repo : repositories) {
+            for (var repo : policy.getRepositories()) {
                 String targetFile;
+                //for S3 we will have a separate cache per build policy name
                 if (repo.getType().isBuildPolicyUsed()) {
                     targetFile = buildPolicy + File.separator + gavBasedTarget;
                 } else {
