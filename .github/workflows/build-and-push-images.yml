@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: ["cache"]
+        component: ["cache", "operator", "sidecar"]
 
     steps:
       - uses: actions/checkout@v1
