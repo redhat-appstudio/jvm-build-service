@@ -42,3 +42,4 @@ nb-configuration.xml
 
 # Kustomize overlays for development
 cache/src/main/kubernetes/overlays/development
+operator/src/main/kubernetes/overlays/development
