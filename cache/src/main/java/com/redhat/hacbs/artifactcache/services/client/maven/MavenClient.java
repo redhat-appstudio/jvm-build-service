@@ -1,4 +1,4 @@
-package com.redhat.hacbs.artifactcache.services.mavenclient;
+package com.redhat.hacbs.artifactcache.services.client.maven;
 
 import java.io.InputStream;
 import java.net.URI;

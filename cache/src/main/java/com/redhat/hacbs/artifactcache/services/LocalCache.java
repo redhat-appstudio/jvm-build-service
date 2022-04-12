@@ -186,6 +186,7 @@ public class LocalCache implements RepositoryClient {
                     return Optional.of(new RepositoryResult(Files.newInputStream(downloadTarget), result.get().getSize(),
                             result.get().getExpectedSha(), result.get().getMetadata()));
                 } else {
+                    Files.createDirectories(missingFileMarker.getParent());
                     Files.createFile(missingFileMarker);
                     return Optional.empty();
                 }

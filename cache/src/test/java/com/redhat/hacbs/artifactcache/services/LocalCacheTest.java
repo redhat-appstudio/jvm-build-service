@@ -2,7 +2,6 @@ package com.redhat.hacbs.artifactcache.services;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -90,7 +89,7 @@ public class LocalCacheTest {
         try {
             LocalCache localCache = new LocalCache(temp,
                     Map.of("default", new BuildPolicy(
-                            List.of(new Repository("test", new URI("http://test.com"), RepositoryType.MAVEN2, MOCK_CLIENT)))));
+                            List.of(new Repository("test", "http://test.com", RepositoryType.MAVEN2, MOCK_CLIENT)))));
 
             consumer.accept(localCache);
 

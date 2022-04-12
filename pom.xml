@@ -24,6 +24,10 @@
         <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
         <formatter-maven-plugin.version>2.18.0</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.6.2</impsort-maven-plugin.version>
+
+
+        <aws-url-connection-client.version>2.17.95</aws-url-connection-client.version>
+        <aws-java-sdk-s3.version>1.12.169</aws-java-sdk-s3.version>
     </properties>
 
     <modules>
@@ -40,6 +44,25 @@
                 <version>${quarkus.platform.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>quarkus-amazon-services-bom</artifactId>
+                <version>${quarkus.platform.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>url-connection-client</artifactId>
+                <version>${aws-url-connection-client.version}</version>
+            </dependency>
+            <!-- Needed for testcontainers localstack -->
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-s3</artifactId>
+                <version>${aws-java-sdk-s3.version}</version>
+                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -1,6 +1,5 @@
 package com.redhat.hacbs.artifactcache.services;
 
-import java.net.URI;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,7 +36,7 @@ public class BuildPolicyManagerConfigTest {
         var result = policies.get("default").getRepositories();
         Assertions.assertEquals(1, result.size());
         Repository central = result.get(0);
-        Assertions.assertEquals(new URI("https://repo.maven.apache.org/maven2"), central.getUri());
+        Assertions.assertEquals("https://repo.maven.apache.org/maven2", central.getUri());
     }
 
     @Test
@@ -51,8 +50,8 @@ public class BuildPolicyManagerConfigTest {
         var policies = manager.createBuildPolicies(Set.of("default", "central-only"), config);
         var result = policies.get("default").getRepositories();
         Repository central = result.get(0);
-        Assertions.assertEquals(new URI("https://repo.maven.apache.org/maven2"), central.getUri());
+        Assertions.assertEquals("https://repo.maven.apache.org/maven2", central.getUri());
         Repository rht = result.get(1);
-        Assertions.assertEquals(new URI("https://maven.repository.redhat.com/ga"), rht.getUri());
+        Assertions.assertEquals("https://maven.repository.redhat.com/ga", rht.getUri());
     }
 }

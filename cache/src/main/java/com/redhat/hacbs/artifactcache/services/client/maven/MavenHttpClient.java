@@ -1,4 +1,4 @@
-package com.redhat.hacbs.artifactcache.services.mavenclient;
+package com.redhat.hacbs.artifactcache.services.client.maven;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
