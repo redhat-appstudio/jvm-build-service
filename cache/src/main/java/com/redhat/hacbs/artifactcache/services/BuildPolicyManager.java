@@ -1,22 +1,20 @@
 package com.redhat.hacbs.artifactcache.services;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import javax.enterprise.inject.Produces;
+import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.artifactcache.services.mavenclient.MavenClient;
+import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
+import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
 
 import io.quarkus.logging.Log;
+import software.amazon.awssdk.services.s3.S3Client;
 
 /**
  * Class that consumes the repository config and creates the runtime representation of the repositories
@@ -26,8 +24,13 @@ class BuildPolicyManager {
     private static final String STORE = "store.";
     private static final String URL = ".url";
     private static final String TYPE = ".type";
+    private static final String BUCKET = ".bucket";
+    private static final String PREFIXES = ".prefixes";
     public static final String STORE_LIST = ".store-list";
     public static final String BUILD_POLICY = "build-policy.";
+
+    @Inject
+    S3Client s3Client;
 
     @Produces
     @Singleton
@@ -69,37 +72,24 @@ class BuildPolicyManager {
     private Repository createRepository(Config config, String repo) {
         Optional<URI> uri = config.getOptionalValue(STORE + repo + URL, URI.class);
         Optional<RepositoryType> optType = config.getOptionalValue(STORE + repo + TYPE, RepositoryType.class);
-        if (uri.isPresent()) {
-            Log.infof("Repository %s added with URI %s", repo, uri.get());
-            RepositoryType type = optType.orElse(RepositoryType.MAVEN2);
-            RepositoryClient client;
-            switch (type) {
-                case MAVEN2:
-                    //TODO: custom SSL config for internal certs
-                    client = MavenClient.of(repo, uri.get());
-                    break;
-                case S3:
-                    client = new RepositoryClient() {
-                        @Override
-                        public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact,
-                                String version,
-                                String target) {
-                            throw new RuntimeException("NOT IMPLEMENTED YET");
-                        }
 
-                        @Override
-                        public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
-                            throw new RuntimeException("NOT IMPLEMENTED YET");
-                        }
-                    };
-                    break;
-                default:
-                    throw new RuntimeException("Unknown type: " + type);
+        if (uri.isPresent() && optType.orElse(RepositoryType.MAVEN2) == RepositoryType.MAVEN2) {
+            Log.infof("Repository %s added with URI %s", repo, uri.get());
+            RepositoryClient client = MavenClient.of(repo, uri.get());
+            return new Repository(repo, uri.get().toASCIIString(), RepositoryType.MAVEN2, client);
+        } else if (optType.orElse(null) == RepositoryType.S3) {
+            //we need to get the config
+
+            Optional<String> bucket = config.getOptionalValue(STORE + repo + BUCKET, String.class);
+            if (bucket.isPresent()) {
+                String[] prefixes = config.getOptionalValue(STORE + repo + PREFIXES, String.class).orElse("default").split(",");
+                RepositoryClient client = new S3RepositoryClient(s3Client, Arrays.asList(prefixes), bucket.get());
+                return new Repository(repo, "s3://" + bucket + Arrays.toString(prefixes), RepositoryType.S3, client);
+            } else {
+                Log.warnf("S3 Repository %s was listed but has no bucket configured and will be ignored", repo);
             }
-            return new Repository(repo, uri.get(), type, client);
-        } else {
-            Log.warnf("Repository %s was listed but has no config and will be ignored", repo);
-            return null;
         }
+        Log.warnf("Repository %s was listed but has no config and will be ignored", repo);
+        return null;
     }
 }

@@ -1,18 +1,16 @@
 package com.redhat.hacbs.artifactcache.services;
 
-import java.net.URI;
-
 /**
  * A runtime representation of a repository or artifact store
  */
 public class Repository {
 
     private final String name;
-    private final URI uri;
+    private final String uri;
     private final RepositoryType type;
     private final RepositoryClient client;
 
-    public Repository(String name, URI uri, RepositoryType type, RepositoryClient client) {
+    public Repository(String name, String uri, RepositoryType type, RepositoryClient client) {
         this.name = name;
         this.uri = uri;
         this.type = type;
@@ -23,7 +21,7 @@ public class Repository {
         return name;
     }
 
-    public URI getUri() {
+    public String getUri() {
         return uri;
     }
 
