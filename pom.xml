@@ -36,6 +36,7 @@
         <module>cache</module>
         <module>operator</module>
         <module>build-recipes-database</module>
+        <module>build-analyser</module>
     </modules>
 
     <dependencyManagement>
@@ -53,6 +54,12 @@
                 <version>${quarkus.platform.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
+                <artifactId>hacbs-build-recipies-database</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
