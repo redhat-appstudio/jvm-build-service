@@ -41,5 +41,5 @@ nb-configuration.xml
 .envrc
 
 # Kustomize overlays for development
-cache/src/main/kubernetes/overlays/development
-operator/src/main/kubernetes/overlays/development
+deployment/**/development/**
+

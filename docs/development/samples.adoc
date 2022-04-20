@@ -1,0 +1,23 @@
+= Samples
+
+NOTE: Please follow the deployment documentation to set up the environment.
+
+The `hack/examples` directory contains examples that make use of the Build Service.
+
+== Sample Pipeline
+
+NOTE: This pipeline is in heavy development and full of hacks.
+
+This pipeline will build the Quarkus getting started project.
+
+Create the Pipeline:
+
+----
+kubectl apply -f hack/examples/pipeline.yaml
+----
+
+And run it:
+
+----
+./hack/examples/run-sample-pipeline.sh
+----
