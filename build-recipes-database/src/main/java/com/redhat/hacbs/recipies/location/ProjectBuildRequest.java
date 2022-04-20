@@ -2,6 +2,8 @@ package com.redhat.hacbs.recipies.location;
 
 import java.util.Set;
 
+import com.redhat.hacbs.recipies.BuildRecipe;
+
 /**
  * Encapsulates a request for the location of all project dependencies. This is more efficient than requesting
  * a result from each artifact individually.

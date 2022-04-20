@@ -1,6 +1,7 @@
 package com.redhat.hacbs.recipies.location;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
@@ -50,7 +51,6 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
     /**
      * Returns the directories that contain the recipe information for this specific artifact
-     *
      */
     public Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version) {
         return getArtifactPaths(groupId, artifactId, version, new LinkedHashSet<>());
@@ -58,7 +58,6 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
     /**
      * Returns the directories that contain the recipe information for this specific artifact
-     *
      */
     private Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version,
             Set<Path> seenRedirects) {
@@ -84,7 +83,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
     /**
      * handles redirections, which can be used to point a directory to another artifacts directory
-     *
+     * <p>
      * This can be very useful to point sub modules of a build to the parent module
      */
     private Path handleRedirect(Path original, Set<Path> seenRedirects, Function<RecipePathMatch, Path> mapping, String groupId,
@@ -123,5 +122,31 @@ public class RecipeLayoutManager implements RecipeDirectory {
             return original;
         }
         return mapping.apply(redirected.get());
+    }
+
+    @Override
+    public <T> void writeArtifactData(AddRecipeRequest<T> data) {
+        Set<Path> seenRedirects = new HashSet<>();
+        String groupId = data.getGroupId();
+        String artifactId = data.getArtifactId();
+        String version = data.getVersion();
+        Path resolved = handleRedirect(this.baseDirectory.resolve(groupId.replace('.', File.separatorChar)), seenRedirects,
+                RecipePathMatch::getGroup, groupId, artifactId, version);
+        if (artifactId != null) {
+            resolved = resolved.resolve(ARTIFACT);
+            resolved = handleRedirect(resolved.resolve(artifactId), seenRedirects, RecipePathMatch::getArtifact,
+                    groupId, artifactId, version);
+        }
+        if (version != null) {
+            resolved = resolved.resolve(VERSION);
+            resolved = handleRedirect(resolved.resolve(version), seenRedirects, RecipePathMatch::getVersion, groupId,
+                    artifactId, version);
+        }
+        try {
+            Files.createDirectories(resolved);
+            data.getRecipe().getHandler().write(data.getData(), resolved.resolve(data.getRecipe().getName()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

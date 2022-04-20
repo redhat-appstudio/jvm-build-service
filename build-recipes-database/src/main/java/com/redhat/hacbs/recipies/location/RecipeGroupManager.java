@@ -4,6 +4,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
+import com.redhat.hacbs.recipies.BuildRecipe;
+
 /**
  * Entry point for requesting build information
  */

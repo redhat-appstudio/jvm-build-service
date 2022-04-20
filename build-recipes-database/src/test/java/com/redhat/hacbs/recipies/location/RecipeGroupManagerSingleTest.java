@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
+import com.redhat.hacbs.recipies.BuildRecipe;
+
 public class RecipeGroupManagerSingleTest {
     static RecipeGroupManager manager;
 

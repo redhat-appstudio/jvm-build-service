@@ -2,7 +2,7 @@ package com.redhat.hacbs.analyser.maven;
 
 import java.util.Map;
 
-import com.redhat.hacbs.analyser.GAV;
+import com.redhat.hacbs.recipies.GAV;
 
 public class MavenProject {
     private final Map<GAV, MavenModule> projects;

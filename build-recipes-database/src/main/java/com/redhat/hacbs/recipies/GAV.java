@@ -1,4 +1,4 @@
-package com.redhat.hacbs.analyser;
+package com.redhat.hacbs.recipies;
 
 import java.util.Objects;
 

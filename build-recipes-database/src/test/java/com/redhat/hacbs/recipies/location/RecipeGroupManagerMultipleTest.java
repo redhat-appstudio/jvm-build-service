@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
+import com.redhat.hacbs.recipies.BuildRecipe;
+
 public class RecipeGroupManagerMultipleTest {
     static RecipeGroupManager manager;
 

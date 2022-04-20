@@ -3,6 +3,8 @@ package com.redhat.hacbs.recipies.location;
 import java.nio.file.Path;
 import java.util.Map;
 
+import com.redhat.hacbs.recipies.BuildRecipe;
+
 public class ProjectBuildResponse {
 
     /**
