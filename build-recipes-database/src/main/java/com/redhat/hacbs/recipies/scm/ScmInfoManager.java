@@ -25,6 +25,5 @@ public class ScmInfoManager implements RecipeManager<ScmInfo> {
         Yaml yaml = new Yaml();
         String result = yaml.dump(data);
         Files.writeString(file, result, StandardCharsets.UTF_8);
-
     }
 }

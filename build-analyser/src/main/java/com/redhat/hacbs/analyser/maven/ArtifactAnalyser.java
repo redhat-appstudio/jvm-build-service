@@ -1,4 +1,4 @@
-package com.redhat.hacbs.analyser;
+package com.redhat.hacbs.analyser.maven;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -7,8 +7,6 @@ import java.util.*;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 
-import com.redhat.hacbs.analyser.maven.MavenModule;
-import com.redhat.hacbs.analyser.maven.MavenProject;
 import com.redhat.hacbs.recipies.GAV;
 
 public class ArtifactAnalyser {

@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.analyser.maven.ArtifactAnalyser;
 import com.redhat.hacbs.analyser.maven.MavenModule;
 
 public class AnalysisTest {
