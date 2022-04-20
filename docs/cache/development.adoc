@@ -5,7 +5,7 @@ This documentation is targeting developers who want to contribute to the caching
 == Required Tools
 
 * Maven
-* Podman
+* Docker (or Podman)
 
 == Building The Container Image
 
@@ -61,9 +61,6 @@ Available arguments related to the image name are:
 `quarkus.container-image.group`:: Group (organization) in the registry. By default: `redhat-appstudio`.
 `quarkus.container-image.name`:: Name of the image. By default: `hacbs-jvm-cache`.
 
-
-
-
 == Running Locally in Development Mode
 
 ----
@@ -112,6 +109,61 @@ the caching service in your local development environment.
 ----
 kubectl apply -k deployment/cache/overlays/development
 ----
+
+== Running Tests
+
+Running tests require a container engine to be present. The link:https://www.testcontainers.org/[Testcontainers] framework assumes that Docker is installed and running. It is possible to use Podman
+as well, see below.
+
+----
+mvn clean test -pl cache -am
+----
+
+[NOTE]
+.Podman support
+====
+To be able to use Podman as the container engine for link:https://www.testcontainers.org/[Testcontainers]
+you need to expose a socket, this can be done by running this command:
+
+----
+systemctl start podman --user
+----
+
+Now set environment variables mentioned bellow. This assumes that that your user ID is `1000`.
+You can check this by running the `id -u` command.
+
+----
+DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
+TESTCONTAINERS_CHECKS_DISABLE=true
+TESTCONTAINERS_RYUK_DISABLED=true
+----
+
+Last step is to make sure Podman can pull images from Docker HUB by default.
+Add to the `~/.config/containers/registries.conf` file following content:
+
+----
+unqualified-search-registries = ["registry.access.redhat.com", "docker.io", "quay.io"]
+short-name-mode="permissive"
+----
+
+If you use Visual Studio Code you can add these environment variables to your IDE as well.
+Open settings in JSON format and add following content:
+
+[source,json]
+----
+  "java.test.config": {
+    "env": {
+      "DOCKER_HOST": "unix:///run/user/1000/podman/podman.sock",
+      "TESTCONTAINERS_CHECKS_DISABLE": "true",
+      "TESTCONTAINERS_RYUK_DISABLED": "true"
+    }
+  }
+----
+
+This will set environment variables every time you run tests from the IDE.
+
+====
+
 
 == Hacks
 
