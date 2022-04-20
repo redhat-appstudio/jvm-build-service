@@ -1,0 +1,46 @@
+= Deployment
+
+The `deployment` directory contains Kustomize files that can be used to deploy all the components
+onto a Kubernetes cluster.
+
+== Requirements
+
+* Kubernetes cluster (link:https://kubernetes.io/docs/tasks/tools/#minikube[minikube] is fine!)
+* link:https://kubernetes.io/docs/tasks/tools/#kubectl[kubectl] CLI tool
+
+== Instructions
+
+After starting minikube you can run following command to deploy everything
+using the *staging* versions:
+
+----
+kubectl apply -k deployment/overlays/staging
+----
+
+[NOTE]
+====
+Please note the `-k` switch. This will generate the resources with Kustomize instead of
+applying these files directly as wit would be done with the `-f` flag.
+
+To only generate the output you can use the `kubectl kustomize` command.
+====
+
+What this command will do is:
+
+* Install Tekton Pipelines
+* Install `git-clone` and `maven` Tekton Tasks
+* Install required JVM Build Service components
+
+[NOTE]
+====
+After running the command on a fresh cluster you may see errors related to missing CustomResourceDefinitions.
+This is expected and the reason is that we are installing these CRD's and using them immediately and the cluster
+may not register them on time. Just run the above command again a after a few seconds.
+====
+
+[WARNING]
+====
+Currently *only staging version are published*.
+====
+
+
