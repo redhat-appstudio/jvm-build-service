@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.redhat.hacbs.analyser.config.RepoConfig;
 import com.redhat.hacbs.analyser.data.scm.Repository;
 import com.redhat.hacbs.analyser.data.scm.ScmManager;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
@@ -16,18 +17,20 @@ import com.redhat.hacbs.analyser.pnc.rest.SwaggerConstants;
 
 import picocli.CommandLine;
 
+import javax.inject.Inject;
+
 @CommandLine.Command(name = "repository-list")
 public class PncRepositoryListCommand implements Runnable {
 
     @CommandLine.Option(names = "-u", description = "PNC URI")
     String uri;
 
-    @CommandLine.Option(names = "-r", description = "Repository Path")
-    Path path;
+    @Inject
+    RepoConfig config;
 
     @Override
     public void run() {
-        try (ScmManager manager = ScmManager.create(path)) {
+        try (ScmManager manager = ScmManager.create(config.path())) {
             SCMRepositoryEndpoint client = RestClientBuilder.newBuilder().baseUri(new URI(uri))
                     .build(SCMRepositoryEndpoint.class);
 

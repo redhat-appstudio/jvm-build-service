@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,6 +37,7 @@ public class ScmManager implements AutoCloseable {
         for (var i : data.getRepositories()) {
             byUri.put(i.getUri(), i);
         }
+        Collections.sort(data.getRepositories());
     }
 
     public static ScmManager create(Path repoRoot) {
@@ -55,6 +57,10 @@ public class ScmManager implements AutoCloseable {
         return byUri.get(uri);
     }
 
+    public List<Repository> getAll() {
+        return Collections.unmodifiableList(data.getRepositories());
+    }
+
     public void add(Repository repository) {
         if (byUri.containsKey(repository.getUri())) {
             throw new IllegalStateException(repository.getUri() + " already exists");
@@ -69,6 +75,10 @@ public class ScmManager implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
+        writeData();
+    }
+
+    public void writeData() throws IOException {
         Files.createDirectories(path.getParent());
         Collections.sort(data.getRepositories());
         Files.writeString(path, mapper.writeValueAsString(data));

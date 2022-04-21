@@ -25,7 +25,7 @@ public class ArtifactAnalyser {
         try {
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(Files.newBufferedReader(rootPom));
-            GAV gav = new GAV(model.getGroupId(), model.getArtifactId(), model.getVersion());
+            GAV gav = new GAV(model.getGroupId() == null ? model.getParent().getGroupId() : model.getGroupId(), model.getArtifactId(), model.getVersion());
 
             GAV parentGav = null;
             if (model.getParent() != null) {

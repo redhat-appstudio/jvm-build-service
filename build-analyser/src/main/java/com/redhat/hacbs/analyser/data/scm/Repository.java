@@ -11,6 +11,10 @@ public class Repository implements Comparable<Repository> {
     private boolean failed;
     private String processor;
     private String failedReason;
+    /**
+     * A unique UUID. This can be used when checking out the repository locally to a unique directory.
+     */
+    private String uuid;
 
     public String getUri() {
         return uri;
@@ -58,6 +62,14 @@ public class Repository implements Comparable<Repository> {
 
     public void setFailedReason(String failedReason) {
         this.failedReason = failedReason;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 
     @Override
