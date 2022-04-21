@@ -44,4 +44,13 @@ public class GAV {
     public int hashCode() {
         return Objects.hash(groupId, artifactId, version);
     }
+
+    @Override
+    public String toString() {
+        return "GAV{" +
+            "groupId='" + groupId + '\'' +
+            ", artifactId='" + artifactId + '\'' +
+            ", version='" + version + '\'' +
+            '}';
+    }
 }

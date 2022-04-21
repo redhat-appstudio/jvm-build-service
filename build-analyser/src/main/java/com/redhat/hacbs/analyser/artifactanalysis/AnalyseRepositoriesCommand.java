@@ -50,13 +50,15 @@ public class AnalyseRepositoriesCommand implements Runnable {
         var overallStatus = QuarkusConsole.INSTANCE.registerStatusLine(200);
         System.out.println("START EVENT " + this.toString());
         ExecutorService executorService = Executors.newFixedThreadPool(threads);
+        Map<String, String> doubleUps = new TreeMap<>();
+        Set<Path> doubleUpFiles = new HashSet<>();
         try (ScmManager manager = ScmManager.create(repoConfig.path())) {
             RecipeLayoutManager recipeLayoutManager = new RecipeLayoutManager(
                     repoConfig.path().resolve(RecipeRepositoryManager.RECIPES));
             RecipeGroupManager groupManager = new RecipeGroupManager(List.of(recipeLayoutManager));
             int count = manager.getAll().size();
             int currentCount = 0;
-            multiThreadedEagerCheckout(executorService, manager.getAll(), checkoutConfig.path());
+            //multiThreadedEagerCheckout(executorService, manager.getAll(), checkoutConfig.path());
             for (var repository : new ArrayList<>(manager.getAll())) {
 
                 overallStatus.setMessage("Processing repo " + (currentCount++) + " out of " + count);
@@ -101,10 +103,14 @@ public class AnalyseRepositoriesCommand implements Runnable {
                                 .requestBuildInformation(new ProjectBuildRequest(locationRequests, Set.of(BuildRecipe.SCM)));
                         for (var module : result.getProjects().values()) {
                             var existingModule = existing.getRecipes().get(module.getGav());
-                            if (existingModule != null) {
+                            if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
                                 ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingModule.get(BuildRecipe.SCM));
                                 if (existingInfo.getUri().equals(repository.getUri())) {
                                     continue;
+                                }
+                                if (existingModule.get(BuildRecipe.SCM).toString().contains("_artifact")) {
+                                    doubleUps.put(existingInfo.getUri(), repository.getUri() + "  " + module.getGav());
+                                    doubleUpFiles.add(existingModule.get(BuildRecipe.SCM));
                                 }
                             }
                             ScmInfo info = new ScmInfo("git", repository.getUri());
@@ -121,7 +127,15 @@ public class AnalyseRepositoriesCommand implements Runnable {
                 }
                 manager.writeData();
             }
+            status.close();
+            overallStatus.close();
 
+            for (var e : doubleUps.entrySet()) {
+                System.out.println("DOUBLE UP: " + e.getKey() + " " + e.getValue());
+            }
+            for (var path : doubleUpFiles) {
+                Files.delete(path);
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
@@ -130,7 +144,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
     }
 
     private boolean shouldSkip(Repository repository) {
-        if (repository.isFailed() || repository.isProcessed()) {
+        if (repository.isFailed() || repository.isProcessed() || repository.isDisabled() || repository.isDeprecated()) { //deprecated needs special handling
             return true;
         }
         if (repository.getType() != null && !"git".equals(repository.getType())) {

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -88,11 +89,13 @@ public class ConsolidateScmInfoCommand implements Runnable {
                     return FileVisitResult.CONTINUE;
                 }
             });
-            BuildRecipe.SCM.getHandler().write(first.get(), artifactDirectory.resolve(BuildRecipe.SCM.getName()));
+            BuildRecipe.SCM.getHandler().write(first.get(), artifactDirectory.getParent().resolve(BuildRecipe.SCM.getName()));
             for (var i : toDelete) {
                 Files.delete(i);
-                if (Files.list(i.getParent()).findAny().isEmpty()) {
-                    Files.delete(i.getParent());
+                try (Stream<Path> stream = Files.list(i.getParent()) ) {
+                    if (stream.findAny().isEmpty()) {
+                        Files.delete(i.getParent());
+                    }
                 }
             }
         } catch (CantConsolidateException e) {

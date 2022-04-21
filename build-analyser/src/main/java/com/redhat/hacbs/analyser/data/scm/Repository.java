@@ -9,6 +9,7 @@ public class Repository implements Comparable<Repository> {
     private String type;
     private boolean processed;
     private boolean failed;
+    private boolean disabled;
     private String processor;
     private String failedReason;
     /**
@@ -17,6 +18,13 @@ public class Repository implements Comparable<Repository> {
      * This is volatile to support multi threaded eager checkout
      */
     private volatile String uuid;
+
+    /**
+     * If this is true then the repo should only be used to mark known versions from tags.
+     *
+     * There is a newer repo elsewhere that should be used for all other versions.
+     */
+    private boolean deprecated;
 
     public String getUri() {
         return uri;
@@ -72,6 +80,22 @@ public class Repository implements Comparable<Repository> {
 
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+
+    public boolean isDeprecated() {
+        return deprecated;
+    }
+
+    public void setDeprecated(boolean deprecated) {
+        this.deprecated = deprecated;
+    }
+
+    public boolean isDisabled() {
+        return disabled;
+    }
+
+    public void setDisabled(boolean disabled) {
+        this.disabled = disabled;
     }
 
     @Override
