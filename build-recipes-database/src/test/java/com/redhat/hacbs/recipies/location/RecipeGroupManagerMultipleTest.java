@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
+import com.redhat.hacbs.recipies.GAV;
 
 public class RecipeGroupManagerMultipleTest {
     static RecipeGroupManager manager;
@@ -29,12 +30,12 @@ public class RecipeGroupManagerMultipleTest {
 
     @Test
     public void testGroupIdBasedRecipe() {
-        BuildLocationRequest req = new BuildLocationRequest("io.test", "test", "1.0");
+        GAV req = new GAV("io.test", "test", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/test/test.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
-        req = new BuildLocationRequest("io.test.acme", "test-acme", "1.0");
+        req = new GAV("io.test.acme", "test-acme", "1.0");
         result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/test-override/test-acme.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -43,13 +44,13 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testVersionOverride() {
         //the original override should still work
-        BuildLocationRequest req = new BuildLocationRequest("io.quarkus", "quarkus-core", "1.0-stuart1");
+        GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart1");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
         //but now we have added a new one as well
-        req = new BuildLocationRequest("io.quarkus", "quarkus-core", "1.0-stuart2");
+        req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart2");
         result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -58,12 +59,12 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testArtifactOverride() {
         //this should still work as normal, it is not overriden
-        BuildLocationRequest req = new BuildLocationRequest("io.quarkus", "quarkus-gizmo", "1.0");
+        GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
-        req = new BuildLocationRequest("io.test", "test-gizmo", "1.0");
+        req = new GAV("io.test", "test-gizmo", "1.0");
         result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/test/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -72,12 +73,12 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testArtifactAndVersionOverride() {
         //same here
-        BuildLocationRequest req = new BuildLocationRequest("io.quarkus", "quarkus-gizmo", "1.0-stuart1");
+        GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-stuart1");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
-        req = new BuildLocationRequest("io.test", "test-gizmo", "1.0-stuart1");
+        req = new GAV("io.test", "test-gizmo", "1.0-stuart1");
         result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -85,7 +86,7 @@ public class RecipeGroupManagerMultipleTest {
 
     @Test
     public void testNoGroupLevelBuild() {
-        BuildLocationRequest req = new BuildLocationRequest("io.vertx", "not-real", "1.0");
+        GAV req = new GAV("io.vertx", "not-real", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -94,7 +95,7 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     @Disabled("Redirects are currently scoped to the repository")
     public void testArtifactLevelRedirect() {
-        BuildLocationRequest req = new BuildLocationRequest("io.vertx", "vertx-web", "1.0");
+        GAV req = new GAV("io.vertx", "vertx-web", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -103,7 +104,7 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     @Disabled("Redirects are currently scoped to the repository")
     public void testGroupAndArtifactLevelRedirect() {
-        var req = new BuildLocationRequest("org.jboss.vertx", "vertx-web", "1.0");
+        var req = new GAV("org.jboss.vertx", "vertx-web", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));

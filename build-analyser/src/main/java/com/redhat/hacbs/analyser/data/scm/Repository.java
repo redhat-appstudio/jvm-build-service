@@ -13,8 +13,10 @@ public class Repository implements Comparable<Repository> {
     private String failedReason;
     /**
      * A unique UUID. This can be used when checking out the repository locally to a unique directory.
+     * <p>
+     * This is volatile to support multi threaded eager checkout
      */
-    private String uuid;
+    private volatile String uuid;
 
     public String getUri() {
         return uri;

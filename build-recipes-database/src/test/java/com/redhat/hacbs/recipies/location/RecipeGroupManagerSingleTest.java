@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
+import com.redhat.hacbs.recipies.GAV;
 
 public class RecipeGroupManagerSingleTest {
     static RecipeGroupManager manager;
@@ -27,12 +28,12 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testGroupIdBasedRecipe() {
-        BuildLocationRequest req = new BuildLocationRequest("io.quarkus", "quarkus-core", "1.0");
+        GAV req = new GAV("io.quarkus", "quarkus-core", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
-        req = new BuildLocationRequest("io.quarkus.security", "quarkus-security", "1.0");
+        req = new GAV("io.quarkus.security", "quarkus-security", "1.0");
         result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/quarkus-security.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -40,7 +41,7 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testVersionOverride() {
-        BuildLocationRequest req = new BuildLocationRequest("io.quarkus", "quarkus-core", "1.0-stuart1");
+        GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart1");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -48,7 +49,7 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testArtifactOverride() {
-        BuildLocationRequest req = new BuildLocationRequest("io.quarkus", "quarkus-gizmo", "1.0");
+        GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -56,7 +57,7 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testArtifactAndVersionOverride() {
-        BuildLocationRequest req = new BuildLocationRequest("io.quarkus", "quarkus-gizmo", "1.0-stuart1");
+        GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-stuart1");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -64,7 +65,7 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testNoGroupLevelBuild() {
-        BuildLocationRequest req = new BuildLocationRequest("io.vertx", "not-real", "1.0");
+        GAV req = new GAV("io.vertx", "not-real", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -72,7 +73,7 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testArtifactLevelRedirect() {
-        BuildLocationRequest req = new BuildLocationRequest("io.vertx", "vertx-web", "1.0");
+        GAV req = new GAV("io.vertx", "vertx-web", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -80,7 +81,7 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testGroupAndArtifactLevelRedirect() {
-        var req = new BuildLocationRequest("org.jboss.vertx", "vertx-web", "1.0");
+        var req = new GAV("org.jboss.vertx", "vertx-web", "1.0");
         var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
