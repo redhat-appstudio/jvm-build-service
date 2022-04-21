@@ -8,6 +8,7 @@ import io.quarkus.picocli.runtime.annotations.TopCommand;
 import picocli.CommandLine;
 
 @TopCommand
-@CommandLine.Command(mixinStandardHelpOptions = true, subcommands = { PncCommand.class, AnalyseRepositoriesCommand.class, ConsolidateScmInfoCommand.class})
+@CommandLine.Command(mixinStandardHelpOptions = true, subcommands = { PncCommand.class, AnalyseRepositoriesCommand.class,
+        ConsolidateScmInfoCommand.class })
 public class EntryPoint {
 }

@@ -18,7 +18,9 @@ import com.redhat.hacbs.analyser.config.CheckoutConfig;
 import com.redhat.hacbs.analyser.config.RepoConfig;
 import com.redhat.hacbs.analyser.data.scm.Repository;
 import com.redhat.hacbs.analyser.data.scm.ScmManager;
-import com.redhat.hacbs.analyser.maven.ArtifactAnalyser;
+import com.redhat.hacbs.analyser.maven.GradleAnalyser;
+import com.redhat.hacbs.analyser.maven.MavenAnalyser;
+import com.redhat.hacbs.analyser.maven.MavenProject;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.location.*;
@@ -93,7 +95,15 @@ public class AnalyseRepositoriesCommand implements Runnable {
                         }
                     }
                     try {
-                        var result = ArtifactAnalyser.doProjectDiscovery(checkoutPath);
+
+                        MavenProject result;
+                        if (Files.exists(checkoutPath.resolve("pom.xml"))) {
+                            result = MavenAnalyser.doProjectDiscovery(checkoutPath);
+                        } else if (Files.exists(checkoutPath.resolve("build.gradle"))) {
+                            result = GradleAnalyser.doProjectDiscovery(checkoutPath);
+                        } else {
+                            continue;
+                        }
                         Set<GAV> locationRequests = new HashSet<>();
                         for (var module : result.getProjects().values()) {
                             locationRequests.add(new GAV(module.getGav().getGroupId(), module.getGav().getArtifactId(),

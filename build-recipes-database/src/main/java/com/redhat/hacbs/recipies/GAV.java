@@ -48,9 +48,9 @@ public class GAV {
     @Override
     public String toString() {
         return "GAV{" +
-            "groupId='" + groupId + '\'' +
-            ", artifactId='" + artifactId + '\'' +
-            ", version='" + version + '\'' +
-            '}';
+                "groupId='" + groupId + '\'' +
+                ", artifactId='" + artifactId + '\'' +
+                ", version='" + version + '\'' +
+                '}';
     }
 }

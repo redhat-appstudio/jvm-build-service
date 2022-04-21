@@ -6,11 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -60,51 +57,45 @@ public class ConsolidateScmInfoCommand implements Runnable {
     }
 
     private void consolidateGroupIfPossible(Path artifactDirectory) throws IOException {
-        AtomicReference<ScmInfo> first = new AtomicReference<>();
-        List<Path> toDelete = new ArrayList<>();
-        try {
-            Files.walkFileTree(artifactDirectory, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    if (dir.getFileName().toString().equals(RecipeLayoutManager.VERSION)) {
-                        return FileVisitResult.SKIP_SUBTREE;
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    if (file.getFileName().toString().equals(BuildRecipe.SCM.getName())) {
-                        toDelete.add(file);
-                        ScmInfo current = BuildRecipe.SCM.getHandler().parse(file);
-                        if (first.get() == null) {
-                            first.set(current);
-                        } else {
-                            if (!Objects.equals(current.getUri(), first.get().getUri()) ||
-                                    !Objects.equals(current.getType(), first.get().getType())) {
-                                throw new CantConsolidateException();
-                            }
-                        }
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-            BuildRecipe.SCM.getHandler().write(first.get(), artifactDirectory.getParent().resolve(BuildRecipe.SCM.getName()));
-            for (var i : toDelete) {
-                Files.delete(i);
-                try (Stream<Path> stream = Files.list(i.getParent()) ) {
-                    if (stream.findAny().isEmpty()) {
-                        Files.delete(i.getParent());
-                    }
-                }
-            }
-        } catch (CantConsolidateException e) {
+        Path path = artifactDirectory.getParent().resolve(BuildRecipe.SCM.getName());
+        if (Files.exists(path)) {
             return;
         }
+        Map<String, List<Path>> toDelete = new HashMap<>();
+        AtomicInteger totalCount = new AtomicInteger();
+        Map<String, AtomicInteger> perScmUriCount = new HashMap<>();
+        Files.walkFileTree(artifactDirectory, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (dir.getFileName().toString().equals(RecipeLayoutManager.VERSION)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
 
-    }
-
-    static class CantConsolidateException extends RuntimeException {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (file.getFileName().toString().equals(BuildRecipe.SCM.getName())) {
+                    totalCount.incrementAndGet();
+                    ScmInfo current = BuildRecipe.SCM.getHandler().parse(file);
+                    toDelete.computeIfAbsent(current.getUri(), s -> new ArrayList<>()).add(file);
+                    perScmUriCount.computeIfAbsent(current.getUri(), s -> new AtomicInteger()).incrementAndGet();
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        for (var entry : perScmUriCount.entrySet()) {
+            if (entry.getValue().get() > (totalCount.get() / 2)) {
+                Files.copy(toDelete.get(entry.getKey()).get(0), path);
+                toDelete.get(entry.getKey()).forEach(s -> {
+                    try {
+                        Files.delete(s);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }
+        }
 
     }
 
