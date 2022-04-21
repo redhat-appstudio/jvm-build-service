@@ -1,16 +1,5 @@
 package com.redhat.hacbs.analyser.data.scm;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationConfig;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationConfig;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
-import org.yaml.snakeyaml.nodes.Tag;
-import org.yaml.snakeyaml.representer.Representer;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +7,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.yaml.snakeyaml.Yaml;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 /**
  * Manages a Yaml list of repositories, and their processing state
@@ -29,7 +24,8 @@ public class ScmManager implements AutoCloseable {
     private final Path path;
     private final RepositoryData data;
     private final Map<String, Repository> byUri = new HashMap<>();
-    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory()).setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
+    private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
+            .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
 
     private ScmManager(Path path, RepositoryData data) {
         this.path = path;

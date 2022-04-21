@@ -1,23 +1,21 @@
 package com.redhat.hacbs.analyser.pnc;
 
 import java.net.URI;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Set;
 import java.util.TreeSet;
+
+import javax.inject.Inject;
+
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
 import com.redhat.hacbs.analyser.config.RepoConfig;
 import com.redhat.hacbs.analyser.data.scm.Repository;
 import com.redhat.hacbs.analyser.data.scm.ScmManager;
-import org.eclipse.microprofile.rest.client.RestClientBuilder;
-
 import com.redhat.hacbs.analyser.pnc.rest.PageParameters;
 import com.redhat.hacbs.analyser.pnc.rest.SCMRepositoryEndpoint;
 import com.redhat.hacbs.analyser.pnc.rest.SwaggerConstants;
 
 import picocli.CommandLine;
-
-import javax.inject.Inject;
 
 @CommandLine.Command(name = "repository-list")
 public class PncRepositoryListCommand implements Runnable {
@@ -46,8 +44,8 @@ public class PncRepositoryListCommand implements Runnable {
                 for (var page : result.getContent()) {
                     if (page.getExternalUrl() != null && !page.getExternalUrl().contains("redhat.com")) {
                         urls.add(page.getExternalUrl()
-                            .replaceAll("ssh://git@github.com/", "https://github.com/")
-                            .replaceAll("ssh://git@github.com:", "https://github.com/"));
+                                .replaceAll("ssh://git@github.com/", "https://github.com/")
+                                .replaceAll("ssh://git@github.com:", "https://github.com/"));
                     }
                 }
                 pageNo++;

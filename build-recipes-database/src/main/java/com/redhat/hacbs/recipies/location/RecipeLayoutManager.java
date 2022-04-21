@@ -3,7 +3,6 @@ package com.redhat.hacbs.recipies.location;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -11,7 +10,9 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.yaml.snakeyaml.Yaml;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 /**
  * Manages an individual recipe database of build recipes.
@@ -34,6 +35,8 @@ import org.yaml.snakeyaml.Yaml;
 public class RecipeLayoutManager implements RecipeDirectory {
 
     private static final Logger log = Logger.getLogger(RecipeLayoutManager.class.getName());
+    private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory())
+            .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
 
     public static final String ARTIFACT = "_artifact";
     public static final String VERSION = "_version";
@@ -95,10 +98,10 @@ public class RecipeLayoutManager implements RecipeDirectory {
         if (seenRedirects.contains(original)) {
             throw new RuntimeException("Redirect loop detected, path: " + seenRedirects);
         }
-        Yaml yaml = new Yaml();
         String toRedirect = null;
         try (InputStream in = Files.newInputStream(redirect)) {
-            Map<String, Object> contents = yaml.load(new InputStreamReader(in));
+
+            Map<String, Object> contents = MAPPER.readValue(in, Map.class);
             if (contents == null) {
                 log.log(Level.SEVERE, "Failed to read " + redirect.toAbsolutePath() + " location was missing");
                 return original;
