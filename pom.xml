@@ -37,6 +37,7 @@
         <module>operator</module>
         <module>build-recipes-database</module>
         <module>build-analyser</module>
+        <module>classfile-tracker</module>
     </modules>
 
     <dependencyManagement>
@@ -56,6 +57,11 @@
                 <scope>import</scope>
             </dependency>
 
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
+                <artifactId>hacbs-classfile-tracker</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.redhat.hacbs</groupId>
                 <artifactId>hacbs-build-recipies-database</artifactId>

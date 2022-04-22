@@ -1,0 +1,4 @@
+= Class File Tracking Utilities
+
+This modules contains utilities that can be used to inject information into class files
+and jars about where they have been provided from, and also read this information.
