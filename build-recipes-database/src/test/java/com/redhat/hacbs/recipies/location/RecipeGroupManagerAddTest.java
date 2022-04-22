@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
+import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 
 public class RecipeGroupManagerAddTest {
@@ -27,12 +28,12 @@ public class RecipeGroupManagerAddTest {
         manager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, add, "io.quarkus.security", null, null));
 
         RecipeGroupManager groupManager = new RecipeGroupManager(List.of(manager));
-        BuildLocationRequest req = new BuildLocationRequest("io.quarkus", "quarkus-core", "1.0");
+        GAV req = new GAV("io.quarkus", "quarkus-core", "1.0");
         var result = groupManager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
-        req = new BuildLocationRequest("io.quarkus.security", "quarkus-security", "1.0");
+        req = new GAV("io.quarkus.security", "quarkus-security", "1.0");
         result = groupManager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/quarkus-security.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));

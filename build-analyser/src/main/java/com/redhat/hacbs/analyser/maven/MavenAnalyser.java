@@ -1,5 +1,6 @@
-package com.redhat.hacbs.analyser;
+package com.redhat.hacbs.analyser.maven;
 
+import java.io.BufferedReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -7,11 +8,9 @@ import java.util.*;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 
-import com.redhat.hacbs.analyser.maven.MavenModule;
-import com.redhat.hacbs.analyser.maven.MavenProject;
 import com.redhat.hacbs.recipies.GAV;
 
-public class ArtifactAnalyser {
+public class MavenAnalyser {
 
     public static MavenProject doProjectDiscovery(Path projectRoot) {
         Map<GAV, MavenModule> modules = new HashMap<>();
@@ -24,10 +23,11 @@ public class ArtifactAnalyser {
         if (!Files.isRegularFile(rootPom)) {
             return;
         }
-        try {
+        try (BufferedReader pomReader = Files.newBufferedReader(rootPom)) {
             MavenXpp3Reader reader = new MavenXpp3Reader();
-            Model model = reader.read(Files.newBufferedReader(rootPom));
-            GAV gav = new GAV(model.getGroupId(), model.getArtifactId(), model.getVersion());
+            Model model = reader.read(pomReader);
+            GAV gav = new GAV(model.getGroupId() == null ? model.getParent().getGroupId() : model.getGroupId(),
+                    model.getArtifactId(), model.getVersion() == null ? model.getParent().getVersion() : model.getVersion());
 
             GAV parentGav = null;
             if (model.getParent() != null) {

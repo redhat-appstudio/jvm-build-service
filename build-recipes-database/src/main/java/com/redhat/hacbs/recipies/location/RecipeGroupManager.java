@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
+import com.redhat.hacbs.recipies.GAV;
 
 /**
  * Entry point for requesting build information
@@ -23,7 +24,7 @@ public class RecipeGroupManager {
     public ProjectBuildResponse requestBuildInformation(ProjectBuildRequest request) {
 
         Map<String, Map<BuildRecipe, Path>> groupAuthoritativeResults = new HashMap<>();
-        Map<BuildLocationRequest, Map<BuildRecipe, Path>> results = new HashMap<>();
+        Map<GAV, Map<BuildRecipe, Path>> results = new HashMap<>();
         for (var buildLocationRequest : request.getRequests()) {
             var group = buildLocationRequest.getGroupId();
             var authoritative = groupAuthoritativeResults.get(group);

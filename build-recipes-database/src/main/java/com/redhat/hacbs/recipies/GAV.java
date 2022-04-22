@@ -2,11 +2,14 @@ package com.redhat.hacbs.recipies;
 
 import java.util.Objects;
 
+/**
+ * An artifact GAV
+ */
 public class GAV {
 
-    private final String groupId;
-    private final String artifactId;
-    private final String version;
+    final String groupId;
+    final String artifactId;
+    final String version;
 
     public GAV(String groupId, String artifactId, String version) {
         this.groupId = groupId;
@@ -32,13 +35,22 @@ public class GAV {
             return true;
         if (o == null || getClass() != o.getClass())
             return false;
-        GAV gav = (GAV) o;
-        return Objects.equals(groupId, gav.groupId) && Objects.equals(artifactId, gav.artifactId)
-                && Objects.equals(version, gav.version);
+        GAV that = (GAV) o;
+        return Objects.equals(groupId, that.groupId) && Objects.equals(artifactId, that.artifactId)
+                && Objects.equals(version, that.version);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(groupId, artifactId, version);
+    }
+
+    @Override
+    public String toString() {
+        return "GAV{" +
+                "groupId='" + groupId + '\'' +
+                ", artifactId='" + artifactId + '\'' +
+                ", version='" + version + '\'' +
+                '}';
     }
 }
