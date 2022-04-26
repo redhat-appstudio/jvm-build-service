@@ -35,7 +35,7 @@ What this command will do is:
 ====
 After running the command on a fresh cluster you may see errors related to missing CustomResourceDefinitions.
 This is expected and the reason is that we are installing these CRD's and using them immediately and the cluster
-may not register them on time. Just run the above command again a after a few seconds.
+may not register them on time. Just run the above command again after a few seconds.
 ====
 
 [WARNING]

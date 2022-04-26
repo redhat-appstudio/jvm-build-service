@@ -19,7 +19,7 @@ public class RecipePathMatch {
     final Path artifactAndVersion;
     /**
      * If this is true then there are no artifact or version overrides for this group id, meaning that
-     * every artifact with this group id will use the same recipies.
+     * every artifact with this group id will use the same recipes.
      */
     final boolean groupAuthoritative;
 

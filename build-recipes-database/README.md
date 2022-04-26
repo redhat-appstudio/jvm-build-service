@@ -52,7 +52,7 @@ put `group-id: org.acme`, and all requests for `or.jboss.acme` information will 
 
 If we have `acme-parent` and `acme-core` artifacts, and we want to redirect any requests for `acme-core` to the parent
 we can create a `org/acme/_artifact/acme-core/redirect.yaml` file and add `artifact-id: acme-parent` to redirect to the
-parent. Note that most of the time this is not nessesary, as you would store this information at the group level, this is
+parent. Note that most of the time this is not necessary, as you would store this information at the group level, this is
 only required if you have multiple different projects that share the same group id.
 
 ## Location Priority

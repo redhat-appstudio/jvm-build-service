@@ -37,7 +37,7 @@ public interface SwaggerConstants {
     public static final String PAGE_INDEX_DESCRIPTION = "Index of the page to return. Index starts with 0.";
     public static final String PAGE_INDEX_QUERY_PARAM = "pageIndex";
     public static final String PAGE_INDEX_DEFAULT_VALUE = "0";
-    public static final String PAGE_SIZE_DESCRIPTION = "Number of entries that shuld be included in a page. Maximum page size is "
+    public static final String PAGE_SIZE_DESCRIPTION = "Number of entries that should be included in a page. Maximum page size is "
             + MAX_PAGE_SIZE + ".";
     public static final String PAGE_SIZE_QUERY_PARAM = "pageSize";
     public static final String PAGE_SIZE_DEFAULT_VALUE = "50";

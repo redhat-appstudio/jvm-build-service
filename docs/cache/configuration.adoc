@@ -40,7 +40,8 @@ a remote artifact store you can use the following two properties:
 
 The central config store that is part of the default config is configured as follows:
 
-```
+[source,properties]
+----
 store.central.url=https://repo.maven.apache.org/maven2
 store.central.type=maven2
-```
+----

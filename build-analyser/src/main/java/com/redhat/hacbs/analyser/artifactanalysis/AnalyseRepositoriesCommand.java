@@ -166,7 +166,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
     /**
      * Works backwards through the list doing the checkouts in a multi threaded manner
      * <p>
-     * slight possiblility for a race in that the main thread and this could checkout the same repo,
+     * slight possibility for a race in that the main thread and this could checkout the same repo,
      * however in practice this is not actually an issue.
      * <p>
      * This approach allows us to checkout repos multi threadedly without dealing with thread safety concerns elsewhere.
