@@ -1,0 +1,45 @@
+= Usage
+
+WARNING: All commands are experimental! These may change at any time!
+
+== Analyse repositories
+
+Command::
++
+`build-analyser analyse-repositories`
+
+Description::
++
+Iterates over every repository listed in the `$REPO_PATH/scm/scm-list.yaml` file and checks it out
+in the `$CHECKOUT_PATH` directory. Every project will be checked out in a subdirectory being the
+UUID of the repository. In case of a initial checkout a UUID will be generated.
+
+Run::
++
+----
+build-analyser analyse-repositories
+----
+
+== PNC subcommand
+
+`build-analyser pnc --help`
+
+=== Get all repositories
+
+Command::
++
+`build-analyser pnc repository-list`
+
+Description::
++
+This command connects to the PNC REST API and retrieves list of all repositories.
+Such list is later stored in the `$REPO_PATH/scm/scm-list.yaml` file.
+
+Example::
++
+----
+build-analyser pnc repository-list -u https://PNC_URL/pnc-rest/v2
+----
+
+NOTE: The `PNC_URL` is the URL to orchestrator.
+

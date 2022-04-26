@@ -1,0 +1,8 @@
+= Configuration
+
+In order to be able to use Build Analyser you need to specify environment variables listed below.
+
+== Environment variables
+
+`REPO_PATH`:: Path locally where the information about repositories will be stored.
+`CHECKOUT_PATH`:: Path where repositories will be checked out for investigation.
