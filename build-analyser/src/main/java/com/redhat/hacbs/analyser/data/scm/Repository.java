@@ -15,7 +15,7 @@ public class Repository implements Comparable<Repository> {
     /**
      * A unique UUID. This can be used when checking out the repository locally to a unique directory.
      * <p>
-     * This is volatile to support multi threaded eager checkout
+     * This is volatile to support multithreaded eager checkout
      */
     private volatile String uuid;
 

@@ -70,7 +70,7 @@ public class MavenProxyResource {
     //alternatively we could deploy to a file system location and have a task that does the deployment from there
     @PUT
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public void deply(@PathParam("group") String group, @PathParam("artifact") String artifact,
+    public void deploy(@PathParam("group") String group, @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target, byte[] data) throws Exception {
         Log.errorf("DEPLOYING artifact %s/%s/%s/%s", group, artifact, version, target);
 

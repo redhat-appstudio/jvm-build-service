@@ -3,7 +3,7 @@ package com.redhat.hacbs.analyser.pnc.rest;
 import javax.ws.rs.QueryParam;
 
 /**
- * Parameters for queriing and sorting lists.
+ * Parameters for querying and sorting lists.
  *
  * @author Honza Brázdil &lt;jbrazdil@redhat.com&gt;
  */

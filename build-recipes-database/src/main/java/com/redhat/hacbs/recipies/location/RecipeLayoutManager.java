@@ -87,7 +87,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
     /**
      * handles redirections, which can be used to point a directory to another artifacts directory
      * <p>
-     * This can be very useful to point sub modules of a build to the parent module
+     * This can be very useful to point submodules of a build to the parent module
      */
     private Path handleRedirect(Path original, Set<Path> seenRedirects, Function<RecipePathMatch, Path> mapping, String groupId,
             String artifactId, String version) {
