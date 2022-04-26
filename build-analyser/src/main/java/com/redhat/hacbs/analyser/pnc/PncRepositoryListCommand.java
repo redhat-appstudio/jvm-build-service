@@ -17,10 +17,10 @@ import com.redhat.hacbs.analyser.pnc.rest.SwaggerConstants;
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "repository-list")
+@CommandLine.Command(name = "repository-list", description = "Retrieve list of repositories from PNC")
 public class PncRepositoryListCommand implements Runnable {
 
-    @CommandLine.Option(names = "-u", description = "PNC URI")
+    @CommandLine.Option(names = "-u", description = "PNC URI", required = true)
     String uri;
 
     @Inject
@@ -45,7 +45,8 @@ public class PncRepositoryListCommand implements Runnable {
                     if (page.getExternalUrl() != null && !page.getExternalUrl().contains("redhat.com")) {
                         urls.add(page.getExternalUrl()
                                 .replaceAll("ssh://git@github.com/", "https://github.com/")
-                                .replaceAll("ssh://git@github.com:", "https://github.com/"));
+                                .replaceAll("ssh://git@github.com:", "https://github.com/")
+                                .replaceAll("git+https://github.com/", "https://github.com/"));
                     }
                 }
                 pageNo++;

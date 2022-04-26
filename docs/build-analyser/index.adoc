@@ -1,0 +1,7 @@
+= Build Analyser
+
+== Building
+
+----
+mvn clean  package -pl build-analyser -am
+----
