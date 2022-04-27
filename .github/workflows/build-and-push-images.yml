@@ -28,4 +28,4 @@ jobs:
           java-version: 11
 
       - name: Build ${{ matrix.component }} component
-        run: mvn -B package -pl ${{ matrix.component }} -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.container-image.username=${{ secrets.REGISTRY_USER }} -Dquarkus.container-image.password=${{ secrets.REGISTRY_PASSWORD }} -Dquarkus.container-image.registry=${{ env.IMAGE_REGISTRY }} -Dquarkus.container-image.group=${{ env.IMAGE_GROUP }} -Dquarkus.container-image.tag=${{ env.IMAGE_TAG }}
+        run: mvn -B package -pl ${{ matrix.component }} -am -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.container-image.username=${{ secrets.REGISTRY_USER }} -Dquarkus.container-image.password=${{ secrets.REGISTRY_PASSWORD }} -Dquarkus.container-image.registry=${{ env.IMAGE_REGISTRY }} -Dquarkus.container-image.group=${{ env.IMAGE_GROUP }} -Dquarkus.container-image.tag=${{ env.IMAGE_TAG }}
