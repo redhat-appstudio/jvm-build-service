@@ -1,10 +1,17 @@
 package com.redhat.hacbs.sidecar.resources;
 
-import javax.ws.rs.*;
+import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.WebApplicationException;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
+import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.sidecar.services.RemoteClient;
 
 import io.quarkus.logging.Log;
@@ -23,15 +30,19 @@ public class MavenProxyResource {
     final String deploymentBucket;
     final String deploymentPrefix;
 
+    final boolean addTrackingDataToArtifacts;
+
     public MavenProxyResource(@RestClient RemoteClient remoteClient,
             @ConfigProperty(name = "build-policy") String buildPolicy, S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
-            @ConfigProperty(name = "deployment-prefix") String deploymentPrefix) {
+            @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
+            @ConfigProperty(name = "add-tracking-data-to-artifacts", defaultValue = "false") boolean addTrackingDataToArtifacts) {
         this.remoteClient = remoteClient;
         this.buildPolicy = buildPolicy;
         this.client = client;
         this.deploymentBucket = deploymentBucket;
         this.deploymentPrefix = deploymentPrefix;
+        this.addTrackingDataToArtifacts = addTrackingDataToArtifacts;
         Log.infof("Constructing resource manager with build policy %s", buildPolicy);
     }
 
@@ -41,7 +52,13 @@ public class MavenProxyResource {
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
         Log.infof("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
         try {
-            return remoteClient.get(buildPolicy, group, artifact, version, target);
+            byte[] results = remoteClient.get(buildPolicy, group, artifact, version, target);
+            if (addTrackingDataToArtifacts && target.endsWith(".jar")) {
+                return ClassFileTracker.addTrackingDataToJar(results,
+                        new TrackingData(group.replace("/", ".") + ":" + artifact + ":" + version, null));
+            } else {
+                return results;
+            }
         } catch (WebApplicationException e) {
             if (e.getResponse().getStatus() == 404) {
                 throw new NotFoundException();
