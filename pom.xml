@@ -25,7 +25,6 @@
         <formatter-maven-plugin.version>2.18.0</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.6.2</impsort-maven-plugin.version>
 
-
         <aws-url-connection-client.version>2.17.95</aws-url-connection-client.version>
         <aws-java-sdk-s3.version>1.12.169</aws-java-sdk-s3.version>
         <quarkus-jgit.version>1.2.0</quarkus-jgit.version>
@@ -40,6 +39,7 @@
         <module>build-recipes-database</module>
         <module>build-analyser</module>
         <module>classfile-tracker</module>
+        <module>container-analyser</module>
     </modules>
 
     <dependencyManagement>
@@ -58,7 +58,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
+                <artifactId>hacbs-build-analyser</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.redhat.hacbs</groupId>
                 <artifactId>hacbs-classfile-tracker</artifactId>
