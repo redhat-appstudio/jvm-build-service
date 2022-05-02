@@ -43,4 +43,22 @@ may not register them on time. Just run the above command again after a few seco
 Currently *only staging version are published*.
 ====
 
+== Local Development
 
+If you want to test your changes locally without pushing to a registry you can do this by
+building images with the same docker engine used by minikube. First in your terminal
+run the following to setup your environment:
+
+`eval $(minikube -p minikube docker-env)`
+
+Now build your image with the following command:
+
+`mvn install -DskipTests -Dquarkus.profile=local`
+
+Then restart the relevant deployment (TODO: instructions for operator):
+
+`kubectl rollout restart deployment <name>`
+
+Your local code should now be running in minikube with no need to push to quay.io.
+
+TODO: document `quarkus:remote-dev`
