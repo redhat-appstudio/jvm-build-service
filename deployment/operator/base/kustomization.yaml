@@ -4,6 +4,7 @@ kind: Kustomization
 commonLabels:
   app: hacbs-jvm-operator
 resources:
+  - components.hacbs.redhat.com-v1.yml
   - deployment.yaml
   - sa.yaml
   - rbac.yaml

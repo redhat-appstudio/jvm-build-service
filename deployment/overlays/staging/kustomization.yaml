@@ -3,8 +3,8 @@ kind: Kustomization
 
 bases:
   - "../../base"
-  - "../../cache/overlays/production"
-  - "../../operator/overlays/production"
+  - "../../cache/overlays/staging"
+  - "../../operator/overlays/staging"
 
 images:
   - name: hacbs-jvm-cache
