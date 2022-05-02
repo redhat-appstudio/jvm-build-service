@@ -1,15 +1,13 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: sample-component-build-
+  generateName: service-registry-build-
 spec:
   pipelineRef:
     name: sample-component-build
   params:
     - name: url
-      value: https://github.com/quarkusio/quarkus-quickstarts
-    - name: context
-      value: "getting-started"
+      value: https://github.com/Apicurio/apicurio-registry.git
   workspaces:
     - name: maven-settings
       emptyDir: {}

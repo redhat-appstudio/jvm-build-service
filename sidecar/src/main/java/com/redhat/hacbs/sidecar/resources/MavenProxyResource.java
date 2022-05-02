@@ -51,7 +51,7 @@ public class MavenProxyResource {
     @Path("{group:.*?}/{artifact}/{version}/{target}")
     public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
-        Log.infof("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
+        Log.debugf("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
         try {
             var results = remoteClient.get(buildPolicy, group, artifact, version, target);
             var mavenRepoSource = results.getHeaderString("X-maven-repo");
@@ -72,7 +72,7 @@ public class MavenProxyResource {
     @GET
     @Path("{group:.*?}/maven-metadata.xml{hash:.*?}")
     public byte[] get(@PathParam("group") String group, @PathParam("hash") String hash) throws Exception {
-        Log.infof("Retrieving file %s/maven-metadata.xml%s", group, hash);
+        Log.debugf("Retrieving file %s/maven-metadata.xml%s", group, hash);
         try {
             Response response = remoteClient.get(buildPolicy, group, hash);
             return response.readEntity(byte[].class);

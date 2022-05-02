@@ -12,17 +12,30 @@ spec:
       labels:
         app: hacbs-jvm-cache
     spec:
+      volumes:
+        - name: cache-vol
+          persistentVolumeClaim:
+            claimName: cache-pvc
       containers:
         - name: hacbs-jvm-cache
           image: hacbs-jvm-cache
           imagePullPolicy: Always
           env:
+            - name: CACHE_PATH
+              value: "/cache"
             - name: BUILD_POLICY_DEFAULT_STORE_LIST
-              value: central,redhat,jitpack
+              value: central,redhat,jitpack,confluent
             - name: STORE_JITPACK_URL
               value: https://jitpack.io
             - name: STORE_JITPACK_TYPE
               value: maven2
+            - name: STORE_CONFLUENT_URL
+              value: https://packages.confluent.io/maven
+            - name: STORE_CONFLUENT_TYPE
+              value: maven2
+          volumeMounts:
+            - mountPath: "/cache"
+              name: cache-vol
           ports:
             - containerPort: 8080
               name: http
@@ -40,3 +53,13 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
+      initContainers:
+        - name: take-data-dir-ownership
+          image: registry.access.redhat.com/ubi8/ubi-minimal:8.5
+          command:
+            - chmod
+            - "0777"
+            - /cache
+          volumeMounts:
+            - name: cache-vol
+              mountPath: /cache
