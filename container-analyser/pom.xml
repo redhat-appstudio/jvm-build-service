@@ -19,6 +19,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jsonp</artifactId>
         </dependency>
+        <!-- TODO: should be have a module just for kube resources, so we don't have to depend on the operator?-->
+        <dependency>
+            <groupId>com.redhat.hacbs</groupId>
+            <artifactId>hacbs-operator</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-kubernetes-client</artifactId>

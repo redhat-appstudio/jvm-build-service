@@ -6,6 +6,7 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -36,7 +37,7 @@ public class MavenProxyResource {
             @ConfigProperty(name = "build-policy") String buildPolicy, S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
             @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
-            @ConfigProperty(name = "add-tracking-data-to-artifacts", defaultValue = "false") boolean addTrackingDataToArtifacts) {
+            @ConfigProperty(name = "add-tracking-data-to-artifacts", defaultValue = "true") boolean addTrackingDataToArtifacts) {
         this.remoteClient = remoteClient;
         this.buildPolicy = buildPolicy;
         this.client = client;
@@ -52,12 +53,13 @@ public class MavenProxyResource {
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
         Log.infof("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
         try {
-            byte[] results = remoteClient.get(buildPolicy, group, artifact, version, target);
-            if (addTrackingDataToArtifacts && target.endsWith(".jar")) {
-                return ClassFileTracker.addTrackingDataToJar(results,
-                        new TrackingData(group.replace("/", ".") + ":" + artifact + ":" + version, null));
+            var results = remoteClient.get(buildPolicy, group, artifact, version, target);
+            var mavenRepoSource = results.getHeaderString("X-maven-repo");
+            if (addTrackingDataToArtifacts && target.endsWith(".jar") && mavenRepoSource != null) {
+                return ClassFileTracker.addTrackingDataToJar(results.readEntity(byte[].class),
+                        new TrackingData(group.replace("/", ".") + ":" + artifact + ":" + version, mavenRepoSource));
             } else {
-                return results;
+                return results.readEntity(byte[].class);
             }
         } catch (WebApplicationException e) {
             if (e.getResponse().getStatus() == 404) {
@@ -72,7 +74,8 @@ public class MavenProxyResource {
     public byte[] get(@PathParam("group") String group, @PathParam("hash") String hash) throws Exception {
         Log.infof("Retrieving file %s/maven-metadata.xml%s", group, hash);
         try {
-            return remoteClient.get(buildPolicy, group, hash);
+            Response response = remoteClient.get(buildPolicy, group, hash);
+            return response.readEntity(byte[].class);
         } catch (WebApplicationException e) {
             if (e.getResponse().getStatus() == 404) {
                 throw new NotFoundException();

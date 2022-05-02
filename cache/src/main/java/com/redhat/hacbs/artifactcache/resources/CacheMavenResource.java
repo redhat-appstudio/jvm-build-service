@@ -8,6 +8,7 @@ import javax.ws.rs.HeaderParam;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
 
 import com.redhat.hacbs.artifactcache.services.LocalCache;
 
@@ -26,14 +27,19 @@ public class CacheMavenResource {
 
     @GET
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public InputStream get(@DefaultValue("default") @HeaderParam("X-build-policy") String buildPolicy,
+    public Response get(@DefaultValue("default") @HeaderParam("X-build-policy") String buildPolicy,
             @PathParam("group") String group,
             @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
         Log.infof("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
         var result = cache.getArtifactFile(buildPolicy, group, artifact, version, target);
         if (result.isPresent()) {
-            return result.get().getData();
+            var builder = Response.ok(result.get().getData());
+            if (result.get().getMetadata().containsKey("maven-repo")) {
+                builder.header("X-maven-repo", result.get().getMetadata().get("maven-repo"))
+                        .build();
+            }
+            return builder.build();
         }
         throw new NotFoundException();
     }

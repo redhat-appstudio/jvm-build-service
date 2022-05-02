@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
+import javax.inject.Inject;
+
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -29,7 +31,14 @@ import com.google.cloud.tools.jib.registry.ManifestAndDigest;
 import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.google.cloud.tools.jib.registry.credentials.CredentialRetrievalException;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
+import com.redhat.hacbs.operator.model.v1alpha1.ArtifactBuildRequest;
 
+import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.GenericKubernetesResourceList;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.dsl.MixedOperation;
+import io.fabric8.kubernetes.client.dsl.Resource;
+import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;
@@ -43,6 +52,12 @@ public class Main implements QuarkusApplication {
 
     @ConfigProperty(name = "base-image")
     Optional<String> baseImage;
+
+    @ConfigProperty(name = "sources-to-rebuild", defaultValue = "central")
+    Set<String> sourcesToRebuild;
+
+    @Inject
+    KubernetesClient kubernetesClient;
 
     public static void main(String... args) {
         Quarkus.run(Main.class, args);
@@ -78,16 +93,20 @@ public class Main implements QuarkusApplication {
                         Log.debugf("Processing %s from layer %s", entry.getName(), layer.getHash());
                         var data = ClassFileTracker.readTrackingInformationFromClass(tarArchiveInputStream.readAllBytes());
                         if (data != null) {
-                            Log.debugf("Found GAV %s in %s from layer %s", data.gav, entry.getName(), layer.getHash());
-                            gavs.add(data.gav);
+                            if (sourcesToRebuild.contains(data.source)) {
+                                Log.debugf("Found GAV %s in %s from layer %s", data.gav, entry.getName(), layer.getHash());
+                                gavs.add(data.gav);
+                            }
                         }
                     } else if (entry.getName().endsWith(".jar")) {
                         Log.debugf("Processing %s from layer %s", entry.getName(), layer.getHash());
                         var jarData = ClassFileTracker.readTrackingDataFromJar(tarArchiveInputStream.readAllBytes());
                         for (var data : jarData) {
                             if (data != null) {
-                                Log.debugf("Found GAV %s in %s from layer %s", data.gav, entry.getName(), layer.getHash());
-                                gavs.add(data.gav);
+                                if (sourcesToRebuild.contains(data.source)) {
+                                    Log.debugf("Found GAV %s in %s from layer %s", data.gav, entry.getName(), layer.getHash());
+                                    gavs.add(data.gav);
+                                }
                             }
                         }
                     }
@@ -98,7 +117,14 @@ public class Main implements QuarkusApplication {
         Log.infof("Identified Community Dependencies: %s", gavs);
         //know we know which community dependencies went into the build
 
-        //now use the kube client to stick it into a CR to signifiy that these dependencies should be built
+        //now use the kube client to stick it into a CR to signify that these dependencies should be built
+        MixedOperation<GenericKubernetesResource, GenericKubernetesResourceList, Resource<GenericKubernetesResource>> resources = kubernetesClient
+                .genericKubernetesResources(ResourceDefinitionContext.fromResourceType(ArtifactBuildRequest.class));
+        for (var gav : gavs) {
+            GenericKubernetesResource item = new GenericKubernetesResource();
+            item.setAdditionalProperty("name", gav);
+            resources.create(item);
+        }
         return 0;
     }
 

@@ -70,6 +70,11 @@
             </dependency>
             <dependency>
                 <groupId>com.redhat.hacbs</groupId>
+                <artifactId>hacbs-operator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
                 <artifactId>hacbs-build-recipies-database</artifactId>
                 <version>${project.version}</version>
             </dependency>

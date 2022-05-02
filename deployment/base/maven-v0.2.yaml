@@ -135,7 +135,7 @@ spec:
           xml="    <mirror>\
             <id>mirror.default</id>\
             <url>$(params.MAVEN_MIRROR_URL)</url>\
-            <mirrorOf>central</mirrorOf>\
+            <mirrorOf>*</mirrorOf>\
           </mirror>"
           sed -i "s|<!-- ### mirrors from ENV ### -->|$xml|" $(workspaces.maven-settings.path)/settings.xml
         fi

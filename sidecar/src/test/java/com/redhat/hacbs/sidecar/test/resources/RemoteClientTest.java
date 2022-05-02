@@ -8,6 +8,7 @@ import java.util.jar.JarEntry;
 import java.util.zip.ZipOutputStream;
 
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -33,9 +34,11 @@ public class RemoteClientTest {
     @Test
     public void testFetchingAJar() {
 
+        Response mockResponse = Mockito.mock(Response.class);
         Mockito.when(remoteClient.get("default", "io/quarkus", "quarkus-jaxb",
                 "2.7.5.Final",
-                "quarkus-jaxb-2.7.5.Final.jar")).thenReturn("ajar".getBytes());
+                "quarkus-jaxb-2.7.5.Final.jar")).thenReturn(mockResponse);
+        Mockito.when(mockResponse.readEntity(byte[].class)).thenReturn("ajar".getBytes());
 
         RestAssured.given()
                 .when().get("/io/quarkus/quarkus-jaxb/2.7.5.Final/quarkus-jaxb-2.7.5.Final.jar")
@@ -67,9 +70,13 @@ public class RemoteClientTest {
         zip.write(thisClass);
         zip.close();
 
+        Response mockResponse = Mockito.mock(Response.class);
         Mockito.when(remoteClient.get("default", "io/quarkus", "quarkus-core",
                 "2.7.5.Final",
-                "quarkus-core-2.7.5.Final.jar")).thenReturn(out.toByteArray());
+                "quarkus-core-2.7.5.Final.jar")).thenReturn(mockResponse);
+        Mockito.when(mockResponse.getHeaderString("X-maven-repo")).thenReturn("central");
+        Mockito.when(mockResponse.readEntity(byte[].class))
+                .thenReturn(out.toByteArray());
 
         byte[] result = RestAssured.given()
                 .when().get("/io/quarkus/quarkus-core/2.7.5.Final/quarkus-core-2.7.5.Final.jar")
@@ -77,7 +84,7 @@ public class RemoteClientTest {
                 .statusCode(200)
                 .extract().body().asByteArray();
 
-        Assertions.assertEquals(Collections.singleton(new TrackingData("io.quarkus:quarkus-core:2.7.5.Final", null)),
+        Assertions.assertEquals(Collections.singleton(new TrackingData("io.quarkus:quarkus-core:2.7.5.Final", "central")),
                 ClassFileTracker.readTrackingDataFromJar(result));
     }
 }

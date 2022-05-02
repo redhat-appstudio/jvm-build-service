@@ -16,6 +16,7 @@ import java.util.function.Function;
 import javax.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.resteasy.reactive.ClientWebApplicationException;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;
@@ -82,6 +83,13 @@ public class LocalCache implements RepositoryClient {
                 if (check != null) {
                     check.awaitReady();
                 }
+                Map<String, String> metadata;
+                if (repo.getType() == RepositoryType.MAVEN2) {
+                    metadata = Map.of("maven-repo", repo.getName());
+                } else {
+                    metadata = Map.of();
+                }
+
                 Path actual = path.resolve(repoTarget);
                 if (Files.exists(actual)) {
                     //we need to double check, there is a small window for a race here
@@ -91,7 +99,7 @@ public class LocalCache implements RepositoryClient {
                         check.awaitReady();
                     }
                     return Optional.of(
-                            new RepositoryResult(Files.newInputStream(actual), Files.size(actual), Optional.empty(), Map.of()));
+                            new RepositoryResult(Files.newInputStream(actual), Files.size(actual), Optional.empty(), metadata));
                 }
                 //now we check for the missing file marker
                 String missingFileMarker = repo.getName() + File.separator + targetMissingFile;
@@ -105,13 +113,14 @@ public class LocalCache implements RepositoryClient {
                         //the result may have been a miss, so we need to check the file is there
                         if (Files.exists(actual)) {
                             return Optional.of(new RepositoryResult(Files.newInputStream(actual), Files.size(actual),
-                                    Optional.empty(), Map.of()));
+                                    Optional.empty(), metadata));
                         }
                     } else {
                         Optional<RepositoryResult> result = newFile.download(clientInvocation, repo.getClient(), actual,
                                 missing, path.resolve(repo.getName()).resolve(DOWNLOADS));
                         if (result.isPresent()) {
-                            return result;
+                            return Optional.of(new RepositoryResult(result.get().getData(), result.get().getSize(),
+                                    result.get().getExpectedSha(), metadata));
                         }
                     }
                 }
@@ -190,6 +199,12 @@ public class LocalCache implements RepositoryClient {
                     Files.createFile(missingFileMarker);
                     return Optional.empty();
                 }
+            } catch (ClientWebApplicationException e) {
+                if (e.getResponse().getStatus() == 404) {
+                    return Optional.empty();
+                }
+                Log.errorf(e, "Failed to download artifact %s from %s", downloadTarget, repositoryClient);
+                throw new RuntimeException(e);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             } finally {

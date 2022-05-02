@@ -16,6 +16,13 @@ spec:
         - name: hacbs-jvm-cache
           image: hacbs-jvm-cache
           imagePullPolicy: Always
+          env:
+            - name: BUILD_POLICY_DEFAULT_STORE_LIST
+              value: central,redhat,jitpack
+            - name: STORE_JITPACK_URL
+              value: https://jitpack.io
+            - name: STORE_JITPACK_TYPE
+              value: maven2
           ports:
             - containerPort: 8080
               name: http
