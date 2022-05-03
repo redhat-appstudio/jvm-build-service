@@ -39,7 +39,8 @@
         <module>build-recipes-database</module>
         <module>build-analyser</module>
         <module>classfile-tracker</module>
-        <module>container-analyser</module>
+        <module>dependency-analyser</module>
+        <module>resource-model</module>
     </modules>
 
     <dependencyManagement>
@@ -75,6 +76,11 @@
             </dependency>
             <dependency>
                 <groupId>com.redhat.hacbs</groupId>
+                <artifactId>hacbs-resource-model</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
                 <artifactId>hacbs-build-recipies-database</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -98,8 +104,10 @@
             </dependency>
             <dependency>
                 <groupId>io.quarkiverse.operatorsdk</groupId>
-                <artifactId>quarkus-operator-sdk</artifactId>
+                <artifactId>quarkus-operator-sdk-bom</artifactId>
                 <version>${quarkus-operator-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.gradle</groupId>

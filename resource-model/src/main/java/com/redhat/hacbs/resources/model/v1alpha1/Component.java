@@ -1,4 +1,4 @@
-package com.redhat.hacbs.operator.model.v1alpha1;
+package com.redhat.hacbs.resources.model.v1alpha1;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;

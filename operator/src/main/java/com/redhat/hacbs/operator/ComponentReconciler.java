@@ -2,7 +2,7 @@ package com.redhat.hacbs.operator;
 
 import javax.inject.Inject;
 
-import com.redhat.hacbs.operator.model.v1alpha1.Component;
+import com.redhat.hacbs.resources.model.v1alpha1.Component;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.javaoperatorsdk.operator.api.reconciler.Context;

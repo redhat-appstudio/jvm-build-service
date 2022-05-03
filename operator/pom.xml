@@ -15,6 +15,10 @@
             <artifactId>quarkus-operator-sdk</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.redhat.hacbs</groupId>
+            <artifactId>hacbs-resource-model</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>
