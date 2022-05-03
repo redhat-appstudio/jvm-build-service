@@ -15,7 +15,7 @@ echo
 echo "👉 Running the pipeline with a sample project:"
 echo
 
-kubectl create -f $DIR/run.yaml
+kubectl create -f $DIR/run-service-registry.yaml
 
 echo
 echo "🎉 Done! You can watch logs now with the following command: tkn pr logs --last -f"

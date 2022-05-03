@@ -1,0 +1,9 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: maven
+spec:
+  sidecars:
+      - name: proxy
+        image: quay.io/appstudio-local/hacbs-jvm-sidecar:dev
+        imagePullPolicy: Never

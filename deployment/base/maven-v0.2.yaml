@@ -150,7 +150,7 @@ spec:
         - "$(params.GOALS)"
 
   sidecars:
-    - image: quay.io/goldmann/hacbs-jvm-sidecar:latest
+    - image: hacbs-jvm-sidecar
       imagePullPolicy: Always
       env:
         - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL

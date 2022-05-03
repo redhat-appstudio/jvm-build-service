@@ -1,5 +1,10 @@
 package com.redhat.hacbs.sidecar.resources;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.inject.Singleton;
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.PUT;
@@ -16,6 +21,7 @@ import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.sidecar.services.RemoteClient;
 
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.util.HashUtil;
 import io.smallrye.common.annotation.Blocking;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -23,6 +29,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Path("/maven2")
 @Blocking
+@Singleton
 public class MavenProxyResource {
 
     final RemoteClient remoteClient;
@@ -32,6 +39,8 @@ public class MavenProxyResource {
     final String deploymentPrefix;
 
     final boolean addTrackingDataToArtifacts;
+
+    final Map<String, String> computedChecksums = new ConcurrentHashMap<>();
 
     public MavenProxyResource(@RestClient RemoteClient remoteClient,
             @ConfigProperty(name = "build-policy") String buildPolicy, S3Client client,
@@ -52,12 +61,22 @@ public class MavenProxyResource {
     public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
         Log.debugf("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
+        if (target.endsWith(".sha1")) {
+            String key = group + "/" + artifact + "/" + version + "/" + target;
+            var modified = computedChecksums.get(key);
+            if (modified != null) {
+                return modified.getBytes(StandardCharsets.UTF_8);
+            }
+        }
         try {
             var results = remoteClient.get(buildPolicy, group, artifact, version, target);
             var mavenRepoSource = results.getHeaderString("X-maven-repo");
             if (addTrackingDataToArtifacts && target.endsWith(".jar") && mavenRepoSource != null) {
-                return ClassFileTracker.addTrackingDataToJar(results.readEntity(byte[].class),
+                var modified = ClassFileTracker.addTrackingDataToJar(results.readEntity(byte[].class),
                         new TrackingData(group.replace("/", ".") + ":" + artifact + ":" + version, mavenRepoSource));
+                String key = group + "/" + artifact + "/" + version + "/" + target + ".sha1";
+                computedChecksums.put(key, HashUtil.sha1(modified));
+                return modified;
             } else {
                 return results.readEntity(byte[].class);
             }
@@ -65,6 +84,10 @@ public class MavenProxyResource {
             if (e.getResponse().getStatus() == 404) {
                 throw new NotFoundException();
             }
+            Log.errorf(e, "Failed to load %s", target);
+            throw e;
+        } catch (Exception e) {
+            Log.errorf(e, "Failed to load %s", target);
             throw e;
         }
     }

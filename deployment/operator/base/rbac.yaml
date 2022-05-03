@@ -8,6 +8,8 @@ rules:
     resources:
       - components
       - components/status
+      - artifactbuildrequests
+      - artifactbuildrequests/status
     verbs:
       - create
       - delete

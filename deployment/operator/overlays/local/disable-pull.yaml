@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hacbs-jvm-operator
+spec:
+  template:
+    spec:
+      containers:
+        - name: hacbs-jvm-operator
+          imagePullPolicy: Never

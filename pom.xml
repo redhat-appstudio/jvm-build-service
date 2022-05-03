@@ -155,6 +155,33 @@
 
     <profiles>
         <profile>
+            <id>local</id>
+            <activation>
+                <property>
+                    <name>local</name>
+                </property>
+            </activation>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>${quarkus.platform.group-id}</groupId>
+                            <artifactId>quarkus-maven-plugin</artifactId>
+                            <version>${quarkus.platform.version}</version>
+                            <configuration>
+                                <systemProperties>
+                                    <quarkus.container-image.group>appstudio-local</quarkus.container-image.group>
+                                    <quarkus.container-image.tag>dev</quarkus.container-image.tag>
+                                    <quarkus.container-image.build>true</quarkus.container-image.build>
+                                    <quarkus.package.type>mutable-jar</quarkus.package.type>
+                                </systemProperties>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+        <profile>
             <id>format</id>
             <activation>
                 <activeByDefault>true</activeByDefault>

@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hacbs-jvm-cache
+spec:
+  template:
+    spec:
+      containers:
+        - name: hacbs-jvm-cache
+          imagePullPolicy: Never

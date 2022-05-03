@@ -6,5 +6,9 @@ bases:
 
 images:
   - name: hacbs-jvm-operator
-    newName: quay.io/redhat-appstudio/hacbs-jvm-operator
-    newTag: "1.0"
+    newName: quay.io/appstudio-local/hacbs-jvm-operator
+    newTag: dev
+
+
+patchesStrategicMerge:
+  - disable-pull.yaml

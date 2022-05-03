@@ -1,6 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+images:
+  - name: hacbs-jvm-sidecar
+  - newName: quay.io/goldmann/hacbs-jvm-sidecar:latest
+
 bases:
   - "../../base"
   - "../../cache/overlays/production"
