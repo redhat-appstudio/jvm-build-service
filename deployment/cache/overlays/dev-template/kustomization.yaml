@@ -9,9 +9,5 @@ resources:
 
 images:
   - name: hacbs-jvm-cache
-    newName: quay.io/appstudio-local/hacbs-jvm-cache
+    newName: quay.io/QUAY_USERNAME/hacbs-jvm-cache
     newTag: dev
-
-
-patchesStrategicMerge:
-  - disable-pull.yaml

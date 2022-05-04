@@ -32,6 +32,7 @@ public class AnalysePath implements Runnable {
     @Override
     public void run() {
         try {
+            Log.infof("Root paths %s", paths);
             Set<String> gavs = new HashSet<>();
             for (var path : paths) {
                 Files.walkFileTree(path, new SimpleFileVisitor<>() {
@@ -51,7 +52,7 @@ public class AnalysePath implements Runnable {
                             var jarData = ClassFileTracker.readTrackingDataFromJar(Files.readAllBytes(file));
                             for (var data : jarData) {
                                 if (data != null) {
-                                    if (allowedSources.contains(data.source)) {
+                                    if (!allowedSources.contains(data.source)) {
                                         Log.debugf("Found GAV %s in %s", data.gav, file);
                                         gavs.add(data.gav);
                                     }

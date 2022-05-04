@@ -6,9 +6,5 @@ bases:
 
 images:
   - name: hacbs-jvm-operator
-    newName: quay.io/appstudio-local/hacbs-jvm-operator
+    newName: quay.io/QUAY_USERNAME/hacbs-jvm-operator
     newTag: dev
-
-
-patchesStrategicMerge:
-  - disable-pull.yaml

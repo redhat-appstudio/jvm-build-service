@@ -16,6 +16,10 @@
             <artifactId>quarkus-rest-client-reactive</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-container-image-jib</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.redhat.hacbs</groupId>
             <artifactId>hacbs-resource-model</artifactId>
         </dependency>

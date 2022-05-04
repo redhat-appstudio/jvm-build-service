@@ -178,9 +178,10 @@
                             <version>${quarkus.platform.version}</version>
                             <configuration>
                                 <systemProperties>
-                                    <quarkus.container-image.group>appstudio-local</quarkus.container-image.group>
+                                    <quarkus.container-image.group>${env.QUAY_USERNAME}</quarkus.container-image.group>
                                     <quarkus.container-image.tag>dev</quarkus.container-image.tag>
                                     <quarkus.container-image.build>true</quarkus.container-image.build>
+                                    <quarkus.container-image.push>true</quarkus.container-image.push>
                                     <quarkus.package.type>mutable-jar</quarkus.package.type>
                                 </systemProperties>
                             </configuration>
