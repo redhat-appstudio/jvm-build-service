@@ -41,6 +41,7 @@
         <module>classfile-tracker</module>
         <module>dependency-analyser</module>
         <module>resource-model</module>
+        <module>build-request-processor</module>
     </modules>
 
     <dependencyManagement>

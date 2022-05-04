@@ -21,3 +21,10 @@ patches:
    target:
      kind: Task
      name: maven
+ - patch: |-
+     - op: replace
+       path: /spec/steps/0/image
+       value: quay.io/QUAY_USERNAME/hacbs-jvm-build-request-processor:dev
+   target:
+      kind: Task
+      name: create-component-builds

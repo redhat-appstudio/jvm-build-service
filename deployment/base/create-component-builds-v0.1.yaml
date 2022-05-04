@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: create-component-builds
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/categories: Build Tools
+    tekton.dev/tags: build-tool
+    tekton.dev/platforms: "linux/amd64,linux/s390x,linux/ppc64le"
+spec:
+  description: >-
+    This Task is used to find where components are built from and trigger their builds.
+  workspaces:
+    - name: source
+      description: The workspace consisting of maven project.
+  params:
+    - name: BUILD_IMAGE
+      type: string
+      description: >-
+        The image to use for dependency analysis.
+      default: "quay.io/goldmann/hacbs-jvm-build-request-processor:dev"
+    - name: RECIPE_DATABASE
+      type: string
+      description: >-
+        The git recipe database.
+      default: "https://github.com/stuartwdouglas/temp-hacbs-recipe-data.git"
+  steps:
+    - name: process-build-requests
+      image: $(params.BUILD_IMAGE)
+      args:
+        - $(params.RECIPE_DATABASE)

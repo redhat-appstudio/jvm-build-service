@@ -2,13 +2,13 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: artifactbuildrequests.hacbs.redhat.com
+  name: dependencybuilds.hacbs.redhat.com
 spec:
   group: hacbs.redhat.com
   names:
-    kind: ArtifactBuildRequest
-    plural: artifactbuildrequests
-    singular: artifactbuildrequest
+    kind: DependencyBuild
+    plural: dependencybuilds
+    singular: dependencybuild
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -17,25 +17,18 @@ spec:
         properties:
           spec:
             properties:
-              gav:
+              scmType:
+                type: string
+              version:
+                type: string
+              scmUrl:
+                type: string
+              tag:
                 type: string
             type: object
           status:
             properties:
-              buildPipelineName:
-                type: string
-              state:
-                enum:
-                - DISCOVERING
-                - COMPLETE
-                - MISSING
-                - NEW
-                - BUILDING
-                - FAILED
-                type: string
-              recipeGitHash:
-                type: string
-              message:
+              todo:
                 type: string
             type: object
         type: object

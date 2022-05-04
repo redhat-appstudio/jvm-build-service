@@ -159,8 +159,6 @@ spec:
         - "$(params.GOALS)"
     - name: analyse-dependencies
       image: hacbs-jvm-dependency-analyser
-      securityContext:
-
       args:
         - path
         - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)

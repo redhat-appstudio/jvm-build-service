@@ -30,6 +30,8 @@ public class ArtifactBuildRequestStatus {
     }
 
     private State state = State.NEW;
+    private String recipeGitHash; //todo multiple git repos
+    private String buildPipelineName; //todo multiple git repos
     private String message;
 
     public State getState() {
