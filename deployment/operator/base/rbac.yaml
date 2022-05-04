@@ -10,6 +10,8 @@ rules:
       - components/status
       - artifactbuildrequests
       - artifactbuildrequests/status
+      - dependencybuilds
+      - dependencybuilds/status
     verbs:
       - create
       - delete

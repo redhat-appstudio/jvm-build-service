@@ -12,6 +12,7 @@ import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.util.HashUtil;
 
 @Singleton
 public class RebuildService {
@@ -26,16 +27,22 @@ public class RebuildService {
         //now use the kube client to stick it into a CR to signify that these dependencies should be built
         for (var gav : gavs) {
             try {
+                String hash = HashUtil.sha1(gav);
                 StringBuilder newName = new StringBuilder();
-                //turn the gav into a unique name that satisfies the name rules
-                //we could just hash it, but these names are easier for humans
+                boolean lastDot = false;
                 for (var i : gav.toCharArray()) {
-                    if (Character.isAlphabetic(i) || Character.isDigit(i) || i == '.') {
+                    if (Character.isAlphabetic(i) || Character.isDigit(i)) {
                         newName.append(Character.toLowerCase(i));
+                        lastDot = false;
                     } else {
-                        newName.append(".br.");
+                        if (!lastDot) {
+                            newName.append('.');
+                        }
+                        lastDot = true;
                     }
                 }
+                newName.append("-");
+                newName.append(hash);
                 ArtifactBuildRequest item = new ArtifactBuildRequest();
                 ObjectMeta objectMeta = new ObjectMeta();
                 objectMeta.setName(newName.toString());

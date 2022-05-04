@@ -26,6 +26,7 @@ import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.util.HashUtil;
 import picocli.CommandLine;
 
 @CommandLine.Command
@@ -78,31 +79,35 @@ public class ProcessCommand implements Runnable {
                 build.getSpec().setScmType("git"); //todo multiple SCMs
                 //turn the gav into a unique name that satisfies the name rules
                 //we could just hash it, but these names are easier for humans
+                String version = e.getValue().keySet().iterator().next().getVersion();
+                String basicName = e.getKey() + "." + version;
+                String hash = HashUtil.sha1(basicName);
                 StringBuilder newName = new StringBuilder();
-                boolean lastReplaced = false;
+                boolean lastDot = false;
                 for (var i : e.getKey().toCharArray()) {
-                    if (Character.isAlphabetic(i) || Character.isDigit(i) || i == '.') {
+                    if (Character.isAlphabetic(i) || Character.isDigit(i)) {
                         newName.append(Character.toLowerCase(i));
-                        lastReplaced = i != '.';
+                        lastDot = false;
                     } else {
-                        if (!lastReplaced) {
-                            newName.append(".br.");
-                            lastReplaced = true;
+                        if (!lastDot) {
+                            newName.append('.');
                         }
+                        lastDot = true;
                     }
                 }
-                String version = e.getValue().keySet().iterator().next().getVersion();
-                newName.append(version);
+                newName.append("-");
+                newName.append(hash);
                 build.getMetadata().setName(newName.toString());
                 try {
                     String selectedTag = null;
                     Set<String> exactContains = new HashSet<>();
                     var tags = Git.lsRemoteRepository().setRemote(e.getKey()).setTags(true).setHeads(false).call();
                     for (var tag : tags) {
-                        if (tag.getName().equals(version)) {
+                        String name = tag.getName().replace("refs/tags/", "");
+                        if (name.equals(version)) {
                             selectedTag = version;
                             break;
-                        } else if (tag.getName().contains(version)) {
+                        } else if (name.contains(version)) {
                             exactContains.add(tag.getName());
                         }
                     }
@@ -124,7 +129,15 @@ public class ProcessCommand implements Runnable {
                     continue;
                 }
                 kubernetesClient.resources(DependencyBuild.class).create(build);
-
+                for (var ar : e.getValue().values()) {
+                    ar.getStatus().setState(ArtifactBuildRequestStatus.State.BUILDING); //TODO: is missing correct?
+                    ar.getStatus().setMessage(null);
+                    kubernetesClient.resources(ArtifactBuildRequest.class).updateStatus(ar);
+                }
+            }
+        } catch (KubernetesClientException e) {
+            if (!e.getStatus().getReason().equals("AlreadyExists")) {
+                Log.errorf(e, "Failed to process build requests");
             }
         } catch (Exception e) {
             Log.errorf(e, "Failed to process build requests");
