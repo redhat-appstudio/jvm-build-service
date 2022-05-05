@@ -12,7 +12,6 @@ metadata:
 spec:
   description: >-
     This Task can be used to run a Maven build.
-
   workspaces:
     - name: source
       description: The workspace consisting of maven project.
@@ -72,6 +71,16 @@ spec:
         The context directory within the repository for sources on
         which we want to execute maven goals.
       default: "."
+    - name: DEPENDENCY_ANALYSER_IMAGE
+      type: string
+      description: >-
+        The image to use for dependency analysis.
+      default: "quay.io/goldmann/hacbs-jvm-dependency-analyser:dev"
+    - name: DEPENDENCY_ANALYSER_PATH
+      type: string
+      description: >-
+        The path to use for dependency analysis.
+      default: "target"
   steps:
     - name: mvn-settings
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
@@ -135,7 +144,7 @@ spec:
           xml="    <mirror>\
             <id>mirror.default</id>\
             <url>$(params.MAVEN_MIRROR_URL)</url>\
-            <mirrorOf>central</mirrorOf>\
+            <mirrorOf>*</mirrorOf>\
           </mirror>"
           sed -i "s|<!-- ### mirrors from ENV ### -->|$xml|" $(workspaces.maven-settings.path)/settings.xml
         fi
@@ -148,9 +157,13 @@ spec:
         - -s
         - $(workspaces.maven-settings.path)/settings.xml
         - "$(params.GOALS)"
-
+    - name: analyse-dependencies
+      image: hacbs-jvm-dependency-analyser
+      args:
+        - path
+        - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)
   sidecars:
-    - image: quay.io/goldmann/hacbs-jvm-sidecar:latest
+    - image: hacbs-jvm-sidecar
       imagePullPolicy: Always
       env:
         - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
@@ -162,3 +175,10 @@ spec:
           port: 2000
         initialDelaySeconds: 3
         periodSeconds: 3
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "250m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"

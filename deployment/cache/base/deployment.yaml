@@ -16,6 +16,19 @@ spec:
         - name: hacbs-jvm-cache
           image: hacbs-jvm-cache
           imagePullPolicy: Always
+          env:
+            - name: CACHE_PATH
+              value: "cache"
+            - name: BUILD_POLICY_DEFAULT_STORE_LIST
+              value: rebuilt,central,jboss,redhat,jitpack,confluent
+            - name: STORE_JITPACK_URL
+              value: https://jitpack.io
+            - name: STORE_JITPACK_TYPE
+              value: maven2
+            - name: STORE_CONFLUENT_URL
+              value: https://packages.confluent.io/maven
+            - name: STORE_CONFLUENT_TYPE
+              value: maven2
           ports:
             - containerPort: 8080
               name: http
@@ -31,5 +44,5 @@ spec:
               memory: "128Mi"
               cpu: "250m"
             limits:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "500m"

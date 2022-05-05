@@ -28,6 +28,7 @@ public class S3RepositoryClient implements RepositoryClient {
     public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
             String target) {
 
+        long time = System.currentTimeMillis();
         String fullTarget = group + "/" + artifact + "/" + version + "/" + target;
         for (var i : prefixes) {
             String s3key = i + "/" + fullTarget;
@@ -40,6 +41,7 @@ public class S3RepositoryClient implements RepositoryClient {
                 Log.tracef("Key %s not found", s3key);
             }
         }
+        Log.infof("S3 request to %s took %s", fullTarget, System.currentTimeMillis() - time);
         return Optional.empty();
     }
 

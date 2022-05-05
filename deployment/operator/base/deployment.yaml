@@ -16,6 +16,9 @@ spec:
         - name: hacbs-jvm-operator
           image: hacbs-jvm-operator
           imagePullPolicy: Always
+          env:
+            - name: QUARKUS_LOG_LEVEL
+              value: DEBUG
           # livenessProbe:
           #   httpGet:
           #     path: /q/health/live

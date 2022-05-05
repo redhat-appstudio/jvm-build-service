@@ -37,9 +37,6 @@ public class RecipeRepositoryManager implements RecipeDirectory {
                 .setBranch(branch)
                 .setDirectory(directory.toFile())
                 .setURI(remote);
-        if (updateInterval.isEmpty()) {
-            clone.setBare(true);
-        }
         var result = clone.call();
 
         return new RecipeRepositoryManager(result, remote, directory, branch, updateInterval);

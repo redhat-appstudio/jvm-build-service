@@ -25,7 +25,6 @@
         <formatter-maven-plugin.version>2.18.0</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.6.2</impsort-maven-plugin.version>
 
-
         <aws-url-connection-client.version>2.17.95</aws-url-connection-client.version>
         <aws-java-sdk-s3.version>1.12.169</aws-java-sdk-s3.version>
         <quarkus-jgit.version>1.2.0</quarkus-jgit.version>
@@ -40,6 +39,9 @@
         <module>build-recipes-database</module>
         <module>build-analyser</module>
         <module>classfile-tracker</module>
+        <module>dependency-analyser</module>
+        <module>resource-model</module>
+        <module>build-request-processor</module>
     </modules>
 
     <dependencyManagement>
@@ -58,10 +60,24 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
+                <artifactId>hacbs-build-analyser</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.redhat.hacbs</groupId>
                 <artifactId>hacbs-classfile-tracker</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
+                <artifactId>hacbs-operator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
+                <artifactId>hacbs-resource-model</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -89,8 +105,10 @@
             </dependency>
             <dependency>
                 <groupId>io.quarkiverse.operatorsdk</groupId>
-                <artifactId>quarkus-operator-sdk</artifactId>
+                <artifactId>quarkus-operator-sdk-bom</artifactId>
                 <version>${quarkus-operator-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.gradle</groupId>
@@ -145,6 +163,34 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>local</id>
+            <activation>
+                <property>
+                    <name>local</name>
+                </property>
+            </activation>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>${quarkus.platform.group-id}</groupId>
+                            <artifactId>quarkus-maven-plugin</artifactId>
+                            <version>${quarkus.platform.version}</version>
+                            <configuration>
+                                <systemProperties>
+                                    <quarkus.container-image.group>${env.QUAY_USERNAME}</quarkus.container-image.group>
+                                    <quarkus.container-image.tag>dev</quarkus.container-image.tag>
+                                    <quarkus.container-image.build>true</quarkus.container-image.build>
+                                    <quarkus.container-image.push>true</quarkus.container-image.push>
+                                    <quarkus.package.type>mutable-jar</quarkus.package.type>
+                                </systemProperties>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
         <profile>
             <id>format</id>
             <activation>

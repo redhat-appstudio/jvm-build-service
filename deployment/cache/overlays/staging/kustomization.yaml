@@ -3,6 +3,7 @@ kind: Kustomization
 
 bases:
   - "../../base"
+
 images:
   - name: hacbs-jvm-cache
     newName: quay.io/goldmann/hacbs-jvm-cache

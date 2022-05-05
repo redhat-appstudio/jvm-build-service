@@ -3,6 +3,7 @@ kind: Kustomization
 
 bases:
   - "../../base"
+
 images:
   - name: hacbs-jvm-operator
     newName: quay.io/redhat-appstudio/hacbs-jvm-operator

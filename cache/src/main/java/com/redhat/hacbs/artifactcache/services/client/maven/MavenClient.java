@@ -83,4 +83,12 @@ public class MavenClient implements RepositoryClient {
             return Optional.empty();
         }
     }
+
+    @Override
+    public String toString() {
+        return "MavenClient{" +
+                "name='" + name + '\'' +
+                ", uri=" + uri +
+                '}';
+    }
 }

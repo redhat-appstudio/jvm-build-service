@@ -16,6 +16,7 @@ import java.util.function.Function;
 import javax.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.resteasy.reactive.ClientWebApplicationException;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;
@@ -69,34 +70,43 @@ public class LocalCache implements RepositoryClient {
         }
         try {
             for (var repo : policy.getRepositories()) {
-                String targetFile;
-                //for S3 we will have a separate cache per build policy name
-                if (repo.getType().isBuildPolicyUsed()) {
-                    targetFile = buildPolicy + File.separator + gavBasedTarget;
-                } else {
-                    targetFile = gavBasedTarget;
-                }
-                String targetMissingFile = targetFile + CACHEMISS;
-                String repoTarget = repo.getName() + File.separator + targetFile;
-                var check = inProgress.get(repoTarget);
-                if (check != null) {
-                    check.awaitReady();
-                }
-                Path actual = path.resolve(repoTarget);
-                if (Files.exists(actual)) {
-                    //we need to double check, there is a small window for a race here
-                    //it should not matter as we do an atomic move, but better to be safe
-                    check = inProgress.get(repoTarget);
+                try {
+                    String targetFile;
+                    //for S3 we will have a separate cache per build policy name
+                    if (repo.getType().isBuildPolicyUsed()) {
+                        targetFile = buildPolicy + File.separator + gavBasedTarget;
+                    } else {
+                        targetFile = gavBasedTarget;
+                    }
+                    String targetMissingFile = targetFile + CACHEMISS;
+                    String repoTarget = repo.getName() + File.separator + targetFile;
+                    var check = inProgress.get(repoTarget);
                     if (check != null) {
                         check.awaitReady();
                     }
-                    return Optional.of(
-                            new RepositoryResult(Files.newInputStream(actual), Files.size(actual), Optional.empty(), Map.of()));
-                }
-                //now we check for the missing file marker
-                String missingFileMarker = repo.getName() + File.separator + targetMissingFile;
-                Path missing = path.resolve(missingFileMarker);
-                if (!Files.exists(missing)) {
+                    Map<String, String> metadata;
+                    if (repo.getType() == RepositoryType.MAVEN2) {
+                        metadata = Map.of("maven-repo", repo.getName());
+                    } else {
+                        metadata = Map.of();
+                    }
+
+                    Path actual = path.resolve(repoTarget);
+                    if (Files.exists(actual)) {
+                        //we need to double check, there is a small window for a race here
+                        //it should not matter as we do an atomic move, but better to be safe
+                        check = inProgress.get(repoTarget);
+                        if (check != null) {
+                            check.awaitReady();
+                        }
+                        return Optional.of(
+                                new RepositoryResult(Files.newInputStream(actual), Files.size(actual), Optional.empty(),
+                                        metadata));
+                    }
+                    //now we check for the missing file marker
+                    //                    String missingFileMarker = repo.getName() + File.separator + targetMissingFile;
+                    //                    Path missing = path.resolve(missingFileMarker);
+                    //                    if (!Files.exists(missing)) {
                     DownloadingFile newFile = new DownloadingFile(targetFile);
                     var existing = inProgress.putIfAbsent(targetFile, newFile);
                     if (existing != null) {
@@ -105,15 +115,19 @@ public class LocalCache implements RepositoryClient {
                         //the result may have been a miss, so we need to check the file is there
                         if (Files.exists(actual)) {
                             return Optional.of(new RepositoryResult(Files.newInputStream(actual), Files.size(actual),
-                                    Optional.empty(), Map.of()));
+                                    Optional.empty(), metadata));
                         }
                     } else {
                         Optional<RepositoryResult> result = newFile.download(clientInvocation, repo.getClient(), actual,
-                                missing, path.resolve(repo.getName()).resolve(DOWNLOADS));
+                                null, path.resolve(repo.getName()).resolve(DOWNLOADS));
                         if (result.isPresent()) {
-                            return result;
+                            return Optional.of(new RepositoryResult(result.get().getData(), result.get().getSize(),
+                                    result.get().getExpectedSha(), metadata));
                         }
                     }
+                    //}
+                } catch (Exception e) {
+                    Log.errorf(e, "Failed to download %s from %s", gavBasedTarget, repo.getUri());
                 }
             }
             return Optional.empty();
@@ -185,11 +199,18 @@ public class LocalCache implements RepositoryClient {
                     Files.move(tempFile, downloadTarget, StandardCopyOption.ATOMIC_MOVE);
                     return Optional.of(new RepositoryResult(Files.newInputStream(downloadTarget), result.get().getSize(),
                             result.get().getExpectedSha(), result.get().getMetadata()));
-                } else {
+                } else if (missingFileMarker != null) {
                     Files.createDirectories(missingFileMarker.getParent());
                     Files.createFile(missingFileMarker);
                     return Optional.empty();
                 }
+                return Optional.empty();
+            } catch (ClientWebApplicationException e) {
+                if (e.getResponse().getStatus() == 404) {
+                    return Optional.empty();
+                }
+                Log.errorf(e, "Failed to download artifact %s from %s", downloadTarget, repositoryClient);
+                throw new RuntimeException(e);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             } finally {

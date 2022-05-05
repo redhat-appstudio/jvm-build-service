@@ -15,6 +15,7 @@ import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
 
 import io.quarkus.logging.Log;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 
 /**
  * Class that consumes the repository config and creates the runtime representation of the repositories
@@ -74,7 +75,7 @@ class BuildPolicyManager {
         Optional<RepositoryType> optType = config.getOptionalValue(STORE + repo + TYPE, RepositoryType.class);
 
         if (uri.isPresent() && optType.orElse(RepositoryType.MAVEN2) == RepositoryType.MAVEN2) {
-            Log.infof("Repository %s added with URI %s", repo, uri.get());
+            Log.infof("Maven repository %s added with URI %s", repo, uri.get());
             RepositoryClient client = MavenClient.of(repo, uri.get());
             return new Repository(repo, uri.get().toASCIIString(), RepositoryType.MAVEN2, client);
         } else if (optType.orElse(null) == RepositoryType.S3) {
@@ -82,8 +83,13 @@ class BuildPolicyManager {
 
             Optional<String> bucket = config.getOptionalValue(STORE + repo + BUCKET, String.class);
             if (bucket.isPresent()) {
+                //make sure the bucket is present
+                //TODO: permissions of buckets created this way?
+                s3Client.createBucket(CreateBucketRequest.builder().bucket(bucket.get()).build());
                 String[] prefixes = config.getOptionalValue(STORE + repo + PREFIXES, String.class).orElse("default").split(",");
                 RepositoryClient client = new S3RepositoryClient(s3Client, Arrays.asList(prefixes), bucket.get());
+                Log.infof("S3 repository %s added with bucket %s and prefixes %s", repo, bucket.get(),
+                        Arrays.toString(prefixes));
                 return new Repository(repo, "s3://" + bucket + Arrays.toString(prefixes), RepositoryType.S3, client);
             } else {
                 Log.warnf("S3 Repository %s was listed but has no bucket configured and will be ignored", repo);

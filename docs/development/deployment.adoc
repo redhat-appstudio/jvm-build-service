@@ -43,4 +43,40 @@ may not register them on time. Just run the above command again after a few seco
 Currently *only staging version are published*.
 ====
 
+== Local Development
 
+If you want to test your changes locally with your own quay.io account you can do this
+using the `dev-template` overlays.
+
+First set the QUAY_USERNAME env variable to your quay username:
+
+----
+export QUAY_USERNAME=<<your username>>
+----
+
+Now run a maven build with -Dlocal. This will build the images and deploy them to your Quay account:
+
+----
+mvn clean package -Dlocal
+----
+
+WARNING: This will create private repositories by default, you will need to set them to public
+for the next step to work.
+
+Now run the local development script to deploy to minikube:
+
+----
+./deployment/development.sh
+----
+
+This will generate a new development overlay with your username substituted into the image
+names, and then apply this using kubectrl.
+
+If you want to make changes rebuild the module that you have changed with
+the maven command above, and then run the following to restart the deployment:
+
+----
+kubectl rollout restart deployment <name>
+----
+
+Your local code should now be running in minikube.

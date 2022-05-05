@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
@@ -47,8 +48,17 @@ public class ClassFileTracker {
                 var entry = zipIn.getNextEntry();
                 while (entry != null) {
                     if (entry.getName().endsWith(".class")) {
-                        zipOut.putNextEntry(entry);
-                        zipOut.write(addTrackingDataToClass(zipIn.readAllBytes(), data));
+                        ZipEntry newEntry = new ZipEntry(entry.getName());
+                        if (entry.getLastAccessTime() != null) {
+                            newEntry.setLastAccessTime(entry.getLastAccessTime());
+                        }
+                        if (entry.getLastModifiedTime() != null) {
+                            newEntry.setLastModifiedTime(entry.getLastModifiedTime());
+                        }
+                        byte[] modified = addTrackingDataToClass(zipIn.readAllBytes(), data);
+                        newEntry.setSize(modified.length);
+                        zipOut.putNextEntry(newEntry);
+                        zipOut.write(modified);
                     } else {
                         zipOut.putNextEntry(entry);
                         zipOut.write(zipIn.readAllBytes());

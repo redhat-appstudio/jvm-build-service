@@ -17,6 +17,14 @@ public class GAV {
         this.version = version;
     }
 
+    public static GAV parse(String gav) {
+        var split = gav.split(":");
+        if (split.length != 3) {
+            throw new IllegalArgumentException("not a GAV: " + gav);
+        }
+        return new GAV(split[0], split[1], split[2]);
+    }
+
     public String getGroupId() {
         return groupId;
     }

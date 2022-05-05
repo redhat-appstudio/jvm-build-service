@@ -1,0 +1,3 @@
+== Build Request Processor
+
+This task processes ArtifactBuildRequest instances and attempts to build them.
