@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: service-registry-build-
+spec:
+  pipelineRef:
+    name: run-component-build
+  params:
+    - name: url
+      value: https://github.com/quarkusio/quarkus-security.git
+    - name: tag
+      value: 1.1.4.Final
+  workspaces:
+    - name: maven-settings
+      emptyDir: {}
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
+          resources:
+            requests:
+              storage: 1Gi

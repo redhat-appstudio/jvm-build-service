@@ -6,3 +6,4 @@ resources:
   - https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.5/git-clone.yaml
   - maven-v0.2.yaml
   - create-component-builds-v0.1.yaml
+  - run-maven-component-build-v0.1.yaml

@@ -97,7 +97,7 @@ public class MavenProxyResource {
     public byte[] get(@PathParam("group") String group, @PathParam("hash") String hash) throws Exception {
         Log.debugf("Retrieving file %s/maven-metadata.xml%s", group, hash);
         try {
-            Response response = remoteClient.get(buildPolicy, group, hash);
+            Response response = remoteClient.get(buildPolicy, group, "maven-metadata.xml" + hash);
             return response.readEntity(byte[].class);
         } catch (WebApplicationException e) {
             if (e.getResponse().getStatus() == 404) {

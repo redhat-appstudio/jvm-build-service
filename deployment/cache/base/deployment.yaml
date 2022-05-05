@@ -20,7 +20,7 @@ spec:
             - name: CACHE_PATH
               value: "cache"
             - name: BUILD_POLICY_DEFAULT_STORE_LIST
-              value: central,redhat,jitpack,confluent
+              value: central,jboss,redhat,jitpack,confluent
             - name: STORE_JITPACK_URL
               value: https://jitpack.io
             - name: STORE_JITPACK_TYPE
@@ -44,5 +44,5 @@ spec:
               memory: "128Mi"
               cpu: "250m"
             limits:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "500m"

@@ -6,7 +6,7 @@ metadata:
     type: local
 spec:
   capacity:
-    storage: 2Gi
+    storage: 4Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
@@ -23,4 +23,4 @@ spec:
   volumeName: cache-vol
   resources:
     requests:
-      storage: 2Gi
+      storage: 4Gi

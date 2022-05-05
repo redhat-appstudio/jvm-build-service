@@ -70,59 +70,64 @@ public class LocalCache implements RepositoryClient {
         }
         try {
             for (var repo : policy.getRepositories()) {
-                String targetFile;
-                //for S3 we will have a separate cache per build policy name
-                if (repo.getType().isBuildPolicyUsed()) {
-                    targetFile = buildPolicy + File.separator + gavBasedTarget;
-                } else {
-                    targetFile = gavBasedTarget;
-                }
-                String targetMissingFile = targetFile + CACHEMISS;
-                String repoTarget = repo.getName() + File.separator + targetFile;
-                var check = inProgress.get(repoTarget);
-                if (check != null) {
-                    check.awaitReady();
-                }
-                Map<String, String> metadata;
-                if (repo.getType() == RepositoryType.MAVEN2) {
-                    metadata = Map.of("maven-repo", repo.getName());
-                } else {
-                    metadata = Map.of();
-                }
-
-                Path actual = path.resolve(repoTarget);
-                if (Files.exists(actual)) {
-                    //we need to double check, there is a small window for a race here
-                    //it should not matter as we do an atomic move, but better to be safe
-                    check = inProgress.get(repoTarget);
+                try {
+                    String targetFile;
+                    //for S3 we will have a separate cache per build policy name
+                    if (repo.getType().isBuildPolicyUsed()) {
+                        targetFile = buildPolicy + File.separator + gavBasedTarget;
+                    } else {
+                        targetFile = gavBasedTarget;
+                    }
+                    String targetMissingFile = targetFile + CACHEMISS;
+                    String repoTarget = repo.getName() + File.separator + targetFile;
+                    var check = inProgress.get(repoTarget);
                     if (check != null) {
                         check.awaitReady();
                     }
-                    return Optional.of(
-                            new RepositoryResult(Files.newInputStream(actual), Files.size(actual), Optional.empty(), metadata));
-                }
-                //now we check for the missing file marker
-                String missingFileMarker = repo.getName() + File.separator + targetMissingFile;
-                Path missing = path.resolve(missingFileMarker);
-                if (!Files.exists(missing)) {
-                    DownloadingFile newFile = new DownloadingFile(targetFile);
-                    var existing = inProgress.putIfAbsent(targetFile, newFile);
-                    if (existing != null) {
-                        //another thread is downloading this
-                        existing.awaitReady();
-                        //the result may have been a miss, so we need to check the file is there
-                        if (Files.exists(actual)) {
-                            return Optional.of(new RepositoryResult(Files.newInputStream(actual), Files.size(actual),
-                                    Optional.empty(), metadata));
-                        }
+                    Map<String, String> metadata;
+                    if (repo.getType() == RepositoryType.MAVEN2) {
+                        metadata = Map.of("maven-repo", repo.getName());
                     } else {
-                        Optional<RepositoryResult> result = newFile.download(clientInvocation, repo.getClient(), actual,
-                                missing, path.resolve(repo.getName()).resolve(DOWNLOADS));
-                        if (result.isPresent()) {
-                            return Optional.of(new RepositoryResult(result.get().getData(), result.get().getSize(),
-                                    result.get().getExpectedSha(), metadata));
+                        metadata = Map.of();
+                    }
+
+                    Path actual = path.resolve(repoTarget);
+                    if (Files.exists(actual)) {
+                        //we need to double check, there is a small window for a race here
+                        //it should not matter as we do an atomic move, but better to be safe
+                        check = inProgress.get(repoTarget);
+                        if (check != null) {
+                            check.awaitReady();
+                        }
+                        return Optional.of(
+                                new RepositoryResult(Files.newInputStream(actual), Files.size(actual), Optional.empty(),
+                                        metadata));
+                    }
+                    //now we check for the missing file marker
+                    String missingFileMarker = repo.getName() + File.separator + targetMissingFile;
+                    Path missing = path.resolve(missingFileMarker);
+                    if (!Files.exists(missing)) {
+                        DownloadingFile newFile = new DownloadingFile(targetFile);
+                        var existing = inProgress.putIfAbsent(targetFile, newFile);
+                        if (existing != null) {
+                            //another thread is downloading this
+                            existing.awaitReady();
+                            //the result may have been a miss, so we need to check the file is there
+                            if (Files.exists(actual)) {
+                                return Optional.of(new RepositoryResult(Files.newInputStream(actual), Files.size(actual),
+                                        Optional.empty(), metadata));
+                            }
+                        } else {
+                            Optional<RepositoryResult> result = newFile.download(clientInvocation, repo.getClient(), actual,
+                                    missing, path.resolve(repo.getName()).resolve(DOWNLOADS));
+                            if (result.isPresent()) {
+                                return Optional.of(new RepositoryResult(result.get().getData(), result.get().getSize(),
+                                        result.get().getExpectedSha(), metadata));
+                            }
                         }
                     }
+                } catch (Exception e) {
+                    Log.errorf(e, "Failed to download %s from %s", gavBasedTarget, repo.getUri());
                 }
             }
             return Optional.empty();
