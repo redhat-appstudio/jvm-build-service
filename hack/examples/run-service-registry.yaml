@@ -8,6 +8,8 @@ spec:
   params:
     - name: url
       value: https://github.com/Apicurio/apicurio-registry.git
+    - name: app-path
+      value: app/target
   workspaces:
     - name: maven-settings
       emptyDir: {}

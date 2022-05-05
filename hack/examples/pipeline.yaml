@@ -7,6 +7,10 @@ spec:
     - name: url
     - name: context
       default: ""
+      type: string
+    - name: app-path
+      default: "target"
+      type: string
   workspaces:
     - name: shared-workspace
     - name: maven-settings
@@ -52,6 +56,8 @@ spec:
           value: http://localhost:2000/maven2
         - name: CONTEXT_DIR
           value: "$(params.context)"
+        - name: DEPENDENCY_ANALYSER_PATH
+          value: "$(params.app-path)"
         - name: GOALS
           value:
             - -DskipTests

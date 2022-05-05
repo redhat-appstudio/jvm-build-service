@@ -120,7 +120,10 @@ public class ProcessCommand implements Runnable {
                             if (exactContains.size() == 1) {
                                 selectedTag = exactContains.iterator().next();
                             } else {
-                                throw new RuntimeException("Could not determine tag for " + version);
+                                RuntimeException runtimeException = new RuntimeException(
+                                        "Could not determine tag for " + version);
+                                runtimeException.setStackTrace(new StackTraceElement[0]);
+                                throw runtimeException;
                             }
                         }
                         build.getSpec().setTag(selectedTag);
