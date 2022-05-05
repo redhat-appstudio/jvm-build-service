@@ -193,10 +193,12 @@ metadata:
 spec:
   params:
     - name: url
+      type: string
     - name: context
       default: ""
       type: string
     - name: tag
+      type: string
   workspaces:
     - name: shared-workspace
     - name: maven-settings
