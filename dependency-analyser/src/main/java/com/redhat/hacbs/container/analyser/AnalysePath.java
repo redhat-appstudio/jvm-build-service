@@ -23,7 +23,7 @@ public class AnalysePath implements Runnable {
     @CommandLine.Parameters
     List<Path> paths;
 
-    @CommandLine.Option(names = "--allowed-sources", defaultValue = "redhat")
+    @CommandLine.Option(names = "--allowed-sources", defaultValue = "redhat,rebuilt")
     Set<String> allowedSources;
 
     @Inject

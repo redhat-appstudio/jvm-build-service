@@ -104,28 +104,28 @@ public class LocalCache implements RepositoryClient {
                                         metadata));
                     }
                     //now we check for the missing file marker
-                    String missingFileMarker = repo.getName() + File.separator + targetMissingFile;
-                    Path missing = path.resolve(missingFileMarker);
-                    if (!Files.exists(missing)) {
-                        DownloadingFile newFile = new DownloadingFile(targetFile);
-                        var existing = inProgress.putIfAbsent(targetFile, newFile);
-                        if (existing != null) {
-                            //another thread is downloading this
-                            existing.awaitReady();
-                            //the result may have been a miss, so we need to check the file is there
-                            if (Files.exists(actual)) {
-                                return Optional.of(new RepositoryResult(Files.newInputStream(actual), Files.size(actual),
-                                        Optional.empty(), metadata));
-                            }
-                        } else {
-                            Optional<RepositoryResult> result = newFile.download(clientInvocation, repo.getClient(), actual,
-                                    missing, path.resolve(repo.getName()).resolve(DOWNLOADS));
-                            if (result.isPresent()) {
-                                return Optional.of(new RepositoryResult(result.get().getData(), result.get().getSize(),
-                                        result.get().getExpectedSha(), metadata));
-                            }
+                    //                    String missingFileMarker = repo.getName() + File.separator + targetMissingFile;
+                    //                    Path missing = path.resolve(missingFileMarker);
+                    //                    if (!Files.exists(missing)) {
+                    DownloadingFile newFile = new DownloadingFile(targetFile);
+                    var existing = inProgress.putIfAbsent(targetFile, newFile);
+                    if (existing != null) {
+                        //another thread is downloading this
+                        existing.awaitReady();
+                        //the result may have been a miss, so we need to check the file is there
+                        if (Files.exists(actual)) {
+                            return Optional.of(new RepositoryResult(Files.newInputStream(actual), Files.size(actual),
+                                    Optional.empty(), metadata));
+                        }
+                    } else {
+                        Optional<RepositoryResult> result = newFile.download(clientInvocation, repo.getClient(), actual,
+                                null, path.resolve(repo.getName()).resolve(DOWNLOADS));
+                        if (result.isPresent()) {
+                            return Optional.of(new RepositoryResult(result.get().getData(), result.get().getSize(),
+                                    result.get().getExpectedSha(), metadata));
                         }
                     }
+                    //}
                 } catch (Exception e) {
                     Log.errorf(e, "Failed to download %s from %s", gavBasedTarget, repo.getUri());
                 }
@@ -199,11 +199,12 @@ public class LocalCache implements RepositoryClient {
                     Files.move(tempFile, downloadTarget, StandardCopyOption.ATOMIC_MOVE);
                     return Optional.of(new RepositoryResult(Files.newInputStream(downloadTarget), result.get().getSize(),
                             result.get().getExpectedSha(), result.get().getMetadata()));
-                } else {
+                } else if (missingFileMarker != null) {
                     Files.createDirectories(missingFileMarker.getParent());
                     Files.createFile(missingFileMarker);
                     return Optional.empty();
                 }
+                return Optional.empty();
             } catch (ClientWebApplicationException e) {
                 if (e.getResponse().getStatus() == 404) {
                     return Optional.empty();

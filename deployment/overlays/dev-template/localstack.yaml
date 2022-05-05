@@ -33,5 +33,4 @@ spec:
     - port: 4572
       protocol: TCP
       name: s3
-      nodePort: 4572
   type: LoadBalancer
