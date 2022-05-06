@@ -21,3 +21,7 @@ spec:
           resources:
             requests:
               storage: 1Gi
+  serviceAccountNames:
+    - serviceAccountName: hacbs-jvm-operator #TODO: what do we do about this?
+      taskName: maven-run
+

@@ -38,7 +38,6 @@ public class MavenProxyResource {
     final String deploymentBucket;
     final String deploymentPrefix;
 
-
     final boolean addTrackingDataToArtifacts;
 
     final Map<String, String> computedChecksums = new ConcurrentHashMap<>();
@@ -106,7 +105,8 @@ public class MavenProxyResource {
             }
             currentBackoff += backoff;
             if (i != retries) {
-                Log.warnf("Failed retrieving artifact %s/%s/%s/%s, waiting %s seconds", group, artifact, version, target, currentBackoff);
+                Log.warnf("Failed retrieving artifact %s/%s/%s/%s, waiting %s seconds", group, artifact, version, target,
+                        currentBackoff);
                 Thread.sleep(currentBackoff);
             }
         }

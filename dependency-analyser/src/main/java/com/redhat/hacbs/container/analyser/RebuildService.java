@@ -9,6 +9,7 @@ import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequest;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequestStatus;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.Status;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.quarkus.logging.Log;
@@ -53,7 +54,8 @@ public class RebuildService {
                 item.setKind(ArtifactBuildRequest.class.getSimpleName());
                 kubernetesClient.resources(ArtifactBuildRequest.class).create(item);
             } catch (KubernetesClientException e) {
-                if (!e.getStatus().getReason().equals("AlreadyExists")) {
+                Status status = e.getStatus();
+                if (status == null || status.getReason() == null || !status.getReason().equals("AlreadyExists")) {
                     throw e;
                 }
             }

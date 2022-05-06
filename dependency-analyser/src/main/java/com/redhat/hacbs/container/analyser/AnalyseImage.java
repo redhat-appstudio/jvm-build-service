@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -35,6 +36,7 @@ import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "image")
+@Singleton
 public class AnalyseImage implements Runnable {
 
     @CommandLine.Parameters(index = "0")
