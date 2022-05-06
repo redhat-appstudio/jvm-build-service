@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 
@@ -18,6 +19,7 @@ import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "path")
+@Singleton
 public class AnalysePath implements Runnable {
 
     @CommandLine.Parameters

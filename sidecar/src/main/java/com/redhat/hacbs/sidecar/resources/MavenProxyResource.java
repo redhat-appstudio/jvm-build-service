@@ -42,17 +42,25 @@ public class MavenProxyResource {
 
     final Map<String, String> computedChecksums = new ConcurrentHashMap<>();
 
+    final int retries;
+
+    final int backoff;
+
     public MavenProxyResource(@RestClient RemoteClient remoteClient,
             @ConfigProperty(name = "build-policy") String buildPolicy, S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
             @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
-            @ConfigProperty(name = "add-tracking-data-to-artifacts", defaultValue = "true") boolean addTrackingDataToArtifacts) {
+            @ConfigProperty(name = "add-tracking-data-to-artifacts", defaultValue = "true") boolean addTrackingDataToArtifacts,
+            @ConfigProperty(name = "retries", defaultValue = "5") int retries,
+            @ConfigProperty(name = "backoff", defaultValue = "2000") int backoff) {
         this.remoteClient = remoteClient;
         this.buildPolicy = buildPolicy;
         this.client = client;
         this.deploymentBucket = deploymentBucket;
         this.deploymentPrefix = deploymentPrefix;
         this.addTrackingDataToArtifacts = addTrackingDataToArtifacts;
+        this.retries = retries;
+        this.backoff = backoff;
         Log.infof("Constructing resource manager with build policy %s", buildPolicy);
     }
 
@@ -60,36 +68,49 @@ public class MavenProxyResource {
     @Path("{group:.*?}/{artifact}/{version}/{target}")
     public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
-        Log.debugf("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
-        if (target.endsWith(".sha1")) {
-            String key = group + "/" + artifact + "/" + version + "/" + target;
-            var modified = computedChecksums.get(key);
-            if (modified != null) {
-                return modified.getBytes(StandardCharsets.UTF_8);
+        Exception current = null;
+        int currentBackoff = 0;
+        //if we fail we retry, don't fail the whole build
+        //better to wait for a few seconds and try again than stop a build that has been going for a while
+        for (int i = 0; i <= retries; ++i) {
+            Log.debugf("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
+            if (target.endsWith(".sha1")) {
+                String key = group + "/" + artifact + "/" + version + "/" + target;
+                var modified = computedChecksums.get(key);
+                if (modified != null) {
+                    return modified.getBytes(StandardCharsets.UTF_8);
+                }
+            }
+            try {
+                var results = remoteClient.get(buildPolicy, group, artifact, version, target);
+                var mavenRepoSource = results.getHeaderString("X-maven-repo");
+                if (addTrackingDataToArtifacts && target.endsWith(".jar") && mavenRepoSource != null) {
+                    var modified = ClassFileTracker.addTrackingDataToJar(results.readEntity(byte[].class),
+                            new TrackingData(group.replace("/", ".") + ":" + artifact + ":" + version, mavenRepoSource));
+                    String key = group + "/" + artifact + "/" + version + "/" + target + ".sha1";
+                    computedChecksums.put(key, HashUtil.sha1(modified));
+                    return modified;
+                } else {
+                    return results.readEntity(byte[].class);
+                }
+            } catch (WebApplicationException e) {
+                if (e.getResponse().getStatus() == 404) {
+                    throw new NotFoundException();
+                }
+                Log.errorf(e, "Failed to load %s", target);
+                current = e;
+            } catch (Exception e) {
+                Log.errorf(e, "Failed to load %s", target);
+                current = e;
+            }
+            currentBackoff += backoff;
+            if (i != retries) {
+                Log.warnf("Failed retrieving artifact %s/%s/%s/%s, waiting %s seconds", group, artifact, version, target,
+                        currentBackoff);
+                Thread.sleep(currentBackoff);
             }
         }
-        try {
-            var results = remoteClient.get(buildPolicy, group, artifact, version, target);
-            var mavenRepoSource = results.getHeaderString("X-maven-repo");
-            if (addTrackingDataToArtifacts && target.endsWith(".jar") && mavenRepoSource != null) {
-                var modified = ClassFileTracker.addTrackingDataToJar(results.readEntity(byte[].class),
-                        new TrackingData(group.replace("/", ".") + ":" + artifact + ":" + version, mavenRepoSource));
-                String key = group + "/" + artifact + "/" + version + "/" + target + ".sha1";
-                computedChecksums.put(key, HashUtil.sha1(modified));
-                return modified;
-            } else {
-                return results.readEntity(byte[].class);
-            }
-        } catch (WebApplicationException e) {
-            if (e.getResponse().getStatus() == 404) {
-                throw new NotFoundException();
-            }
-            Log.errorf(e, "Failed to load %s", target);
-            throw e;
-        } catch (Exception e) {
-            Log.errorf(e, "Failed to load %s", target);
-            throw e;
-        }
+        throw current;
     }
 
     @GET

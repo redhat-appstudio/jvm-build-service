@@ -18,7 +18,7 @@ public class AnalysisTest {
         var result = MavenAnalyser.doProjectDiscovery(projectRoot);
         MavenModule thisProject = null;
         for (var entry : result.getProjects().entrySet()) {
-            if (entry.getKey().getArtifactId().equals("hacbs-build-analyser")) {
+            if (entry.getKey().getArtifactId().equals("hacbs-adhoc-analyser-tool")) {
                 thisProject = entry.getValue();
             }
         }

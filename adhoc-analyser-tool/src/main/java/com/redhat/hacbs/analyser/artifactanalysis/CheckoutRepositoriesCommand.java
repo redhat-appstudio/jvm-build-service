@@ -1,11 +1,18 @@
 package com.redhat.hacbs.analyser.artifactanalysis;
 
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.inject.Inject;
@@ -18,23 +25,18 @@ import com.redhat.hacbs.analyser.config.CheckoutConfig;
 import com.redhat.hacbs.analyser.config.RepoConfig;
 import com.redhat.hacbs.analyser.data.scm.Repository;
 import com.redhat.hacbs.analyser.data.scm.ScmManager;
-import com.redhat.hacbs.analyser.maven.GradleAnalyser;
-import com.redhat.hacbs.analyser.maven.MavenAnalyser;
-import com.redhat.hacbs.analyser.maven.MavenProject;
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.location.*;
-import com.redhat.hacbs.recipies.scm.ScmInfo;
+import com.redhat.hacbs.recipies.location.RecipeGroupManager;
+import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 
 import io.quarkus.dev.console.QuarkusConsole;
 import io.quarkus.dev.console.StatusLine;
 import io.quarkus.logging.Log;
-import io.quarkus.runtime.ApplicationLifecycleManager;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "analyse-repositories")
+@CommandLine.Command(name = "checkout-repositories")
 @Singleton
-public class AnalyseRepositoriesCommand implements Runnable {
+public class CheckoutRepositoriesCommand implements Runnable {
 
     public static final String CLONE_FAILURE = "CLONE_FAILURE";
     @Inject
@@ -48,7 +50,6 @@ public class AnalyseRepositoriesCommand implements Runnable {
 
     @Override
     public void run() {
-        var status = QuarkusConsole.INSTANCE.registerStatusLine(100);
         var overallStatus = QuarkusConsole.INSTANCE.registerStatusLine(200);
         System.out.println("START EVENT " + this.toString());
         ExecutorService executorService = Executors.newFixedThreadPool(threads);
@@ -60,84 +61,16 @@ public class AnalyseRepositoriesCommand implements Runnable {
             RecipeGroupManager groupManager = new RecipeGroupManager(List.of(recipeLayoutManager));
             int count = manager.getAll().size();
             int currentCount = 0;
-            //multiThreadedEagerCheckout(executorService, manager.getAll(), checkoutConfig.path());
-            for (var repository : new ArrayList<>(manager.getAll())) {
-
-                overallStatus.setMessage("Processing repo " + (currentCount++) + " out of " + count);
-                if (!isRunning()) {
-                    return;
-                }
+            List<Future<?>> results = multiThreadedEagerCheckout(executorService, manager.getAll(), checkoutConfig.path());
+            for (var i : results) {
                 try {
-                    if (shouldSkip(repository)) {
-                        continue;
-                    }
-                    if (repository.getUuid() == null) {
-                        repository.setUuid(UUID.randomUUID().toString());
-                    }
-                    Path checkoutPath = checkoutConfig.path().resolve(repository.getUuid());
-                    Git checkout;
-                    if (Files.exists(checkoutPath)) {
-                        checkout = Git.open(checkoutPath.toFile());
-                        System.out.println("Using existing " + repository.getUri() + " at " + checkoutPath);
-                    } else {
-                        try {
-                            System.out.println("Checking out " + repository.getUri() + " into " + checkoutPath);
-                            checkout = Git.cloneRepository().setDirectory(checkoutPath.toFile())
-                                    .setProgressMonitor(new QuarkusProgressMonitor(status))
-                                    .setURI(repository.getUri()).call();
-                        } catch (Throwable t) {
-                            Log.errorf(t, "Failed to clone %s", repository.getUri());
-                            repository.setUuid(null);
-                            repository.setFailed(true);
-                            repository.setFailedReason(CLONE_FAILURE);
-                            manager.writeData();
-                            continue;
-                        }
-                    }
-                    try {
-
-                        MavenProject result;
-                        if (Files.exists(checkoutPath.resolve("pom.xml"))) {
-                            result = MavenAnalyser.doProjectDiscovery(checkoutPath);
-                        } else if (Files.exists(checkoutPath.resolve("build.gradle"))) {
-                            result = GradleAnalyser.doProjectDiscovery(checkoutPath);
-                        } else {
-                            continue;
-                        }
-                        Set<GAV> locationRequests = new HashSet<>();
-                        for (var module : result.getProjects().values()) {
-                            locationRequests.add(new GAV(module.getGav().getGroupId(), module.getGav().getArtifactId(),
-                                    module.getGav().getVersion()));
-                        }
-                        var existing = groupManager
-                                .requestBuildInformation(new ProjectBuildRequest(locationRequests, Set.of(BuildRecipe.SCM)));
-                        for (var module : result.getProjects().values()) {
-                            var existingModule = existing.getRecipes().get(module.getGav());
-                            if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
-                                ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingModule.get(BuildRecipe.SCM));
-                                if (existingInfo.getUri().equals(repository.getUri())) {
-                                    continue;
-                                }
-                                if (existingModule.get(BuildRecipe.SCM).toString().contains("_artifact")) {
-                                    doubleUps.put(existingInfo.getUri(), repository.getUri() + "  " + module.getGav());
-                                    doubleUpFiles.add(existingModule.get(BuildRecipe.SCM));
-                                }
-                            }
-                            ScmInfo info = new ScmInfo("git", repository.getUri());
-                            recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, info,
-                                    module.getGav().getGroupId(), module.getGav().getArtifactId(), null));
-                        }
-                    } catch (Throwable t) {
-                        Log.errorf(t, "Failed to analyse %s", repository.getUri());
-                    }
-
+                    i.get();
                 } catch (Exception e) {
-                    Log.errorf(e, "Failed to handle %s", repository.getUri());
-                    repository.setFailed(true);
+                    e.printStackTrace();
                 }
                 manager.writeData();
             }
-            status.close();
+            manager.writeData();
             overallStatus.close();
 
             for (var e : doubleUps.entrySet()) {
@@ -154,7 +87,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
     }
 
     private boolean shouldSkip(Repository repository) {
-        if (repository.isFailed() || repository.isProcessed() || repository.isDisabled() || repository.isDeprecated()) { //deprecated needs special handling
+        if (repository.isFailed() || repository.isProcessed() || repository.isDisabled()) { //deprecated needs special handling
             return true;
         }
         if (repository.getType() != null && !"git".equals(repository.getType())) {
@@ -171,19 +104,21 @@ public class AnalyseRepositoriesCommand implements Runnable {
      * <p>
      * This approach allows us to checkout repos multi threadedly without dealing with thread safety concerns elsewhere.
      */
-    private void multiThreadedEagerCheckout(ExecutorService executorService, List<Repository> all, Path checkoutBase) {
+    private List<Future<?>> multiThreadedEagerCheckout(ExecutorService executorService, List<Repository> all,
+            Path checkoutBase) {
         List<Repository> copy = new ArrayList<>(all);
         Collections.reverse(copy);
         var overallStatus = QuarkusConsole.INSTANCE.registerStatusLine(400);
         AtomicInteger oustanding = new AtomicInteger();
 
+        List<Future<?>> ret = new ArrayList<>();
         for (var repository : copy) {
             if (shouldSkip(repository)) {
                 continue;
             }
             if (repository.getUuid() == null) {
                 int priority = oustanding.incrementAndGet();
-                executorService.submit(new Runnable() {
+                ret.add(executorService.submit(new Runnable() {
                     @Override
                     public void run() {
                         var status = QuarkusConsole.INSTANCE.registerStatusLine(priority + 500);
@@ -212,19 +147,10 @@ public class AnalyseRepositoriesCommand implements Runnable {
                             overallStatus.setMessage("Backround repositories to checkout remaining: " + outstanding);
                         }
                     }
-                });
+                }));
             }
         }
-    }
-
-    boolean isRunning() {
-        try {
-            Field field = ApplicationLifecycleManager.class.getDeclaredField("exitCode");
-            field.setAccessible(true);
-            return (Integer) field.get(null) == -1;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return ret;
     }
 
     private static class QuarkusProgressMonitor implements ProgressMonitor {
