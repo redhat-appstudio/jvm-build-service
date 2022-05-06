@@ -38,7 +38,7 @@
         <module>cache</module>
         <module>operator</module>
         <module>build-recipes-database</module>
-        <module>build-analyser</module>
+        <module>adhoc-analyser-tool</module>
         <module>classfile-tracker</module>
         <module>dependency-analyser</module>
         <module>resource-model</module>

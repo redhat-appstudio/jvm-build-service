@@ -11,6 +11,6 @@ import picocli.CommandLine;
 
 @TopCommand
 @CommandLine.Command(mixinStandardHelpOptions = true, subcommands = { PncCommand.class, AnalyseRepositoriesCommand.class,
-        ConsolidateScmInfoCommand.class, GithubCommand.class, CheckoutRepositoriesCommand.class})
+        ConsolidateScmInfoCommand.class, GithubCommand.class, CheckoutRepositoriesCommand.class })
 public class EntryPoint {
 }

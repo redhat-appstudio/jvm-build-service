@@ -1,31 +1,5 @@
 package com.redhat.hacbs.analyser.artifactanalysis;
 
-import com.redhat.hacbs.analyser.config.CheckoutConfig;
-import com.redhat.hacbs.analyser.config.RepoConfig;
-import com.redhat.hacbs.analyser.data.scm.Repository;
-import com.redhat.hacbs.analyser.data.scm.ScmManager;
-import com.redhat.hacbs.analyser.maven.GradleAnalyser;
-import com.redhat.hacbs.analyser.maven.MavenAnalyser;
-import com.redhat.hacbs.analyser.maven.MavenProject;
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.location.AddRecipeRequest;
-import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
-import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
-import com.redhat.hacbs.recipies.scm.ScmInfo;
-import io.quarkus.dev.console.QuarkusConsole;
-import io.quarkus.dev.console.StatusLine;
-import io.quarkus.logging.Log;
-import io.quarkus.runtime.ApplicationLifecycleManager;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.lib.ProgressMonitor;
-import picocli.CommandLine;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -40,6 +14,25 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.ProgressMonitor;
+
+import com.redhat.hacbs.analyser.config.CheckoutConfig;
+import com.redhat.hacbs.analyser.config.RepoConfig;
+import com.redhat.hacbs.analyser.data.scm.Repository;
+import com.redhat.hacbs.analyser.data.scm.ScmManager;
+import com.redhat.hacbs.recipies.location.RecipeGroupManager;
+import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
+
+import io.quarkus.dev.console.QuarkusConsole;
+import io.quarkus.dev.console.StatusLine;
+import io.quarkus.logging.Log;
+import picocli.CommandLine;
 
 @CommandLine.Command(name = "checkout-repositories")
 @Singleton
@@ -111,7 +104,8 @@ public class CheckoutRepositoriesCommand implements Runnable {
      * <p>
      * This approach allows us to checkout repos multi threadedly without dealing with thread safety concerns elsewhere.
      */
-    private List<Future<?>> multiThreadedEagerCheckout(ExecutorService executorService, List<Repository> all, Path checkoutBase) {
+    private List<Future<?>> multiThreadedEagerCheckout(ExecutorService executorService, List<Repository> all,
+            Path checkoutBase) {
         List<Repository> copy = new ArrayList<>(all);
         Collections.reverse(copy);
         var overallStatus = QuarkusConsole.INSTANCE.registerStatusLine(400);

@@ -1,15 +1,18 @@
 package com.redhat.hacbs.analyser.github;
 
-import com.redhat.hacbs.analyser.config.RepoConfig;
-import com.redhat.hacbs.analyser.data.scm.ScmManager;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+
+import javax.inject.Inject;
+
 import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
-import picocli.CommandLine;
 
-import javax.inject.Inject;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
+import com.redhat.hacbs.analyser.config.RepoConfig;
+import com.redhat.hacbs.analyser.data.scm.ScmManager;
+
+import picocli.CommandLine;
 
 @CommandLine.Command(name = "analyse", description = "Pulls information from guthub")
 public class GithubAnalyseReposCommand implements Runnable {
