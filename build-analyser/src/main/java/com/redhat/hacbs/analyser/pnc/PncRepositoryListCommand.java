@@ -44,8 +44,9 @@ public class PncRepositoryListCommand implements Runnable {
                 for (var page : result.getContent()) {
                     if (page.getExternalUrl() != null && !page.getExternalUrl().contains("redhat.com")) {
                         urls.add(page.getExternalUrl()
-                                .replaceAll("ssh://git@github.com/", "https://github.com/")
-                                .replaceAll("ssh://git@github.com:", "https://github.com/")
+                                .replaceAll("git@github.com:", "https://github.com/")
+                                .replaceAll("(git\\+)?ssh://git@github.com/", "https://github.com/")
+                                .replaceAll("(git\\+)?ssh://git@github.com:", "https://github.com/")
                                 .replaceAll("git+https://github.com/", "https://github.com/"));
                     }
                 }

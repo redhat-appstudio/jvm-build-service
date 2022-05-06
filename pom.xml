@@ -30,6 +30,7 @@
         <quarkus-jgit.version>1.2.0</quarkus-jgit.version>
         <quarkus-operator-sdk.version>3.0.7</quarkus-operator-sdk.version>
         <gradle-tooling-api.version>7.4.2</gradle-tooling-api.version>
+        <quarkus-github-api.version>1.302.0</quarkus-github-api.version>
     </properties>
 
     <modules>
@@ -114,6 +115,11 @@
                 <groupId>org.gradle</groupId>
                 <artifactId>gradle-tooling-api</artifactId>
                 <version>${gradle-tooling-api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkiverse.githubapi</groupId>
+                <artifactId>quarkus-github-api</artifactId>
+                <version>${quarkus-github-api.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
