@@ -173,7 +173,13 @@ spec:
         httpGet:
           path: /q/health/live
           port: 2000
-        initialDelaySeconds: 3
+        initialDelaySeconds: 1
+        periodSeconds: 3
+      readinessProbe:
+        httpGet:
+          path: /q/health/ready
+          port: 2000
+        initialDelaySeconds: 1
         periodSeconds: 3
       resources:
         requests:
