@@ -41,7 +41,7 @@ public class S3RepositoryClient implements RepositoryClient {
                 Log.tracef("Key %s not found", s3key);
             }
         }
-        Log.infof("S3 request to %s took %s", fullTarget, System.currentTimeMillis() - time);
+        Log.debugf("S3 request to %s took %s", fullTarget, System.currentTimeMillis() - time);
         return Optional.empty();
     }
 
