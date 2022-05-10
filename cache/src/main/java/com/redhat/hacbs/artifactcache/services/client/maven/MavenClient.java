@@ -35,12 +35,10 @@ public class MavenClient implements RepositoryClient {
     public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
             String target) {
         Log.debugf("Retrieving artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
-        try {
-            var data = client.getArtifactFile(group, artifact, version, target);
+        try (var data = client.getArtifactFile(group, artifact, version, target)) {
             String sha1 = null;
             if (!target.endsWith(SHA_1)) {
-                try {
-                    var hash = client.getArtifactFile(group, artifact, version, target + SHA_1);
+                try (var hash = client.getArtifactFile(group, artifact, version, target + SHA_1)) {
                     sha1 = hash.readEntity(String.class).trim();
                     //older maven version would deploy sha files with extra stuff after the sha
                     if (sha1.contains(" ")) {
@@ -64,8 +62,7 @@ public class MavenClient implements RepositoryClient {
     @Override
     public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
         Log.debugf("Retrieving metadata %s/%s from repo %s at %s", group, target, name, uri);
-        try {
-            var data = client.getMetadataFile(group, target);
+        try (var data = client.getMetadataFile(group, target)) {
             String sha1 = null;
             if (!target.endsWith(SHA_1)) {
                 try {

@@ -81,8 +81,7 @@ public class MavenProxyResource {
                     return modified.getBytes(StandardCharsets.UTF_8);
                 }
             }
-            try {
-                var results = remoteClient.get(buildPolicy, group, artifact, version, target);
+            try (var results = remoteClient.get(buildPolicy, group, artifact, version, target)) {
                 var mavenRepoSource = results.getHeaderString("X-maven-repo");
                 if (addTrackingDataToArtifacts && target.endsWith(".jar") && mavenRepoSource != null) {
                     var modified = ClassFileTracker.addTrackingDataToJar(results.readEntity(byte[].class),
@@ -117,8 +116,7 @@ public class MavenProxyResource {
     @Path("{group:.*?}/maven-metadata.xml{hash:.*?}")
     public byte[] get(@PathParam("group") String group, @PathParam("hash") String hash) throws Exception {
         Log.debugf("Retrieving file %s/maven-metadata.xml%s", group, hash);
-        try {
-            Response response = remoteClient.get(buildPolicy, group, "maven-metadata.xml" + hash);
+        try (Response response = remoteClient.get(buildPolicy, group, "maven-metadata.xml" + hash)) {
             return response.readEntity(byte[].class);
         } catch (WebApplicationException e) {
             if (e.getResponse().getStatus() == 404) {
