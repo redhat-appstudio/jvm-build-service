@@ -58,7 +58,7 @@ public class ClassFileTracker {
                         newEntry.setSize(modified.length);
                         zipOut.putNextEntry(newEntry);
                         zipOut.write(modified);
-                    } else {
+                    } else if (!isBlockOrSF(entry.getName())) {
                         zipOut.putNextEntry(entry);
                         zipOut.write(zipIn.readAllBytes());
                     }
@@ -68,6 +68,17 @@ public class ClassFileTracker {
         }
     }
 
+    // same as the impl in sun.security.util.SignatureFileVerifier#isBlockOrSF()
+    static boolean isBlockOrSF(final String s) {
+        if (s == null) {
+            return false;
+        }
+        return s.endsWith(".SF")
+                || s.endsWith(".DSA")
+                || s.endsWith(".RSA")
+                || s.endsWith(".EC");
+    }
+
     public static Set<TrackingData> readTrackingDataFromJar(byte[] input) throws IOException {
         Set<TrackingData> ret = new HashSet<>();
         try (ZipInputStream zipIn = new ZipInputStream(new ByteArrayInputStream(input))) {
@@ -75,7 +86,6 @@ public class ClassFileTracker {
             while (entry != null) {
                 if (entry.getName().endsWith(".class")) {
                     ret.add(readTrackingInformationFromClass(zipIn.readAllBytes()));
-                    ;
                 }
                 entry = zipIn.getNextEntry();
             }
