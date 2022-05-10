@@ -7,7 +7,6 @@ spec:
     - name: url
     - name: context
       default: ""
-      type: string
     - name: app-path
       default: "target"
       type: string
