@@ -25,7 +25,7 @@ spec:
       type: string
       description: >-
         The git recipe database.
-      default: "https://github.com/stuartwdouglas/temp-hacbs-recipe-data.git"
+      default: "https://github.com/stuartwdouglas/tempdata2.git"
   steps:
     - name: process-build-requests
       image: $(params.BUILD_IMAGE)

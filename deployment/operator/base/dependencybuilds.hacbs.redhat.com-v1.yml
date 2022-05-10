@@ -17,6 +17,8 @@ spec:
         properties:
           spec:
             properties:
+              path:
+                type: string
               scmType:
                 type: string
               version:

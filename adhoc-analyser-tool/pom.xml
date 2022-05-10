@@ -20,8 +20,12 @@
             <artifactId>quarkus-rest-client-reactive</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.redhat.hacbs</groupId>
+            <artifactId>hacbs-resource-model</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-resteasy-reactive-jackson</artifactId>
+            <artifactId>quarkus-kubernetes-client</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
