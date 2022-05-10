@@ -187,7 +187,7 @@ public class LocalCache implements RepositoryClient {
                         for (int i = 0; i < digest.length; ++i) {
                             sb.append(Integer.toHexString((digest[i] & 0xFF) | 0x100).substring(1, 3));
                         }
-                        if (!sb.toString().equals(result.get().getExpectedSha().get())) {
+                        if (!sb.toString().equalsIgnoreCase(result.get().getExpectedSha().get())) {
                             //TODO: handle this better
                             Log.error("Filed to cache " + downloadTarget + " calculated sha '" + sb.toString()
                                     + "' did not match expected '" + result.get().getExpectedSha().get() + "'");
