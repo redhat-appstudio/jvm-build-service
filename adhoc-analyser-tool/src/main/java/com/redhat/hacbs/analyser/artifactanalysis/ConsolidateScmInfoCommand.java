@@ -6,7 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.inject.Inject;
@@ -76,10 +79,11 @@ public class ConsolidateScmInfoCommand implements Runnable {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (file.getFileName().toString().equals(BuildRecipe.SCM.getName())) {
-                    totalCount.incrementAndGet();
                     ScmInfo current = BuildRecipe.SCM.getHandler().parse(file);
+                    totalCount.incrementAndGet();
                     toDelete.computeIfAbsent(current.getUri(), s -> new ArrayList<>()).add(file);
                     perScmUriCount.computeIfAbsent(current.getUri(), s -> new AtomicInteger()).incrementAndGet();
+
                 }
                 return FileVisitResult.CONTINUE;
             }

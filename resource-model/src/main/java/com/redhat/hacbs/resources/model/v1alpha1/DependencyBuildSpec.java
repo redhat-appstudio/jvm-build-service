@@ -5,6 +5,8 @@ public class DependencyBuildSpec {
     private String scmUrl;
     private String scmType;
 
+    private String path;
+
     private String version;
     private String tag;
 
@@ -41,5 +43,14 @@ public class DependencyBuildSpec {
 
     public String getTag() {
         return tag;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public DependencyBuildSpec setPath(String path) {
+        this.path = path;
+        return this;
     }
 }

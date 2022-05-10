@@ -58,7 +58,8 @@ public class S3ArtifactStorageTest {
         Path cachedFile = path.resolve("rebuilt").resolve(POLICY).resolve(GROUP).resolve(ARTIFACT).resolve(VERSION)
                 .resolve(FILE);
         try {
-            Optional<RepositoryClient.RepositoryResult> result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT, VERSION,
+            Optional<RepositoryClient.RepositoryResult> result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT,
+                    VERSION,
                     FILE);
             RepositoryClient.RepositoryResult repositoryResult = result.get();
             Assertions.assertEquals(CONTENTS, new String(repositoryResult.data.readAllBytes(), StandardCharsets.UTF_8));

@@ -1,6 +1,8 @@
 package com.redhat.hacbs.analyser.data.scm;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 public class Repository implements Comparable<Repository> {
@@ -25,6 +27,10 @@ public class Repository implements Comparable<Repository> {
      * There is a newer repo elsewhere that should be used for all other versions.
      */
     private boolean deprecated;
+    /**
+     * Paths to analyse
+     */
+    private List<String> paths = new ArrayList<>();
 
     public String getUri() {
         return uri;
@@ -88,6 +94,15 @@ public class Repository implements Comparable<Repository> {
 
     public void setDeprecated(boolean deprecated) {
         this.deprecated = deprecated;
+    }
+
+    public List<String> getPaths() {
+        return paths;
+    }
+
+    public Repository setPaths(List<String> paths) {
+        this.paths = paths;
+        return this;
     }
 
     public boolean isDisabled() {

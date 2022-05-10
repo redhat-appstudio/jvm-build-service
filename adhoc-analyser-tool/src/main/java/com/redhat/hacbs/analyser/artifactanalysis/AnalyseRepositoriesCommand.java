@@ -1,9 +1,17 @@
 package com.redhat.hacbs.analyser.artifactanalysis;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,7 +31,11 @@ import com.redhat.hacbs.analyser.maven.MavenAnalyser;
 import com.redhat.hacbs.analyser.maven.MavenProject;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.location.*;
+import com.redhat.hacbs.recipies.location.AddRecipeRequest;
+import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
+import com.redhat.hacbs.recipies.location.RecipeGroupManager;
+import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 
 import io.quarkus.dev.console.QuarkusConsole;
@@ -46,6 +58,12 @@ public class AnalyseRepositoriesCommand implements Runnable {
     @CommandLine.Option(names = "-t", defaultValue = "10")
     int threads;
 
+    @CommandLine.Option(names = "-r", defaultValue = "")
+    String repo;
+
+    @CommandLine.Option(names = "-a", defaultValue = "false")
+    boolean allTags;
+
     @Override
     public void run() {
         var status = QuarkusConsole.INSTANCE.registerStatusLine(100);
@@ -61,7 +79,22 @@ public class AnalyseRepositoriesCommand implements Runnable {
             int count = manager.getAll().size();
             int currentCount = 0;
             //multiThreadedEagerCheckout(executorService, manager.getAll(), checkoutConfig.path());
-            for (var repository : new ArrayList<>(manager.getAll())) {
+            ArrayList<Repository> repositories = new ArrayList<>();
+            if (repo.isEmpty()) {
+                repositories.addAll(manager.getAll());
+            } else {
+                var existing = manager.get(repo);
+                if (existing == null) {
+                    existing = new Repository();
+                    existing.setUri(repo);
+                    manager.add(existing);
+                }
+                repositories.add(existing);
+            }
+            for (var repository : repositories) {
+                if (repository.isDeprecated()) {
+                    continue;
+                }
 
                 overallStatus.setMessage("Processing repo " + (currentCount++) + " out of " + count);
                 if (!isRunning()) {
@@ -95,37 +128,13 @@ public class AnalyseRepositoriesCommand implements Runnable {
                         }
                     }
                     try {
-
-                        MavenProject result;
-                        if (Files.exists(checkoutPath.resolve("pom.xml"))) {
-                            result = MavenAnalyser.doProjectDiscovery(checkoutPath);
-                        } else if (Files.exists(checkoutPath.resolve("build.gradle"))) {
-                            result = GradleAnalyser.doProjectDiscovery(checkoutPath);
-                        } else {
-                            continue;
+                        List<String> paths = new ArrayList<>(repository.getPaths());
+                        if (paths.isEmpty()) {
+                            paths.add("/");
                         }
-                        Set<GAV> locationRequests = new HashSet<>();
-                        for (var module : result.getProjects().values()) {
-                            locationRequests.add(new GAV(module.getGav().getGroupId(), module.getGav().getArtifactId(),
-                                    module.getGav().getVersion()));
-                        }
-                        var existing = groupManager
-                                .requestBuildInformation(new ProjectBuildRequest(locationRequests, Set.of(BuildRecipe.SCM)));
-                        for (var module : result.getProjects().values()) {
-                            var existingModule = existing.getRecipes().get(module.getGav());
-                            if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
-                                ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingModule.get(BuildRecipe.SCM));
-                                if (existingInfo.getUri().equals(repository.getUri())) {
-                                    continue;
-                                }
-                                if (existingModule.get(BuildRecipe.SCM).toString().contains("_artifact")) {
-                                    doubleUps.put(existingInfo.getUri(), repository.getUri() + "  " + module.getGav());
-                                    doubleUpFiles.add(existingModule.get(BuildRecipe.SCM));
-                                }
-                            }
-                            ScmInfo info = new ScmInfo("git", repository.getUri());
-                            recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, info,
-                                    module.getGav().getGroupId(), module.getGav().getArtifactId(), null));
+                        for (var path : paths) {
+                            analyseRepository(doubleUps, doubleUpFiles, recipeLayoutManager, groupManager, repository,
+                                    checkoutPath.resolve(path));
                         }
                     } catch (Throwable t) {
                         Log.errorf(t, "Failed to analyse %s", repository.getUri());
@@ -151,6 +160,44 @@ public class AnalyseRepositoriesCommand implements Runnable {
         } finally {
             executorService.shutdownNow();
         }
+    }
+
+    private boolean analyseRepository(Map<String, String> doubleUps, Set<Path> doubleUpFiles,
+            RecipeLayoutManager recipeLayoutManager, RecipeGroupManager groupManager, Repository repository, Path checkoutPath)
+            throws IOException {
+        MavenProject result;
+        if (Files.exists(checkoutPath.resolve("pom.xml"))) {
+            result = MavenAnalyser.doProjectDiscovery(checkoutPath);
+        } else if (Files.exists(checkoutPath.resolve("build.gradle"))
+                || Files.exists(checkoutPath.resolve("build.gradle.kts"))) {
+            result = GradleAnalyser.doProjectDiscovery(checkoutPath);
+        } else {
+            return true;
+        }
+        Set<GAV> locationRequests = new HashSet<>();
+        for (var module : result.getProjects().values()) {
+            locationRequests.add(new GAV(module.getGav().getGroupId(), module.getGav().getArtifactId(),
+                    module.getGav().getVersion()));
+        }
+        var existing = groupManager
+                .requestBuildInformation(new ProjectBuildRequest(locationRequests, Set.of(BuildRecipe.SCM)));
+        for (var module : result.getProjects().values()) {
+            var existingModule = existing.getRecipes().get(module.getGav());
+            if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
+                ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingModule.get(BuildRecipe.SCM));
+                if (existingInfo.getUri().equals(repository.getUri())) {
+                    continue;
+                }
+                if (existingModule.get(BuildRecipe.SCM).toString().contains("_artifact")) {
+                    doubleUps.put(existingInfo.getUri(), repository.getUri() + "  " + module.getGav());
+                    doubleUpFiles.add(existingModule.get(BuildRecipe.SCM));
+                }
+            }
+            ScmInfo info = new ScmInfo("git", repository.getUri());
+            recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, info,
+                    module.getGav().getGroupId(), module.getGav().getArtifactId(), null));
+        }
+        return false;
     }
 
     private boolean shouldSkip(Repository repository) {

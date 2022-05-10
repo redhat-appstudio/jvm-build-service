@@ -1,25 +1,21 @@
 package com.redhat.hacbs.recipies.scm;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class ScmInfo {
+public class RepositoryInfo {
 
     String type;
     String uri;
+
     String path;
 
-    private List<TagMapping> tagMapping = new ArrayList<>();
-
-    public ScmInfo() {
+    public RepositoryInfo() {
     }
 
-    public ScmInfo(String type, String uri) {
+    public RepositoryInfo(String type, String uri) {
         this.type = type;
         this.uri = uri;
     }
 
-    public ScmInfo(String type, String uri, String path) {
+    public RepositoryInfo(String type, String uri, String path) {
         this.type = type;
         this.uri = uri;
         this.path = path;
@@ -45,17 +41,8 @@ public class ScmInfo {
         return path;
     }
 
-    public ScmInfo setPath(String path) {
+    public RepositoryInfo setPath(String path) {
         this.path = path;
-        return this;
-    }
-
-    public List<TagMapping> getTagMapping() {
-        return tagMapping;
-    }
-
-    public ScmInfo setTagMapping(List<TagMapping> tagMapping) {
-        this.tagMapping = tagMapping;
         return this;
     }
 }
