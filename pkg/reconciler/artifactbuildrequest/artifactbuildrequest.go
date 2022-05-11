@@ -24,6 +24,10 @@ const (
 	contextTimeout = 300 * time.Second
 )
 
+var (
+	artifactBuildRequestLog = ctrl.Log.WithName("artifactbuildrequest")
+)
+
 type ReconcileArtifactBuildRequest struct {
 	client client.Client
 	scheme *runtime.Scheme
@@ -41,6 +45,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
+	artifactBuildRequestLog.Info("Processing event")
 	abr := v1alpha1.ArtifactBuildRequest{}
 	err := r.client.Get(ctx, request.NamespacedName, &abr)
 	if err != nil {
@@ -51,6 +56,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	}
 	//TODO skeleton for now; start seeing what parts if any of build-request-processor or dependency-analyzer need to move here
 
+	artifactBuildRequestLog.Info("State: " + abr.Status.State)
 	// rough approximation of what is in https://github.com/redhat-appstudio/jvm-build-service/blob/main/build-request-processor/src/main/java/com/redhat/hacbs/container/analyser/ProcessCommand.java
 	// where we replace the list done there, using the watch / relist induced event we get here
 	if abr.Status.State == v1alpha1.ArtifactBuildRequestStateNew {
@@ -98,7 +104,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	// see if we already launched a PipelineRun associated with this ABR
 	list := &pipelinev1beta1.PipelineRunList{}
 	abrNameForLabel := types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}.String()
-	lbls := map[string]string{"jvmbuildservice.hacbs.redhat.com/artifactbuildrequet": abrNameForLabel}
+	lbls := map[string]string{"jvmbuildservice.io/artifactbuildrequet": abrNameForLabel}
 	listOpts := &client.ListOptions{
 		Namespace:     abr.Namespace,
 		LabelSelector: labels.SelectorFromSet(lbls),

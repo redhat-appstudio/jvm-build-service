@@ -4,10 +4,8 @@ metadata:
   name: hacbs-jvm-operator
 rules:
   - apiGroups:
-      - hacbs.redhat.com
+      - jvmbuildservice.io
     resources:
-      - components
-      - components/status
       - artifactbuildrequests
       - artifactbuildrequests/status
       - dependencybuilds

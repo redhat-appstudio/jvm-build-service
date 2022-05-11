@@ -28,4 +28,5 @@ jobs:
           java-version: 17
 
       - name: Build ${{ matrix.component }} component
+        working-directory: java-components
         run: mvn -B package -pl ${{ matrix.component }} -am -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.container-image.username=${{ secrets.REGISTRY_USER }} -Dquarkus.container-image.password=${{ secrets.REGISTRY_PASSWORD }} -Dquarkus.container-image.registry=${{ env.IMAGE_REGISTRY }} -Dquarkus.container-image.group=${{ env.IMAGE_GROUP }} -Dquarkus.container-image.tag=${{ env.IMAGE_TAG }}
