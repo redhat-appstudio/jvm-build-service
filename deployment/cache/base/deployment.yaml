@@ -29,6 +29,10 @@ spec:
               value: https://packages.confluent.io/maven
             - name: STORE_CONFLUENT_TYPE
               value: maven2
+            - name: QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE
+              value: "4"
+            - name: QUARKUS_THREAD_POOL_MAX_THREADS
+              value: "12"
           ports:
             - containerPort: 8080
               name: http
@@ -44,5 +48,5 @@ spec:
               memory: "128Mi"
               cpu: "250m"
             limits:
-              memory: "512Mi"
+              memory: "700Mi"
               cpu: "500m"

@@ -1,8 +1,13 @@
 package com.redhat.hacbs.sidecar.resources;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.ZipException;
 
 import javax.inject.Singleton;
 import javax.ws.rs.GET;
@@ -21,7 +26,6 @@ import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.sidecar.services.RemoteClient;
 
 import io.quarkus.logging.Log;
-import io.quarkus.runtime.util.HashUtil;
 import io.smallrye.common.annotation.Blocking;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -66,7 +70,7 @@ public class MavenProxyResource {
 
     @GET
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public byte[] get(@PathParam("group") String group, @PathParam("artifact") String artifact,
+    public InputStream get(@PathParam("group") String group, @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
         Exception current = null;
         int currentBackoff = 0;
@@ -78,20 +82,37 @@ public class MavenProxyResource {
                 String key = group + "/" + artifact + "/" + version + "/" + target;
                 var modified = computedChecksums.get(key);
                 if (modified != null) {
-                    return modified.getBytes(StandardCharsets.UTF_8);
+                    return new ByteArrayInputStream(modified.getBytes(StandardCharsets.UTF_8));
                 }
             }
-            try {
-                var results = remoteClient.get(buildPolicy, group, artifact, version, target);
+            try (var results = remoteClient.get(buildPolicy, group, artifact, version, target)) {
                 var mavenRepoSource = results.getHeaderString("X-maven-repo");
                 if (addTrackingDataToArtifacts && target.endsWith(".jar") && mavenRepoSource != null) {
-                    var modified = ClassFileTracker.addTrackingDataToJar(results.readEntity(byte[].class),
-                            new TrackingData(group.replace("/", ".") + ":" + artifact + ":" + version, mavenRepoSource));
-                    String key = group + "/" + artifact + "/" + version + "/" + target + ".sha1";
-                    computedChecksums.put(key, HashUtil.sha1(modified));
-                    return modified;
+                    var tempInput = Files.createTempFile("temp-jar", ".jar");
+                    var tempBytecodeTrackedJar = Files.createTempFile("temp-modified-jar", ".jar");
+                    try (OutputStream out = Files.newOutputStream(tempInput); var in = results.readEntity(InputStream.class)) {
+                        byte[] buf = new byte[1024];
+                        int r;
+                        while ((r = in.read(buf)) > 0) {
+                            out.write(buf, 0, r);
+                        }
+                        out.close();
+                        try (var entityOnDisk = Files.newInputStream(tempInput);
+                                var output = Files.newOutputStream(tempBytecodeTrackedJar)) {
+                            HashingOutputStream hashingOutputStream = new HashingOutputStream(output);
+                            ClassFileTracker.addTrackingDataToJar(entityOnDisk,
+                                    new TrackingData(group.replace("/", ".") + ":" + artifact + ":" + version, mavenRepoSource),
+                                    hashingOutputStream);
+                            String key = group + "/" + artifact + "/" + version + "/" + target + ".sha1";
+                            hashingOutputStream.close();
+                            computedChecksums.put(key, hashingOutputStream.hash);
+                            return Files.newInputStream(tempBytecodeTrackedJar);
+                        } catch (ZipException e) {
+                            return Files.newInputStream(tempInput);
+                        }
+                    }
                 } else {
-                    return results.readEntity(byte[].class);
+                    return results.readEntity(InputStream.class);
                 }
             } catch (WebApplicationException e) {
                 if (e.getResponse().getStatus() == 404) {
@@ -117,8 +138,7 @@ public class MavenProxyResource {
     @Path("{group:.*?}/maven-metadata.xml{hash:.*?}")
     public byte[] get(@PathParam("group") String group, @PathParam("hash") String hash) throws Exception {
         Log.debugf("Retrieving file %s/maven-metadata.xml%s", group, hash);
-        try {
-            Response response = remoteClient.get(buildPolicy, group, "maven-metadata.xml" + hash);
+        try (Response response = remoteClient.get(buildPolicy, group, "maven-metadata.xml" + hash)) {
             return response.readEntity(byte[].class);
         } catch (WebApplicationException e) {
             if (e.getResponse().getStatus() == 404) {

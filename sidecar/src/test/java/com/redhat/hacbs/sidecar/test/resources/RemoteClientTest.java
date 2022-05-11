@@ -2,7 +2,9 @@ package com.redhat.hacbs.sidecar.test.resources;
 
 import static org.hamcrest.CoreMatchers.is;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.jar.JarEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,7 +40,7 @@ public class RemoteClientTest {
         Mockito.when(remoteClient.get("default", "io/quarkus", "quarkus-jaxb",
                 "2.7.5.Final",
                 "quarkus-jaxb-2.7.5.Final.jar")).thenReturn(mockResponse);
-        Mockito.when(mockResponse.readEntity(byte[].class)).thenReturn("ajar".getBytes());
+        Mockito.when(mockResponse.readEntity(InputStream.class)).thenReturn(new ByteArrayInputStream("ajar".getBytes()));
 
         RestAssured.given()
                 .when().get("/io/quarkus/quarkus-jaxb/2.7.5.Final/quarkus-jaxb-2.7.5.Final.jar")
@@ -75,8 +77,8 @@ public class RemoteClientTest {
                 "2.7.5.Final",
                 "quarkus-core-2.7.5.Final.jar")).thenReturn(mockResponse);
         Mockito.when(mockResponse.getHeaderString("X-maven-repo")).thenReturn("central");
-        Mockito.when(mockResponse.readEntity(byte[].class))
-                .thenReturn(out.toByteArray());
+        Mockito.when(mockResponse.readEntity(InputStream.class))
+                .thenReturn(new ByteArrayInputStream(out.toByteArray()));
 
         byte[] result = RestAssured.given()
                 .when().get("/io/quarkus/quarkus-core/2.7.5.Final/quarkus-core-2.7.5.Final.jar")
