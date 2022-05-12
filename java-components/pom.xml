@@ -36,7 +36,6 @@
     <modules>
         <module>sidecar</module>
         <module>cache</module>
-        <module>operator</module>
         <module>build-recipes-database</module>
         <module>adhoc-analyser-tool</module>
         <module>classfile-tracker</module>
