@@ -2,6 +2,8 @@ package artifactbuildrequest
 
 import (
 	"context"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 
 	"knative.dev/pkg/apis"
@@ -24,10 +26,6 @@ const (
 	contextTimeout = 300 * time.Second
 )
 
-var (
-	artifactBuildRequestLog = ctrl.Log.WithName("artifactbuildrequest")
-)
-
 type ReconcileArtifactBuildRequest struct {
 	client client.Client
 	scheme *runtime.Scheme
@@ -44,8 +42,8 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
-
-	artifactBuildRequestLog.Info("Processing event")
+	log := log.FromContext(ctx)
+	log.Info("Processing event")
 	abr := v1alpha1.ArtifactBuildRequest{}
 	err := r.client.Get(ctx, request.NamespacedName, &abr)
 	if err != nil {
@@ -56,10 +54,12 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	}
 	//TODO skeleton for now; start seeing what parts if any of build-request-processor or dependency-analyzer need to move here
 
-	artifactBuildRequestLog.Info("State: " + abr.Status.State)
+	log.Info("State: " + abr.Status.State)
+
 	// rough approximation of what is in https://github.com/redhat-appstudio/jvm-build-service/blob/main/build-request-processor/src/main/java/com/redhat/hacbs/container/analyser/ProcessCommand.java
 	// where we replace the list done there, using the watch / relist induced event we get here
 	if abr.Status.State == v1alpha1.ArtifactBuildRequestStateNew {
+		//if the ABR is new then we want to kick of a pipeline to
 		abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
 		err = r.client.Update(ctx, &abr)
 		if err != nil {
@@ -75,10 +75,10 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	// (where we figure what those results/output are stored so this reconciler can retrieve them) and then
 	// move onto the next step below.
 
-	dbName := "someNamDerivedFromArtifactBuildRequestAndGav"
+	dbName := "someNamDerivedFromArtifactBuildRequestAndGa"
 	dbNamespace := abr.Namespace
 	key := types.NamespacedName{Namespace: dbNamespace, Name: dbName}
-	db := v1alpha1.DependencyBuild{}
+	db := v1alpha1.DependencyBuild{ObjectMeta: metav1.ObjectMeta{Name: dbName}}
 	err = r.client.Get(ctx, key, &db)
 	if errors.IsNotFound(err) {
 		db.Spec.SCMURL = "someurl"
@@ -86,10 +86,10 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		db.Spec.Tag = "selectedTag"
 		db.Spec.Version = "someVersion"
 
-		err = r.client.Create(ctx, &db)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+		//err = r.client.Create(ctx, &db)
+		//if err != nil {
+		//	return reconcile.Result{}, err
+		//}
 	}
 	if err != nil {
 		return reconcile.Result{}, err

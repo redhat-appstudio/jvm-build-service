@@ -41,4 +41,4 @@ nb-configuration.xml
 .envrc
 
 # Kustomize overlays for development
-deployment/**/development/**
+deploy/**/development/**
