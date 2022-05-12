@@ -35,6 +35,7 @@ dev-image:
 	docker build . -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
 
+
 dev: dev-image
 	cd java-components && mvn clean install -Dlocal
 	./deploy/development.sh
