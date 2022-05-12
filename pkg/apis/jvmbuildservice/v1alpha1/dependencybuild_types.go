@@ -4,6 +4,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	DependencyBuildStateNew      = "DependencyBuildStateNew"
+	DependencyBuildStateBuilding = "DependencyBuildStateBuilding"
+	DependencyBuildStateComplete = "DependencyBuildStateComplete"
+	DependencyBuildStateFailed   = "DependencyBuildStateFailed"
+)
+
 type DependencyBuildSpec struct {
 	SCMURL  string `json:"scmURL,omitempty"`
 	SCMType string `json:"scmType,omitempty"`
@@ -18,7 +25,6 @@ type DependencyBuildStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 	//NOTE: went with conditions vs. placeholder todo string in java code
 }
-
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
