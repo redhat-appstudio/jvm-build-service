@@ -16,7 +16,7 @@ CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 default: build
 
 build:
-	go build -o out/jvmbuildservice cmd/controller/main.go
+	#go build -o out/jvmbuildservice ./cmd/controller/main.go
 	env GOOS=linux GOARCH=amd64 go build -mod=vendor -o out/jvmbuildservice ./cmd/controller
 
 clean:
