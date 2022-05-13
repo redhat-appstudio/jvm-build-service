@@ -4,11 +4,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	DependencyBuildStateNew      = "DependencyBuildStateNew"
+	DependencyBuildStateBuilding = "DependencyBuildStateBuilding"
+	DependencyBuildStateComplete = "DependencyBuildStateComplete"
+	DependencyBuildStateFailed   = "DependencyBuildStateFailed"
+)
+
 type DependencyBuildSpec struct {
 	SCMURL  string `json:"scmURL,omitempty"`
 	SCMType string `json:"scmType,omitempty"`
-	Version string `json:"version,omitempty"`
 	Tag     string `json:"tag,omitempty"`
+	Path    string `json:"path,omitempty"`
 }
 
 type DependencyBuildStatus struct {
@@ -16,9 +23,8 @@ type DependencyBuildStatus struct {
 	// NOTE: inspecting the fabric8 Status class, it looked analogous to k8s Condition,
 	// and then I took the liberty of making it an array, given best practices in the k8s/ocp ecosystems
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	//NOTE: went with conditions vs. placeholder todo string in java code
+	Status     string             `json:"status,omitempty"`
 }
-
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

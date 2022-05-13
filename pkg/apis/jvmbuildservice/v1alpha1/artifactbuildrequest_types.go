@@ -19,18 +19,20 @@ type ArtifactBuildRequestStatus struct {
 //type ArtifactBuildRequestState string
 
 const (
-	// A new resource that has not been acted on by the operator
-	ArtifactBuildRequestStateNew = "ArtifacdtBuildRequestNew"
-	// The discovery pipeline is running to try and figure out how to build this artifact
-	ArtifactBuildRequestStateDiscovering = "ArtifacdtBuildRequestDiscovering"
-	// The discovery pipeline failed to find a way to build this
-	ArtifactBuildRequestStateMissing = "ArtifacdtBuildRequestMissing"
-	// The build is running
-	ArtifactBuildRequestStateBuilding = "ArtifacdtBuildRequestBuilding"
-	// The build failed
-	ArtifactBuildRequestStateFailed = "ArtifacdtBuildRequestFailed"
-	// The build completed successfully, the resource can be removed
-	ArtifactBuildRequestStateComplete = "ArtifacdtBuildRequestComplete"
+	// ArtifactBuildRequestStateNew A new resource that has not been acted on by the operator
+	ArtifactBuildRequestStateNew = "ArtifactBuildRequestNew"
+	// ArtifactBuildRequestStateDiscovering The discovery pipeline is running to try and figure out how to build this artifact
+	ArtifactBuildRequestStateDiscovering = "ArtifactBuildRequestDiscovering"
+	// ArtifactBuildRequestStateDiscovered The discovery process is complete
+	ArtifactBuildRequestStateDiscovered = "ArtifactBuildRequestDiscovered"
+	// ArtifactBuildRequestStateMissing The discovery pipeline failed to find a way to build this
+	ArtifactBuildRequestStateMissing = "ArtifactBuildRequestMissing"
+	// ArtifactBuildRequestStateBuilding The build is running
+	ArtifactBuildRequestStateBuilding = "ArtifactBuildRequestBuilding"
+	// ArtifactBuildRequestStateFailed The build failed
+	ArtifactBuildRequestStateFailed = "ArtifactBuildRequestFailed"
+	// ArtifactBuildRequestStateComplete The build completed successfully, the resource can be removed
+	ArtifactBuildRequestStateComplete = "ArtifactBuildRequestComplete"
 )
 
 // +genclient
