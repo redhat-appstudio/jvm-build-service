@@ -6,6 +6,7 @@ images:
   - newName: quay.io/goldmann/hacbs-jvm-sidecar:latest
 
 bases:
+  - "../../crds/base"
   - "../../base"
   - "../../cache/overlays/production"
   - "../../operator/overlays/production"

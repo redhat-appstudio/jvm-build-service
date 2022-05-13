@@ -2,7 +2,10 @@ package artifactbuildrequest
 
 import (
 	"context"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/apis"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 
@@ -135,40 +138,40 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	//if err != nil {
 	//	return reconcile.Result{}, err
 	//}
-	//
-	//// see if we already launched a PipelineRun associated with this ABR
-	//list := &pipelinev1beta1.PipelineRunList{}
-	//abrNameForLabel := types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}.String()
-	//lbls := map[string]string{"jvmbuildservice.io/artifactbuildrequet": abrNameForLabel}
-	//listOpts := &client.ListOptions{
-	//	Namespace:     abr.Namespace,
-	//	LabelSelector: labels.SelectorFromSet(lbls),
-	//}
-	//err = r.client.List(ctx, list, listOpts)
-	//if err != nil {
-	//	return reconcile.Result{}, err
-	//}
-	//if len(list.Items) == 0 {
-	//	// create pipelinerun
-	//	pr := &pipelinev1beta1.PipelineRun{}
-	//	pr.Namespace = abr.Namespace
-	//	pr.GenerateName = abr.Name + "-"
-	//	//TODO fill in other needed fields of PR
-	//	err = r.client.Create(ctx, pr)
-	//	if err != nil {
-	//		return reconcile.Result{}, err
-	//	}
-	//} else {
-	//	pr := list.Items[0]
-	//	if pr.Status.CompletionTime != nil {
-	//		abr.Status.State = v1alpha1.ArtifactBuildRequestStateComplete
-	//		condition := pr.Status.GetCondition(apis.ConditionSucceeded)
-	//		if !condition.IsTrue() {
-	//			abr.Status.State = v1alpha1.ArtifactBuildRequestStateFailed
-	//		}
-	//
-	//	}
-	//}
+
+	// see if we already launched a PipelineRun associated with this ABR
+	list := &pipelinev1beta1.PipelineRunList{}
+	abrNameForLabel := types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}.String()
+	lbls := map[string]string{"jvmbuildservice.io/artifactbuildrequet": abrNameForLabel}
+	listOpts := &client.ListOptions{
+		Namespace:     abr.Namespace,
+		LabelSelector: labels.SelectorFromSet(lbls),
+	}
+	err = r.client.List(ctx, list, listOpts)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if len(list.Items) == 0 {
+		// create pipelinerun
+		pr := &pipelinev1beta1.PipelineRun{}
+		pr.Namespace = abr.Namespace
+		pr.GenerateName = abr.Name + "-"
+		//TODO fill in other needed fields of PR
+		err = r.client.Create(ctx, pr)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	} else {
+		pr := list.Items[0]
+		if pr.Status.CompletionTime != nil {
+			abr.Status.State = v1alpha1.ArtifactBuildRequestStateComplete
+			condition := pr.Status.GetCondition(apis.ConditionSucceeded)
+			if !condition.IsTrue() {
+				abr.Status.State = v1alpha1.ArtifactBuildRequestStateFailed
+			}
+
+		}
+	}
 
 	return reconcile.Result{}, nil
 }

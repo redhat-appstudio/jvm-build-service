@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: create-component-builds
+  name: lookup-artifact-location
   labels:
     app.kubernetes.io/version: "0.1"
   annotations:
@@ -26,8 +26,33 @@ spec:
       description: >-
         The git recipe database.
       default: "https://github.com/stuartwdouglas/tempdata2.git"
+    - name: GAV
+      type: string
+      description: >-
+        The GAV to lookup in the database
+      default: "https://github.com/stuartwdouglas/tempdata2.git"
+  results:
+    - name: scm-url
+      description: The scm url
+    - name: scm-tag
+      description: The scm tag
+    - name: message
+      description: A failure message
+    - name: context
+      description: The path to build in the SCM repo
   steps:
     - name: process-build-requests
       image: $(params.BUILD_IMAGE)
       args:
+        - --recipes
         - $(params.RECIPE_DATABASE)
+        - --scm-url
+        - $(results.scm-url.path)
+        - --scm-tag
+        - $(results.scm-tag.path)
+        - --message
+        - $(results.message.path)
+        - --context
+        - $(results.context.path)
+        - --gav
+        - $(params.GAV)

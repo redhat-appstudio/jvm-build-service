@@ -41,8 +41,6 @@ spec:
                 type: string
               tag:
                 type: string
-              path:
-                type: string
               version:
                 type: string
             type: object

@@ -17,6 +17,7 @@ default: build
 
 build:
 	go build -o out/jvmbuildservice cmd/controller/main.go
+	env GOOS=linux GOARCH=amd64 go build -mod=vendor -o out/jvmbuildservice ./cmd/controller
 
 clean:
 	rm -rf out

@@ -4,8 +4,6 @@ kind: Kustomization
 commonLabels:
   app: hacbs-jvm-operator
 resources:
-  - jvmbuildservice.io_artifactbuildrequests.yaml
-  - jvmbuildservice.io_dependencybuilds.yaml
   - deployment.yaml
   - sa.yaml
   - rbac.yaml
