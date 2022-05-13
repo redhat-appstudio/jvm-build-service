@@ -12,9 +12,6 @@ metadata:
 spec:
   description: >-
     This Task is used to find where components are built from and trigger their builds.
-  workspaces:
-    - name: source
-      description: The workspace consisting of maven project.
   params:
     - name: BUILD_IMAGE
       type: string
@@ -30,7 +27,6 @@ spec:
       type: string
       description: >-
         The GAV to lookup in the database
-      default: "https://github.com/stuartwdouglas/tempdata2.git"
   results:
     - name: scm-url
       description: The scm url
