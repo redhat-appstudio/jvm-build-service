@@ -17,6 +17,10 @@ import (
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout = 300 * time.Second
+
+	DependencyBuildScmLabel  = "jvmbuildservice.io/dependencybuild/scm"
+	DependencyBuildPathLabel = "jvmbuildservice.io/dependencybuild/path"
+	DependencyBuildTagLabel  = "jvmbuildservice.io/dependencybuild/tag"
 )
 
 type ReconcileDependencyBuild struct {

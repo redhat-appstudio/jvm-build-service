@@ -33,6 +33,8 @@ public class LookupBuildRecipesCommand implements Runnable {
     @CommandLine.Option(names = "--scm-url")
     Path scmUrl;
 
+    @CommandLine.Option(names = "--scm-type")
+    Path scmType;
     @CommandLine.Option(names = "--scm-tag")
     Path scmTag;
 
@@ -49,6 +51,7 @@ public class LookupBuildRecipesCommand implements Runnable {
             //checkout the git recipe database
             RecipeRepositoryManager manager = RecipeRepositoryManager.create(recipeRepo, "main", Optional.empty(), tempDir);
             RecipeGroupManager recipeGroupManager = new RecipeGroupManager(List.of(manager));
+
             GAV toBuild = GAV.parse(gav);
             Log.infof("Looking up %s", gav);
             //look for SCM info
@@ -65,6 +68,9 @@ public class LookupBuildRecipesCommand implements Runnable {
             Log.infof("SCM URL: %s", parsedInfo.getUri());
             if (scmUrl != null) {
                 Files.writeString(scmUrl, parsedInfo.getUri());
+            }
+            if (scmType != null) {
+                Files.writeString(scmUrl, "git");
             }
             Log.infof("Path: %s", parsedInfo.getPath());
             if (context != null && parsedInfo.getPath() != null) {

@@ -28,6 +28,8 @@ spec:
       description: >-
         The GAV to lookup in the database
   results:
+    - name: scm-type
+      description: The scm type
     - name: scm-url
       description: The scm url
     - name: scm-tag
@@ -46,6 +48,8 @@ spec:
         - $(results.scm-url.path)
         - --scm-tag
         - $(results.scm-tag.path)
+        - --scm-type
+        - $(results.scm-type.path)
         - --message
         - $(results.message.path)
         - --context

@@ -19,17 +19,19 @@ type ArtifactBuildRequestStatus struct {
 //type ArtifactBuildRequestState string
 
 const (
-	// A new resource that has not been acted on by the operator
+	// ArtifactBuildRequestStateNew A new resource that has not been acted on by the operator
 	ArtifactBuildRequestStateNew = "ArtifactBuildRequestNew"
-	// The discovery pipeline is running to try and figure out how to build this artifact
+	// ArtifactBuildRequestStateDiscovering The discovery pipeline is running to try and figure out how to build this artifact
 	ArtifactBuildRequestStateDiscovering = "ArtifactBuildRequestDiscovering"
-	// The discovery pipeline failed to find a way to build this
+	// ArtifactBuildRequestDiscovered The discovery process is complete
+	ArtifactBuildRequestDiscovered = "ArtifactBuildRequestDiscovered"
+	// ArtifactBuildRequestStateMissing The discovery pipeline failed to find a way to build this
 	ArtifactBuildRequestStateMissing = "ArtifactBuildRequestMissing"
-	// The build is running
+	// ArtifactBuildRequestStateBuilding The build is running
 	ArtifactBuildRequestStateBuilding = "ArtifactBuildRequestBuilding"
-	// The build failed
+	// ArtifactBuildRequestStateFailed The build failed
 	ArtifactBuildRequestStateFailed = "ArtifactBuildRequestFailed"
-	// The build completed successfully, the resource can be removed
+	// ArtifactBuildRequestStateComplete The build completed successfully, the resource can be removed
 	ArtifactBuildRequestStateComplete = "ArtifactBuildRequestComplete"
 )
 

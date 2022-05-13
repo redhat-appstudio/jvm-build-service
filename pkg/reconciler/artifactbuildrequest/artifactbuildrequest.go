@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -11,7 +12,6 @@ import (
 	"knative.dev/pkg/apis"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
 
@@ -20,8 +20,9 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout = 300 * time.Second
-	abrLabel       = "jvmbuildservice.io/artifactbuildrequest"
+	contextTimeout     = 300 * time.Second
+	abrLabel           = "jvmbuildservice.io/artifactbuildrequest"
+	taskRunStatusLabel = "jvmbuildservice.io/artifactbuildrequest/status"
 )
 
 type ReconcileArtifactBuildRequest struct {
@@ -40,7 +41,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
-	log := log.FromContext(ctx)
+	//log := log.FromContext(ctx)
 	abr := v1alpha1.ArtifactBuildRequest{}
 	err := r.client.Get(ctx, request.NamespacedName, &abr)
 	if err != nil {
@@ -64,10 +65,6 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 	}
 
 	if abr.Status.State == v1alpha1.ArtifactBuildRequestStateNew || abr.Status.State == "" {
-
-		//log.Info("Found new", "ArtifactBuildRequest", abr)
-
-		//this is in the new state, we launch a TaskRun to do discovery
 		list := &pipelinev1beta1.TaskRunList{}
 		lbls := map[string]string{abrLabel: abrNameForLabel}
 		listOpts := &client.ListOptions{
@@ -78,130 +75,141 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		//if we are back in NEW that means something has gone wrong with discovery and we want to re-run it
-
-		if len(list.Items) == 0 {
-			log.Info("No taskrun found, creating new run", "ArtifactBuildRequest", abr.Name, "label", abrNameForLabel)
-			// create task run
-			tr := pipelinev1beta1.TaskRun{}
-			tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.NamespacedTaskKind}
-			tr.Namespace = abr.Namespace
-			tr.GenerateName = abr.Name + "-scm-discovery-"
-			tr.Labels = map[string]string{abrLabel: abrNameForLabel}
-			tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: "GAV", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: abr.Spec.GAV}})
-			err = r.client.Create(ctx, &tr)
+		//if we are back in NEW that means something has gone wrong with discovery, and we want to re-run it
+		for _, existing := range list.Items {
+			//we don't want this existing TR confusing things
+			//we also don't want to just delete them as they may have info
+			//so we just stick a label on them to say that we have a new one
+			//this is an edge case, it would be triggered by something going wrong
+			existing.Labels[taskRunStatusLabel] = "outdated"
+			err := r.client.Update(ctx, &existing)
 			if err != nil {
 				return reconcile.Result{}, err
-			}
-			log.Info("Updating status to discovering", "ArtifactBuildRequest", abr)
-			abr.Status.State = v1alpha1.ArtifactBuildRequestStateDiscovering
-			err = r.client.Status().Update(ctx, &abr)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		} else {
-			pr := list.Items[0]
-			if pr.Status.CompletionTime != nil {
-				condition := pr.Status.GetCondition(apis.ConditionSucceeded)
-				if !condition.IsTrue() {
-					abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
-					results := pr.Status.TaskRunResults
-					for _, result := range results {
-						if result.Name == "message" {
-							abr.Status.Message = result.Value
-							break
-						}
-					}
-				} else {
-					abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
-					//TODO: build pipeline
-				}
-				err = r.client.Status().Update(ctx, &abr)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
 			}
 		}
-	}
 
-	// rough approximation of what is in https://github.com/redhat-appstudio/jvm-build-service/blob/main/build-request-processor/src/main/java/com/redhat/hacbs/container/analyser/ProcessCommand.java
-	// where we replace the list done there, using the watch / relist induced event we get here
-	if abr.Status.State == v1alpha1.ArtifactBuildRequestStateNew {
-		//if the ABR is new then we want to kick of a pipeline to
-		abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
-		err = r.client.Update(ctx, &abr)
+		// create task run
+		tr := pipelinev1beta1.TaskRun{}
+		tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.NamespacedTaskKind}
+		tr.Namespace = abr.Namespace
+		tr.GenerateName = abr.Name + "-scm-discovery-"
+		tr.Labels = map[string]string{abrLabel: abrNameForLabel, taskRunStatusLabel: "current"}
+		tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: "GAV", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: abr.Spec.GAV}})
+		err = r.client.Create(ctx, &tr)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		return reconcile.Result{}, nil
+		abr.Status.State = v1alpha1.ArtifactBuildRequestStateDiscovering
+		err = r.client.Status().Update(ctx, &abr)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+	} else if abr.Status.State == v1alpha1.ArtifactBuildRequestStateDiscovering {
+		//we have a notification and we are in discovering
+		//lets see if our tr is done
+		list := &pipelinev1beta1.TaskRunList{}
+		lbls := map[string]string{abrLabel: abrNameForLabel, taskRunStatusLabel: "current"}
+		listOpts := &client.ListOptions{
+			Namespace:     abr.Namespace,
+			LabelSelector: labels.SelectorFromSet(lbls),
+		}
+		err = r.client.List(ctx, list, listOpts)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		if len(list.Items) == 0 {
+			//no TR found, this is odd
+			//I guess just go back to new
+			abr.Status.State = v1alpha1.ArtifactBuildRequestStateNew
+			err := r.client.Update(ctx, &abr)
+			return reconcile.Result{Requeue: true}, err
+		}
+		tr := list.Items[0]
+		if tr.Status.CompletionTime != nil {
+			//make sure the tr is done
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition.IsTrue() {
+				abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
+				//now lets create the dependency build object
+				//once this object has been created it's resolver takes over
+				var scmUrl string
+				var scmTag string
+				var scmType string
+				var message string
+				var context string
+
+				for _, res := range tr.Status.TaskRunResults {
+					if res.Name == "scm-url" {
+						scmUrl = res.Value
+					} else if res.Name == "scm-tag" {
+						scmTag = res.Value
+					} else if res.Name == "scm-type" {
+						scmType = res.Value
+					} else if res.Name == "message" {
+						message = res.Value
+					} else if res.Name == "context" {
+						context = res.Value
+					}
+				}
+				if scmTag == "" {
+					//this is a failure
+					abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
+					abr.Status.Message = message
+					err = r.client.Status().Update(ctx, &abr)
+					return reconcile.Result{}, err
+				}
+				//now lets look for an existing build object
+				list := &v1alpha1.DependencyBuildList{}
+				lbls := map[string]string{
+					dependencybuild.DependencyBuildScmLabel:  scmUrl,
+					dependencybuild.DependencyBuildTagLabel:  scmTag,
+					dependencybuild.DependencyBuildPathLabel: context,
+				}
+				listOpts := &client.ListOptions{
+					Namespace:     abr.Namespace,
+					LabelSelector: labels.SelectorFromSet(lbls),
+				}
+				err = r.client.List(ctx, list, listOpts)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				if len(list.Items) == 0 {
+					//no existing build object found, lets create one
+					db := &v1alpha1.DependencyBuild{}
+					db.Namespace = abr.Namespace
+					//TODO: name should be based on the git repo, not the abr, but needs
+					//a sanitization algorithm
+					db.GenerateName = abr.Name + "-"
+					db.Spec = v1alpha1.DependencyBuildSpec{
+						SCMURL:  scmUrl,
+						SCMType: scmType,
+						Tag:     scmTag,
+						Path:    context,
+					}
+					err = r.client.Create(ctx, db)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+				}
+				abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
+				err := r.client.Update(ctx, &abr)
+				return reconcile.Result{}, err
+			} else {
+				abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
+				results := tr.Status.TaskRunResults
+				for _, result := range results {
+					if result.Name == "message" {
+						abr.Status.Message = result.Value
+						break
+					}
+				}
+				err = r.client.Status().Update(ctx, &abr)
+				return reconcile.Result{}, err
+			}
+		} else {
+			return reconcile.Result{}, nil
+		}
 	}
-
-	//TODO need some golang approximation of RecipeRepositoryManager and RecipeGroupManager that takes
-	// the gav and abr and produces the needed result
-	// Per last team meeting: may make sense to capture the RecipeRepositoryManager and RecipeGroupManager
-	// as steps in a PipelineRun that we launch here.  We then analyze the results/output of the PipelineRun
-	// (where we figure what those results/output are stored so this reconciler can retrieve them) and then
-	// move onto the next step below.
-	//
-	//dbName := "someNamDerivedFromArtifactBuildRequestAndGa"
-	//dbNamespace := abr.Namespace
-	//key := types.NamespacedName{Namespace: dbNamespace, Name: dbName}
-	//db := v1alpha1.DependencyBuild{ObjectMeta: metav1.ObjectMeta{Name: dbName}}
-	//err = r.client.Get(ctx, key, &db)
-	//if errors.IsNotFound(err) {
-	//	db.Spec.SCMURL = "someurl"
-	//	db.Spec.SCMType = "git"
-	//	db.Spec.Tag = "selectedTag"
-	//	db.Spec.Version = "someVersion"
-	//
-	//	//err = r.client.Create(ctx, &db)
-	//	//if err != nil {
-	//	//	return reconcile.Result{}, err
-	//	//}
-	//}
-	//if err != nil {
-	//	return reconcile.Result{}, err
-	//}
-	//
-	//abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
-	//err = r.client.Update(ctx, &abr)
-	//if err != nil {
-	//	return reconcile.Result{}, err
-	//}
-	//
-	//// see if we already launched a PipelineRun associated with this ABR
-	//list := &pipelinev1beta1.PipelineRunList{}
-	//abrNameForLabel := types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}.String()
-	//lbls := map[string]string{"jvmbuildservice.io/artifactbuildrequet": abrNameForLabel}
-	//listOpts := &client.ListOptions{
-	//	Namespace:     abr.Namespace,
-	//	LabelSelector: labels.SelectorFromSet(lbls),
-	//}
-	//err = r.client.List(ctx, list, listOpts)
-	//if err != nil {
-	//	return reconcile.Result{}, err
-	//}
-	//if len(list.Items) == 0 {
-	//	// create pipelinerun
-	//	pr := &pipelinev1beta1.PipelineRun{}
-	//	pr.Namespace = abr.Namespace
-	//	pr.GenerateName = abr.Name + "-"
-	//	//TODO fill in other needed fields of PR
-	//	err = r.client.Create(ctx, pr)
-	//	if err != nil {
-	//		return reconcile.Result{}, err
-	//	}
-	//} else {
-	//	pr := list.Items[0]
-	//	if pr.Status.CompletionTime != nil {
-	//		abr.Status.State = v1alpha1.ArtifactBuildRequestStateComplete
-	//		condition := pr.Status.GetCondition(apis.ConditionSucceeded)
-	//		if !condition.IsTrue() {
-	//			abr.Status.State = v1alpha1.ArtifactBuildRequestStateFailed
-	//		}
-	//
-	//	}
-	//}
-
 	return reconcile.Result{}, nil
 }

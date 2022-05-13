@@ -14,8 +14,8 @@ const (
 type DependencyBuildSpec struct {
 	SCMURL  string `json:"scmURL,omitempty"`
 	SCMType string `json:"scmType,omitempty"`
-	Version string `json:"version,omitempty"`
 	Tag     string `json:"tag,omitempty"`
+	Path    string `json:"path,omitempty"`
 }
 
 type DependencyBuildStatus struct {
