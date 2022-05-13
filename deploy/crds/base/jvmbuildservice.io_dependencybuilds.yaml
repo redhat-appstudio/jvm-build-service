@@ -119,6 +119,8 @@ spec:
                   - type
                   type: object
                 type: array
+              status:
+                type: string
             type: object
         required:
         - spec
