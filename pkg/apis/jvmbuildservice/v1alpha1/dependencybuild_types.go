@@ -23,7 +23,7 @@ type DependencyBuildStatus struct {
 	// NOTE: inspecting the fabric8 Status class, it looked analogous to k8s Condition,
 	// and then I took the liberty of making it an array, given best practices in the k8s/ocp ecosystems
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	//NOTE: went with conditions vs. placeholder todo string in java code
+	Status     string
 }
 
 // +genclient

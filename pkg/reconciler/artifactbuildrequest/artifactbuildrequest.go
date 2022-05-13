@@ -12,7 +12,6 @@ import (
 	"knative.dev/pkg/apis"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
 
@@ -21,9 +20,9 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout              = 300 * time.Second
-	ArtifactBuildRequestIdLabel = "jvmbuildservice.io/artifactbuildrequest-id"
-	taskRunStatusLabel          = "jvmbuildservice.io/artifactbuildrequest-status"
+	contextTimeout     = 300 * time.Second
+	IdLabel            = "jvmbuildservice.io/artifactbuildrequest-id"
+	taskRunStatusLabel = "jvmbuildservice.io/artifactbuildrequest-status"
 )
 
 type ReconcileArtifactBuildRequest struct {
@@ -41,7 +40,6 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
-	log := log.FromContext(ctx)
 	defer cancel()
 	//log := log.FromContext(ctx)
 	abr := v1alpha1.ArtifactBuildRequest{}
@@ -52,7 +50,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		}
 		return ctrl.Result{}, err
 	}
-	abrNameForLabel, existingLabel := abr.Labels[ArtifactBuildRequestIdLabel]
+	abrNameForLabel, existingLabel := abr.Labels[IdLabel]
 	if !existingLabel {
 		//we make sure that there is always a label assigned
 		//our names don't meet the label rules, so everything matches
@@ -62,13 +60,16 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		if abr.Labels == nil {
 			abr.Labels = map[string]string{}
 		}
-		abr.Labels[ArtifactBuildRequestIdLabel] = abrNameForLabel
-		r.client.Update(ctx, &abr)
+		abr.Labels[IdLabel] = abrNameForLabel
+		err = r.client.Update(ctx, &abr)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	if abr.Status.State == v1alpha1.ArtifactBuildRequestStateNew || abr.Status.State == "" {
 		list := &pipelinev1beta1.TaskRunList{}
-		lbls := map[string]string{ArtifactBuildRequestIdLabel: abrNameForLabel}
+		lbls := map[string]string{IdLabel: abrNameForLabel}
 		listOpts := &client.ListOptions{
 			Namespace:     abr.Namespace,
 			LabelSelector: labels.SelectorFromSet(lbls),
@@ -95,7 +96,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.NamespacedTaskKind}
 		tr.Namespace = abr.Namespace
 		tr.GenerateName = abr.Name + "-scm-discovery-"
-		tr.Labels = map[string]string{ArtifactBuildRequestIdLabel: abrNameForLabel, taskRunStatusLabel: "current"}
+		tr.Labels = map[string]string{IdLabel: abrNameForLabel, taskRunStatusLabel: "current"}
 		tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: "GAV", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: abr.Spec.GAV}})
 		err = r.client.Create(ctx, &tr)
 		if err != nil {
@@ -107,11 +108,10 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 			return reconcile.Result{}, err
 		}
 	} else if abr.Status.State == v1alpha1.ArtifactBuildRequestStateDiscovered {
-		log.Info("discovered")
 		//we have a notification and we are in discovering
 		//lets see if our tr is done
 		list := &pipelinev1beta1.TaskRunList{}
-		lbls := map[string]string{ArtifactBuildRequestIdLabel: abrNameForLabel, taskRunStatusLabel: "current"}
+		lbls := map[string]string{IdLabel: abrNameForLabel, taskRunStatusLabel: "current"}
 		listOpts := &client.ListOptions{
 			Namespace:     abr.Namespace,
 			LabelSelector: labels.SelectorFromSet(lbls),
@@ -121,14 +121,12 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 			return reconcile.Result{}, err
 		}
 		if len(list.Items) == 0 {
-			log.Info("none found")
 			//no TR found, this is odd
 			//I guess just go back to new
 			abr.Status.State = v1alpha1.ArtifactBuildRequestStateNew
 			err := r.client.Update(ctx, &abr)
 			return reconcile.Result{Requeue: true}, err
 		}
-		log.Info("found", "items", list.Items)
 		tr := list.Items[0]
 		if tr.Status.CompletionTime != nil {
 			//make sure the tr is done
@@ -141,7 +139,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 				var scmTag string
 				var scmType string
 				var message string
-				var context string
+				var path string
 
 				for _, res := range tr.Status.TaskRunResults {
 					if res.Name == "scm-url" {
@@ -153,7 +151,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 					} else if res.Name == "message" {
 						message = res.Value
 					} else if res.Name == "context" {
-						context = res.Value
+						path = res.Value
 					}
 				}
 				if scmTag == "" {
@@ -165,12 +163,12 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 				}
 				//we generate a hash of the url, tag and path for
 				//our unique identifier
-				hash := md5.Sum([]byte(scmUrl + scmTag + context))
+				hash := md5.Sum([]byte(scmUrl + scmTag + path))
 				depId := hex.EncodeToString(hash[:])
 				//now lets look for an existing build object
 				list := &v1alpha1.DependencyBuildList{}
 				lbls := map[string]string{
-					dependencybuild.DependencyBuildIdentifier: depId,
+					dependencybuild.IdLabel: depId,
 				}
 				listOpts := &client.ListOptions{
 					Namespace:     abr.Namespace,
@@ -192,7 +190,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 						SCMURL:  scmUrl,
 						SCMType: scmType,
 						Tag:     scmTag,
-						Path:    context,
+						Path:    path,
 					}
 					err = r.client.Create(ctx, db)
 					if err != nil {
@@ -201,11 +199,12 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 				}
 				//add the dependency build label to the abr as well
 				//so you can easily look them up
-				abr.Labels[dependencybuild.DependencyBuildIdentifier] = depId
+				abr.Labels[dependencybuild.IdLabel] = depId
 				err := r.client.Update(ctx, &abr)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
+				//move the state to building
 				abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
 				err = r.client.Update(ctx, &abr)
 				return reconcile.Result{}, err

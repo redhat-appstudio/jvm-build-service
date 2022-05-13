@@ -45,7 +45,7 @@ func (r *ReconcileTaskRunRequest) Reconcile(ctx context.Context, request reconci
 		}
 		return ctrl.Result{}, err
 	}
-	abrNameForLabel, existingLabel := tr.Labels[artifactbuildrequest.ArtifactBuildRequestIdLabel]
+	abrNameForLabel, existingLabel := tr.Labels[artifactbuildrequest.IdLabel]
 	if !existingLabel {
 		return reconcile.Result{}, nil
 	}
@@ -54,7 +54,7 @@ func (r *ReconcileTaskRunRequest) Reconcile(ctx context.Context, request reconci
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
 		list := v1alpha1.ArtifactBuildRequestList{}
-		lbls := map[string]string{artifactbuildrequest.ArtifactBuildRequestIdLabel: abrNameForLabel}
+		lbls := map[string]string{artifactbuildrequest.IdLabel: abrNameForLabel}
 		listOpts := &client.ListOptions{
 			Namespace:     tr.Namespace,
 			LabelSelector: labels.SelectorFromSet(lbls),
