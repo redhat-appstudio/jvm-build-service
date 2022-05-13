@@ -163,12 +163,14 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 					err = r.client.Status().Update(ctx, &abr)
 					return reconcile.Result{}, err
 				}
+				//we generate a hash of the url, tag and path for
+				//our unique identifier
+				hash := md5.Sum([]byte(scmUrl + scmTag + context))
+				depId := hex.EncodeToString(hash[:])
 				//now lets look for an existing build object
 				list := &v1alpha1.DependencyBuildList{}
 				lbls := map[string]string{
-					dependencybuild.DependencyBuildScmLabel:  scmUrl,
-					dependencybuild.DependencyBuildTagLabel:  scmTag,
-					dependencybuild.DependencyBuildPathLabel: context,
+					dependencybuild.DependencyBuildIdentifier: depId,
 				}
 				listOpts := &client.ListOptions{
 					Namespace:     abr.Namespace,
@@ -197,8 +199,15 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 						return reconcile.Result{}, err
 					}
 				}
-				abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
+				//add the dependency build label to the abr as well
+				//so you can easily look them up
+				abr.Labels[dependencybuild.DependencyBuildIdentifier] = depId
 				err := r.client.Update(ctx, &abr)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
+				err = r.client.Update(ctx, &abr)
 				return reconcile.Result{}, err
 			} else {
 				abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing

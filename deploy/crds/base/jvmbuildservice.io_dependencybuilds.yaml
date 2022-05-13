@@ -35,13 +35,13 @@ spec:
             type: object
           spec:
             properties:
+              path:
+                type: string
               scmType:
                 type: string
               scmURL:
                 type: string
               tag:
-                type: string
-              version:
                 type: string
             type: object
           status:
