@@ -70,7 +70,7 @@ public class LookupBuildRecipesCommand implements Runnable {
                 Files.writeString(scmUrl, parsedInfo.getUri());
             }
             if (scmType != null) {
-                Files.writeString(scmUrl, "git");
+                Files.writeString(scmType, "git");
             }
             Log.infof("Path: %s", parsedInfo.getPath());
             if (context != null && parsedInfo.getPath() != null) {

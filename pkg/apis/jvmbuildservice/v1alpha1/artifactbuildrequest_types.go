@@ -23,8 +23,8 @@ const (
 	ArtifactBuildRequestStateNew = "ArtifactBuildRequestNew"
 	// ArtifactBuildRequestStateDiscovering The discovery pipeline is running to try and figure out how to build this artifact
 	ArtifactBuildRequestStateDiscovering = "ArtifactBuildRequestDiscovering"
-	// ArtifactBuildRequestDiscovered The discovery process is complete
-	ArtifactBuildRequestDiscovered = "ArtifactBuildRequestDiscovered"
+	// ArtifactBuildRequestStateDiscovered The discovery process is complete
+	ArtifactBuildRequestStateDiscovered = "ArtifactBuildRequestDiscovered"
 	// ArtifactBuildRequestStateMissing The discovery pipeline failed to find a way to build this
 	ArtifactBuildRequestStateMissing = "ArtifactBuildRequestMissing"
 	// ArtifactBuildRequestStateBuilding The build is running
