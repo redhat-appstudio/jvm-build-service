@@ -1,16 +1,18 @@
 package com.redhat.hacbs.analyser.kube;
 
-import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequest;
-import io.fabric8.kubernetes.client.KubernetesClient;
-import io.quarkus.logging.Log;
-import picocli.CommandLine;
-
-import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.inject.Inject;
+
+import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequest;
+
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.quarkus.logging.Log;
+import picocli.CommandLine;
 
 @CommandLine.Command(name = "list-build-requests")
 public class ListBuildRequestsCommand implements Runnable {

@@ -6,7 +6,6 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequest;
-import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequestStatus;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.Status;
@@ -50,7 +49,6 @@ public class RebuildService {
                 objectMeta.setAdditionalProperty("gav", gav);
                 item.setMetadata(objectMeta);
                 item.getSpec().setGav(gav);
-                item.getStatus().setState(ArtifactBuildRequestStatus.State.NEW);
                 item.setKind(ArtifactBuildRequest.class.getSimpleName());
                 kubernetesClient.resources(ArtifactBuildRequest.class).create(item);
             } catch (KubernetesClientException e) {
