@@ -21,6 +21,7 @@ import (
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout     = 300 * time.Second
+	TaskRunLabel       = "jvmbuildservice.io/artifactbuildrequest-taskrun"
 	IdLabel            = "jvmbuildservice.io/artifactbuildrequest-id"
 	taskRunStatusLabel = "jvmbuildservice.io/artifactbuildrequest-status"
 )
@@ -95,7 +96,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.NamespacedTaskKind}
 		tr.Namespace = abr.Namespace
 		tr.GenerateName = abr.Name + "-scm-discovery-"
-		tr.Labels = map[string]string{IdLabel: abrNameForLabel, taskRunStatusLabel: "current"}
+		tr.Labels = map[string]string{IdLabel: abrNameForLabel, taskRunStatusLabel: "current", TaskRunLabel: ""}
 		tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: "GAV", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: abr.Spec.GAV}})
 		if err = r.client.Create(ctx, &tr); err != nil {
 			return reconcile.Result{}, err

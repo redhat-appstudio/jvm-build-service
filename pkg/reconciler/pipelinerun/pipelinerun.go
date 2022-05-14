@@ -47,11 +47,8 @@ func (r *ReconcilePipelineRunRequest) Reconcile(ctx context.Context, request rec
 		return ctrl.Result{}, err
 	}
 	//if there is no label then ignore it
-	abrNameForLabel, existingLabel := pr.Labels[dependencybuild.IdLabel]
-	if !existingLabel {
-		return reconcile.Result{}, nil
-	}
 	if pr.Status.CompletionTime != nil {
+		abrNameForLabel := pr.Labels[dependencybuild.IdLabel]
 		//the pr is done, lets potentially update the dependency build
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible

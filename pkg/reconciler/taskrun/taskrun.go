@@ -45,11 +45,8 @@ func (r *ReconcileTaskRunRequest) Reconcile(ctx context.Context, request reconci
 		}
 		return ctrl.Result{}, err
 	}
-	abrNameForLabel, existingLabel := tr.Labels[artifactbuildrequest.IdLabel]
-	if !existingLabel {
-		return reconcile.Result{}, nil
-	}
 	if tr.Status.CompletionTime != nil {
+		abrNameForLabel := tr.Labels[artifactbuildrequest.IdLabel]
 		//the tr is done, lets potentially update the ABR's
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible

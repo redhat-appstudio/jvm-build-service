@@ -22,9 +22,9 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout = 300 * time.Second
-
-	IdLabel = "jvmbuildservice.io/dependencybuild-id"
+	contextTimeout   = 300 * time.Second
+	IdLabel          = "jvmbuildservice.io/dependencybuild-id"
+	PipelineRunLabel = "jvmbuildservice.io/dependencybuild-pipelinerun"
 )
 
 type ReconcileDependencyBuild struct {
@@ -74,7 +74,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		tr := pipelinev1beta1.PipelineRun{}
 		tr.Namespace = db.Namespace
 		tr.GenerateName = db.Name + "-build-"
-		tr.Labels = map[string]string{IdLabel: db.Labels[IdLabel]}
+		tr.Labels = map[string]string{IdLabel: db.Labels[IdLabel], PipelineRunLabel: ""}
 		tr.Spec.PipelineRef = &pipelinev1beta1.PipelineRef{Name: "run-component-build"}
 		tr.Spec.Params = []pipelinev1beta1.Param{
 			{Name: "url", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.SCMURL}},
