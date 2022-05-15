@@ -130,7 +130,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
                     try {
                         List<String> paths = new ArrayList<>(repository.getPaths());
                         if (paths.isEmpty()) {
-                            paths.add("/");
+                            paths.add("");
                         }
                         for (var path : paths) {
                             analyseRepository(doubleUps, doubleUpFiles, recipeLayoutManager, groupManager, repository,

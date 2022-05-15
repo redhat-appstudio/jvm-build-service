@@ -27,7 +27,8 @@ public class ListBuildRequestsCommand implements Runnable {
             Map<String, List<String>> results = new TreeMap<>();
             Map<String, AtomicInteger> counts = new TreeMap<>();
             for (var request : items) {
-                results.computeIfAbsent(request.getStatus().getState(), s -> new ArrayList<>()).add(request.getSpec().getGav());
+                results.computeIfAbsent(request.getStatus().getState(), s -> new ArrayList<>())
+                        .add(request.getSpec().getGav() + " " + request.getStatus().getMessage());
                 counts.computeIfAbsent(request.getStatus().getState(), s -> new AtomicInteger()).incrementAndGet();
             }
             for (var request : results.entrySet()) {
