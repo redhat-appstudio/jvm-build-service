@@ -66,7 +66,9 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		return reconcile.Result{}, r.client.Update(ctx, &db)
 	}
 
-	if db.Status.State == "" || db.Status.State == v1alpha1.DependencyBuildStateNew {
+	switch db.Status.State {
+
+	case "", v1alpha1.DependencyBuildStateNew:
 		//new build, kick off a pipeline run to run the build
 		//TODO: this state flow will change when we start analysing the required images etc
 		//for now just to a super basic build and change the state to building
@@ -97,11 +99,11 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 		db.Status.State = v1alpha1.DependencyBuildStateBuilding
 		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
-	} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
+	case v1alpha1.DependencyBuildStateComplete:
 		return reconcile.Result{}, r.updateArtifactRequestState(ctx, db, v1alpha1.ArtifactBuildRequestStateComplete)
-	} else if db.Status.State == v1alpha1.DependencyBuildStateFailed {
+	case v1alpha1.DependencyBuildStateFailed:
 		return reconcile.Result{}, r.updateArtifactRequestState(ctx, db, v1alpha1.ArtifactBuildRequestStateFailed)
-	} else if db.Status.State == v1alpha1.DependencyBuildStateBuilding {
+	case v1alpha1.DependencyBuildStateBuilding:
 		//make sure we still have a linked pr
 		list := &pipelinev1beta1.PipelineRunList{}
 		lbls := map[string]string{

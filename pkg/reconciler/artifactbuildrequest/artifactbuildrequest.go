@@ -68,7 +68,8 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		}
 	}
 
-	if abr.Status.State == v1alpha1.ArtifactBuildRequestStateNew || abr.Status.State == "" {
+	switch abr.Status.State {
+	case v1alpha1.ArtifactBuildRequestStateNew, "":
 		list := &pipelinev1beta1.TaskRunList{}
 		lbls := map[string]string{IdLabel: abrNameForLabel}
 		listOpts := &client.ListOptions{
@@ -105,7 +106,7 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		if err = r.client.Status().Update(ctx, &abr); err != nil {
 			return reconcile.Result{}, err
 		}
-	} else if abr.Status.State == v1alpha1.ArtifactBuildRequestStateDiscovered {
+	case v1alpha1.ArtifactBuildRequestStateDiscovered:
 		//we have a notification and we are in discovering
 		//lets see if our tr is done
 		list := &pipelinev1beta1.TaskRunList{}
