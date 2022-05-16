@@ -2,11 +2,10 @@ package taskrun
 
 import (
 	"context"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -17,7 +16,12 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout = 300 * time.Second
+	contextTimeout        = 300 * time.Second
+	TaskResultScmUrl      = "scm-url"
+	TaskResultScmTag      = "scm-tag"
+	TaskResultScmType     = "scm-type"
+	TaskResultContextPath = "context"
+	TaskResultMessage     = "message"
 )
 
 type ReconcileTaskRunRequest struct {
@@ -45,24 +49,43 @@ func (r *ReconcileTaskRunRequest) Reconcile(ctx context.Context, request reconci
 		}
 		return ctrl.Result{}, err
 	}
+	var scmUrl string
+	var scmTag string
+	var scmType string
+	var message string
+	var path string
+
+	//we grab the results here and put them on the ABR
+	for _, res := range tr.Status.TaskRunResults {
+		switch res.Name {
+		case TaskResultScmUrl:
+			scmUrl = res.Value
+		case TaskResultScmTag:
+			scmTag = res.Value
+		case TaskResultScmType:
+			scmType = res.Value
+		case TaskResultMessage:
+			message = res.Value
+		case TaskResultContextPath:
+			path = res.Value
+		}
+	}
 	if tr.Status.CompletionTime != nil {
-		abrNameForLabel := tr.Labels[artifactbuildrequest.IdLabel]
 		//the tr is done, lets potentially update the ABR's
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
-		list := v1alpha1.ArtifactBuildRequestList{}
-		lbls := map[string]string{artifactbuildrequest.IdLabel: abrNameForLabel}
-		listOpts := &client.ListOptions{
-			Namespace:     tr.Namespace,
-			LabelSelector: labels.SelectorFromSet(lbls),
-		}
-		err = r.client.List(ctx, &list, listOpts)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		for _, abr := range list.Items {
+		for _, ref := range tr.OwnerReferences {
+			abr := v1alpha1.ArtifactBuildRequest{}
+			if err = r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: ref.Name}, &abr); err != nil {
+				return reconcile.Result{}, err
+			}
 			if abr.Status.State == v1alpha1.ArtifactBuildRequestStateDiscovering {
 				abr.Status.State = v1alpha1.ArtifactBuildRequestStateDiscovered
+				abr.Status.SCMURL = scmUrl
+				abr.Status.Tag = scmTag
+				abr.Status.Message = message
+				abr.Status.SCMType = scmType
+				abr.Status.Path = path
 				err = r.client.Status().Update(ctx, &abr)
 				if err != nil {
 					return reconcile.Result{}, err

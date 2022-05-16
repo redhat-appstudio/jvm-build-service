@@ -13,14 +13,13 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&pipelinev1beta1.TaskRun{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
-				return true
+				return false
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				return true
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
-				//TODO possibly change to false over time
-				return true
+				return false
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
 				//TODO possibly change to false over time

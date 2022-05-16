@@ -2,11 +2,10 @@ package pipelinerun
 
 import (
 	"context"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,29 +47,22 @@ func (r *ReconcilePipelineRunRequest) Reconcile(ctx context.Context, request rec
 	}
 	//if there is no label then ignore it
 	if pr.Status.CompletionTime != nil {
-		abrNameForLabel := pr.Labels[dependencybuild.IdLabel]
 		//the pr is done, lets potentially update the dependency build
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
-		list := v1alpha1.DependencyBuildList{}
-		lbls := map[string]string{dependencybuild.IdLabel: abrNameForLabel}
-		listOpts := &client.ListOptions{
-			Namespace:     pr.Namespace,
-			LabelSelector: labels.SelectorFromSet(lbls),
-		}
-		err = r.client.List(ctx, &list, listOpts)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
-		for _, abr := range list.Items {
-			if abr.Status.State == v1alpha1.DependencyBuildStateBuilding {
+		for _, ref := range pr.OwnerReferences {
+			db := v1alpha1.DependencyBuild{}
+			if err = r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &db); err != nil {
+				return reconcile.Result{}, err
+			}
+			if db.Status.State == v1alpha1.DependencyBuildStateBuilding {
 				if success {
-					abr.Status.State = v1alpha1.DependencyBuildStateComplete
+					db.Status.State = v1alpha1.DependencyBuildStateComplete
 				} else {
-					abr.Status.State = v1alpha1.DependencyBuildStateFailed
+					db.Status.State = v1alpha1.DependencyBuildStateFailed
 				}
-				err = r.client.Status().Update(ctx, &abr)
+				err = r.client.Status().Update(ctx, &db)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
