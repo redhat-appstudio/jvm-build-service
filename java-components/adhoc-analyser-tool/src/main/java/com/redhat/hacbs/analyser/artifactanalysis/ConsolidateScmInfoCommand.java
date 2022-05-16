@@ -98,6 +98,7 @@ public class ConsolidateScmInfoCommand implements Runnable {
                         throw new RuntimeException(e);
                     }
                 });
+                break;
             }
         }
 
