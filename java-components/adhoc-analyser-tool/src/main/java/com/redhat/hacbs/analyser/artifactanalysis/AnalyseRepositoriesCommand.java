@@ -36,6 +36,7 @@ import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
 import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
+import com.redhat.hacbs.recipies.scm.RepositoryInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 
 import io.quarkus.dev.console.QuarkusConsole;
@@ -63,6 +64,9 @@ public class AnalyseRepositoriesCommand implements Runnable {
 
     @CommandLine.Option(names = "-a", defaultValue = "false")
     boolean allTags;
+
+    @CommandLine.Option(names = "-l", defaultValue = "false")
+    boolean legacy;
 
     @Override
     public void run() {
@@ -92,7 +96,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
                 repositories.add(existing);
             }
             for (var repository : repositories) {
-                if (repository.isDeprecated()) {
+                if (repository.isDeprecated() != legacy) {
                     continue;
                 }
 
@@ -130,7 +134,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
                     try {
                         List<String> paths = new ArrayList<>(repository.getPaths());
                         if (paths.isEmpty()) {
-                            paths.add("/");
+                            paths.add("");
                         }
                         for (var path : paths) {
                             analyseRepository(doubleUps, doubleUpFiles, recipeLayoutManager, groupManager, repository,
@@ -165,15 +169,9 @@ public class AnalyseRepositoriesCommand implements Runnable {
     private boolean analyseRepository(Map<String, String> doubleUps, Set<Path> doubleUpFiles,
             RecipeLayoutManager recipeLayoutManager, RecipeGroupManager groupManager, Repository repository, Path checkoutPath)
             throws IOException {
-        MavenProject result;
-        if (Files.exists(checkoutPath.resolve("pom.xml"))) {
-            result = MavenAnalyser.doProjectDiscovery(checkoutPath);
-        } else if (Files.exists(checkoutPath.resolve("build.gradle"))
-                || Files.exists(checkoutPath.resolve("build.gradle.kts"))) {
-            result = GradleAnalyser.doProjectDiscovery(checkoutPath);
-        } else {
+        MavenProject result = analyseProject(checkoutPath);
+        if (result == null)
             return true;
-        }
         Set<GAV> locationRequests = new HashSet<>();
         for (var module : result.getProjects().values()) {
             locationRequests.add(new GAV(module.getGav().getGroupId(), module.getGav().getArtifactId(),
@@ -181,23 +179,95 @@ public class AnalyseRepositoriesCommand implements Runnable {
         }
         var existing = groupManager
                 .requestBuildInformation(new ProjectBuildRequest(locationRequests, Set.of(BuildRecipe.SCM)));
-        for (var module : result.getProjects().values()) {
-            var existingModule = existing.getRecipes().get(module.getGav());
-            if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
-                ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingModule.get(BuildRecipe.SCM));
-                if (existingInfo.getUri().equals(repository.getUri())) {
-                    continue;
+        if (!legacy) {
+            for (var module : result.getProjects().values()) {
+                var existingModule = existing.getRecipes().get(module.getGav());
+                if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
+                    ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingModule.get(BuildRecipe.SCM));
+                    if (existingInfo.getUri().equals(repository.getUri())) {
+                        continue;
+                    }
+                    if (existingModule.get(BuildRecipe.SCM).toString().contains("_artifact")) {
+                        doubleUps.put(existingInfo.getUri(), repository.getUri() + "  " + module.getGav());
+                        doubleUpFiles.add(existingModule.get(BuildRecipe.SCM));
+                    }
                 }
-                if (existingModule.get(BuildRecipe.SCM).toString().contains("_artifact")) {
-                    doubleUps.put(existingInfo.getUri(), repository.getUri() + "  " + module.getGav());
-                    doubleUpFiles.add(existingModule.get(BuildRecipe.SCM));
+                ScmInfo info = new ScmInfo("git", repository.getUri(), result.getPath());
+                recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, info,
+                        module.getGav().getGroupId(), module.getGav().getArtifactId(), null));
+            }
+        } else {
+            //legacy mode, we just want to add legacy info to an existing file
+            for (var module : result.getProjects().values()) {
+                var existingModule = existing.getRecipes().get(module.getGav());
+                if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
+                    Path existingFile = existingModule.get(BuildRecipe.SCM);
+                    ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
+                    boolean found = false;
+                    for (var existingLegacy : existingInfo.getLegacyRepos()) {
+                        if (existingLegacy.getUri().equals(repository.getUri())) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        existingInfo.getLegacyRepos().add(new RepositoryInfo("git", repository.getUri(), result.getPath()));
+                    }
+                    BuildRecipe.SCM.getHandler().write(existingInfo, existingFile);
                 }
             }
-            ScmInfo info = new ScmInfo("git", repository.getUri());
-            recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, info,
-                    module.getGav().getGroupId(), module.getGav().getArtifactId(), null));
         }
+
         return false;
+    }
+
+    private MavenProject analyseProject(Path checkoutPath) {
+        MavenProject result;
+        Path path = findBuildDir(checkoutPath, List.of("pom.xml", "build.gradle"));
+        if (path == null) {
+            return null;
+        }
+        if (Files.exists(path.resolve("pom.xml"))) {
+            result = MavenAnalyser.doProjectDiscovery(path);
+        } else if (Files.exists(path.resolve("build.gradle"))
+                || Files.exists(path.resolve("build.gradle.kts"))) {
+            result = GradleAnalyser.doProjectDiscovery(path);
+        } else {
+            return null;
+        }
+        if (!path.equals(checkoutPath)) {
+            result.setPath(checkoutPath.relativize(path).toString());
+        }
+        return result;
+    }
+
+    private Path findBuildDir(Path start, List<String> buildFiles) {
+        for (var i : buildFiles) {
+            if (Files.exists(start.resolve(i))) {
+                return start;
+            }
+        }
+        Path result = null;
+        try (var stream = Files.newDirectoryStream(start)) {
+            for (var i : stream) {
+                if (Files.isDirectory(i)) {
+                    var r = findBuildDir(i, buildFiles);
+                    if (r != null) {
+                        if (result == null) {
+                            result = r;
+                        } else {
+                            //more than one possible sub path
+                            return null;
+                        }
+
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
+
     }
 
     private boolean shouldSkip(Repository repository) {
