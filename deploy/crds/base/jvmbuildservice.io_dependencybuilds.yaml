@@ -119,7 +119,7 @@ spec:
                   - type
                   type: object
                 type: array
-              status:
+              state:
                 type: string
             type: object
         required:
