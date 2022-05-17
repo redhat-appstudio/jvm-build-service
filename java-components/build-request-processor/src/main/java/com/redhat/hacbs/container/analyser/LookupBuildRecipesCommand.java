@@ -74,19 +74,6 @@ public class LookupBuildRecipesCommand implements Runnable {
             }
             for (var parsedInfo : repos) {
 
-                //write the info we have
-                Log.infof("SCM URL: %s", parsedInfo.getUri());
-                if (scmUrl != null) {
-                    Files.writeString(scmUrl, parsedInfo.getUri());
-                }
-                if (scmType != null) {
-                    Files.writeString(scmType, "git");
-                }
-                Log.infof("Path: %s", parsedInfo.getPath());
-                if (context != null && parsedInfo.getPath() != null) {
-                    Files.writeString(context, parsedInfo.getPath());
-                }
-
                 String repoName = null;
                 //now look for a tag
                 try {
@@ -135,8 +122,21 @@ public class LookupBuildRecipesCommand implements Runnable {
                     Log.infof("Found tag %s", selectedTag);
                     if (scmTag != null) {
                         Files.writeString(scmTag, selectedTag);
+                    } //write the info we have
+                    Log.infof("SCM URL: %s", parsedInfo.getUri());
+                    if (scmUrl != null) {
+                        Files.writeString(scmUrl, parsedInfo.getUri());
+                    }
+                    if (scmType != null) {
+                        Files.writeString(scmType, "git");
+                    }
+                    Log.infof("Path: %s", parsedInfo.getPath());
+                    if (context != null && parsedInfo.getPath() != null) {
+                        Files.writeString(context, parsedInfo.getPath());
                     }
                     firstFailure = null;
+                    break;
+
                 } catch (Exception ex) {
                     if (firstFailure == null) {
                         firstFailure = ex;

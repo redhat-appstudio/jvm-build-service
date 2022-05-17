@@ -27,10 +27,13 @@ public class RebuildService {
         //now use the kube client to stick it into a CR to signify that these dependencies should be built
         for (var gav : gavs) {
             try {
-                String hash = HashUtil.sha1(gav);
+                //generate names based on the artifact name + version, and part of a hash
+                //we only use the first 8 characters from the hash to make the name small
+                String hash = HashUtil.sha1(gav).substring(0, 8);
                 StringBuilder newName = new StringBuilder();
                 boolean lastDot = false;
-                for (var i : gav.toCharArray()) {
+                String namePart = gav.substring(gav.indexOf(':'));
+                for (var i : namePart.toCharArray()) {
                     if (Character.isAlphabetic(i) || Character.isDigit(i)) {
                         newName.append(Character.toLowerCase(i));
                         lastDot = false;

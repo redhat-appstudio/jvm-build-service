@@ -18,7 +18,7 @@ public interface RemoteClient {
             @PathParam("artifact") String artifact, @PathParam("version") String version, @PathParam("target") String target);
 
     @GET
-    @Path("{group:.*?}/maven-metadata.xml{hash:.*?}")
+    @Path("{group:.*?}/maven-metadata.xml{hash}")
     Response get(@HeaderParam("X-build-policy") String buildPolicy, @PathParam("group") String group,
-            @PathParam("hash") String target);
+            @PathParam("hash") String hash);
 }

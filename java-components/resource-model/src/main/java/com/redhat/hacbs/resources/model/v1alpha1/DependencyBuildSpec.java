@@ -2,7 +2,7 @@ package com.redhat.hacbs.resources.model.v1alpha1;
 
 public class DependencyBuildSpec {
 
-    private String scmUrl;
+    private String scmURL;
     private String scmType;
 
     private String path;
@@ -10,12 +10,12 @@ public class DependencyBuildSpec {
     private String version;
     private String tag;
 
-    public String getScmUrl() {
-        return scmUrl;
+    public String getScmURL() {
+        return scmURL;
     }
 
-    public DependencyBuildSpec setScmUrl(String scmUrl) {
-        this.scmUrl = scmUrl;
+    public DependencyBuildSpec setScmURL(String scmURL) {
+        this.scmURL = scmURL;
         return this;
     }
 
