@@ -1,6 +1,7 @@
 package com.redhat.hacbs.container.analyser;
 
 import java.util.Set;
+import java.util.TreeSet;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -21,7 +22,7 @@ public class RebuildService {
     KubernetesClient kubernetesClient;
 
     public void rebuild(Set<String> gavs) {
-        Log.infof("Identified Community Dependencies: %s", gavs);
+        Log.infof("Identified Community Dependencies: %s", new TreeSet<>(gavs));
         //know we know which community dependencies went into the build
 
         //now use the kube client to stick it into a CR to signify that these dependencies should be built

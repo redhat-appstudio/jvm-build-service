@@ -246,7 +246,7 @@ spec:
           value:
             - -DskipTests
             - clean
-            - package
+            - install
             - -Denforcer.skip
       workspaces:
         - name: maven-settings
