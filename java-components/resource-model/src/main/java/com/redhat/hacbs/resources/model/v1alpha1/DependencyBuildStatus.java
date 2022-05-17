@@ -2,14 +2,14 @@ package com.redhat.hacbs.resources.model.v1alpha1;
 
 public class DependencyBuildStatus {
 
-    private String todo;
+    private String state;
 
-    public String getTodo() {
-        return todo;
+    public String getState() {
+        return state;
     }
 
-    public DependencyBuildStatus setTodo(String todo) {
-        this.todo = todo;
+    public DependencyBuildStatus setState(String state) {
+        this.state = state;
         return this;
     }
 }

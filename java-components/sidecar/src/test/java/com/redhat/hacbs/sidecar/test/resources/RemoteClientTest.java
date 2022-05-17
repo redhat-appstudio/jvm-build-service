@@ -1,5 +1,6 @@
 package com.redhat.hacbs.sidecar.test.resources;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 
 import java.io.ByteArrayInputStream;
@@ -88,5 +89,19 @@ public class RemoteClientTest {
 
         Assertions.assertEquals(Collections.singleton(new TrackingData("io.quarkus:quarkus-core:2.7.5.Final", "central")),
                 ClassFileTracker.readTrackingDataFromJar(result));
+    }
+
+    @Test
+    public void testMavenMetadata() {
+
+        Response mockResponse = Mockito.mock(Response.class);
+        Mockito.when(remoteClient.get("default", "org/webjars/bowergithub/mbostock-bower/d3-bower", ""))
+                .thenReturn(mockResponse);
+        Mockito.when(mockResponse.readEntity(byte[].class)).thenReturn("metadata".getBytes());
+        RestAssured.given()
+                .when().get("/org/webjars/bowergithub/mbostock-bower/d3-bower/maven-metadata.xml")
+                .then()
+                .statusCode(200)
+                .body(equalTo("metadata"));
     }
 }

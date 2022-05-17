@@ -46,16 +46,16 @@ public class CacheMavenResource {
     }
 
     @GET
-    @Path("{group:.*?}/{target}")
+    @Path("{group:.*?}/maven-metadata.xml{hash:.*?}")
     public InputStream get(@DefaultValue("default") @HeaderParam("X-build-policy") String buildPolicy,
             @PathParam("group") String group,
-            @PathParam("target") String target) throws Exception {
-        Log.debugf("Retrieving file %s/%s", group, target);
-        var result = cache.getMetadataFile(buildPolicy, group, target);
+            @PathParam("hash") String hash) throws Exception {
+        Log.debugf("Retrieving file %s/%s", group, "maven-metadata.xml");
+        var result = cache.getMetadataFile(buildPolicy, group, "maven-metadata.xml" + hash);
         if (result.isPresent()) {
             return result.get().getData();
         }
-        Log.infof("Failed retrieving file %s/%s", group, target);
+        Log.infof("Failed retrieving file %s/%s", group, "maven-metadata.xml");
         throw new NotFoundException();
     }
 
