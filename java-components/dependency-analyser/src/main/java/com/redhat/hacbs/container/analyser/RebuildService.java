@@ -32,7 +32,7 @@ public class RebuildService {
                 String hash = HashUtil.sha1(gav).substring(0, 8);
                 StringBuilder newName = new StringBuilder();
                 boolean lastDot = false;
-                String namePart = gav.substring(gav.indexOf(':'));
+                String namePart = gav.substring(gav.indexOf(':') + 1);
                 for (var i : namePart.toCharArray()) {
                     if (Character.isAlphabetic(i) || Character.isDigit(i)) {
                         newName.append(Character.toLowerCase(i));
