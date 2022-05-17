@@ -20,7 +20,7 @@ spec:
             - name: CACHE_PATH
               value: "cache"
             - name: BUILD_POLICY_DEFAULT_STORE_LIST
-              value: rebuilt,central,jboss,redhat,jitpack,confluent
+              value: rebuilt,central,jboss,redhat,jitpack,confluent,gradle
             - name: STORE_JITPACK_URL
               value: https://jitpack.io
             - name: STORE_JITPACK_TYPE
@@ -33,6 +33,10 @@ spec:
               value: "4"
             - name: QUARKUS_THREAD_POOL_MAX_THREADS
               value: "12"
+            - name: STORE_GRADLE_URL
+              value: https://repo.gradle.org/artifactory/libs-releases
+            - name: STORE_GRADLE_TYPE
+              value: maven2
           ports:
             - containerPort: 8080
               name: http
