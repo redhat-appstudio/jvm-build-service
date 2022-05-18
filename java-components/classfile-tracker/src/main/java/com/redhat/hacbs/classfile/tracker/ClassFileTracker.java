@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipInputStream;
@@ -79,13 +81,21 @@ public class ClassFileTracker {
                 || s.endsWith(".EC");
     }
 
-    public static Set<TrackingData> readTrackingDataFromJar(byte[] input) throws IOException {
+    public static Set<TrackingData> readTrackingDataFromJar(byte[] input, String jarFile) throws IOException {
         Set<TrackingData> ret = new HashSet<>();
         try (ZipInputStream zipIn = new ZipInputStream(new ByteArrayInputStream(input))) {
             var entry = zipIn.getNextEntry();
             while (entry != null) {
                 if (entry.getName().endsWith(".class")) {
-                    ret.add(readTrackingInformationFromClass(zipIn.readAllBytes()));
+                    try {
+                        TrackingData data = readTrackingInformationFromClass(zipIn.readAllBytes());
+                        if (data != null) {
+                            ret.add(data);
+                        }
+                    } catch (Exception e) {
+                        Logger.getLogger("dependency-analyser").log(Level.SEVERE,
+                                "Failed to read class " + entry.getName() + " from " + jarFile, e);
+                    }
                 }
                 entry = zipIn.getNextEntry();
             }

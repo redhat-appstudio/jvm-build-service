@@ -88,7 +88,7 @@ public class RemoteClientTest {
                 .extract().body().asByteArray();
 
         Assertions.assertEquals(Collections.singleton(new TrackingData("io.quarkus:quarkus-core:2.7.5.Final", "central")),
-                ClassFileTracker.readTrackingDataFromJar(result));
+                ClassFileTracker.readTrackingDataFromJar(result, null));
     }
 
     @Test

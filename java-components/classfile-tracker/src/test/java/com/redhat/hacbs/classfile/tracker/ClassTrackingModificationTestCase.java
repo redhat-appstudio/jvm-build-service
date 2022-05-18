@@ -29,6 +29,6 @@ public class ClassTrackingModificationTestCase {
         zip.close();
 
         var results = ClassFileTracker.addTrackingDataToJar(out.toByteArray(), DATA);
-        Assertions.assertEquals(Collections.singleton(DATA), ClassFileTracker.readTrackingDataFromJar(results));
+        Assertions.assertEquals(Collections.singleton(DATA), ClassFileTracker.readTrackingDataFromJar(results, "test.jar"));
     }
 }

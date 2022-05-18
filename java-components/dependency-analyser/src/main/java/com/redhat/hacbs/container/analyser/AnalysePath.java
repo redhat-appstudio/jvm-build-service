@@ -51,7 +51,8 @@ public class AnalysePath implements Runnable {
                             }
                         } else if (file.getFileName().toString().endsWith(".jar")) {
                             Log.debugf("Processing %s", file);
-                            var jarData = ClassFileTracker.readTrackingDataFromJar(Files.readAllBytes(file));
+                            var jarData = ClassFileTracker.readTrackingDataFromJar(Files.readAllBytes(file),
+                                    file.getFileName().toString());
                             for (var data : jarData) {
                                 if (data != null) {
                                     if (!allowedSources.contains(data.source)) {
