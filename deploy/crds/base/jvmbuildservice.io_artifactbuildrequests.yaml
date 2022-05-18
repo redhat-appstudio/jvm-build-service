@@ -16,7 +16,14 @@ spec:
     singular: artifactbuildrequest
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.gav
+      name: GAV
+      type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ArtifactBuildRequest TODO provide godoc description
@@ -46,9 +53,17 @@ spec:
                 type: string
               message:
                 type: string
+              path:
+                type: string
               recipeGitHash:
                 type: string
+              scmType:
+                type: string
+              scmURL:
+                type: string
               state:
+                type: string
+              tag:
                 type: string
             type: object
         required:

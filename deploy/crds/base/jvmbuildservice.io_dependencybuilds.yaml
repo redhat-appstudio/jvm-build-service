@@ -16,7 +16,14 @@ spec:
     singular: dependencybuild
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.scmURL
+      name: URL
+      type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: DependencyBuild TODO provide godoc description

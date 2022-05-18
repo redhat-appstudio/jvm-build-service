@@ -14,6 +14,10 @@ type ArtifactBuildRequestStatus struct {
 	Message           string `json:"message,omitempty"`
 	RecipeGitHash     string `json:"recipeGitHash,omitempty"`
 	BuildPipelineName string `json:"buildPipelineName,omitempty"`
+	SCMURL            string `json:"scmURL,omitempty"`
+	SCMType           string `json:"scmType,omitempty"`
+	Tag               string `json:"tag,omitempty"`
+	Path              string `json:"path,omitempty"`
 }
 
 //type ArtifactBuildRequestState string
@@ -39,7 +43,8 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=artifactbuildrequests,scope=Namespaced
-
+// +kubebuilder:printcolumn:name="GAV",type=string,JSONPath=`.spec.gav`
+// +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 // ArtifactBuildRequest TODO provide godoc description
 type ArtifactBuildRequest struct {
 	metav1.TypeMeta   `json:",inline"`

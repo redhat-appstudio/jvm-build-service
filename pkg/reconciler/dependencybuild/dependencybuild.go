@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -92,6 +93,9 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			{Name: "shared-workspace", VolumeClaimTemplate: &v1.PersistentVolumeClaim{Spec: v1.PersistentVolumeClaimSpec{
 				AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
 				Resources:   v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{v1.ResourceStorage: quantity}}}}},
+		}
+		if err := controllerutil.SetOwnerReference(&db, &tr, r.scheme); err != nil {
+			return reconcile.Result{}, err
 		}
 		err = r.client.Create(ctx, &tr)
 		if err != nil {
