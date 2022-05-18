@@ -10,6 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 	"time"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
@@ -50,19 +51,33 @@ func (r *ReconcilePipelineRunRequest) Reconcile(ctx context.Context, request rec
 		//the pr is done, lets potentially update the dependency build
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
+
+		var contaminates []string
+		for _, r := range pr.Status.PipelineResults {
+			if r.Name == "contaminants" {
+				contaminates = strings.Split(r.Value, ",")
+			}
+		}
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		for _, ref := range pr.OwnerReferences {
-			db := v1alpha1.DependencyBuild{}
-			if err = r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &db); err != nil {
+			dep := v1alpha1.DependencyBuild{}
+			if err = r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &dep); err != nil {
 				return reconcile.Result{}, err
 			}
-			if db.Status.State == v1alpha1.DependencyBuildStateBuilding {
+			if dep.Status.State == v1alpha1.DependencyBuildStateBuilding {
 				if success {
-					db.Status.State = v1alpha1.DependencyBuildStateComplete
+					if len(contaminates) == 0 {
+						dep.Status.State = v1alpha1.DependencyBuildStateComplete
+					} else {
+						//the dependency was contaminated with community deps
+						//most likely shaded in
+						dep.Status.State = v1alpha1.DependencyBuildStateContaminated
+						dep.Status.Contaminants = contaminates
+					}
 				} else {
-					db.Status.State = v1alpha1.DependencyBuildStateFailed
+					dep.Status.State = v1alpha1.DependencyBuildStateFailed
 				}
-				err = r.client.Status().Update(ctx, &db)
+				err = r.client.Status().Update(ctx, &dep)
 				if err != nil {
 					return reconcile.Result{}, err
 				}

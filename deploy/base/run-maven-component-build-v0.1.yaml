@@ -19,6 +19,9 @@ spec:
       description: >-
         The workspace consisting of the custom maven settings
         provided by the user.
+  results:
+    - name: contaminants
+      description: Any community GAVs that have ended up in the final output.
   params:
     - name: MAVEN_IMAGE
       type: string
@@ -172,6 +175,13 @@ spec:
         - "--data-binary"
         - "@$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz"
         - "http://localhost:2000/deploy"
+    - name: check-for-contaminates
+      image: registry.access.redhat.com/ubi8/ubi:8.5
+      command: [ "curl" ]
+      args:
+        - "http://localhost:2000/deploy/result"
+        - "-o"
+        - "$(results.contaminants.path)"
   sidecars:
     - image: hacbs-jvm-sidecar
       imagePullPolicy: Always
@@ -204,6 +214,10 @@ kind: Pipeline
 metadata:
   name: run-component-build
 spec:
+  results:
+    - name: contaminants
+      description: The GAVs of any community artifacts that ended up in the output
+      value: $(tasks.maven-run.results.contaminants)
   params:
     - name: url
       type: string

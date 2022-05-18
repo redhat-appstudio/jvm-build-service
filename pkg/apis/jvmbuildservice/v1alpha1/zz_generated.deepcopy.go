@@ -205,6 +205,11 @@ func (in *DependencyBuildStatus) DeepCopyInto(out *DependencyBuildStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Contaminants != nil {
+		in, out := &in.Contaminants, &out.Contaminants
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
