@@ -62,6 +62,8 @@ func (r *ReconcilePipelineRunRequest) Reconcile(ctx context.Context, request rec
 		for _, ref := range pr.OwnerReferences {
 			dep := v1alpha1.DependencyBuild{}
 			if err = r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &dep); err != nil {
+				//TODO do we want to loop through all the owner refs and only return and error if we do not get success on
+				// any of them.
 				return reconcile.Result{}, err
 			}
 			if dep.Status.State == v1alpha1.DependencyBuildStateBuilding {
