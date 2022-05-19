@@ -76,7 +76,7 @@ func createTaskRun(componentLookupKey types.NamespacedName, labels map[string]st
 			Name:            componentLookupKey.Name,
 			Namespace:       componentLookupKey.Namespace,
 			Labels:          labels,
-			OwnerReferences: []metav1.OwnerReference{{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: artifactbuildrequest.ArtifactBuildRequestKind, Name: abr.Name, UID: abr.UID}},
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: v1alpha1.SchemeGroupVersion.String(), Kind: artifactbuildrequest.RequestKind, Name: abr.Name, UID: abr.UID}},
 		},
 	}
 	Expect(k8sClient.Create(ctx, tr)).Should(Succeed())
