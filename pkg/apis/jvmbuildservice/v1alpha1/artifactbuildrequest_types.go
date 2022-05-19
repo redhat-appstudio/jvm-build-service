@@ -7,17 +7,20 @@ import (
 type ArtifactBuildRequestSpec struct {
 	// GAV is the groupID:artifacdtID:version tuple seen in maven pom.xml files
 	GAV string `json:"gav,omitempty"`
-}
-
-type ArtifactBuildRequestStatus struct {
-	State             string `json:"state,omitempty"`
 	Message           string `json:"message,omitempty"`
-	RecipeGitHash     string `json:"recipeGitHash,omitempty"`
-	BuildPipelineName string `json:"buildPipelineName,omitempty"`
 	SCMURL            string `json:"scmURL,omitempty"`
 	SCMType           string `json:"scmType,omitempty"`
 	Tag               string `json:"tag,omitempty"`
 	Path              string `json:"path,omitempty"`
+	DBState           string `json:"dbState,omitempty"`
+}
+
+type ArtifactBuildRequestStatus struct {
+	State             string `json:"state,omitempty"`
+	//TODO need to see how this will get written to, may need to move to spec
+	RecipeGitHash     string `json:"recipeGitHash,omitempty"`
+	//TODO need to see how this will get written to, may need to move to spec
+	BuildPipelineName string `json:"buildPipelineName,omitempty"`
 }
 
 //type ArtifactBuildRequestState string
@@ -27,8 +30,6 @@ const (
 	ArtifactBuildRequestStateNew = "ArtifactBuildRequestNew"
 	// ArtifactBuildRequestStateDiscovering The discovery pipeline is running to try and figure out how to build this artifact
 	ArtifactBuildRequestStateDiscovering = "ArtifactBuildRequestDiscovering"
-	// ArtifactBuildRequestStateDiscovered The discovery process is complete
-	ArtifactBuildRequestStateDiscovered = "ArtifactBuildRequestDiscovered"
 	// ArtifactBuildRequestStateMissing The discovery pipeline failed to find a way to build this
 	ArtifactBuildRequestStateMissing = "ArtifactBuildRequestMissing"
 	// ArtifactBuildRequestStateBuilding The build is running

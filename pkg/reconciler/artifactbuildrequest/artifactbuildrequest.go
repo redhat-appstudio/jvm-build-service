@@ -57,13 +57,15 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		return ctrl.Result{}, err
 	}
 
-	switch abr.Status.State {
-	case v1alpha1.ArtifactBuildRequestStateNew, "":
+	switch {
+	case abr.Status.State == v1alpha1.ArtifactBuildRequestStateNew || abr.Status.State == "":
 		return r.handleStateNew(ctx, abr)
-	case v1alpha1.ArtifactBuildRequestStateDiscovered:
+	case abr.Status.State == v1alpha1.ArtifactBuildRequestStateDiscovering && (len(abr.Spec.SCMURL) > 0 || len(abr.Spec.Tag) > 0 || len(abr.Spec.SCMType) > 0 || len(abr.Spec.Path) > 0):
 		return r.handleStateDiscovered(ctx, abr)
-	case v1alpha1.ArtifactBuildRequestStateComplete:
+	case abr.Status.State == v1alpha1.ArtifactBuildRequestStateBuilding && abr.Spec.DBState == v1alpha1.ArtifactBuildRequestStateComplete:
 		return r.handleStateComplete(ctx, abr)
+	case abr.Status.State == v1alpha1.ArtifactBuildRequestStateBuilding && abr.Spec.DBState == v1alpha1.ArtifactBuildRequestStateFailed:
+		return r.handleStateFailed(ctx, abr)
 	}
 	return reconcile.Result{}, nil
 }
@@ -92,14 +94,14 @@ func (r *ReconcileArtifactBuildRequest) handleStateNew(ctx context.Context, abr 
 func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Context, abr v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
 	//now let's create the dependency build object
 	//once this object has been created its resolver takes over
-	if abr.Status.Tag == "" {
+	if abr.Spec.Tag == "" {
 		//this is a failure
 		abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
 		return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
 	}
 	//we generate a hash of the url, tag and path for
 	//our unique identifier
-	hash := md5.Sum([]byte(abr.Status.SCMURL + abr.Status.Tag + abr.Status.Path))
+	hash := md5.Sum([]byte(abr.Spec.SCMURL + abr.Spec.Tag + abr.Spec.Path))
 	depId := hex.EncodeToString(hash[:])
 	//now lets look for an existing build object
 	list := &v1alpha1.DependencyBuildList{}
@@ -123,10 +125,10 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Contex
 		//a sanitization algorithm
 		db.GenerateName = abr.Name + "-"
 		db.Spec = v1alpha1.DependencyBuildSpec{
-			SCMURL:  abr.Status.SCMURL,
-			SCMType: abr.Status.SCMType,
-			Tag:     abr.Status.Tag,
-			Path:    abr.Status.Path,
+			SCMURL:  abr.Spec.SCMURL,
+			SCMType: abr.Spec.SCMType,
+			Tag:     abr.Spec.Tag,
+			Path:    abr.Spec.Path,
 		}
 		if err := controllerutil.SetOwnerReference(&abr, db, r.scheme); err != nil {
 			return reconcile.Result{}, err
@@ -193,6 +195,11 @@ func (r *ReconcileArtifactBuildRequest) handleStateComplete(ctx context.Context,
 			}
 		}
 	}
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileArtifactBuildRequest) handleStateFailed(ctx context.Context, abr v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
+	//TODO what if any processing should the ABR reconciler do here?
 	return reconcile.Result{}, nil
 }
 

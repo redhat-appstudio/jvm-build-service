@@ -159,8 +159,8 @@ func (r *ReconcileDependencyBuild) updateArtifactRequestState(ctx context.Contex
 	}
 	for _, abr := range list.Items {
 		if abr.Status.State == v1alpha1.ArtifactBuildRequestStateBuilding {
-			abr.Status.State = state
-			err = r.client.Status().Update(ctx, &abr)
+			abr.Spec.DBState = state
+			err = r.client.Update(ctx, &abr)
 			if err != nil {
 				return err
 			}

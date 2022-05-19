@@ -174,7 +174,7 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 			Eventually(func() error {
 				abr := v1alpha1.ArtifactBuildRequest{}
 				_ = k8sClient.Get(ctx, abrName, &abr)
-				if abr.Status.State == v1alpha1.ArtifactBuildRequestStateDiscovered {
+				if abr.Status.State == v1alpha1.ArtifactBuildRequestStateBuilding {
 					return nil
 				}
 				return errors.New("not updated yet")
@@ -182,11 +182,11 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 
 			abr := v1alpha1.ArtifactBuildRequest{}
 			Expect(k8sClient.Get(ctx, abrName, &abr)).Should(Succeed())
-			Expect(abr.Status.SCMURL).Should(Equal("url1"))
-			Expect(abr.Status.SCMType).Should(Equal("git"))
-			Expect(abr.Status.Tag).Should(Equal("tag1"))
-			Expect(abr.Status.Message).Should(Equal("OK"))
-			Expect(abr.Status.Path).Should(Equal("/path1"))
+			Expect(abr.Spec.SCMURL).Should(Equal("url1"))
+			Expect(abr.Spec.SCMType).Should(Equal("git"))
+			Expect(abr.Spec.Tag).Should(Equal("tag1"))
+			Expect(abr.Spec.Message).Should(Equal("OK"))
+			Expect(abr.Spec.Path).Should(Equal("/path1"))
 		})
 
 	})

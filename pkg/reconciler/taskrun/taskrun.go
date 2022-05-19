@@ -80,13 +80,12 @@ func (r *ReconcileTaskRunRequest) Reconcile(ctx context.Context, request reconci
 				return reconcile.Result{}, err
 			}
 			if abr.Status.State == v1alpha1.ArtifactBuildRequestStateDiscovering {
-				abr.Status.State = v1alpha1.ArtifactBuildRequestStateDiscovered
-				abr.Status.SCMURL = scmUrl
-				abr.Status.Tag = scmTag
-				abr.Status.Message = message
-				abr.Status.SCMType = scmType
-				abr.Status.Path = path
-				err = r.client.Status().Update(ctx, &abr)
+				abr.Spec.SCMURL = scmUrl
+				abr.Spec.Tag = scmTag
+				abr.Spec.Message = message
+				abr.Spec.SCMType = scmType
+				abr.Spec.Path = path
+				err = r.client.Update(ctx, &abr)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
