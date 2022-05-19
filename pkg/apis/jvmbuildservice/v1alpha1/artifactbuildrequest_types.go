@@ -6,19 +6,19 @@ import (
 
 type ArtifactBuildRequestSpec struct {
 	// GAV is the groupID:artifacdtID:version tuple seen in maven pom.xml files
-	GAV string `json:"gav,omitempty"`
-	Message           string `json:"message,omitempty"`
-	SCMURL            string `json:"scmURL,omitempty"`
-	SCMType           string `json:"scmType,omitempty"`
-	Tag               string `json:"tag,omitempty"`
-	Path              string `json:"path,omitempty"`
-	DBState           string `json:"dbState,omitempty"`
+	GAV     string `json:"gav,omitempty"`
+	Message string `json:"message,omitempty"`
+	SCMURL  string `json:"scmURL,omitempty"`
+	SCMType string `json:"scmType,omitempty"`
+	Tag     string `json:"tag,omitempty"`
+	Path    string `json:"path,omitempty"`
+	DBState string `json:"dbState,omitempty"`
 }
 
 type ArtifactBuildRequestStatus struct {
-	State             string `json:"state,omitempty"`
+	State string `json:"state,omitempty"`
 	//TODO need to see how this will get written to, may need to move to spec
-	RecipeGitHash     string `json:"recipeGitHash,omitempty"`
+	RecipeGitHash string `json:"recipeGitHash,omitempty"`
 	//TODO need to see how this will get written to, may need to move to spec
 	BuildPipelineName string `json:"buildPipelineName,omitempty"`
 }
