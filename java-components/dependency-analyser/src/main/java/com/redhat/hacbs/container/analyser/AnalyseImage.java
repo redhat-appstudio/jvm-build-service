@@ -88,7 +88,8 @@ public class AnalyseImage implements Runnable {
                             }
                         } else if (entry.getName().endsWith(".jar")) {
                             Log.debugf("Processing %s from layer %s", entry.getName(), layer.getHash());
-                            var jarData = ClassFileTracker.readTrackingDataFromJar(tarArchiveInputStream.readAllBytes());
+                            var jarData = ClassFileTracker.readTrackingDataFromJar(tarArchiveInputStream.readAllBytes(),
+                                    entry.getName());
                             for (var data : jarData) {
                                 if (data != null) {
                                     if (allowedSources.contains(data.source)) {

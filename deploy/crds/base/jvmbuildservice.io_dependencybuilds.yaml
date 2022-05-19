@@ -126,6 +126,10 @@ spec:
                   - type
                   type: object
                 type: array
+              contaminates:
+                items:
+                  type: string
+                type: array
               state:
                 type: string
             type: object

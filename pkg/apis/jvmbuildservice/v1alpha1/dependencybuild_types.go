@@ -5,10 +5,11 @@ import (
 )
 
 const (
-	DependencyBuildStateNew      = "DependencyBuildStateNew"
-	DependencyBuildStateBuilding = "DependencyBuildStateBuilding"
-	DependencyBuildStateComplete = "DependencyBuildStateComplete"
-	DependencyBuildStateFailed   = "DependencyBuildStateFailed"
+	DependencyBuildStateNew          = "DependencyBuildStateNew"
+	DependencyBuildStateBuilding     = "DependencyBuildStateBuilding"
+	DependencyBuildStateComplete     = "DependencyBuildStateComplete"
+	DependencyBuildStateFailed       = "DependencyBuildStateFailed"
+	DependencyBuildStateContaminated = "DependencyBuildStateContaminated"
 )
 
 type DependencyBuildSpec struct {
@@ -22,8 +23,9 @@ type DependencyBuildStatus struct {
 	// Conditions for capturing generic status
 	// NOTE: inspecting the fabric8 Status class, it looked analogous to k8s Condition,
 	// and then I took the liberty of making it an array, given best practices in the k8s/ocp ecosystems
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
-	State      string             `json:"state,omitempty"`
+	Conditions   []metav1.Condition `json:"conditions,omitempty"`
+	State        string             `json:"state,omitempty"`
+	Contaminants []string           `json:"contaminates,omitempty"`
 }
 
 // +genclient
