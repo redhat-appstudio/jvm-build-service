@@ -13,19 +13,21 @@ const (
 )
 
 type DependencyBuildSpec struct {
-	SCMURL  string `json:"scmURL,omitempty"`
-	SCMType string `json:"scmType,omitempty"`
-	Tag     string `json:"tag,omitempty"`
-	Path    string `json:"path,omitempty"`
+	SCMURL             string   `json:"scmURL,omitempty"`
+	SCMType            string   `json:"scmType,omitempty"`
+	Tag                string   `json:"tag,omitempty"`
+	Path               string   `json:"path,omitempty"`
+	PipelineRunSuccess bool     `json:"pipelineRunSuccess,omitempty"`
+	PipelineRunFailure bool     `json:"pipelineRunFailure,omitempty"`
+	Contaminants       []string `json:"contaminates,omitempty"`
 }
 
 type DependencyBuildStatus struct {
 	// Conditions for capturing generic status
 	// NOTE: inspecting the fabric8 Status class, it looked analogous to k8s Condition,
 	// and then I took the liberty of making it an array, given best practices in the k8s/ocp ecosystems
-	Conditions   []metav1.Condition `json:"conditions,omitempty"`
-	State        string             `json:"state,omitempty"`
-	Contaminants []string           `json:"contaminates,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	State      string             `json:"state,omitempty"`
 }
 
 // +genclient

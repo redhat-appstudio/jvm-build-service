@@ -67,16 +67,22 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		return reconcile.Result{}, r.client.Update(ctx, &db)
 	}
 
-	switch db.Status.State {
-	case "", v1alpha1.DependencyBuildStateNew:
+	switch {
+	case db.Status.State == "" || db.Status.State == v1alpha1.DependencyBuildStateNew:
 		return r.handleStateNew(ctx, db)
-	case v1alpha1.DependencyBuildStateComplete:
+	case db.Spec.PipelineRunSuccess:
+		db.Status.State = v1alpha1.DependencyBuildStateComplete
+		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+	case db.Spec.PipelineRunFailure:
+		db.Status.State = v1alpha1.DependencyBuildStateFailed
+		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+	case db.Status.State == v1alpha1.DependencyBuildStateComplete:
 		return reconcile.Result{}, r.updateArtifactRequestState(ctx, db, v1alpha1.ArtifactBuildRequestStateComplete)
-	case v1alpha1.DependencyBuildStateFailed:
+	case db.Status.State == v1alpha1.DependencyBuildStateFailed:
 		return reconcile.Result{}, r.updateArtifactRequestState(ctx, db, v1alpha1.ArtifactBuildRequestStateFailed)
-	case v1alpha1.DependencyBuildStateBuilding:
+	case db.Status.State == v1alpha1.DependencyBuildStateBuilding:
 		return r.handleStateBuilding(ctx, depId, db)
-	case v1alpha1.DependencyBuildStateContaminated:
+	case len(db.Spec.Contaminants) > 0:
 		return r.handleStateContaminated(ctx, db)
 	}
 
@@ -170,12 +176,12 @@ func (r *ReconcileDependencyBuild) updateArtifactRequestState(ctx context.Contex
 }
 
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	contaminants := db.Status.Contaminants
+	contaminants := db.Spec.Contaminants
 	if len(contaminants) == 0 {
 		//all fixed, just set the state back to new and try again
 		//this is triggered when contaminants are removed by the ABR controller
 		db.Status.State = v1alpha1.DependencyBuildStateNew
-		return reconcile.Result{}, r.client.Update(ctx, &db)
+		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 	}
 	//we want to rebuild the contaminants from source
 	//so we create ABRs for them
@@ -207,5 +213,6 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 			}
 		}
 	}
-	return reconcile.Result{}, nil
+	db.Status.State = v1alpha1.DependencyBuildStateContaminated
+	return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 }

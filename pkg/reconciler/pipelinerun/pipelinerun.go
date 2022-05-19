@@ -67,17 +67,16 @@ func (r *ReconcilePipelineRunRequest) Reconcile(ctx context.Context, request rec
 			if dep.Status.State == v1alpha1.DependencyBuildStateBuilding {
 				if success {
 					if len(contaminates) == 0 {
-						dep.Status.State = v1alpha1.DependencyBuildStateComplete
+						dep.Spec.PipelineRunSuccess = true
 					} else {
 						//the dependency was contaminated with community deps
 						//most likely shaded in
-						dep.Status.State = v1alpha1.DependencyBuildStateContaminated
-						dep.Status.Contaminants = contaminates
+						dep.Spec.Contaminants = contaminates
 					}
 				} else {
-					dep.Status.State = v1alpha1.DependencyBuildStateFailed
+					dep.Spec.PipelineRunFailure = true
 				}
-				err = r.client.Status().Update(ctx, &dep)
+				err = r.client.Update(ctx, &dep)
 				if err != nil {
 					return reconcile.Result{}, err
 				}

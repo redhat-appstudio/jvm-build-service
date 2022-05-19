@@ -184,13 +184,13 @@ func (r *ReconcileArtifactBuildRequest) handleStateComplete(ctx context.Context,
 				continue
 			}
 			var newContaminates []string
-			for _, contaminant := range db.Status.Contaminants {
+			for _, contaminant := range db.Spec.Contaminants {
 				if contaminant != value {
 					newContaminates = append(newContaminates, contaminant)
 				}
 			}
-			db.Status.Contaminants = newContaminates
-			if err := r.client.Status().Update(ctx, &db); err != nil {
+			db.Spec.Contaminants = newContaminates
+			if err := r.client.Update(ctx, &db); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
