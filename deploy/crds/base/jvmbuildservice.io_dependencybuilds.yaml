@@ -42,8 +42,16 @@ spec:
             type: object
           spec:
             properties:
+              contaminates:
+                items:
+                  type: string
+                type: array
               path:
                 type: string
+              pipelineRunFailure:
+                type: boolean
+              pipelineRunSuccess:
+                type: boolean
               scmType:
                 type: string
               scmURL:
@@ -125,10 +133,6 @@ spec:
                   - status
                   - type
                   type: object
-                type: array
-              contaminates:
-                items:
-                  type: string
                 type: array
               state:
                 type: string
