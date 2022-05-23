@@ -1,0 +1,16 @@
+schema_version: 1
+version: 1.0.0
+
+name: common-packages
+packages:
+  install:
+  - tar
+  - gzip
+  - gcc
+  - glibc-devel
+  - zlib-devel
+  - shadow-utils
+  - unzip
+  - gcc-c++
+
+

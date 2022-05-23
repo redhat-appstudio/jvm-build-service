@@ -1,0 +1,21 @@
+== Component Builder Images
+
+These images are temporary builder images intended to be used during development. They are not intended to be used for production, as they
+are not really optimised in any way.
+
+They are largely based on the Quarkus tooling image, but using the UBI
+image as a base.
+
+At the moment there is a JDK8,11 and 17 version of the images, all with Maven 3.8 and Gradle 7.3.
+
+=== CEKit and Building the Images
+
+To build you need CEKit. We recommend using `virtualenv` to run `cekit`.
+On MacOS X and Linux, you can run the build as follows:
+
+```bash
+virtualenv --python=python3 .cekit
+source .cekit/bin/activate
+pip install -r requirements.txt
+./build.sh
+```

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec ${APP_HOME}/application -Dquarkus.http.host=0.0.0.0

@@ -181,6 +181,7 @@ spec:
         - "-s"
         - "$(workspaces.maven-settings.path)/settings.xml"
         - "$(params.GOALS)"
+        - -DskipTests
         - "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo"
         - "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy"
     - name: deploy-and-check-for-contaminates
