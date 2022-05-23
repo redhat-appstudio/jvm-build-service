@@ -32,7 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	//+kubebuilder:scaffold:imports
 )
 
@@ -58,8 +57,7 @@ func createAbr(componentLookupKey types.NamespacedName) {
 			Name:      componentLookupKey.Name,
 			Namespace: componentLookupKey.Namespace,
 		},
-		Spec: v1alpha1.ArtifactBuildRequestSpec{
-		},
+		Spec: v1alpha1.ArtifactBuildRequestSpec{},
 	}
 	Expect(k8sClient.Create(ctx, abr)).Should(Succeed())
 
