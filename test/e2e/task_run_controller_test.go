@@ -14,20 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package taskrun
+package e2e
 
 import (
 	"errors"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
-	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/taskrun"
+
+	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	//+kubebuilder:scaffold:imports
 )
 
@@ -54,7 +59,6 @@ func createAbr(componentLookupKey types.NamespacedName) {
 			Namespace: componentLookupKey.Namespace,
 		},
 		Spec: v1alpha1.ArtifactBuildRequestSpec{
-			GAV: ABRGav,
 		},
 	}
 	Expect(k8sClient.Create(ctx, abr)).Should(Succeed())
@@ -155,19 +159,19 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 			tr := getTr(abrName)
 			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 			tr.Status.TaskRunResults = []tektonapi.TaskRunResult{{
-				Name:  TaskResultScmTag,
+				Name:  taskrun.TaskResultScmTag,
 				Value: "tag1",
 			}, {
-				Name:  TaskResultScmUrl,
+				Name:  taskrun.TaskResultScmUrl,
 				Value: "url1",
 			}, {
-				Name:  TaskResultScmType,
+				Name:  taskrun.TaskResultScmType,
 				Value: "git",
 			}, {
-				Name:  TaskResultContextPath,
+				Name:  taskrun.TaskResultContextPath,
 				Value: "/path1",
 			}, {
-				Name:  TaskResultMessage,
+				Name:  taskrun.TaskResultMessage,
 				Value: "OK",
 			}}
 			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
