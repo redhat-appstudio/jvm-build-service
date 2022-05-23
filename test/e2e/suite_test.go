@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package taskrun
+package e2e
 
 import (
 	"context"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/taskrun"
 	"go/build"
 	"path/filepath"
 	"testing"
@@ -103,7 +104,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = SetupNewReconcilerWithManager(k8sManager)
+	err = taskrun.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
