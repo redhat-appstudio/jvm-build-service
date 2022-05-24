@@ -1,0 +1,110 @@
+= Development
+
+== Requirements
+
+* Kubernetes cluster (link:https://kubernetes.io/docs/tasks/tools/#minikube[minikube] is fine!)
+* link:https://kubernetes.io/docs/tasks/tools/#kubectl[kubectl] CLI tool
+* link:https://tekton.dev/docs/cli/[Tekton CLI]
+
+== Local Development
+
+The repository has been setup to make it easy to test your changes locally with your own quay.io account.
+
+First set the QUAY_USERNAME env variable to your quay username:
+
+----
+export QUAY_USERNAME=<<your username>>
+----
+
+You will also need to have quay.io authentication configured. In the Account
+section of Quay you should see an options to generate an encrypted CLI password. Select this option and create a `~/.docker/config.json` by following the prompts.
+
+Now run the following command to build the relevant images and deploy them to kube:
+
+----
+make dev
+----
+
+NOTE: If you see errors after running `make dev` for the first time this may be because the CRD's have not completly installed in time. If you run `./deploy/development.sh` again this should resolve the problem.
+
+WARNING: This will create private repositories by default, you will need to set them to public for the next step to work.
+
+Once you have made these public on quay.io you should have a local build ready to go.
+
+Note that you may need to restart the deployments after the repo has been made public:
+
+----
+kubectl rollout restart deployment hacbs-jvm-cache
+kubectl rollout restart deployment hacbs-jvm-operator
+----
+
+=== Testing it out
+
+You can test this out by running:
+
+----
+./hack/examples/run-sample-pipeline.sh
+----
+
+Once this has been run you should be able to observe the progress via:
+
+----
+tkn pr logs --last -f
+----
+
+This will show the initial build. Once it is complete you should be able to see a list of community dependencies that were used in the logs.
+
+You should then be able to look at the `artifactbuildrequests` that the system has created to rebuild them:
+
+----
+kubectl get artifactbuildrequests
+----
+
+Once these have been created the system will run discovery pipelines to try and figure out how to build them. This is a Tekton TaskRun, so you can observe the progress by running:
+
+----
+tkn tr list
+----
+
+Once the discovery phase has been created then the system will create `dependencybuild` objects for all the builds that is knows how to do. You can view these with:
+
+----
+kubectl get dependencybuilds
+----
+
+These will also result in the creation of PipelinRun objects to attempt to do the builds:
+
+----
+tkn pr list
+----
+
+Once all this is complete you should be able to re-run the example build script and you will see that a lot less dependencies are reported as being community dependencies as the system has automatically rebuilt them.
+
+=== Fine Grained Restarts
+
+While developing you generally don't want to rebuild everything. To just build
+a JVM based image you can run the following command from `java-components` directory that contains the project you want to build (or from the `java-components` directory itself if you want to build all of them):
+
+----
+mvn clean install -Dlocal
+----
+
+This will build the image and push it to Quay. For the golang based operator you can run:
+
+----
+make dev-image
+----
+
+For tasks that run as part of a pipeline this is all that is needed, for persistent services you need to restart the deployment:
+
+----
+kubectl rollout restart deployment hacbs-jvm-operator
+kubectl rollout restart deployment hacbs-jvm-cache
+----
+
+Config changes can be made in the deploy directly and applied by running:
+
+----
+./deployment/development.sh
+----
+
