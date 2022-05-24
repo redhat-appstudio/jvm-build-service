@@ -48,35 +48,98 @@ Currently *only staging version are published*.
 If you want to test your changes locally with your own quay.io account you can do this
 using the `dev-template` overlays.
 
+=== TLDR Version
+
 First set the QUAY_USERNAME env variable to your quay username:
 
 ----
 export QUAY_USERNAME=<<your username>>
 ----
 
-Now run a maven build with -Dlocal. This will build the images and deploy them to your Quay account:
+Now run the following command to build the relevant images and deploy them to kube:
 
 ----
-mvn clean package -Dlocal
+make dev
 ----
 
 WARNING: This will create private repositories by default, you will need to set them to public
 for the next step to work.
 
-Now run the local development script to deploy to minikube:
+Once you have made these public on quay.io you should have a local build ready to go.
+
+Note that you may need to restart the deployments after the repo has been made public:
+
+----
+kubectl rollout restart deployment hacbs-jvm-cache
+----
+
+=== Testing it out
+
+You can test this out by running:
+
+----
+hack/examples/run-sample-pipeline.sh
+----
+
+Once this has been run you should be able to observe the progress via:
+
+----
+tkn pr logs --last -f
+----
+
+This will show the initial build. Once it is complete you should be able to see a list of community dependencies that were used in the logs.
+
+You should then be able to look at the `artifactbuildrequests` that the system has created to rebuild them:
+
+----
+kubectl get artifactbuildrequests
+----
+
+Once these have been created the system will run discovery pipelines to try and figure out how to build them. This is a Tekton TaskRun, so you can observe the progress by running:
+
+----
+tkn tr list
+----
+
+Once the discovery phase has been created then the system will create `dependencybuild` objects for all the builds that is knows how to do. You can view these with:
+
+----
+kubectl get dependencybuilds
+----
+
+These will also result in the creation of PipelinRun objects to attempt to do the builds:
+
+----
+tkn pr list
+----
+
+Once all this is complete you should be able to re-run the example build script and you will see that a lot less dependencies are reported as being community dependencies as the system has automatically rebuilt them.
+
+=== Fine Grained Restarts
+
+While developing you generally don't want to rebuild everything. To just build
+a JVM based image you can run:
+
+----
+mvn clean install -Dlocal
+----
+
+This will build the image and push it to Quay. For the golang based operator you can run:
+
+----
+make dev-image
+----
+
+For tasks that run as part of a pipeline this is all that is needed, for persistent services you need to restart the deployment:
+
+----
+kubectl rollout restart deployment hacbs-jvm-operator
+kubectl rollout restart deployment hacbs-jvm-cache
+----
+
+Config changes can be made in the deploy directly and applied by running:
 
 ----
 ./deployment/development.sh
 ----
 
-This will generate a new development overlay with your username substituted into the image
-names, and then apply this using kubectrl.
-
-If you want to make changes rebuild the module that you have changed with
-the maven command above, and then run the following to restart the deployment:
-
-----
-kubectl rollout restart deployment <name>
-----
-
-Your local code should now be running in minikube.
