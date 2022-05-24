@@ -54,7 +54,7 @@ func (r *ReconcilePipelineRunRequest) Reconcile(ctx context.Context, request rec
 
 		var contaminates []string
 		for _, r := range pr.Status.PipelineResults {
-			if r.Name == "contaminants" {
+			if r.Name == "contaminants" && len(r.Value) > 0 {
 				contaminates = strings.Split(r.Value, ",")
 			}
 		}
