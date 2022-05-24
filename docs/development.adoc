@@ -1,54 +1,14 @@
-= Deployment
-
-The `deployment` directory contains Kustomize files that can be used to deploy all the components
-onto a Kubernetes cluster.
+= Development
 
 == Requirements
 
 * Kubernetes cluster (link:https://kubernetes.io/docs/tasks/tools/#minikube[minikube] is fine!)
 * link:https://kubernetes.io/docs/tasks/tools/#kubectl[kubectl] CLI tool
-
-== Instructions
-
-After starting minikube you can run following command to deploy everything
-using the *staging* versions:
-
-----
-kubectl apply -k deployment/overlays/staging
-----
-
-[NOTE]
-====
-Please note the `-k` switch. This will generate the resources with Kustomize instead of
-applying these files directly as wit would be done with the `-f` flag.
-
-To only generate the output you can use the `kubectl kustomize` command.
-====
-
-What this command will do is:
-
-* Install Tekton Pipelines
-* Install `git-clone` and `maven` Tekton Tasks
-* Install required JVM Build Service components
-
-[NOTE]
-====
-After running the command on a fresh cluster you may see errors related to missing CustomResourceDefinitions.
-This is expected and the reason is that we are installing these CRD's and using them immediately and the cluster
-may not register them on time. Just run the above command again after a few seconds.
-====
-
-[WARNING]
-====
-Currently *only staging version are published*.
-====
+* link:https://tekton.dev/docs/cli/[Tekton CLI]
 
 == Local Development
 
-If you want to test your changes locally with your own quay.io account you can do this
-using the `dev-template` overlays.
-
-=== TLDR Version
+The repository has been setup to make it easy to test your changes locally with your own quay.io account.
 
 First set the QUAY_USERNAME env variable to your quay username:
 
@@ -56,14 +16,18 @@ First set the QUAY_USERNAME env variable to your quay username:
 export QUAY_USERNAME=<<your username>>
 ----
 
+You will also need to have quay.io authentication configured. In the Account
+section of Quay you should see an options to generate an encrypted CLI password. Select this option and create a `~/.docker/config.json` by following the prompts.
+
 Now run the following command to build the relevant images and deploy them to kube:
 
 ----
 make dev
 ----
 
-WARNING: This will create private repositories by default, you will need to set them to public
-for the next step to work.
+NOTE: If you see errors after running `make dev` for the first time this may be because the CRD's have not completly installed in time. If you run `./deploy/development.sh` again this should resolve the problem.
+
+WARNING: This will create private repositories by default, you will need to set them to public for the next step to work.
 
 Once you have made these public on quay.io you should have a local build ready to go.
 
@@ -71,6 +35,7 @@ Note that you may need to restart the deployments after the repo has been made p
 
 ----
 kubectl rollout restart deployment hacbs-jvm-cache
+kubectl rollout restart deployment hacbs-jvm-operator
 ----
 
 === Testing it out
@@ -78,7 +43,7 @@ kubectl rollout restart deployment hacbs-jvm-cache
 You can test this out by running:
 
 ----
-hack/examples/run-sample-pipeline.sh
+./hack/examples/run-sample-pipeline.sh
 ----
 
 Once this has been run you should be able to observe the progress via:
@@ -118,7 +83,7 @@ Once all this is complete you should be able to re-run the example build script 
 === Fine Grained Restarts
 
 While developing you generally don't want to rebuild everything. To just build
-a JVM based image you can run:
+a JVM based image you can run the following command from `java-components` directory that contains the project you want to build (or from the `java-components` directory itself if you want to build all of them):
 
 ----
 mvn clean install -Dlocal
