@@ -1,10 +1,13 @@
 package dependencybuild
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 )
@@ -27,5 +30,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 				//TODO possibly change to false over time
 				return true
 			},
-		})).Complete(r)
+		})).
+		Watches(&source.Kind{Type: &v1beta1.PipelineRun{}}, &handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.DependencyBuild{}, IsController: false}).
+		Complete(r)
 }

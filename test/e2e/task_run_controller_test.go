@@ -25,7 +25,6 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/taskrun"
 
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -153,30 +152,30 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 		}, 30)
 
 		It("should move state to ArtifactBuildRequestDiscovered on Success", func() {
-			createTaskRun(abrName, map[string]string{artifactbuildrequest.TaskRunLabel: ""})
+			createTaskRun(abrName, map[string]string{artifactbuildrequest.TaskRunLabel: "", artifactbuildrequest.ArtifactBuildRequestIdLabel: string(getAbr(abrName).UID)})
 			tr := getTr(abrName)
 			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 			tr.Status.TaskRunResults = []tektonapi.TaskRunResult{{
-				Name:  taskrun.TaskResultScmTag,
+				Name:  artifactbuildrequest.TaskResultScmTag,
 				Value: "tag1",
 			}, {
-				Name:  taskrun.TaskResultScmUrl,
+				Name:  artifactbuildrequest.TaskResultScmUrl,
 				Value: "url1",
 			}, {
-				Name:  taskrun.TaskResultScmType,
+				Name:  artifactbuildrequest.TaskResultScmType,
 				Value: "git",
 			}, {
-				Name:  taskrun.TaskResultContextPath,
+				Name:  artifactbuildrequest.TaskResultContextPath,
 				Value: "/path1",
 			}, {
-				Name:  taskrun.TaskResultMessage,
+				Name:  artifactbuildrequest.TaskResultMessage,
 				Value: "OK",
 			}}
 			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
 			Eventually(func() error {
 				abr := v1alpha1.ArtifactBuildRequest{}
 				_ = k8sClient.Get(ctx, abrName, &abr)
-				if abr.Status.State == v1alpha1.ArtifactBuildRequestStateDiscovered {
+				if abr.Status.State == v1alpha1.ArtifactBuildRequestStateBuilding {
 					return nil
 				}
 				return errors.New("not updated yet")

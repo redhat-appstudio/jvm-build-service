@@ -18,7 +18,7 @@ package e2e
 
 import (
 	"context"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/taskrun"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
 	"go/build"
 	"path/filepath"
 	"testing"
@@ -33,7 +33,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -54,9 +53,7 @@ var (
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	RunSpecs(t, "Controller Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -104,7 +101,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = taskrun.SetupNewReconcilerWithManager(k8sManager)
+	err = artifactbuildrequest.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

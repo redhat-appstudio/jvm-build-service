@@ -13,6 +13,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	log2 "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
 	"time"
@@ -29,6 +30,12 @@ const (
 	// DependencyBuildContaminatedBy label prefix that indicates that a dependency build was contaminated by this artifact
 	DependencyBuildContaminatedBy = "jvmbuildservice.io/contaminated-"
 	DependencyBuildIdLabel        = "jvmbuildservice.io/dependencybuild-id"
+	ArtifactBuildRequestIdLabel   = "jvmbuildservice.io/abr-id"
+	TaskResultScmUrl              = "scm-url"
+	TaskResultScmTag              = "scm-tag"
+	TaskResultScmType             = "scm-type"
+	TaskResultContextPath         = "context"
+	TaskResultMessage             = "message"
 )
 
 type ReconcileArtifactBuildRequest struct {
@@ -45,6 +52,7 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 
 func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
+	log2.FromContext(ctx).Info("Reconcile: ", "abr", request.Name)
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	//log := log.FromContext(ctx)
@@ -59,43 +67,91 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 
 	switch abr.Status.State {
 	case v1alpha1.ArtifactBuildRequestStateNew, "":
-		return r.handleStateNew(ctx, abr)
-	case v1alpha1.ArtifactBuildRequestStateDiscovered:
-		return r.handleStateDiscovered(ctx, abr)
+		return r.handleStateNew(ctx, &abr)
+	case v1alpha1.ArtifactBuildRequestStateDiscovering:
+		return r.handleStateDiscovering(ctx, &abr)
 	case v1alpha1.ArtifactBuildRequestStateComplete:
-		return r.handleStateComplete(ctx, abr)
+		return r.handleStateComplete(ctx, &abr)
+	case v1alpha1.ArtifactBuildRequestStateBuilding:
+		return r.handleStateBuilding(ctx, &abr)
 	}
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuildRequest) handleStateNew(ctx context.Context, abr v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuildRequest) handleStateNew(ctx context.Context, abr *v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
+
 	// create task run
 	tr := pipelinev1beta1.TaskRun{}
 	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.NamespacedTaskKind}
 	tr.Namespace = abr.Namespace
 	tr.GenerateName = abr.Name + "-scm-discovery-"
-	tr.Labels = map[string]string{TaskRunLabel: ""}
+	tr.Labels = map[string]string{ArtifactBuildRequestIdLabel: string(abr.UID), TaskRunLabel: ""}
 	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: "GAV", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: abr.Spec.GAV}})
-	if err := controllerutil.SetOwnerReference(&abr, &tr, r.scheme); err != nil {
+	if err := controllerutil.SetOwnerReference(abr, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 	if err := r.client.Create(ctx, &tr); err != nil {
 		return reconcile.Result{}, err
 	}
 	abr.Status.State = v1alpha1.ArtifactBuildRequestStateDiscovering
-	if err := r.client.Status().Update(ctx, &abr); err != nil {
+	if err := r.client.Status().Update(ctx, abr); err != nil {
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Context, abr v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuildRequest) handleStateDiscovering(ctx context.Context, abr *v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
+	log := log2.FromContext(ctx)
+	log.Info("Discovering: ", "abr", abr.Name)
+	//lets look up our discovery task
+	listOpts := &client.ListOptions{
+		Namespace:     abr.Namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{ArtifactBuildRequestIdLabel: string(abr.UID)}),
+	}
+	trl := pipelinev1beta1.TaskRunList{}
+	err := r.client.List(ctx, &trl, listOpts)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	var tr *pipelinev1beta1.TaskRun
+	//there should only be one, be guard against multiple
+	for _, current := range trl.Items {
+		if tr == nil || tr.CreationTimestamp.Before(&current.CreationTimestamp) {
+			tr = &current
+		}
+	}
+	if tr == nil {
+		//no pipeline, very odd
+		//move back to new
+		abr.Status.State = v1alpha1.ArtifactBuildRequestStateNew
+		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+	}
+	if tr.Status.CompletionTime == nil {
+		return reconcile.Result{}, nil
+	}
+
+	//we grab the results here and put them on the ABR
+	for _, res := range tr.Status.TaskRunResults {
+		switch res.Name {
+		case TaskResultScmUrl:
+			abr.Status.SCMURL = res.Value
+		case TaskResultScmTag:
+			abr.Status.Tag = res.Value
+		case TaskResultScmType:
+			abr.Status.SCMType = res.Value
+		case TaskResultMessage:
+			abr.Status.Message = res.Value
+		case TaskResultContextPath:
+			abr.Status.Path = res.Value
+		}
+	}
+
 	//now let's create the dependency build object
 	//once this object has been created its resolver takes over
 	if abr.Status.Tag == "" {
 		//this is a failure
 		abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
-		return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
+		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	}
 	//we generate a hash of the url, tag and path for
 	//our unique identifier
@@ -106,7 +162,7 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Contex
 	lbls := map[string]string{
 		DependencyBuildIdLabel: depId,
 	}
-	listOpts := &client.ListOptions{
+	listOpts = &client.ListOptions{
 		Namespace:     abr.Namespace,
 		LabelSelector: labels.SelectorFromSet(lbls),
 	}
@@ -114,6 +170,9 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Contex
 	if err := r.client.List(ctx, list, listOpts); err != nil {
 		return reconcile.Result{}, err
 	}
+
+	//move the state to building
+	abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
 	if len(list.Items) == 0 {
 		//no existing build object found, lets create one
 		db := &v1alpha1.DependencyBuild{}
@@ -128,7 +187,7 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Contex
 			Tag:     abr.Status.Tag,
 			Path:    abr.Status.Path,
 		}
-		if err := controllerutil.SetOwnerReference(&abr, db, r.scheme); err != nil {
+		if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -137,7 +196,13 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Contex
 		}
 	} else {
 		//build already exists, add us to the owner references
+		var recent *v1alpha1.DependencyBuild
 		for _, db := range list.Items {
+			//there should only ever be one build
+			//if somehow we do end up with two we consider the most recent one
+			if recent == nil || recent.CreationTimestamp.Before(&db.CreationTimestamp) {
+				recent = &db
+			}
 			found := false
 			for _, owner := range db.OwnerReferences {
 				if owner.UID == abr.UID {
@@ -146,7 +211,7 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Contex
 				}
 			}
 			if !found {
-				if err := controllerutil.SetOwnerReference(&abr, &db, r.scheme); err != nil {
+				if err := controllerutil.SetOwnerReference(abr, &db, r.scheme); err != nil {
 					return reconcile.Result{}, err
 				}
 			}
@@ -154,6 +219,16 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Contex
 				return reconcile.Result{}, err
 			}
 		}
+		//if the build is done update our state accordingly
+		switch recent.Status.State {
+		case v1alpha1.DependencyBuildStateComplete:
+			abr.Status.State = v1alpha1.ArtifactBuildRequestStateComplete
+		case DependencyBuildContaminatedBy, v1alpha1.DependencyBuildStateFailed:
+			abr.Status.State = v1alpha1.ArtifactBuildRequestStateFailed
+		}
+	}
+	if err := r.client.Status().Update(ctx, abr); err != nil {
+		return reconcile.Result{}, err
 	}
 	//add the dependency build label to the abr as well
 	//so you can easily look them up
@@ -161,15 +236,10 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovered(ctx context.Contex
 		abr.Labels = map[string]string{}
 	}
 	abr.Labels[DependencyBuildIdLabel] = depId
-	if err := r.client.Update(ctx, &abr); err != nil {
-		return reconcile.Result{}, err
-	}
-	//move the state to building
-	abr.Status.State = v1alpha1.ArtifactBuildRequestStateBuilding
-	return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
+	return reconcile.Result{}, r.client.Update(ctx, abr)
 }
 
-func (r *ReconcileArtifactBuildRequest) handleStateComplete(ctx context.Context, abr v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuildRequest) handleStateComplete(ctx context.Context, abr *v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
 	for key, value := range abr.Annotations {
 		if strings.HasPrefix(key, DependencyBuildContaminatedBy) {
 			db := v1alpha1.DependencyBuild{}
@@ -196,6 +266,60 @@ func (r *ReconcileArtifactBuildRequest) handleStateComplete(ctx context.Context,
 	return reconcile.Result{}, nil
 }
 
+func (r *ReconcileArtifactBuildRequest) handleStateBuilding(ctx context.Context, abr *v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
+	list := &v1alpha1.DependencyBuildList{}
+	lbls := map[string]string{
+		DependencyBuildIdLabel: abr.Labels[DependencyBuildIdLabel],
+	}
+	listOpts := &client.ListOptions{
+		Namespace:     abr.Namespace,
+		LabelSelector: labels.SelectorFromSet(lbls),
+	}
+
+	if err := r.client.List(ctx, list, listOpts); err != nil {
+		return reconcile.Result{}, err
+	}
+	if len(list.Items) == 0 {
+		//we don't have a build for this ABR, this is very odd
+		//move back to new and start again
+		abr.Status.State = v1alpha1.ArtifactBuildRequestStateNew
+		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+	}
+
+	//let's see if the build has completed
+	var recent *v1alpha1.DependencyBuild
+	for _, db := range list.Items {
+		//there should only ever be one build
+		//if somehow we do end up with two we consider the most recent one
+		if recent == nil || recent.CreationTimestamp.Before(&db.CreationTimestamp) {
+			recent = &db
+		}
+		found := false
+		for _, owner := range db.OwnerReferences {
+			if owner.UID == abr.UID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			if err := controllerutil.SetOwnerReference(abr, &db, r.scheme); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		if err := r.client.Update(ctx, &db); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	//if the build is done update our state accordingly
+	switch recent.Status.State {
+	case v1alpha1.DependencyBuildStateComplete:
+		abr.Status.State = v1alpha1.ArtifactBuildRequestStateComplete
+	case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
+		abr.Status.State = v1alpha1.ArtifactBuildRequestStateFailed
+	}
+	return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+}
+
 func CreateABRName(gav string) string {
 	hashedBytes := sha1.Sum([]byte(gav))
 	hash := hex.EncodeToString(hashedBytes[:])[0:8]
@@ -218,5 +342,5 @@ func CreateABRName(gav string) string {
 	}
 	newName.WriteString("-")
 	newName.WriteString(hash)
-	return newName.String()
+	return strings.ToLower(newName.String())
 }
