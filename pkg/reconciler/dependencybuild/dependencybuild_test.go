@@ -2,7 +2,8 @@ package dependencybuild
 
 import (
 	"context"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,9 +28,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 }
 
 func TestReconcileNew(t *testing.T) {
-	gomega.RegisterFailHandler(func(message string, callerSkip ...int) {
-		t.Fatal(message)
-	})
+	RegisterFailHandler(Fail)
 	db := v1alpha1.DependencyBuild{}
 	db.Namespace = metav1.NamespaceDefault
 	db.Name = "test"
@@ -42,49 +41,36 @@ func TestReconcileNew(t *testing.T) {
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&db)
 
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}})
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
+	Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
 
-	err = client.Get(ctx, types.NamespacedName{
+	Expect(client.Get(ctx, types.NamespacedName{
 		Namespace: metav1.NamespaceDefault,
 		Name:      "test",
-	}, &db)
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
-	if db.Status.State != v1alpha1.DependencyBuildStateBuilding {
-		t.Fatalf("db at incorrect state: %s", db.Status.State)
-	}
+	}, &db))
+	Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
 
 	prList := &pipelinev1beta1.PipelineRunList{}
-	err = client.List(ctx, prList)
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
+	Expect(client.List(ctx, prList))
+
+	Expect(len(prList.Items)).Should(Equal(1))
 	for _, pr := range prList.Items {
-		if pr.Labels[artifactbuildrequest.DependencyBuildIdLabel] != db.Labels[artifactbuildrequest.DependencyBuildIdLabel] {
-			t.Fatalf("db/pr label mismatch: %s and %s", pr.Labels[artifactbuildrequest.DependencyBuildIdLabel], db.Labels[artifactbuildrequest.DependencyBuildIdLabel])
-		}
+		Expect(pr.Labels[artifactbuildrequest.DependencyBuildIdLabel]).Should(Equal(db.Labels[artifactbuildrequest.DependencyBuildIdLabel]))
 		for _, or := range pr.OwnerReferences {
 			if or.Kind != db.Kind || or.Name != db.Name {
-				t.Fatalf("db/pr owner ref mismatch: %s %s %s %s", or.Kind, db.Kind, or.Name, db.Name)
+				Expect(or.Kind).Should(Equal(db.Kind))
+				Expect(or.Name).Should(Equal(db.Name))
 			}
 		}
-		gomega.Expect(len(pr.Spec.Params)).Should(gomega.Equal(3))
+		Expect(len(pr.Spec.Params)).Should(Equal(3))
 		for _, param := range pr.Spec.Params {
 			switch param.Name {
 			case PipelineScmTag:
-				gomega.Expect(param.Value.StringVal).Should(gomega.Equal("some-tag"))
+				Expect(param.Value.StringVal).Should(Equal("some-tag"))
 			case PipelinePath:
-				gomega.Expect(param.Value.StringVal).Should(gomega.Equal("some-path"))
+				Expect(param.Value.StringVal).Should(Equal("some-path"))
 			case PipelineScmUrl:
-				gomega.Expect(param.Value.StringVal).Should(gomega.Equal("some-url"))
+				Expect(param.Value.StringVal).Should(Equal("some-url"))
 			}
 		}
-	}
-	if len(prList.Items) == 0 {
-		t.Fatalf("no pr found")
 	}
 }
