@@ -49,8 +49,6 @@ spec:
             type: object
           status:
             properties:
-              discoveryTaskRun:
-                type: string
               message:
                 type: string
               path:

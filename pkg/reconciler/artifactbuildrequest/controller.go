@@ -13,5 +13,6 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.ArtifactBuildRequest{}).
 		//we can't use .Owns() here as controller is not true in the owner ref
 		Watches(&source.Kind{Type: &v1beta1.TaskRun{}}, &handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.ArtifactBuildRequest{}, IsController: false}).
+		Watches(&source.Kind{Type: &v1alpha1.DependencyBuild{}}, &handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.ArtifactBuildRequest{}, IsController: false}).
 		Complete(r)
 }

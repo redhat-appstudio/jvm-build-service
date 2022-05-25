@@ -2,14 +2,14 @@ package artifactbuildrequest
 
 import (
 	"context"
-	"strings"
-	"testing"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/apis/duck/v1beta1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"strings"
+	"testing"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 
@@ -34,7 +34,7 @@ func TestReconcileNew(t *testing.T) {
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&abr)
 
-	_, err := reconciler.handleStateNew(ctx, abr)
+	_, err := reconciler.handleStateNew(ctx, &abr)
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
@@ -105,6 +105,12 @@ func TestReconcileDiscovered(t *testing.T) {
 					t.Errorf("db / abr owner ref mismatch: %s %s %s %s", or.Kind, abr.Kind, or.Name, abr.Name)
 				}
 			}
+			if db.Spec.Tag != "foo" ||
+				db.Spec.SCMURL != "goo" ||
+				db.Spec.SCMType != "hoo" ||
+				db.Spec.Path != "ioo" {
+				t.Errorf("db spec / abr status mismatch: %#v vs. %#v", db.Spec, abr.Status)
+			}
 			if db.Spec.SCMURL != abr.Status.SCMURL ||
 				db.Spec.SCMType != abr.Status.SCMType ||
 				db.Spec.Tag != abr.Status.Tag ||
@@ -117,8 +123,10 @@ func TestReconcileDiscovered(t *testing.T) {
 		}
 	}
 
+	now := metav1.Now()
 	tests := []struct {
 		name       string
+		tr         *pipelinev1beta1.TaskRun
 		abr        *v1alpha1.ArtifactBuildRequest
 		db         *v1alpha1.DependencyBuild
 		validation func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest)
@@ -130,10 +138,24 @@ func TestReconcileDiscovered(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: metav1.NamespaceDefault,
+					UID:       "someuid",
 				},
 				Spec: v1alpha1.ArtifactBuildRequestSpec{},
 				Status: v1alpha1.ArtifactBuildRequestStatus{
 					State: v1alpha1.DependencyBuildStateBuilding,
+				},
+			},
+			tr: &pipelinev1beta1.TaskRun{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: metav1.NamespaceDefault,
+					Labels:    map[string]string{ArtifactBuildRequestIdLabel: "someuid"},
+				},
+				Spec: pipelinev1beta1.TaskRunSpec{},
+				Status: pipelinev1beta1.TaskRunStatus{
+					Status:              v1beta1.Status{},
+					TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{CompletionTime: &now},
 				},
 			},
 			validation: func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest) {
@@ -150,14 +172,28 @@ func TestReconcileDiscovered(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: metav1.NamespaceDefault,
+					UID:       "someuid",
 				},
 				Spec: v1alpha1.ArtifactBuildRequestSpec{},
 				Status: v1alpha1.ArtifactBuildRequestStatus{
-					State:   v1alpha1.DependencyBuildStateBuilding,
-					Tag:     "foo",
-					SCMURL:  "goo",
-					SCMType: "hoo",
-					Path:    "ioo",
+					State: v1alpha1.ArtifactBuildRequestStateDiscovering,
+				},
+			},
+			tr: &pipelinev1beta1.TaskRun{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: metav1.NamespaceDefault,
+					Labels:    map[string]string{ArtifactBuildRequestIdLabel: "someuid"},
+				},
+				Spec: pipelinev1beta1.TaskRunSpec{},
+				Status: pipelinev1beta1.TaskRunStatus{
+					Status: v1beta1.Status{},
+					TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{CompletionTime: &now, TaskRunResults: []pipelinev1beta1.TaskRunResult{
+						{Name: TaskResultScmTag, Value: "foo"},
+						{Name: TaskResultScmUrl, Value: "goo"},
+						{Name: TaskResultScmType, Value: "hoo"},
+						{Name: TaskResultContextPath, Value: "ioo"}}},
 				},
 			},
 			validation: fullValidation,
@@ -169,6 +205,7 @@ func TestReconcileDiscovered(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: metav1.NamespaceDefault,
+					UID:       "someuid",
 				},
 				Spec: v1alpha1.ArtifactBuildRequestSpec{},
 				Status: v1alpha1.ArtifactBuildRequestStatus{
@@ -192,6 +229,19 @@ func TestReconcileDiscovered(t *testing.T) {
 					Path:    "ioo",
 				},
 			},
+			tr: &pipelinev1beta1.TaskRun{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: metav1.NamespaceDefault,
+					Labels:    map[string]string{ArtifactBuildRequestIdLabel: "someuid"},
+				},
+				Spec: pipelinev1beta1.TaskRunSpec{},
+				Status: pipelinev1beta1.TaskRunStatus{
+					Status:              v1beta1.Status{},
+					TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{CompletionTime: &now},
+				},
+			},
 			validation: fullValidation,
 		},
 	}
@@ -205,9 +255,12 @@ func TestReconcileDiscovered(t *testing.T) {
 			if tt.db != nil {
 				objs = append(objs, tt.db)
 			}
+			if tt.tr != nil {
+				objs = append(objs, tt.tr)
+			}
 			client, reconciler := setupClientAndReconciler(objs...)
 			ctx := context.TODO()
-			_, err := reconciler.handleStateDiscovering(ctx, *tt.abr)
+			_, err := reconciler.handleStateDiscovering(ctx, tt.abr)
 			if err != nil {
 				t.Errorf("handleStateDiscovering error: %s", err.Error())
 			}

@@ -72,6 +72,8 @@ func (r *ReconcileArtifactBuildRequest) Reconcile(ctx context.Context, request r
 		return r.handleStateDiscovering(ctx, &abr)
 	case v1alpha1.ArtifactBuildRequestStateComplete:
 		return r.handleStateComplete(ctx, &abr)
+	case v1alpha1.ArtifactBuildRequestStateBuilding:
+		return r.handleStateBuilding(ctx, &abr)
 	}
 	return reconcile.Result{}, nil
 }
@@ -225,16 +227,16 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovering(ctx context.Conte
 			abr.Status.State = v1alpha1.ArtifactBuildRequestStateFailed
 		}
 	}
+	if err := r.client.Status().Update(ctx, abr); err != nil {
+		return reconcile.Result{}, err
+	}
 	//add the dependency build label to the abr as well
 	//so you can easily look them up
 	if abr.Labels == nil {
 		abr.Labels = map[string]string{}
 	}
 	abr.Labels[DependencyBuildIdLabel] = depId
-	if err := r.client.Update(ctx, abr); err != nil {
-		return reconcile.Result{}, err
-	}
-	return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+	return reconcile.Result{}, r.client.Update(ctx, abr)
 }
 
 func (r *ReconcileArtifactBuildRequest) handleStateComplete(ctx context.Context, abr *v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
@@ -260,6 +262,54 @@ func (r *ReconcileArtifactBuildRequest) handleStateComplete(ctx context.Context,
 				return reconcile.Result{}, err
 			}
 		}
+	}
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileArtifactBuildRequest) handleStateBuilding(ctx context.Context, abr *v1alpha1.ArtifactBuildRequest) (reconcile.Result, error) {
+	list := &v1alpha1.DependencyBuildList{}
+	lbls := map[string]string{
+		DependencyBuildIdLabel: abr.Labels[DependencyBuildIdLabel],
+	}
+	listOpts := &client.ListOptions{
+		Namespace:     abr.Namespace,
+		LabelSelector: labels.SelectorFromSet(lbls),
+	}
+
+	if err := r.client.List(ctx, list, listOpts); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	//let's see if the build has completed
+	var recent *v1alpha1.DependencyBuild
+	for _, db := range list.Items {
+		//there should only ever be one build
+		//if somehow we do end up with two we consider the most recent one
+		if recent == nil || recent.CreationTimestamp.Before(&db.CreationTimestamp) {
+			recent = &db
+		}
+		found := false
+		for _, owner := range db.OwnerReferences {
+			if owner.UID == abr.UID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			if err := controllerutil.SetOwnerReference(abr, &db, r.scheme); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		if err := r.client.Update(ctx, &db); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	//if the build is done update our state accordingly
+	switch recent.Status.State {
+	case v1alpha1.DependencyBuildStateComplete:
+		abr.Status.State = v1alpha1.ArtifactBuildRequestStateComplete
+	case DependencyBuildContaminatedBy, v1alpha1.DependencyBuildStateFailed:
+		abr.Status.State = v1alpha1.ArtifactBuildRequestStateFailed
 	}
 	return reconcile.Result{}, nil
 }

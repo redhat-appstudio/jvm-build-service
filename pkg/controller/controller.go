@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pipelinerun"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
@@ -57,10 +56,6 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 	}
 
 	if err := dependencybuild.SetupNewReconcilerWithManager(mgr); err != nil {
-		return nil, err
-	}
-
-	if err := pipelinerun.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

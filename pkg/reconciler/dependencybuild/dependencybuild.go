@@ -12,7 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/apis"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strings"
 	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -70,10 +72,8 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	switch db.Status.State {
 	case "", v1alpha1.DependencyBuildStateNew:
 		return r.handleStateNew(ctx, db)
-	case v1alpha1.DependencyBuildStateComplete:
-		return reconcile.Result{}, r.updateArtifactRequestState(ctx, db, v1alpha1.ArtifactBuildRequestStateComplete)
-	case v1alpha1.DependencyBuildStateFailed:
-		return reconcile.Result{}, r.updateArtifactRequestState(ctx, db, v1alpha1.ArtifactBuildRequestStateFailed)
+	case v1alpha1.DependencyBuildStateComplete, v1alpha1.DependencyBuildStateFailed:
+		return reconcile.Result{}, nil
 	case v1alpha1.DependencyBuildStateBuilding:
 		return r.handleStateBuilding(ctx, depId, db)
 	case v1alpha1.DependencyBuildStateContaminated:
@@ -143,30 +143,48 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depI
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		return reconcile.Result{}, r.client.Update(ctx, &db)
 	}
-	return reconcile.Result{}, nil
-}
+	for _, pr := range list.Items {
 
-func (r *ReconcileDependencyBuild) updateArtifactRequestState(ctx context.Context, db v1alpha1.DependencyBuild, state string) error {
-	list := v1alpha1.ArtifactBuildRequestList{}
-	lbls := map[string]string{artifactbuildrequest.DependencyBuildIdLabel: db.Labels[artifactbuildrequest.DependencyBuildIdLabel]}
-	listOpts := &client.ListOptions{
-		Namespace:     db.Namespace,
-		LabelSelector: labels.SelectorFromSet(lbls),
-	}
-	err := r.client.List(ctx, &list, listOpts)
-	if err != nil {
-		return err
-	}
-	for _, abr := range list.Items {
-		if abr.Status.State == v1alpha1.ArtifactBuildRequestStateBuilding {
-			abr.Status.State = state
-			err = r.client.Status().Update(ctx, &abr)
-			if err != nil {
-				return err
+		//if there is no label then ignore it
+		if pr.Status.CompletionTime != nil {
+			//the pr is done, lets potentially update the dependency build
+			//we just set the state here, the ABR logic is in the ABR controller
+			//this keeps as much of the logic in one place as possible
+
+			var contaminates []string
+			for _, r := range pr.Status.PipelineResults {
+				if r.Name == "contaminants" && len(r.Value) > 0 {
+					contaminates = strings.Split(r.Value, ",")
+				}
+			}
+			success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+			for _, ref := range pr.OwnerReferences {
+				dep := v1alpha1.DependencyBuild{}
+				if err := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &dep); err != nil {
+					return reconcile.Result{}, err
+				}
+				if dep.Status.State == v1alpha1.DependencyBuildStateBuilding {
+					if success {
+						if len(contaminates) == 0 {
+							dep.Status.State = v1alpha1.DependencyBuildStateComplete
+						} else {
+							//the dependency was contaminated with community deps
+							//most likely shaded in
+							dep.Status.State = v1alpha1.DependencyBuildStateContaminated
+							dep.Status.Contaminants = contaminates
+						}
+					} else {
+						dep.Status.State = v1alpha1.DependencyBuildStateFailed
+					}
+					err := r.client.Status().Update(ctx, &dep)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+				}
 			}
 		}
 	}
-	return nil
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db v1alpha1.DependencyBuild) (reconcile.Result, error) {
