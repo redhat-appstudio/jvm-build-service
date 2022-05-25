@@ -8,6 +8,7 @@ import (
 	"knative.dev/pkg/apis/duck/v1beta1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
 	"testing"
 
@@ -18,8 +19,8 @@ import (
 
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileArtifactBuildRequest) {
 	scheme := runtime.NewScheme()
-	v1alpha1.AddToScheme(scheme)
-	pipelinev1beta1.AddToScheme(scheme)
+	_ = v1alpha1.AddToScheme(scheme)
+	_ = pipelinev1beta1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileArtifactBuildRequest{client: client, scheme: scheme}
 	return client, reconciler
@@ -34,7 +35,7 @@ func TestReconcileNew(t *testing.T) {
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&abr)
 
-	_, err := reconciler.handleStateNew(ctx, &abr)
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}})
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
@@ -79,7 +80,7 @@ func getABR(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBui
 	return abr
 }
 
-func TestReconcileDiscovered(t *testing.T) {
+func TestReconcileDiscovering(t *testing.T) {
 	fullValidation := func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest) {
 		abr = getABR(t, client, abr)
 		if abr.Status.State != v1alpha1.ArtifactBuildRequestStateBuilding {
@@ -142,7 +143,7 @@ func TestReconcileDiscovered(t *testing.T) {
 				},
 				Spec: v1alpha1.ArtifactBuildRequestSpec{},
 				Status: v1alpha1.ArtifactBuildRequestStatus{
-					State: v1alpha1.DependencyBuildStateBuilding,
+					State: v1alpha1.ArtifactBuildRequestStateDiscovering,
 				},
 			},
 			tr: &pipelinev1beta1.TaskRun{
@@ -209,7 +210,7 @@ func TestReconcileDiscovered(t *testing.T) {
 				},
 				Spec: v1alpha1.ArtifactBuildRequestSpec{},
 				Status: v1alpha1.ArtifactBuildRequestStatus{
-					State:   v1alpha1.DependencyBuildStateBuilding,
+					State:   v1alpha1.ArtifactBuildRequestStateDiscovering,
 					Tag:     "foo",
 					SCMURL:  "goo",
 					SCMType: "hoo",
@@ -249,9 +250,7 @@ func TestReconcileDiscovered(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			objs := []runtimeclient.Object{}
-			if tt.abr != nil {
-				objs = append(objs, tt.abr)
-			}
+			objs = append(objs, tt.abr)
 			if tt.db != nil {
 				objs = append(objs, tt.db)
 			}
@@ -260,11 +259,114 @@ func TestReconcileDiscovered(t *testing.T) {
 			}
 			client, reconciler := setupClientAndReconciler(objs...)
 			ctx := context.TODO()
-			_, err := reconciler.handleStateDiscovering(ctx, tt.abr)
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: tt.abr.Namespace, Name: tt.abr.Name}})
 			if err != nil {
 				t.Errorf("handleStateDiscovering error: %s", err.Error())
 			}
 			tt.validation(t, client, tt.abr)
+		})
+	}
+}
+
+func TestReconcileBuilding(t *testing.T) {
+	tests := []struct {
+		name       string
+		db         *v1alpha1.DependencyBuild
+		validation func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest)
+	}{
+		{
+			name: "failed build",
+			db: &v1alpha1.DependencyBuild{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-generated",
+					Namespace: metav1.NamespaceDefault,
+					Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				},
+				Spec:   v1alpha1.DependencyBuildSpec{},
+				Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
+			},
+			validation: func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest) {
+				abr = getABR(t, client, abr)
+				if abr.Status.State != v1alpha1.ArtifactBuildRequestStateFailed {
+					t.Errorf("incorrect missing build state: %s", abr.Status.State)
+				}
+			},
+		},
+		{
+			name: "completed build",
+			db: &v1alpha1.DependencyBuild{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-generated",
+					Namespace: metav1.NamespaceDefault,
+					Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				},
+				Spec:   v1alpha1.DependencyBuildSpec{},
+				Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete},
+			},
+			validation: func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest) {
+				abr = getABR(t, client, abr)
+				if abr.Status.State != v1alpha1.ArtifactBuildRequestStateComplete {
+					t.Errorf("incorrect missing build state: %s", abr.Status.State)
+				}
+			},
+		},
+		{
+			name: "contaminated build",
+			db: &v1alpha1.DependencyBuild{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-generated",
+					Namespace: metav1.NamespaceDefault,
+					Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				},
+				Spec:   v1alpha1.DependencyBuildSpec{},
+				Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []string{"com.foo:acme:1.0"}},
+			},
+			validation: func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest) {
+				abr = getABR(t, client, abr)
+				if abr.Status.State != v1alpha1.ArtifactBuildRequestStateFailed {
+					t.Errorf("incorrect missing build state: %s", abr.Status.State)
+				}
+			},
+		},
+		{
+			name: "missing (deleted) build",
+			validation: func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest) {
+				abr = getABR(t, client, abr)
+				if abr.Status.State != v1alpha1.ArtifactBuildRequestStateNew {
+					t.Errorf("incorrect missing build state: %s", abr.Status.State)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			abr := &v1alpha1.ArtifactBuildRequest{
+				TypeMeta: metav1.TypeMeta{},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: metav1.NamespaceDefault,
+					Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				},
+				Spec: v1alpha1.ArtifactBuildRequestSpec{},
+				Status: v1alpha1.ArtifactBuildRequestStatus{
+					State: v1alpha1.ArtifactBuildRequestStateBuilding,
+				},
+			}
+			objs := []runtimeclient.Object{abr}
+			if tt.db != nil {
+				objs = append(objs, tt.db)
+			}
+			client, reconciler := setupClientAndReconciler(objs...)
+			ctx := context.TODO()
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}})
+			if err != nil {
+				t.Errorf("handleStateDiscovering error: %s", err.Error())
+			}
+			tt.validation(t, client, abr)
 		})
 	}
 }

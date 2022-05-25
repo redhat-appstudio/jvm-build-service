@@ -279,6 +279,12 @@ func (r *ReconcileArtifactBuildRequest) handleStateBuilding(ctx context.Context,
 	if err := r.client.List(ctx, list, listOpts); err != nil {
 		return reconcile.Result{}, err
 	}
+	if len(list.Items) == 0 {
+		//we don't have a build for this ABR, this is very odd
+		//move back to new and start again
+		abr.Status.State = v1alpha1.ArtifactBuildRequestStateNew
+		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+	}
 
 	//let's see if the build has completed
 	var recent *v1alpha1.DependencyBuild
@@ -308,10 +314,10 @@ func (r *ReconcileArtifactBuildRequest) handleStateBuilding(ctx context.Context,
 	switch recent.Status.State {
 	case v1alpha1.DependencyBuildStateComplete:
 		abr.Status.State = v1alpha1.ArtifactBuildRequestStateComplete
-	case DependencyBuildContaminatedBy, v1alpha1.DependencyBuildStateFailed:
+	case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
 		abr.Status.State = v1alpha1.ArtifactBuildRequestStateFailed
 	}
-	return reconcile.Result{}, nil
+	return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 }
 
 func CreateABRName(gav string) string {
