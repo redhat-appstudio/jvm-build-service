@@ -26,9 +26,11 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout = 300 * time.Second
-
+	contextTimeout   = 300 * time.Second
 	PipelineRunLabel = "jvmbuildservice.io/dependencybuild-pipelinerun"
+	PipelineScmUrl   = "url"
+	PipelineScmTag   = "tag"
+	PipelinePath     = "context"
 )
 
 type ReconcileDependencyBuild struct {
@@ -100,9 +102,9 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db v1alph
 	tr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: db.Labels[artifactbuildrequest.DependencyBuildIdLabel], PipelineRunLabel: ""}
 	tr.Spec.PipelineRef = &pipelinev1beta1.PipelineRef{Name: "run-component-build"}
 	tr.Spec.Params = []pipelinev1beta1.Param{
-		{Name: "url", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.SCMURL}},
-		{Name: "tag", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Tag}},
-		{Name: "context", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Path}},
+		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.SCMURL}},
+		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Tag}},
+		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Path}},
 	}
 	quantity, err := resource.ParseQuantity("1Gi")
 	if err != nil {
