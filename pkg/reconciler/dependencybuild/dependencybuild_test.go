@@ -27,8 +27,12 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	return client, reconciler
 }
 
-func TestReconcileNew(t *testing.T) {
+func TestSetup(t *testing.T) {
 	RegisterFailHandler(Fail)
+	RunSpecs(t, "Dependency Build Suite")
+}
+
+var _ = It("Test reconcile new DependencyBuild", func() {
 	db := v1alpha1.DependencyBuild{}
 	db.Namespace = metav1.NamespaceDefault
 	db.Name = "test"
@@ -73,4 +77,4 @@ func TestReconcileNew(t *testing.T) {
 			}
 		}
 	}
-}
+})
