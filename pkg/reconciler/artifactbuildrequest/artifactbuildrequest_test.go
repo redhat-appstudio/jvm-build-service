@@ -2,7 +2,6 @@ package artifactbuildrequest
 
 import (
 	"context"
-	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,12 +26,8 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	return client, reconciler
 }
 
-func TestSetup(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Artifact Build Request Suite")
-}
-
-var _ = It("Test reconcile new ArtifactBuildRequest", func() {
+func TestDependencyBuild(t *testing.T) {
+	g := NewGomegaWithT(t)
 	abr := v1alpha1.ArtifactBuildRequest{}
 	abr.Namespace = metav1.NamespaceDefault
 	abr.Name = "test"
@@ -41,67 +36,67 @@ var _ = It("Test reconcile new ArtifactBuildRequest", func() {
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&abr)
 
-	Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}}))
+	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}}))
 
-	Expect(client.Get(ctx, types.NamespacedName{
+	g.Expect(client.Get(ctx, types.NamespacedName{
 		Namespace: metav1.NamespaceDefault,
 		Name:      "test",
 	}, &abr))
-	Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateDiscovering))
+	g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateDiscovering))
 
 	trList := &pipelinev1beta1.TaskRunList{}
-	Expect(client.List(ctx, trList))
-	Expect(len(trList.Items)).Should(Equal(1))
+	g.Expect(client.List(ctx, trList))
+	g.Expect(len(trList.Items)).Should(Equal(1))
 	for _, tr := range trList.Items {
 		for _, or := range tr.OwnerReferences {
-			Expect(or.Kind).Should(Equal(abr.Kind))
-			Expect(or.Name).Should(Equal(abr.Name))
+			g.Expect(or.Kind).Should(Equal(abr.Kind))
+			g.Expect(or.Name).Should(Equal(abr.Name))
 		}
 	}
-})
+}
 
-func getABR(client runtimeclient.Client) *v1alpha1.ArtifactBuildRequest {
+func getABR(client runtimeclient.Client, g *WithT) *v1alpha1.ArtifactBuildRequest {
 	ctx := context.TODO()
 	abr := v1alpha1.ArtifactBuildRequest{}
-	Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}, &abr))
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}, &abr))
 	return &abr
 }
 
-var _ = Describe("Test Reconcile with state Discovering", func() {
+func TestStateDiscovering(t *testing.T) {
 	ctx := context.TODO()
 
-	fullValidation := func(client runtimeclient.Client) {
-		abr := getABR(client)
-		Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateBuilding))
+	fullValidation := func(client runtimeclient.Client, g *WithT) {
+		abr := getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateBuilding))
 
 		val, ok := abr.Labels[DependencyBuildIdLabel]
-		Expect(ok).Should(Equal(true))
-		Expect(val).Should(Not(BeEmpty()))
+		g.Expect(ok).Should(Equal(true))
+		g.Expect(val).Should(Not(BeEmpty()))
 
 		dbList := v1alpha1.DependencyBuildList{}
-		Expect(client.List(context.TODO(), &dbList))
-		Expect(dbList.Items).Should(Not(BeEmpty()))
+		g.Expect(client.List(context.TODO(), &dbList))
+		g.Expect(dbList.Items).Should(Not(BeEmpty()))
 		for _, db := range dbList.Items {
 			for _, or := range db.OwnerReferences {
-				Expect(or.Kind).Should(Equal(abr.Kind))
-				Expect(or.Name).Should(Equal(abr.Name))
+				g.Expect(or.Kind).Should(Equal(abr.Kind))
+				g.Expect(or.Name).Should(Equal(abr.Name))
 			}
-			Expect(db.Spec.Tag).Should(Equal("foo"))
-			Expect(db.Spec.SCMURL).Should(Equal("goo"))
-			Expect(db.Spec.SCMType).Should(Equal("hoo"))
-			Expect(db.Spec.Path).Should(Equal("ioo"))
+			g.Expect(db.Spec.Tag).Should(Equal("foo"))
+			g.Expect(db.Spec.SCMURL).Should(Equal("goo"))
+			g.Expect(db.Spec.SCMType).Should(Equal("hoo"))
+			g.Expect(db.Spec.Path).Should(Equal("ioo"))
 
-			Expect(abr.Status.Tag).Should(Equal("foo"))
-			Expect(abr.Status.SCMURL).Should(Equal("goo"))
-			Expect(abr.Status.SCMType).Should(Equal("hoo"))
-			Expect(abr.Status.Path).Should(Equal("ioo"))
+			g.Expect(abr.Status.Tag).Should(Equal("foo"))
+			g.Expect(abr.Status.SCMURL).Should(Equal("goo"))
+			g.Expect(abr.Status.SCMType).Should(Equal("hoo"))
+			g.Expect(abr.Status.Path).Should(Equal("ioo"))
 		}
 	}
 
 	var client runtimeclient.Client
 	var reconciler *ReconcileArtifactBuildRequest
 	now := metav1.Now()
-	BeforeEach(func() {
+	setup := func() {
 		abr := &v1alpha1.ArtifactBuildRequest{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
@@ -115,9 +110,11 @@ var _ = Describe("Test Reconcile with state Discovering", func() {
 			},
 		}
 		client, reconciler = setupClientAndReconciler(abr)
-	})
-	It("SCM tag cannot be determined", func() {
-		Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
+	}
+	t.Run("SCM tag cannot be determined", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		g.Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
@@ -130,12 +127,14 @@ var _ = Describe("Test Reconcile with state Discovering", func() {
 				TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{CompletionTime: &now},
 			},
 		}))
-		Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client)
-		Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateMissing))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr := getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateMissing))
 	})
-	It("First ABR creates DependencyBuild", func() {
-		Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
+	t.Run("First ABR creates DependencyBuild", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		g.Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
@@ -152,11 +151,12 @@ var _ = Describe("Test Reconcile with state Discovering", func() {
 					{Name: TaskResultContextPath, Value: "ioo"}}},
 			},
 		}))
-		Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		fullValidation(client)
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		fullValidation(client, g)
 	})
-	It("DependencyBuild already exists for ABR", func() {
-		Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
+	t.Run("DependencyBuild already exists for ABR", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		g.Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
@@ -173,7 +173,7 @@ var _ = Describe("Test Reconcile with state Discovering", func() {
 					{Name: TaskResultContextPath, Value: "ioo"}}},
 			},
 		}))
-		Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
+		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-generated",
@@ -186,16 +186,16 @@ var _ = Describe("Test Reconcile with state Discovering", func() {
 				Path:    "ioo",
 			},
 		}))
-		Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		fullValidation(client)
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		fullValidation(client, g)
 	})
-})
+}
 
-var _ = Describe("Test reconcile state Building", func() {
+func TestStateBuilding(t *testing.T) {
 	ctx := context.TODO()
 	var client runtimeclient.Client
 	var reconciler *ReconcileArtifactBuildRequest
-	BeforeEach(func() {
+	setup := func() {
 		abr := &v1alpha1.ArtifactBuildRequest{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
@@ -209,9 +209,11 @@ var _ = Describe("Test reconcile state Building", func() {
 			},
 		}
 		client, reconciler = setupClientAndReconciler(abr)
-	})
-	It("Failed build", func() {
-		Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
+	}
+	t.Run("Failed build", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-generated",
@@ -221,12 +223,14 @@ var _ = Describe("Test reconcile state Building", func() {
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
 		}))
-		Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client)
-		Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateFailed))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr := getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateFailed))
 	})
-	It("Completed build", func() {
-		Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
+	t.Run("Completed build", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-generated",
@@ -236,12 +240,14 @@ var _ = Describe("Test reconcile state Building", func() {
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete},
 		}))
-		Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client)
-		Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateComplete))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr := getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateComplete))
 	})
-	It("Contaminated build", func() {
-		Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
+	t.Run("Contaminated build", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-generated",
@@ -251,13 +257,15 @@ var _ = Describe("Test reconcile state Building", func() {
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []string{"com.foo:acme:1.0"}},
 		}))
-		Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client)
-		Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateFailed))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr := getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateFailed))
 	})
-	It("Missing (deleted) build", func() {
-		Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client)
-		Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateNew))
+	t.Run("Missing (deleted) build", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr := getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateNew))
 	})
-})
+}
