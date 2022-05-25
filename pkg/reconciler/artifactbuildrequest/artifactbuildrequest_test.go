@@ -133,7 +133,7 @@ func TestReconcileDiscovered(t *testing.T) {
 				},
 				Spec: v1alpha1.ArtifactBuildRequestSpec{},
 				Status: v1alpha1.ArtifactBuildRequestStatus{
-					State: v1alpha1.ArtifactBuildRequestStateDiscovered,
+					State: v1alpha1.DependencyBuildStateBuilding,
 				},
 			},
 			validation: func(t *testing.T, client runtimeclient.Client, abr *v1alpha1.ArtifactBuildRequest) {
@@ -153,7 +153,7 @@ func TestReconcileDiscovered(t *testing.T) {
 				},
 				Spec: v1alpha1.ArtifactBuildRequestSpec{},
 				Status: v1alpha1.ArtifactBuildRequestStatus{
-					State:   v1alpha1.ArtifactBuildRequestStateDiscovered,
+					State:   v1alpha1.DependencyBuildStateBuilding,
 					Tag:     "foo",
 					SCMURL:  "goo",
 					SCMType: "hoo",
@@ -172,7 +172,7 @@ func TestReconcileDiscovered(t *testing.T) {
 				},
 				Spec: v1alpha1.ArtifactBuildRequestSpec{},
 				Status: v1alpha1.ArtifactBuildRequestStatus{
-					State:   v1alpha1.ArtifactBuildRequestStateDiscovered,
+					State:   v1alpha1.DependencyBuildStateBuilding,
 					Tag:     "foo",
 					SCMURL:  "goo",
 					SCMType: "hoo",
@@ -207,9 +207,9 @@ func TestReconcileDiscovered(t *testing.T) {
 			}
 			client, reconciler := setupClientAndReconciler(objs...)
 			ctx := context.TODO()
-			_, err := reconciler.handleStateDiscovered(ctx, *tt.abr)
+			_, err := reconciler.handleStateDiscovering(ctx, *tt.abr)
 			if err != nil {
-				t.Errorf("handleStateDiscovered error: %s", err.Error())
+				t.Errorf("handleStateDiscovering error: %s", err.Error())
 			}
 			tt.validation(t, client, tt.abr)
 		})

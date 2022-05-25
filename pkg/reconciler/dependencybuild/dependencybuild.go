@@ -181,6 +181,9 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	//so we create ABRs for them
 	//if they already exist we link to the ABR
 	for _, contaminant := range contaminants {
+		if len(contaminant) == 0 {
+			continue
+		}
 		abrName := artifactbuildrequest.CreateABRName(contaminant)
 		abr := v1alpha1.ArtifactBuildRequest{}
 		//look for existing ABR
@@ -200,6 +203,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 				return reconcile.Result{}, err
 			}
 		} else {
+			abr.Annotations = map[string]string{}
 			abr.Annotations[artifactbuildrequest.DependencyBuildContaminatedBy+suffix] = db.Name
 			err := r.client.Update(ctx, &abr)
 			if err != nil {

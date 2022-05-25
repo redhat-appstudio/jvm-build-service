@@ -10,14 +10,13 @@ type ArtifactBuildRequestSpec struct {
 }
 
 type ArtifactBuildRequestStatus struct {
-	State             string `json:"state,omitempty"`
-	Message           string `json:"message,omitempty"`
-	RecipeGitHash     string `json:"recipeGitHash,omitempty"`
-	BuildPipelineName string `json:"buildPipelineName,omitempty"`
-	SCMURL            string `json:"scmURL,omitempty"`
-	SCMType           string `json:"scmType,omitempty"`
-	Tag               string `json:"tag,omitempty"`
-	Path              string `json:"path,omitempty"`
+	State         string `json:"state,omitempty"`
+	Message       string `json:"message,omitempty"`
+	RecipeGitHash string `json:"recipeGitHash,omitempty"`
+	SCMURL        string `json:"scmURL,omitempty"`
+	SCMType       string `json:"scmType,omitempty"`
+	Tag           string `json:"tag,omitempty"`
+	Path          string `json:"path,omitempty"`
 }
 
 //type ArtifactBuildRequestState string
@@ -27,8 +26,6 @@ const (
 	ArtifactBuildRequestStateNew = "ArtifactBuildRequestNew"
 	// ArtifactBuildRequestStateDiscovering The discovery pipeline is running to try and figure out how to build this artifact
 	ArtifactBuildRequestStateDiscovering = "ArtifactBuildRequestDiscovering"
-	// ArtifactBuildRequestStateDiscovered The discovery process is complete
-	ArtifactBuildRequestStateDiscovered = "ArtifactBuildRequestDiscovered"
 	// ArtifactBuildRequestStateMissing The discovery pipeline failed to find a way to build this
 	ArtifactBuildRequestStateMissing = "ArtifactBuildRequestMissing"
 	// ArtifactBuildRequestStateBuilding The build is running
