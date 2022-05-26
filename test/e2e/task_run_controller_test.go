@@ -183,11 +183,11 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 
 			abr := v1alpha1.ArtifactBuildRequest{}
 			Expect(k8sClient.Get(ctx, abrName, &abr)).Should(Succeed())
-			Expect(abr.Status.SCMURL).Should(Equal("url1"))
-			Expect(abr.Status.SCMType).Should(Equal("git"))
-			Expect(abr.Status.Tag).Should(Equal("tag1"))
+			Expect(abr.Status.ScmInfo.SCMURL).Should(Equal("url1"))
+			Expect(abr.Status.ScmInfo.SCMType).Should(Equal("git"))
+			Expect(abr.Status.ScmInfo.Tag).Should(Equal("tag1"))
 			Expect(abr.Status.Message).Should(Equal("OK"))
-			Expect(abr.Status.Path).Should(Equal("/path1"))
+			Expect(abr.Status.ScmInfo.Path).Should(Equal("/path1"))
 		})
 
 	})

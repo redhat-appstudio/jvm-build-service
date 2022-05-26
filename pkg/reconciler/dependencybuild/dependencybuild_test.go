@@ -35,10 +35,10 @@ func TestStateNew(t *testing.T) {
 		db.Namespace = metav1.NamespaceDefault
 		db.Name = "test"
 		db.Status.State = v1alpha1.DependencyBuildStateNew
-		db.Spec.SCMURL = "some-url"
-		db.Spec.Tag = "some-tag"
-		db.Spec.Path = "some-path"
-		db.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: hashToString(db.Spec.SCMURL + db.Spec.Tag + db.Spec.Path)}
+		db.Spec.ScmInfo.SCMURL = "some-url"
+		db.Spec.ScmInfo.Tag = "some-tag"
+		db.Spec.ScmInfo.Path = "some-path"
+		db.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 
 		ctx := context.TODO()
 		client, reconciler := setupClientAndReconciler(&db)
@@ -102,16 +102,16 @@ func TestStateBuilding(t *testing.T) {
 		db.Namespace = metav1.NamespaceDefault
 		db.Name = "test"
 		db.Status.State = v1alpha1.DependencyBuildStateBuilding
-		db.Spec.SCMURL = "some-url"
-		db.Spec.Tag = "some-tag"
-		db.Spec.Path = "some-path"
-		db.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: hashToString(db.Spec.SCMURL + db.Spec.Tag + db.Spec.Path)}
+		db.Spec.ScmInfo.SCMURL = "some-url"
+		db.Spec.ScmInfo.Tag = "some-tag"
+		db.Spec.ScmInfo.Path = "some-path"
+		db.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 		g.Expect(client.Create(ctx, &db))
 
 		pr := pipelinev1beta1.PipelineRun{}
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Name = "test"
-		pr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: hashToString(db.Spec.SCMURL + db.Spec.Tag + db.Spec.Path)}
+		pr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 		g.Expect(client.Create(ctx, &pr))
 
 	}

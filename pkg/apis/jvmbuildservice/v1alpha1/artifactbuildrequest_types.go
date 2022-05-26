@@ -5,18 +5,15 @@ import (
 )
 
 type ArtifactBuildRequestSpec struct {
-	// GAV is the groupID:artifacdtID:version tuple seen in maven pom.xml files
+	// GAV is the groupID:artifactID:version tuple seen in maven pom.xml files
 	GAV string `json:"gav,omitempty"`
 }
 
 type ArtifactBuildRequestStatus struct {
-	State         string `json:"state,omitempty"`
-	Message       string `json:"message,omitempty"`
-	RecipeGitHash string `json:"recipeGitHash,omitempty"`
-	SCMURL        string `json:"scmURL,omitempty"`
-	SCMType       string `json:"scmType,omitempty"`
-	Tag           string `json:"tag,omitempty"`
-	Path          string `json:"path,omitempty"`
+	//TODO: conditions?
+	State   string  `json:"state,omitempty"`
+	Message string  `json:"message,omitempty"`
+	ScmInfo SCMInfo `json:"scm,omitempty"`
 }
 
 //type ArtifactBuildRequestState string

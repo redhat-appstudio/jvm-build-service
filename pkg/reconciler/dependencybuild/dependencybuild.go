@@ -62,7 +62,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	//we validate that our dep id hash is still valid
 	//if a field has been modified we need to update the label
 	//which may result in a new build
-	depId := hashToString(db.Spec.SCMURL + db.Spec.Tag + db.Spec.Path)
+	depId := hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
 	if depId != db.Labels[artifactbuildrequest.DependencyBuildIdLabel] {
 		//if our id has changed we just update the label and set our state back to new
 		//this will kick off a new build
@@ -102,9 +102,9 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db v1alph
 	tr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: db.Labels[artifactbuildrequest.DependencyBuildIdLabel], PipelineRunLabel: ""}
 	tr.Spec.PipelineRef = &pipelinev1beta1.PipelineRef{Name: "run-component-build"}
 	tr.Spec.Params = []pipelinev1beta1.Param{
-		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.SCMURL}},
-		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Tag}},
-		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Path}},
+		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
+		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 	}
 	quantity, err := resource.ParseQuantity("1Gi")
 	if err != nil {

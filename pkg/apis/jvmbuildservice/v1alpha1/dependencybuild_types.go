@@ -13,10 +13,7 @@ const (
 )
 
 type DependencyBuildSpec struct {
-	SCMURL  string `json:"scmURL,omitempty"`
-	SCMType string `json:"scmType,omitempty"`
-	Tag     string `json:"tag,omitempty"`
-	Path    string `json:"path,omitempty"`
+	ScmInfo SCMInfo `json:"scmInfo,omitempty,inline"`
 }
 
 type DependencyBuildStatus struct {

@@ -81,15 +81,15 @@ func TestStateDiscovering(t *testing.T) {
 				g.Expect(or.Kind).Should(Equal(abr.Kind))
 				g.Expect(or.Name).Should(Equal(abr.Name))
 			}
-			g.Expect(db.Spec.Tag).Should(Equal("foo"))
-			g.Expect(db.Spec.SCMURL).Should(Equal("goo"))
-			g.Expect(db.Spec.SCMType).Should(Equal("hoo"))
-			g.Expect(db.Spec.Path).Should(Equal("ioo"))
+			g.Expect(db.Spec.ScmInfo.Tag).Should(Equal("foo"))
+			g.Expect(db.Spec.ScmInfo.SCMURL).Should(Equal("goo"))
+			g.Expect(db.Spec.ScmInfo.SCMType).Should(Equal("hoo"))
+			g.Expect(db.Spec.ScmInfo.Path).Should(Equal("ioo"))
 
-			g.Expect(abr.Status.Tag).Should(Equal("foo"))
-			g.Expect(abr.Status.SCMURL).Should(Equal("goo"))
-			g.Expect(abr.Status.SCMType).Should(Equal("hoo"))
-			g.Expect(abr.Status.Path).Should(Equal("ioo"))
+			g.Expect(abr.Status.ScmInfo.Tag).Should(Equal("foo"))
+			g.Expect(abr.Status.ScmInfo.SCMURL).Should(Equal("goo"))
+			g.Expect(abr.Status.ScmInfo.SCMType).Should(Equal("hoo"))
+			g.Expect(abr.Status.ScmInfo.Path).Should(Equal("ioo"))
 		}
 	}
 
@@ -179,12 +179,12 @@ func TestStateDiscovering(t *testing.T) {
 				Name:      "test-generated",
 				Namespace: metav1.NamespaceDefault,
 			},
-			Spec: v1alpha1.DependencyBuildSpec{
+			Spec: v1alpha1.DependencyBuildSpec{ScmInfo: v1alpha1.SCMInfo{
 				Tag:     "foo",
 				SCMURL:  "goo",
 				SCMType: "hoo",
 				Path:    "ioo",
-			},
+			}},
 		}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		fullValidation(client, g)
