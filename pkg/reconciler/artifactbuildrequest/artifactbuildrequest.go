@@ -6,10 +6,12 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -39,14 +41,16 @@ const (
 )
 
 type ReconcileArtifactBuildRequest struct {
-	client client.Client
-	scheme *runtime.Scheme
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
 }
 
 func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 	return &ReconcileArtifactBuildRequest{
-		client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
 	}
 }
 
@@ -123,6 +127,7 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovering(ctx context.Conte
 	if tr == nil {
 		//no pipeline, very odd
 		//move back to new
+		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "NoTaskRun", "The ArtifactBuildRequest %s/%s did not have an associated TaskRun", abr.Namespace, abr.Name)
 		abr.Status.State = v1alpha1.ArtifactBuildRequestStateNew
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	}
@@ -150,6 +155,7 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovering(ctx context.Conte
 	//once this object has been created its resolver takes over
 	if abr.Status.Tag == "" {
 		//this is a failure
+		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuildRequest %s/%s had an empty tag field", abr.Namespace, abr.Name)
 		abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	}
@@ -244,7 +250,7 @@ func (r *ReconcileArtifactBuildRequest) handleStateComplete(ctx context.Context,
 		if strings.HasPrefix(key, DependencyBuildContaminatedBy) {
 			db := v1alpha1.DependencyBuild{}
 			if err := r.client.Get(ctx, types.NamespacedName{Name: value, Namespace: abr.Namespace}, &db); err != nil {
-				//TODO: logging?
+				r.eventRecorder.Eventf(abr, corev1.EventTypeNormal, "CannotGetDependencyBuild", "Could not find the DependencyBuild for ArtifactBuildRequest %s/%s: %s", abr.Namespace, abr.Name, err.Error())
 				//this was not found
 				continue
 			}

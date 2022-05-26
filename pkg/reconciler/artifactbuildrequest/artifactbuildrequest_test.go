@@ -6,6 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis/duck/v1beta1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -22,7 +23,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	reconciler := &ReconcileArtifactBuildRequest{client: client, scheme: scheme}
+	reconciler := &ReconcileArtifactBuildRequest{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
 	return client, reconciler
 }
 

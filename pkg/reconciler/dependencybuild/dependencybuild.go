@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strings"
@@ -34,14 +35,16 @@ const (
 )
 
 type ReconcileDependencyBuild struct {
-	client client.Client
-	scheme *runtime.Scheme
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
 }
 
 func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 	return &ReconcileDependencyBuild{
-		client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
 	}
 }
 
@@ -142,6 +145,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depI
 	}
 	if len(list.Items) == 0 {
 		//no linked pr, back to new
+		r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "NoPipelineRun", "The DependencyBuild %s/%s did not have any PipelineRuns", db.Namespace, db.Name)
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		return reconcile.Result{}, r.client.Update(ctx, &db)
 	}
