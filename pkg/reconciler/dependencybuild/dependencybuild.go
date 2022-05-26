@@ -160,30 +160,23 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depI
 				}
 			}
 			success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
-			for _, ref := range pr.OwnerReferences {
-				dep := v1alpha1.DependencyBuild{}
-				if err := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &dep); err != nil {
-					return reconcile.Result{}, err
+			if success {
+				if len(contaminates) == 0 {
+					db.Status.State = v1alpha1.DependencyBuildStateComplete
+				} else {
+					//the dependency was contaminated with community deps
+					//most likely shaded in
+					db.Status.State = v1alpha1.DependencyBuildStateContaminated
+					db.Status.Contaminants = contaminates
 				}
-				if dep.Status.State == v1alpha1.DependencyBuildStateBuilding {
-					if success {
-						if len(contaminates) == 0 {
-							dep.Status.State = v1alpha1.DependencyBuildStateComplete
-						} else {
-							//the dependency was contaminated with community deps
-							//most likely shaded in
-							dep.Status.State = v1alpha1.DependencyBuildStateContaminated
-							dep.Status.Contaminants = contaminates
-						}
-					} else {
-						dep.Status.State = v1alpha1.DependencyBuildStateFailed
-					}
-					err := r.client.Status().Update(ctx, &dep)
-					if err != nil {
-						return reconcile.Result{}, err
-					}
-				}
+			} else {
+				db.Status.State = v1alpha1.DependencyBuildStateFailed
 			}
+			err := r.client.Status().Update(ctx, &db)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
 		}
 	}
 	return reconcile.Result{}, nil
