@@ -27,7 +27,7 @@ public class ResetArtifactBuildRequestsCommand implements Runnable {
         try {
             MixedOperation<ArtifactBuildRequest, KubernetesResourceList<ArtifactBuildRequest>, Resource<ArtifactBuildRequest>> client = kubernetesClient
                     .resources(ArtifactBuildRequest.class);
-            if (build != null) {
+            if (!build.isEmpty()) {
                 ArtifactBuildRequest item = client.withName(build).get();
                 item.getStatus().setState("");
                 client.updateStatus(item);

@@ -101,7 +101,8 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = artifactbuildrequest.SetupNewReconcilerWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+	err = artifactbuildrequest.SetupNewReconcilerWithManager(k8sManager, k8sClient)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

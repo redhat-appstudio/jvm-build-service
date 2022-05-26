@@ -5,10 +5,9 @@ public class ArtifactBuildRequestStatus {
     private String state = "";
     private String recipeGitHash; //todo multiple git repos
     private String discoveryTaskRun;
-    private String scmType;
-    private String scmURL;
     private String message;
-    private String tag;
+
+    private ScmInfo scm;
 
     public String getState() {
         return state;
@@ -46,30 +45,12 @@ public class ArtifactBuildRequestStatus {
         return this;
     }
 
-    public String getScmType() {
-        return scmType;
+    public ScmInfo getScm() {
+        return scm;
     }
 
-    public ArtifactBuildRequestStatus setScmType(String scmType) {
-        this.scmType = scmType;
-        return this;
-    }
-
-    public String getScmURL() {
-        return scmURL;
-    }
-
-    public ArtifactBuildRequestStatus setScmURL(String scmURL) {
-        this.scmURL = scmURL;
-        return this;
-    }
-
-    public String getTag() {
-        return tag;
-    }
-
-    public ArtifactBuildRequestStatus setTag(String tag) {
-        this.tag = tag;
+    public ArtifactBuildRequestStatus setScm(ScmInfo scm) {
+        this.scm = scm;
         return this;
     }
 }
