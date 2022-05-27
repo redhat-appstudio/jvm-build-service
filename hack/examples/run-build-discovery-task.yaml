@@ -17,4 +17,3 @@ spec:
           resources:
             requests:
               storage: 1Gi
-  serviceAccountName: hacbs-jvm-operator

@@ -2,6 +2,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: hacbs-jvm-operator
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
 rules:
   - apiGroups:
       - jvmbuildservice.io

@@ -4,19 +4,19 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"strings"
+	"time"
+
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strings"
-	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,11 +27,11 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout   = 300 * time.Second
-	PipelineRunLabel = "jvmbuildservice.io/dependencybuild-pipelinerun"
-	PipelineScmUrl   = "url"
-	PipelineScmTag   = "tag"
-	PipelinePath     = "context"
+	contextTimeout = 300 * time.Second
+	TaskRunLabel   = "jvmbuildservice.io/dependencybuild-taskrun"
+	TaskScmUrl     = "url"
+	TaskScmTag     = "tag"
+	TaskPath       = "context"
 )
 
 type ReconcileDependencyBuild struct {
@@ -99,31 +99,27 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db v1alph
 	//TODO: this state flow will change when we start analysing the required images etc
 	//for now just to a super basic build and change the state to building
 	// create task run
-	tr := pipelinev1beta1.PipelineRun{}
+	tr := pipelinev1beta1.TaskRun{}
 	tr.Namespace = db.Namespace
 	tr.GenerateName = db.Name + "-build-"
-	tr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: db.Labels[artifactbuildrequest.DependencyBuildIdLabel], PipelineRunLabel: ""}
-	tr.Spec.PipelineRef = &pipelinev1beta1.PipelineRef{Name: "run-component-build"}
-	tr.Spec.Params = []pipelinev1beta1.Param{
-		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.SCMURL}},
-		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Tag}},
-		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Path}},
+	tr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: db.Labels[artifactbuildrequest.DependencyBuildIdLabel], TaskRunLabel: ""}
+	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{
+		Name: "run-maven-component-build",
+		Kind: pipelinev1beta1.ClusterTaskKind,
 	}
-	quantity, err := resource.ParseQuantity("1Gi")
-	if err != nil {
-		return reconcile.Result{}, err
+	tr.Spec.Params = []pipelinev1beta1.Param{
+		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.SCMURL}},
+		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Tag}},
+		{Name: TaskPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Path}},
 	}
 	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
-		{Name: "shared-workspace", VolumeClaimTemplate: &v1.PersistentVolumeClaim{Spec: v1.PersistentVolumeClaimSpec{
-			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
-			Resources:   v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{v1.ResourceStorage: quantity}}}}},
+		{Name: "source", EmptyDir: &v1.EmptyDirVolumeSource{}},
 	}
 	if err := controllerutil.SetOwnerReference(&db, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
-	err = r.client.Create(ctx, &tr)
-	if err != nil {
+	if err := r.client.Create(ctx, &tr); err != nil {
 		return reconcile.Result{}, err
 	}
 	db.Status.State = v1alpha1.DependencyBuildStateBuilding
@@ -132,7 +128,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db v1alph
 
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depId string, db v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//make sure we still have a linked pr
-	list := &pipelinev1beta1.PipelineRunList{}
+	list := &pipelinev1beta1.TaskRunList{}
 	lbls := map[string]string{
 		artifactbuildrequest.DependencyBuildIdLabel: depId,
 	}
@@ -158,7 +154,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depI
 			//this keeps as much of the logic in one place as possible
 
 			var contaminates []string
-			for _, r := range pr.Status.PipelineResults {
+			for _, r := range pr.Status.TaskRunResults {
 				if r.Name == "contaminants" && len(r.Value) > 0 {
 					contaminates = strings.Split(r.Value, ",")
 				}
