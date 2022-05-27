@@ -6,5 +6,5 @@ bases:
 
 images:
   - name: hacbs-jvm-operator
-    newName: quay.io/QUAY_USERNAME/hacbs-jvm-controller
-    newTag: dev
+    newName: quay.io/redhat-appstudio/hacbs-jvm-controller
+    newTag: 0225b5510e8f1273b3156a7abf461b211c1e024f
