@@ -1,5 +1,5 @@
 apiVersion: tekton.dev/v1beta1
-kind: Task
+kind: ClusterTask
 metadata:
   name: run-maven-component-build
   labels:
@@ -23,6 +23,13 @@ spec:
     - name: contaminants
       description: Any community GAVs that have ended up in the final output.
   params:
+    - name: url
+      type: string
+    - name: context
+      default: ""
+      type: string
+    - name: tag
+      type: string
     - name: MAVEN_IMAGE
       type: string
       description: Maven base image
@@ -31,11 +38,14 @@ spec:
       description: maven goals to run
       type: array
       default:
-        - "package"
+        - -DskipTests
+        - clean
+        - install
+        - -Denforcer.skip
     - name: MAVEN_MIRROR_URL
       description: The Maven repository mirror url
       type: string
-      default: ""
+      default: http://localhost:2000/maven2
     - name: SERVER_USER
       description: The username for the server
       type: string
@@ -75,6 +85,12 @@ spec:
         which we want to execute maven goals.
       default: "."
   steps:
+    - name: git-clone
+      image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
+      args:
+        - -path=$(workspaces.source.path)
+        - -url=$(params.url)
+        - -revision=$(params.tag)
     - name: fix-permissions-for-builder
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
       command: [ "chown" ]
@@ -187,7 +203,7 @@ spec:
       imagePullPolicy: Always
       env:
         - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
-          value: "http://hacbs-jvm-cache.default.svc.cluster.local"
+          value: "http://hacbs-jvm-cache"
       name: proxy
       livenessProbe:
         httpGet:
@@ -208,62 +224,3 @@ spec:
         limits:
           memory: "512Mi"
           cpu: "500m"
----
-apiVersion: tekton.dev/v1beta1
-kind: Pipeline
-metadata:
-  name: run-component-build
-spec:
-  results:
-    - name: contaminants
-      description: The GAVs of any community artifacts that ended up in the output
-      value: $(tasks.maven-run.results.contaminants)
-  params:
-    - name: url
-      type: string
-    - name: context
-      default: ""
-      type: string
-    - name: tag
-      type: string
-  workspaces:
-    - name: shared-workspace
-    - name: maven-settings
-  tasks:
-    - name: fetch-repository
-      taskRef:
-        name: git-clone
-
-      workspaces:
-        - name: output
-          workspace: shared-workspace
-      params:
-        - name: url
-          value: "$(params.url)"
-        - name: subdirectory
-          value: ""
-        - name: deleteExisting
-          value: "true"
-        - name: revision
-          value: "$(params.tag)"
-    - name: maven-run
-      taskRef:
-        name: run-maven-component-build
-      runAfter:
-        - fetch-repository
-      params:
-        - name: MAVEN_MIRROR_URL
-          value: http://localhost:2000/maven2
-        - name: CONTEXT_DIR
-          value: "$(params.context)"
-        - name: GOALS
-          value:
-            - -DskipTests
-            - clean
-            - install
-            - -Denforcer.skip
-      workspaces:
-        - name: maven-settings
-          workspace: maven-settings
-        - name: source
-          workspace: shared-workspace

@@ -5,6 +5,10 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
+	"strings"
+	"time"
+	"unicode"
+
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,9 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	log2 "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
-	"time"
-	"unicode"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 )
@@ -86,7 +87,7 @@ func (r *ReconcileArtifactBuildRequest) handleStateNew(ctx context.Context, abr 
 
 	// create task run
 	tr := pipelinev1beta1.TaskRun{}
-	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.NamespacedTaskKind}
+	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.ClusterTaskKind}
 	tr.Namespace = abr.Namespace
 	tr.GenerateName = abr.Name + "-scm-discovery-"
 	tr.Labels = map[string]string{ArtifactBuildRequestIdLabel: string(abr.UID), TaskRunLabel: ""}

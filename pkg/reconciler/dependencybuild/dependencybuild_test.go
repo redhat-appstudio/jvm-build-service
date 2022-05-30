@@ -2,6 +2,8 @@ package dependencybuild
 
 import (
 	"context"
+	"testing"
+
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,7 +13,6 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 
@@ -50,11 +51,11 @@ func TestSetup(t *testing.T) {
 		}, &db))
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
 
-		prList := &pipelinev1beta1.PipelineRunList{}
-		g.Expect(client.List(ctx, prList))
+		trList := &pipelinev1beta1.TaskRunList{}
+		g.Expect(client.List(ctx, trList))
 
-		g.Expect(len(prList.Items)).Should(Equal(1))
-		for _, pr := range prList.Items {
+		g.Expect(len(trList.Items)).Should(Equal(1))
+		for _, pr := range trList.Items {
 			g.Expect(pr.Labels[artifactbuildrequest.DependencyBuildIdLabel]).Should(Equal(db.Labels[artifactbuildrequest.DependencyBuildIdLabel]))
 			for _, or := range pr.OwnerReferences {
 				if or.Kind != db.Kind || or.Name != db.Name {
@@ -65,11 +66,11 @@ func TestSetup(t *testing.T) {
 			g.Expect(len(pr.Spec.Params)).Should(Equal(3))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
-				case PipelineScmTag:
+				case TaskScmTag:
 					g.Expect(param.Value.StringVal).Should(Equal("some-tag"))
-				case PipelinePath:
+				case TaskPath:
 					g.Expect(param.Value.StringVal).Should(Equal("some-path"))
-				case PipelineScmUrl:
+				case TaskScmUrl:
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
 				}
 			}
