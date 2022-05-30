@@ -51,7 +51,7 @@ dev-image:
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
 
 dev: dev-image
-	cd java-components && mvn clean install -Dlocal
+	cd java-components && mvn clean install -Dlocal -DskipTests
 	./deploy/development.sh
 
 ENVTEST = $(shell pwd)/bin/setup-envtest

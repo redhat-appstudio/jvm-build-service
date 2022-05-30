@@ -4,6 +4,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -12,8 +13,8 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 )
 
-func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
-	r := newReconciler(mgr)
+func SetupNewReconcilerWithManager(mgr ctrl.Manager, nonCachingClient client.Client) error {
+	r := newReconciler(mgr, nonCachingClient)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.DependencyBuild{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {

@@ -27,7 +27,7 @@ public class ResetDependencyBuildsCommand implements Runnable {
         try {
             MixedOperation<DependencyBuild, KubernetesResourceList<DependencyBuild>, Resource<DependencyBuild>> client = kubernetesClient
                     .resources(DependencyBuild.class);
-            if (build != null) {
+            if (!build.isEmpty()) {
                 DependencyBuild item = client.withName(build).get();
                 item.getStatus().setState("");
                 client.updateStatus(item);

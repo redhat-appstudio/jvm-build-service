@@ -18,12 +18,14 @@ import (
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
+const gav = "com.acme:foo:1.0"
+
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileArtifactBuildRequest) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	reconciler := &ReconcileArtifactBuildRequest{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
+	reconciler := &ReconcileArtifactBuildRequest{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}, nonCachingClient: client}
 	return client, reconciler
 }
 
@@ -70,10 +72,6 @@ func TestStateDiscovering(t *testing.T) {
 		abr := getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildRequestStateBuilding))
 
-		val, ok := abr.Labels[DependencyBuildIdLabel]
-		g.Expect(ok).Should(Equal(true))
-		g.Expect(val).Should(Not(BeEmpty()))
-
 		dbList := v1alpha1.DependencyBuildList{}
 		g.Expect(client.List(context.TODO(), &dbList))
 		g.Expect(dbList.Items).Should(Not(BeEmpty()))
@@ -82,15 +80,15 @@ func TestStateDiscovering(t *testing.T) {
 				g.Expect(or.Kind).Should(Equal(abr.Kind))
 				g.Expect(or.Name).Should(Equal(abr.Name))
 			}
-			g.Expect(db.Spec.Tag).Should(Equal("foo"))
-			g.Expect(db.Spec.SCMURL).Should(Equal("goo"))
-			g.Expect(db.Spec.SCMType).Should(Equal("hoo"))
-			g.Expect(db.Spec.Path).Should(Equal("ioo"))
+			g.Expect(db.Spec.ScmInfo.Tag).Should(Equal("foo"))
+			g.Expect(db.Spec.ScmInfo.SCMURL).Should(Equal("goo"))
+			g.Expect(db.Spec.ScmInfo.SCMType).Should(Equal("hoo"))
+			g.Expect(db.Spec.ScmInfo.Path).Should(Equal("ioo"))
 
-			g.Expect(abr.Status.Tag).Should(Equal("foo"))
-			g.Expect(abr.Status.SCMURL).Should(Equal("goo"))
-			g.Expect(abr.Status.SCMType).Should(Equal("hoo"))
-			g.Expect(abr.Status.Path).Should(Equal("ioo"))
+			g.Expect(abr.Status.SCMInfo.Tag).Should(Equal("foo"))
+			g.Expect(abr.Status.SCMInfo.SCMURL).Should(Equal("goo"))
+			g.Expect(abr.Status.SCMInfo.SCMType).Should(Equal("hoo"))
+			g.Expect(abr.Status.SCMInfo.Path).Should(Equal("ioo"))
 		}
 	}
 
@@ -103,9 +101,8 @@ func TestStateDiscovering(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: metav1.NamespaceDefault,
-				UID:       "someuid",
 			},
-			Spec: v1alpha1.ArtifactBuildRequestSpec{},
+			Spec: v1alpha1.ArtifactBuildRequestSpec{GAV: gav},
 			Status: v1alpha1.ArtifactBuildRequestStatus{
 				State: v1alpha1.ArtifactBuildRequestStateDiscovering,
 			},
@@ -120,7 +117,7 @@ func TestStateDiscovering(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{ArtifactBuildRequestIdLabel: "someuid"},
+				Labels:    map[string]string{ArtifactBuildRequestIdLabel: ABRLabelForGAV(gav)},
 			},
 			Spec: pipelinev1beta1.TaskRunSpec{},
 			Status: pipelinev1beta1.TaskRunStatus{
@@ -140,7 +137,7 @@ func TestStateDiscovering(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{ArtifactBuildRequestIdLabel: "someuid"},
+				Labels:    map[string]string{ArtifactBuildRequestIdLabel: ABRLabelForGAV(gav)},
 			},
 			Spec: pipelinev1beta1.TaskRunSpec{},
 			Status: pipelinev1beta1.TaskRunStatus{
@@ -162,7 +159,7 @@ func TestStateDiscovering(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{ArtifactBuildRequestIdLabel: "someuid"},
+				Labels:    map[string]string{ArtifactBuildRequestIdLabel: ABRLabelForGAV(gav)},
 			},
 			Spec: pipelinev1beta1.TaskRunSpec{},
 			Status: pipelinev1beta1.TaskRunStatus{
@@ -180,12 +177,12 @@ func TestStateDiscovering(t *testing.T) {
 				Name:      "test-generated",
 				Namespace: metav1.NamespaceDefault,
 			},
-			Spec: v1alpha1.DependencyBuildSpec{
+			Spec: v1alpha1.DependencyBuildSpec{ScmInfo: v1alpha1.SCMInfo{
 				Tag:     "foo",
 				SCMURL:  "goo",
 				SCMType: "hoo",
 				Path:    "ioo",
-			},
+			}},
 		}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		fullValidation(client, g)
@@ -219,7 +216,7 @@ func TestStateBuilding(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-generated",
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
@@ -236,7 +233,7 @@ func TestStateBuilding(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-generated",
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete},
@@ -253,7 +250,7 @@ func TestStateBuilding(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-generated",
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []string{"com.foo:acme:1.0"}},

@@ -43,25 +43,27 @@ spec:
           spec:
             properties:
               gav:
-                description: GAV is the groupID:artifacdtID:version tuple seen in
-                  maven pom.xml files
+                description: GAV is the groupID:artifactID:version tuple seen in maven
+                  pom.xml files
                 type: string
             type: object
           status:
             properties:
               message:
                 type: string
-              path:
-                type: string
-              recipeGitHash:
-                type: string
-              scmType:
-                type: string
-              scmURL:
-                type: string
+              scm:
+                properties:
+                  path:
+                    type: string
+                  scmType:
+                    type: string
+                  scmURL:
+                    type: string
+                  tag:
+                    type: string
+                type: object
               state:
-                type: string
-              tag:
+                description: 'TODO: conditions?'
                 type: string
             type: object
         required:

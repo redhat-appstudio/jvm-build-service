@@ -30,14 +30,14 @@ patches:
        path: /spec/steps/0/image
        value: quay.io/QUAY_USERNAME/hacbs-jvm-build-request-processor:dev
    target:
-      kind: Task
+      kind: ClusterTask
       name: lookup-artifact-location
  - patch: |-
      - op: replace
        path: /spec/sidecars/0/image
        value: quay.io/QUAY_USERNAME/hacbs-jvm-sidecar:dev
    target:
-     kind: Task
+     kind: ClusterTask
      name: run-maven-component-build
  - patch: |-
      - op: add
