@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: jvm-build-sidecar-on-push
+  name: jvm-build-request-processor-on-push
   annotations:
     pipelinesascode.tekton.dev/on-event: "[push]"
     pipelinesascode.tekton.dev/on-target-branch: "[main]"
@@ -25,4 +25,4 @@ spec:
     - name: workspace
       persistentVolumeClaim:
         claimName: app-studio-default-workspace
-      subPath: jvm-build-sidecar-push-{{ revision }}
+      subPath: jvm-build-request-processor-push-{{ revision }}

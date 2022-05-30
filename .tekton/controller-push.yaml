@@ -21,10 +21,10 @@ spec:
     - name: infra-deployment-update-script
       value: >
         sed -i 
-         -e 's|\(https://github.com/redhat-appstudio/jvm-build-service/.*?ref=\)\(.*\)|\1{{ revision }}|'
-         -e 's/\(newTag: \).*/\1{{ revision }}/'
-         -e 's|\(https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/\)[^/]*\(/.*\)|\1{{ revision }}\2|'
-         components/build/jvm-build-service/kustomization.yaml
+        -e 's|\(https://github.com/redhat-appstudio/jvm-build-service/.*?ref=\)\(.*\)|\1{{ revision }}|'
+        -e 's/\(newTag: \).*/\1{{ revision }}/'
+        -e 's|\(https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/\)[^/]*\(/.*\)|\1{{ revision }}\2|'
+        components/build/jvm-build-service/kustomization.yaml
   pipelineRef:
     name: docker-build
     bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
