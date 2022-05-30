@@ -17,7 +17,6 @@ spec:
     - name: fetch-repository
       taskRef:
         name: git-clone
-        kind: ClusterTask
       workspaces:
         - name: output
           workspace: shared-workspace

@@ -12,7 +12,6 @@ import java.util.zip.ZipException;
 import javax.inject.Singleton;
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.WebApplicationException;
@@ -27,9 +26,7 @@ import com.redhat.hacbs.sidecar.services.RemoteClient;
 
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
-import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Path("/maven2")
 @Blocking

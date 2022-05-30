@@ -23,16 +23,16 @@ spec:
     - name: contaminants
       description: Any community GAVs that have ended up in the final output.
   params:
-    - name: url
+    - name: URL
       type: string
-    - name: context
+    - name: CONTEXT
       default: ""
       type: string
-    - name: tag
+    - name: TAG
       type: string
-    - name: MAVEN_IMAGE
+    - name: IMAGE
       type: string
-      description: Maven base image
+      description: Build image
       default: quay.io/quarkus/centos-quarkus-maven@sha256:9ad23db54acb1775a7d976680325819d2ef177c11726622382f1a540a653a8c8 #tag: 21.3.2-java11
     - name: GOALS
       description: maven goals to run
@@ -89,8 +89,8 @@ spec:
       image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
       args:
         - -path=$(workspaces.source.path)
-        - -url=$(params.url)
-        - -revision=$(params.tag)
+        - -url=$(params.URL)
+        - -revision=$(params.TAG)
     - name: fix-permissions-for-builder
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
       command: [ "chown" ]
@@ -166,7 +166,7 @@ spec:
         fi
 
     - name: mvn-goals
-      image: $(params.MAVEN_IMAGE)
+      image: $(params.IMAGE)
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
       command: ["/usr/bin/mvn"]
       args:

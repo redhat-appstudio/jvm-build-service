@@ -8,14 +8,12 @@ import (
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	log2 "sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
 	"time"
 
@@ -29,12 +27,10 @@ import (
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout = 300 * time.Second
-	TaskRunLabel   = "jvmbuildservice.io/dependencybuild-taskrun"
-	TaskScmUrl     = "url"
-	TaskScmTag     = "tag"
-	TaskPath       = "context"
-	TaskImage      = "image"
-	TaskRunMissing = "TaskRunMissing"
+	TaskScmUrl     = "URL"
+	TaskScmTag     = "TAG"
+	TaskPath       = "CONTEXT"
+	TaskImage      = "IMAGE"
 )
 
 type ReconcileDependencyBuild struct {
@@ -78,7 +74,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		return reconcile.Result{}, r.client.Update(ctx, &db)
 	}
-	log2.Log.Info("Reconcile", "db", db.Name, "state", db.Status.State)
 
 	switch db.Status.State {
 	case "", v1alpha1.DependencyBuildStateNew:
@@ -152,23 +147,17 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 	tr := pipelinev1beta1.TaskRun{}
 	tr.Namespace = db.Namespace
 	tr.GenerateName = db.Name + "-build-"
-	tr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: db.Labels[artifactbuildrequest.DependencyBuildIdLabel], TaskRunLabel: ""}
-	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "run-component-build"}
+	tr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: db.Labels[artifactbuildrequest.DependencyBuildIdLabel], artifactbuildrequest.TaskRunLabel: ""}
+	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "run-maven-component-build", Kind: pipelinev1beta1.ClusterTaskKind}
 	tr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
 		{Name: TaskPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: TaskImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
 	}
-	quantity, err := resource.ParseQuantity("1Gi")
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
-		{Name: "shared-workspace", VolumeClaimTemplate: &v1.PersistentVolumeClaim{Spec: v1.PersistentVolumeClaimSpec{
-			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
-			Resources:   v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{v1.ResourceStorage: quantity}}}}},
+		{Name: "source", EmptyDir: &v1.EmptyDirVolumeSource{}},
 	}
 	if err := controllerutil.SetOwnerReference(db, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
@@ -182,7 +171,7 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 	if err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: db.Name}, db); err != nil {
 		return reconcile.Result{}, err
 	}
-	return reconcile.Result{}, err
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depId string, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {

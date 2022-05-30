@@ -27,8 +27,7 @@ import (
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout = 300 * time.Second
-	TaskRunLabel   = "jvmbuildservice.io/artifactbuildrequest-taskrun"
-	RequestKind    = "ArtifactBuildRequest"
+	TaskRunLabel   = "jvmbuildservice.io/taskrun"
 	// DependencyBuildContaminatedBy label prefix that indicates that a dependency build was contaminated by this artifact
 	DependencyBuildContaminatedBy = "jvmbuildservice.io/contaminated-"
 	DependencyBuildIdLabel        = "jvmbuildservice.io/dependencybuild-id"
@@ -38,7 +37,6 @@ const (
 	TaskResultScmType             = "scm-type"
 	TaskResultContextPath         = "context"
 	TaskResultMessage             = "message"
-	TaskRunMissing                = "TaskRunMissing"
 )
 
 type ReconcileArtifactBuildRequest struct {
@@ -111,7 +109,6 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovering(ctx context.Conte
 		Namespace:     abr.Namespace,
 		LabelSelector: labels.SelectorFromSet(map[string]string{ArtifactBuildRequestIdLabel: hash}),
 	}
-	r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "TESTING", "1 to building %s/%s", abr.Namespace, abr.Name)
 	trl := pipelinev1beta1.TaskRunList{}
 	err := r.nonCachingClient.List(ctx, &trl, listOpts)
 	if err != nil {
@@ -130,9 +127,6 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovering(ctx context.Conte
 		//just return and next reconcile it is there
 		//TODO: Why is this happening? caching?
 		return reconcile.Result{RequeueAfter: time.Minute}, nil
-	}
-	if tr.Status.CompletionTime == nil {
-		return reconcile.Result{}, nil
 	}
 	if tr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
@@ -158,7 +152,7 @@ func (r *ReconcileArtifactBuildRequest) handleStateDiscovering(ctx context.Conte
 	//once this object has been created its resolver takes over
 	if abr.Status.SCMInfo.Tag == "" {
 		//this is a failure
-		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuildRequest %s/%s had an empty tag field", abr.Namespace, abr.Name)
+		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuildRequest %s/%s had an empty tag field %s", abr.Namespace, abr.Name, tr.Status.TaskRunResults)
 		abr.Status.State = v1alpha1.ArtifactBuildRequestStateMissing
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	}
