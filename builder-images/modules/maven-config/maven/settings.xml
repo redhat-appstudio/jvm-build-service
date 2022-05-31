@@ -153,28 +153,6 @@
                 </pluginRepository>
             </pluginRepositories>
         </profile>
-        <!-- central repositories via HTTP. Disabled by default. -->
-        <profile>
-            <id>insecurecentral</id>
-            <repositories>
-                <repository>
-                    <id>central</id>
-                    <url>http://repo1.maven.org/maven2</url>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                </repository>
-            </repositories>
-            <pluginRepositories>
-                <pluginRepository>
-                    <id>central</id>
-                    <url>http://repo1.maven.org/maven2</url>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                </pluginRepository>
-            </pluginRepositories>
-        </profile>
     </profiles>
     <activeProfiles>
         <activeProfile>securecentral</activeProfile>

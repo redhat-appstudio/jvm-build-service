@@ -1,6 +1,6 @@
 schema_version: 1
 version: "SNAPSHOT"
-name: "quay.io/sdouglas/hacbs-jdk8-builder"
+name: "quay.io/QUAY_REPO/hacbs-jdk8-builder"
 from: "registry.access.redhat.com/ubi8/openjdk-8"
 
 labels:
@@ -25,13 +25,10 @@ modules:
   - name: tooling-packages
   - name: glibc-langpack-en
   - name: encoding
-  - name: add-quarkus-user
   - name: maven-binary
     version: "3.8.4"
   - name: gradle-binary
     version: "7.3"
-  - name: maven-config
-  - name: quarkus-maven-scripts
 
 packages:
   manager: microdnf
@@ -60,10 +57,8 @@ envs:
   value: "$PATH:$JAVA_HOME/bin"  
 
 run:
-  user: 1001
+  user: root
   workdir: "/project"
-  entrypoint:
-  - "/usr/local/bin/entrypoint-run.sh"
   cmd:
   - "mvn"
   - "-v"

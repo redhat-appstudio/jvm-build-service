@@ -1,2 +1,2 @@
-name: "quay.io/sdouglas/hacbs-jdk11-builder"
+name: "quay.io/QUAY_REPO/hacbs-jdk11-builder"
 from: "registry.access.redhat.com/ubi8/openjdk-11"

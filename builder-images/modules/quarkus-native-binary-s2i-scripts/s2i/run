@@ -1,9 +1,0 @@
-#!/bin/sh
-if [ -z "$QUARKUS_OPTS" ]; then
-  QUARKUS_OPTS="-Xmx24M -Xms16M -Xmn24M"
-  echo "QUARKUS_OPTS environment variable was not set, using default values of ${QUARKUS_OPTS}"
-else
-  echo "Using custom Java opts from environment QUARKUS_OPTS=${QUARKUS_OPTS}"
-fi
-
-exec ${APP_HOME}/application ${QUARKUS_OPTS} -Dquarkus.http.host=0.0.0.0

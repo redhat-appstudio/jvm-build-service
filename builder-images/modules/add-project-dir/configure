@@ -1,4 +1,5 @@
 #!/bin/sh
-
+cp /etc/passwd /home/jboss/passwd
+chown jboss:jboss /home/jboss/passwd
 mkdir /project
 chown jboss:jboss /project
