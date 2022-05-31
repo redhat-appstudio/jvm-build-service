@@ -27,8 +27,8 @@ type FakeJvmbuildserviceV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeJvmbuildserviceV1alpha1) ArtifactBuildRequests(namespace string) v1alpha1.ArtifactBuildRequestInterface {
-	return &FakeArtifactBuildRequests{c, namespace}
+func (c *FakeJvmbuildserviceV1alpha1) ArtifactBuilds(namespace string) v1alpha1.ArtifactBuildInterface {
+	return &FakeArtifactBuilds{c, namespace}
 }
 
 func (c *FakeJvmbuildserviceV1alpha1) DependencyBuilds(namespace string) v1alpha1.DependencyBuildInterface {

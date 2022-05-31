@@ -1,6 +1,6 @@
 package com.redhat.hacbs.resources.model.v1alpha1;
 
-public class ArtifactBuildRequestSpec {
+public class ArtifactBuildSpec {
 
     private String gav;
 

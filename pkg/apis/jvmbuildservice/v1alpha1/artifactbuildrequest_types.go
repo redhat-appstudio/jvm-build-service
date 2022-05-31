@@ -4,33 +4,33 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ArtifactBuildRequestSpec struct {
+type ArtifactBuildSpec struct {
 	// GAV is the groupID:artifactID:version tuple seen in maven pom.xml files
 	GAV string `json:"gav,omitempty"`
 }
 
-type ArtifactBuildRequestStatus struct {
+type ArtifactBuildStatus struct {
 	//TODO: conditions?
 	State   string  `json:"state,omitempty"`
 	Message string  `json:"message,omitempty"`
 	SCMInfo SCMInfo `json:"scm,omitempty"`
 }
 
-//type ArtifactBuildRequestState string
+//type ArtifactBuildState string
 
 const (
-	// ArtifactBuildRequestStateNew A new resource that has not been acted on by the operator
-	ArtifactBuildRequestStateNew = "ArtifactBuildRequestNew"
-	// ArtifactBuildRequestStateDiscovering The discovery pipeline is running to try and figure out how to build this artifact
-	ArtifactBuildRequestStateDiscovering = "ArtifactBuildRequestDiscovering"
-	// ArtifactBuildRequestStateMissing The discovery pipeline failed to find a way to build this
-	ArtifactBuildRequestStateMissing = "ArtifactBuildRequestMissing"
-	// ArtifactBuildRequestStateBuilding The build is running
-	ArtifactBuildRequestStateBuilding = "ArtifactBuildRequestBuilding"
-	// ArtifactBuildRequestStateFailed The build failed
-	ArtifactBuildRequestStateFailed = "ArtifactBuildRequestFailed"
-	// ArtifactBuildRequestStateComplete The build completed successfully, the resource can be removed
-	ArtifactBuildRequestStateComplete = "ArtifactBuildRequestComplete"
+	// ArtifactBuildStateNew A new resource that has not been acted on by the operator
+	ArtifactBuildStateNew = "ArtifactBuildNew"
+	// ArtifactBuildStateDiscovering The discovery pipeline is running to try and figure out how to build this artifact
+	ArtifactBuildStateDiscovering = "ArtifactBuildDiscovering"
+	// ArtifactBuildStateMissing The discovery pipeline failed to find a way to build this
+	ArtifactBuildStateMissing = "ArtifactBuildMissing"
+	// ArtifactBuildStateBuilding The build is running
+	ArtifactBuildStateBuilding = "ArtifactBuildBuilding"
+	// ArtifactBuildStateFailed The build failed
+	ArtifactBuildStateFailed = "ArtifactBuildFailed"
+	// ArtifactBuildStateComplete The build completed successfully, the resource can be removed
+	ArtifactBuildStateComplete = "ArtifactBuildComplete"
 )
 
 // +genclient
@@ -39,20 +39,20 @@ const (
 // +kubebuilder:resource:path=artifactbuildrequests,scope=Namespaced
 // +kubebuilder:printcolumn:name="GAV",type=string,JSONPath=`.spec.gav`
 // +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
-// ArtifactBuildRequest TODO provide godoc description
-type ArtifactBuildRequest struct {
+// ArtifactBuild TODO provide godoc description
+type ArtifactBuild struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ArtifactBuildRequestSpec   `json:"spec"`
-	Status ArtifactBuildRequestStatus `json:"status,omitempty"`
+	Spec   ArtifactBuildSpec   `json:"spec"`
+	Status ArtifactBuildStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ArtifactBuildRequestList contains a list of ArtifactBuildRequest
-type ArtifactBuildRequestList struct {
+// ArtifactBuildList contains a list of ArtifactBuild
+type ArtifactBuildList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ArtifactBuildRequest `json:"items"`
+	Items           []ArtifactBuild `json:"items"`
 }

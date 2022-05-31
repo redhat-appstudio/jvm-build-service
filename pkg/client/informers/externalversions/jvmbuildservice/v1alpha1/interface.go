@@ -23,8 +23,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// ArtifactBuildRequests returns a ArtifactBuildRequestInformer.
-	ArtifactBuildRequests() ArtifactBuildRequestInformer
+	// ArtifactBuilds returns a ArtifactBuildInformer.
+	ArtifactBuilds() ArtifactBuildInformer
 	// DependencyBuilds returns a DependencyBuildInformer.
 	DependencyBuilds() DependencyBuildInformer
 }
@@ -40,9 +40,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// ArtifactBuildRequests returns a ArtifactBuildRequestInformer.
-func (v *version) ArtifactBuildRequests() ArtifactBuildRequestInformer {
-	return &artifactBuildRequestInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// ArtifactBuilds returns a ArtifactBuildInformer.
+func (v *version) ArtifactBuilds() ArtifactBuildInformer {
+	return &artifactBuildInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // DependencyBuilds returns a DependencyBuildInformer.

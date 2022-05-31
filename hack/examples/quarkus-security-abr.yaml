@@ -1,5 +1,5 @@
 apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuildRequest
+kind: ArtifactBuild
 metadata:
   name: quarkus.security.runtime.spi.2.2.5.final-9d78252e
   namespace: default

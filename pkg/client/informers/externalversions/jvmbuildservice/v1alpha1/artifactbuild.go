@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// ArtifactBuildRequestInformer provides access to a shared informer and lister for
-// ArtifactBuildRequests.
-type ArtifactBuildRequestInformer interface {
+// ArtifactBuildInformer provides access to a shared informer and lister for
+// ArtifactBuilds.
+type ArtifactBuildInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ArtifactBuildRequestLister
+	Lister() v1alpha1.ArtifactBuildLister
 }
 
-type artifactBuildRequestInformer struct {
+type artifactBuildInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewArtifactBuildRequestInformer constructs a new informer for ArtifactBuildRequest type.
+// NewArtifactBuildInformer constructs a new informer for ArtifactBuild type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewArtifactBuildRequestInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredArtifactBuildRequestInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewArtifactBuildInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredArtifactBuildInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredArtifactBuildRequestInformer constructs a new informer for ArtifactBuildRequest type.
+// NewFilteredArtifactBuildInformer constructs a new informer for ArtifactBuild type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredArtifactBuildRequestInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredArtifactBuildInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.JvmbuildserviceV1alpha1().ArtifactBuildRequests(namespace).List(context.TODO(), options)
+				return client.JvmbuildserviceV1alpha1().ArtifactBuilds(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.JvmbuildserviceV1alpha1().ArtifactBuildRequests(namespace).Watch(context.TODO(), options)
+				return client.JvmbuildserviceV1alpha1().ArtifactBuilds(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&jvmbuildservicev1alpha1.ArtifactBuildRequest{},
+		&jvmbuildservicev1alpha1.ArtifactBuild{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *artifactBuildRequestInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredArtifactBuildRequestInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *artifactBuildInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredArtifactBuildInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *artifactBuildRequestInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&jvmbuildservicev1alpha1.ArtifactBuildRequest{}, f.defaultInformer)
+func (f *artifactBuildInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&jvmbuildservicev1alpha1.ArtifactBuild{}, f.defaultInformer)
 }
 
-func (f *artifactBuildRequestInformer) Lister() v1alpha1.ArtifactBuildRequestLister {
-	return v1alpha1.NewArtifactBuildRequestLister(f.Informer().GetIndexer())
+func (f *artifactBuildInformer) Lister() v1alpha1.ArtifactBuildLister {
+	return v1alpha1.NewArtifactBuildLister(f.Informer().GetIndexer())
 }

@@ -17,13 +17,13 @@ limitations under the License.
 
 package v1alpha1
 
-// ArtifactBuildRequestListerExpansion allows custom methods to be added to
-// ArtifactBuildRequestLister.
-type ArtifactBuildRequestListerExpansion interface{}
+// ArtifactBuildListerExpansion allows custom methods to be added to
+// ArtifactBuildLister.
+type ArtifactBuildListerExpansion interface{}
 
-// ArtifactBuildRequestNamespaceListerExpansion allows custom methods to be added to
-// ArtifactBuildRequestNamespaceLister.
-type ArtifactBuildRequestNamespaceListerExpansion interface{}
+// ArtifactBuildNamespaceListerExpansion allows custom methods to be added to
+// ArtifactBuildNamespaceLister.
+type ArtifactBuildNamespaceListerExpansion interface{}
 
 // DependencyBuildListerExpansion allows custom methods to be added to
 // DependencyBuildLister.

@@ -6,7 +6,7 @@ import java.util.TreeSet;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequest;
+import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.Status;
@@ -47,14 +47,14 @@ public class RebuildService {
                 }
                 newName.append("-");
                 newName.append(hash);
-                ArtifactBuildRequest item = new ArtifactBuildRequest();
+                ArtifactBuild item = new ArtifactBuild();
                 ObjectMeta objectMeta = new ObjectMeta();
                 objectMeta.setName(newName.toString());
                 objectMeta.setAdditionalProperty("gav", gav);
                 item.setMetadata(objectMeta);
                 item.getSpec().setGav(gav);
-                item.setKind(ArtifactBuildRequest.class.getSimpleName());
-                kubernetesClient.resources(ArtifactBuildRequest.class).create(item);
+                item.setKind(ArtifactBuild.class.getSimpleName());
+                kubernetesClient.resources(ArtifactBuild.class).create(item);
             } catch (KubernetesClientException e) {
                 Status status = e.getStatus();
                 if (status == null || status.getReason() == null || !status.getReason().equals("AlreadyExists")) {

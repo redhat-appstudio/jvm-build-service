@@ -17,6 +17,6 @@ limitations under the License.
 
 package v1alpha1
 
-type ArtifactBuildRequestExpansion interface{}
+type ArtifactBuildExpansion interface{}
 
 type DependencyBuildExpansion interface{}

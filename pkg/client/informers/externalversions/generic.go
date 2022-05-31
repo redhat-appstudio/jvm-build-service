@@ -52,8 +52,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=jvmbuildservice.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("artifactbuildrequests"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().ArtifactBuildRequests().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("artifactbuilds"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().ArtifactBuilds().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dependencybuilds"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().DependencyBuilds().Informer()}, nil
 

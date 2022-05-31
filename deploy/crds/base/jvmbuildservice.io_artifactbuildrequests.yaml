@@ -10,10 +10,10 @@ metadata:
 spec:
   group: jvmbuildservice.io
   names:
-    kind: ArtifactBuildRequest
-    listKind: ArtifactBuildRequestList
+    kind: ArtifactBuild
+    listKind: ArtifactBuildList
     plural: artifactbuildrequests
-    singular: artifactbuildrequest
+    singular: artifactbuild
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -26,7 +26,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ArtifactBuildRequest TODO provide godoc description
+        description: ArtifactBuild TODO provide godoc description
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
