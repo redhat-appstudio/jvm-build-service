@@ -21,6 +21,8 @@ public class ResetDependencyBuildsCommand implements Runnable {
 
     @CommandLine.Option(names = "-b", defaultValue = "")
     String build;
+    @CommandLine.Option(names = "-f", defaultValue = "false")
+    boolean failedOnly;
 
     @Override
     public void run() {
@@ -34,8 +36,10 @@ public class ResetDependencyBuildsCommand implements Runnable {
             } else {
                 List<DependencyBuild> items = client.list().getItems();
                 for (var request : items) {
-                    request.getStatus().setState("");
-                    client.updateStatus(request);
+                    if (!failedOnly || request.getStatus().getState().equals("DependencyBuildFailed")) {
+                        request.getStatus().setState("");
+                        client.updateStatus(request);
+                    }
                 }
             }
         } catch (Exception e) {
