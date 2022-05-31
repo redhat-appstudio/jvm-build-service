@@ -32,6 +32,6 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager, nonCachingClient client.Cli
 				return true
 			},
 		})).
-		Watches(&source.Kind{Type: &v1beta1.PipelineRun{}}, &handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.DependencyBuild{}, IsController: false}).
+		Watches(&source.Kind{Type: &v1beta1.TaskRun{}}, &handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.DependencyBuild{}, IsController: false}).
 		Complete(r)
 }

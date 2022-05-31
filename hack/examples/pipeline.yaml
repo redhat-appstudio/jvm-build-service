@@ -9,7 +9,6 @@ spec:
       default: ""
     - name: app-path
       default: "target"
-      type: string
   workspaces:
     - name: shared-workspace
     - name: maven-settings
