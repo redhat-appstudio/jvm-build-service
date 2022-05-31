@@ -255,14 +255,14 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 			continue
 		}
 		abrName := artifactbuildrequest.CreateABRName(contaminant)
-		abr := v1alpha1.ArtifactBuildRequest{}
+		abr := v1alpha1.ArtifactBuild{}
 		//look for existing ABR
 		err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
 		suffix := hashToString(contaminant)[0:20]
 		if err != nil {
 			//we just assume this is because it does not exist
 			//TODO: how to check the type of the error?
-			abr.Spec = v1alpha1.ArtifactBuildRequestSpec{GAV: contaminant}
+			abr.Spec = v1alpha1.ArtifactBuildSpec{GAV: contaminant}
 			abr.Name = abrName
 			abr.Namespace = db.Namespace
 			abr.Annotations = map[string]string{}

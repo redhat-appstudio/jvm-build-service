@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.inject.Inject;
 
-import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequest;
+import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.logging.Log;
@@ -23,7 +23,7 @@ public class ListBuildRequestsCommand implements Runnable {
     @Override
     public void run() {
         try {
-            List<ArtifactBuildRequest> items = kubernetesClient.resources(ArtifactBuildRequest.class).list().getItems();
+            List<ArtifactBuild> items = kubernetesClient.resources(ArtifactBuild.class).list().getItems();
             Map<String, List<String>> results = new TreeMap<>();
             Map<String, AtomicInteger> counts = new TreeMap<>();
             for (var request : items) {

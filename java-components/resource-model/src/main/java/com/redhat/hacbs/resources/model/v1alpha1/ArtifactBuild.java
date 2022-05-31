@@ -11,16 +11,16 @@ import io.fabric8.kubernetes.model.annotation.Version;
 @Group(ModelConstants.GROUP)
 @Version(ModelConstants.VERSION)
 @JsonInclude(Include.NON_NULL)
-public class ArtifactBuildRequest extends CustomResource<ArtifactBuildRequestSpec, ArtifactBuildRequestStatus>
+public class ArtifactBuild extends CustomResource<ArtifactBuildSpec, ArtifactBuildStatus>
         implements Namespaced {
 
     @Override
-    protected ArtifactBuildRequestSpec initSpec() {
-        return new ArtifactBuildRequestSpec();
+    protected ArtifactBuildSpec initSpec() {
+        return new ArtifactBuildSpec();
     }
 
     @Override
-    protected ArtifactBuildRequestStatus initStatus() {
-        return new ArtifactBuildRequestStatus();
+    protected ArtifactBuildStatus initStatus() {
+        return new ArtifactBuildStatus();
     }
 }

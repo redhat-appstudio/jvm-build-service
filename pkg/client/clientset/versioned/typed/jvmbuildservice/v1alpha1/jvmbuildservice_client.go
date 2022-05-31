@@ -27,7 +27,7 @@ import (
 
 type JvmbuildserviceV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	ArtifactBuildRequestsGetter
+	ArtifactBuildsGetter
 	DependencyBuildsGetter
 }
 
@@ -36,8 +36,8 @@ type JvmbuildserviceV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *JvmbuildserviceV1alpha1Client) ArtifactBuildRequests(namespace string) ArtifactBuildRequestInterface {
-	return newArtifactBuildRequests(c, namespace)
+func (c *JvmbuildserviceV1alpha1Client) ArtifactBuilds(namespace string) ArtifactBuildInterface {
+	return newArtifactBuilds(c, namespace)
 }
 
 func (c *JvmbuildserviceV1alpha1Client) DependencyBuilds(namespace string) DependencyBuildInterface {

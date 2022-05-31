@@ -4,7 +4,7 @@ import java.util.List;
 
 import javax.inject.Inject;
 
-import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildRequest;
+import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 
 import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -13,8 +13,8 @@ import io.fabric8.kubernetes.client.dsl.Resource;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "reset-artifact-build-requests")
-public class ResetArtifactBuildRequestsCommand implements Runnable {
+@CommandLine.Command(name = "reset-artifact-builds")
+public class ResetArtifactBuildsCommand implements Runnable {
 
     @Inject
     KubernetesClient kubernetesClient;
@@ -25,14 +25,14 @@ public class ResetArtifactBuildRequestsCommand implements Runnable {
     @Override
     public void run() {
         try {
-            MixedOperation<ArtifactBuildRequest, KubernetesResourceList<ArtifactBuildRequest>, Resource<ArtifactBuildRequest>> client = kubernetesClient
-                    .resources(ArtifactBuildRequest.class);
+            MixedOperation<ArtifactBuild, KubernetesResourceList<ArtifactBuild>, Resource<ArtifactBuild>> client = kubernetesClient
+                    .resources(ArtifactBuild.class);
             if (!build.isEmpty()) {
-                ArtifactBuildRequest item = client.withName(build).get();
+                ArtifactBuild item = client.withName(build).get();
                 item.getStatus().setState("");
                 client.updateStatus(item);
             } else {
-                List<ArtifactBuildRequest> items = client.list().getItems();
+                List<ArtifactBuild> items = client.list().getItems();
                 for (var request : items) {
                     request.getStatus().setState("");
                     client.updateStatus(request);

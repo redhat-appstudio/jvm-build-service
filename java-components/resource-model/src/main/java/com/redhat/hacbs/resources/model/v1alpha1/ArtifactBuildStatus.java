@@ -1,6 +1,6 @@
 package com.redhat.hacbs.resources.model.v1alpha1;
 
-public class ArtifactBuildRequestStatus {
+public class ArtifactBuildStatus {
 
     private String state = "";
     private String recipeGitHash; //todo multiple git repos
@@ -13,7 +13,7 @@ public class ArtifactBuildRequestStatus {
         return state;
     }
 
-    public ArtifactBuildRequestStatus setState(String state) {
+    public ArtifactBuildStatus setState(String state) {
         this.state = state;
         return this;
     }
@@ -22,7 +22,7 @@ public class ArtifactBuildRequestStatus {
         return message;
     }
 
-    public ArtifactBuildRequestStatus setMessage(String message) {
+    public ArtifactBuildStatus setMessage(String message) {
         this.message = message;
         return this;
     }
@@ -31,7 +31,7 @@ public class ArtifactBuildRequestStatus {
         return recipeGitHash;
     }
 
-    public ArtifactBuildRequestStatus setRecipeGitHash(String recipeGitHash) {
+    public ArtifactBuildStatus setRecipeGitHash(String recipeGitHash) {
         this.recipeGitHash = recipeGitHash;
         return this;
     }
@@ -40,7 +40,7 @@ public class ArtifactBuildRequestStatus {
         return discoveryTaskRun;
     }
 
-    public ArtifactBuildRequestStatus setDiscoveryTaskRun(String discoveryTaskRun) {
+    public ArtifactBuildStatus setDiscoveryTaskRun(String discoveryTaskRun) {
         this.discoveryTaskRun = discoveryTaskRun;
         return this;
     }
@@ -49,7 +49,7 @@ public class ArtifactBuildRequestStatus {
         return scm;
     }
 
-    public ArtifactBuildRequestStatus setScm(ScmInfo scm) {
+    public ArtifactBuildStatus setScm(ScmInfo scm) {
         this.scm = scm;
         return this;
     }

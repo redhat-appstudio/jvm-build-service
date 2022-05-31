@@ -48,16 +48,16 @@ const (
 
 // createComponent creates sample component resource and verifies it was properly created
 func createAbr(componentLookupKey types.NamespacedName) {
-	abr := &v1alpha1.ArtifactBuildRequest{
+	abr := &v1alpha1.ArtifactBuild{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "jvmbuildservice.io/v1alpha1",
-			Kind:       "ArtifactBuildRequest",
+			Kind:       "ArtifactBuild",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      componentLookupKey.Name,
 			Namespace: componentLookupKey.Namespace,
 		},
-		Spec: v1alpha1.ArtifactBuildRequestSpec{GAV: ABRGav},
+		Spec: v1alpha1.ArtifactBuildSpec{GAV: ABRGav},
 	}
 	Expect(k8sClient.Create(ctx, abr)).Should(Succeed())
 
@@ -67,7 +67,7 @@ func getTr() *tektonapi.TaskRun {
 	hash := artifactbuildrequest.ABRLabelForGAV(ABRGav)
 	listOpts := &client.ListOptions{
 		Namespace:     TestNamespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuildrequest.ArtifactBuildRequestIdLabel: hash}),
+		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuildrequest.ArtifactBuildIdLabel: hash}),
 	}
 	trl := tektonapi.TaskRunList{}
 	var tr *tektonapi.TaskRun
@@ -89,14 +89,14 @@ func getTr() *tektonapi.TaskRun {
 func deleteAbr(componentLookupKey types.NamespacedName) {
 	// Delete
 	Eventually(func() error {
-		f := &v1alpha1.ArtifactBuildRequest{}
+		f := &v1alpha1.ArtifactBuild{}
 		_ = k8sClient.Get(ctx, componentLookupKey, f)
 		return k8sClient.Delete(ctx, f)
 	}, timeout, interval).Should(Succeed())
 
 	// Wait for delete to finish
 	Eventually(func() error {
-		f := &v1alpha1.ArtifactBuildRequest{}
+		f := &v1alpha1.ArtifactBuild{}
 		return k8sClient.Get(ctx, componentLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
 }
@@ -136,8 +136,8 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 			deleteTaskRuns()
 		}, 30)
 
-		It("should move state to ArtifactBuildRequestDiscovered on Success", func() {
-			//createTaskRun(abrName, map[string]string{artifactbuildrequest.TaskRunLabel: "", artifactbuildrequest.ArtifactBuildRequestIdLabel: artifactbuildrequest.ABRLabelForGAV(ABRGav)})
+		It("should move state to ArtifactBuildDiscovered on Success", func() {
+			//createTaskRun(abrName, map[string]string{artifactbuildrequest.TaskRunLabel: "", artifactbuildrequest.ArtifactBuildIdLabel: artifactbuildrequest.ABRLabelForGAV(ABRGav)})
 			tr := getTr()
 			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 			tr.Status.TaskRunResults = []tektonapi.TaskRunResult{{
@@ -161,15 +161,15 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 			tr = getTr()
 			Expect(tr.Status.CompletionTime).ToNot(BeNil())
 			Eventually(func() error {
-				abr := v1alpha1.ArtifactBuildRequest{}
+				abr := v1alpha1.ArtifactBuild{}
 				_ = k8sClient.Get(ctx, abrName, &abr)
-				if abr.Status.State == v1alpha1.ArtifactBuildRequestStateBuilding {
+				if abr.Status.State == v1alpha1.ArtifactBuildStateBuilding {
 					return nil
 				}
 				return errors.New("not updated yet")
 			}, timeout, interval).Should(Succeed())
 
-			abr := v1alpha1.ArtifactBuildRequest{}
+			abr := v1alpha1.ArtifactBuild{}
 			Expect(k8sClient.Get(ctx, abrName, &abr)).Should(Succeed())
 			Expect(abr.Status.SCMInfo.SCMURL).Should(Equal("url1"))
 			Expect(abr.Status.SCMInfo.SCMType).Should(Equal("git"))
