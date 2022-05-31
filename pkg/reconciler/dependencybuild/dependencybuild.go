@@ -8,6 +8,7 @@ import (
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -159,6 +160,7 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: "source", EmptyDir: &v1.EmptyDirVolumeSource{}},
 	}
+	tr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
 	if err := controllerutil.SetOwnerReference(db, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
