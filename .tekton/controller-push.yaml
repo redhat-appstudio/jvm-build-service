@@ -24,7 +24,7 @@ spec:
         -e 's|\(https://github.com/redhat-appstudio/jvm-build-service/.*?ref=\)\(.*\)|\1{{ revision }}|'
         -e 's/\(newTag: \).*/\1{{ revision }}/'
         -e 's|\(https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/\)[^/]*\(/.*\)|\1{{ revision }}\2|'
-        -e 's|\(quay.io/redhat-appstudio/[^:]*\).*|\1:{{ revision }}|'
+        -e 's|\(quay.io/redhat-appstudio/[^:]*:\).*|\1{{ revision }}|'
         components/build/jvm-build-service/kustomization.yaml
   pipelineRef:
     name: docker-build
