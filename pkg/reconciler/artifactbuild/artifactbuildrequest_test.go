@@ -1,4 +1,4 @@
-package artifactbuildrequest
+package artifactbuild
 
 import (
 	"context"

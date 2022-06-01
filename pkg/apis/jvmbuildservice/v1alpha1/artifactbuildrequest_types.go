@@ -36,7 +36,7 @@ const (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=artifactbuildrequests,scope=Namespaced
+// +kubebuilder:resource:path=artifactbuilds,scope=Namespaced
 // +kubebuilder:printcolumn:name="GAV",type=string,JSONPath=`.spec.gav`
 // +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 // ArtifactBuild TODO provide godoc description

@@ -8,8 +8,8 @@ rules:
   - apiGroups:
       - jvmbuildservice.io
     resources:
-      - artifactbuildrequests
-      - artifactbuildrequests/status
+      - artifactbuilds
+      - artifactbuilds/status
       - dependencybuilds
       - dependencybuilds/status
     verbs:

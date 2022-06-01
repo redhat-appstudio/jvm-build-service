@@ -6,13 +6,13 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
-  name: artifactbuildrequests.jvmbuildservice.io
+  name: artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
     kind: ArtifactBuild
     listKind: ArtifactBuildList
-    plural: artifactbuildrequests
+    plural: artifactbuilds
     singular: artifactbuild
   scope: Namespaced
   versions:

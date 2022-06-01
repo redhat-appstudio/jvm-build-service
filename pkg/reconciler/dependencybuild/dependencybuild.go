@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -68,10 +68,10 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	//if a field has been modified we need to update the label
 	//which may result in a new build
 	depId := hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
-	if depId != db.Labels[artifactbuildrequest.DependencyBuildIdLabel] {
+	if depId != db.Labels[artifactbuild.DependencyBuildIdLabel] {
 		//if our id has changed we just update the label and set our state back to new
 		//this will kick off a new build
-		db.Labels[artifactbuildrequest.DependencyBuildIdLabel] = depId
+		db.Labels[artifactbuild.DependencyBuildIdLabel] = depId
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		return reconcile.Result{}, r.client.Update(ctx, &db)
 	}
@@ -148,7 +148,7 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 	tr := pipelinev1beta1.TaskRun{}
 	tr.Namespace = db.Namespace
 	tr.GenerateName = db.Name + "-build-"
-	tr.Labels = map[string]string{artifactbuildrequest.DependencyBuildIdLabel: db.Labels[artifactbuildrequest.DependencyBuildIdLabel], artifactbuildrequest.TaskRunLabel: ""}
+	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: ""}
 	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "run-maven-component-build", Kind: pipelinev1beta1.ClusterTaskKind}
 	tr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
@@ -169,10 +169,6 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "TaskRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
 		return reconcile.Result{}, err
 	}
-	//get the db and update the new status
-	if err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: db.Name}, db); err != nil {
-		return reconcile.Result{}, err
-	}
 	return reconcile.Result{}, nil
 }
 
@@ -180,7 +176,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depI
 	//make sure we still have a linked pr
 	list := &pipelinev1beta1.TaskRunList{}
 	lbls := map[string]string{
-		artifactbuildrequest.DependencyBuildIdLabel: depId,
+		artifactbuild.DependencyBuildIdLabel: depId,
 	}
 	listOpts := &client.ListOptions{
 		Namespace:     db.Namespace,
@@ -254,7 +250,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 		if len(contaminant) == 0 {
 			continue
 		}
-		abrName := artifactbuildrequest.CreateABRName(contaminant)
+		abrName := artifactbuild.CreateABRName(contaminant)
 		abr := v1alpha1.ArtifactBuild{}
 		//look for existing ABR
 		err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
@@ -267,14 +263,14 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 			abr.Namespace = db.Namespace
 			abr.Annotations = map[string]string{}
 			//use this annotation to link back to the dependency build
-			abr.Annotations[artifactbuildrequest.DependencyBuildContaminatedBy+suffix] = db.Name
+			abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
 			err := r.client.Create(ctx, &abr)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 		} else {
 			abr.Annotations = map[string]string{}
-			abr.Annotations[artifactbuildrequest.DependencyBuildContaminatedBy+suffix] = db.Name
+			abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
 			err := r.client.Update(ctx, &abr)
 			if err != nil {
 				return reconcile.Result{}, err

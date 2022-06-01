@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -40,7 +40,7 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 	}
 	options.NewCache = cache.BuilderWithOptions(cache.Options{
 		SelectorsByObject: cache.SelectorsByObject{
-			&pipelinev1beta1.TaskRun{}:  {Label: labels.SelectorFromSet(map[string]string{artifactbuildrequest.TaskRunLabel: ""})},
+			&pipelinev1beta1.TaskRun{}:  {Label: labels.SelectorFromSet(map[string]string{artifactbuild.TaskRunLabel: ""})},
 			&v1alpha1.DependencyBuild{}: {},
 			&v1alpha1.ArtifactBuild{}:   {},
 		}})
@@ -57,7 +57,7 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 	controllerLog.Info("Registering Components.")
 
 	// Add Reconcilers
-	if err := artifactbuildrequest.SetupNewReconcilerWithManager(mgr, nonCachingClient); err != nil {
+	if err := artifactbuild.SetupNewReconcilerWithManager(mgr, nonCachingClient); err != nil {
 		return nil, err
 	}
 

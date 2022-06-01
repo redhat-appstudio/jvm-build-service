@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -64,10 +64,10 @@ func createAbr(componentLookupKey types.NamespacedName) {
 }
 
 func getTr() *tektonapi.TaskRun {
-	hash := artifactbuildrequest.ABRLabelForGAV(ABRGav)
+	hash := artifactbuild.ABRLabelForGAV(ABRGav)
 	listOpts := &client.ListOptions{
 		Namespace:     TestNamespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuildrequest.ArtifactBuildIdLabel: hash}),
+		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuild.ArtifactBuildIdLabel: hash}),
 	}
 	trl := tektonapi.TaskRunList{}
 	var tr *tektonapi.TaskRun
@@ -137,23 +137,23 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 		}, 30)
 
 		It("should move state to ArtifactBuildDiscovered on Success", func() {
-			//createTaskRun(abrName, map[string]string{artifactbuildrequest.TaskRunLabel: "", artifactbuildrequest.ArtifactBuildIdLabel: artifactbuildrequest.ABRLabelForGAV(ABRGav)})
+			//createTaskRun(abrName, map[string]string{artifactbuild.TaskRunLabel: "", artifactbuild.ArtifactBuildIdLabel: artifactbuild.ABRLabelForGAV(ABRGav)})
 			tr := getTr()
 			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 			tr.Status.TaskRunResults = []tektonapi.TaskRunResult{{
-				Name:  artifactbuildrequest.TaskResultScmTag,
+				Name:  artifactbuild.TaskResultScmTag,
 				Value: "tag1",
 			}, {
-				Name:  artifactbuildrequest.TaskResultScmUrl,
+				Name:  artifactbuild.TaskResultScmUrl,
 				Value: "url1",
 			}, {
-				Name:  artifactbuildrequest.TaskResultScmType,
+				Name:  artifactbuild.TaskResultScmType,
 				Value: "git",
 			}, {
-				Name:  artifactbuildrequest.TaskResultContextPath,
+				Name:  artifactbuild.TaskResultContextPath,
 				Value: "/path1",
 			}, {
-				Name:  artifactbuildrequest.TaskResultMessage,
+				Name:  artifactbuild.TaskResultMessage,
 				Value: "OK",
 			}}
 			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
