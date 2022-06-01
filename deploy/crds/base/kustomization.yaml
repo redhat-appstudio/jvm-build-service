@@ -3,4 +3,4 @@ kind: Kustomization
 
 resources:
   - jvmbuildservice.io_dependencybuilds.yaml
-  - jvmbuildservice.io_artifactbuildrequests.yaml
+  - jvmbuildservice.io_artifactbuilds.yaml

@@ -18,7 +18,7 @@ package e2e
 
 import (
 	"context"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuildrequest"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"go/build"
 	"path/filepath"
 	"testing"
@@ -102,7 +102,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	Expect(err).ToNot(HaveOccurred())
-	err = artifactbuildrequest.SetupNewReconcilerWithManager(k8sManager, k8sClient)
+	err = artifactbuild.SetupNewReconcilerWithManager(k8sManager, k8sClient)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

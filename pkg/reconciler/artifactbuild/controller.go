@@ -1,4 +1,4 @@
-package artifactbuildrequest
+package artifactbuild
 
 import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"

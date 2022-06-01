@@ -54,10 +54,10 @@ tkn pr logs --last -f
 
 This will show the initial build. Once it is complete you should be able to see a list of community dependencies that were used in the logs.
 
-You should then be able to look at the `artifactbuildrequests` that the system has created to rebuild them:
+You should then be able to look at the `artifactbuilds` that the system has created to rebuild them:
 
 ----
-kubectl get artifactbuildrequests
+kubectl get artifactbuilds
 ----
 
 Once these have been created the system will run discovery pipelines to try and figure out how to build them. This is a Tekton TaskRun, so you can observe the progress by running:
