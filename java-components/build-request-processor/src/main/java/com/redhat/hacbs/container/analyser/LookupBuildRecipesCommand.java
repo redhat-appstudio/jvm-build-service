@@ -11,6 +11,7 @@ import java.util.Set;
 
 import org.eclipse.jgit.api.Git;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
@@ -45,6 +46,15 @@ public class LookupBuildRecipesCommand implements Runnable {
 
     @CommandLine.Option(names = "--context")
     Path context;
+
+    /**
+     * The build info, in JSON format as per BuildRecipe.
+     * <p>
+     * This just gives facts discovered by examining the checkout, it does not make any inferences from those facts (e.g. which
+     * image to use).
+     */
+    @CommandLine.Option(names = "--build-info")
+    Path buildInfo;
 
     @Override
     public void run() {
@@ -134,6 +144,9 @@ public class LookupBuildRecipesCommand implements Runnable {
                     if (context != null && parsedInfo.getPath() != null) {
                         Files.writeString(context, parsedInfo.getPath());
                     }
+
+                    doBuildAnalysis(parsedInfo.getUri(), selectedTag, parsedInfo.getPath());
+
                     firstFailure = null;
                     break;
 
@@ -159,6 +172,27 @@ public class LookupBuildRecipesCommand implements Runnable {
                     Log.errorf(e, "Failed to write result");
                 }
             }
+        }
+    }
+
+    private void doBuildAnalysis(String scmUrl, String scmTag, String context) throws Exception {
+        //TODO: this is a basic hack to prove the concept
+        var path = Files.createTempDirectory("checkout");
+        try (var clone = Git.cloneRepository().setURI(scmUrl).setBranch(scmTag).setDirectory(path.toFile()).call()) {
+            if (context != null) {
+                path = path.resolve(context);
+            }
+            BuildInfo info = new BuildInfo();
+            info.tools.put("jdk", new VersionRange("8", "17", "11"));
+            if (Files.isRegularFile(path.resolve("pom.xml"))) {
+                info.tools.put("maven", new VersionRange("3.8", "3.8", "3.8"));
+                info.invocations.add(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip"));
+            } else if (Files.isRegularFile(path.resolve("pom.xml"))) {
+                info.tools.put("gradle", new VersionRange("7.3", "7.3", "7.3"));
+                info.invocations.add(List.of("gradle", "build"));
+            }
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.writeValue(buildInfo.toFile(), info);
         }
     }
 

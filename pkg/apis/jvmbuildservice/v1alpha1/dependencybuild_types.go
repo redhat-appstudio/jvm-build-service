@@ -6,7 +6,6 @@ import (
 
 const (
 	DependencyBuildStateNew          = "DependencyBuildStateNew"
-	DependencyBuildStateDetect       = "DependencyBuildStateDetect"
 	DependencyBuildStateSubmitBuild  = "DependencyBuildStateSubmitBuild"
 	DependencyBuildStateBuilding     = "DependencyBuildStateBuilding"
 	DependencyBuildStateComplete     = "DependencyBuildStateComplete"
@@ -15,7 +14,8 @@ const (
 )
 
 type DependencyBuildSpec struct {
-	ScmInfo SCMInfo `json:"scm,omitempty"`
+	ScmInfo      SCMInfo        `json:"scm,omitempty"`
+	BuildRecipes []*BuildRecipe `json:"buildRecipes,omitempty"`
 }
 
 type DependencyBuildStatus struct {
@@ -61,8 +61,7 @@ type DependencyBuildList struct {
 	Items           []DependencyBuild `json:"items"`
 }
 
-//TODO: this will require more than just an image name
-//but lets expand it as functionality is added
 type BuildRecipe struct {
-	Image string `json:"image,omitempty"`
+	Image       string   `json:"image,omitempty"`
+	CommandLine []string `json:"commandLine,omitempty"`
 }

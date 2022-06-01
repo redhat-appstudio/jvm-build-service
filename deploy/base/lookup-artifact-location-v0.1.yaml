@@ -17,7 +17,7 @@ spec:
       type: string
       description: >-
         The image to use for dependency analysis.
-      default: "quay.io/goldmann/hacbs-jvm-build-request-processor:dev"
+      default: "quay.io/sdouglas/hacbs-jvm-build-request-processor:dev"
     - name: RECIPE_DATABASE
       type: string
       description: >-
@@ -38,6 +38,8 @@ spec:
       description: A failure message
     - name: context
       description: The path to build in the SCM repo
+    - name: build-info
+      description: The JSON build recipe
   steps:
     - name: process-build-requests
       image: $(params.BUILD_IMAGE)
@@ -54,5 +56,7 @@ spec:
         - $(results.message.path)
         - --context
         - $(results.context.path)
+        - --build-info
+        - $(results.build-info.path)
         - --gav
         - $(params.GAV)
