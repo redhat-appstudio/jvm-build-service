@@ -25,9 +25,6 @@ spec:
   params:
     - name: URL
       type: string
-    - name: CONTEXT
-      default: ""
-      type: string
     - name: TAG
       type: string
     - name: IMAGE

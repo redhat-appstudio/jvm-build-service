@@ -30,7 +30,7 @@ const (
 	contextTimeout = 300 * time.Second
 	TaskScmUrl     = "URL"
 	TaskScmTag     = "TAG"
-	TaskPath       = "CONTEXT"
+	TaskPath       = "CONTEXT_DIR"
 	TaskImage      = "IMAGE"
 )
 
