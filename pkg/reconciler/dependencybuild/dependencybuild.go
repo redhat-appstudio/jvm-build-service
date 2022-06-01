@@ -183,6 +183,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	}
 	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
+		{Name: "sidecar-logs", EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: "source", EmptyDir: &v1.EmptyDirVolumeSource{}},
 	}
 	tr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
