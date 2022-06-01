@@ -73,6 +73,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		//this will kick off a new build
 		db.Labels[artifactbuild.DependencyBuildIdLabel] = depId
 		db.Status.State = v1alpha1.DependencyBuildStateNew
+		// TODO possibly abort instead, possibly allow but file event, or metric alert later on
 		return reconcile.Result{}, r.client.Update(ctx, &db)
 	}
 
@@ -169,6 +170,7 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "TaskRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
 		return reconcile.Result{}, err
 	}
+	//TODO delete this get
 	return reconcile.Result{}, nil
 }
 
