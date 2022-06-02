@@ -61,7 +61,7 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 		return nil, err
 	}
 
-	if err := dependencybuild.SetupNewReconcilerWithManager(mgr, nonCachingClient); err != nil {
+	if err := dependencybuild.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

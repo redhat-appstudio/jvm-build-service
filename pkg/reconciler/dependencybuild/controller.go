@@ -1,20 +1,24 @@
 package dependencybuild
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
-func SetupNewReconcilerWithManager(mgr ctrl.Manager, nonCachingClient client.Client) error {
-	r := newReconciler(mgr, nonCachingClient)
+func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
+	r := newReconciler(mgr)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.DependencyBuild{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
@@ -32,6 +36,29 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager, nonCachingClient client.Cli
 				return true
 			},
 		})).
-		Watches(&source.Kind{Type: &v1beta1.TaskRun{}}, &handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.DependencyBuild{}, IsController: false}).
+		Watches(&source.Kind{Type: &v1beta1.TaskRun{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
+			taskRun := o.(*v1beta1.TaskRun)
+
+			// check if the TaskRun is related to DependencyBuild
+			if taskRun.GetLabels() == nil {
+				return []reconcile.Request{}
+			}
+			_, ok := taskRun.GetLabels()[artifactbuild.TaskRunLabel]
+			if !ok {
+				return []reconcile.Request{}
+			}
+			_, ok = taskRun.GetLabels()[artifactbuild.DependencyBuildIdLabel]
+			if !ok {
+				return []reconcile.Request{}
+			}
+			return []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name:      taskRun.Name,
+						Namespace: taskRun.Namespace,
+					},
+				},
+			}
+		})).
 		Complete(r)
 }
