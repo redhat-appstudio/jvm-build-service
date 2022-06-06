@@ -4,25 +4,27 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"fmt"
+	"strings"
+	"time"
+
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+
 	"knative.dev/pkg/apis"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strings"
-	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 )
 
 const (
@@ -34,19 +36,21 @@ const (
 	TaskImage      = "IMAGE"
 )
 
+var (
+	log = ctrl.Log.WithName("dependencybuild")
+)
+
 type ReconcileDependencyBuild struct {
-	client           client.Client
-	scheme           *runtime.Scheme
-	eventRecorder    record.EventRecorder
-	nonCachingClient client.Client
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
 }
 
-func newReconciler(mgr ctrl.Manager, nonCachingClient client.Client) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 	return &ReconcileDependencyBuild{
-		client:           mgr.GetClient(),
-		scheme:           mgr.GetScheme(),
-		eventRecorder:    mgr.GetEventRecorderFor("DependencyBuild"),
-		nonCachingClient: nonCachingClient,
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
 	}
 }
 
@@ -56,39 +60,60 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	defer cancel()
 
 	db := v1alpha1.DependencyBuild{}
-	err := r.client.Get(ctx, request.NamespacedName, &db)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
+	dberr := r.client.Get(ctx, request.NamespacedName, &db)
+	if dberr != nil {
+		if !errors.IsNotFound(dberr) {
+			log.Error(dberr, "Reconcile key %s as dependencybuild unexpected error", request.NamespacedName.String())
+			return ctrl.Result{}, dberr
 		}
-		return ctrl.Result{}, err
 	}
 
-	//we validate that our dep id hash is still valid
-	//if a field has been modified we need to update the label
-	//which may result in a new build
-	depId := hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
-	if depId != db.Labels[artifactbuild.DependencyBuildIdLabel] {
-		//if our id has changed we just update the label and set our state back to new
-		//this will kick off a new build
-		db.Labels[artifactbuild.DependencyBuildIdLabel] = depId
-		db.Status.State = v1alpha1.DependencyBuildStateNew
-		return reconcile.Result{}, r.client.Update(ctx, &db)
+	tr := pipelinev1beta1.TaskRun{}
+	trerr := r.client.Get(ctx, request.NamespacedName, &tr)
+	if trerr != nil {
+		if !errors.IsNotFound(trerr) {
+			log.Error(trerr, "Reconcile key %s as taskrun unexpected error", request.NamespacedName.String())
+			return ctrl.Result{}, trerr
+		}
 	}
 
-	switch db.Status.State {
-	case "", v1alpha1.DependencyBuildStateNew:
-		return r.handleStateNew(ctx, &db)
-	case v1alpha1.DependencyBuildStateDetect:
-		return r.handleStateDetect(ctx, &db)
-	case v1alpha1.DependencyBuildStateSubmitBuild:
-		return r.handleStateSubmitBuild(ctx, &db)
-	case v1alpha1.DependencyBuildStateComplete, v1alpha1.DependencyBuildStateFailed:
-		return reconcile.Result{}, nil
-	case v1alpha1.DependencyBuildStateBuilding:
-		return r.handleStateBuilding(ctx, depId, &db)
-	case v1alpha1.DependencyBuildStateContaminated:
-		return r.handleStateContaminated(ctx, &db)
+	if trerr != nil && dberr != nil {
+		log.Info("Reconcile key %s received not found errors for both taskruns and dependencybuilds (probably deleted)", request.NamespacedName)
+		return ctrl.Result{}, nil
+	}
+
+	switch {
+	case dberr == nil:
+		//we validate that our dep id hash is still valid
+		//if a field has been modified we need to update the label
+		//which may result in a new build
+		depId := hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
+		if depId != db.Labels[artifactbuild.DependencyBuildIdLabel] {
+			//if our id has changed we just update the label and set our state back to new
+			//this will kick off a new build
+			db.Labels[artifactbuild.DependencyBuildIdLabel] = depId
+			db.Status.State = v1alpha1.DependencyBuildStateNew
+			// TODO possibly abort instead, possibly allow but file event, or metric alert later on
+			return reconcile.Result{}, r.client.Update(ctx, &db)
+		}
+
+		switch db.Status.State {
+		case "", v1alpha1.DependencyBuildStateNew:
+			return r.handleStateNew(ctx, &db)
+		case v1alpha1.DependencyBuildStateDetect:
+			return r.handleStateDetect(ctx, &db)
+		case v1alpha1.DependencyBuildStateSubmitBuild:
+			return r.handleStateSubmitBuild(ctx, &db)
+		case v1alpha1.DependencyBuildStateComplete, v1alpha1.DependencyBuildStateFailed:
+			return reconcile.Result{}, nil
+		case v1alpha1.DependencyBuildStateBuilding:
+			return r.handleStateBuilding(ctx, &db)
+		case v1alpha1.DependencyBuildStateContaminated:
+			return r.handleStateContaminated(ctx, &db)
+		}
+
+	case trerr == nil:
+		return r.handleTaskRunReceived(ctx, &tr)
 	}
 
 	return reconcile.Result{}, nil
@@ -140,14 +165,18 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 	db.Status.PotentialBuildRecipes = db.Status.PotentialBuildRecipes[1:]
 	db.Status.State = v1alpha1.DependencyBuildStateBuilding
 	//update the recipes
-	if err := r.client.Status().Update(ctx, db); err != nil {
-		return reconcile.Result{}, err
-	}
+	return reconcile.Result{}, r.client.Status().Update(ctx, db)
 
+}
+
+func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
 	tr := pipelinev1beta1.TaskRun{}
 	tr.Namespace = db.Namespace
-	tr.GenerateName = db.Name + "-build-"
+	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
+	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
+	// we move the db out of building
+	tr.Name = fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: ""}
 	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "run-maven-component-build", Kind: pipelinev1beta1.ClusterTaskKind}
 	tr.Spec.Params = []pipelinev1beta1.Param{
@@ -166,61 +195,80 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 	}
 	//now we submit the build
 	if err := r.client.Create(ctx, &tr); err != nil {
+		if errors.IsAlreadyExists(err) {
+			log.V(4).Info("handleStateBuilding: taskrun %s:%s already exists, not retrying", tr.Namespace, tr.Name)
+			return reconcile.Result{}, nil
+		}
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "TaskRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
 		return reconcile.Result{}, err
 	}
+
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depId string, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	//make sure we still have a linked pr
-	list := &pipelinev1beta1.TaskRunList{}
-	lbls := map[string]string{
-		artifactbuild.DependencyBuildIdLabel: depId,
-	}
-	listOpts := &client.ListOptions{
-		Namespace:     db.Namespace,
-		LabelSelector: labels.SelectorFromSet(lbls),
-	}
-	if err := r.nonCachingClient.List(ctx, list, listOpts); err != nil {
-		return reconcile.Result{}, err
-	}
-	if len(list.Items) == 0 {
-		//no linked pr, this seems to happen randomly where the PR does not show up
-		//just return and next reconcile it is there
-		//TODO: Why is this happening? caching?
-		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "NoTaskRun", "The DependencyBuild %s/%s did not have any TaskRuns", db.Namespace, db.Name)
-		return reconcile.Result{}, nil
-	}
-	var pr *pipelinev1beta1.TaskRun
-	//look for the most recent one, there could be multiple builds if earlier recipes failed
-	for _, current := range list.Items {
-		if pr == nil || pr.CreationTimestamp.Before(&current.CreationTimestamp) {
-			pr = &current
+func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
+	if tr.Status.CompletionTime != nil {
+		// get db
+		ownerRefs := tr.GetOwnerReferences()
+		if ownerRefs == nil || len(ownerRefs) == 0 {
+			msg := "taskrun missing onwerrefs %s:%s"
+			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name)
+			log.Info(msg, tr.Namespace, tr.Name)
+			return reconcile.Result{}, nil
 		}
-	}
-	if pr.Status.CompletionTime != nil {
-		if pr.Name == db.Status.LastCompletedBuildTaskRun {
+		if len(ownerRefs) > 1 {
+			// workaround for event/logging methods that can only take string args
+			count := fmt.Sprintf("%d", len(ownerRefs))
+			msg := "taskrun %s:%s has %s ownerrefs but only using the first dependencybuild ownerfef"
+			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name, count)
+			log.Info(msg, tr.Namespace, tr.Name, count)
+		}
+		// even though we filter out artifactbuild taskruns, let's check the kind and make sure
+		// we use a dependencybuild ownerref
+		var ownerRef *v12.OwnerReference
+		for _, or := range ownerRefs {
+			if strings.EqualFold(or.Kind, "dependencybuild") || strings.EqualFold(or.Kind, "dependencybuilds") {
+				ownerRef = &or
+			}
+		}
+		if ownerRef == nil {
+			msg := "taskrun missing dependencybuild onwerrefs %s:%s"
+			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name)
+			log.Info(msg, tr.Namespace, tr.Name)
+			return reconcile.Result{}, nil
+		}
+
+		key := types.NamespacedName{Namespace: tr.Namespace, Name: ownerRef.Name}
+		db := v1alpha1.DependencyBuild{}
+		err := r.client.Get(ctx, key, &db)
+		if err != nil {
+			msg := "get for taskrun %s:%s owning db %s:%s yielded error %s"
+			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name, tr.Namespace, ownerRef.Name, err.Error())
+			log.Error(err, fmt.Sprintf(msg, tr.Namespace, tr.Name, tr.Namespace, ownerRef.Name, err.Error()))
+			return reconcile.Result{}, err
+		}
+
+		if tr.Name == db.Status.LastCompletedBuildTaskRun {
 			//already handled
 			return reconcile.Result{}, nil
 		}
-		db.Status.LastCompletedBuildTaskRun = pr.Name
+		db.Status.LastCompletedBuildTaskRun = tr.Name
 		//the pr is done, lets potentially update the dependency build
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
 
 		var contaminates []string
-		for _, r := range pr.Status.TaskRunResults {
+		for _, r := range tr.Status.TaskRunResults {
 			if r.Name == "contaminants" && len(r.Value) > 0 {
 				contaminates = strings.Split(r.Value, ",")
 			}
 		}
-		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+		success := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
 			if len(contaminates) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
-				r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
+				r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
 				//the dependency was contaminated with community deps
 				//most likely shaded in
 				db.Status.State = v1alpha1.DependencyBuildStateContaminated
@@ -230,7 +278,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, depI
 			//try again, if there are no more recipes this gets handled in the submit build logic
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		}
-		return reconcile.Result{}, r.client.Status().Update(ctx, db)
+		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 	}
 	return reconcile.Result{}, nil
 }

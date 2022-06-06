@@ -5,11 +5,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"os"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
@@ -49,19 +46,11 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 		return nil, err
 	}
 
-	nonCachingClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: options.Scheme})
-	if err != nil {
-		controllerLog.Error(err, "unable to initialize non cached client")
-		os.Exit(1)
-	}
-	controllerLog.Info("Registering Components.")
-
-	// Add Reconcilers
-	if err := artifactbuild.SetupNewReconcilerWithManager(mgr, nonCachingClient); err != nil {
+	if err := artifactbuild.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 
-	if err := dependencybuild.SetupNewReconcilerWithManager(mgr, nonCachingClient); err != nil {
+	if err := dependencybuild.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

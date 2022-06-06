@@ -21,7 +21,7 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./cmd/... ./pkg/...
 
-test: fmt vet envtest ## Run tests.
+test: fmt vet ## Run tests.
 	go test -v ./pkg/...
 
 e2etest: fmt vet envtest ## Run tests.

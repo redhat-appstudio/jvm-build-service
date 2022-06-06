@@ -10,6 +10,7 @@ import (
 	"knative.dev/pkg/apis/duck/v1beta1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"testing"
 
@@ -25,7 +26,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}, nonCachingClient: client}
+	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
 	return client, reconciler
 }
 
@@ -112,10 +113,10 @@ func TestStateDiscovering(t *testing.T) {
 	t.Run("SCM tag cannot be determined", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
-		g.Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
+		tr := &pipelinev1beta1.TaskRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
+				Name:      "test-tr",
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
 			},
@@ -124,18 +125,24 @@ func TestStateDiscovering(t *testing.T) {
 				Status:              v1beta1.Status{},
 				TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{CompletionTime: &now},
 			},
-		}))
+		}
+		g.Expect(client.Create(ctx, tr))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr := getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateDiscovering))
+		controllerutil.SetOwnerReference(abr, tr, reconciler.scheme)
+		g.Expect(client.Update(ctx, tr))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-tr"}}))
+		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateMissing))
 	})
 	t.Run("First ABR creates DependencyBuild", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
-		g.Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
+		tr := &pipelinev1beta1.TaskRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
+				Name:      "test-tr",
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
 			},
@@ -148,8 +155,15 @@ func TestStateDiscovering(t *testing.T) {
 					{Name: TaskResultScmType, Value: "hoo"},
 					{Name: TaskResultContextPath, Value: "ioo"}}},
 			},
-		}))
+		}
+		abr := getABR(client, g)
+		controllerutil.SetOwnerReference(abr, tr, reconciler.scheme)
+		g.Expect(client.Create(ctx, tr))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-tr"}}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr = getABR(client, g)
+		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: depId}}))
 		fullValidation(client, g)
 	})
 	t.Run("DependencyBuild already exists for ABR", func(t *testing.T) {
@@ -211,52 +225,64 @@ func TestStateBuilding(t *testing.T) {
 	t.Run("Failed build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
-		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
+		abr := getABR(client, g)
+		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		db := &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-generated",
+				Name:      depId,
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
-		}))
+		}
+		controllerutil.SetOwnerReference(abr, db, reconciler.scheme)
+		g.Expect(client.Create(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client, g)
+		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateFailed))
 	})
 	t.Run("Completed build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
-		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
+		abr := getABR(client, g)
+		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		db := &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-generated",
+				Name:      depId,
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete},
-		}))
+		}
+		controllerutil.SetOwnerReference(abr, db, reconciler.scheme)
+		g.Expect(client.Create(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client, g)
+		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateComplete))
 	})
 	t.Run("Contaminated build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
-		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
+		abr := getABR(client, g)
+		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		db := &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-generated",
+				Name:      depId,
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []string{"com.foo:acme:1.0"}},
-		}))
+		}
+		controllerutil.SetOwnerReference(abr, db, reconciler.scheme)
+		g.Expect(client.Create(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client, g)
+		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateFailed))
 	})
 	t.Run("Missing (deleted) build", func(t *testing.T) {

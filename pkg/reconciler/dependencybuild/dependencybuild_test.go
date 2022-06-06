@@ -13,6 +13,7 @@ import (
 	"knative.dev/pkg/apis"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
 
@@ -26,7 +27,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	reconciler := &ReconcileDependencyBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}, nonCachingClient: client}
+	reconciler := &ReconcileDependencyBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
 	return client, reconciler
 }
 
@@ -83,6 +84,7 @@ func TestStateDetect(t *testing.T) {
 			Name:      "test",
 		}, &db))
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
 
 		trList := &pipelinev1beta1.TaskRunList{}
 		g.Expect(client.List(ctx, trList))
@@ -122,7 +124,7 @@ func getBuild(client runtimeclient.Client, g *WithT) *v1alpha1.DependencyBuild {
 func getTr(client runtimeclient.Client, g *WithT) *pipelinev1beta1.TaskRun {
 	ctx := context.TODO()
 	build := pipelinev1beta1.TaskRun{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}, &build))
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-0"}, &build))
 	return &build
 }
 func TestStateBuilding(t *testing.T) {
@@ -131,12 +133,14 @@ func TestStateBuilding(t *testing.T) {
 	var client runtimeclient.Client
 	var reconciler *ReconcileDependencyBuild
 	buildName := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}
+	taskRunName := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-0"}
 	setup := func(g *WithT) {
 		client, reconciler = setupClientAndReconciler()
 		db := v1alpha1.DependencyBuild{}
 		db.Namespace = metav1.NamespaceDefault
 		db.Name = "test"
 		db.Status.State = v1alpha1.DependencyBuildStateBuilding
+		db.Status.CurrentBuildRecipe = &v1alpha1.BuildRecipe{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest"}
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
@@ -145,18 +149,34 @@ func TestStateBuilding(t *testing.T) {
 
 		pr := pipelinev1beta1.TaskRun{}
 		pr.Namespace = metav1.NamespaceDefault
-		pr.Name = "test"
+		pr.Name = "test-build-0"
 		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
+		controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme)
 		g.Expect(client.Create(ctx, &pr))
 
 	}
 
-	t.Run("Test reconcile building DependencyBuild with running pipeline", func(t *testing.T) {
+	t.Run("Test reconcile building DependencyBuild with running pipeline, TaskRun arrives first", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup(g)
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+		db := getBuild(client, g)
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
+		db = getBuild(client, g)
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
+		getTr(client, g)
+	})
+	t.Run("Test reconcile building DependencyBuild with running pipeline, DependencyBuild arrives first", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+		db = getBuild(client, g)
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
+		getTr(client, g)
 	})
 	t.Run("Test reconcile building DependencyBuild with succeeded pipeline", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -169,7 +189,7 @@ func TestStateBuilding(t *testing.T) {
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
 		g.Expect(client.Update(ctx, pr))
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
 	})
@@ -184,10 +204,11 @@ func TestStateBuilding(t *testing.T) {
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
 		g.Expect(client.Update(ctx, pr))
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+		db := getBuild(client, g)
 		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
-		db := getBuild(client, g)
+		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
 	})
 	t.Run("Test reconcile building DependencyBuild with contaminants", func(t *testing.T) {
@@ -202,9 +223,11 @@ func TestStateBuilding(t *testing.T) {
 		})
 		pr.Status.TaskRunResults = []pipelinev1beta1.TaskRunResult{{Name: "contaminants", Value: "com.acme:foo:1.0,com.acme:bar:1.0"}}
 		g.Expect(client.Update(ctx, pr))
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateContaminated))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
+		db = getBuild(client, g)
 		g.Expect(db.Status.Contaminants).Should(ContainElement("com.acme:foo:1.0"))
 		g.Expect(db.Status.Contaminants).Should(ContainElement("com.acme:bar:1.0"))
 	})
