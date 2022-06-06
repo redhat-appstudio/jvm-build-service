@@ -1,0 +1,34 @@
+name: Validate PR - golang CI
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  unit:
+    name: Golang Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Build
+        run: make build
+      - name: Test
+        run: make test
+  envtests:
+    name: Golang envtet integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+          go-version-file: ./go.mod
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Build
+        run: make build
+      - name: Test
+        run: make e2etest
