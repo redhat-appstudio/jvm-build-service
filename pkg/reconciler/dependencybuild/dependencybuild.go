@@ -78,7 +78,10 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	}
 
 	if trerr != nil && dberr != nil {
-		log.Info("Reconcile key %s received not found errors for both taskruns and dependencybuilds (probably deleted)", request.NamespacedName)
+		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
+		msg := "Reconcile key %s received not found errors for both taskruns and dependencybuilds (probably deleted)\"" + request.NamespacedName.String()
+		log.Info(msg)
+		//log.Info("Reconcile key %s received not found errors for taskruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
 		return ctrl.Result{}, nil
 	}
 
@@ -88,6 +91,9 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		//if a field has been modified we need to update the label
 		//which may result in a new build
 		depId := hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
+		if db.Labels == nil || len(db.Labels) == 0 {
+			return reconcile.Result{}, fmt.Errorf("dependency build %s missing labels", depId)
+		}
 		if depId != db.Labels[artifactbuild.DependencyBuildIdLabel] {
 			//if our id has changed we just update the label and set our state back to new
 			//this will kick off a new build
