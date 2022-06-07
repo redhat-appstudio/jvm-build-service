@@ -19,6 +19,7 @@ package e2e
 import (
 	"context"
 	"go/build"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -64,10 +65,25 @@ var _ = BeforeSuite(func() {
 	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")
+	// while GOPATH works in local testing and the gomods, it does not work in github actions in CI because the
+	// source code checkout is in a different path, '/home/runner/work/jvm-build-service/jvm-build-service/deploy/crds/base'
+	// also, unfortunately, there is no env var defined for the workdir to use in code so we have to do this test with
+	// the hard coded value
+	ourCRDs := filepath.Join(build.Default.GOPATH, "src", "github.com", "redhat-appstudio", "jvm-build-service", "deploy", "crds", "base")
+	_, fileerr := os.Open(ourCRDs)
+	if fileerr != nil {
+		// assume this is github actions CI
+		ourCRDs = filepath.Join(string(os.PathSeparator), "home", "runner", "work", "jvm-build-service", "jvm-build-service", "deploy", "crds", "base")
+	}
+	tektonCRDs := filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.33.0", "config")
+	_, fileerr = os.Open(tektonCRDs)
+	if fileerr != nil {
+		tektonCRDs = filepath.Join(string(os.PathSeparator), "home", "runner", "work", "jvm-build-service", "jvm-build-service", "vendor", "github.com", "tektoncd", "pipeline", "config")
+	}
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
-			filepath.Join(build.Default.GOPATH, "src", "github.com", "redhat-appstudio", "jvm-build-service", "deploy", "crds", "base"),
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.33.0", "config"),
+			ourCRDs,
+			tektonCRDs,
 		},
 		ErrorIfCRDPathMissing: true,
 	}
