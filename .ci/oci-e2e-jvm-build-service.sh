@@ -8,7 +8,7 @@ set -u
 
 command -v kubectl >/dev/null 2>&1 || { echo "kubectl is not installed. Aborting."; exit 1; }
 
-export WORKSPACE BUILD_SERVICE_PR_OWNER BUILD_SERVICE_PR_SHA
+export WORKSPACE JVM_BUILD_SERVICE_PR_OWNER JVM_BUILD_SERVICE_PR_SHA
 
 WORKSPACE=$(dirname "$(dirname "$(readlink -f "$0")")");
 export TEST_SUITE="jvm-build-service-suite"
