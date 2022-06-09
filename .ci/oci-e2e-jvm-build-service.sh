@@ -15,6 +15,8 @@ export TEST_SUITE="jvm-build-service-suite"
 export APPLICATION_NAMESPACE="openshift-gitops"
 export APPLICATION_NAME="all-components-staging"
 
+echo "GGM DEBUG WORKSPACE = ${WORKSPACE}"
+
 # JVM_BUILD_SERVICE_IMAGE - jvm-build-service image built in openshift CI job workflow. More info about how image dependencies work in ci: https://github.com/openshift/ci-tools/blob/master/TEMPLATES.md#parameters-available-to-templates
 # Container env defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/jvm-build-service/redhat-appstudio-jvm-build-service-main.yaml
 # Openshift CI generates the build service container image value with values like registry.build01.ci.openshift.org/ci-op-83gwcnmk/pipeline@sha256:8812e26b50b262d0cc45da7912970a205add4bd4e4ff3fed421baf3120027206. Need to get the image without sha.
