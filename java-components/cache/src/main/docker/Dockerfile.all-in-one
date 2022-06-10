@@ -3,6 +3,8 @@ FROM registry.access.redhat.com/ubi8/openjdk-17:1.13 AS builder
 WORKDIR /work
 COPY ./ .
 
+RUN mkdir -p /work/cache/target/classes
+
 RUN mvn -B package -pl cache -am -Dmaven.test.skip
 
 FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.13
