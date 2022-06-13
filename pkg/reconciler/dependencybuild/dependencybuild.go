@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -283,6 +284,13 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 		} else {
 			//try again, if there are no more recipes this gets handled in the submit build logic
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+		}
+		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+			pod := v1.Pod{}
+			poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
+			if poderr == nil {
+				r.client.Delete(ctx, &pod)
+			}
 		}
 		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 	}

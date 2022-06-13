@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 	"unicode"
@@ -37,6 +38,7 @@ const (
 	TaskResultScmType             = "scm-type"
 	TaskResultContextPath         = "context"
 	TaskResultMessage             = "message"
+	DeleteTaskRunPodsEnv          = "JVM_DELETE_TASKRUN_PODS"
 )
 
 var (
@@ -167,6 +169,13 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 			abr.Status.Message = res.Value
 		case TaskResultContextPath:
 			abr.Status.SCMInfo.Path = res.Value
+		}
+	}
+	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
+		pod := corev1.Pod{}
+		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
+		if poderr == nil {
+			r.client.Delete(ctx, &pod)
 		}
 	}
 
