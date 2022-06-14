@@ -34,6 +34,7 @@ const (
 	TaskScmTag     = "TAG"
 	TaskPath       = "CONTEXT_DIR"
 	TaskImage      = "IMAGE"
+	TaskGoals      = "GOALS"
 )
 
 var (
@@ -106,8 +107,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
 			return r.handleStateNew(ctx, &db)
-		case v1alpha1.DependencyBuildStateDetect:
-			return r.handleStateDetect(ctx, &db)
 		case v1alpha1.DependencyBuildStateSubmitBuild:
 			return r.handleStateSubmitBuild(ctx, &db)
 		case v1alpha1.DependencyBuildStateComplete, v1alpha1.DependencyBuildStateFailed:
@@ -137,21 +136,11 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alp
 	//then move the state to DependencyBuildStateDetect
 	//once this is not longer a hard coded stub it should trigger a TR/PR
 	//that looks at the repository and figures out which builder to use
-	db.Status.PotentialBuildRecipes = []*v1alpha1.BuildRecipe{
-		{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest"},
-		{Image: "quay.io/sdouglas/hacbs-jdk8-builder:latest"},
-		{Image: "quay.io/sdouglas/hacbs-jdk17-builder:latest"}}
-	db.Status.State = v1alpha1.DependencyBuildStateDetect
-	return reconcile.Result{}, r.client.Status().Update(ctx, db)
-}
-
-func (r *ReconcileDependencyBuild) handleStateDetect(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	//TODO: read results of detect task
-	//this is basically a placeholder for now
-	//but this is where the PotentialBuildRecipes should be filled out
+	db.Status.PotentialBuildRecipes = db.Spec.BuildRecipes
 	db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 	return reconcile.Result{}, r.client.Status().Update(ctx, db)
 }
+
 func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//the current recipe has been built, we need to pick a new one
 	//pick the first recipe in the potential list
@@ -190,6 +179,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
 		{Name: TaskPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: TaskImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
+		{Name: TaskGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
 	}
 	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},

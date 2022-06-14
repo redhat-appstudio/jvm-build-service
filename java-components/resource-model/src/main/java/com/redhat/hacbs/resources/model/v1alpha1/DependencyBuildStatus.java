@@ -11,7 +11,7 @@ public class DependencyBuildStatus {
     private List<BuildRecipe> failedBuildRecipes;
     private List<BuildRecipe> potentialBuildRecipes;
 
-    private String lastCompletedBuildPipelineRun;
+    private String lastCompletedBuildTaskRun;
 
     public String getState() {
         return state;
@@ -58,12 +58,12 @@ public class DependencyBuildStatus {
         return this;
     }
 
-    public String getLastCompletedBuildPipelineRun() {
-        return lastCompletedBuildPipelineRun;
+    public String getLastCompletedBuildTaskRun() {
+        return lastCompletedBuildTaskRun;
     }
 
-    public DependencyBuildStatus setLastCompletedBuildPipelineRun(String lastCompletedBuildPipelineRun) {
-        this.lastCompletedBuildPipelineRun = lastCompletedBuildPipelineRun;
+    public DependencyBuildStatus setLastCompletedBuildTaskRun(String lastCompletedBuildTaskRun) {
+        this.lastCompletedBuildTaskRun = lastCompletedBuildTaskRun;
         return this;
     }
 }

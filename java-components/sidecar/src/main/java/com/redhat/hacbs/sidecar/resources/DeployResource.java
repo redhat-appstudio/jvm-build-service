@@ -38,6 +38,8 @@ public class DeployResource {
 
     final Set<String> contaminates = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+    private Throwable deployFailure;
+
     public DeployResource(S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
             @ConfigProperty(name = "deployment-prefix") String deploymentPrefix) {
@@ -49,6 +51,9 @@ public class DeployResource {
     @GET
     @Path("/result")
     public Response contaminates() {
+        if (deployFailure != null) {
+            throw new RuntimeException(deployFailure);
+        }
         if (contaminates.isEmpty()) {
             return Response.noContent().build();
         } else {
@@ -58,65 +63,65 @@ public class DeployResource {
 
     @POST
     public void deployArchive(InputStream data) throws Exception {
-        java.nio.file.Path temp = Files.createTempFile("deployment", ".tar.gz");
-        try (var out = Files.newOutputStream(temp)) {
-            byte[] buf = new byte[1024];
-            int r;
-            while ((r = data.read(buf)) > 0) {
-                out.write(buf, 0, r);
-            }
-        }
-
-        Set<String> contaminants = new HashSet<>();
-        try (TarArchiveInputStream in = new TarArchiveInputStream(new GzipCompressorInputStream(Files.newInputStream(temp)))) {
-            TarArchiveEntry e;
-            while ((e = in.getNextTarEntry()) != null) {
-                byte[] fileData = in.readAllBytes();
-                if (e.getName().endsWith(".jar")) {
-                    Log.infof("Checking %s for contaminants", e.getName());
-                    var info = ClassFileTracker.readTrackingDataFromJar(fileData, e.getName());
-                    if (info != null) {
-                        contaminants.addAll(info.stream().map(a -> a.gav).toList());
-                    }
+        try {
+            java.nio.file.Path temp = Files.createTempFile("deployment", ".tar.gz");
+            try (var out = Files.newOutputStream(temp)) {
+                byte[] buf = new byte[1024];
+                int r;
+                while ((r = data.read(buf)) > 0) {
+                    out.write(buf, 0, r);
                 }
             }
-        }
-        Log.infof("Contaminants: %s", contaminants);
-        this.contaminates.addAll(contaminants);
 
-        if (contaminants.isEmpty()) {
+            Set<String> contaminants = new HashSet<>();
             try (TarArchiveInputStream in = new TarArchiveInputStream(
                     new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                 TarArchiveEntry e;
                 while ((e = in.getNextTarEntry()) != null) {
-                    Log.infof("Received %s", e.getName());
                     byte[] fileData = in.readAllBytes();
-                    String name = e.getName();
-                    if (name.startsWith("./")) {
-                        name = name.substring(2);
+                    if (e.getName().endsWith(".jar")) {
+                        Log.infof("Checking %s for contaminants", e.getName());
+                        var info = ClassFileTracker.readTrackingDataFromJar(fileData, e.getName());
+                        if (info != null) {
+                            contaminants.addAll(info.stream().map(a -> a.gav).toList());
+                        }
                     }
-                    String targetPath = deploymentPrefix + "/" + name;
-                    client.putObject(PutObjectRequest.builder()
-                            .bucket(deploymentBucket)
-                            .key(targetPath)
-                            .build(), RequestBody.fromBytes(fileData));
-                    Log.infof("Deployed to: %s", targetPath);
                 }
             }
-        } else {
-            Log.error("Not performing deployment due to community dependencies contaminating the result");
+            Log.infof("Contaminants: %s", contaminants);
+            this.contaminates.addAll(contaminants);
+
+            if (contaminants.isEmpty()) {
+                try (TarArchiveInputStream in = new TarArchiveInputStream(
+                        new GzipCompressorInputStream(Files.newInputStream(temp)))) {
+                    TarArchiveEntry e;
+                    while ((e = in.getNextTarEntry()) != null) {
+                        Log.infof("Received %s", e.getName());
+                        byte[] fileData = in.readAllBytes();
+                        String name = e.getName();
+                        if (name.startsWith("./")) {
+                            name = name.substring(2);
+                        }
+                        String targetPath = deploymentPrefix + "/" + name;
+                        client.putObject(PutObjectRequest.builder()
+                                .bucket(deploymentBucket)
+                                .key(targetPath)
+                                .build(), RequestBody.fromBytes(fileData));
+                        Log.infof("Deployed to: %s", targetPath);
+                    }
+                }
+            } else {
+                Log.error("Not performing deployment due to community dependencies contaminating the result");
+            }
+        } catch (Throwable t) {
+            Log.error("Deployment failed", t);
+            deployFailure = t;
+            flushLogs();
+            throw t;
         }
+    }
 
-        //we print a large volume of data here as we know the sidecar is about to exit
-        //and we want to make sure any logs above actually make it to the pod logs
-        Log.infof("==================================================================");
-        Log.infof("==================================================================");
-        Log.infof("==================================================================");
-        Log.infof("================        DEPLOYMENT COMPLETE       ================");
-        Log.infof("==================================================================");
-        Log.infof("==================================================================");
-        Log.infof("==================================================================");
-
+    private void flushLogs() {
         System.err.flush();
         System.out.flush();
     }

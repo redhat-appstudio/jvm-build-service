@@ -2,6 +2,8 @@ package com.redhat.hacbs.recipies;
 
 import java.util.Objects;
 
+import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipies.build.BuildRecipeInfoManager;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfoManager;
 
@@ -13,6 +15,7 @@ import com.redhat.hacbs.recipies.scm.ScmInfoManager;
 public class BuildRecipe<T> {
 
     public static final BuildRecipe<ScmInfo> SCM = new BuildRecipe<>("scm.yaml", new ScmInfoManager());
+    public static final BuildRecipe<BuildRecipeInfo> BUILD = new BuildRecipe<>("build.yaml", new BuildRecipeInfoManager());
 
     final String name;
     final RecipeManager<T> handler;

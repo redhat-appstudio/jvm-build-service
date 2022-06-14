@@ -9,6 +9,8 @@ public class ArtifactBuildStatus {
 
     private ScmInfo scm;
 
+    private String buildInfo;
+
     public String getState() {
         return state;
     }
@@ -51,6 +53,15 @@ public class ArtifactBuildStatus {
 
     public ArtifactBuildStatus setScm(ScmInfo scm) {
         this.scm = scm;
+        return this;
+    }
+
+    public String getBuildInfo() {
+        return buildInfo;
+    }
+
+    public ArtifactBuildStatus setBuildInfo(String buildInfo) {
+        this.buildInfo = buildInfo;
         return this;
     }
 }

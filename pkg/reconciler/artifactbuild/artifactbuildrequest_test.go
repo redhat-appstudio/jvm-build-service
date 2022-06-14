@@ -130,7 +130,7 @@ func TestStateDiscovering(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr := getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateDiscovering))
-		controllerutil.SetOwnerReference(abr, tr, reconciler.scheme)
+		g.Expect(controllerutil.SetOwnerReference(abr, tr, reconciler.scheme))
 		g.Expect(client.Update(ctx, tr))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-tr"}}))
 		abr = getABR(client, g)
@@ -153,11 +153,12 @@ func TestStateDiscovering(t *testing.T) {
 					{Name: TaskResultScmTag, Value: "foo"},
 					{Name: TaskResultScmUrl, Value: "goo"},
 					{Name: TaskResultScmType, Value: "hoo"},
+					{Name: TaskResultBuildInfo, Value: "{}"},
 					{Name: TaskResultContextPath, Value: "ioo"}}},
 			},
 		}
 		abr := getABR(client, g)
-		controllerutil.SetOwnerReference(abr, tr, reconciler.scheme)
+		g.Expect(controllerutil.SetOwnerReference(abr, tr, reconciler.scheme))
 		g.Expect(client.Create(ctx, tr))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-tr"}}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
@@ -237,7 +238,7 @@ func TestStateBuilding(t *testing.T) {
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
 		}
-		controllerutil.SetOwnerReference(abr, db, reconciler.scheme)
+		g.Expect(controllerutil.SetOwnerReference(abr, db, reconciler.scheme))
 		g.Expect(client.Create(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
@@ -258,7 +259,7 @@ func TestStateBuilding(t *testing.T) {
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete},
 		}
-		controllerutil.SetOwnerReference(abr, db, reconciler.scheme)
+		g.Expect(controllerutil.SetOwnerReference(abr, db, reconciler.scheme))
 		g.Expect(client.Create(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
@@ -279,7 +280,7 @@ func TestStateBuilding(t *testing.T) {
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []string{"com.foo:acme:1.0"}},
 		}
-		controllerutil.SetOwnerReference(abr, db, reconciler.scheme)
+		g.Expect(controllerutil.SetOwnerReference(abr, db, reconciler.scheme))
 		g.Expect(client.Create(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
