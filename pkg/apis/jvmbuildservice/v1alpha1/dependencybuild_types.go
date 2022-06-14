@@ -40,7 +40,7 @@ type DependencyBuildStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=dependencybuilds,scope=Namespaced
-// +kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.scmURL`
+// +kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.scmInfo.scmURL`
 // +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 
 // DependencyBuild TODO provide godoc description
