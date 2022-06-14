@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 	"unicode"
@@ -39,6 +40,7 @@ const (
 	TaskResultContextPath         = "context"
 	TaskResultBuildInfo           = "build-info"
 	TaskResultMessage             = "message"
+	DeleteTaskRunPodsEnv          = "JVM_DELETE_TASKRUN_PODS"
 )
 
 var (
@@ -171,6 +173,13 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 			abr.Status.SCMInfo.Path = res.Value
 		case TaskResultBuildInfo:
 			abr.Status.BuildInfo = res.Value
+		}
+	}
+	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
+		pod := corev1.Pod{}
+		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
+		if poderr == nil {
+			r.client.Delete(ctx, &pod)
 		}
 	}
 
