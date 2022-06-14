@@ -23,7 +23,7 @@ export APPLICATION_NAME="all-components-staging"
 # corresponding to an OpenShift ImageStreamTag, where likely, that SHA will change image build to image build.
 export JVM_BUILD_SERVICE_IMAGE=${JVM_BUILD_SERVICE_IMAGE%@*}
 ##TODO over time we will want to add additional images for all the java based components: hacbs-jvm-cache, hacbs-jvm-build-request-processor, hacbs-jvm-sidecar, hacbs-jvm-dependency-analyser
-export JVM_BUILD_SERVICE_IMAGE_REPO=${JVM-BUILD_SERVICE_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-controller"}
+export JVM_BUILD_SERVICE_IMAGE_REPO=${JVM_BUILD_SERVICE_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-controller"}
 # Tag defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/jvm-build-service/redhat-appstudio-jvm-build-service-main.yaml
 export JVM_BUILD_SERVICE_IMAGE_TAG=${JVM_BUILD_SERVICE_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-image"}
 
