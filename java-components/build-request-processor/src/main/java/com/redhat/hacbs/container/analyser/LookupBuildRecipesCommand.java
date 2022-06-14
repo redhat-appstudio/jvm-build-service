@@ -75,7 +75,7 @@ public class LookupBuildRecipesCommand implements Runnable {
                     .get(toBuild);
             var deserialized = recipes == null ? null : recipes.get(BuildRecipe.SCM);
             if (recipes == null || deserialized == null) {
-                throw new RuntimeException("Failed to find SCM info for" + gav);
+                throw new RuntimeException("Failed to find SCM info for " + gav);
             }
             Throwable firstFailure = null;
             Log.infof("Found %s %s", recipes, deserialized);
@@ -197,7 +197,8 @@ public class LookupBuildRecipesCommand implements Runnable {
                 info.tools.put("maven", new VersionRange("3.8", "3.8", "3.8"));
                 info.invocations.add(
                         new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip")));
-            } else if (Files.isRegularFile(path.resolve("pom.xml"))) {
+            } else if (Files.isRegularFile(path.resolve("build.gradle"))
+                    || Files.isRegularFile(path.resolve("build.gradle.kts"))) {
                 info.tools.put("gradle", new VersionRange("7.3", "7.3", "7.3"));
                 info.invocations.add(new ArrayList<>(List.of("gradle", "build")));
             }

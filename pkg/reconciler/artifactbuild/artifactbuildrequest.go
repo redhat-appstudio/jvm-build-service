@@ -140,8 +140,8 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 		}
 	}
 	if len(ownerName) == 0 {
-		msg := "taskrun missing artifactbuilds onwerrefs %s:%s"
-		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, msg, tr.Namespace, tr.Name)
+		msg := "taskrun missing artifactbuilds ownerrefs %s:%s"
+		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, "MissingOwner", msg, tr.Namespace, tr.Name)
 		log.Info(msg, tr.Namespace, tr.Name)
 		return reconcile.Result{}, nil
 	}
@@ -169,6 +169,8 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 			abr.Status.Message = res.Value
 		case TaskResultContextPath:
 			abr.Status.SCMInfo.Path = res.Value
+		case TaskResultBuildInfo:
+			abr.Status.BuildInfo = res.Value
 		}
 	}
 
@@ -301,6 +303,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 		}{}
 
 		if err := json.Unmarshal([]byte(abr.Status.BuildInfo), &unmarshalled); err != nil {
+			r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", abr.Namespace, abr.Name, abr.Status.BuildInfo)
 			return reconcile.Result{}, err
 		}
 		//for now we are ignoring the tool versions

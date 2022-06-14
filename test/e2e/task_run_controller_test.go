@@ -67,7 +67,7 @@ func createDB(componentLookupKey types.NamespacedName) {
 			SCMType: "git",
 			Tag:     "tag1",
 			Path:    "/path1",
-		}},
+		}, BuildRecipes: []*v1alpha1.BuildRecipe{{Image: "testimage", CommandLine: []string{"install"}}}},
 	}
 	Expect(k8sClient.Create(ctx, db)).Should(Succeed())
 }
@@ -101,7 +101,8 @@ func getTrAbr() *tektonapi.TaskRun {
 		//there should only be one, be guard against multiple
 		for _, current := range trl.Items {
 			if tr == nil || tr.CreationTimestamp.Before(&current.CreationTimestamp) {
-				tr = &current
+				tmp := current
+				tr = &tmp
 			}
 		}
 		return tr != nil
@@ -200,6 +201,9 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 			}, {
 				Name:  artifactbuild.TaskResultMessage,
 				Value: "OK",
+			}, {
+				Name:  artifactbuild.TaskResultBuildInfo,
+				Value: `{"invocations": [["install"]]}`,
 			}}
 			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
 			print(tr.Name)
@@ -211,7 +215,7 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 				if abr.Status.State == v1alpha1.ArtifactBuildStateBuilding {
 					return nil
 				}
-				return errors.New("not updated yet")
+				return errors.New("not updated yet " + abr.Status.State)
 			}, timeout, interval).Should(Succeed())
 
 			abr := v1alpha1.ArtifactBuild{}
@@ -230,7 +234,7 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 				if db.Status.State == v1alpha1.DependencyBuildStateBuilding {
 					return nil
 				}
-				return errors.New("not updated yet")
+				return errors.New("not updated yet: " + db.Status.State)
 			}, timeout, interval).Should(Succeed())
 			Expect(k8sClient.Get(ctx, dbName, &db)).Should(Succeed())
 
