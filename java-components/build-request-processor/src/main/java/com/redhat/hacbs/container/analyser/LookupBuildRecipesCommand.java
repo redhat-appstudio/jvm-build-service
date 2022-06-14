@@ -11,8 +11,10 @@ import java.util.Set;
 
 import org.eclipse.jgit.api.Git;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
@@ -46,6 +48,15 @@ public class LookupBuildRecipesCommand implements Runnable {
     @CommandLine.Option(names = "--context")
     Path context;
 
+    /**
+     * The build info, in JSON format as per BuildRecipe.
+     * <p>
+     * This just gives facts discovered by examining the checkout, it does not make any inferences from those facts (e.g. which
+     * image to use).
+     */
+    @CommandLine.Option(names = "--build-info")
+    Path buildInfo;
+
     @Override
     public void run() {
         try {
@@ -58,11 +69,13 @@ public class LookupBuildRecipesCommand implements Runnable {
             Log.infof("Looking up %s", gav);
             //look for SCM info
             var recipes = recipeGroupManager
-                    .requestBuildInformation(new ProjectBuildRequest(Set.of(toBuild), Set.of(BuildRecipe.SCM))).getRecipes()
+                    .requestBuildInformation(
+                            new ProjectBuildRequest(Set.of(toBuild), Set.of(BuildRecipe.SCM, BuildRecipe.BUILD)))
+                    .getRecipes()
                     .get(toBuild);
             var deserialized = recipes == null ? null : recipes.get(BuildRecipe.SCM);
             if (recipes == null || deserialized == null) {
-                throw new RuntimeException("Failed to find SCM info for" + gav);
+                throw new RuntimeException("Failed to find SCM info for " + gav);
             }
             Throwable firstFailure = null;
             Log.infof("Found %s %s", recipes, deserialized);
@@ -134,6 +147,14 @@ public class LookupBuildRecipesCommand implements Runnable {
                     if (context != null && parsedInfo.getPath() != null) {
                         Files.writeString(context, parsedInfo.getPath());
                     }
+
+                    BuildRecipeInfo buildRecipeInfo = null;
+                    Path buildRecipePath = recipes.get(BuildRecipe.BUILD);
+                    if (buildRecipePath != null) {
+                        buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(buildRecipePath);
+                    }
+                    doBuildAnalysis(parsedInfo.getUri(), selectedTag, parsedInfo.getPath(), buildRecipeInfo);
+
                     firstFailure = null;
                     break;
 
@@ -159,6 +180,35 @@ public class LookupBuildRecipesCommand implements Runnable {
                     Log.errorf(e, "Failed to write result");
                 }
             }
+        }
+    }
+
+    private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo)
+            throws Exception {
+        //TODO: this is a basic hack to prove the concept
+        var path = Files.createTempDirectory("checkout");
+        try (var clone = Git.cloneRepository().setURI(scmUrl).setBranch(scmTag).setDirectory(path.toFile()).call()) {
+            if (context != null) {
+                path = path.resolve(context);
+            }
+            BuildInfo info = new BuildInfo();
+            info.tools.put("jdk", new VersionRange("8", "17", "11"));
+            if (Files.isRegularFile(path.resolve("pom.xml"))) {
+                info.tools.put("maven", new VersionRange("3.8", "3.8", "3.8"));
+                info.invocations.add(
+                        new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip")));
+            } else if (Files.isRegularFile(path.resolve("build.gradle"))
+                    || Files.isRegularFile(path.resolve("build.gradle.kts"))) {
+                info.tools.put("gradle", new VersionRange("7.3", "7.3", "7.3"));
+                info.invocations.add(new ArrayList<>(List.of("gradle", "build")));
+            }
+            if (buildRecipeInfo != null) {
+                for (var i : info.invocations) {
+                    i.addAll(buildRecipeInfo.getAdditionalArgs());
+                }
+            }
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.writeValue(this.buildInfo.toFile(), info);
         }
     }
 

@@ -22,6 +22,9 @@ public class ResetArtifactBuildsCommand implements Runnable {
     @CommandLine.Option(names = "-b", defaultValue = "")
     String build;
 
+    @CommandLine.Option(names = "-m", defaultValue = "false")
+    boolean missing;
+
     @Override
     public void run() {
         try {
@@ -34,8 +37,10 @@ public class ResetArtifactBuildsCommand implements Runnable {
             } else {
                 List<ArtifactBuild> items = client.list().getItems();
                 for (var request : items) {
-                    request.getStatus().setState("");
-                    client.updateStatus(request);
+                    if (!missing || request.getStatus().getState().equals("ArtifactBuildMissing")) {
+                        request.getStatus().setState("");
+                        client.updateStatus(request);
+                    }
                 }
             }
         } catch (Exception e) {

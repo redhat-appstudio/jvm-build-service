@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -37,6 +38,7 @@ const (
 	TaskResultScmTag              = "scm-tag"
 	TaskResultScmType             = "scm-type"
 	TaskResultContextPath         = "context"
+	TaskResultBuildInfo           = "build-info"
 	TaskResultMessage             = "message"
 	DeleteTaskRunPodsEnv          = "JVM_DELETE_TASKRUN_PODS"
 )
@@ -140,8 +142,8 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 		}
 	}
 	if len(ownerName) == 0 {
-		msg := "taskrun missing artifactbuilds onwerrefs %s:%s"
-		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, msg, tr.Namespace, tr.Name)
+		msg := "taskrun missing artifactbuilds ownerrefs %s:%s"
+		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, "MissingOwner", msg, tr.Namespace, tr.Name)
 		log.Info(msg, tr.Namespace, tr.Name)
 		return reconcile.Result{}, nil
 	}
@@ -169,6 +171,8 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 			abr.Status.Message = res.Value
 		case TaskResultContextPath:
 			abr.Status.SCMInfo.Path = res.Value
+		case TaskResultBuildInfo:
+			abr.Status.BuildInfo = res.Value
 		}
 	}
 	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
@@ -298,6 +302,27 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 	case errors.IsNotFound(err):
 		//move the state to building
 		abr.Status.State = v1alpha1.ArtifactBuildStateBuilding
+		unmarshalled := struct {
+			Tools map[string]struct {
+				Min       string
+				Max       string
+				Preferred string
+			}
+			Invocations [][]string
+		}{}
+
+		if err := json.Unmarshal([]byte(abr.Status.BuildInfo), &unmarshalled); err != nil {
+			r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", abr.Namespace, abr.Name, abr.Status.BuildInfo)
+			return reconcile.Result{}, err
+		}
+		//for now we are ignoring the tool versions
+		//and just using the supplied invocations
+		buildRecipes := []*v1alpha1.BuildRecipe{}
+		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
+			for _, command := range unmarshalled.Invocations {
+				buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command})
+			}
+		}
 		//no existing build object found, lets create one
 		db := &v1alpha1.DependencyBuild{}
 		db.Namespace = abr.Namespace
@@ -314,7 +339,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 			SCMType: abr.Status.SCMInfo.SCMType,
 			Tag:     abr.Status.SCMInfo.Tag,
 			Path:    abr.Status.SCMInfo.Path,
-		}}
+		}, BuildRecipes: buildRecipes}
 		if err := r.client.Status().Update(ctx, abr); err != nil {
 			return reconcile.Result{}, err
 		}

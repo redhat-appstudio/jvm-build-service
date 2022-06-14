@@ -36,7 +36,7 @@ public class ResetDependencyBuildsCommand implements Runnable {
             } else {
                 List<DependencyBuild> items = client.list().getItems();
                 for (var request : items) {
-                    if (!failedOnly || request.getStatus().getState().equals("DependencyBuildFailed")) {
+                    if (!failedOnly || request.getStatus().getState().equals("DependencyBuildStartFailed")) {
                         request.getStatus().setState("");
                         client.updateStatus(request);
                     }

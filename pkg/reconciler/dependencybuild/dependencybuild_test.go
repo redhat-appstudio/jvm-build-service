@@ -41,6 +41,7 @@ func TestStateNew(t *testing.T) {
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
+		db.Spec.BuildRecipes = []*v1alpha1.BuildRecipe{{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest"}}
 		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 
 		ctx := context.TODO()
@@ -52,8 +53,15 @@ func TestStateNew(t *testing.T) {
 			Namespace: metav1.NamespaceDefault,
 			Name:      "test",
 		}, &db))
-		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateDetect))
-		g.Expect(db.Status.PotentialBuildRecipes).Should(ContainElement(&v1alpha1.BuildRecipe{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest"}))
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+
+		g.Expect(client.Get(ctx, types.NamespacedName{
+			Namespace: metav1.NamespaceDefault,
+			Name:      "test",
+		}, &db))
+		g.Expect(db.Status.CurrentBuildRecipe).ShouldNot(BeNil())
+		g.Expect(db.Status.CurrentBuildRecipe.Image).Should(Equal("quay.io/sdouglas/hacbs-jdk11-builder:latest"))
 
 	})
 }
@@ -68,13 +76,12 @@ func TestStateDetect(t *testing.T) {
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
+		db.Spec.BuildRecipes = []*v1alpha1.BuildRecipe{{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest", CommandLine: []string{"testgoal"}}}
 		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 
 		ctx := context.TODO()
 		client, reconciler := setupClientAndReconciler(&db)
 
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
-		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateDetect))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
 		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
@@ -98,7 +105,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(4))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(5))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case TaskScmTag:
@@ -109,6 +116,8 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
 				case TaskImage:
 					g.Expect(param.Value.StringVal).Should(Equal("quay.io/sdouglas/hacbs-jdk11-builder:latest"))
+				case TaskGoals:
+					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
 				}
 			}
 		}
@@ -151,7 +160,7 @@ func TestStateBuilding(t *testing.T) {
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Name = "test-build-0"
 		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
-		controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme)
+		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme))
 		g.Expect(client.Create(ctx, &pr))
 
 	}

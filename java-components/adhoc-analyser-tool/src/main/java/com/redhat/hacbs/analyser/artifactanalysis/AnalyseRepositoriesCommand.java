@@ -99,6 +99,9 @@ public class AnalyseRepositoriesCommand implements Runnable {
                 if (repository.isDeprecated() != legacy) {
                     continue;
                 }
+                if (repository.isProcessed()) {
+                    continue;
+                }
 
                 overallStatus.setMessage("Processing repo " + (currentCount++) + " out of " + count);
                 if (!isRunning()) {
@@ -131,7 +134,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
                             continue;
                         }
                     }
-                    try {
+                    try (checkout) {
                         List<String> paths = new ArrayList<>(repository.getPaths());
                         if (paths.isEmpty()) {
                             paths.add("");
@@ -140,6 +143,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
                             analyseRepository(doubleUps, doubleUpFiles, recipeLayoutManager, groupManager, repository,
                                     checkoutPath.resolve(path));
                         }
+                        repository.setProcessed(true);
                     } catch (Throwable t) {
                         Log.errorf(t, "Failed to analyse %s", repository.getUri());
                     }

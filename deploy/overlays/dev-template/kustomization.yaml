@@ -46,7 +46,7 @@ patches:
          name: QUARKUS_S3_ENDPOINT_OVERRIDE
          value: "http://localstack.default.svc.cluster.local:4572"
    target:
-     kind: Task
+     kind: ClusterTask
      name: run-maven-component-build
  - patch: |-
      - op: add
@@ -55,7 +55,7 @@ patches:
          name: QUARKUS_S3_AWS_REGION
          value: "us-east-1"
    target:
-     kind: Task
+     kind: ClusterTask
      name: run-maven-component-build
  - patch: |-
      - op: add
@@ -64,7 +64,7 @@ patches:
          name: QUARKUS_S3_AWS_CREDENTIALS_TYPE
          value: "static"
    target:
-     kind: Task
+     kind: ClusterTask
      name: run-maven-component-build
  - patch: |-
      - op: add
@@ -73,7 +73,7 @@ patches:
          name: QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID
          value: "accesskey"
    target:
-     kind: Task
+     kind: ClusterTask
      name: run-maven-component-build
  - patch: |-
      - op: add
@@ -82,5 +82,5 @@ patches:
          name: QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY
          value: "secretkey"
    target:
-     kind: Task
+     kind: ClusterTask
      name: run-maven-component-build
