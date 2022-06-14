@@ -179,7 +179,10 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 		pod := corev1.Pod{}
 		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
 		if poderr == nil {
-			r.client.Delete(ctx, &pod)
+			err := r.client.Delete(ctx, &pod)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 	}
 
