@@ -196,7 +196,8 @@ public class LookupBuildRecipesCommand implements Runnable {
             if (Files.isRegularFile(path.resolve("pom.xml"))) {
                 info.tools.put("maven", new VersionRange("3.8", "3.8", "3.8"));
                 info.invocations.add(
-                        new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip","-Drat.skip=true")));
+                        new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
+                                "-Drat.skip=true")));
             } else if (Files.isRegularFile(path.resolve("build.gradle"))
                     || Files.isRegularFile(path.resolve("build.gradle.kts"))) {
                 info.tools.put("gradle", new VersionRange("7.3", "7.3", "7.3"));
