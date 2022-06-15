@@ -17,7 +17,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.scmInfo.scmURL
+    - jsonPath: .spec.scm.scmURL
       name: URL
       type: string
     - jsonPath: .status.state
