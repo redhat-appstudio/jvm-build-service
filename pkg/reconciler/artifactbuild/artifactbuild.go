@@ -213,7 +213,7 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 		}
 	}
 	if len(ownerName) == 0 {
-		msg := "dependencybuild missing artifactbuilds onwerrefs %s:%s"
+		msg := "dependencybuild missing artifactbuilds owner refs %s:%s"
 		r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name)
 		log.Info(msg, db.Namespace, db.Name)
 		return reconcile.Result{}, nil
@@ -228,9 +228,15 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 		log.Error(err, fmt.Sprintf(msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error()))
 		return reconcile.Result{}, err
 	}
+	if db.Status.State == v1alpha1.DependencyBuildStateFailed ||
+		db.Status.State == v1alpha1.DependencyBuildStateContaminated {
+		abr.Status.State = v1alpha1.ArtifactBuildStateFailed
+	} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
+		abr.Status.State = v1alpha1.ArtifactBuildStateComplete
+	}
 
 	// if need be
-	return reconcile.Result{}, nil
+	return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
 }
 
 func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
