@@ -84,6 +84,7 @@ public class ClassFileTracker {
     public static Set<TrackingData> readTrackingDataFromJar(byte[] input, String jarFile) throws IOException {
         return readTrackingDataFromJar(new ByteArrayInputStream(input), jarFile);
     }
+
     public static Set<TrackingData> readTrackingDataFromJar(InputStream input, String jarFile) throws IOException {
         Set<TrackingData> ret = new HashSet<>();
         try (ZipInputStream zipIn = new ZipInputStream(input)) {
