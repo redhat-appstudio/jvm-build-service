@@ -1,30 +1,28 @@
 package com.redhat.hacbs.sidecar.resources;
 
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
+import io.quarkus.logging.Log;
+import io.smallrye.common.annotation.Blocking;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import javax.inject.Singleton;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
-
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
-
-import io.quarkus.logging.Log;
-import io.smallrye.common.annotation.Blocking;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Path("/deploy")
 @Blocking
@@ -78,10 +76,9 @@ public class DeployResource {
                     new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                 TarArchiveEntry e;
                 while ((e = in.getNextTarEntry()) != null) {
-                    byte[] fileData = in.readAllBytes();
                     if (e.getName().endsWith(".jar")) {
                         Log.infof("Checking %s for contaminants", e.getName());
-                        var info = ClassFileTracker.readTrackingDataFromJar(fileData, e.getName());
+                        var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
                         if (info != null) {
                             contaminants.addAll(info.stream().map(a -> a.gav).toList());
                         }
@@ -124,5 +121,34 @@ public class DeployResource {
     private void flushLogs() {
         System.err.flush();
         System.out.flush();
+    }
+
+    private static class NoCloseInputStream extends InputStream {
+
+        final InputStream delegate;
+
+        private NoCloseInputStream(InputStream delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public int read() throws IOException {
+            return delegate.read();
+        }
+
+        @Override
+        public int read(byte[] b) throws IOException {
+            return delegate.read(b);
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            return delegate.read(b, off, len);
+        }
+
+        @Override
+        public void close() throws IOException {
+            //ignore
+        }
     }
 }

@@ -82,8 +82,11 @@ public class ClassFileTracker {
     }
 
     public static Set<TrackingData> readTrackingDataFromJar(byte[] input, String jarFile) throws IOException {
+        return readTrackingDataFromJar(new ByteArrayInputStream(input), jarFile);
+    }
+    public static Set<TrackingData> readTrackingDataFromJar(InputStream input, String jarFile) throws IOException {
         Set<TrackingData> ret = new HashSet<>();
-        try (ZipInputStream zipIn = new ZipInputStream(new ByteArrayInputStream(input))) {
+        try (ZipInputStream zipIn = new ZipInputStream(input)) {
             var entry = zipIn.getNextEntry();
             while (entry != null) {
                 if (entry.getName().endsWith(".class")) {
