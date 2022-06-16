@@ -17,5 +17,5 @@ On MacOS X and Linux, you can run the build as follows:
 virtualenv --python=python3 .cekit
 source .cekit/bin/activate
 pip install -r requirements.txt
-./build.sh
+./build.sh sdouglas latest podman
 ```

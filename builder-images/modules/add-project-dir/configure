@@ -1,5 +1,5 @@
 #!/bin/sh
-cp /etc/passwd /home/jboss/passwd
-chown jboss:jboss /home/jboss/passwd
+cp /etc/passwd /home/hacbs/passwd
+chown 1001:1001 /home/hacbs/passwd
 mkdir /project
-chown jboss:jboss /project
+chown 1001:1001 /project

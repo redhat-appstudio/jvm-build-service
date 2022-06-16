@@ -1,19 +1,22 @@
 apiVersion: tekton.dev/v1beta1
-kind: PipelineRun
+kind: TaskRun
 metadata:
-  generateName: service-registry-build-
+  generateName: quarkus-netty-build-
 spec:
-  pipelineRef:
-    name: run-component-build
+  taskRef:
+    name: run-maven-component-build
+    kind: ClusterTask
   params:
-    - name: url
-      value: https://github.com/quarkusio/quarkus-security.git
-    - name: tag
-      value: 1.1.4.Final
+    - name: URL
+      value: https://github.com/netty/netty.git
+    - name: TAG
+      value: netty-4.1.74.Final
+    - name: IMAGE
+      value: quay.io/sdouglas/hacbs-jdk11-builder:test
   workspaces:
     - name: maven-settings
       emptyDir: {}
-    - name: shared-workspace
+    - name: source
       volumeClaimTemplate:
         spec:
           accessModes:

@@ -22,6 +22,8 @@ modules:
   repositories:
   - path: modules
   install:
+  - name: add-hacbs-user
+  - name: add-project-dir
   - name: tooling-packages
   - name: glibc-langpack-en
   - name: encoding
@@ -51,13 +53,20 @@ packages:
   - autoconf
   - automake
   - libtool
+  - tar
+  - glibc-devel
+  - libgcc.i686
+  - glibc-devel.i686
 
 envs:
 - name: "PATH"
-  value: "$PATH:$JAVA_HOME/bin"  
-
+  value: "$PATH:$JAVA_HOME/bin"
+- name: "HOME"
+  value: "/home/hacbs"
+- name: "NSS_WRAPPER_PASSWD"
+  value: "/etc/passwd"
 run:
-  user: root
+  user: hacbs
   workdir: "/project"
   cmd:
   - "mvn"
