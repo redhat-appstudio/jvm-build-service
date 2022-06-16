@@ -1,5 +1,6 @@
 package com.redhat.hacbs.sidecar.resources;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Collections;
@@ -36,16 +37,20 @@ public class DeployResource {
     final String deploymentBucket;
     final String deploymentPrefix;
 
+    final boolean allowPartialDeployment;
+
     final Set<String> contaminates = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private Throwable deployFailure;
 
     public DeployResource(S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
-            @ConfigProperty(name = "deployment-prefix") String deploymentPrefix) {
+            @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
+            @ConfigProperty(name = "allow-partial-deployment", defaultValue = "false") boolean allowPartialDeployment) {
         this.client = client;
         this.deploymentBucket = deploymentBucket;
         this.deploymentPrefix = deploymentPrefix;
+        this.allowPartialDeployment = allowPartialDeployment;
     }
 
     @GET
@@ -74,16 +79,22 @@ public class DeployResource {
             }
 
             Set<String> contaminants = new HashSet<>();
+            Set<String> contaminatedPaths = new HashSet<>();
             try (TarArchiveInputStream in = new TarArchiveInputStream(
                     new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                 TarArchiveEntry e;
                 while ((e = in.getNextTarEntry()) != null) {
-                    byte[] fileData = in.readAllBytes();
                     if (e.getName().endsWith(".jar")) {
                         Log.infof("Checking %s for contaminants", e.getName());
-                        var info = ClassFileTracker.readTrackingDataFromJar(fileData, e.getName());
+                        var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
                         if (info != null) {
                             contaminants.addAll(info.stream().map(a -> a.gav).toList());
+                            int index = e.getName().lastIndexOf("/");
+                            if (index != -1) {
+                                contaminatedPaths.add(e.getName().substring(0, index));
+                            } else {
+                                contaminatedPaths.add("");
+                            }
                         }
                     }
                 }
@@ -91,12 +102,22 @@ public class DeployResource {
             Log.infof("Contaminants: %s", contaminants);
             this.contaminates.addAll(contaminants);
 
-            if (contaminants.isEmpty()) {
+            if (contaminants.isEmpty() || allowPartialDeployment) {
                 try (TarArchiveInputStream in = new TarArchiveInputStream(
                         new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                     TarArchiveEntry e;
                     while ((e = in.getNextTarEntry()) != null) {
                         Log.infof("Received %s", e.getName());
+                        boolean contaminated = false;
+                        for (var i : contaminatedPaths) {
+                            if (e.getName().startsWith(i)) {
+                                contaminated = true;
+                                break;
+                            }
+                        }
+                        if (contaminated) {
+                            continue;
+                        }
                         byte[] fileData = in.readAllBytes();
                         String name = e.getName();
                         if (name.startsWith("./")) {
@@ -124,5 +145,34 @@ public class DeployResource {
     private void flushLogs() {
         System.err.flush();
         System.out.flush();
+    }
+
+    private static class NoCloseInputStream extends InputStream {
+
+        final InputStream delegate;
+
+        private NoCloseInputStream(InputStream delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public int read() throws IOException {
+            return delegate.read();
+        }
+
+        @Override
+        public int read(byte[] b) throws IOException {
+            return delegate.read(b);
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            return delegate.read(b, off, len);
+        }
+
+        @Override
+        public void close() throws IOException {
+            //ignore
+        }
     }
 }
