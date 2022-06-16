@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 @Singleton
 public class MavenProxyResource {
 
+    public static final String REBUILT = "rebuilt";
     final RemoteClient remoteClient;
     final String buildPolicy;
     final S3Client client;
@@ -84,7 +85,10 @@ public class MavenProxyResource {
             }
             try (var results = remoteClient.get(buildPolicy, group, artifact, version, target)) {
                 var mavenRepoSource = results.getHeaderString("X-maven-repo");
-                if (addTrackingDataToArtifacts && target.endsWith(".jar") && mavenRepoSource != null) {
+                if (mavenRepoSource == null) {
+                    mavenRepoSource = REBUILT;
+                }
+                if (addTrackingDataToArtifacts && target.endsWith(".jar")) {
                     var tempInput = Files.createTempFile("temp-jar", ".jar");
                     var tempBytecodeTrackedJar = Files.createTempFile("temp-modified-jar", ".jar");
                     try (OutputStream out = Files.newOutputStream(tempInput); var in = results.readEntity(InputStream.class)) {

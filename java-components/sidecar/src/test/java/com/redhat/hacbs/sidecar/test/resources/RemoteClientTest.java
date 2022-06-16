@@ -35,16 +35,16 @@ public class RemoteClientTest {
     RemoteClient remoteClient;
 
     @Test
-    public void testFetchingAJar() {
+    public void testFetchingAFile() {
 
         Response mockResponse = Mockito.mock(Response.class);
         Mockito.when(remoteClient.get("default", "io/quarkus", "quarkus-jaxb",
                 "2.7.5.Final",
-                "quarkus-jaxb-2.7.5.Final.jar")).thenReturn(mockResponse);
+                "quarkus-jaxb-2.7.5.Final.jab")).thenReturn(mockResponse);
         Mockito.when(mockResponse.readEntity(InputStream.class)).thenReturn(new ByteArrayInputStream("ajar".getBytes()));
 
         RestAssured.given()
-                .when().get("/io/quarkus/quarkus-jaxb/2.7.5.Final/quarkus-jaxb-2.7.5.Final.jar")
+                .when().get("/io/quarkus/quarkus-jaxb/2.7.5.Final/quarkus-jaxb-2.7.5.Final.jab")
                 .then()
                 .statusCode(200)
                 .body(is("ajar"));
