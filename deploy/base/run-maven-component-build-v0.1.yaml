@@ -84,22 +84,33 @@ spec:
   steps:
     - name: git-clone
       image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "10m"
+        limits:
+          memory: "512Mi"
+          cpu: "300m"
       args:
         - -path=$(workspaces.source.path)
         - -url=$(params.URL)
         - -revision=$(params.TAG)
-    - name: fix-permissions-for-builder
+    - name: settings
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
-      command: [ "chown" ]
-      args:
-        - "1001:1001"
-        - "-R"
-        - "$(workspaces.source.path)"
-    - name: mvn-settings
-      image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "10m"
+        limits:
+          memory: "512Mi"
+          cpu: "300m"
       script: |
         #!/usr/bin/env bash
 
+        # fix-permissions-for-builder
+        chown 1001:1001 -R $(workspaces.source.path)
+
+        # set maven
         [[ -f $(workspaces.maven-settings.path)/settings.xml ]] && \
         echo 'using existing $(workspaces.maven-settings.path)/settings.xml' && exit 0
 
@@ -172,35 +183,22 @@ spec:
         - "$(params.GOALS)"
         - "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo"
         - "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy"
-    - name: zip-deployment-repository
+    - name: deploy-and-check-for-contaminates
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
-      command: [ "tar" ]
-      args:
-        - "-czf"
-        - "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz"
-        - "-C"
-        - "$(workspaces.source.path)/hacbs-jvm-deployment-repo"
-        - "."
-    - name: post-deployment-repository
-      image: registry.access.redhat.com/ubi8/ubi:8.5
-      command: [ "curl" ]
-      args:
-        - "--data-binary"
-        - "@$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz"
-        - "http://localhost:2000/deploy"
-    - name: print-sidecar-log
-      image: registry.access.redhat.com/ubi8/ubi:8.5
-      command: [ "cat" ]
-      args:
-        - $(workspaces.maven-settings.path)/sidecar.log
-    - name: check-for-contaminates
-      image: registry.access.redhat.com/ubi8/ubi:8.5
-      command: [ "curl" ]
-      args:
-        - "--fail"
-        - "http://localhost:2000/deploy/result"
-        - "-o"
-        - "$(results.contaminants.path)"
+      script: |
+        tar -czf $(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz -C $(workspaces.source.path)/hacbs-jvm-deployment-repo .
+        curl --data-binary @$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz http://localhost:2000/deploy
+
+        cat $(workspaces.maven-settings.path)/sidecar.log
+
+        curl --fail http://localhost:2000/deploy/result -o $(results.contaminants.path)
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "10m"
+        limits:
+          memory: "512Mi"
+          cpu: "300m"
   sidecars:
     - image: hacbs-jvm-sidecar
       imagePullPolicy: Always
