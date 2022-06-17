@@ -30,12 +30,13 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout = 300 * time.Second
-	TaskScmUrl     = "URL"
-	TaskScmTag     = "TAG"
-	TaskPath       = "CONTEXT_DIR"
-	TaskImage      = "IMAGE"
-	TaskGoals      = "GOALS"
+	contextTimeout     = 300 * time.Second
+	TaskScmUrl         = "URL"
+	TaskScmTag         = "TAG"
+	TaskPath           = "CONTEXT_DIR"
+	TaskImage          = "IMAGE"
+	TaskGoals          = "GOALS"
+	TaskEnforceVersion = "ENFORCE_VERSION"
 )
 
 var (
@@ -181,6 +182,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: TaskPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: TaskImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
 		{Name: TaskGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
+		{Name: TaskEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
 	}
 	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
@@ -290,8 +292,9 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	contaminants := db.Status.Contaminants
 	if len(contaminants) == 0 {
-		//all fixed, just set the state back to new and try again
+		//all fixed, just set the state back to building and try again
 		//this is triggered when contaminants are removed by the ABR controller
+		//setting it back to building should re-try the recipe that actually worked
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		return reconcile.Result{}, r.client.Update(ctx, db)
 	}

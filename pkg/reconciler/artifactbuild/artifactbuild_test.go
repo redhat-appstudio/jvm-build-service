@@ -294,3 +294,46 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
 	})
 }
+
+func TestStateCompleteFixingContamination(t *testing.T) {
+	ctx := context.TODO()
+	var client runtimeclient.Client
+	var reconciler *ReconcileArtifactBuild
+	contaminatedName := "contaminated-build"
+	setup := func() {
+		abr := &v1alpha1.ArtifactBuild{
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: metav1.NamespaceDefault,
+				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				Annotations: map[string]string{
+					DependencyBuildContaminatedBy + "suffix": contaminatedName,
+				},
+			},
+			Spec: v1alpha1.ArtifactBuildSpec{GAV: "com.test:test:1.0"},
+			Status: v1alpha1.ArtifactBuildStatus{
+				State: v1alpha1.ArtifactBuildStateComplete,
+			},
+		}
+		contaiminated := &v1alpha1.DependencyBuild{
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      contaminatedName,
+				Namespace: metav1.NamespaceDefault,
+				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
+			},
+			Spec:   v1alpha1.DependencyBuildSpec{},
+			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []string{"com.test:test:1.0"}},
+		}
+		client, reconciler = setupClientAndReconciler(abr, contaiminated)
+	}
+	t.Run("Test contamination cleared", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		db := v1alpha1.DependencyBuild{}
+		g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: contaminatedName}, &db))
+		g.Expect(db.Status.Contaminants).Should(BeEmpty())
+	})
+}

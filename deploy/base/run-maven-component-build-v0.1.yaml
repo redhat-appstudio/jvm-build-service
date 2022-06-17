@@ -81,6 +81,13 @@ spec:
         The context directory within the repository for sources on
         which we want to execute maven goals.
       default: "."
+    - name: ENFORCE_VERSION
+      type: string
+      description: >-
+        Some builds are incorrectly tagged with a snapshot version, rather
+        than the release version. If this is set then the version will be
+        updated to the release version before the build.
+      default: ""
   steps:
     - name: git-clone
       image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
@@ -172,7 +179,19 @@ spec:
           </mirror>"
           sed -i "s|<!-- ### mirrors from ENV ### -->|$xml|" $(workspaces.maven-settings.path)/settings.xml
         fi
+    - name: mvn-enforce-version
+      image: $(params.IMAGE)
+      workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
+      script: |
+        #!/usr/bin/env bash
 
+        if [ -z "$(params.ENFORCE_VERSION)" ]
+        then
+          echo "Enforce version not set, skipping"
+        else
+          echo "Setting version to $(params.ENFORCE_VERSION)"
+          mvn versions:set -DnewVersion=$(params.ENFORCE_VERSION)
+        fi
     - name: mvn-goals
       image: $(params.IMAGE)
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)

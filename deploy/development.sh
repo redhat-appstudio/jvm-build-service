@@ -1,4 +1,7 @@
 #!/bin/sh
+
+kubectl delete deployments.apps hacbs-jvm-operator
+
 DIR=`dirname $0`
 find $DIR -name development -exec rm -r {} \;
 find $DIR -name dev-template -exec cp -r {} {}/../development \;

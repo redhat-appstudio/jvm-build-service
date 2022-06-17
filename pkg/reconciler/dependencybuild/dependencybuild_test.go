@@ -105,7 +105,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(5))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(6))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case TaskScmTag:
@@ -118,6 +118,8 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.StringVal).Should(Equal("quay.io/sdouglas/hacbs-jdk11-builder:latest"))
 				case TaskGoals:
 					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
+				case TaskEnforceVersion:
+					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				}
 			}
 		}

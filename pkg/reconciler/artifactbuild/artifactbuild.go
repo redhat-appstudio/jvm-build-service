@@ -317,7 +317,8 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 				Max       string
 				Preferred string
 			}
-			Invocations [][]string
+			Invocations    [][]string
+			EnforceVersion string
 		}{}
 
 		if err := json.Unmarshal([]byte(abr.Status.BuildInfo), &unmarshalled); err != nil {
@@ -329,7 +330,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 		buildRecipes := []*v1alpha1.BuildRecipe{}
 		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
 			for _, command := range unmarshalled.Invocations {
-				buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command})
+				buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion})
 			}
 		}
 		//no existing build object found, lets create one
@@ -386,7 +387,7 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, abr *v
 			}
 			var newContaminates []string
 			for _, contaminant := range db.Status.Contaminants {
-				if contaminant != value {
+				if contaminant != abr.Spec.GAV {
 					newContaminates = append(newContaminates, contaminant)
 				}
 			}

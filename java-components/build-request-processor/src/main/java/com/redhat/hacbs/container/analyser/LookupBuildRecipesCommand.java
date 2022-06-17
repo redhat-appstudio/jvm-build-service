@@ -153,7 +153,7 @@ public class LookupBuildRecipesCommand implements Runnable {
                     if (buildRecipePath != null) {
                         buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(buildRecipePath);
                     }
-                    doBuildAnalysis(parsedInfo.getUri(), selectedTag, parsedInfo.getPath(), buildRecipeInfo);
+                    doBuildAnalysis(parsedInfo.getUri(), selectedTag, parsedInfo.getPath(), buildRecipeInfo, version);
 
                     firstFailure = null;
                     break;
@@ -183,7 +183,7 @@ public class LookupBuildRecipesCommand implements Runnable {
         }
     }
 
-    private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo)
+    private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo, String version)
             throws Exception {
         //TODO: this is a basic hack to prove the concept
         var path = Files.createTempDirectory("checkout");
@@ -204,8 +204,13 @@ public class LookupBuildRecipesCommand implements Runnable {
                 info.invocations.add(new ArrayList<>(List.of("gradle", "build")));
             }
             if (buildRecipeInfo != null) {
-                for (var i : info.invocations) {
-                    i.addAll(buildRecipeInfo.getAdditionalArgs());
+                if (buildRecipeInfo.getAdditionalArgs() != null) {
+                    for (var i : info.invocations) {
+                        i.addAll(buildRecipeInfo.getAdditionalArgs());
+                    }
+                }
+                if (buildRecipeInfo.isEnforceVersion()) {
+                    info.enforceVersion = version;
                 }
             }
             ObjectMapper mapper = new ObjectMapper();

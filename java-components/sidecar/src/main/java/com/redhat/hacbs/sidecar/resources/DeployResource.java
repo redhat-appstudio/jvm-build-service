@@ -3,7 +3,10 @@ package com.redhat.hacbs.sidecar.resources;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -79,7 +82,7 @@ public class DeployResource {
             }
 
             Set<String> contaminants = new HashSet<>();
-            Set<String> contaminatedPaths = new HashSet<>();
+            Map<String, Set<String>> contaminatedPaths = new HashMap<>();
             try (TarArchiveInputStream in = new TarArchiveInputStream(
                     new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                 TarArchiveEntry e;
@@ -88,18 +91,22 @@ public class DeployResource {
                         Log.infof("Checking %s for contaminants", e.getName());
                         var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
                         if (info != null) {
-                            contaminants.addAll(info.stream().map(a -> a.gav).toList());
-                            int index = e.getName().lastIndexOf("/");
-                            if (index != -1) {
-                                contaminatedPaths.add(e.getName().substring(0, index));
-                            } else {
-                                contaminatedPaths.add("");
+                            List<String> result = info.stream().map(a -> a.gav).toList();
+                            contaminants.addAll(result);
+                            if (!result.isEmpty()) {
+                                int index = e.getName().lastIndexOf("/");
+                                if (index != -1) {
+                                    contaminatedPaths.computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
+                                            .addAll(result);
+                                } else {
+                                    contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).addAll(result);
+                                }
                             }
                         }
                     }
                 }
             }
-            Log.infof("Contaminants: %s", contaminants);
+            Log.infof("Contaminants: %s", contaminatedPaths);
             this.contaminates.addAll(contaminants);
 
             if (contaminants.isEmpty() || allowPartialDeployment) {
@@ -109,7 +116,7 @@ public class DeployResource {
                     while ((e = in.getNextTarEntry()) != null) {
                         Log.infof("Received %s", e.getName());
                         boolean contaminated = false;
-                        for (var i : contaminatedPaths) {
+                        for (var i : contaminatedPaths.keySet()) {
                             if (e.getName().startsWith(i)) {
                                 contaminated = true;
                                 break;

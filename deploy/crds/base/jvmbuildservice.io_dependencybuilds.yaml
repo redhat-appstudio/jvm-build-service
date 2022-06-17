@@ -20,6 +20,9 @@ spec:
     - jsonPath: .spec.scm.scmURL
       name: URL
       type: string
+    - jsonPath: .spec.scm.tag
+      name: Tag
+      type: string
     - jsonPath: .status.state
       name: State
       type: string
@@ -49,6 +52,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    enforceVersion:
+                      type: string
                     image:
                       type: string
                   type: object
@@ -152,6 +157,8 @@ spec:
                     items:
                       type: string
                     type: array
+                  enforceVersion:
+                    type: string
                   image:
                     type: string
                 type: object
@@ -164,6 +171,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    enforceVersion:
+                      type: string
                     image:
                       type: string
                   type: object
@@ -179,6 +188,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    enforceVersion:
+                      type: string
                     image:
                       type: string
                   type: object
