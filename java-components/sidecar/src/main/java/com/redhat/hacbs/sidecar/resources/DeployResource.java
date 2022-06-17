@@ -59,16 +59,18 @@ public class DeployResource {
     public DeployResource(S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
             @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
-            @ConfigProperty(name = "artifacts-to-ignore", defaultValue = "false") Set<String> doNotDeploy) {
+            @ConfigProperty(name = "ignored-artifacts", defaultValue = "false") Set<String> doNotDeploy) {
         this.client = client;
         this.deploymentBucket = deploymentBucket;
         this.deploymentPrefix = deploymentPrefix;
         this.doNotDeploy = doNotDeploy;
+        Log.infof("Ignored Artifacts: %s", doNotDeploy);
     }
 
     @GET
     @Path("/result")
     public Response contaminates() {
+        Log.infof("Getting contaminates for build: " + contaminates);
         if (deployFailure != null) {
             throw new RuntimeException(deployFailure);
         }
@@ -82,7 +84,8 @@ public class DeployResource {
                 //if this happens we just return some of the contaminates
                 //it does not matter that much, as if all the reported ones are
                 //fixed then we will re-discover the rest next build
-                if (response.length() > 1024) {
+                if (response.length() > 400) {
+                    Log.error("Contaminates truncated");
                     break;
                 }
                 if (first) {
@@ -92,6 +95,7 @@ public class DeployResource {
                 }
                 response.append(i);
             }
+            Log.infof("Contaminates returned: " + response);
             return Response.ok(response).build();
         }
     }
