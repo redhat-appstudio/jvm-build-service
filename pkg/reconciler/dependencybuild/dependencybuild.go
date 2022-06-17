@@ -30,13 +30,14 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout     = 300 * time.Second
-	TaskScmUrl         = "URL"
-	TaskScmTag         = "TAG"
-	TaskPath           = "CONTEXT_DIR"
-	TaskImage          = "IMAGE"
-	TaskGoals          = "GOALS"
-	TaskEnforceVersion = "ENFORCE_VERSION"
+	contextTimeout       = 300 * time.Second
+	TaskScmUrl           = "URL"
+	TaskScmTag           = "TAG"
+	TaskPath             = "CONTEXT_DIR"
+	TaskImage            = "IMAGE"
+	TaskGoals            = "GOALS"
+	TaskEnforceVersion   = "ENFORCE_VERSION"
+	TaskIgnoredArtifacts = "IGNORED_ARTIFACTS"
 )
 
 var (
@@ -183,6 +184,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: TaskImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
 		{Name: TaskGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
 		{Name: TaskEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
+		{Name: TaskIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
 	}
 	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},

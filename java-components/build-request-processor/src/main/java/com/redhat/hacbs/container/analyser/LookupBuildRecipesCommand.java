@@ -101,7 +101,7 @@ public class LookupBuildRecipesCommand implements Runnable {
                             selectedTag = version;
                             break;
                         } else if (name.contains(version)) {
-                            exactContains.add(tag.getName());
+                            exactContains.add(name);
                         }
                     }
                     if (selectedTag == null) {
@@ -212,10 +212,10 @@ public class LookupBuildRecipesCommand implements Runnable {
                 if (buildRecipeInfo.isEnforceVersion()) {
                     info.enforceVersion = version;
                 }
+                info.setIgnoredArtifacts(buildRecipeInfo.getIgnoredArtifacts());
             }
             ObjectMapper mapper = new ObjectMapper();
             mapper.writeValue(this.buildInfo.toFile(), info);
         }
     }
-
 }

@@ -15,6 +15,7 @@ public class BuildRecipeInfo {
      */
     boolean enforceVersion;
     List<String> additionalArgs = new ArrayList<>();
+    List<String> ignoredArtifacts = new ArrayList<>();
 
     public List<String> getAdditionalArgs() {
         return additionalArgs;
@@ -31,6 +32,15 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setEnforceVersion(boolean enforceVersion) {
         this.enforceVersion = enforceVersion;
+        return this;
+    }
+
+    public List<String> getIgnoredArtifacts() {
+        return ignoredArtifacts;
+    }
+
+    public BuildRecipeInfo setIgnoredArtifacts(List<String> ignoredArtifacts) {
+        this.ignoredArtifacts = ignoredArtifacts;
         return this;
     }
 }

@@ -88,6 +88,11 @@ spec:
         than the release version. If this is set then the version will be
         updated to the release version before the build.
       default: ""
+    - name: IGNORED_ARTIFACTS
+      type: string
+      description: >-
+        Comma seperated list of artifact names that should not be deployed or checked for contaminants.
+      default: ""
   steps:
     - name: git-clone
       image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
@@ -233,6 +238,8 @@ spec:
           value: "true"
         - name: QUARKUS_LOG_FILE_PATH
           value: "$(workspaces.maven-settings.path)/sidecar.log"
+        - name: IGNORED_ARTIFACTS
+          value: $(params.IGNORED_ARTIFACTS)
       name: proxy
       volumeMounts:
         - name: $(workspaces.maven-settings.volume)

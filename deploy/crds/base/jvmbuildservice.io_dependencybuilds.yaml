@@ -54,6 +54,10 @@ spec:
                       type: array
                     enforceVersion:
                       type: string
+                    ignoredArtifacts:
+                      items:
+                        type: string
+                      type: array
                     image:
                       type: string
                   type: object
@@ -159,6 +163,10 @@ spec:
                     type: array
                   enforceVersion:
                     type: string
+                  ignoredArtifacts:
+                    items:
+                      type: string
+                    type: array
                   image:
                     type: string
                 type: object
@@ -173,6 +181,10 @@ spec:
                       type: array
                     enforceVersion:
                       type: string
+                    ignoredArtifacts:
+                      items:
+                        type: string
+                      type: array
                     image:
                       type: string
                   type: object
@@ -190,6 +202,10 @@ spec:
                       type: array
                     enforceVersion:
                       type: string
+                    ignoredArtifacts:
+                      items:
+                        type: string
+                      type: array
                     image:
                       type: string
                   type: object

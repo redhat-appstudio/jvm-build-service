@@ -63,7 +63,8 @@ type DependencyBuildList struct {
 }
 
 type BuildRecipe struct {
-	Image          string   `json:"image,omitempty"`
-	CommandLine    []string `json:"commandLine,omitempty"`
-	EnforceVersion string   `json:"enforceVersion,omitempty"`
+	Image            string   `json:"image,omitempty"`
+	CommandLine      []string `json:"commandLine,omitempty"`
+	EnforceVersion   string   `json:"enforceVersion,omitempty"`
+	IgnoredArtifacts []string `json:"ignoredArtifacts,omitempty"`
 }
