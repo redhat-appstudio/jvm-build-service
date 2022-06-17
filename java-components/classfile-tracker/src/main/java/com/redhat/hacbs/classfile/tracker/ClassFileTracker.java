@@ -100,6 +100,8 @@ public class ClassFileTracker {
                         Logger.getLogger("dependency-analyser").log(Level.SEVERE,
                                 "Failed to read class " + entry.getName() + " from " + jarFile, e);
                     }
+                } else if (entry.getName().endsWith(".jar")) {
+                    ret.addAll(readTrackingDataFromJar(new NoCloseInputStream(zipIn), entry.getName()));
                 }
                 entry = zipIn.getNextEntry();
             }

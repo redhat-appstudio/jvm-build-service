@@ -1,6 +1,5 @@
 package com.redhat.hacbs.sidecar.resources;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Collections;
@@ -20,6 +19,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
+import com.redhat.hacbs.classfile.tracker.NoCloseInputStream;
 
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
@@ -147,32 +147,4 @@ public class DeployResource {
         System.out.flush();
     }
 
-    private static class NoCloseInputStream extends InputStream {
-
-        final InputStream delegate;
-
-        private NoCloseInputStream(InputStream delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public int read() throws IOException {
-            return delegate.read();
-        }
-
-        @Override
-        public int read(byte[] b) throws IOException {
-            return delegate.read(b);
-        }
-
-        @Override
-        public int read(byte[] b, int off, int len) throws IOException {
-            return delegate.read(b, off, len);
-        }
-
-        @Override
-        public void close() throws IOException {
-            //ignore
-        }
-    }
 }

@@ -23,7 +23,7 @@ spec:
     - name: MAVEN_IMAGE
       type: string
       description: Maven base image
-      default: gcr.io/cloud-builders/mvn@sha256:57523fc43394d6d9d2414ee8d1c85ed7a13460cbb268c3cd16d28cfb3859e641 #tag: latest
+      default: quay.io/quarkus/centos-quarkus-maven@sha256:9ad23db54acb1775a7d976680325819d2ef177c11726622382f1a540a653a8c8 #tag: latest
     - name: GOALS
       description: maven goals to run
       type: array
@@ -81,6 +81,11 @@ spec:
       description: >-
         The path to use for dependency analysis.
       default: "target"
+  results:
+    - name: dependencies
+      description: The total number of dependencies in the output
+    - name: untrusted-dependencies
+      description: The total number of dependencies that came from an untrusted source, such as Maven central
   steps:
     - name: mvn-settings
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
@@ -162,6 +167,12 @@ spec:
       args:
         - path
         - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)
+        - -s
+        - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)/java-sbom.json
+        - -c
+        - "$(results.dependencies.path)"
+        - -u
+        - "$(results.untrusted-dependencies.path)"
   sidecars:
     - image: hacbs-jvm-sidecar
       imagePullPolicy: Always
