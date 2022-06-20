@@ -38,7 +38,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 @Singleton
 public class DeployResource {
 
-    private static final Pattern ARTIFACT_PATH = Pattern.compile(".*/([^/])+/([^/])+/([^/])+");
+    private static final Pattern ARTIFACT_PATH = Pattern.compile(".*/([^/]+)/([^/]+)/([^/]+)");
 
     final S3Client client;
 
@@ -120,7 +120,7 @@ public class DeployResource {
                 TarArchiveEntry e;
                 while ((e = in.getNextTarEntry()) != null) {
                     if (e.getName().endsWith(".jar")) {
-                        if (!shouldIgnore(e.getName())) {
+                        if (!shouldIgnore(doNotDeploy, e.getName())) {
                             Log.infof("Checking %s for contaminants", e.getName());
                             var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
                             if (info != null) {
@@ -148,7 +148,7 @@ public class DeployResource {
                         new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                     TarArchiveEntry e;
                     while ((e = in.getNextTarEntry()) != null) {
-                        if (!shouldIgnore(e.getName())) {
+                        if (!shouldIgnore(doNotDeploy, e.getName())) {
                             Log.infof("Received %s", e.getName());
                             byte[] fileData = in.readAllBytes();
                             String name = e.getName();
@@ -175,7 +175,7 @@ public class DeployResource {
         }
     }
 
-    private boolean shouldIgnore(String name) {
+    static boolean shouldIgnore(Set<String> doNotDeploy, String name) {
         Matcher m = ARTIFACT_PATH.matcher(name);
         if (!m.matches()) {
             return false;
