@@ -91,6 +91,7 @@ spec:
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
       script: |
         #!/usr/bin/env bash
+        chown 1001:1001 -R $(workspaces.source.path)
 
         # fix-permissions-for-builder
         chown 1001:1001 -R $(workspaces.source.path)

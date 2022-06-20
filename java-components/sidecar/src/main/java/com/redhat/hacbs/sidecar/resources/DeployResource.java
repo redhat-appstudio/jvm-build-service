@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -59,11 +60,11 @@ public class DeployResource {
     public DeployResource(S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
             @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
-            @ConfigProperty(name = "ignored-artifacts", defaultValue = "false") Set<String> doNotDeploy) {
+            @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy) {
         this.client = client;
         this.deploymentBucket = deploymentBucket;
         this.deploymentPrefix = deploymentPrefix;
-        this.doNotDeploy = doNotDeploy;
+        this.doNotDeploy = doNotDeploy.orElse(Set.of());
         Log.infof("Ignored Artifacts: %s", doNotDeploy);
     }
 

@@ -30,7 +30,6 @@ spec:
     - name: IMAGE
       type: string
       description: Build image
-      default: quay.io/quarkus/centos-quarkus-maven@sha256:9ad23db54acb1775a7d976680325819d2ef177c11726622382f1a540a653a8c8 #tag: 21.3.2-java11
     - name: GOALS
       description: maven goals to run
       type: array
@@ -187,6 +186,7 @@ spec:
     - name: mvn-goals
       image: $(params.IMAGE)
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
+      args: [ "$(params.GOALS[*])" ]
       script: |
         #!/usr/bin/env bash
         if [ -z "$(params.ENFORCE_VERSION)" ]
@@ -204,8 +204,9 @@ spec:
 
         # fix-permissions-for-builder
         chown 1001:1001 -R $(workspaces.source.path)
-
-        /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" "$(params.GOALS)" "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy"
+        #we can't use array parameters directly here
+        #we pass them in as goals
+        /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" $@ "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy"
     - name: deploy-and-check-for-contaminates
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
       script: |
