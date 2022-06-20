@@ -176,7 +176,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	// we move the db out of building
 	tr.Name = fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: ""}
-	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "run-maven-component-build", Kind: pipelinev1beta1.ClusterTaskKind}
+
+	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: db.Status.CurrentBuildRecipe.Task, Kind: pipelinev1beta1.ClusterTaskKind}
 	tr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
@@ -283,7 +284,10 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 			pod := v1.Pod{}
 			poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
 			if poderr == nil {
-				r.client.Delete(ctx, &pod)
+				err := r.client.Delete(ctx, &pod)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
 			}
 		}
 		return reconcile.Result{}, r.client.Status().Update(ctx, &db)

@@ -60,6 +60,8 @@ spec:
                       type: array
                     image:
                       type: string
+                    task:
+                      type: string
                   type: object
                 type: array
               scm:
@@ -169,6 +171,8 @@ spec:
                     type: array
                   image:
                     type: string
+                  task:
+                    type: string
                 type: object
               failedBuildRecipes:
                 description: FailedBuildRecipes recipes that resulted in a failure
@@ -186,6 +190,8 @@ spec:
                         type: string
                       type: array
                     image:
+                      type: string
+                    task:
                       type: string
                   type: object
                 type: array
@@ -207,6 +213,8 @@ spec:
                         type: string
                       type: array
                     image:
+                      type: string
+                    task:
                       type: string
                   type: object
                 type: array
