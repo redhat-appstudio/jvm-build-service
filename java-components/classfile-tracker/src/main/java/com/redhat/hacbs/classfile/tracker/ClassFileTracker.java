@@ -60,6 +60,20 @@ public class ClassFileTracker {
                         newEntry.setSize(modified.length);
                         zipOut.putNextEntry(newEntry);
                         zipOut.write(modified);
+                    } else if (entry.getName().endsWith(".jar")) {
+                        ZipEntry newEntry = new ZipEntry(entry.getName());
+                        if (entry.getLastAccessTime() != null) {
+                            newEntry.setLastAccessTime(entry.getLastAccessTime());
+                        }
+                        if (entry.getLastModifiedTime() != null) {
+                            newEntry.setLastModifiedTime(entry.getLastModifiedTime());
+                        }
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        addTrackingDataToJar(new NoCloseInputStream(zipIn), data, baos);
+                        byte[] modified = baos.toByteArray();
+                        newEntry.setSize(modified.length);
+                        zipOut.putNextEntry(newEntry);
+                        zipOut.write(modified);
                     } else if (!isBlockOrSF(entry.getName())) {
                         zipOut.putNextEntry(entry);
                         zipOut.write(zipIn.readAllBytes());
