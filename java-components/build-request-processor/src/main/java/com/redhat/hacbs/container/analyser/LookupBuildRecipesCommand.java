@@ -8,6 +8,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.eclipse.jgit.api.Git;
 
@@ -85,6 +88,11 @@ public class LookupBuildRecipesCommand implements Runnable {
             if (main.getLegacyRepos() != null) {
                 repos.addAll(main.getLegacyRepos());
             }
+            BuildRecipeInfo buildRecipeInfo = null;
+            Path buildRecipePath = recipes.get(BuildRecipe.BUILD);
+            if (buildRecipePath != null) {
+                buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(buildRecipePath);
+            }
             for (var parsedInfo : repos) {
 
                 String repoName = null;
@@ -94,14 +102,36 @@ public class LookupBuildRecipesCommand implements Runnable {
                     String selectedTag = null;
                     Set<String> exactContains = new HashSet<>();
                     var tags = Git.lsRemoteRepository().setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
-                    for (var tag : tags) {
-                        String name = tag.getName().replace("refs/tags/", "");
-                        if (name.equals(version)) {
-                            //exact match is always good
-                            selectedTag = version;
-                            break;
-                        } else if (name.contains(version)) {
-                            exactContains.add(name);
+                    Set<String> tagNames = tags.stream().map(s -> s.getName().replace("refs/tags/", ""))
+                            .collect(Collectors.toSet());
+
+                    //first try tag mappings
+                    for (var mapping : main.getTagMapping()) {
+                        Log.infof("Trying tag pattern %s on version %s", mapping.getPattern(), version);
+                        Matcher m = Pattern.compile(mapping.getPattern()).matcher(version);
+                        if (m.matches()) {
+                            Log.infof("Tag pattern %s matches", mapping.getPattern());
+                            String match = mapping.getTag();
+                            for (int i = 1; i <= m.groupCount(); ++i) {
+                                match = match.replaceAll("\\$" + i, m.group(i));
+                            }
+                            Log.infof("Trying to find tag %s", match);
+                            if (tagNames.contains(match)) {
+                                selectedTag = match;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (selectedTag == null) {
+                        for (var name : tagNames) {
+                            if (name.equals(version)) {
+                                //exact match is always good
+                                selectedTag = version;
+                                break;
+                            } else if (name.contains(version)) {
+                                exactContains.add(name);
+                            }
                         }
                     }
                     if (selectedTag == null) {
@@ -148,23 +178,19 @@ public class LookupBuildRecipesCommand implements Runnable {
                         Files.writeString(context, parsedInfo.getPath());
                     }
 
-                    BuildRecipeInfo buildRecipeInfo = null;
-                    Path buildRecipePath = recipes.get(BuildRecipe.BUILD);
-                    if (buildRecipePath != null) {
-                        buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(buildRecipePath);
-                    }
                     doBuildAnalysis(parsedInfo.getUri(), selectedTag, parsedInfo.getPath(), buildRecipeInfo, version);
 
                     firstFailure = null;
                     break;
 
                 } catch (Exception ex) {
+                    Log.error("Failure to determine tag", ex);
                     if (firstFailure == null) {
                         firstFailure = ex;
                     } else {
                         firstFailure.addSuppressed(ex);
                     }
-                    throw new RuntimeException();
+                    throw new RuntimeException(firstFailure);
                 }
             }
             if (firstFailure != null) {
