@@ -12,7 +12,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import org.eclipse.jgit.api.Git;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +19,7 @@ import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
+import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipies.scm.RepositoryInfo;
@@ -66,7 +66,7 @@ public class LookupBuildRecipesCommand implements Runnable {
         try {
             Path tempDir = Files.createTempDirectory("recipe");
             //checkout the git recipe database
-            List<RecipeDirectory> managers =  new ArrayList<>();
+            List<RecipeDirectory> managers = new ArrayList<>();
             for (var i : recipeRepos) {
                 managers.add(RecipeRepositoryManager.create(i, "main", Optional.empty(), tempDir));
             }
@@ -227,7 +227,7 @@ public class LookupBuildRecipesCommand implements Runnable {
                 info.tools.put("maven", new VersionRange("3.8", "3.8", "3.8"));
                 info.invocations.add(
                         new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
-                                "-Drat.skip=true")));
+                                "-Drat.skip=true", "-Dmaven.deploy.skip=false")));
             } else if (Files.isRegularFile(path.resolve("build.gradle"))
                     || Files.isRegularFile(path.resolve("build.gradle.kts"))) {
                 info.tools.put("gradle", new VersionRange("7.3", "7.3", "7.3"));
