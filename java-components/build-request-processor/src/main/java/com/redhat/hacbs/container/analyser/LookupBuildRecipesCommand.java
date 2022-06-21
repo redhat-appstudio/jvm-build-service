@@ -12,6 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import org.eclipse.jgit.api.Git;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,8 +31,8 @@ import picocli.CommandLine;
 @CommandLine.Command
 public class LookupBuildRecipesCommand implements Runnable {
 
-    @CommandLine.Option(names = "--recipes", required = true)
-    String recipeRepo;
+    @CommandLine.Option(names = "--recipes", required = true, split = ",")
+    List<String> recipeRepos;
 
     @CommandLine.Option(names = "--gav", required = true)
     String gav;
@@ -65,8 +66,11 @@ public class LookupBuildRecipesCommand implements Runnable {
         try {
             Path tempDir = Files.createTempDirectory("recipe");
             //checkout the git recipe database
-            RecipeRepositoryManager manager = RecipeRepositoryManager.create(recipeRepo, "main", Optional.empty(), tempDir);
-            RecipeGroupManager recipeGroupManager = new RecipeGroupManager(List.of(manager));
+            List<RecipeDirectory> managers =  new ArrayList<>();
+            for (var i : recipeRepos) {
+                managers.add(RecipeRepositoryManager.create(i, "main", Optional.empty(), tempDir));
+            }
+            RecipeGroupManager recipeGroupManager = new RecipeGroupManager(managers);
 
             GAV toBuild = GAV.parse(gav);
             Log.infof("Looking up %s", gav);
