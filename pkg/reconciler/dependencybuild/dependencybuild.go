@@ -174,7 +174,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
 	// we move the db out of building
-	tr.Name = fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
+	tr.Name = currentDependencyBuildTaskName(db)
 	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: ""}
 
 	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: db.Status.CurrentBuildRecipe.Task, Kind: pipelinev1beta1.ClusterTaskKind}
@@ -206,6 +206,10 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func currentDependencyBuildTaskName(db *v1alpha1.DependencyBuild) string {
+	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 }
 
 func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
@@ -250,7 +254,7 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 			return reconcile.Result{}, err
 		}
 
-		if tr.Name == db.Status.LastCompletedBuildTaskRun {
+		if tr.Name == db.Status.LastCompletedBuildTaskRun || tr.Name != currentDependencyBuildTaskName(&db) {
 			//already handled
 			return reconcile.Result{}, nil
 		}
