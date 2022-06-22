@@ -120,7 +120,9 @@ public class LookupBuildRecipesCommand implements Runnable {
                                 match = match.replaceAll("\\$" + i, m.group(i));
                             }
                             Log.infof("Trying to find tag %s", match);
-                            if (tagNames.contains(match)) {
+                            //if the tag was a constant we don't require it to be in the tag set
+                            //this allows for explicit refs to be used
+                            if (tagNames.contains(match) || match.equals(mapping.getTag())) {
                                 selectedTag = match;
                                 break;
                             }
