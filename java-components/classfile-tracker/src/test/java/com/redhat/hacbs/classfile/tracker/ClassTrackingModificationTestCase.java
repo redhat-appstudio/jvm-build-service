@@ -15,7 +15,7 @@ public class ClassTrackingModificationTestCase {
     @Test
     public void testBytecodeClassLevelTracking() throws Exception {
         byte[] thisClass = getClass().getResourceAsStream(getClass().getSimpleName() + ".class").readAllBytes();
-        var results = ClassFileTracker.addTrackingDataToClass(thisClass, DATA);
+        var results = ClassFileTracker.addTrackingDataToClass(thisClass, DATA, "test");
         Assertions.assertEquals(DATA, ClassFileTracker.readTrackingInformationFromClass(results));
     }
 
