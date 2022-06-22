@@ -233,6 +233,7 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 		abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 	} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
 		abr.Status.State = v1alpha1.ArtifactBuildStateComplete
+		return reconcile.Result{Requeue: true}, r.client.Status().Update(ctx, &abr)
 	}
 
 	// if need be
