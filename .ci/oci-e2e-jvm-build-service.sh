@@ -81,3 +81,4 @@ timeout --foreground 10m bash -c waitBuildToBeReady
 timeout --foreground 10m bash -c waitHASApplicationToBeReady
 
 executeE2ETests
+###########
