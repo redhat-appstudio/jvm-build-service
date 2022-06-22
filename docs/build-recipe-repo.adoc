@@ -1,0 +1,56 @@
+= Build Recipe Repo
+
+NOTE: Currently, this repo lives at https://github.com/stuartwdouglas/tempdata2.git, it should move to a more official location soon.
+
+== Introduction
+
+In order to figure out how to rebuild Java dependencies HACBS needs information on where these dependencies are hosted and how to build them. This information is stored in the build recipe git
+repo.
+
+== Layout
+
+All build info is in the `/recipes` directory. The layout is organised in a specific directory structure that allows for fine grained information to be stored with minimal chance of conflicts.
+
+The best way to describe this is with an example. Say I had an artifact `com.acme.gizmo:gizmo-core:1.0.0.Final` there are a few different places I could put the files relevant to this artifact.
+
+`/recipes/com/acme/gizo`::
+This will be applied to every artifact with the group id `com.acme.gizmo`. This is the most common layout, and makes sense if most of the artifacts with a given group id come from the same directory.
+
+`/recipes/com/acme/gizo/_artifact/gizmo-core`::
+This allows for information to be provided about a specific artifact. This makes sense when lots of different repositories build artifacts with the same group id.
+
+`/recipes/com/acme/gizo/_artifact/gizmo-core/_version/1.0.0.Final`::
+This contains information about a specific version of a specific artifact.
+
+`/recipes/com/acme/gizo/_version/1.0.0.Final`::
+This contains information about a specific version of a group id.
+
+At present there are two files that HACBS understands:
+
+`scm.yaml`::
+Contains SCM information, including URL and tag mappings.
+
+`build.yaml`::
+Contains build information, such as additional required parameters.
+
+== `scm.yaml`
+
+An example of a full file is shown below:
+
+[source,yaml]
+----
+type: "git" <1>
+uri: "https://github.com/apache/commons-logging.git" <2>
+tagMapping: <3>
+  - pattern: 1\.1\.1  <4>
+    tag: commons-logging-1.1.1
+  - pattern: (\d+)\.(\d+) <5>
+    tag: LOGGING_$1_$2
+  - pattern: (\d+)\.(\d+)\.(\d+)
+    tag: LOGGING_$1_$2_$3
+----
+<1> Git is the only type supported at present
+<2> The SCM URI that contains the source
+<3> Tag mappings let you map tags to versions if HACBS cannot do it automatically. Mappings are tried in order until one is successful. If none are successful the default automatic approach is used.
+<4> This is an explicit mapping between version `1.1.1` and the tag `commons-logging-1.1.1`. This is useful if you have a small number of tags that don't follow the normal convention.
+<5> This maps versions in the form of `x.y` to `LOGGING_x_y`
