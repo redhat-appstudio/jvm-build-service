@@ -69,6 +69,11 @@ function executeE2ETests() {
     ./bin/e2e-appstudio --ginkgo.junit-report="${ARTIFACT_DIR}"/e2e-report.xml --ginkgo.focus="${TEST_SUITE}" --ginkgo.progress --ginkgo.v --ginkgo.no-color
 }
 
+echo "GGM start"
+echo ${JVM_BUILD_SERVICE_IMAGE}
+echo $JVM_BUILD_SERVICE_IMAGE
+echo "GGM end"
+
 curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/install-appstudio-e2e-mode.sh | bash -s install
 
 export -f waitAppStudioToBeReady
