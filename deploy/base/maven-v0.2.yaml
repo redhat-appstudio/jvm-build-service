@@ -92,6 +92,9 @@ spec:
       script: |
         #!/usr/bin/env bash
 
+        # fix-permissions-for-builder
+        chown 1001:1001 -R $(workspaces.source.path)
+
         [[ -f $(workspaces.maven-settings.path)/settings.xml ]] && \
         echo 'using existing $(workspaces.maven-settings.path)/settings.xml' && exit 0
 
@@ -157,11 +160,18 @@ spec:
     - name: mvn-goals
       image: $(params.MAVEN_IMAGE)
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
-      command: ["/usr/bin/mvn"]
-      args:
-        - -s
-        - $(workspaces.maven-settings.path)/settings.xml
-        - "$(params.GOALS)"
+      script: |
+        #!/usr/bin/env bash
+
+        # fix-permissions-for-builder
+        chown 1001:1001 -R $(workspaces.source.path)
+
+        # OK, array params are easy to use when you use 'command' for a step, but a pain in the you know what
+        # with scripts.  I could not get bash to reconcile with tekton var sub, and "$(param.GOALS[*])" vs.
+        # "${params.GOALS[*]}".  Hard coding the params for now and ignoring GOALS until I can talk to Stuart
+        # and reconcile the param type here vs. having to use a script to change the permissions for running on OpenShift
+        /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" -DskipTests clean package
+
     - name: analyse-dependencies
       image: hacbs-jvm-dependency-analyser
       args:
