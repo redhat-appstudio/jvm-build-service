@@ -60,6 +60,11 @@ if [[ -n "${JOB_SPEC}" && "${REPO_NAME}" == "jvm-build-service" ]]; then
     JVM_BUILD_SERVICE_PR_SHA=$(jq -r '.refs.pulls[0].sha' <<< "$JOB_SPEC")
 fi
 
+echo "GGM JOB_SPEC ${JOB_SPEC}"
+echo "GGM REPO_NAME ${REPO_NAME}"
+echo "GGM JVM_BUILD_SERVICE_PR_OWNER ${JVM_BUILD_SERVICE_PR_OWNER}"
+echo "GGM JVM_BUILD_SERVICE_PR_SHA ${JVM_BUILD_SERVICE_PR_SHA}"
+
 # Available openshift ci environments https://docs.ci.openshift.org/docs/architecture/step-registry/#available-environment-variables
 export ARTIFACT_DIR=${ARTIFACT_DIR:-"/tmp/appstudio"}
 
