@@ -11,6 +11,7 @@ import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
+import com.redhat.hacbs.artifactcache.services.client.dockerregistry.DockerRegistryRepositoryClient;
 import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
 
 import io.quarkus.logging.Log;
@@ -26,6 +27,8 @@ class BuildPolicyManager {
     private static final String URL = ".url";
     private static final String TYPE = ".type";
     private static final String BUCKET = ".bucket";
+    private static final String REGISTRY = ".registry";
+    private static final String OWNER = ".owner";
     private static final String PREFIXES = ".prefixes";
     public static final String STORE_LIST = ".store-list";
     public static final String BUILD_POLICY = "build-policy.";
@@ -93,6 +96,17 @@ class BuildPolicyManager {
                 return new Repository(repo, "s3://" + bucket + Arrays.toString(prefixes), RepositoryType.S3, client);
             } else {
                 Log.warnf("S3 Repository %s was listed but has no bucket configured and will be ignored", repo);
+            }
+        } else if (optType.orElse(null) == RepositoryType.DOCKER_REGISTRY) {
+            String registry = config.getOptionalValue(STORE + repo + REGISTRY, String.class).orElse("quay.io");
+            Optional<String> owner = config.getOptionalValue(STORE + repo + OWNER, String.class);
+            if (owner.isPresent()) {
+                String u = owner.get();
+                RepositoryClient client = new DockerRegistryRepositoryClient(registry, u);
+                Log.infof("Docker registry %s added with owner %s", registry, u);
+                return new Repository(repo, "docker://" + registry + "/" + u, RepositoryType.DOCKER_REGISTRY, client);
+            } else {
+                Log.warnf("Docker registry %s was listed but has no owner configured and will be ignored", repo);
             }
         }
         Log.warnf("Repository %s was listed but has no config and will be ignored", repo);

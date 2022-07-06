@@ -3,7 +3,8 @@ package com.redhat.hacbs.artifactcache.services;
 public enum RepositoryType {
 
     MAVEN2(false),
-    S3(true);
+    S3(true),
+    DOCKER_REGISTRY(true);
 
     final boolean buildPolicyUsed;
 
