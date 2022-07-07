@@ -11,6 +11,8 @@ echo
 
 kubectl apply -f $DIR/pipeline.yaml
 
+kubectl apply -f $DIR/openshift-specific-rbac.yaml || true
+
 echo
 echo "👉 Running the pipeline with a sample project:"
 echo

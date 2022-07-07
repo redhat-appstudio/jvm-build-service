@@ -89,6 +89,8 @@ spec:
   steps:
     - name: mvn-settings
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
+      securityContext:
+        runAsUser: 0
       script: |
         #!/usr/bin/env bash
         chown 1001:1001 -R $(workspaces.source.path)
@@ -160,6 +162,8 @@ spec:
 
     - name: mvn-goals
       image: $(params.MAVEN_IMAGE)
+      securityContext:
+        runAsUser: 0
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
       script: |
         #!/usr/bin/env bash
@@ -174,7 +178,9 @@ spec:
         /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" -DskipTests clean package
 
     - name: analyse-dependencies
-      image: hacbs-jvm-dependency-analyser
+      securityContext:
+        runAsUser: 0
+      image: quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser:3dcd8603061c7ab2cedfe128c80cac9726721a74
       args:
         - path
         - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)
@@ -185,11 +191,13 @@ spec:
         - -u
         - "$(results.untrusted-dependencies.path)"
   sidecars:
-    - image: hacbs-jvm-sidecar
+    - image: quay.io/redhat-appstudio/hacbs-jvm-sidecar:3dcd8603061c7ab2cedfe128c80cac9726721a74
+      securityContext:
+        runAsUser: 0
       imagePullPolicy: Always
       env:
         - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
-          value: "http://hacbs-jvm-cache.default.svc.cluster.local"
+          value: "http://hacbs-jvm-cache.jvm-build-service.svc.cluster.local"
       name: proxy
       livenessProbe:
         httpGet:

@@ -2,3 +2,4 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: hacbs-jvm-operator
+  namespace: jvm-build-service
