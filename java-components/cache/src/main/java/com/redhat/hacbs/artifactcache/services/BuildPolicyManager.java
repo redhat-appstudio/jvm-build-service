@@ -11,7 +11,7 @@ import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
-import com.redhat.hacbs.artifactcache.services.client.dockerregistry.DockerRegistryRepositoryClient;
+import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
 import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
 
 import io.quarkus.logging.Log;
@@ -29,6 +29,7 @@ class BuildPolicyManager {
     private static final String BUCKET = ".bucket";
     private static final String REGISTRY = ".registry";
     private static final String OWNER = ".owner";
+    private static final String INSECURE = ".insecure";
     private static final String PREFIXES = ".prefixes";
     public static final String STORE_LIST = ".store-list";
     public static final String BUILD_POLICY = "build-policy.";
@@ -97,16 +98,18 @@ class BuildPolicyManager {
             } else {
                 Log.warnf("S3 Repository %s was listed but has no bucket configured and will be ignored", repo);
             }
-        } else if (optType.orElse(null) == RepositoryType.DOCKER_REGISTRY) {
+        } else if (optType.orElse(null) == RepositoryType.OCI_REGISTRY) {
             String registry = config.getOptionalValue(STORE + repo + REGISTRY, String.class).orElse("quay.io");
             Optional<String> owner = config.getOptionalValue(STORE + repo + OWNER, String.class);
             if (owner.isPresent()) {
+                boolean enableHttpAndInsecureFailover = config.getOptionalValue(STORE + repo + INSECURE, Boolean.class)
+                        .orElse(Boolean.FALSE);
                 String u = owner.get();
-                RepositoryClient client = new DockerRegistryRepositoryClient(registry, u);
-                Log.infof("Docker registry %s added with owner %s", registry, u);
-                return new Repository(repo, "docker://" + registry + "/" + u, RepositoryType.DOCKER_REGISTRY, client);
+                RepositoryClient client = new OCIRegistryRepositoryClient(registry, u, enableHttpAndInsecureFailover);
+                Log.infof("OCI registry %s added with owner %s", registry, u);
+                return new Repository(repo, "oci://" + registry + "/" + u, RepositoryType.OCI_REGISTRY, client);
             } else {
-                Log.warnf("Docker registry %s was listed but has no owner configured and will be ignored", repo);
+                Log.warnf("OCI registry %s was listed but has no owner configured and will be ignored", repo);
             }
         }
         Log.warnf("Repository %s was listed but has no config and will be ignored", repo);

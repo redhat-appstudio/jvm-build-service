@@ -7,7 +7,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
-public class S3TestResourceManger implements QuarkusTestResourceLifecycleManager {
+public class S3TestResourceManager implements QuarkusTestResourceLifecycleManager {
 
     LocalStackContainer localstack;
 

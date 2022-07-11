@@ -1,13 +1,17 @@
 package com.redhat.hacbs.artifactcache.services;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import javax.inject.Inject;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.redhat.hacbs.artifactcache.test.util.HashUtil;
@@ -15,26 +19,20 @@ import com.redhat.hacbs.artifactcache.test.util.HashUtil;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.io.File;
-import java.nio.file.Files;
-import java.util.Set;
 
-// @QuarkusTestResource(QuayTestResourceManger.class)
-// TODO: Can we somehow use a local quay ?
-//          see https://github.com/quay/quay/blob/master/docs/getting-started.md#running-quay-for-development
-//          see https://quay.github.io/clair/howto/testing.html
-//          see https://docs.projectquay.io/deploy_quay.html
+@Disabled
 @QuarkusTest
-@TestProfile(DockerRegistryStorageTest.QuayTestProfile.class)
-public class DockerRegistryStorageTest {
+@TestProfile(LocalRegistryStorageIT.LocalTestProfile.class)
+public class LocalRegistryStorageIT {
 
-    Map<String,String> artifactFileMap = Map.of("quarkus-vertx-http", "quarkus-vertx-http-2.10.1.Final.jar", 
-                                            "quarkus-bootstrap-core", "quarkus-bootstrap-core-2.10.1.Final.jar");
-    
+    Map<String, String> artifactFileMap = Map.of(
+            "quarkus-vertx-http", "quarkus-vertx-http-2.10.1.Final.jar",
+            "quarkus-bootstrap-core", "quarkus-bootstrap-core-2.10.1.Final.jar");
+
     public static final String VERSION = "2.10.1.Final";
     public static final String GROUP = "io.quarkus";
     public static final String POLICY = "prefer-rebuilt";
-    
+
     public static final String DEFAULT = "default";
     public static final String ARTIFACT_STORE = "artifact-store";
 
@@ -45,22 +43,24 @@ public class DockerRegistryStorageTest {
     Path path;
 
     @Test
-    public void testQuayBasedArtifactStorage() throws Exception {
+    public void testDockerBasedArtifactStorage() throws Exception {
         String groupPath = GROUP.replace(DOT, File.separator);
-        
+
         Set<Map.Entry<String, String>> artifactFileEntries = artifactFileMap.entrySet();
-        
-        for(Map.Entry<String, String> artifactFileEntry:artifactFileEntries){
-        
+
+        for (Map.Entry<String, String> artifactFileEntry : artifactFileEntries) {
+
             String artifact = artifactFileEntry.getKey();
             String file = artifactFileEntry.getValue();
-            Path cachedFile = path.resolve(REBUILT).resolve(POLICY).resolve(groupPath).resolve(artifact).resolve(VERSION).resolve(file);
+            Path cachedFile = path.resolve(REBUILT).resolve(POLICY).resolve(groupPath).resolve(artifact).resolve(VERSION)
+                    .resolve(file);
 
             try {
-                Optional<RepositoryClient.RepositoryResult> artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact, VERSION,
+                Optional<RepositoryClient.RepositoryResult> artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact,
+                        VERSION,
                         file);
                 RepositoryClient.RepositoryResult repositoryResult = artifactFile.get();
-                
+
                 String calculatedSha1 = HashUtil.sha1(repositoryResult.data.readAllBytes());
                 String expectedSha1 = repositoryResult.expectedSha.orElse("");
 
@@ -78,12 +78,15 @@ public class DockerRegistryStorageTest {
         }
     }
 
-    public static class QuayTestProfile implements QuarkusTestProfile {
+    public static class LocalTestProfile implements QuarkusTestProfile {
 
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of("store.rebuilt.type", "docker_registry",
-                    "store.rebuilt.owner", "pkruger");
+            return Map.of(
+                    "store.rebuilt.registry", "localhost:5000",
+                    "store.rebuilt.type", "oci_registry",
+                    "store.rebuilt.owner", "pkruger",
+                    "store.rebuilt.insecure", "true");
         }
     }
 

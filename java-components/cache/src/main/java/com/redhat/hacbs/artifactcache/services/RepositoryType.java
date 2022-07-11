@@ -4,7 +4,7 @@ public enum RepositoryType {
 
     MAVEN2(false),
     S3(true),
-    DOCKER_REGISTRY(true);
+    OCI_REGISTRY(true);
 
     final boolean buildPolicyUsed;
 
