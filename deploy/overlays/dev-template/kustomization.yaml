@@ -84,3 +84,56 @@ patches:
    target:
      kind: ClusterTask
      name: run-maven-component-build
+
+ - patch: |-
+     - op: replace
+       path: /spec/sidecars/0/image
+       value: quay.io/QUAY_USERNAME/hacbs-jvm-sidecar:dev
+   target:
+     kind: ClusterTask
+     name: run-gradle-component-build
+ - patch: |-
+     - op: add
+       path: /spec/sidecars/0/env/-
+       value:
+         name: QUARKUS_S3_ENDPOINT_OVERRIDE
+         value: "http://localstack.default.svc.cluster.local:4572"
+   target:
+     kind: ClusterTask
+     name: run-gradle-component-build
+ - patch: |-
+     - op: add
+       path: /spec/sidecars/0/env/-
+       value:
+         name: QUARKUS_S3_AWS_REGION
+         value: "us-east-1"
+   target:
+     kind: ClusterTask
+     name: run-gradle-component-build
+ - patch: |-
+     - op: add
+       path: /spec/sidecars/0/env/-
+       value:
+         name: QUARKUS_S3_AWS_CREDENTIALS_TYPE
+         value: "static"
+   target:
+     kind: ClusterTask
+     name: run-gradle-component-build
+ - patch: |-
+     - op: add
+       path: /spec/sidecars/0/env/-
+       value:
+         name: QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID
+         value: "accesskey"
+   target:
+     kind: ClusterTask
+     name: run-gradle-component-build
+ - patch: |-
+     - op: add
+       path: /spec/sidecars/0/env/-
+       value:
+         name: QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY
+         value: "secretkey"
+   target:
+     kind: ClusterTask
+     name: run-gradle-component-build

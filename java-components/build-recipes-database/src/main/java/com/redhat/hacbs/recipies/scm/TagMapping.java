@@ -3,30 +3,29 @@ package com.redhat.hacbs.recipies.scm;
 public class TagMapping {
 
     /**
-     * A regex that is matches against a repository tag
+     * A regex that is matches against a version. Capture groups can be used to capture info that ends up in the tag
      */
-    private String tagPattern;
+    private String pattern;
     /**
-     * The corresponding version string, it can use <code>{x}</code> to
-     * reference match groups from the tag pattern.
+     * The corresponding tag, with $n placeholders to represent the capture groups to be replaced
      */
-    private String version;
+    private String tag;
 
-    public String getTagPattern() {
-        return tagPattern;
+    public String getPattern() {
+        return pattern;
     }
 
-    public TagMapping setTagPattern(String tagPattern) {
-        this.tagPattern = tagPattern;
+    public TagMapping setPattern(String pattern) {
+        this.pattern = pattern;
         return this;
     }
 
-    public String getVersion() {
-        return version;
+    public String getTag() {
+        return tag;
     }
 
-    public TagMapping setVersion(String version) {
-        this.version = version;
+    public TagMapping setTag(String tag) {
+        this.tag = tag;
         return this;
     }
 }

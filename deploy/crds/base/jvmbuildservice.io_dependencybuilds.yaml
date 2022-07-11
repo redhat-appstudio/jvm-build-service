@@ -20,6 +20,9 @@ spec:
     - jsonPath: .spec.scm.scmURL
       name: URL
       type: string
+    - jsonPath: .spec.scm.tag
+      name: Tag
+      type: string
     - jsonPath: .status.state
       name: State
       type: string
@@ -49,7 +52,15 @@ spec:
                       items:
                         type: string
                       type: array
+                    enforceVersion:
+                      type: string
+                    ignoredArtifacts:
+                      items:
+                        type: string
+                      type: array
                     image:
+                      type: string
+                    task:
                       type: string
                   type: object
                 type: array
@@ -152,7 +163,15 @@ spec:
                     items:
                       type: string
                     type: array
+                  enforceVersion:
+                    type: string
+                  ignoredArtifacts:
+                    items:
+                      type: string
+                    type: array
                   image:
+                    type: string
+                  task:
                     type: string
                 type: object
               failedBuildRecipes:
@@ -164,7 +183,15 @@ spec:
                       items:
                         type: string
                       type: array
+                    enforceVersion:
+                      type: string
+                    ignoredArtifacts:
+                      items:
+                        type: string
+                      type: array
                     image:
+                      type: string
+                    task:
                       type: string
                   type: object
                 type: array
@@ -179,7 +206,15 @@ spec:
                       items:
                         type: string
                       type: array
+                    enforceVersion:
+                      type: string
+                    ignoredArtifacts:
+                      items:
+                        type: string
+                      type: array
                     image:
+                      type: string
+                    task:
                       type: string
                   type: object
                 type: array

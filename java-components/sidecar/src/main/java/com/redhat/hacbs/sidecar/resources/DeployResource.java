@@ -3,9 +3,15 @@ package com.redhat.hacbs.sidecar.resources;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.inject.Singleton;
 import javax.ws.rs.GET;
@@ -32,12 +38,20 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 @Singleton
 public class DeployResource {
 
+    private static final Pattern ARTIFACT_PATH = Pattern.compile(".*/([^/]+)/([^/]+)/([^/]+)");
+
     final S3Client client;
 
     final String deploymentBucket;
     final String deploymentPrefix;
-
-    final boolean allowPartialDeployment;
+    /**
+     * We can ignore some artifacts that are problematic as part of deployment.
+     *
+     * Generally this is for things like CLI's, that shade in lots of dependencies,
+     * but are not generally useful for downstream builds.
+     *
+     */
+    Set<String> doNotDeploy;
 
     final Set<String> contaminates = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -46,23 +60,44 @@ public class DeployResource {
     public DeployResource(S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
             @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
-            @ConfigProperty(name = "allow-partial-deployment", defaultValue = "false") boolean allowPartialDeployment) {
+            @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy) {
         this.client = client;
         this.deploymentBucket = deploymentBucket;
         this.deploymentPrefix = deploymentPrefix;
-        this.allowPartialDeployment = allowPartialDeployment;
+        this.doNotDeploy = doNotDeploy.orElse(Set.of());
+        Log.infof("Ignored Artifacts: %s", doNotDeploy);
     }
 
     @GET
     @Path("/result")
     public Response contaminates() {
+        Log.infof("Getting contaminates for build: " + contaminates);
         if (deployFailure != null) {
             throw new RuntimeException(deployFailure);
         }
         if (contaminates.isEmpty()) {
             return Response.noContent().build();
         } else {
-            return Response.ok(String.join(",", contaminates)).build();
+            StringBuilder response = new StringBuilder();
+            boolean first = true;
+            for (var i : contaminates) {
+                //it is recommended that tekton results not be larger than 1k
+                //if this happens we just return some of the contaminates
+                //it does not matter that much, as if all the reported ones are
+                //fixed then we will re-discover the rest next build
+                if (response.length() > 400) {
+                    Log.error("Contaminates truncated");
+                    break;
+                }
+                if (first) {
+                    first = false;
+                } else {
+                    response.append(",");
+                }
+                response.append(i);
+            }
+            Log.infof("Contaminates returned: " + response);
+            return Response.ok(response).build();
         }
     }
 
@@ -79,56 +114,54 @@ public class DeployResource {
             }
 
             Set<String> contaminants = new HashSet<>();
-            Set<String> contaminatedPaths = new HashSet<>();
+            Map<String, Set<String>> contaminatedPaths = new HashMap<>();
             try (TarArchiveInputStream in = new TarArchiveInputStream(
                     new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                 TarArchiveEntry e;
                 while ((e = in.getNextTarEntry()) != null) {
                     if (e.getName().endsWith(".jar")) {
-                        Log.infof("Checking %s for contaminants", e.getName());
-                        var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
-                        if (info != null) {
-                            contaminants.addAll(info.stream().map(a -> a.gav).toList());
-                            int index = e.getName().lastIndexOf("/");
-                            if (index != -1) {
-                                contaminatedPaths.add(e.getName().substring(0, index));
-                            } else {
-                                contaminatedPaths.add("");
+                        if (!shouldIgnore(doNotDeploy, e.getName())) {
+                            Log.infof("Checking %s for contaminants", e.getName());
+                            var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
+                            if (info != null) {
+                                List<String> result = info.stream().map(a -> a.gav).toList();
+                                contaminants.addAll(result);
+                                if (!result.isEmpty()) {
+                                    int index = e.getName().lastIndexOf("/");
+                                    if (index != -1) {
+                                        contaminatedPaths.computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
+                                                .addAll(result);
+                                    } else {
+                                        contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).addAll(result);
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-            Log.infof("Contaminants: %s", contaminants);
+            Log.infof("Contaminants: %s", contaminatedPaths);
             this.contaminates.addAll(contaminants);
 
-            if (contaminants.isEmpty() || allowPartialDeployment) {
+            if (contaminants.isEmpty()) {
                 try (TarArchiveInputStream in = new TarArchiveInputStream(
                         new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                     TarArchiveEntry e;
                     while ((e = in.getNextTarEntry()) != null) {
-                        Log.infof("Received %s", e.getName());
-                        boolean contaminated = false;
-                        for (var i : contaminatedPaths) {
-                            if (e.getName().startsWith(i)) {
-                                contaminated = true;
-                                break;
+                        if (!shouldIgnore(doNotDeploy, e.getName())) {
+                            Log.infof("Received %s", e.getName());
+                            byte[] fileData = in.readAllBytes();
+                            String name = e.getName();
+                            if (name.startsWith("./")) {
+                                name = name.substring(2);
                             }
+                            String targetPath = deploymentPrefix + "/" + name;
+                            client.putObject(PutObjectRequest.builder()
+                                    .bucket(deploymentBucket)
+                                    .key(targetPath)
+                                    .build(), RequestBody.fromBytes(fileData));
+                            Log.infof("Deployed to: %s", targetPath);
                         }
-                        if (contaminated) {
-                            continue;
-                        }
-                        byte[] fileData = in.readAllBytes();
-                        String name = e.getName();
-                        if (name.startsWith("./")) {
-                            name = name.substring(2);
-                        }
-                        String targetPath = deploymentPrefix + "/" + name;
-                        client.putObject(PutObjectRequest.builder()
-                                .bucket(deploymentBucket)
-                                .key(targetPath)
-                                .build(), RequestBody.fromBytes(fileData));
-                        Log.infof("Deployed to: %s", targetPath);
                     }
                 }
             } else {
@@ -140,6 +173,14 @@ public class DeployResource {
             flushLogs();
             throw t;
         }
+    }
+
+    static boolean shouldIgnore(Set<String> doNotDeploy, String name) {
+        Matcher m = ARTIFACT_PATH.matcher(name);
+        if (!m.matches()) {
+            return false;
+        }
+        return doNotDeploy.contains(m.group(1));
     }
 
     private void flushLogs() {

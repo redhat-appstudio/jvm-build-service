@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jctools.2.2.5.final-9d78252e
+  namespace: default
+spec:
+  gav: org.jctools:jctools-core:3.1.0

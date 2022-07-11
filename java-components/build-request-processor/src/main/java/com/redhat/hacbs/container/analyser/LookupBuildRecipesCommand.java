@@ -8,6 +8,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.eclipse.jgit.api.Git;
 
@@ -16,6 +19,7 @@ import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
+import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipies.scm.RepositoryInfo;
@@ -27,8 +31,8 @@ import picocli.CommandLine;
 @CommandLine.Command
 public class LookupBuildRecipesCommand implements Runnable {
 
-    @CommandLine.Option(names = "--recipes", required = true)
-    String recipeRepo;
+    @CommandLine.Option(names = "--recipes", required = true, split = ",")
+    List<String> recipeRepos;
 
     @CommandLine.Option(names = "--gav", required = true)
     String gav;
@@ -62,8 +66,11 @@ public class LookupBuildRecipesCommand implements Runnable {
         try {
             Path tempDir = Files.createTempDirectory("recipe");
             //checkout the git recipe database
-            RecipeRepositoryManager manager = RecipeRepositoryManager.create(recipeRepo, "main", Optional.empty(), tempDir);
-            RecipeGroupManager recipeGroupManager = new RecipeGroupManager(List.of(manager));
+            List<RecipeDirectory> managers = new ArrayList<>();
+            for (var i : recipeRepos) {
+                managers.add(RecipeRepositoryManager.create(i, "main", Optional.empty(), tempDir));
+            }
+            RecipeGroupManager recipeGroupManager = new RecipeGroupManager(managers);
 
             GAV toBuild = GAV.parse(gav);
             Log.infof("Looking up %s", gav);
@@ -85,6 +92,11 @@ public class LookupBuildRecipesCommand implements Runnable {
             if (main.getLegacyRepos() != null) {
                 repos.addAll(main.getLegacyRepos());
             }
+            BuildRecipeInfo buildRecipeInfo = null;
+            Path buildRecipePath = recipes.get(BuildRecipe.BUILD);
+            if (buildRecipePath != null) {
+                buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(buildRecipePath);
+            }
             for (var parsedInfo : repos) {
 
                 String repoName = null;
@@ -94,14 +106,38 @@ public class LookupBuildRecipesCommand implements Runnable {
                     String selectedTag = null;
                     Set<String> exactContains = new HashSet<>();
                     var tags = Git.lsRemoteRepository().setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
-                    for (var tag : tags) {
-                        String name = tag.getName().replace("refs/tags/", "");
-                        if (name.equals(version)) {
-                            //exact match is always good
-                            selectedTag = version;
-                            break;
-                        } else if (name.contains(version)) {
-                            exactContains.add(tag.getName());
+                    Set<String> tagNames = tags.stream().map(s -> s.getName().replace("refs/tags/", ""))
+                            .collect(Collectors.toSet());
+
+                    //first try tag mappings
+                    for (var mapping : main.getTagMapping()) {
+                        Log.infof("Trying tag pattern %s on version %s", mapping.getPattern(), version);
+                        Matcher m = Pattern.compile(mapping.getPattern()).matcher(version);
+                        if (m.matches()) {
+                            Log.infof("Tag pattern %s matches", mapping.getPattern());
+                            String match = mapping.getTag();
+                            for (int i = 1; i <= m.groupCount(); ++i) {
+                                match = match.replaceAll("\\$" + i, m.group(i));
+                            }
+                            Log.infof("Trying to find tag %s", match);
+                            //if the tag was a constant we don't require it to be in the tag set
+                            //this allows for explicit refs to be used
+                            if (tagNames.contains(match) || match.equals(mapping.getTag())) {
+                                selectedTag = match;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (selectedTag == null) {
+                        for (var name : tagNames) {
+                            if (name.equals(version)) {
+                                //exact match is always good
+                                selectedTag = version;
+                                break;
+                            } else if (name.contains(version)) {
+                                exactContains.add(name);
+                            }
                         }
                     }
                     if (selectedTag == null) {
@@ -148,23 +184,19 @@ public class LookupBuildRecipesCommand implements Runnable {
                         Files.writeString(context, parsedInfo.getPath());
                     }
 
-                    BuildRecipeInfo buildRecipeInfo = null;
-                    Path buildRecipePath = recipes.get(BuildRecipe.BUILD);
-                    if (buildRecipePath != null) {
-                        buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(buildRecipePath);
-                    }
-                    doBuildAnalysis(parsedInfo.getUri(), selectedTag, parsedInfo.getPath(), buildRecipeInfo);
+                    doBuildAnalysis(parsedInfo.getUri(), selectedTag, parsedInfo.getPath(), buildRecipeInfo, version);
 
                     firstFailure = null;
                     break;
 
                 } catch (Exception ex) {
+                    Log.error("Failure to determine tag", ex);
                     if (firstFailure == null) {
                         firstFailure = ex;
                     } else {
                         firstFailure.addSuppressed(ex);
                     }
-                    throw new RuntimeException();
+                    throw new RuntimeException(firstFailure);
                 }
             }
             if (firstFailure != null) {
@@ -183,7 +215,7 @@ public class LookupBuildRecipesCommand implements Runnable {
         }
     }
 
-    private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo)
+    private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo, String version)
             throws Exception {
         //TODO: this is a basic hack to prove the concept
         var path = Files.createTempDirectory("checkout");
@@ -197,20 +229,25 @@ public class LookupBuildRecipesCommand implements Runnable {
                 info.tools.put("maven", new VersionRange("3.8", "3.8", "3.8"));
                 info.invocations.add(
                         new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
-                                "-Drat.skip=true")));
+                                "-Drat.skip=true", "-Dmaven.deploy.skip=false")));
             } else if (Files.isRegularFile(path.resolve("build.gradle"))
                     || Files.isRegularFile(path.resolve("build.gradle.kts"))) {
                 info.tools.put("gradle", new VersionRange("7.3", "7.3", "7.3"));
                 info.invocations.add(new ArrayList<>(List.of("gradle", "build")));
             }
             if (buildRecipeInfo != null) {
-                for (var i : info.invocations) {
-                    i.addAll(buildRecipeInfo.getAdditionalArgs());
+                if (buildRecipeInfo.getAdditionalArgs() != null) {
+                    for (var i : info.invocations) {
+                        i.addAll(buildRecipeInfo.getAdditionalArgs());
+                    }
                 }
+                if (buildRecipeInfo.isEnforceVersion()) {
+                    info.enforceVersion = version;
+                }
+                info.setIgnoredArtifacts(buildRecipeInfo.getIgnoredArtifacts());
             }
             ObjectMapper mapper = new ObjectMapper();
             mapper.writeValue(this.buildInfo.toFile(), info);
         }
     }
-
 }

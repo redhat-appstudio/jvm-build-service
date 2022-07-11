@@ -21,6 +21,9 @@ public class BuildInfo {
      */
     List<List<String>> invocations = new ArrayList<>();
 
+    String enforceVersion;
+    List<String> ignoredArtifacts = new ArrayList<>();
+
     public Map<String, VersionRange> getTools() {
         return tools;
     }
@@ -36,6 +39,24 @@ public class BuildInfo {
 
     public BuildInfo setInvocations(List<List<String>> invocations) {
         this.invocations = invocations;
+        return this;
+    }
+
+    public String getEnforceVersion() {
+        return enforceVersion;
+    }
+
+    public BuildInfo setEnforceVersion(String enforceVersion) {
+        this.enforceVersion = enforceVersion;
+        return this;
+    }
+
+    public List<String> getIgnoredArtifacts() {
+        return ignoredArtifacts;
+    }
+
+    public BuildInfo setIgnoredArtifacts(List<String> ignoredArtifacts) {
+        this.ignoredArtifacts = ignoredArtifacts;
         return this;
     }
 }

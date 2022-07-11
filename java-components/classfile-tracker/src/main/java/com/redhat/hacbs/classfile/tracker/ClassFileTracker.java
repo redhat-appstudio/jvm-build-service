@@ -21,12 +21,18 @@ import org.objectweb.asm.Opcodes;
 
 public class ClassFileTracker {
 
-    public static byte[] addTrackingDataToClass(byte[] classData, TrackingData data) {
-        ClassReader classReader = new ClassReader(classData);
-        ClassWriter writer = new ClassWriter(classReader, 0);
-        ClassTrackingWriteDataVisitor classTrackingVisitor = new ClassTrackingWriteDataVisitor(Opcodes.ASM9, writer, data);
-        classReader.accept(classTrackingVisitor, 0);
-        return writer.toByteArray();
+    public static byte[] addTrackingDataToClass(byte[] classData, TrackingData data, String name) {
+        try {
+            ClassReader classReader = new ClassReader(classData);
+            ClassWriter writer = new ClassWriter(classReader, 0);
+            ClassTrackingWriteDataVisitor classTrackingVisitor = new ClassTrackingWriteDataVisitor(Opcodes.ASM9, writer, data);
+            classReader.accept(classTrackingVisitor, 0);
+            return writer.toByteArray();
+        } catch (Exception e) {
+            Logger.getLogger(ClassFileTracker.class.getName()).log(Level.SEVERE,
+                    "Failed to add tracking data to class: " + name, e);
+            return classData;
+        }
     }
 
     public static TrackingData readTrackingInformationFromClass(byte[] classData) {
@@ -56,7 +62,21 @@ public class ClassFileTracker {
                         if (entry.getLastModifiedTime() != null) {
                             newEntry.setLastModifiedTime(entry.getLastModifiedTime());
                         }
-                        byte[] modified = addTrackingDataToClass(zipIn.readAllBytes(), data);
+                        byte[] modified = addTrackingDataToClass(zipIn.readAllBytes(), data, entry.getName());
+                        newEntry.setSize(modified.length);
+                        zipOut.putNextEntry(newEntry);
+                        zipOut.write(modified);
+                    } else if (entry.getName().endsWith(".jar")) {
+                        ZipEntry newEntry = new ZipEntry(entry.getName());
+                        if (entry.getLastAccessTime() != null) {
+                            newEntry.setLastAccessTime(entry.getLastAccessTime());
+                        }
+                        if (entry.getLastModifiedTime() != null) {
+                            newEntry.setLastModifiedTime(entry.getLastModifiedTime());
+                        }
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        addTrackingDataToJar(new NoCloseInputStream(zipIn), data, baos);
+                        byte[] modified = baos.toByteArray();
                         newEntry.setSize(modified.length);
                         zipOut.putNextEntry(newEntry);
                         zipOut.write(modified);

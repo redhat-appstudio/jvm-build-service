@@ -233,6 +233,7 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 		abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 	} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
 		abr.Status.State = v1alpha1.ArtifactBuildStateComplete
+		return reconcile.Result{Requeue: true}, r.client.Status().Update(ctx, &abr)
 	}
 
 	// if need be
@@ -317,7 +318,9 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 				Max       string
 				Preferred string
 			}
-			Invocations [][]string
+			Invocations      [][]string
+			EnforceVersion   string
+			IgnoredArtifacts []string
 		}{}
 
 		if err := json.Unmarshal([]byte(abr.Status.BuildInfo), &unmarshalled); err != nil {
@@ -327,9 +330,16 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 		//for now we are ignoring the tool versions
 		//and just using the supplied invocations
 		buildRecipes := []*v1alpha1.BuildRecipe{}
+		_, maven := unmarshalled.Tools["maven"]
+		_, gradle := unmarshalled.Tools["gradle"]
 		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
 			for _, command := range unmarshalled.Invocations {
-				buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command})
+				if maven {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-maven-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+				}
+				if gradle {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-gradle-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+				}
 			}
 		}
 		//no existing build object found, lets create one
@@ -386,11 +396,15 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, abr *v
 			}
 			var newContaminates []string
 			for _, contaminant := range db.Status.Contaminants {
-				if contaminant != value {
+				if contaminant != abr.Spec.GAV {
 					newContaminates = append(newContaminates, contaminant)
 				}
 			}
 			db.Status.Contaminants = newContaminates
+			if len(db.Status.Contaminants) == 0 {
+				//kick off the build again
+				db.Status.State = v1alpha1.DependencyBuildStateNew
+			}
 			if err := r.client.Status().Update(ctx, &db); err != nil {
 				return reconcile.Result{}, err
 			}

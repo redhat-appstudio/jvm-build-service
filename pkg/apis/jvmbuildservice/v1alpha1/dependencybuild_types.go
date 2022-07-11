@@ -41,6 +41,7 @@ type DependencyBuildStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=dependencybuilds,scope=Namespaced
 // +kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.scm.scmURL`
+// +kubebuilder:printcolumn:name="Tag",type=string,JSONPath=`.spec.scm.tag`
 // +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 
 // DependencyBuild TODO provide godoc description
@@ -62,6 +63,9 @@ type DependencyBuildList struct {
 }
 
 type BuildRecipe struct {
-	Image       string   `json:"image,omitempty"`
-	CommandLine []string `json:"commandLine,omitempty"`
+	Task             string   `json:"task,omitempty"`
+	Image            string   `json:"image,omitempty"`
+	CommandLine      []string `json:"commandLine,omitempty"`
+	EnforceVersion   string   `json:"enforceVersion,omitempty"`
+	IgnoredArtifacts []string `json:"ignoredArtifacts,omitempty"`
 }

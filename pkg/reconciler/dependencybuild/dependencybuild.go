@@ -30,12 +30,14 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout = 300 * time.Second
-	TaskScmUrl     = "URL"
-	TaskScmTag     = "TAG"
-	TaskPath       = "CONTEXT_DIR"
-	TaskImage      = "IMAGE"
-	TaskGoals      = "GOALS"
+	contextTimeout       = 300 * time.Second
+	TaskScmUrl           = "URL"
+	TaskScmTag           = "TAG"
+	TaskPath             = "CONTEXT_DIR"
+	TaskImage            = "IMAGE"
+	TaskGoals            = "GOALS"
+	TaskEnforceVersion   = "ENFORCE_VERSION"
+	TaskIgnoredArtifacts = "IGNORED_ARTIFACTS"
 )
 
 var (
@@ -172,15 +174,18 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
 	// we move the db out of building
-	tr.Name = fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
+	tr.Name = currentDependencyBuildTaskName(db)
 	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: ""}
-	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "run-maven-component-build", Kind: pipelinev1beta1.ClusterTaskKind}
+
+	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: db.Status.CurrentBuildRecipe.Task, Kind: pipelinev1beta1.ClusterTaskKind}
 	tr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
 		{Name: TaskPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: TaskImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
 		{Name: TaskGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
+		{Name: TaskEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
+		{Name: TaskIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
 	}
 	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
@@ -201,6 +206,10 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func currentDependencyBuildTaskName(db *v1alpha1.DependencyBuild) string {
+	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 }
 
 func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
@@ -245,7 +254,7 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 			return reconcile.Result{}, err
 		}
 
-		if tr.Name == db.Status.LastCompletedBuildTaskRun {
+		if tr.Name == db.Status.LastCompletedBuildTaskRun || tr.Name != currentDependencyBuildTaskName(&db) {
 			//already handled
 			return reconcile.Result{}, nil
 		}
@@ -279,7 +288,10 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 			pod := v1.Pod{}
 			poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
 			if poderr == nil {
-				r.client.Delete(ctx, &pod)
+				err := r.client.Delete(ctx, &pod)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
 			}
 		}
 		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
@@ -290,8 +302,9 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	contaminants := db.Status.Contaminants
 	if len(contaminants) == 0 {
-		//all fixed, just set the state back to new and try again
+		//all fixed, just set the state back to building and try again
 		//this is triggered when contaminants are removed by the ABR controller
+		//setting it back to building should re-try the recipe that actually worked
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		return reconcile.Result{}, r.client.Update(ctx, db)
 	}

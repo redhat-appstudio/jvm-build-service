@@ -127,6 +127,11 @@ func (in *BuildRecipe) DeepCopyInto(out *BuildRecipe) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.IgnoredArtifacts != nil {
+		in, out := &in.IgnoredArtifacts, &out.IgnoredArtifacts
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

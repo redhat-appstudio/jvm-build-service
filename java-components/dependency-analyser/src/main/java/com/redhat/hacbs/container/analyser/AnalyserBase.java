@@ -26,7 +26,7 @@ import picocli.CommandLine;
 
 public abstract class AnalyserBase implements Runnable {
 
-    @CommandLine.Option(names = "--allowed-sources", defaultValue = "redhat,rebuilt")
+    @CommandLine.Option(names = "--allowed-sources", defaultValue = "redhat,rebuilt", split = ",")
     Set<String> allowedSources;
 
     @Inject
