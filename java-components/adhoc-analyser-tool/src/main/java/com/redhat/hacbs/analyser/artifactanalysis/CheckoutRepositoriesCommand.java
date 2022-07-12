@@ -27,7 +27,6 @@ import com.redhat.hacbs.analyser.data.scm.Repository;
 import com.redhat.hacbs.analyser.data.scm.ScmManager;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
-import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 
 import io.quarkus.dev.console.QuarkusConsole;
 import io.quarkus.dev.console.StatusLine;
@@ -56,8 +55,7 @@ public class CheckoutRepositoriesCommand implements Runnable {
         Map<String, String> doubleUps = new TreeMap<>();
         Set<Path> doubleUpFiles = new HashSet<>();
         try (ScmManager manager = ScmManager.create(repoConfig.path())) {
-            RecipeLayoutManager recipeLayoutManager = new RecipeLayoutManager(
-                    repoConfig.path().resolve(RecipeRepositoryManager.RECIPES));
+            RecipeLayoutManager recipeLayoutManager = new RecipeLayoutManager(repoConfig.path());
             RecipeGroupManager groupManager = new RecipeGroupManager(List.of(recipeLayoutManager));
             int count = manager.getAll().size();
             int currentCount = 0;

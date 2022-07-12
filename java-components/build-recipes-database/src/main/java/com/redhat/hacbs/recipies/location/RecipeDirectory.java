@@ -1,5 +1,6 @@
 package com.redhat.hacbs.recipies.location;
 
+import java.nio.file.Path;
 import java.util.Optional;
 
 public interface RecipeDirectory {
@@ -13,6 +14,8 @@ public interface RecipeDirectory {
      * @return
      */
     Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version);
+
+    Optional<Path> getBuildPaths(String scmUri, String tag);
 
     default <T> void writeArtifactData(AddRecipeRequest<T> data) {
         throw new IllegalStateException("Not implemented");

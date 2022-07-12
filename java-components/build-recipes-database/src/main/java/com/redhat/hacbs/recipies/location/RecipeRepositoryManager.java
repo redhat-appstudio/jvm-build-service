@@ -13,6 +13,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 public class RecipeRepositoryManager implements RecipeDirectory {
 
     public static final String RECIPES = "recipes";
+    public static final String BUILD_INFO = "build-info";
     private final Git git;
     private final String remote;
     private final Path local;
@@ -28,7 +29,7 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         this.branch = branch;
         this.updateInterval = updateInterval;
         this.lastUpdate = System.currentTimeMillis();
-        this.recipeLayoutManager = new RecipeLayoutManager(local.resolve(RECIPES));
+        this.recipeLayoutManager = new RecipeLayoutManager(local);
     }
 
     public static RecipeRepositoryManager create(String remote, String branch, Optional<Duration> updateInterval,
@@ -53,6 +54,12 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     public Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version) {
         doUpdate();
         return recipeLayoutManager.getArtifactPaths(groupId, artifactId, version);
+    }
+
+    @Override
+    public Optional<Path> getBuildPaths(String scmUri, String tag) {
+        doUpdate();
+        return recipeLayoutManager.getBuildPaths(scmUri, tag);
     }
 
     private void doUpdate() {
