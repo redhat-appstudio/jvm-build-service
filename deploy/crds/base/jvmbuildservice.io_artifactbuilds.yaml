@@ -49,8 +49,6 @@ spec:
             type: object
           status:
             properties:
-              buildInfo:
-                type: string
               message:
                 type: string
               scm:

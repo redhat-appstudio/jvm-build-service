@@ -31,7 +31,7 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--scm-url", required = true)
     String scmUrl;
 
-    @CommandLine.Option(names = "--tag", required = true)
+    @CommandLine.Option(names = "--scm-tag", required = true)
     String tag;
 
     @CommandLine.Option(names = "--context", required = true)

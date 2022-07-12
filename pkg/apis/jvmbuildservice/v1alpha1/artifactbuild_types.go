@@ -11,10 +11,9 @@ type ArtifactBuildSpec struct {
 
 type ArtifactBuildStatus struct {
 	//TODO: conditions?
-	State     string  `json:"state,omitempty"`
-	Message   string  `json:"message,omitempty"`
-	SCMInfo   SCMInfo `json:"scm,omitempty"`
-	BuildInfo string  `json:"buildInfo,omitempty"`
+	State   string  `json:"state,omitempty"`
+	Message string  `json:"message,omitempty"`
+	SCMInfo SCMInfo `json:"scm,omitempty"`
 }
 
 //type ArtifactBuildState string

@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: ClusterTask
 metadata:
-  name: lookup-artifact-location
+  name: lookup-build-info
   labels:
     app.kubernetes.io/version: "0.1"
   annotations:
@@ -11,7 +11,7 @@ metadata:
     tekton.dev/platforms: "linux/amd64,linux/s390x,linux/ppc64le"
 spec:
   description: >-
-    This Task is used to find where components are built from and trigger their builds.
+    This Task is used to find build specific information.
   params:
     - name: BUILD_IMAGE
       type: string
@@ -23,37 +23,43 @@ spec:
       description: >-
         The git recipe database.
       default: "https://github.com/stuartwdouglas/tempdata2.git"
-    - name: GAV
+    - name: SCM_URL
       type: string
       description: >-
-        The GAV to lookup in the database
+        The SCM URL
+    - name: TAG
+      type: string
+      description: >-
+        The SCM TAG
+    - name: CONTEXT
+      type: string
+      description: >-
+        The path to the build inside the repo
+    - name: VERSION
+      type: string
+      description: >-
+        The version of the build
   results:
-    - name: scm-type
-      description: The scm type
-    - name: scm-url
-      description: The scm url
-    - name: scm-tag
-      description: The scm tag
     - name: message
       description: A failure message
-    - name: context
-      description: The path to build in the SCM repo
+    - name: build-info
+      description: The JSON build recipe
   steps:
     - name: process-build-requests
       image: $(params.BUILD_IMAGE)
       args:
-        - lookup-scm
+        - lookup-build-info
         - --recipes
         - $(params.RECIPE_DATABASE)
         - --scm-url
-        - $(results.scm-url.path)
+        - $(params.SCM_URL)
         - --scm-tag
-        - $(results.scm-tag.path)
-        - --scm-type
-        - $(results.scm-type.path)
+        - $(params.TAG)
+        - --context
+        - $(params.CONTEXT)
+        - --version
+        - $(params.VERSION)
         - --message
         - $(results.message.path)
-        - --context
-        - $(results.context.path)
-        - --gav
-        - $(params.GAV)
+        - --build-info
+        - $(results.build-info.path)

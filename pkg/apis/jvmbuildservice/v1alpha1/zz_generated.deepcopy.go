@@ -150,7 +150,7 @@ func (in *DependencyBuild) DeepCopyInto(out *DependencyBuild) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	in.Spec.DeepCopyInto(&out.Spec)
+	out.Spec = in.Spec
 	in.Status.DeepCopyInto(&out.Status)
 	return
 }
@@ -210,17 +210,6 @@ func (in *DependencyBuildList) DeepCopyObject() runtime.Object {
 func (in *DependencyBuildSpec) DeepCopyInto(out *DependencyBuildSpec) {
 	*out = *in
 	out.ScmInfo = in.ScmInfo
-	if in.BuildRecipes != nil {
-		in, out := &in.BuildRecipes, &out.BuildRecipes
-		*out = make([]*BuildRecipe, len(*in))
-		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(BuildRecipe)
-				(*in).DeepCopyInto(*out)
-			}
-		}
-	}
 	return
 }
 

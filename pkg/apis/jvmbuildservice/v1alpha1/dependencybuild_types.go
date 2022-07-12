@@ -6,6 +6,7 @@ import (
 
 const (
 	DependencyBuildStateNew          = "DependencyBuildStateNew"
+	DependencyBuildStateAnalyzeBuild = "DependencyBuildStateAnalyzeBuild"
 	DependencyBuildStateSubmitBuild  = "DependencyBuildStateSubmitBuild"
 	DependencyBuildStateBuilding     = "DependencyBuildStateBuilding"
 	DependencyBuildStateComplete     = "DependencyBuildStateComplete"
@@ -14,8 +15,8 @@ const (
 )
 
 type DependencyBuildSpec struct {
-	ScmInfo      SCMInfo        `json:"scm,omitempty"`
-	BuildRecipes []*BuildRecipe `json:"buildRecipes,omitempty"`
+	ScmInfo SCMInfo `json:"scm,omitempty"`
+	Version string  `json:"version,omitempty"`
 }
 
 type DependencyBuildStatus struct {
@@ -24,6 +25,7 @@ type DependencyBuildStatus struct {
 	// and then I took the liberty of making it an array, given best practices in the k8s/ocp ecosystems
 	Conditions   []metav1.Condition `json:"conditions,omitempty"`
 	State        string             `json:"state,omitempty"`
+	Message      string             `json:"message,omitempty"`
 	Contaminants []string           `json:"contaminates,omitempty"`
 	//BuildRecipe the current build recipe. If build is done then this recipe was used
 	//to get to the current state
@@ -43,6 +45,7 @@ type DependencyBuildStatus struct {
 // +kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.scm.scmURL`
 // +kubebuilder:printcolumn:name="Tag",type=string,JSONPath=`.spec.scm.tag`
 // +kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
 
 // DependencyBuild TODO provide godoc description
 type DependencyBuild struct {
