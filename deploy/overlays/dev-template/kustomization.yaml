@@ -44,7 +44,7 @@ patches:
        path: /spec/sidecars/0/env/-
        value:
          name: QUARKUS_S3_ENDPOINT_OVERRIDE
-         value: "http://localstack.default.svc.cluster.local:4572"
+         value: "http://localstack.jvm-build-service.svc.cluster.local:4572"
    target:
      kind: ClusterTask
      name: run-maven-component-build
@@ -97,7 +97,7 @@ patches:
        path: /spec/sidecars/0/env/-
        value:
          name: QUARKUS_S3_ENDPOINT_OVERRIDE
-         value: "http://localstack.default.svc.cluster.local:4572"
+         value: "http://localstack.jvm-build-service.svc.cluster.local:4572"
    target:
      kind: ClusterTask
      name: run-gradle-component-build

@@ -60,3 +60,55 @@ spec:
         - $(results.build-info.path)
         - --gav
         - $(params.GAV)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: lookup-artifact-location
+spec:
+  params:
+    - name: BUILD_IMAGE
+      type: string
+      description: >-
+        The image to use for dependency analysis.
+      default: "quay.io/sdouglas/hacbs-jvm-build-request-processor:dev"
+    - name: RECIPE_DATABASE
+      type: string
+      description: >-
+        The git recipe database.
+      default: "https://github.com/stuartwdouglas/tempdata2.git"
+    - name: GAV
+      type: string
+      description: >-
+        The GAV to lookup in the database
+  results:
+    - name: scm-type
+      description: The scm type
+      value: $(tasks.lookup-artifact-location.results.scm-type)
+    - name: scm-url
+      description: The scm url
+      value: $(tasks.lookup-artifact-location.results.scm-url)
+    - name: scm-tag
+      description: The scm tag
+      value: $(tasks.lookup-artifact-location.results.scm-tag)
+    - name: message
+      description: A failure message
+      value: $(tasks.lookup-artifact-location.results.message)
+    - name: context
+      description: The path to build in the SCM repo
+      value: $(tasks.lookup-artifact-location.results.context)
+    - name: build-info
+      description: The JSON build recipe
+      value: $(tasks.lookup-artifact-location.results.build-info)
+  tasks:
+    - name: lookup-artifact-location
+      taskRef:
+        name: lookup-artifact-location
+        kind: ClusterTask
+      params:
+        - name: BUILD_IMAGE
+          value: "$(params.BUILD_IMAGE)"
+        - name: RECIPE_DATABASE
+          value: "$(params.RECIPE_DATABASE)"
+        - name: GAV
+          value: "$(params.GAV)"
