@@ -1,0 +1,25 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pipeline-anyuid-role
+  namespace: jvm-build-service
+rules:
+  - apiGroups: ["security.openshift.io"]
+    resourceNames: ["anyuid"]
+    resources: ["securitycontextconstraints"]
+    verbs: ["use"]
+
+---
+
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pipeline-anyuid-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: hacbs-jvm-cache
+    namespace: jvm-build-service
+roleRef:
+  kind: Role
+  name: pipeline-anyuid-role
+  apiGroup: rbac.authorization.k8s.io

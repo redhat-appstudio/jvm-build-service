@@ -17,6 +17,8 @@ spec:
         - name: hacbs-jvm-cache
           image: hacbs-jvm-cache
           imagePullPolicy: Always
+          securityContext:
+            runAsUser: 0
           env:
             - name: CACHE_PATH
               value: "cache"
@@ -55,3 +57,4 @@ spec:
             limits:
               memory: "700Mi"
               cpu: "500m"
+      serviceAccountName: hacbs-jvm-cache
