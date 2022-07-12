@@ -203,7 +203,7 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 				Value: "OK",
 			}, {
 				Name:  artifactbuild.TaskResultBuildInfo,
-				Value: `{"invocations": [["install"]]}`,
+				Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"ignoredArtifacts":[]}`,
 			}}
 			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
 			print(tr.Name)
@@ -215,7 +215,7 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 				if abr.Status.State == v1alpha1.ArtifactBuildStateBuilding {
 					return nil
 				}
-				return errors.New("not updated yet " + abr.Status.State)
+				return errors.New("not updated yet " + abr.Status.State + " " + abr.Status.Message + " " + abr.Status.SCMInfo.SCMURL)
 			}, timeout, interval).Should(Succeed())
 
 			abr := v1alpha1.ArtifactBuild{}
