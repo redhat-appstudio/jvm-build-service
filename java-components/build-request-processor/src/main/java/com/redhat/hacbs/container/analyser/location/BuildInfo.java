@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser;
+package com.redhat.hacbs.container.analyser.location;
 
 import java.util.ArrayList;
 import java.util.HashMap;

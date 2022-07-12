@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser;
+package com.redhat.hacbs.container.analyser.location;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,8 +28,8 @@ import com.redhat.hacbs.recipies.scm.ScmInfo;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@CommandLine.Command
-public class LookupBuildRecipesCommand implements Runnable {
+@CommandLine.Command(name = "lookup-scm")
+public class LookupScmLocationCommand implements Runnable {
 
     @CommandLine.Option(names = "--recipes", required = true, split = ",")
     List<String> recipeRepos;
