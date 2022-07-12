@@ -18,7 +18,7 @@ patches:
         path: /spec/template/spec/containers/0/env/-
         value:
           name: QUARKUS_S3_ENDPOINT_OVERRIDE
-          value: "http://localstack.default.svc.cluster.local:4572"
+          value: "http://localstack.jvm-build-service.svc.cluster.local:4572"
     target:
       kind: Deployment
       name: hacbs-jvm-cache

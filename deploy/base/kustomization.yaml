@@ -8,3 +8,4 @@ resources:
   - lookup-artifact-location-v0.1.yaml
   - run-maven-component-build-v0.1.yaml
   - run-gradle-component-build-v0.1.yaml
+  - rbac.yaml
