@@ -9,6 +9,8 @@ echo
 echo "👉 Running the pipeline with a sample project:"
 echo
 
+kubectl apply -f $DIR/openshift-specific-rbac.yaml || true
+
 kubectl create -f $DIR/run-build-discovery-task.yaml
 
 echo

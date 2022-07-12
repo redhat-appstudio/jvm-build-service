@@ -108,6 +108,8 @@ spec:
         - -revision=$(params.TAG)
     - name: settings
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
+      securityContext:
+        runAsUser: 0
       resources:
         requests:
           memory: "128Mi"
@@ -185,6 +187,8 @@ spec:
         fi
     - name: mvn-goals
       image: $(params.IMAGE)
+      securityContext:
+        runAsUser: 0
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
       args: [ "$(params.GOALS[*])" ]
       script: |
@@ -204,6 +208,8 @@ spec:
         /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" $@ "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy"
     - name: deploy-and-check-for-contaminates
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
+      securityContext:
+        runAsUser: 0
       script: |
         tar -czf $(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz -C $(workspaces.source.path)/hacbs-jvm-deployment-repo .
         curl --data-binary @$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz http://localhost:2000/deploy
@@ -219,6 +225,8 @@ spec:
           cpu: "300m"
   sidecars:
     - image: hacbs-jvm-sidecar
+      securityContext:
+        runAsUser: 0
       imagePullPolicy: Always
       env:
         - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
