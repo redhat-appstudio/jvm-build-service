@@ -27,8 +27,6 @@ rules:
     resources:
       - taskruns
       - taskruns/status
-      - pipelineruns
-      - pipelineruns/status
     verbs:
       - create
       - delete

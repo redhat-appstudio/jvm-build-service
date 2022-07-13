@@ -88,27 +88,27 @@ func createAbr(componentLookupKey types.NamespacedName) {
 
 }
 
-func getPrAbr() *tektonapi.PipelineRun {
+func getTrAbr() *tektonapi.TaskRun {
 	hash := artifactbuild.ABRLabelForGAV(ABRGav)
 	listOpts := &client.ListOptions{
 		Namespace:     TestNamespace,
 		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuild.ArtifactBuildIdLabel: hash}),
 	}
-	trl := tektonapi.PipelineRunList{}
-	var pr *tektonapi.PipelineRun
+	trl := tektonapi.TaskRunList{}
+	var tr *tektonapi.TaskRun
 	Eventually(func() bool {
 		Expect(k8sClient.List(ctx, &trl, listOpts)).ToNot(HaveOccurred())
 		//there should only be one, be guard against multiple
 		for _, current := range trl.Items {
-			if pr == nil || pr.CreationTimestamp.Before(&current.CreationTimestamp) {
+			if tr == nil || tr.CreationTimestamp.Before(&current.CreationTimestamp) {
 				tmp := current
-				pr = &tmp
+				tr = &tmp
 			}
 		}
-		return pr != nil
+		return tr != nil
 	}, timeout, interval).Should(BeTrue())
 
-	return pr
+	return tr
 }
 
 // deleteAbr deletes the specified component resource and verifies it was properly deleted
@@ -184,31 +184,31 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 		}, 30)
 
 		It("should move state to ArtifactBuildDiscovered on Success", func() {
-			pr := getPrAbr()
-			pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-			pr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
-				Name:  artifactbuild.PipelineResultScmTag,
+			tr := getTrAbr()
+			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+			tr.Status.TaskRunResults = []tektonapi.TaskRunResult{{
+				Name:  artifactbuild.TaskResultScmTag,
 				Value: "tag1",
 			}, {
-				Name:  artifactbuild.PipelineResultScmUrl,
+				Name:  artifactbuild.TaskResultScmUrl,
 				Value: "url1",
 			}, {
-				Name:  artifactbuild.PipelineResultScmType,
+				Name:  artifactbuild.TaskResultScmType,
 				Value: "git",
 			}, {
-				Name:  artifactbuild.PipelineResultContextPath,
+				Name:  artifactbuild.TaskResultContextPath,
 				Value: "/path1",
 			}, {
-				Name:  artifactbuild.PipelineResultMessage,
+				Name:  artifactbuild.TaskResultMessage,
 				Value: "OK",
 			}, {
-				Name:  artifactbuild.PipelineResultBuildInfo,
+				Name:  artifactbuild.TaskResultBuildInfo,
 				Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"ignoredArtifacts":[]}`,
 			}}
-			Expect(k8sClient.Status().Update(ctx, pr)).Should(Succeed())
-			print(pr.Name)
-			pr = getPrAbr()
-			Expect(pr.Status.CompletionTime).ToNot(BeNil())
+			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
+			print(tr.Name)
+			tr = getTrAbr()
+			Expect(tr.Status.CompletionTime).ToNot(BeNil())
 			Eventually(func() error {
 				abr := v1alpha1.ArtifactBuild{}
 				_ = k8sClient.Get(ctx, abrName, &abr)
