@@ -4,13 +4,11 @@ import java.util.List;
 
 public class BuildRecipe {
 
-    private String pipeline;
+    private String task;
     private String image;
     private List<String> commandLine;
 
     private String enforceVersion;
-
-    private List<String> ignoredArtifacts;
 
     public String getImage() {
         return image;
@@ -39,21 +37,12 @@ public class BuildRecipe {
         return this;
     }
 
-    public String getPipeline() {
-        return pipeline;
+    public String getTask() {
+        return task;
     }
 
-    public BuildRecipe setPipeline(String pipeline) {
-        this.pipeline = pipeline;
-        return this;
-    }
-
-    public List<String> getIgnoredArtifacts() {
-        return ignoredArtifacts;
-    }
-
-    public BuildRecipe setIgnoredArtifacts(List<String> ignoredArtifacts) {
-        this.ignoredArtifacts = ignoredArtifacts;
+    public BuildRecipe setTask(String task) {
+        this.task = task;
         return this;
     }
 }

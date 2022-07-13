@@ -37,6 +37,7 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 	}
 	options.NewCache = cache.BuilderWithOptions(cache.Options{
 		SelectorsByObject: cache.SelectorsByObject{
+			&pipelinev1beta1.TaskRun{}:     {Label: labels.SelectorFromSet(map[string]string{artifactbuild.TaskRunLabel: ""})},
 			&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
 			&v1alpha1.DependencyBuild{}:    {},
 			&v1alpha1.ArtifactBuild{}:      {},

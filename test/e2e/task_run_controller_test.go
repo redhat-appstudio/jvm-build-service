@@ -142,21 +142,21 @@ func deleteDb(componentLookupKey types.NamespacedName) {
 	}, timeout, interval).ShouldNot(Succeed())
 }
 
-func listPipelineRuns() *tektonapi.PipelineRunList {
-	taskRuns := &tektonapi.PipelineRunList{}
+func listTaskRuns() *tektonapi.TaskRunList {
+	taskRuns := &tektonapi.TaskRunList{}
 	labelSelectors := client.ListOptions{Raw: &metav1.ListOptions{}}
 	err := k8sClient.List(ctx, taskRuns, &labelSelectors)
 	Expect(err).ToNot(HaveOccurred())
 	return taskRuns
 }
 
-func deletePipelineRuns() {
-	for _, pipelineRun := range listPipelineRuns().Items {
+func deleteTaskRuns() {
+	for _, pipelineRun := range listTaskRuns().Items {
 		Expect(k8sClient.Delete(ctx, &pipelineRun)).Should(Succeed())
 	}
 }
 
-var _ = Describe("Test discovery PipelineRun complete updates ABR state", func() {
+var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 
 	var (
 		// All related to the component resources have the same key (but different type)
@@ -180,7 +180,7 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 		_ = AfterEach(func() {
 			deleteAbr(abrName)
 			deleteDb(dbName)
-			deletePipelineRuns()
+			deleteTaskRuns()
 		}, 30)
 
 		It("should move state to ArtifactBuildDiscovered on Success", func() {
@@ -238,7 +238,7 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 			}, timeout, interval).Should(Succeed())
 			Expect(k8sClient.Get(ctx, dbName, &db)).Should(Succeed())
 
-			tr := tektonapi.PipelineRun{}
+			tr := tektonapi.TaskRun{}
 			trKey := types.NamespacedName{
 				Namespace: TestNamespace,
 				Name:      fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes)),
