@@ -80,7 +80,6 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
             DescriptorDigest descriptorDigest = manifestAndDigest.getDigest();
 
             String digestHash = descriptorDigest.getHash();
-
             Optional<Path> repoRoot = getLocalCachePath(registryClient, manifest, digestHash);
             if (repoRoot.isPresent()) {
                 Path fileWeAreAfter = repoRoot.get().resolve(groupPath).resolve(artifact).resolve(version).resolve(target);
@@ -114,7 +113,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
             boolean enableHttpAndInsecureFailover) {
         ImageReference imageReference = ImageReference.of(registry, owner + File.separator + group, hashedGav);
         CredentialRetrieverFactory credentialRetrieverFactory = CredentialRetrieverFactory.forImage(imageReference,
-                (s) -> Log.info(s.getMessage()));
+                (s) -> Log.debug(s.getMessage()));
 
         RegistryClient.Factory factory = RegistryClient.factory(new EventHandlers.Builder().build(), registry,
                 owner + File.separator + group,
@@ -198,8 +197,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     }
 
     private void extractTarArchive(InputStream tarInput, String folder) throws IOException {
-        try (
-                GZIPInputStream inputStream = new GZIPInputStream(tarInput);
+        try (GZIPInputStream inputStream = new GZIPInputStream(tarInput);
                 TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream)) {
 
             for (TarArchiveEntry entry = tarArchiveInputStream.getNextTarEntry(); entry != null; entry = tarArchiveInputStream

@@ -1,11 +1,15 @@
 package com.redhat.hacbs.artifactcache;
 
+import static com.redhat.hacbs.artifactcache.services.ContainerRegistryStorageTest.GROUP;
+
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -18,12 +22,14 @@ import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
 import com.google.cloud.tools.jib.api.Containerizer;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.Jib;
+import com.google.cloud.tools.jib.api.JibContainerBuilder;
 import com.google.cloud.tools.jib.api.RegistryException;
 import com.google.cloud.tools.jib.api.RegistryImage;
 import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
 import com.redhat.hacbs.artifactcache.services.ContainerRegistryStorageTest;
 import com.redhat.hacbs.artifactcache.services.client.ShaUtil;
+import com.redhat.hacbs.artifactcache.test.util.HashUtil;
 
 import io.quarkus.logging.Log;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
@@ -60,7 +66,7 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
 
         Integer port = this.container.getMappedPort(5000);
 
-        Log.info("\n Test registry details:\n"
+        Log.debug("\n Test registry details:\n"
                 + "\t container name: " + this.container.getContainerName() + "\n"
                 + "\t host: " + this.container.getHost() + "\n"
                 + "\t port: " + port + "\n"
@@ -71,16 +77,6 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
 
     private void createTestData(String host, int port) throws IOException, InvalidImageReferenceException, InterruptedException,
             RegistryException, CacheDirectoryCreationException, ExecutionException {
-
-        Path testDataRoot = Paths.get("src/test/data/").toAbsolutePath();
-        Path layer1Path = testDataRoot.resolve("source");
-        Path layer2Path = testDataRoot.resolve("logs");
-        Path layer3Path = testDataRoot.resolve("artifacts");
-
-        Log.info("\n Test container details:\n"
-                + "\t layer 1 (source) " + layer1Path.toString() + "\n"
-                + "\t layer 2 (logs) " + layer2Path.toString() + "\n"
-                + "\t layer 3 (artifacts) " + layer3Path.toString());
 
         Containerizer containerizer = Containerizer.to(RegistryImage.named(host + ":" + port + "/" + OWNER + "/"
                 + ContainerRegistryStorageTest.GROUP + ":"
@@ -94,17 +90,61 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         }
 
         AbsoluteUnixPath imageRoot = AbsoluteUnixPath.get("/");
-        Jib.fromScratch()
+        JibContainerBuilder containerBuilder = Jib.fromScratch()
                 .setFormat(ImageFormat.OCI)
                 .addLabel("groupId", ContainerRegistryStorageTest.GROUP)
                 .addLabel("artifactId", "quarkus-parent")
                 .addLabel("version", ContainerRegistryStorageTest.VERSION)
-                .addLabel("description", "Quarkus")
-                .addLayer(List.of(layer1Path), imageRoot)
-                .addLayer(List.of(layer2Path), imageRoot)
-                .addLayer(List.of(layer3Path), imageRoot)
-                .containerize(containerizer);
+                .addLabel("description", "Quarkus");
 
+        List<Path> testLayers = createTestLayers();
+        for (Path layer : testLayers) {
+            containerBuilder = containerBuilder.addLayer(List.of(layer), imageRoot);
+        }
+
+        containerBuilder.containerize(containerizer);
+    }
+
+    private List<Path> createTestLayers() throws IOException {
+        Path testDataRoot = Paths.get("target/test-data/").toAbsolutePath();
+        Files.createDirectories(testDataRoot);
+
+        Path layer1Path = Paths.get(testDataRoot.toString(), "source");
+        Files.createDirectories(layer1Path);
+        Path layer2Path = Paths.get(testDataRoot.toString(), "logs");
+        Files.createDirectories(layer2Path);
+        Path layer3Path = Paths.get(testDataRoot.toString(), "artifacts");
+        Files.createDirectories(layer3Path);
+
+        Log.debug("\n Test container details:\n"
+                + "\t layer 1 (source) " + layer1Path.toString() + "\n"
+                + "\t layer 2 (logs) " + layer2Path.toString() + "\n"
+                + "\t layer 3 (artifacts) " + layer3Path.toString());
+
+        // Add data to artifacts
+        for (Map.Entry<String, String> artifactFile : ContainerRegistryStorageTest.ARTIFACT_FILE_MAP.entrySet()) {
+            String groupPath = GROUP.replace(ContainerRegistryStorageTest.DOT, File.separator);
+            Path testDir = Paths.get(layer3Path.toString(), groupPath, artifactFile.getKey(),
+                    ContainerRegistryStorageTest.VERSION);
+            Files.createDirectories(testDir);
+            Path testFile = Paths.get(testDir.toString(), artifactFile.getValue());
+
+            if (!Files.exists(testFile)) {
+                Files.createFile(testFile);
+            }
+            String testContent = "Just some data for " + artifactFile.getKey();
+            Files.writeString(testFile, testContent);
+
+            Path shaFile = Paths.get(testFile.toString() + ContainerRegistryStorageTest.DOT + SHA_1);
+            if (!Files.exists(shaFile)) {
+                Files.createFile(shaFile);
+            }
+
+            String sha1 = HashUtil.sha1(testContent);
+            Files.writeString(shaFile, sha1);
+        }
+
+        return List.of(layer1Path, layer2Path, layer3Path);
     }
 
     private void printTestRegistry(String host, int port) throws MalformedURLException, IOException {
@@ -122,7 +162,7 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         }
 
         JsonObject catalogs = new JsonObject(resultCatalog.toString());
-        Log.info("\n\n Test registry catalog:\n" + catalogs.encodePrettily() + "\n");
+        Log.debug("\n\n Test registry catalog:\n" + catalogs.encodePrettily() + "\n");
 
         // Print all the tags
         StringBuilder resultTags = new StringBuilder();
@@ -138,7 +178,7 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         }
 
         JsonObject tags = new JsonObject(resultTags.toString());
-        Log.info("\n\n Test registry " + ContainerRegistryStorageTest.GROUP + " tags:\n" + tags.encodePrettily() + "\n");
+        Log.debug("\n\n Test registry " + ContainerRegistryStorageTest.GROUP + " tags:\n" + tags.encodePrettily() + "\n");
 
         conn.disconnect();
     }
@@ -149,5 +189,5 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
     }
 
     private static final String OWNER = "hacbs";
-
+    private static final String SHA_1 = "sha1";
 }

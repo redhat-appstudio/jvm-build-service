@@ -23,14 +23,14 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTestResource(value = ContainerRegistryTestResourceManager.class, restrictToAnnotatedClass = true)
 @QuarkusTest
 public class ContainerRegistryStorageTest {
-    public static final String GROUP = "io.quarkus";
-    public static final String VERSION = "2.10.1.Final";
+    public static final String GROUP = "com.company.foo";
+    public static final String VERSION = "3.25.8";
     public static final Map<String, String> ARTIFACT_FILE_MAP = Map.of(
-            "quarkus-vertx-http", "quarkus-vertx-http-2.10.1.Final.jar",
-            "quarkus-bootstrap-core", "quarkus-bootstrap-core-2.10.1.Final.jar");
+            "foo-bar", "foobar-3.25.8.jar",
+            "foo-baz", "foobaz-3.25.8.jar");
+    public static final String DOT = ".";
 
     private static final String POLICY = "prefer-rebuilt";
-    private static final String DOT = ".";
     private static final String REBUILT = "rebuilt";
     private static final String HACBS = "hacbs";
 
