@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,6 +32,7 @@ public class ContainerRegistryStorageTest {
     private static final String POLICY = "prefer-rebuilt";
     private static final String DOT = ".";
     private static final String REBUILT = "rebuilt";
+    private static final String HACBS = "hacbs";
 
     @Inject
     LocalCache localCache;
@@ -40,45 +42,47 @@ public class ContainerRegistryStorageTest {
 
     @Test
     public void testContainerRegistryBasedArtifactStorage() throws Exception {
+        Path containerRegistryCacheRoot = path.resolve(HACBS);
         String groupPath = GROUP.replace(DOT, File.separator);
-        for (Map.Entry<String, String> artifactFile : ARTIFACT_FILE_MAP.entrySet()) {
-            testFile(groupPath, artifactFile.getKey(), artifactFile.getValue());
+        try {
+            for (Map.Entry<String, String> artifactFile : ARTIFACT_FILE_MAP.entrySet()) {
+                testFile(groupPath, artifactFile.getKey(), artifactFile.getValue(), containerRegistryCacheRoot);
+            }
+        } finally {
+            Files.walk(containerRegistryCacheRoot)
+                    .sorted(Comparator.reverseOrder())
+                    .map(Path::toFile)
+                    .forEach(File::delete);
         }
     }
 
-    private void testFile(String groupPath, String artifact, String file) throws IOException {
+    private void testFile(String groupPath, String artifact, String file, Path containerRegistryCacheRoot) throws IOException {
 
-        Path cachedFile = path.resolve(REBUILT).resolve(POLICY).resolve(groupPath).resolve(artifact).resolve(VERSION)
+        Path cachedFile = path.resolve(REBUILT).resolve(groupPath).resolve(artifact).resolve(VERSION)
                 .resolve(file);
 
-        try {
-            Optional<RepositoryClient.RepositoryResult> artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact,
-                    VERSION,
-                    file);
+        Optional<RepositoryClient.RepositoryResult> artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact,
+                VERSION,
+                file);
 
-            if (artifactFile.isPresent()) {
+        if (artifactFile.isPresent()) {
 
-                RepositoryClient.RepositoryResult repositoryResult = artifactFile.get();
+            RepositoryClient.RepositoryResult repositoryResult = artifactFile.get();
 
-                String calculatedSha1 = HashUtil.sha1(repositoryResult.data.readAllBytes());
-                String expectedSha1 = repositoryResult.expectedSha.orElse("");
+            String calculatedSha1 = HashUtil.sha1(repositoryResult.data.readAllBytes());
+            String expectedSha1 = repositoryResult.expectedSha.orElse("");
 
-                Assertions.assertEquals(expectedSha1, calculatedSha1);
-                Assertions.assertTrue(Files.exists(cachedFile));
+            Assertions.assertEquals(expectedSha1, calculatedSha1);
+            Assertions.assertFalse(Files.exists(cachedFile)); // We do not use LocalCache
+            Assertions.assertTrue(Files.exists(containerRegistryCacheRoot));
 
-                // these files should still have been cached
-                artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact, VERSION, file);
-                repositoryResult = artifactFile.get();
-                Assertions.assertNotNull(repositoryResult.data);
+            // these files should still have been cached
+            artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact, VERSION, file);
+            repositoryResult = artifactFile.orElseThrow();
+            Assertions.assertNotNull(repositoryResult.data);
 
-                Assertions.assertTrue(Files.exists(cachedFile));
-            } else {
-                Assertions.fail("Could not download [" + file + "]");
-            }
-
-        } finally {
-            Files.delete(cachedFile);
+        } else {
+            Assertions.fail("Could not download [" + file + "]");
         }
-
     }
 }

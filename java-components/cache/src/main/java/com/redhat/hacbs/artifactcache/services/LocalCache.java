@@ -119,7 +119,7 @@ public class LocalCache implements RepositoryClient {
                         }
                     } else {
                         Optional<RepositoryResult> result = newFile.download(clientInvocation, repo.getClient(), actual,
-                                null, path.resolve(repo.getName()).resolve(DOWNLOADS));
+                                null, path.resolve(repo.getName()).resolve(DOWNLOADS), repo.getType());
                         if (result.isPresent()) {
                             return Optional.of(new RepositoryResult(result.get().getData(), result.get().getSize(),
                                     result.get().getExpectedSha(), metadata));
@@ -167,44 +167,52 @@ public class LocalCache implements RepositoryClient {
         }
 
         Optional<RepositoryResult> download(Function<RepositoryClient, Optional<RepositoryResult>> clientInvocation,
-                RepositoryClient repositoryClient, Path downloadTarget, Path missingFileMarker, Path downloadTempDir) {
+                RepositoryClient repositoryClient,
+                Path downloadTarget,
+                Path missingFileMarker,
+                Path downloadTempDir,
+                RepositoryType repositoryType) {
             try {
-                var result = clientInvocation.apply(repositoryClient);
-                if (result.isPresent()) {
-                    MessageDigest md = MessageDigest.getInstance("SHA-1");
-                    Path tempFile = Files.createTempFile(downloadTempDir, "download", ".part");
-                    try (InputStream in = result.get().getData(); OutputStream out = Files.newOutputStream(tempFile)) {
-                        byte[] buffer = new byte[1024];
-                        int r;
-                        while ((r = in.read(buffer)) > 0) {
-                            out.write(buffer, 0, r);
-                            md.update(buffer, 0, r);
+                Optional<RepositoryResult> result = clientInvocation.apply(repositoryClient);
+                if (!repositoryType.shouldIgnoreLocalCache()) {
+                    if (result.isPresent()) {
+                        MessageDigest md = MessageDigest.getInstance("SHA-1");
+                        Path tempFile = Files.createTempFile(downloadTempDir, "download", ".part");
+                        try (InputStream in = result.get().getData(); OutputStream out = Files.newOutputStream(tempFile)) {
+                            byte[] buffer = new byte[1024];
+                            int r;
+                            while ((r = in.read(buffer)) > 0) {
+                                out.write(buffer, 0, r);
+                                md.update(buffer, 0, r);
+                            }
                         }
-                    }
-                    if (result.get().getExpectedSha().isPresent()) {
-                        byte[] digest = md.digest();
-                        StringBuilder sb = new StringBuilder(40);
-                        for (int i = 0; i < digest.length; ++i) {
-                            sb.append(Integer.toHexString((digest[i] & 0xFF) | 0x100).substring(1, 3));
+                        if (result.get().getExpectedSha().isPresent()) {
+                            byte[] digest = md.digest();
+                            StringBuilder sb = new StringBuilder(40);
+                            for (int i = 0; i < digest.length; ++i) {
+                                sb.append(Integer.toHexString((digest[i] & 0xFF) | 0x100).substring(1, 3));
+                            }
+                            if (!sb.toString().equalsIgnoreCase(result.get().getExpectedSha().get())) {
+                                //TODO: handle this better
+                                Log.error("Filed to cache " + downloadTarget + " calculated sha '" + sb.toString()
+                                        + "' did not match expected '" + result.get().getExpectedSha().get() + "'");
+                                return clientInvocation.apply(repositoryClient);
+                            }
                         }
-                        if (!sb.toString().equalsIgnoreCase(result.get().getExpectedSha().get())) {
-                            //TODO: handle this better
-                            Log.error("Filed to cache " + downloadTarget + " calculated sha '" + sb.toString()
-                                    + "' did not match expected '" + result.get().getExpectedSha().get() + "'");
-                            return clientInvocation.apply(repositoryClient);
-                        }
-                    }
 
-                    Files.createDirectories(downloadTarget.getParent());
-                    Files.move(tempFile, downloadTarget, StandardCopyOption.ATOMIC_MOVE);
-                    return Optional.of(new RepositoryResult(Files.newInputStream(downloadTarget), result.get().getSize(),
-                            result.get().getExpectedSha(), result.get().getMetadata()));
-                } else if (missingFileMarker != null) {
-                    Files.createDirectories(missingFileMarker.getParent());
-                    Files.createFile(missingFileMarker);
+                        Files.createDirectories(downloadTarget.getParent());
+                        Files.move(tempFile, downloadTarget, StandardCopyOption.ATOMIC_MOVE);
+                        return Optional.of(new RepositoryResult(Files.newInputStream(downloadTarget), result.get().getSize(),
+                                result.get().getExpectedSha(), result.get().getMetadata()));
+                    } else if (missingFileMarker != null) {
+                        Files.createDirectories(missingFileMarker.getParent());
+                        Files.createFile(missingFileMarker);
+                        return Optional.empty();
+                    }
                     return Optional.empty();
+                } else {
+                    return result;
                 }
-                return Optional.empty();
             } catch (ClientWebApplicationException e) {
                 if (e.getResponse().getStatus() == 404) {
                     return Optional.empty();

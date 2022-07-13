@@ -1,24 +1,24 @@
 package com.redhat.hacbs.artifactcache.services.client.ociregistry;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
 
 import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.DescriptorDigest;
@@ -44,14 +44,21 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     private final String registry;
     private final String owner;
     private final boolean enableHttpAndInsecureFailover;
-
-    // TODO: We can also use the digestHash as the temp root folder then we do not need this ?
-    private final Map<String, Path> imageCache = new ConcurrentHashMap<>();
+    private final Path cacheRoot;
 
     public OCIRegistryRepositoryClient(String registry, String owner, boolean enableHttpAndInsecureFailover) {
         this.registry = registry;
         this.owner = owner;
         this.enableHttpAndInsecureFailover = enableHttpAndInsecureFailover;
+
+        Config config = ConfigProvider.getConfig();
+        Path cachePath = config.getValue("cache-path", Path.class);
+        try {
+            this.cacheRoot = Files.createDirectories(Paths.get(cachePath.toAbsolutePath().toString(), HACBS));
+            Log.debugf(" Using [%s] as local cache folder", cacheRoot);
+        } catch (IOException ex) {
+            throw new RuntimeException("could not create cache directory", ex);
+        }
     }
 
     @Override
@@ -74,22 +81,24 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
 
             String digestHash = descriptorDigest.getHash();
 
-            Path repoRoot = getLocalCachePath(registryClient, manifest, digestHash);
-            Path fileWeAreAfter = repoRoot.resolve(groupPath).resolve(artifact).resolve(version).resolve(target);
+            Optional<Path> repoRoot = getLocalCachePath(registryClient, manifest, digestHash);
+            if (repoRoot.isPresent()) {
+                Path fileWeAreAfter = repoRoot.get().resolve(groupPath).resolve(artifact).resolve(version).resolve(target);
 
-            boolean exists = Files.exists(fileWeAreAfter);
-            if (exists) {
-                byte[] contentWeAreAfter = Files.readAllBytes(fileWeAreAfter);
-                ByteArrayInputStream bais = new ByteArrayInputStream(contentWeAreAfter);
-                return Optional.of(new RepositoryResult(bais, Files.size(fileWeAreAfter), getSha1(fileWeAreAfter), Map.of()));
-            } else {
-                Log.warnf("Key %s:%s:%s not found", group, artifact, version);
+                boolean exists = Files.exists(fileWeAreAfter);
+                if (exists) {
+                    return Optional.of(
+                            new RepositoryResult(Files.newInputStream(fileWeAreAfter), Files.size(fileWeAreAfter),
+                                    getSha1(fileWeAreAfter),
+                                    Map.of()));
+                } else {
+                    Log.warnf("Key %s:%s:%s not found", group, artifact, version);
+                }
             }
-
         } catch (IOException | RegistryException ioe) {
             throw new RuntimeException(ioe);
         } finally {
-            Log.warnf("OCI registry request to %s:%s:%s took %sms", group, artifact, version,
+            Log.debugf("OCI registry request to %s:%s:%s took %sms", group, artifact, version,
                     System.currentTimeMillis() - time);
         }
 
@@ -116,7 +125,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
             if (credential.isPresent()) {
                 factory.setCredential(credential.get());
             } else {
-                Log.warn("No credential found for " + registry + ", proceeding without any");
+                Log.debugf("No credential found for %s, proceeding without any", registry);
             }
         } catch (CredentialRetrievalException cre) {
             throw new RuntimeException(cre);
@@ -127,59 +136,56 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         return registryClient;
     }
 
-    private Path getLocalCachePath(RegistryClient registryClient, ManifestTemplate manifest, String digestHash)
+    private Optional<Path> getLocalCachePath(RegistryClient registryClient, ManifestTemplate manifest, String digestHash)
             throws IOException {
-        if (imageCache.containsKey(digestHash)) {
-            return pullStale(registryClient, manifest, digestHash);
+        Path digestHashPath = cacheRoot.resolve(digestHash);
+        if (existInLocalCache(digestHashPath)) {
+            return Optional.of(Paths.get(digestHashPath.toString(), ARTIFACTS));
         } else {
-            return pullFreshAndCache(registryClient, manifest, digestHash);
+            return pullFromRemoteAndCache(registryClient, manifest, digestHash, digestHashPath);
         }
     }
 
-    private Path pullStale(RegistryClient registryClient, ManifestTemplate manifest, String digestHash) throws IOException {
-        Path path = imageCache.get(digestHash);
-        if (Files.exists(path)) {
-            return path;
-        } else {
-            return pullFreshAndCache(registryClient, manifest, digestHash);
-        }
-
-    }
-
-    private Path pullFreshAndCache(RegistryClient registryClient, ManifestTemplate manifest, String digestHash)
+    private Optional<Path> pullFromRemoteAndCache(RegistryClient registryClient, ManifestTemplate manifest, String digestHash,
+            Path digestHashPath)
             throws IOException {
 
         String manifestMediaType = manifest.getManifestMediaType();
 
         if (OCI_MEDIA_TYPE.equalsIgnoreCase(manifestMediaType)) {
             List<BuildableManifestTemplate.ContentDescriptorTemplate> layers = ((OciManifestTemplate) manifest).getLayers();
+            if (layers.size() == 3) {
+                // Layer 2 is artifacts
+                BuildableManifestTemplate.ContentDescriptorTemplate artifactsLayer = layers.get(2);
 
-            // Layer 2 is artifacts
-            BuildableManifestTemplate.ContentDescriptorTemplate artifactsLayer = layers.get(2);
+                Blob blob = registryClient.pullBlob(artifactsLayer.getDigest(), s -> {
+                }, s -> {
+                });
 
-            Blob blob = registryClient.pullBlob(artifactsLayer.getDigest(), s -> {
-            }, s -> {
-            });
+                Path outputPath = Files.createDirectories(digestHashPath);
 
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            blob.writeTo(out);
-
-            // Extract to temp (TODO: Configure this ?)
-            String osTmpDir = System.getProperty(SYS_PROP_TEMP_DIR);
-            Path tempFullPath = Paths.get(osTmpDir, HACBS);
-            Path outputPath = Files.createDirectories(tempFullPath);
-            extractTarArchive(out.toByteArray(), outputPath.toString());
-            Path repoRoot = Paths.get(outputPath.toString(), ARTIFACTS);
-
-            imageCache.put(digestHash, repoRoot);
-
-            return repoRoot;
+                Path tarFile = Files.createFile(Paths.get(outputPath.toString(), digestHash + ".tar"));
+                try (OutputStream tarOutputStream = Files.newOutputStream(tarFile)) {
+                    blob.writeTo(Files.newOutputStream(tarFile));
+                }
+                try (InputStream tarInput = Files.newInputStream(tarFile)) {
+                    extractTarArchive(tarInput, outputPath.toString());
+                    return Optional.of(Paths.get(outputPath.toString(), ARTIFACTS));
+                }
+            } else {
+                Log.warnf("Unexpexted layer size %d. We expext 3", layers.size());
+                return Optional.empty();
+            }
         } else {
             // TODO: handle docker type?
             // application/vnd.docker.distribution.manifest.v2+json = V22ManifestTemplate
             throw new RuntimeException(
                     "Wrong ManifestMediaType type. We support " + OCI_MEDIA_TYPE + ", but got " + manifestMediaType);
         }
+    }
+
+    private boolean existInLocalCache(Path digestHashPath) {
+        return Files.exists(digestHashPath) && Files.isDirectory(digestHashPath);
     }
 
     private Optional<String> getSha1(Path file) throws IOException {
@@ -191,9 +197,9 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         return Optional.empty();
     }
 
-    private void extractTarArchive(byte[] filecontents, String folder) throws IOException {
+    private void extractTarArchive(InputStream tarInput, String folder) throws IOException {
         try (
-                GZIPInputStream inputStream = new GZIPInputStream(new ByteArrayInputStream(filecontents));
+                GZIPInputStream inputStream = new GZIPInputStream(tarInput);
                 TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream)) {
 
             for (TarArchiveEntry entry = tarArchiveInputStream.getNextTarEntry(); entry != null; entry = tarArchiveInputStream
@@ -220,7 +226,6 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         }
     }
 
-    private static final String SYS_PROP_TEMP_DIR = "java.io.tmpdir";
     private static final String HACBS = "hacbs";
     private static final String ARTIFACTS = "artifacts";
     private static final String DOT = ".";
