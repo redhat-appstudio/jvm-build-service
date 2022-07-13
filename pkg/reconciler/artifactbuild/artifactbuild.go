@@ -28,18 +28,18 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout   = 300 * time.Second
-	PipelineRunLabel = "jvmbuildservice.io/pipelinerun"
+	contextTimeout = 300 * time.Second
+	TaskRunLabel   = "jvmbuildservice.io/taskrun"
 	// DependencyBuildContaminatedBy label prefix that indicates that a dependency build was contaminated by this artifact
 	DependencyBuildContaminatedBy = "jvmbuildservice.io/contaminated-"
 	DependencyBuildIdLabel        = "jvmbuildservice.io/dependencybuild-id"
 	ArtifactBuildIdLabel          = "jvmbuildservice.io/abr-id"
-	PipelineResultScmUrl          = "scm-url"
-	PipelineResultScmTag          = "scm-tag"
-	PipelineResultScmType         = "scm-type"
-	PipelineResultContextPath     = "context"
-	PipelineResultBuildInfo       = "build-info"
-	PipelineResultMessage         = "message"
+	TaskResultScmUrl              = "scm-url"
+	TaskResultScmTag              = "scm-tag"
+	TaskResultScmType             = "scm-type"
+	TaskResultContextPath         = "context"
+	TaskResultBuildInfo           = "build-info"
+	TaskResultMessage             = "message"
 	DeleteTaskRunPodsEnv          = "JVM_DELETE_TASKRUN_PODS"
 )
 
@@ -83,19 +83,20 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		}
 	}
 
-	pr := pipelinev1beta1.PipelineRun{}
-	trerr := r.client.Get(ctx, request.NamespacedName, &pr)
+	tr := pipelinev1beta1.TaskRun{}
+	trerr := r.client.Get(ctx, request.NamespacedName, &tr)
 	if trerr != nil {
 		if !errors.IsNotFound(trerr) {
-			log.Error(trerr, "Reconcile key %s as pipelinerun unexpected error", request.NamespacedName.String())
+			log.Error(trerr, "Reconcile key %s as taskrun unexpected error", request.NamespacedName.String())
 			return ctrl.Result{}, trerr
 		}
 	}
 
 	if trerr != nil && dberr != nil && abrerr != nil {
 		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
-		msg := "Reconcile key received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted): " + request.NamespacedName.String()
+		msg := "Reconcile key received not found errors for taskruns, dependencybuilds, artifactbuilds (probably deleted): " + request.NamespacedName.String()
 		log.Info(msg)
+		//log.Info("Reconcile key %s received not found errors for taskruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
 		return ctrl.Result{}, nil
 	}
 
@@ -104,7 +105,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		return r.handleDependencyBuildReceived(ctx, &db)
 
 	case trerr == nil:
-		return r.handlePipelineRunReceived(ctx, &pr)
+		return r.handleTaskRunReceived(ctx, &tr)
 
 	case abrerr == nil:
 		switch abr.Status.State {
@@ -122,15 +123,15 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
-	if pr.Status.CompletionTime == nil {
+func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
+	if tr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
 	}
-	ownerRefs := pr.GetOwnerReferences()
+	ownerRefs := tr.GetOwnerReferences()
 	if ownerRefs == nil || len(ownerRefs) == 0 {
 		msg := "taskrun missing onwerrefs %s:%s"
-		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
+		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, msg, tr.Namespace, tr.Name)
+		log.Info(msg, tr.Namespace, tr.Name)
 		return reconcile.Result{}, nil
 	}
 	ownerName := ""
@@ -141,43 +142,47 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		}
 	}
 	if len(ownerName) == 0 {
-		msg := "pipelinerun missing artifactbuilds ownerrefs %s:%s"
-		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
+		msg := "taskrun missing artifactbuilds ownerrefs %s:%s"
+		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, "MissingOwner", msg, tr.Namespace, tr.Name)
+		log.Info(msg, tr.Namespace, tr.Name)
 		return reconcile.Result{}, nil
 	}
 
-	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
+	key := types.NamespacedName{Namespace: tr.Namespace, Name: ownerName}
 	abr := v1alpha1.ArtifactBuild{}
 	err := r.client.Get(ctx, key, &abr)
 	if err != nil {
-		msg := "get for pipelinerun %s:%s owning abr %s:%s yielded error %s"
-		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error())
-		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error()))
+		msg := "get for taskrun %s:%s owning abr %s:%s yielded error %s"
+		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, msg, tr.Namespace, tr.Name, tr.Namespace, ownerName, err.Error())
+		log.Error(err, fmt.Sprintf(msg, tr.Namespace, tr.Name, tr.Namespace, ownerName, err.Error()))
 		return reconcile.Result{}, err
 	}
 
 	//we grab the results here and put them on the ABR
-	for _, res := range pr.Status.PipelineResults {
+	for _, res := range tr.Status.TaskRunResults {
 		switch res.Name {
-		case PipelineResultScmUrl:
+		case TaskResultScmUrl:
 			abr.Status.SCMInfo.SCMURL = res.Value
-		case PipelineResultScmTag:
+		case TaskResultScmTag:
 			abr.Status.SCMInfo.Tag = res.Value
-		case PipelineResultScmType:
+		case TaskResultScmType:
 			abr.Status.SCMInfo.SCMType = res.Value
-		case PipelineResultMessage:
+		case TaskResultMessage:
 			abr.Status.Message = res.Value
-		case PipelineResultContextPath:
+		case TaskResultContextPath:
 			abr.Status.SCMInfo.Path = res.Value
-		case PipelineResultBuildInfo:
+		case TaskResultBuildInfo:
 			abr.Status.BuildInfo = res.Value
 		}
 	}
 	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
-		err := r.client.Delete(ctx, pr)
-		if err != nil {
-			return reconcile.Result{}, err
+		pod := corev1.Pod{}
+		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
+		if poderr == nil {
+			err := r.client.Delete(ctx, &pod)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 	}
 
@@ -185,7 +190,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 	//once this object has been created its resolver takes over
 	if abr.Status.SCMInfo.Tag == "" {
 		//this is a failure
-		r.eventRecorder.Eventf(&abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuild %s/%s had an empty tag field %s", abr.Namespace, abr.Name, pr.Status.PipelineResults)
+		r.eventRecorder.Eventf(&abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuild %s/%s had an empty tag field %s", abr.Namespace, abr.Name, tr.Status.TaskRunResults)
 		abr.Status.State = v1alpha1.ArtifactBuildStateMissing
 		return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
 	}
@@ -238,11 +243,11 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 
 	// create task run
-	tr := pipelinev1beta1.PipelineRun{}
-	tr.Spec.PipelineRef = &pipelinev1beta1.PipelineRef{Name: "lookup-artifact-location"}
+	tr := pipelinev1beta1.TaskRun{}
+	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.ClusterTaskKind}
 	tr.Namespace = abr.Namespace
 	tr.GenerateName = abr.Name + "-scm-discovery-"
-	tr.Labels = map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV), PipelineRunLabel: ""}
+	tr.Labels = map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV), TaskRunLabel: ""}
 	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: "GAV", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: abr.Spec.GAV}})
 	if err := controllerutil.SetOwnerReference(abr, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
@@ -330,10 +335,10 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
 			for _, command := range unmarshalled.Invocations {
 				if maven {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Pipeline: "run-maven-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-maven-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
 				}
 				if gradle {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Pipeline: "run-gradle-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-gradle-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
 				}
 			}
 		}

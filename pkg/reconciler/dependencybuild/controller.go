@@ -36,26 +36,26 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 				return true
 			},
 		})).
-		Watches(&source.Kind{Type: &v1beta1.PipelineRun{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
-			pipelineRun := o.(*v1beta1.PipelineRun)
+		Watches(&source.Kind{Type: &v1beta1.TaskRun{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
+			taskRun := o.(*v1beta1.TaskRun)
 
 			// check if the TaskRun is related to DependencyBuild
-			if pipelineRun.GetLabels() == nil {
+			if taskRun.GetLabels() == nil {
 				return []reconcile.Request{}
 			}
-			_, ok := pipelineRun.GetLabels()[artifactbuild.PipelineRunLabel]
+			_, ok := taskRun.GetLabels()[artifactbuild.TaskRunLabel]
 			if !ok {
 				return []reconcile.Request{}
 			}
-			_, ok = pipelineRun.GetLabels()[artifactbuild.DependencyBuildIdLabel]
+			_, ok = taskRun.GetLabels()[artifactbuild.DependencyBuildIdLabel]
 			if !ok {
 				return []reconcile.Request{}
 			}
 			return []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
-						Name:      pipelineRun.Name,
-						Namespace: pipelineRun.Namespace,
+						Name:      taskRun.Name,
+						Namespace: taskRun.Namespace,
 					},
 				},
 			}

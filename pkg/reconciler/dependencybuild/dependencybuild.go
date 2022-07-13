@@ -30,14 +30,14 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout           = 300 * time.Second
-	PipelineScmUrl           = "URL"
-	PipelineScmTag           = "TAG"
-	PipelinePath             = "CONTEXT_DIR"
-	PipelineImage            = "IMAGE"
-	PipelineGoals            = "GOALS"
-	PipelineEnforceVersion   = "ENFORCE_VERSION"
-	PipelineIgnoredArtifacts = "IGNORED_ARTIFACTS"
+	contextTimeout       = 300 * time.Second
+	TaskScmUrl           = "URL"
+	TaskScmTag           = "TAG"
+	TaskPath             = "CONTEXT_DIR"
+	TaskImage            = "IMAGE"
+	TaskGoals            = "GOALS"
+	TaskEnforceVersion   = "ENFORCE_VERSION"
+	TaskIgnoredArtifacts = "IGNORED_ARTIFACTS"
 )
 
 var (
@@ -72,8 +72,8 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 	}
 
-	pr := pipelinev1beta1.PipelineRun{}
-	trerr := r.client.Get(ctx, request.NamespacedName, &pr)
+	tr := pipelinev1beta1.TaskRun{}
+	trerr := r.client.Get(ctx, request.NamespacedName, &tr)
 	if trerr != nil {
 		if !errors.IsNotFound(trerr) {
 			log.Error(trerr, "Reconcile key %s as taskrun unexpected error", request.NamespacedName.String())
@@ -121,7 +121,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-		return r.handlePipelineRunReceived(ctx, &pr)
+		return r.handleTaskRunReceived(ctx, &tr)
 	}
 
 	return reconcile.Result{}, nil
@@ -169,39 +169,39 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
-	pr := pipelinev1beta1.PipelineRun{}
-	pr.Namespace = db.Namespace
+	tr := pipelinev1beta1.TaskRun{}
+	tr.Namespace = db.Namespace
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
 	// we move the db out of building
-	pr.Name = currentDependencyBuildTaskName(db)
-	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: ""}
+	tr.Name = currentDependencyBuildTaskName(db)
+	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: ""}
 
-	pr.Spec.PipelineRef = &pipelinev1beta1.PipelineRef{Name: db.Status.CurrentBuildRecipe.Pipeline}
-	pr.Spec.Params = []pipelinev1beta1.Param{
-		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
-		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
-		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
-		{Name: PipelineImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
-		{Name: PipelineGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
-		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
-		{Name: PipelineIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
+	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: db.Status.CurrentBuildRecipe.Task, Kind: pipelinev1beta1.ClusterTaskKind}
+	tr.Spec.Params = []pipelinev1beta1.Param{
+		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
+		{Name: TaskPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
+		{Name: TaskImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
+		{Name: TaskGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
+		{Name: TaskEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
+		{Name: TaskIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
 	}
-	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
+	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: "source", EmptyDir: &v1.EmptyDirVolumeSource{}},
 	}
-	pr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
-	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
+	tr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
+	if err := controllerutil.SetOwnerReference(db, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 	//now we submit the build
-	if err := r.client.Create(ctx, &pr); err != nil {
+	if err := r.client.Create(ctx, &tr); err != nil {
 		if errors.IsAlreadyExists(err) {
-			log.V(4).Info("handleStateBuilding: taskrun %s:%s already exists, not retrying", pr.Namespace, pr.Name)
+			log.V(4).Info("handleStateBuilding: taskrun %s:%s already exists, not retrying", tr.Namespace, tr.Name)
 			return reconcile.Result{}, nil
 		}
-		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "PipelineRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
+		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "TaskRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
 		return reconcile.Result{}, err
 	}
 
@@ -212,22 +212,22 @@ func currentDependencyBuildTaskName(db *v1alpha1.DependencyBuild) string {
 	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 }
 
-func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
-	if pr.Status.CompletionTime != nil {
+func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
+	if tr.Status.CompletionTime != nil {
 		// get db
-		ownerRefs := pr.GetOwnerReferences()
+		ownerRefs := tr.GetOwnerReferences()
 		if ownerRefs == nil || len(ownerRefs) == 0 {
 			msg := "taskrun missing onwerrefs %s:%s"
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
-			log.Info(msg, pr.Namespace, pr.Name)
+			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name)
+			log.Info(msg, tr.Namespace, tr.Name)
 			return reconcile.Result{}, nil
 		}
 		if len(ownerRefs) > 1 {
 			// workaround for event/logging methods that can only take string args
 			count := fmt.Sprintf("%d", len(ownerRefs))
 			msg := "taskrun %s:%s has %s ownerrefs but only using the first dependencybuild ownerfef"
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, count)
-			log.Info(msg, pr.Namespace, pr.Name, count)
+			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name, count)
+			log.Info(msg, tr.Namespace, tr.Name, count)
 		}
 		// even though we filter out artifactbuild taskruns, let's check the kind and make sure
 		// we use a dependencybuild ownerref
@@ -239,37 +239,37 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 		}
 		if ownerRef == nil {
 			msg := "taskrun missing dependencybuild onwerrefs %s:%s"
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
-			log.Info(msg, pr.Namespace, pr.Name)
+			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name)
+			log.Info(msg, tr.Namespace, tr.Name)
 			return reconcile.Result{}, nil
 		}
 
-		key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerRef.Name}
+		key := types.NamespacedName{Namespace: tr.Namespace, Name: ownerRef.Name}
 		db := v1alpha1.DependencyBuild{}
 		err := r.client.Get(ctx, key, &db)
 		if err != nil {
 			msg := "get for taskrun %s:%s owning db %s:%s yielded error %s"
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error())
-			log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error()))
+			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name, tr.Namespace, ownerRef.Name, err.Error())
+			log.Error(err, fmt.Sprintf(msg, tr.Namespace, tr.Name, tr.Namespace, ownerRef.Name, err.Error()))
 			return reconcile.Result{}, err
 		}
 
-		if pr.Name == db.Status.LastCompletedBuildPipelineRun || pr.Name != currentDependencyBuildTaskName(&db) {
+		if tr.Name == db.Status.LastCompletedBuildTaskRun || tr.Name != currentDependencyBuildTaskName(&db) {
 			//already handled
 			return reconcile.Result{}, nil
 		}
-		db.Status.LastCompletedBuildPipelineRun = pr.Name
+		db.Status.LastCompletedBuildTaskRun = tr.Name
 		//the pr is done, lets potentially update the dependency build
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
 
 		var contaminates []string
-		for _, r := range pr.Status.PipelineResults {
+		for _, r := range tr.Status.TaskRunResults {
 			if r.Name == "contaminants" && len(r.Value) > 0 {
 				contaminates = strings.Split(r.Value, ",")
 			}
 		}
-		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+		success := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
 			if len(contaminates) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
@@ -285,9 +285,13 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		}
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-			err := r.client.Delete(ctx, pr)
-			if err != nil {
-				return reconcile.Result{}, err
+			pod := v1.Pod{}
+			poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
+			if poderr == nil {
+				err := r.client.Delete(ctx, &pod)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
 			}
 		}
 		return reconcile.Result{}, r.client.Status().Update(ctx, &db)

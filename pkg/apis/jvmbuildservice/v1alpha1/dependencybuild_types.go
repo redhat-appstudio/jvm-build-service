@@ -32,8 +32,8 @@ type DependencyBuildStatus struct {
 	PotentialBuildRecipes []*BuildRecipe `json:"potentialBuildRecipes,omitempty"`
 	//FailedBuildRecipes recipes that resulted in a failure
 	//if the current state is failed this may include the current BuildRecipe
-	FailedBuildRecipes            []*BuildRecipe `json:"failedBuildRecipes,omitempty"`
-	LastCompletedBuildPipelineRun string         `json:"lastCompletedBuildPipelineRun,omitempty"`
+	FailedBuildRecipes        []*BuildRecipe `json:"failedBuildRecipes,omitempty"`
+	LastCompletedBuildTaskRun string         `json:"lastCompletedBuildTaskRun,omitempty"`
 }
 
 // +genclient
@@ -63,7 +63,7 @@ type DependencyBuildList struct {
 }
 
 type BuildRecipe struct {
-	Pipeline         string   `json:"pipeline,omitempty"`
+	Task             string   `json:"task,omitempty"`
 	Image            string   `json:"image,omitempty"`
 	CommandLine      []string `json:"commandLine,omitempty"`
 	EnforceVersion   string   `json:"enforceVersion,omitempty"`
