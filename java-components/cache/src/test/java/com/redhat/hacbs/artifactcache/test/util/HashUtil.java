@@ -26,5 +26,4 @@ public final class HashUtil {
             throw new IllegalStateException(e);
         }
     }
-
 }
