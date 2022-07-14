@@ -165,7 +165,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
 
                 Path tarFile = Files.createFile(Paths.get(outputPath.toString(), digestHash + ".tar"));
                 try (OutputStream tarOutputStream = Files.newOutputStream(tarFile)) {
-                    blob.writeTo(Files.newOutputStream(tarFile));
+                    blob.writeTo(tarOutputStream);
                 }
                 try (InputStream tarInput = Files.newInputStream(tarFile)) {
                     extractTarArchive(tarInput, outputPath.toString());
