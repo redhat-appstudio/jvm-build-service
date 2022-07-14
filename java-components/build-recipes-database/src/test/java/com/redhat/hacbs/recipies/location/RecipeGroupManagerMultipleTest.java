@@ -31,12 +31,12 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testGroupIdBasedRecipe() {
         GAV req = new GAV("io.test", "test", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/test/test.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
         req = new GAV("io.test.acme", "test-acme", "1.0");
-        result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/test-override/test-acme.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -45,13 +45,13 @@ public class RecipeGroupManagerMultipleTest {
     public void testVersionOverride() {
         //the original override should still work
         GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart1");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
         //but now we have added a new one as well
         req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart2");
-        result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -60,12 +60,12 @@ public class RecipeGroupManagerMultipleTest {
     public void testArtifactOverride() {
         //this should still work as normal, it is not overriden
         GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
         req = new GAV("io.test", "test-gizmo", "1.0");
-        result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/test/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -74,12 +74,12 @@ public class RecipeGroupManagerMultipleTest {
     public void testArtifactAndVersionOverride() {
         //same here
         GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-stuart1");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
         req = new GAV("io.test", "test-gizmo", "1.0-stuart1");
-        result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -87,7 +87,7 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testNoGroupLevelBuild() {
         GAV req = new GAV("io.vertx", "not-real", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -96,7 +96,7 @@ public class RecipeGroupManagerMultipleTest {
     @Disabled("Redirects are currently scoped to the repository")
     public void testArtifactLevelRedirect() {
         GAV req = new GAV("io.vertx", "vertx-web", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -105,7 +105,7 @@ public class RecipeGroupManagerMultipleTest {
     @Disabled("Redirects are currently scoped to the repository")
     public void testGroupAndArtifactLevelRedirect() {
         var req = new GAV("org.jboss.vertx", "vertx-web", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }

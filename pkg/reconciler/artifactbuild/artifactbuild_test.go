@@ -85,6 +85,7 @@ func TestStateDiscovering(t *testing.T) {
 			g.Expect(db.Spec.ScmInfo.SCMURL).Should(Equal("goo"))
 			g.Expect(db.Spec.ScmInfo.SCMType).Should(Equal("hoo"))
 			g.Expect(db.Spec.ScmInfo.Path).Should(Equal("ioo"))
+			g.Expect(db.Spec.Version).Should(Equal("1.0"))
 
 			g.Expect(abr.Status.SCMInfo.Tag).Should(Equal("foo"))
 			g.Expect(abr.Status.SCMInfo.SCMURL).Should(Equal("goo"))
@@ -153,7 +154,6 @@ func TestStateDiscovering(t *testing.T) {
 					{Name: TaskResultScmTag, Value: "foo"},
 					{Name: TaskResultScmUrl, Value: "goo"},
 					{Name: TaskResultScmType, Value: "hoo"},
-					{Name: TaskResultBuildInfo, Value: "{}"},
 					{Name: TaskResultContextPath, Value: "ioo"}}},
 			},
 		}
@@ -197,7 +197,8 @@ func TestStateDiscovering(t *testing.T) {
 				SCMURL:  "goo",
 				SCMType: "hoo",
 				Path:    "ioo",
-			}},
+			},
+				Version: "1.0"},
 		}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		fullValidation(client, g)

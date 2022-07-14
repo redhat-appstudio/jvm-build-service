@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser;
+package com.redhat.hacbs.container.analyser.location;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,11 +14,10 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jgit.api.Git;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
+import com.redhat.hacbs.recipies.location.ArtifactInfoRequest;
 import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
@@ -28,8 +27,8 @@ import com.redhat.hacbs.recipies.scm.ScmInfo;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@CommandLine.Command
-public class LookupBuildRecipesCommand implements Runnable {
+@CommandLine.Command(name = "lookup-scm")
+public class LookupScmLocationCommand implements Runnable {
 
     @CommandLine.Option(names = "--recipes", required = true, split = ",")
     List<String> recipeRepos;
@@ -52,15 +51,6 @@ public class LookupBuildRecipesCommand implements Runnable {
     @CommandLine.Option(names = "--context")
     Path context;
 
-    /**
-     * The build info, in JSON format as per BuildRecipe.
-     * <p>
-     * This just gives facts discovered by examining the checkout, it does not make any inferences from those facts (e.g. which
-     * image to use).
-     */
-    @CommandLine.Option(names = "--build-info")
-    Path buildInfo;
-
     @Override
     public void run() {
         try {
@@ -76,8 +66,8 @@ public class LookupBuildRecipesCommand implements Runnable {
             Log.infof("Looking up %s", gav);
             //look for SCM info
             var recipes = recipeGroupManager
-                    .requestBuildInformation(
-                            new ProjectBuildRequest(Set.of(toBuild), Set.of(BuildRecipe.SCM, BuildRecipe.BUILD)))
+                    .requestArtifactInformation(
+                            new ArtifactInfoRequest(Set.of(toBuild), Set.of(BuildRecipe.SCM, BuildRecipe.BUILD)))
                     .getRecipes()
                     .get(toBuild);
             var deserialized = recipes == null ? null : recipes.get(BuildRecipe.SCM);
@@ -183,9 +173,6 @@ public class LookupBuildRecipesCommand implements Runnable {
                     if (context != null && parsedInfo.getPath() != null) {
                         Files.writeString(context, parsedInfo.getPath());
                     }
-
-                    doBuildAnalysis(parsedInfo.getUri(), selectedTag, parsedInfo.getPath(), buildRecipeInfo, version);
-
                     firstFailure = null;
                     break;
 
@@ -215,39 +202,4 @@ public class LookupBuildRecipesCommand implements Runnable {
         }
     }
 
-    private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo, String version)
-            throws Exception {
-        //TODO: this is a basic hack to prove the concept
-        var path = Files.createTempDirectory("checkout");
-        try (var clone = Git.cloneRepository().setURI(scmUrl).setBranch(scmTag).setDirectory(path.toFile()).call()) {
-            if (context != null) {
-                path = path.resolve(context);
-            }
-            BuildInfo info = new BuildInfo();
-            info.tools.put("jdk", new VersionRange("8", "17", "11"));
-            if (Files.isRegularFile(path.resolve("pom.xml"))) {
-                info.tools.put("maven", new VersionRange("3.8", "3.8", "3.8"));
-                info.invocations.add(
-                        new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
-                                "-Drat.skip=true", "-Dmaven.deploy.skip=false")));
-            } else if (Files.isRegularFile(path.resolve("build.gradle"))
-                    || Files.isRegularFile(path.resolve("build.gradle.kts"))) {
-                info.tools.put("gradle", new VersionRange("7.3", "7.3", "7.3"));
-                info.invocations.add(new ArrayList<>(List.of("gradle", "build")));
-            }
-            if (buildRecipeInfo != null) {
-                if (buildRecipeInfo.getAdditionalArgs() != null) {
-                    for (var i : info.invocations) {
-                        i.addAll(buildRecipeInfo.getAdditionalArgs());
-                    }
-                }
-                if (buildRecipeInfo.isEnforceVersion()) {
-                    info.enforceVersion = version;
-                }
-                info.setIgnoredArtifacts(buildRecipeInfo.getIgnoredArtifacts());
-            }
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.writeValue(this.buildInfo.toFile(), info);
-        }
-    }
 }

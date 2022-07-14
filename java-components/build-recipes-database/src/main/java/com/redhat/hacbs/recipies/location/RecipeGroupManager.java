@@ -2,7 +2,10 @@ package com.redhat.hacbs.recipies.location;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
@@ -21,7 +24,7 @@ public class RecipeGroupManager {
         this.repositories = repositories;
     }
 
-    public ProjectBuildResponse requestBuildInformation(ProjectBuildRequest request) {
+    public ArtifactInfoResponse requestArtifactInformation(ArtifactInfoRequest request) {
 
         Map<String, Map<BuildRecipe, Path>> groupAuthoritativeResults = new HashMap<>();
         Map<GAV, Map<BuildRecipe, Path>> results = new HashMap<>();
@@ -108,8 +111,39 @@ public class RecipeGroupManager {
                 results.put(buildLocationRequest, buildResults);
             }
         }
-        return new ProjectBuildResponse(results);
-
+        return new ArtifactInfoResponse(results);
     }
 
+    public BuildInfoResponse requestBuildInformation(BuildInfoRequest buildInfoRequest) {
+
+        String scmUri = buildInfoRequest.getScmUri();
+        if (scmUri.endsWith(".git")) {
+            scmUri = scmUri.substring(0, scmUri.length() - 4);
+        }
+        int pos = scmUri.indexOf("://");
+        if (pos != -1) {
+            scmUri = scmUri.substring(pos + 3);
+        }
+
+        List<Path> paths = new ArrayList<>();
+        for (var r : repositories) {
+            var possible = r.getBuildPaths(scmUri, buildInfoRequest.getTag());
+            if (possible.isPresent()) {
+                paths.add(possible.get());
+            }
+        }
+
+        Map<BuildRecipe, Path> buildResults = new HashMap<>();
+        for (var recipe : buildInfoRequest.getRecipeFiles()) {
+            for (var path : paths) {
+                var option = path.resolve(recipe.getName());
+                if (Files.exists(option)) {
+                    buildResults.put(recipe, option);
+                    break;
+                }
+            }
+
+        }
+        return new BuildInfoResponse(buildResults);
+    }
 }

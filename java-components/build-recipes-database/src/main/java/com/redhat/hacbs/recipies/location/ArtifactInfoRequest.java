@@ -9,12 +9,12 @@ import com.redhat.hacbs.recipies.GAV;
  * Encapsulates a request for the location of all project dependencies. This is more efficient than requesting
  * a result from each artifact individually.
  */
-public class ProjectBuildRequest {
+public class ArtifactInfoRequest {
 
     private final Set<GAV> requests;
     private final Set<BuildRecipe> recipeFiles;
 
-    public ProjectBuildRequest(Set<GAV> requests, Set<BuildRecipe> recipeFiles) {
+    public ArtifactInfoRequest(Set<GAV> requests, Set<BuildRecipe> recipeFiles) {
         this.requests = requests;
         this.recipeFiles = recipeFiles;
     }

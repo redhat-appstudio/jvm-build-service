@@ -46,10 +46,14 @@ public class RecipeLayoutManager implements RecipeDirectory {
     public static final String GROUP_ID = "group-id";
     public static final String VERSION_ID = "version";
 
-    private final Path baseDirectory;
+    private final Path checkoutDirectory;
+    private final Path scmInfoDirectory;
+    private final Path buildInfoDirectory;
 
     public RecipeLayoutManager(Path baseDirectory) {
-        this.baseDirectory = baseDirectory;
+        this.checkoutDirectory = baseDirectory;
+        this.scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.RECIPES);
+        this.buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
     }
 
     /**
@@ -59,12 +63,21 @@ public class RecipeLayoutManager implements RecipeDirectory {
         return getArtifactPaths(groupId, artifactId, version, new LinkedHashSet<>());
     }
 
+    @Override
+    public Optional<Path> getBuildPaths(String scmUri, String tag) {
+        Path target = buildInfoDirectory.resolve(scmUri);
+        if (!Files.exists(target)) {
+            return Optional.empty();
+        }
+        return Optional.of(target);
+    }
+
     /**
      * Returns the directories that contain the recipe information for this specific artifact
      */
     private Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version,
             Set<Path> seenRedirects) {
-        Path groupPath = handleRedirect(this.baseDirectory.resolve(groupId.replace('.', File.separatorChar)), seenRedirects,
+        Path groupPath = handleRedirect(this.scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar)), seenRedirects,
                 RecipePathMatch::getGroup, groupId, artifactId, version);
         Path artifactFolder = groupPath.resolve(ARTIFACT);
         Path artifactPath = handleRedirect(artifactFolder.resolve(artifactId), seenRedirects, RecipePathMatch::getArtifact,
@@ -133,7 +146,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
         String groupId = data.getGroupId();
         String artifactId = data.getArtifactId();
         String version = data.getVersion();
-        Path resolved = handleRedirect(this.baseDirectory.resolve(groupId.replace('.', File.separatorChar)), seenRedirects,
+        Path resolved = handleRedirect(this.scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar)), seenRedirects,
                 RecipePathMatch::getGroup, groupId, artifactId, version);
         if (artifactId != null) {
             resolved = resolved.resolve(ARTIFACT);

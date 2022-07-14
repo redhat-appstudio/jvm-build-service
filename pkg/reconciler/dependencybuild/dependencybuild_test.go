@@ -41,7 +41,6 @@ func TestStateNew(t *testing.T) {
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
-		db.Spec.BuildRecipes = []*v1alpha1.BuildRecipe{{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest"}}
 		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 
 		ctx := context.TODO()
@@ -53,7 +52,16 @@ func TestStateNew(t *testing.T) {
 			Namespace: metav1.NamespaceDefault,
 			Name:      "test",
 		}, &db))
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateAnalyzeBuild))
+
+		runBuildDiscoveryTask(db, g, reconciler, client, ctx)
+
+		g.Expect(client.Get(ctx, types.NamespacedName{
+			Namespace: metav1.NamespaceDefault,
+			Name:      "test",
+		}, &db))
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
+
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
 
 		g.Expect(client.Get(ctx, types.NamespacedName{
@@ -66,6 +74,29 @@ func TestStateNew(t *testing.T) {
 	})
 }
 
+func runBuildDiscoveryTask(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context) {
+	var pr *pipelinev1beta1.TaskRun
+	trList := &pipelinev1beta1.TaskRunList{}
+	g.Expect(client.List(ctx, trList))
+	for _, i := range trList.Items {
+		if i.Labels[TaskType] == TaskTypeBuildInfo {
+			pr = &i
+			break
+		}
+	}
+	g.Expect(pr).ShouldNot(BeNil())
+	pr.Namespace = metav1.NamespaceDefault
+	pr.Status.TaskRunResults = []pipelinev1beta1.TaskRunResult{{Name: BuildInfoTaskBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[]}`}}
+	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	pr.Status.SetCondition(&apis.Condition{
+		Type:               apis.ConditionSucceeded,
+		Status:             "True",
+		LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+	})
+	g.Expect(client.Update(ctx, pr))
+	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
+}
+
 func TestStateDetect(t *testing.T) {
 	t.Run("Test reconcile new DependencyBuild", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -76,13 +107,21 @@ func TestStateDetect(t *testing.T) {
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
-		db.Spec.BuildRecipes = []*v1alpha1.BuildRecipe{{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest", CommandLine: []string{"testgoal"}}}
 		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 
 		ctx := context.TODO()
 		client, reconciler := setupClientAndReconciler(&db)
 
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+
+		g.Expect(client.Get(ctx, types.NamespacedName{
+			Namespace: metav1.NamespaceDefault,
+			Name:      "test",
+		}, &db))
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateAnalyzeBuild))
+
+		runBuildDiscoveryTask(db, g, reconciler, client, ctx)
+
 		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
 
@@ -96,8 +135,11 @@ func TestStateDetect(t *testing.T) {
 		trList := &pipelinev1beta1.TaskRunList{}
 		g.Expect(client.List(ctx, trList))
 
-		g.Expect(len(trList.Items)).Should(Equal(1))
+		g.Expect(len(trList.Items)).Should(Equal(2))
 		for _, pr := range trList.Items {
+			if pr.Labels[TaskType] != TaskTypeBuild {
+				continue
+			}
 			g.Expect(pr.Labels[artifactbuild.DependencyBuildIdLabel]).Should(Equal(db.Labels[artifactbuild.DependencyBuildIdLabel]))
 			for _, or := range pr.OwnerReferences {
 				if or.Kind != db.Kind || or.Name != db.Name {
@@ -163,7 +205,7 @@ func TestStateBuilding(t *testing.T) {
 		pr := pipelinev1beta1.TaskRun{}
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Name = "test-build-0"
-		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
+		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), TaskType: TaskTypeBuild}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme))
 		g.Expect(client.Create(ctx, &pr))
 

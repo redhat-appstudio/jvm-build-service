@@ -26,6 +26,7 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -67,7 +68,7 @@ func createDB(componentLookupKey types.NamespacedName) {
 			SCMType: "git",
 			Tag:     "tag1",
 			Path:    "/path1",
-		}, BuildRecipes: []*v1alpha1.BuildRecipe{{Image: "testimage", CommandLine: []string{"install"}}}},
+		}},
 	}
 	Expect(k8sClient.Create(ctx, db)).Should(Succeed())
 }
@@ -93,6 +94,28 @@ func getTrAbr() *tektonapi.TaskRun {
 	listOpts := &client.ListOptions{
 		Namespace:     TestNamespace,
 		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuild.ArtifactBuildIdLabel: hash}),
+	}
+	trl := tektonapi.TaskRunList{}
+	var tr *tektonapi.TaskRun
+	Eventually(func() bool {
+		Expect(k8sClient.List(ctx, &trl, listOpts)).ToNot(HaveOccurred())
+		//there should only be one, be guard against multiple
+		for _, current := range trl.Items {
+			if tr == nil || tr.CreationTimestamp.Before(&current.CreationTimestamp) {
+				tmp := current
+				tr = &tmp
+			}
+		}
+		return tr != nil
+	}, timeout, interval).Should(BeTrue())
+
+	return tr
+}
+
+func getTrBuildDiscovery() *tektonapi.TaskRun {
+	listOpts := &client.ListOptions{
+		Namespace:     TestNamespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{dependencybuild.TaskType: dependencybuild.TaskTypeBuildInfo}),
 	}
 	trl := tektonapi.TaskRunList{}
 	var tr *tektonapi.TaskRun
@@ -201,9 +224,6 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 			}, {
 				Name:  artifactbuild.TaskResultMessage,
 				Value: "OK",
-			}, {
-				Name:  artifactbuild.TaskResultBuildInfo,
-				Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"ignoredArtifacts":[]}`,
 			}}
 			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
 			print(tr.Name)
@@ -228,6 +248,21 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 		})
 
 		It("db", func() {
+			btr := getTrBuildDiscovery()
+			btr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+			btr.Status.SetCondition(&apis.Condition{
+				Type:               apis.ConditionSucceeded,
+				Status:             "True",
+				LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+			})
+			btr.Status.TaskRunResults = []tektonapi.TaskRunResult{{
+				Name:  dependencybuild.BuildInfoTaskMessage,
+				Value: "OK",
+			}, {
+				Name:  dependencybuild.BuildInfoTaskBuildInfo,
+				Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"ignoredArtifacts":[]}`,
+			}}
+			Expect(k8sClient.Status().Update(ctx, btr)).Should(Succeed())
 			db := v1alpha1.DependencyBuild{}
 			Eventually(func() error {
 				Expect(k8sClient.Get(ctx, dbName, &db)).Should(Succeed())

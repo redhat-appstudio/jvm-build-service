@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -38,6 +39,17 @@ const (
 	TaskGoals            = "GOALS"
 	TaskEnforceVersion   = "ENFORCE_VERSION"
 	TaskIgnoredArtifacts = "IGNORED_ARTIFACTS"
+
+	BuildInfoTaskScmUrl    = "SCM_URL"
+	BuildInfoTaskTag       = "TAG"
+	BuildInfoTaskContext   = "CONTEXT"
+	BuildInfoTaskVersion   = "VERSION"
+	BuildInfoTaskMessage   = "message"
+	BuildInfoTaskBuildInfo = "build-info"
+
+	TaskType          = "jvmbuildservice.io/task-type"
+	TaskTypeBuildInfo = "build-info"
+	TaskTypeBuild     = "build"
 )
 
 var (
@@ -121,7 +133,13 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-		return r.handleTaskRunReceived(ctx, &tr)
+		taskType := tr.Labels[TaskType]
+		switch taskType {
+		case TaskTypeBuildInfo:
+			return r.handleStateAnalyzeBuild(ctx, &tr)
+		case TaskTypeBuild:
+			return r.handleTaskRunReceived(ctx, &tr)
+		}
 	}
 
 	return reconcile.Result{}, nil
@@ -134,14 +152,127 @@ func hashToString(unique string) string {
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	//TODO: this is currently a huge hard coded hack
-	//we hard code 3 potential build recipes (images)
-	//then move the state to DependencyBuildStateDetect
-	//once this is not longer a hard coded stub it should trigger a TR/PR
-	//that looks at the repository and figures out which builder to use
-	db.Status.PotentialBuildRecipes = db.Spec.BuildRecipes
-	db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
-	return reconcile.Result{}, r.client.Status().Update(ctx, db)
+	// create task run
+	tr := pipelinev1beta1.TaskRun{}
+	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-build-info", Kind: pipelinev1beta1.ClusterTaskKind}
+	tr.Namespace = db.Namespace
+	tr.GenerateName = db.Name + "-build-discovery-"
+	tr.Labels = map[string]string{artifactbuild.TaskRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, TaskType: TaskTypeBuildInfo}
+	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: BuildInfoTaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}})
+	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: BuildInfoTaskTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}})
+	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: BuildInfoTaskContext, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}})
+	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: BuildInfoTaskVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Version}})
+	if err := controllerutil.SetOwnerReference(db, &tr, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	db.Status.State = v1alpha1.DependencyBuildStateAnalyzeBuild
+	if err := r.client.Status().Update(ctx, db); err != nil {
+		return reconcile.Result{}, err
+	}
+	if err := r.client.Create(ctx, &tr); err != nil {
+		return reconcile.Result{}, err
+	}
+	return reconcile.Result{}, nil
+}
+func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
+	if tr.Status.CompletionTime == nil {
+		return reconcile.Result{}, nil
+	}
+	ownerRefs := tr.GetOwnerReferences()
+	if ownerRefs == nil || len(ownerRefs) == 0 {
+		msg := "taskrun missing onwerrefs %s:%s"
+		r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name)
+		log.Info(msg, tr.Namespace, tr.Name)
+		return reconcile.Result{}, nil
+	}
+	ownerName := ""
+	for _, ownerRef := range ownerRefs {
+		if strings.EqualFold(ownerRef.Kind, "dependencybuild") || strings.EqualFold(ownerRef.Kind, "dependencybuilds") {
+			ownerName = ownerRef.Name
+			break
+		}
+	}
+	if len(ownerName) == 0 {
+		msg := "taskrun missing dependencybuild ownerrefs %s:%s"
+		r.eventRecorder.Eventf(tr, v1.EventTypeWarning, "MissingOwner", msg, tr.Namespace, tr.Name)
+		log.Info(msg, tr.Namespace, tr.Name)
+		return reconcile.Result{}, nil
+	}
+
+	key := types.NamespacedName{Namespace: tr.Namespace, Name: ownerName}
+	db := v1alpha1.DependencyBuild{}
+	err := r.client.Get(ctx, key, &db)
+	if err != nil {
+		msg := "get for taskrun %s:%s owning db %s:%s yielded error %s"
+		r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name, tr.Namespace, ownerName, err.Error())
+		log.Error(err, fmt.Sprintf(msg, tr.Namespace, tr.Name, tr.Namespace, ownerName, err.Error()))
+		return reconcile.Result{}, err
+	}
+	if db.Status.State != v1alpha1.DependencyBuildStateAnalyzeBuild {
+		return reconcile.Result{}, nil
+	}
+
+	var buildInfo string
+	var message string
+	//we grab the results here and put them on the ABR
+	for _, res := range tr.Status.TaskRunResults {
+		switch res.Name {
+		case BuildInfoTaskBuildInfo:
+			buildInfo = res.Value
+		case BuildInfoTaskMessage:
+			message = res.Value
+		}
+	}
+	if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+		pod := v1.Pod{}
+		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
+		if poderr == nil {
+			err := r.client.Delete(ctx, &pod)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	}
+	success := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+	if !success {
+		db.Status.State = v1alpha1.DependencyBuildStateFailed
+		db.Status.Message = message
+	} else {
+		unmarshalled := struct {
+			Tools map[string]struct {
+				Min       string
+				Max       string
+				Preferred string
+			}
+			Invocations      [][]string
+			EnforceVersion   string
+			IgnoredArtifacts []string
+		}{}
+
+		if err := json.Unmarshal([]byte(buildInfo), &unmarshalled); err != nil {
+			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
+			return reconcile.Result{}, err
+		}
+		//for now we are ignoring the tool versions
+		//and just using the supplied invocations
+		buildRecipes := []*v1alpha1.BuildRecipe{}
+		_, maven := unmarshalled.Tools["maven"]
+		_, gradle := unmarshalled.Tools["gradle"]
+		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
+			for _, command := range unmarshalled.Invocations {
+				if maven {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-maven-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+				}
+				if gradle {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-gradle-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+				}
+			}
+		}
+		db.Status.PotentialBuildRecipes = buildRecipes
+		db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+	}
+	return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+
 }
 
 func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
@@ -175,7 +306,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
 	// we move the db out of building
 	tr.Name = currentDependencyBuildTaskName(db)
-	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: ""}
+	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: "", TaskType: TaskTypeBuild}
 
 	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: db.Status.CurrentBuildRecipe.Task, Kind: pipelinev1beta1.ClusterTaskKind}
 	tr.Spec.Params = []pipelinev1beta1.Param{

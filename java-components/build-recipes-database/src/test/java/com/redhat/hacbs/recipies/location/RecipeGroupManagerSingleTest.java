@@ -1,5 +1,6 @@
 package com.redhat.hacbs.recipies.location;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
@@ -29,12 +30,12 @@ public class RecipeGroupManagerSingleTest {
     @Test
     public void testGroupIdBasedRecipe() {
         GAV req = new GAV("io.quarkus", "quarkus-core", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
         req = new GAV("io.quarkus.security", "quarkus-security", "1.0");
-        result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/quarkus-security.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -42,7 +43,7 @@ public class RecipeGroupManagerSingleTest {
     @Test
     public void testVersionOverride() {
         GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart1");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -50,7 +51,7 @@ public class RecipeGroupManagerSingleTest {
     @Test
     public void testArtifactOverride() {
         GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -58,7 +59,7 @@ public class RecipeGroupManagerSingleTest {
     @Test
     public void testArtifactAndVersionOverride() {
         GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-stuart1");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -66,7 +67,7 @@ public class RecipeGroupManagerSingleTest {
     @Test
     public void testNoGroupLevelBuild() {
         GAV req = new GAV("io.vertx", "not-real", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -74,7 +75,7 @@ public class RecipeGroupManagerSingleTest {
     @Test
     public void testArtifactLevelRedirect() {
         GAV req = new GAV("io.vertx", "vertx-web", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -82,9 +83,18 @@ public class RecipeGroupManagerSingleTest {
     @Test
     public void testGroupAndArtifactLevelRedirect() {
         var req = new GAV("org.jboss.vertx", "vertx-web", "1.0");
-        var result = manager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+    }
+
+    @Test
+    public void testBuildInfoRecipe() throws IOException {
+        var result = manager.requestBuildInformation(
+                new BuildInfoRequest("https://github.com/quarkusio/quarkus.git", "1.0", Set.of(BuildRecipe.BUILD)));
+        Assertions.assertEquals(List.of("-DskipDocs=true"),
+                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAdditionalArgs());
+
     }
 
     private String readScmUrl(Path scmPath) {

@@ -32,10 +32,9 @@ import com.redhat.hacbs.analyser.maven.MavenProject;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.location.AddRecipeRequest;
-import com.redhat.hacbs.recipies.location.ProjectBuildRequest;
+import com.redhat.hacbs.recipies.location.ArtifactInfoRequest;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
-import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipies.scm.RepositoryInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 
@@ -78,7 +77,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
         Set<Path> doubleUpFiles = new HashSet<>();
         try (ScmManager manager = ScmManager.create(repoConfig.path())) {
             RecipeLayoutManager recipeLayoutManager = new RecipeLayoutManager(
-                    repoConfig.path().resolve(RecipeRepositoryManager.RECIPES));
+                    repoConfig.path());
             RecipeGroupManager groupManager = new RecipeGroupManager(List.of(recipeLayoutManager));
             int count = manager.getAll().size();
             int currentCount = 0;
@@ -182,7 +181,7 @@ public class AnalyseRepositoriesCommand implements Runnable {
                     module.getGav().getVersion()));
         }
         var existing = groupManager
-                .requestBuildInformation(new ProjectBuildRequest(locationRequests, Set.of(BuildRecipe.SCM)));
+                .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
         if (!legacy) {
             for (var module : result.getProjects().values()) {
                 var existingModule = existing.getRecipes().get(module.getGav());

@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser;
+package com.redhat.hacbs.container.analyser.location;
 
 /**
  * Represents a tool required by the build, and the minimum and maximum versions supported.

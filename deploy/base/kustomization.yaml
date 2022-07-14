@@ -6,6 +6,7 @@ resources:
   - https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.5/git-clone.yaml
   - maven-v0.2.yaml
   - lookup-artifact-location-v0.1.yaml
+  - lookup-build-info-v0.1.yaml
   - run-maven-component-build-v0.1.yaml
   - run-gradle-component-build-v0.1.yaml
   - rbac.yaml

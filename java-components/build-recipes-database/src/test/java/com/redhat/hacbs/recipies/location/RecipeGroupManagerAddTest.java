@@ -29,12 +29,12 @@ public class RecipeGroupManagerAddTest {
 
         RecipeGroupManager groupManager = new RecipeGroupManager(List.of(manager));
         GAV req = new GAV("io.quarkus", "quarkus-core", "1.0");
-        var result = groupManager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = groupManager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
         req = new GAV("io.quarkus.security", "quarkus-security", "1.0");
-        result = groupManager.requestBuildInformation(new ProjectBuildRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = groupManager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/quarkusio/quarkus-security.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }

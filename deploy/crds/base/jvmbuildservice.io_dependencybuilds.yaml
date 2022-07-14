@@ -26,6 +26,9 @@ spec:
     - jsonPath: .status.state
       name: State
       type: string
+    - jsonPath: .status.message
+      name: Message
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -45,25 +48,6 @@ spec:
             type: object
           spec:
             properties:
-              buildRecipes:
-                items:
-                  properties:
-                    commandLine:
-                      items:
-                        type: string
-                      type: array
-                    enforceVersion:
-                      type: string
-                    ignoredArtifacts:
-                      items:
-                        type: string
-                      type: array
-                    image:
-                      type: string
-                    task:
-                      type: string
-                  type: object
-                type: array
               scm:
                 properties:
                   path:
@@ -75,6 +59,8 @@ spec:
                   tag:
                     type: string
                 type: object
+              version:
+                type: string
             type: object
           status:
             properties:
@@ -196,6 +182,8 @@ spec:
                   type: object
                 type: array
               lastCompletedBuildTaskRun:
+                type: string
+              message:
                 type: string
               potentialBuildRecipes:
                 description: PotentialBuildRecipes additional recipes to try if the
