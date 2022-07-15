@@ -86,6 +86,8 @@ function waitBuildToBeReady() {
     done
 }
 
+. .ci/override-tekton-bundle.sh
+
 curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/install-appstudio-e2e-mode.sh | bash -s install
 
 export -f waitAppStudioToBeReady
