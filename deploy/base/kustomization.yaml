@@ -3,7 +3,8 @@ kind: Kustomization
 
 resources:
   - gradle-v0.1.yaml
-  - https://github.com/tektoncd/pipeline/releases/download/v0.34.1/release.yaml
+#  - https://github.com/tektoncd/pipeline/releases/download/v0.34.1/release.yaml
   - https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml
   - maven-v0.2.yaml
   - rbac.yaml
+  - config.yaml

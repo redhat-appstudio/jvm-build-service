@@ -1,0 +1,11 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Component
+metadata:
+  name: test
+spec:
+  componentName: test
+  application: test-application
+  source:
+    git:
+      url: https://github.com/stuartwdouglas/code-with-quarkus
+

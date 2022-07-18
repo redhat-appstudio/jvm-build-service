@@ -174,7 +174,7 @@ spec:
         # with scripts.  I could not get bash to reconcile with tekton var sub, and "$(param.GOALS[*])" vs.
         # "${params.GOALS[*]}".  Hard coding the params for now and ignoring GOALS until I can talk to Stuart
         # and reconcile the param type here vs. having to use a script to change the permissions for running on OpenShift
-        /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" -DskipTests clean package
+        /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" -DskipTests clean package || { cat $(workspaces.maven-settings.path)/sidecar.log ; false ; }
 
     - name: analyse-dependencies
       securityContext:
@@ -197,7 +197,7 @@ spec:
       imagePullPolicy: Always
       env:
         - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
-          value: "http://hacbs-jvm-cache.jvm-build-service.svc.cluster.local"
+          value: "http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local"
         - name: QUARKUS_LOG_FILE_ENABLE
           value: "true"
         - name: QUARKUS_LOG_FILE_PATH

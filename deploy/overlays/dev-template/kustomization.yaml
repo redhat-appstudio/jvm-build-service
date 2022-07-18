@@ -4,11 +4,10 @@ kind: Kustomization
 bases:
  - "../../crds/base"
  - "../../base"
- - "../../cache/overlays/dev-template"
  - "../../operator/overlays/dev-template"
 
 resources:
-  - localstack.yaml
+  - system-config.yaml
 
 patches:
  - patch: |-
@@ -25,3 +24,6 @@ patches:
    target:
      kind: Task
      name: maven
+
+patchesStrategicMerge:
+  - config.yaml

@@ -17,8 +17,11 @@ limitations under the License.
 package e2e
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -51,6 +54,29 @@ const (
 	ABRName       = "com.acme.example.1.0"
 	DBName        = "acmedep1"
 )
+
+func setupSystemConfig() {
+	//we need some system level config
+	//add a builder image
+	existing := corev1.ConfigMap{}
+	err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace}, &existing)
+	if errors2.IsNotFound(err) {
+
+		nm := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapNamespace}}
+		Expect(k8sClient.Create(context.TODO(), &nm)).Should(Succeed())
+
+		sysConfig := corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace},
+			Data: map[string]string{
+				configmap.SystemBuilderImages:                            "jdk11",
+				fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/sdouglas/hacbs-jdk11-builder:latest",
+			},
+		}
+
+		Expect(k8sClient.Create(context.TODO(), &sysConfig)).Should(Succeed())
+
+	}
+}
 
 func createDB(componentLookupKey types.NamespacedName) {
 	db := &v1alpha1.DependencyBuild{
@@ -198,6 +224,7 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 		_ = BeforeEach(func() {
 			createAbr(abrName)
 			createDB(dbName)
+			setupSystemConfig()
 		}, 30)
 
 		_ = AfterEach(func() {
