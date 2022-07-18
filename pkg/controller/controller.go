@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	v1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -64,6 +66,7 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 			&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
 			&v1alpha1.DependencyBuild{}:    {},
 			&v1alpha1.ArtifactBuild{}:      {},
+			&v1.ConfigMap{}:                {},
 		}})
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
@@ -75,6 +78,10 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 	}
 
 	if err := dependencybuild.SetupNewReconcilerWithManager(mgr); err != nil {
+		return nil, err
+	}
+
+	if err := configmap.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

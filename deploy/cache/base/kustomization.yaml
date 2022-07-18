@@ -3,8 +3,3 @@ kind: Kustomization
 
 commonLabels:
   app: hacbs-jvm-cache
-resources:
-  - deployment.yaml
-  - service.yaml
-  - rbac.yaml
-  - sa.yaml

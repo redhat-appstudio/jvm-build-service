@@ -21,7 +21,7 @@ spec:
             runAsUser: 0
           env:
             - name: CACHE_PATH
-              value: "cache"
+              value: "/cache"
             - name: BUILD_POLICY_DEFAULT_STORE_LIST
               value: rebuilt,central,jboss,redhat,jitpack,confluent,gradle
             - name: STORE_JITPACK_URL

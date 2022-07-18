@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"os"
 	"strings"
 	"time"
@@ -362,11 +363,11 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
 	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
 	//the actual solution will involve loading deployment config from a ConfigMap
-	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://localstack.jvm-build-service.svc.cluster.local:4572"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_REST_CLIENT_CACHE_SERVICE_URL", Value: "http://" + configmap.CacheDeploymentName + "." + db.Namespace + ".svc.cluster.local"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://" + configmap.LocalstackDeploymentName + "." + db.Namespace + ".svc.cluster.local:4572"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"})
-	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY", Value: "secretkey"})
 	pr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
