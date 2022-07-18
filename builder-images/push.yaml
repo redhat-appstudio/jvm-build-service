@@ -1,9 +1,9 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: jvm-build-controller-on-pull-request
+  name: jvm-build-$IMAGE_NAME-push
   annotations:
-    pipelinesascode.tekton.dev/on-event: "[pull_request]"
+    pipelinesascode.tekton.dev/on-event: "[push]"
     pipelinesascode.tekton.dev/on-target-branch: "[main]"
     pipelinesascode.tekton.dev/max-keep-runs: "2"
 spec:
@@ -13,7 +13,11 @@ spec:
     - name: revision
       value: "{{revision}}"
     - name: output-image
-      value: "quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-{{revision}}"
+      value: 'quay.io/redhat-appstudio/$IMAGE_NAME:{{revision}}'
+    - name: path-context
+      value: java-components
+    - name: dockerfile
+      value: builder-images/$IMAGE_NAME/Dockerfile
   pipelineRef:
     name: docker-build
     bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
