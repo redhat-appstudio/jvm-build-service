@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
+	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 	github.com/tektoncd/pipeline v0.33.0
 	k8s.io/api v0.23.0
 	k8s.io/apimachinery v0.23.0
@@ -55,6 +56,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/openshift/api v0.0.0-20210521075222-e273a339932a // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
