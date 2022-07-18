@@ -11,4 +11,6 @@ RUN wget https://github.com/mikefarah/yq/releases/download/v4.25.1/yq_linux_amd6
     chmod +x /usr/local/bin/yq && yq --version && \
     curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
     chmod +x ./kubectl && \
-    mv ./kubectl /usr/local/bin
+    mv ./kubectl /usr/local/bin && \
+    curl -LO https://github.com/tektoncd/cli/releases/download/v0.24.0/tkn_0.24.0_Linux_x86_64.tar.gz && \
+    tar xvzf tkn_0.24.0_Linux_x86_64.tar.gz --no-same-owner -C /usr/local/bin/ tkn
