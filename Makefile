@@ -27,6 +27,9 @@ test: fmt vet ## Run tests.
 e2etest: fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v ./test/...
 
+appstudio-installed-on-openshift-e2e:
+	KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 30m -v ./openshift-with-appstudio-test/...
+
 build:
 	go build -o out/jvmbuildservice cmd/controller/main.go
 	env GOOS=linux GOARCH=amd64 go build -mod=vendor -o out/jvmbuildservice ./cmd/controller
