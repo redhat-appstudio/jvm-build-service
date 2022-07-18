@@ -90,7 +90,7 @@ spec:
     - name: IGNORED_ARTIFACTS
       type: string
       description: >-
-        Comma seperated list of artifact names that should not be deployed or checked for contaminants.
+        Comma-separated list of artifact names that should not be deployed or checked for contaminants.
       default: ""
   steps:
     - name: git-clone

@@ -1,18 +1,18 @@
 apiVersion: tekton.dev/v1beta1
-kind: ClusterTask
+kind: Task
 metadata:
-  name: run-gradle-component-build
+  name: gradle
   labels:
     app.kubernetes.io/version: "0.1"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
-    tekton.dev/displayName: Run Gradle component build
+    tekton.dev/displayName: Gradle
     tekton.dev/categories: Build Tools
     tekton.dev/tags: build-tool
     tekton.dev/platforms: "linux/amd64,linux/s390x,linux/ppc64le"
 spec:
   description: >-
-    This Task can be used to run a Gradle build of a component that will be deployed to the sidecar.
+    This Task can be used to run a Gradle build.
   workspaces:
     - name: source
       description: The workspace consisting of the gradle project.
@@ -23,11 +23,11 @@ spec:
   results:
     - name: contaminants
       description: Any community GAVs that have ended up in the final output.
+    - name: dependencies
+      description: The total number of dependencies in the output
+    - name: untrusted-dependencies
+      description: The total number of dependencies that came from an untrusted source, such as Maven central
   params:
-    - name: URL
-      type: string
-    - name: TAG
-      type: string
     - name: JAVA_VERSION
       description: Java version.
       type: string
@@ -103,20 +103,17 @@ spec:
       description: >-
         Comma-separated list of artifact names that should not be deployed or checked for contaminants.
       default: ""
+    - name: DEPENDENCY_ANALYSER_IMAGE
+      type: string
+      description: >-
+        The image to use for dependency analysis.
+      default: "quay.io/goldmann/hacbs-jvm-dependency-analyser:dev"
+    - name: DEPENDENCY_ANALYSER_PATH
+      type: string
+      description: >-
+        The path to use for dependency analysis.
+      default: "."
   steps:
-    - name: git-clone
-      image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
-      resources:
-        requests:
-          memory: "128Mi"
-          cpu: "10m"
-        limits:
-          memory: "512Mi"
-          cpu: "300m"
-      args:
-        - -path=$(workspaces.source.path)
-        - -url=$(params.URL)
-        - -revision=$(params.TAG)
     - name: maven-settings
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
       securityContext:
@@ -287,8 +284,7 @@ spec:
             gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) generateAlignmentMetadata || exit 1
         fi
 
-        # FIXME: controller passing in gradle for $@
-        gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo -Prelease build publish || exit 1
+        gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo $@ || exit 1
 
         # fix-permissions-for-builder
         chown 1001:1001 -R $(workspaces.source.path)
@@ -309,8 +305,22 @@ spec:
         limits:
           memory: "512Mi"
           cpu: "300m"
+    - name: analyse-dependencies
+      securityContext:
+        runAsUser: 0
+
+      image: quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser:3dcd8603061c7ab2cedfe128c80cac9726721a74
+      args:
+        - path
+        - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)
+        - -s
+        - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)/java-sbom.json
+        - -c
+        - "$(results.dependencies.path)"
+        - -u
+        - "$(results.untrusted-dependencies.path)"
   sidecars:
-    - image: hacbs-jvm-sidecar
+    - image: quay.io/redhat-appstudio/hacbs-jvm-sidecar:3dcd8603061c7ab2cedfe128c80cac9726721a74
       securityContext:
         runAsUser: 0
       imagePullPolicy: Always

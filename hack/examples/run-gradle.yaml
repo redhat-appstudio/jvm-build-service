@@ -1,0 +1,24 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: sample-component-build-
+spec:
+  pipelineRef:
+    name: sample-component-build
+  params:
+    - name: url
+      value: https://github.com/dwalluck/gradle-sample-project.git
+  workspaces:
+    - name: maven-settings
+      emptyDir: {}
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
+          resources:
+            requests:
+              storage: 1Gi
+  serviceAccountNames:
+    - serviceAccountName: hacbs-jvm-operator #TODO: what do we do about this?
+      taskName: gradle-run
