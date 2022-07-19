@@ -257,18 +257,21 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		buildRecipes := []*v1alpha1.BuildRecipe{}
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
-		// FIXME: temporarily changed image for gradle to be replaced after <https://github.com/redhat-appstudio/jvm-build-service/pull/106>
-		//for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
-		for _, image := range []string{"quay.io/dwalluck/gradle:latest"} {
-			for _, command := range unmarshalled.Invocations {
-				if maven {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Maven: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+
+		if maven {
+			for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
+				for _, command := range unmarshalled.Invocations {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-maven-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
 				}
-				if gradle {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Gradle: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+			}
+		} else if gradle {
+			for _, image := range []string{"quay.io/dwalluck/gradle:latest"} {
+				for _, command := range unmarshalled.Invocations {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-gradle-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
 				}
 			}
 		}
+
 		db.Status.PotentialBuildRecipes = buildRecipes
 		db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 	}
