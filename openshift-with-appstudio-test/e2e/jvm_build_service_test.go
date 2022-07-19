@@ -47,6 +47,10 @@ type testArgs struct {
 	run      *v1beta1.PipelineRun
 }
 
+func (ta *testArgs) Logf(msg string) {
+	ta.t.Logf(fmt.Sprintf("time: %s: %s", time.Now().String(), msg))
+}
+
 func generateName(base string) string {
 	if len(base) > maxGeneratedNameLength {
 		base = base[:maxGeneratedNameLength]
@@ -60,9 +64,9 @@ func dumpPods(ta *testArgs) {
 	if err != nil {
 		debugAndFailTest(ta, fmt.Sprintf("error list pods %v", err))
 	}
-	ta.t.Logf("dumpPods have %d items in list", len(podList.Items))
+	ta.Logf(fmt.Sprintf("dumpPods have %d items in list", len(podList.Items)))
 	for _, pod := range podList.Items {
-		ta.t.Logf("dumpPods looking at pod %s in phase %s", pod.Name, pod.Status.Phase)
+		ta.Logf(fmt.Sprintf("dumpPods looking at pod %s in phase %s", pod.Name, pod.Status.Phase))
 
 		for _, container := range pod.Spec.Containers {
 			req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
@@ -75,7 +79,7 @@ func dumpPods(ta *testArgs) {
 				debugAndFailTest(ta, fmt.Sprintf("error reading pod stream %s", err.Error()))
 			}
 			podLog := string(b)
-			ta.t.Logf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog)
+			ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
 
 		}
 
@@ -168,7 +172,7 @@ func TestExampleRun(t *testing.T) {
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-	ta.t.Logf("current working dir: %s", path)
+	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
 	mavenYamlPath := filepath.Join(path, "..", "..", "deploy", "base", "maven-v0.2.yaml")
 	ta.maven = &v1beta1.Task{}
@@ -181,23 +185,23 @@ func TestExampleRun(t *testing.T) {
 	// override images if need be
 	analyserImage := os.Getenv("JVM_BUILD_SERVICE_ANALYZER_IMAGE")
 	if len(analyserImage) > 0 {
-		ta.t.Logf("PR analyzer image: %s", analyserImage)
+		ta.Logf(fmt.Sprintf("PR analyzer image: %s", analyserImage))
 		for _, step := range ta.maven.Spec.Steps {
 			if step.Name != "analyse-dependencies" {
 				continue
 			}
-			ta.t.Logf("Updating analyse-dependencies step with image %s", analyserImage)
+			ta.Logf(fmt.Sprintf("Updating analyse-dependencies step with image %s", analyserImage))
 			step.Image = analyserImage
 		}
 	}
 	sidecarImage := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
 	if len(sidecarImage) > 0 {
-		ta.t.Logf("PR sidecar image: %s", sidecarImage)
+		ta.Logf(fmt.Sprintf("PR sidecar image: %s", sidecarImage))
 		for _, sidecar := range ta.maven.Spec.Sidecars {
 			if sidecar.Name != "proxy" {
 				continue
 			}
-			ta.t.Logf("Updating proxy sidecar with image %s", sidecarImage)
+			ta.Logf(fmt.Sprintf("Updating proxy sidecar with image %s", sidecarImage))
 			sidecar.Image = sidecarImage
 		}
 	}
@@ -234,24 +238,24 @@ func TestExampleRun(t *testing.T) {
 		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
 			pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
 			if err != nil {
-				ta.t.Logf("get pr %s produced err: %s", ta.run.Name, err.Error())
+				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
 				return false, nil
 			}
 			if !pr.IsDone() {
 				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
-					ta.t.Logf("problem marshalling in progress pipelinerun to bytes: %s", err.Error())
+					ta.Logf(fmt.Sprintf("problem marshalling in progress pipelinerun to bytes: %s", err.Error()))
 					return false, nil
 				}
-				ta.t.Logf("in flight pipeline run: %s", string(prBytes))
+				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", string(prBytes)))
 			}
 			if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
 				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
-					ta.t.Logf("problem marshalling failed pipelinerun to bytes: %s", err.Error())
+					ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
 					return false, nil
 				}
-				ta.t.Logf("not yet successful pipeline run: %s", string(prBytes))
+				ta.Logf(fmt.Sprintf("not yet successful pipeline run: %s", string(prBytes)))
 
 			}
 			return true, nil
@@ -265,7 +269,7 @@ func TestExampleRun(t *testing.T) {
 		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.t.Logf("error listing artifactbuilds: %s", err.Error())
+				ta.Logf(fmt.Sprintf("error listing artifactbuilds: %s", err.Error()))
 				return false, nil
 			}
 			gotABs := false
@@ -274,7 +278,7 @@ func TestExampleRun(t *testing.T) {
 			}
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.t.Logf("error listing dependencybuilds: %s", err.Error())
+				ta.Logf(fmt.Sprintf("error listing dependencybuilds: %s", err.Error()))
 				return false, nil
 			}
 			gotDBs := false
@@ -295,18 +299,18 @@ func TestExampleRun(t *testing.T) {
 		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
 			taskRuns, err := tektonClient.TektonV1beta1().TaskRuns(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.t.Logf("taskrun list error: %s", err.Error())
+				ta.Logf(fmt.Sprintf("taskrun list error: %s", err.Error()))
 				return false, nil
 			}
 			if len(taskRuns.Items) == 0 {
-				ta.t.Logf("no taskruns yet")
+				ta.Logf("no taskruns yet")
 				return false, nil
 			}
 			foundGenericLabel := false
 			foundABRLabel := false
 			foundDBLabel := false
 			for _, taskRun := range taskRuns.Items {
-				ta.t.Logf("taskrun %s has label map of len %d", taskRun.Name, len(taskRun.Labels))
+				ta.Logf(fmt.Sprintf("taskrun %s has label map of len %d", taskRun.Name, len(taskRun.Labels)))
 				for k := range taskRun.Labels {
 					if k == artifactbuild.TaskRunLabel {
 						foundGenericLabel = true
@@ -329,14 +333,15 @@ func TestExampleRun(t *testing.T) {
 		}
 	})
 
-	ta.t.Run("some artfacdtbuilds and dependencybuilds complete", func(t *testing.T) {
-		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+	ta.t.Run("some artfactbuilds and dependencybuilds complete", func(t *testing.T) {
+		err = wait.PollImmediate(ta.interval, 8*ta.timeout, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.t.Logf("error list artifactbuilds: %s", err.Error())
+				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
 				return false, nil
 			}
 			abComplete := false
+			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
 			for _, ab := range abList.Items {
 				if ab.Status.State == v1alpha1.ArtifactBuildStateComplete {
 					abComplete = true
@@ -345,6 +350,7 @@ func TestExampleRun(t *testing.T) {
 			}
 			dbComplete := false
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
 			for _, db := range dbList.Items {
 				if db.Status.State == v1alpha1.DependencyBuildStateComplete {
 					dbComplete = true
