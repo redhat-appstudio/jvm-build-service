@@ -1,8 +1,15 @@
 package controller
 
 import (
+	"context"
+	"fmt"
+	"time"
+
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -21,6 +28,23 @@ var (
 )
 
 func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, error) {
+	// we have seen in e2e testing that this path can get invoked prior to the TaskRun CRD getting generated,
+	// and controller-runtime does not retry on missing CRDs.
+	// so we are going to wait on the CRDs existing before moving forward.
+	apiextensionsClient := apiextensionsclient.NewForConfigOrDie(cfg)
+	if err := wait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
+		_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "taskruns.tekton.dev", metav1.GetOptions{})
+		if err != nil {
+			controllerLog.Info(fmt.Sprintf("get of taskrun CRD failed with: %s", err.Error()))
+			return false, nil
+		}
+		controllerLog.Info("get of taskrun CRD returned successfully")
+		return true, nil
+	}); err != nil {
+		controllerLog.Error(err, "timed out waiting for taskrun CRD to be created")
+		return nil, err
+	}
+
 	options.Scheme = runtime.NewScheme()
 
 	// pretty sure this is there by default but we will be explicit like build-service
