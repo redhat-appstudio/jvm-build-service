@@ -10,6 +10,8 @@
 
 The repository has been setup to make it easy to test your changes locally with your own quay.io account.
 
+NOTE: You need to be logged in to registry.redhat.com to be able to pull some required images. If you are using minikube you can do this via `docker login registry.redhat.io`.
+
 First set the QUAY_USERNAME env variable to your quay username:
 
 ----
