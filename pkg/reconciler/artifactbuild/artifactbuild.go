@@ -374,7 +374,7 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, abr *v
 				db.Status.State = v1alpha1.DependencyBuildStateNew
 			}
 			if err := r.client.Status().Update(ctx, &db); err != nil {
-				return reconcile.Result{}, err
+				return reconcile.Result{Requeue: true}, err
 			}
 		}
 	}
