@@ -53,6 +53,9 @@ export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=${JVM_BUILD_SERVICE_REQPROCESSOR_IMA
 export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-build-request-processor"}
 export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-reqprocessor-image"}
 
+# disable pruning for e2e's to help us debug
+export JVM_DELETE_TASKRUN_PODS="0"
+
 if [[ -n "${JOB_SPEC}" && "${REPO_NAME}" == "jvm-build-service" ]]; then
     # Extract PR author and commit SHA to also override default kustomization in infra-deployments repo
     # https://github.com/redhat-appstudio/infra-deployments/blob/d3b56adc1bd2a7cf500793a7863660ea5117c531/hack/preview.sh#L88
