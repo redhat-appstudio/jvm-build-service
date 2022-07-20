@@ -40,12 +40,12 @@ const (
 	TaskEnforceVersion   = "ENFORCE_VERSION"
 	TaskIgnoredArtifacts = "IGNORED_ARTIFACTS"
 
-	BuildInfoTaskScmUrl    = "SCM_URL"
-	BuildInfoTaskTag       = "TAG"
-	BuildInfoTaskContext   = "CONTEXT"
-	BuildInfoTaskVersion   = "VERSION"
-	BuildInfoTaskMessage   = "message"
-	BuildInfoTaskBuildInfo = "build-info"
+	BuildInfoTaskScmUrlParam  = "SCM_URL"
+	BuildInfoTaskTagParam     = "TAG"
+	BuildInfoTaskContextParam = "CONTEXT"
+	BuildInfoTaskVersionParam = "VERSION"
+	BuildInfoTaskMessage      = "message"
+	BuildInfoTaskBuildInfo    = "build-info"
 
 	TaskType          = "jvmbuildservice.io/task-type"
 	TaskTypeBuildInfo = "build-info"
@@ -154,14 +154,10 @@ func hashToString(unique string) string {
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	// create task run
 	tr := pipelinev1beta1.TaskRun{}
-	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-build-info", Kind: pipelinev1beta1.ClusterTaskKind}
+	tr.Spec.TaskSpec = createLookupBuildInfoTask(&db.Spec)
 	tr.Namespace = db.Namespace
 	tr.GenerateName = db.Name + "-build-discovery-"
 	tr.Labels = map[string]string{artifactbuild.TaskRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, TaskType: TaskTypeBuildInfo}
-	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: BuildInfoTaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}})
-	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: BuildInfoTaskTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}})
-	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: BuildInfoTaskContext, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}})
-	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: BuildInfoTaskVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.Version}})
 	if err := controllerutil.SetOwnerReference(db, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -174,6 +170,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alp
 	}
 	return reconcile.Result{}, nil
 }
+
 func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
 	if tr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
@@ -470,4 +467,37 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+func createLookupBuildInfoTask(build *v1alpha1.DependencyBuildSpec) *pipelinev1beta1.TaskSpec {
+	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+	recipes := os.Getenv("RECIPE_DATABASE")
+	return &pipelinev1beta1.TaskSpec{
+		Results: []pipelinev1beta1.TaskResult{{Name: BuildInfoTaskMessage}, {Name: BuildInfoTaskBuildInfo}},
+		Steps: []pipelinev1beta1.Step{
+			{
+				Container: v1.Container{
+					Name:  "process-build-requests",
+					Image: image,
+					Args: []string{
+						"lookup-build-info",
+						"--recipes",
+						recipes,
+						"--scm-url",
+						build.ScmInfo.SCMURL,
+						"--scm-tag",
+						build.ScmInfo.Tag,
+						"--context",
+						build.ScmInfo.Path,
+						"--version",
+						build.Version,
+						"--message",
+						"$(results." + BuildInfoTaskMessage + ".path)",
+						"--build-info",
+						"$(results." + BuildInfoTaskBuildInfo + ".path)",
+					},
+				},
+			},
+		},
+	}
 }
