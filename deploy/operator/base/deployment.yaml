@@ -18,14 +18,8 @@ spec:
           image: hacbs-jvm-operator
           imagePullPolicy: Always
           env:
-            - name: QUARKUS_LOG_LEVEL
-              value: DEBUG
-          # livenessProbe:
-          #   httpGet:
-          #     path: /q/health/live
-          #     port: 8080
-          #   initialDelaySeconds: 10
-          #   periodSeconds: 10
+            - name: RECIPE_DATABASE
+              value: "https://github.com/stuartwdouglas/tempdata2.git"
           resources:
             requests:
               memory: "256Mi"

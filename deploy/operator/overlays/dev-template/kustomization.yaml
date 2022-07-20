@@ -8,3 +8,6 @@ images:
   - name: hacbs-jvm-operator
     newName: quay.io/QUAY_USERNAME/hacbs-jvm-controller
     newTag: dev
+
+patchesStrategicMerge:
+  - operator-images.yaml

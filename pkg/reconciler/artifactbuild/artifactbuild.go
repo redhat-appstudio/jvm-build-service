@@ -236,11 +236,10 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, abr *v1alph
 
 	// create task run
 	tr := pipelinev1beta1.TaskRun{}
-	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: "lookup-artifact-location", Kind: pipelinev1beta1.ClusterTaskKind}
+	tr.Spec.TaskSpec = createLookupScmInfoTask(abr.Spec.GAV)
 	tr.Namespace = abr.Namespace
 	tr.GenerateName = abr.Name + "-scm-discovery-"
 	tr.Labels = map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV), TaskRunLabel: ""}
-	tr.Spec.Params = append(tr.Spec.Params, pipelinev1beta1.Param{Name: "GAV", Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: abr.Spec.GAV}})
 	if err := controllerutil.SetOwnerReference(abr, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -452,4 +451,43 @@ func CreateABRName(gav string) string {
 	newName.WriteString("-")
 	newName.WriteString(hash)
 	return strings.ToLower(newName.String())
+}
+
+func createLookupScmInfoTask(gav string) *pipelinev1beta1.TaskSpec {
+	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+	recipes := os.Getenv("RECIPE_DATABASE")
+	return &pipelinev1beta1.TaskSpec{
+		Results: []pipelinev1beta1.TaskResult{
+			{Name: TaskResultScmUrl},
+			{Name: TaskResultScmTag},
+			{Name: TaskResultScmType},
+			{Name: TaskResultContextPath},
+			{Name: TaskResultMessage},
+		},
+		Steps: []pipelinev1beta1.Step{
+			{
+				Container: corev1.Container{
+					Name:  "lookup-artifact-location",
+					Image: image,
+					Args: []string{
+						"lookup-scm",
+						"--recipes",
+						recipes,
+						"--scm-url",
+						"$(results." + TaskResultScmUrl + ".path)",
+						"--scm-tag",
+						"$(results." + TaskResultScmTag + ".path)",
+						"--scm-type",
+						"$(results." + TaskResultScmType + ".path)",
+						"--message",
+						"$(results." + TaskResultMessage + ".path)",
+						"--context",
+						"$(results." + TaskResultContextPath + ".path)",
+						"--gav",
+						gav,
+					},
+				},
+			},
+		},
+	}
 }
