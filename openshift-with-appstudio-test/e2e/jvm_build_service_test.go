@@ -166,7 +166,10 @@ func streamFileYamlToTektonObj(path string, obj runtime.Object, ta *testArgs) ru
 
 func TestExampleRun(t *testing.T) {
 	ta := setup(t, nil)
-	defer projectCleanup(ta)
+	//TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
+	// and successful runs (in case a run succeeds, but we find something amiss if we look at passing runs; our in repo
+	// tests do now run in conjunction with say the full suite of e2e's in the e2e-tests runs, so no contention there.
+	//defer projectCleanup(ta)
 
 	path, err := os.Getwd()
 	if err != nil {
