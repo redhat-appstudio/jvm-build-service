@@ -10,6 +10,8 @@ public class BuildRecipe {
 
     private String enforceVersion;
 
+    private List<String> ignoredArtifacts;
+
     public String getImage() {
         return image;
     }
@@ -43,6 +45,15 @@ public class BuildRecipe {
 
     public BuildRecipe setTask(String task) {
         this.task = task;
+        return this;
+    }
+
+    public List<String> getIgnoredArtifacts() {
+        return ignoredArtifacts;
+    }
+
+    public BuildRecipe setIgnoredArtifacts(List<String> ignoredArtifacts) {
+        this.ignoredArtifacts = ignoredArtifacts;
         return this;
     }
 }
