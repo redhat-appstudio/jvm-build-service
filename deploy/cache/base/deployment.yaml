@@ -35,7 +35,7 @@ spec:
             - name: QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE
               value: "4"
             - name: QUARKUS_THREAD_POOL_MAX_THREADS
-              value: "12"
+              value: "50"
             - name: STORE_GRADLE_URL
               value: https://repo.gradle.org/artifactory/libs-releases
             - name: STORE_GRADLE_TYPE
