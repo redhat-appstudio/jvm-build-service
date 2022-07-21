@@ -3,9 +3,9 @@ package dependencybuild
 import (
 	"context"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,7 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
+
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 
@@ -87,7 +88,7 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(pr).ShouldNot(BeNil())
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[]}`}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[],"toolVersion":null,"javaHome":null}`}}
 	} else {
 		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineMessage, Value: "build info missing"}}
 	}
@@ -156,7 +157,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(7))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(9))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineScmTag:
@@ -172,6 +173,10 @@ func TestStateDetect(t *testing.T) {
 				case PipelineEnforceVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				case PipelineIgnoredArtifacts:
+					g.Expect(param.Value.StringVal).Should(BeEmpty())
+				case TaskToolVersion:
+					g.Expect(param.Value.StringVal).Should(BeEmpty())
+				case TaskJavaHome:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				}
 			}

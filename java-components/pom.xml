@@ -25,11 +25,12 @@
         <formatter-maven-plugin.version>2.18.0</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.6.2</impsort-maven-plugin.version>
 
+        <assertj.version>3.23.1</assertj.version>
         <aws-url-connection-client.version>2.17.95</aws-url-connection-client.version>
         <aws-java-sdk-s3.version>1.12.169</aws-java-sdk-s3.version>
         <quarkus-jgit.version>1.2.0</quarkus-jgit.version>
         <quarkus-operator-sdk.version>3.0.7</quarkus-operator-sdk.version>
-        <gradle-tooling-api.version>7.4.2</gradle-tooling-api.version>
+        <gradle-tooling-api.version>7.5</gradle-tooling-api.version>
         <quarkus-github-api.version>1.302.0</quarkus-github-api.version>
         <cyclonedx-core-java.version>7.1.4</cyclonedx-core-java.version>
     </properties>
@@ -125,6 +126,12 @@
                 <groupId>org.cyclonedx</groupId>
                 <artifactId>cyclonedx-core-java</artifactId>
                 <version>${cyclonedx-core-java.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

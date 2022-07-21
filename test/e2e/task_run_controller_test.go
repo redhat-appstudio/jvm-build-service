@@ -37,7 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	//+kubebuilder:scaffold:imports
+	// +kubebuilder:scaffold:imports
 )
 
 const (
@@ -99,7 +99,7 @@ func getTrAbr() *tektonapi.PipelineRun {
 	var tr *tektonapi.PipelineRun
 	Eventually(func() bool {
 		Expect(k8sClient.List(ctx, &trl, listOpts)).ToNot(HaveOccurred())
-		//there should only be one, be guard against multiple
+		// there should only be one, be guard against multiple
 		for _, current := range trl.Items {
 			if tr == nil || tr.CreationTimestamp.Before(&current.CreationTimestamp) {
 				tmp := current
@@ -121,7 +121,7 @@ func getTrBuildDiscovery() *tektonapi.PipelineRun {
 	var tr *tektonapi.PipelineRun
 	Eventually(func() bool {
 		Expect(k8sClient.List(ctx, &trl, listOpts)).ToNot(HaveOccurred())
-		//there should only be one, be guard against multiple
+		// there should only be one, be guard against multiple
 		for _, current := range trl.Items {
 			if tr == nil || tr.CreationTimestamp.Before(&current.CreationTimestamp) {
 				tmp := current
@@ -260,7 +260,7 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 				Value: "OK",
 			}, {
 				Name:  dependencybuild.BuildInfoPipelineBuildInfo,
-				Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"ignoredArtifacts":[]}`,
+				Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"ignoredArtifacts":[],"toolVersion":null,"javaHome":null}`,
 			}}
 			Expect(k8sClient.Status().Update(ctx, btr)).Should(Succeed())
 			db := v1alpha1.DependencyBuild{}

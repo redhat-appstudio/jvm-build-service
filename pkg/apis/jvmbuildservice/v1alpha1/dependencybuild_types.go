@@ -27,13 +27,13 @@ type DependencyBuildStatus struct {
 	State        string             `json:"state,omitempty"`
 	Message      string             `json:"message,omitempty"`
 	Contaminants []string           `json:"contaminates,omitempty"`
-	//BuildRecipe the current build recipe. If build is done then this recipe was used
-	//to get to the current state
+	// BuildRecipe the current build recipe. If build is done then this recipe was used
+	// to get to the current state
 	CurrentBuildRecipe *BuildRecipe `json:"currentBuildRecipe,omitempty"`
-	//PotentialBuildRecipes additional recipes to try if the current recipe fails
+	// PotentialBuildRecipes additional recipes to try if the current recipe fails
 	PotentialBuildRecipes []*BuildRecipe `json:"potentialBuildRecipes,omitempty"`
-	//FailedBuildRecipes recipes that resulted in a failure
-	//if the current state is failed this may include the current BuildRecipe
+	// FailedBuildRecipes recipes that resulted in a failure
+	// if the current state is failed this may include the current BuildRecipe
 	FailedBuildRecipes            []*BuildRecipe `json:"failedBuildRecipes,omitempty"`
 	LastCompletedBuildPipelineRun string         `json:"lastCompletedBuildPipelineRun,omitempty"`
 }
@@ -73,4 +73,6 @@ type BuildRecipe struct {
 	CommandLine      []string `json:"commandLine,omitempty"`
 	EnforceVersion   string   `json:"enforceVersion,omitempty"`
 	IgnoredArtifacts []string `json:"ignoredArtifacts,omitempty"`
+	ToolVersion      string   `json:"toolVersion,omitempty"`
+	JavaHome         string   `json:"javaHome,omitempty"`
 }

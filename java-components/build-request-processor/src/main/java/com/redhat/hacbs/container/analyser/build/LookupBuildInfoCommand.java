@@ -1,5 +1,10 @@
 package com.redhat.hacbs.container.analyser.build;
 
+import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
+import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
+import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
+import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.GOOGLE_JAVA_FORMAT_PLUGIN;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,6 +16,7 @@ import java.util.Set;
 import org.eclipse.jgit.api.Git;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
@@ -94,16 +100,26 @@ public class LookupBuildInfoCommand implements Runnable {
                 path = path.resolve(context);
             }
             BuildInfo info = new BuildInfo();
-            info.tools.put("jdk", new VersionRange("8", "17", "11"));
             if (Files.isRegularFile(path.resolve("pom.xml"))) {
-                info.tools.put("maven", new VersionRange("3.8", "3.8", "3.8"));
+                info.tools.put(JDK, new VersionRange("8", "17", "11"));
+                info.tools.put(MAVEN, new VersionRange("3.8", "3.8", "3.8"));
                 info.invocations.add(
                         new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
                                 "-Drat.skip=true", "-Dmaven.deploy.skip=false")));
-            } else if (Files.isRegularFile(path.resolve("build.gradle"))
-                    || Files.isRegularFile(path.resolve("build.gradle.kts"))) {
-                info.tools.put("gradle", new VersionRange("7.3", "7.3", "7.3"));
-                info.invocations.add(new ArrayList<>(List.of("gradle", "build")));
+            } else if (GradleUtils.isGradleBuild()) {
+                var optionalGradleVersion = GradleUtils.getGradleVersionFromWrapperProperties();
+                var gradleVersion = optionalGradleVersion.orElse(GradleUtils.DEFAULT_GRADLE_VERSION);
+                var javaVersion = GradleUtils.getSupportedJavaVersion(gradleVersion);
+
+                if (GradleUtils.isInBuildGradle(GOOGLE_JAVA_FORMAT_PLUGIN)) {
+                    javaVersion = "11";
+                }
+
+                info.tools.put(JDK, new VersionRange("8", "17", javaVersion));
+                info.tools.put(GRADLE, new VersionRange(gradleVersion, gradleVersion, gradleVersion));
+                info.invocations.add(new ArrayList<>(GradleUtils.DEFAULT_GRADLE_ARGS));
+                info.toolVersion = gradleVersion;
+                info.javaHome = "/usr/lib/jvm/java-" + ("8".equals(javaVersion) ? "1.8.0" : javaVersion) + "-openjdk";
             }
             if (buildRecipeInfo != null) {
                 if (buildRecipeInfo.getAdditionalArgs() != null) {
@@ -117,7 +133,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.setIgnoredArtifacts(buildRecipeInfo.getIgnoredArtifacts());
             }
             ObjectMapper mapper = new ObjectMapper();
-            mapper.writeValue(this.buildInfo.toFile(), info);
+            mapper.writeValue(buildInfo.toFile(), info);
         }
     }
 }

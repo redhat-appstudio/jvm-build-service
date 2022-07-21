@@ -16,6 +16,8 @@ public class BuildRecipeInfo {
     boolean enforceVersion;
     List<String> additionalArgs = new ArrayList<>();
     List<String> ignoredArtifacts = new ArrayList<>();
+    String toolVersion;
+    String javaHome;
 
     public List<String> getAdditionalArgs() {
         return additionalArgs;
@@ -41,6 +43,24 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setIgnoredArtifacts(List<String> ignoredArtifacts) {
         this.ignoredArtifacts = ignoredArtifacts;
+        return this;
+    }
+
+    public String getToolVersion() {
+        return toolVersion;
+    }
+
+    public BuildRecipeInfo setToolVersion(String toolVersion) {
+        this.toolVersion = toolVersion;
+        return this;
+    }
+
+    public String getJavaHome() {
+        return javaHome;
+    }
+
+    public BuildRecipeInfo setJavaHome(String javaHome) {
+        this.javaHome = javaHome;
         return this;
     }
 }

@@ -32,14 +32,14 @@ spec:
       description: Java version.
       type: string
       default: ""
-    - name: GRADLE_VERSION
+    - name: TOOL_VERSION
       description: Gradle version.
       type: string
       default: ""
     - name: GRADLE_MANIPULATOR_ARGS
       description: Gradle manipulator arguments.
       type: string
-      default: "-DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionSuffix="
+      default: "-DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false"
     - name: IMAGE
       description: Gradle base image.
       type: string
@@ -160,7 +160,7 @@ spec:
                 repositories {
                     mavenLocal()
                     maven {
-                        name "indy-mvn"
+                        name "hacbs-mvn"
                         url "$(params.MAVEN_MIRROR_URL)"
                         credentials {
                             username "$(params.SERVER_USER)"
@@ -174,7 +174,7 @@ spec:
             repositories {
                 mavenLocal()
                 maven {
-                    name "indy-mvn"
+                    name "hacbs-mvn"
                     url "$(params.MAVEN_MIRROR_URL)"
                     credentials {
                         username "$(params.SERVER_USER)"
@@ -188,20 +188,10 @@ spec:
 
         settingsEvaluated { settings ->
             settings.pluginManagement {
-                resolutionStrategy {
-                    eachPlugin {
-                        if (requested.id.id == "org.jetbrains.dokka") {
-                            if (VersionNumber.parse(requested.version.toString()) < VersionNumber.parse("0.9.18")) {
-                                useVersion("0.9.18")
-                            }
-                        }
-                    }
-                }
-
                 repositories {
                     mavenLocal()
                     maven {
-                        name "indy-mvn"
+                        name "hacbs-mvn"
                         url "$(params.MAVEN_MIRROR_URL)"
                         credentials {
                             username "$(params.SERVER_USER)"
@@ -229,12 +219,13 @@ spec:
       script: |
         #!/usr/bin/env bash
 
-        GRADLE_VERSION="$(params.GRADLE_VERSION)"
-        [ -n "${GRADLE_VERSION}" ] || GRADLE_VERSION=$(sed -n "s/distributionUrl=.*\/gradle-\(.*\)-.*\.zip$/\1/p" gradle/wrapper/gradle-wrapper.properties 2>/dev/null)
+        TOOL_VERSION="$(params.TOOL_VERSION)"
+        [ -n "${TOOL_VERSION}" ] || TOOL_VERSION=$(sed -n "s/distributionUrl=.*\/gradle-\(.*\)-.*\.zip$/\1/p" gradle/wrapper/gradle-wrapper.properties 2>/dev/null)
 
-        if [ -n "${GRADLE_VERSION}" ]; then
-            export GRADLE_HOME="/opt/gradle-${GRADLE_VERSION}"
-            case "${GRADLE_VERSION}" in
+        if [ -n "${TOOL_VERSION}" ]; then
+            export GRADLE_HOME="/opt/gradle-${TOOL_VERSION}"
+            echo "GRADLE_HOME=${GRADLE_HOME}"
+            case "${TOOL_VERSION}" in
                 7.[3456789]*)
                     SUPPORTED_JAVA_VERSION="17"
                     sed -i -e 's|//allowInsecureProtocol|allowInsecureProtocol|g' ${GRADLE_USER_HOME}/init.gradle
@@ -253,7 +244,7 @@ spec:
                     SUPPORTED_JAVA_VERSION="1.8.0"
                     ;;
                 *)
-                    echo "Unsupported Gradle version: ${GRADLE_VERSION}" >&2
+                    echo "Unsupported Gradle version: ${TOOL_VERSION}" >&2
                     exit 1
                     ;;
             esac
@@ -263,7 +254,7 @@ spec:
         fi
 
         # XXX: Workaround for com.github.sherter.google-java-format not working on Java 17
-        if [ $(find -type f -name 'build.gradle*' -print0 | xargs -0 grep -c com.github.sherter.google-java-format) -gt 0 ]; then
+        if find -type f -name 'build.gradle*' -print0 | xargs -0 grep -q com.github.sherter.google-java-format; then
             echo "Found com.github.sherter.google-java-format plugin. Forcing Java version to 11" >&2
             SUPPORTED_JAVA_VERSION="11"
         fi
