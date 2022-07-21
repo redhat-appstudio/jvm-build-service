@@ -15,7 +15,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 
 	"knative.dev/pkg/apis"
@@ -258,10 +260,10 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
 			for _, command := range unmarshalled.Invocations {
 				if maven {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-maven-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Maven: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
 				}
 				if gradle {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-gradle-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Gradle: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
 				}
 			}
 		}
@@ -295,6 +297,15 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 
 }
 
+func (r *ReconcileDependencyBuild) decodeBytesToTaskRun(bytes []byte, taskRun *pipelinev1beta1.TaskRun) (*pipelinev1beta1.TaskRun, error) {
+	decodingScheme := runtime.NewScheme()
+	utilruntime.Must(pipelinev1beta1.AddToScheme(decodingScheme))
+	decoderCodecFactory := serializer.NewCodecFactory(decodingScheme)
+	decoder := decoderCodecFactory.UniversalDecoder(pipelinev1beta1.SchemeGroupVersion)
+	err := runtime.DecodeInto(decoder, bytes, taskRun)
+	return taskRun, err
+}
+
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
 	tr := pipelinev1beta1.TaskRun{}
@@ -305,7 +316,26 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	tr.Name = currentDependencyBuildTaskName(db)
 	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: "", TaskType: TaskTypeBuild}
 
+	image := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
 	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: db.Status.CurrentBuildRecipe.Task, Kind: pipelinev1beta1.ClusterTaskKind}
+	taskRun := &pipelinev1beta1.TaskRun{}
+	taskRunBytes := []byte{}
+	switch {
+	case db.Status.CurrentBuildRecipe.Maven:
+		taskRunBytes = []byte(maven)
+	case db.Status.CurrentBuildRecipe.Gradle:
+		taskRunBytes = []byte(gradle)
+	default:
+		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "MissingRecipeType", "recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
+		return reconcile.Result{}, fmt.Errorf("recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
+	}
+	var err error
+	taskRun, err = r.decodeBytesToTaskRun(taskRunBytes, taskRun)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	tr.Spec.TaskSpec = taskRun.Spec.TaskSpec
+	tr.Spec.TaskSpec.Sidecars[0].Image = image
 	tr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},

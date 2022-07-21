@@ -151,13 +151,18 @@ spec:
                     type: array
                   enforceVersion:
                     type: string
+                  gradle:
+                    type: boolean
                   ignoredArtifacts:
                     items:
                       type: string
                     type: array
                   image:
                     type: string
+                  maven:
+                    type: boolean
                   task:
+                    description: deprecated task string
                     type: string
                 type: object
               failedBuildRecipes:
@@ -171,13 +176,18 @@ spec:
                       type: array
                     enforceVersion:
                       type: string
+                    gradle:
+                      type: boolean
                     ignoredArtifacts:
                       items:
                         type: string
                       type: array
                     image:
                       type: string
+                    maven:
+                      type: boolean
                     task:
+                      description: deprecated task string
                       type: string
                   type: object
                 type: array
@@ -196,13 +206,18 @@ spec:
                       type: array
                     enforceVersion:
                       type: string
+                    gradle:
+                      type: boolean
                     ignoredArtifacts:
                       items:
                         type: string
                       type: array
                     image:
                       type: string
+                    maven:
+                      type: boolean
                     task:
+                      description: deprecated task string
                       type: string
                   type: object
                 type: array
