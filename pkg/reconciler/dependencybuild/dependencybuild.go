@@ -233,7 +233,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 	}
 	success := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
-	if !success {
+	if !success || len(buildInfo) == 0 {
 		db.Status.State = v1alpha1.DependencyBuildStateFailed
 		db.Status.Message = message
 	} else {
