@@ -337,6 +337,15 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	tr.Spec.TaskRef = nil
 	tr.Spec.TaskSpec = taskRun.Spec.TaskSpec
 	tr.Spec.TaskSpec.Sidecars[0].Image = image
+	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
+	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
+	//the actual solution will involve loading deployment config from a ConfigMap
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://localstack.jvm-build-service.svc.cluster.local:4572"})
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"})
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"})
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"})
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY", Value: "secretkey"})
+
 	tr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
