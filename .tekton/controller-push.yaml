@@ -25,7 +25,10 @@ spec:
         -e 's/\(newTag: \).*/\1{{ revision }}/'
         -e 's|\(https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/\)[^/]*\(/.*\)|\1{{ revision }}\2|'
         -e 's|\(quay.io/redhat-appstudio/[^:]*:\).*|\1{{ revision }}|'
-        components/build/jvm-build-service/kustomization.yaml
+        components/build/jvm-build-service/kustomization.yaml &&
+        sed -i 
+        -e 's|\(quay.io/redhat-appstudio/[^:]*:\).*|\1{{ revision }}|'
+        components/build/jvm-build-service/operator-images.yaml
   pipelineRef:
     name: docker-build
     bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
