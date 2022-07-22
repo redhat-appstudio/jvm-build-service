@@ -66,7 +66,10 @@ type DependencyBuildList struct {
 }
 
 type BuildRecipe struct {
+	//deprecated task string
 	Task             string   `json:"task,omitempty"`
+	Maven            bool     `json:"maven,omitempty"`
+	Gradle           bool     `json:"gradle,omitempty"`
 	Image            string   `json:"image,omitempty"`
 	CommandLine      []string `json:"commandLine,omitempty"`
 	EnforceVersion   string   `json:"enforceVersion,omitempty"`
