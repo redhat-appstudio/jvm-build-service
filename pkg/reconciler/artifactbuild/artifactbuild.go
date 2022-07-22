@@ -172,13 +172,9 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 		}
 	}
 	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
-		pod := corev1.Pod{}
-		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
-		if poderr == nil {
-			err := r.client.Delete(ctx, &pod)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
+		delerr := r.client.Delete(ctx, tr)
+		if delerr != nil {
+			return reconcile.Result{}, delerr
 		}
 	}
 
