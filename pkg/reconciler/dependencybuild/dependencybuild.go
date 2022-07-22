@@ -334,6 +334,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	tr.Spec.TaskRef = nil
 	tr.Spec.TaskSpec = taskRun.Spec.TaskSpec
 	tr.Spec.TaskSpec.Sidecars[0].Image = image
 	tr.Spec.Params = []pipelinev1beta1.Param{

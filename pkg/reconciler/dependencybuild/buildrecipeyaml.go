@@ -31,9 +31,7 @@ spec:
         description: Any community GAVs that have ended up in the final output.
     workspaces:
       - name: maven-settings
-        mountPath: $(workspaces.maven-settings.path)
       - name: source
-        mountPath: $(workspaces.source.path)
     params:
       - name: URL
         type: string
