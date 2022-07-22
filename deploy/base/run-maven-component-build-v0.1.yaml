@@ -205,7 +205,7 @@ spec:
         chown 1001:1001 -R $(workspaces.source.path)
         #we can't use array parameters directly here
         #we pass them in as goals
-        /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" $@ "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy"
+        /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" $@ "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" || { cat $(workspaces.maven-settings.path)/sidecar.log ; false ; }
     - name: deploy-and-check-for-contaminates
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
       securityContext:
@@ -214,7 +214,7 @@ spec:
         tar -czf $(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz -C $(workspaces.source.path)/hacbs-jvm-deployment-repo .
         curl --data-binary @$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz http://localhost:2000/deploy
 
-        curl --fail http://localhost:2000/deploy/result -o $(results.contaminants.path)
+        curl --fail http://localhost:2000/deploy/result -o $(results.contaminants.path) || { cat $(workspaces.maven-settings.path)/sidecar.log ; false ; }
         cat $(workspaces.maven-settings.path)/sidecar.log
       resources:
         requests:
