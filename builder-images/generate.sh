@@ -2,7 +2,7 @@
 
 
 generate () {
-  mkdir $IMAGE_NAME
+  mkdir -p $IMAGE_NAME
   envsubst '$IMAGE_NAME,$BASE_IMAGE,$MAVEN_VERSION,$MAVEN_SHA,$GRADLE_VERSION,$GRADLE_SHA' < Dockerfile.template > $IMAGE_NAME/Dockerfile
   envsubst '$IMAGE_NAME,$BASE_IMAGE' < push.yaml > ../.tekton/$IMAGE_NAME-push.yaml
   envsubst '$IMAGE_NAME,$BASE_IMAGE' < pull-request.yaml > ../.tekton/$IMAGE_NAME-pull-request.yaml
