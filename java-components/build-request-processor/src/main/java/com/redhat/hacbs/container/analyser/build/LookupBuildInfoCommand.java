@@ -106,7 +106,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.invocations.add(
                         new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
                                 "-Drat.skip=true", "-Dmaven.deploy.skip=false")));
-            } else if (GradleUtils.isGradleBuild()) {
+            } else if (GradleUtils.isGradleBuild(path)) {
                 var optionalGradleVersion = GradleUtils.getGradleVersionFromWrapperProperties();
                 var gradleVersion = optionalGradleVersion.orElse(GradleUtils.DEFAULT_GRADLE_VERSION);
                 var javaVersion = GradleUtils.getSupportedJavaVersion(gradleVersion);

@@ -98,7 +98,13 @@ public final class GradleUtils {
         throw new IllegalArgumentException("Unsupported Gradle version: " + gradleVersion);
     }
 
-    static boolean isGradleBuild(Path basedir) {
+    /**
+     * Returns true if and only if the directory contains a readable file named {@code build.gradle} or
+     * {@code build.gradle.kts}.
+     *
+     * @return whether the current directory contains a Gradle build
+     */
+    public static boolean isGradleBuild(Path basedir) {
         var buildGradle = basedir.resolve(BUILD_GRADLE);
 
         if (!Files.isRegularFile(buildGradle) || !Files.isReadable(buildGradle)) {
@@ -107,16 +113,6 @@ public final class GradleUtils {
         }
 
         return true;
-    }
-
-    /**
-     * Returns true if and only if the current directory contains a readable file named {@code build.gradle} or
-     * {@code build.gradle.kts}.
-     *
-     * @return whether the current directory contains a Gradle build
-     */
-    public static boolean isGradleBuild() {
-        return isGradleBuild(Path.of("."));
     }
 
     /**
