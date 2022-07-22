@@ -259,19 +259,19 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		// for now we are ignoring the tool versions
 		// and just using the supplied invocations
 		buildRecipes := []*v1alpha1.BuildRecipe{}
-		_, maven := unmarshalled.Tools["maven"]
+		_, maven := unmarshalled.Tools["mvn"]
 		_, gradle := unmarshalled.Tools["gradle"]
 
 		if maven {
 			for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
 				for _, command := range unmarshalled.Invocations {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-maven-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaHome: unmarshalled.JavaHome})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-maven-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaHome: unmarshalled.JavaHome, Maven: true})
 				}
 			}
 		} else if gradle {
 			for _, image := range []string{"quay.io/dwalluck/gradle:latest"} {
 				for _, command := range unmarshalled.Invocations {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-gradle-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaHome: unmarshalled.JavaHome})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Task: "run-gradle-component-build", Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaHome: unmarshalled.JavaHome, Gradle: true})
 				}
 			}
 		}
