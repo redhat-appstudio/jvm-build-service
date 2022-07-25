@@ -5,13 +5,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class ImageData {
+public final class ImageData {
 
-    private Path artifactsPath;
-    private Set<Gav> gavs;
-
-    public ImageData() {
-    }
+    private final Path artifactsPath;
+    private final Set<Gav> gavs;
 
     public ImageData(Path artifactsPath, Set<Gav> gavs) {
         this.artifactsPath = artifactsPath;
@@ -22,16 +19,8 @@ public class ImageData {
         return artifactsPath;
     }
 
-    public void setArtifactsPath(Path artifactsPath) {
-        this.artifactsPath = artifactsPath;
-    }
-
     public Set<Gav> getGavs() {
         return gavs;
-    }
-
-    public void setGavs(Set<Gav> gavs) {
-        this.gavs = gavs;
     }
 
     public String getVersions() {

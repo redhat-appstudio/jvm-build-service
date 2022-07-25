@@ -63,13 +63,14 @@ public class DeployResource {
         this.deployer = getDeployer(deployer);
         this.doNotDeploy = doNotDeploy.orElse(Set.of());
         this.allowedSources = allowedSources.orElse(Set.of());
-        Log.infof("Ignored Artifacts: %s", doNotDeploy);
+        Log.debugf("Using %s deployer", deployer);
+        Log.debugf("Ignored Artifacts: %s", doNotDeploy);
     }
 
     @GET
     @Path("/result")
     public Response contaminates() {
-        Log.infof("Getting contaminates for build: " + contaminates);
+        Log.debugf("Getting contaminates for build: " + contaminates);
         if (deployFailure != null) {
             throw new RuntimeException(deployFailure);
         }
@@ -94,7 +95,7 @@ public class DeployResource {
                 }
                 response.append(i);
             }
-            Log.infof("Contaminates returned: " + response);
+            Log.debugf("Contaminates returned: " + response);
             return Response.ok(response).build();
         }
     }
@@ -118,7 +119,7 @@ public class DeployResource {
             while ((e = in.getNextTarEntry()) != null) {
                 if (e.getName().endsWith(".jar")) {
                     if (!DeployerUtil.shouldIgnore(doNotDeploy, e.getName())) {
-                        Log.infof("Checking %s for contaminants", e.getName());
+                        Log.debugf("Checking %s for contaminants", e.getName());
                         var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
                         if (info != null) {
                             for (var i : info) {
@@ -140,7 +141,7 @@ public class DeployResource {
                 }
             }
         }
-        Log.infof("Contaminants: %s", contaminatedPaths);
+        Log.debugf("Contaminants: %s", contaminatedPaths);
         this.contaminates.addAll(contaminants);
 
         if (contaminants.isEmpty()) {
