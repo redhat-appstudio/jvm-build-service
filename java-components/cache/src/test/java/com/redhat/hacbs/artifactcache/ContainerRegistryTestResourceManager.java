@@ -165,7 +165,7 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         Log.debug("\n\n Test registry catalog:\n" + catalogs.encodePrettily() + "\n");
 
         connCatalog.disconnect();
-        
+
         // Print all the tags
         StringBuilder resultTags = new StringBuilder();
         URL urlTags = new URL(
