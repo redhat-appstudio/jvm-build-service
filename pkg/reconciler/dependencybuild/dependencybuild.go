@@ -503,6 +503,11 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 func createLookupBuildInfoTask(build *v1alpha1.DependencyBuildSpec) *pipelinev1beta1.TaskSpec {
 	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	recipes := os.Getenv("RECIPE_DATABASE")
+	path := build.ScmInfo.Path
+	//TODO should the buidl request process require context to be set ?
+	if len(path) == 0 {
+		path = "."
+	}
 	return &pipelinev1beta1.TaskSpec{
 		Results: []pipelinev1beta1.TaskResult{{Name: BuildInfoTaskMessage}, {Name: BuildInfoTaskBuildInfo}},
 		Steps: []pipelinev1beta1.Step{
@@ -519,7 +524,7 @@ func createLookupBuildInfoTask(build *v1alpha1.DependencyBuildSpec) *pipelinev1b
 						"--scm-tag",
 						build.ScmInfo.Tag,
 						"--context",
-						build.ScmInfo.Path,
+						path,
 						"--version",
 						build.Version,
 						"--message",
