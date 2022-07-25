@@ -9,9 +9,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import javax.enterprise.context.spi.CreationalContext;
+import javax.enterprise.inject.spi.Bean;
+import javax.enterprise.inject.spi.BeanManager;
 import javax.inject.Singleton;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -25,13 +26,12 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.NoCloseInputStream;
+import com.redhat.hacbs.sidecar.resources.deploy.Deployer;
+import com.redhat.hacbs.sidecar.resources.deploy.DeployerUtil;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;
 import io.smallrye.common.annotation.Blocking;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Path("/deploy")
 @Blocking
@@ -39,12 +39,13 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 @Startup
 public class DeployResource {
 
-    private static final Pattern ARTIFACT_PATH = Pattern.compile(".*/([^/]+)/([^/]+)/([^/]+)");
+    final Set<String> contaminates = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    final S3Client client;
+    private Throwable deployFailure;
 
-    final String deploymentBucket;
-    final String deploymentPrefix;
+    final Deployer deployer;
+    final BeanManager beanManager;
+
     /**
      * We can ignore some artifacts that are problematic as part of deployment.
      * <p>
@@ -54,18 +55,12 @@ public class DeployResource {
     Set<String> doNotDeploy;
     Set<String> allowedSources;
 
-    final Set<String> contaminates = Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-    private Throwable deployFailure;
-
-    public DeployResource(S3Client client,
-            @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
-            @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
+    public DeployResource(BeanManager beanManager,
+            @ConfigProperty(name = "deployer", defaultValue = "S3Deployer") String deployer,
             @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy,
             @ConfigProperty(name = "allowed-sources", defaultValue = "") Optional<Set<String>> allowedSources) {
-        this.client = client;
-        this.deploymentBucket = deploymentBucket;
-        this.deploymentPrefix = deploymentPrefix;
+        this.beanManager = beanManager;
+        this.deployer = getDeployer(deployer);
         this.doNotDeploy = doNotDeploy.orElse(Set.of());
         this.allowedSources = allowedSources.orElse(Set.of());
         Log.infof("Ignored Artifacts: %s", doNotDeploy);
@@ -106,39 +101,37 @@ public class DeployResource {
 
     @POST
     public void deployArchive(InputStream data) throws Exception {
-        try {
-            java.nio.file.Path temp = Files.createTempFile("deployment", ".tar.gz");
-            try (var out = Files.newOutputStream(temp)) {
-                byte[] buf = new byte[1024];
-                int r;
-                while ((r = data.read(buf)) > 0) {
-                    out.write(buf, 0, r);
-                }
+        java.nio.file.Path temp = Files.createTempFile("deployment", ".tar.gz");
+        try (var out = Files.newOutputStream(temp)) {
+            byte[] buf = new byte[1024];
+            int r;
+            while ((r = data.read(buf)) > 0) {
+                out.write(buf, 0, r);
             }
+        }
 
-            Set<String> contaminants = new HashSet<>();
-            Map<String, Set<String>> contaminatedPaths = new HashMap<>();
-            try (TarArchiveInputStream in = new TarArchiveInputStream(
-                    new GzipCompressorInputStream(Files.newInputStream(temp)))) {
-                TarArchiveEntry e;
-                while ((e = in.getNextTarEntry()) != null) {
-                    if (e.getName().endsWith(".jar")) {
-                        if (!shouldIgnore(doNotDeploy, e.getName())) {
-                            Log.infof("Checking %s for contaminants", e.getName());
-                            var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
-                            if (info != null) {
-                                for (var i : info) {
-                                    if (!allowedSources.contains(i.source)) {
-                                        //Set<String> result = new HashSet<>(info.stream().map(a -> a.gav).toList());
-                                        contaminants.add(i.gav);
-                                        int index = e.getName().lastIndexOf("/");
-                                        if (index != -1) {
-                                            contaminatedPaths
-                                                    .computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
-                                                    .add(i.gav);
-                                        } else {
-                                            contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
-                                        }
+        Set<String> contaminants = new HashSet<>();
+        Map<String, Set<String>> contaminatedPaths = new HashMap<>();
+        try (TarArchiveInputStream in = new TarArchiveInputStream(
+                new GzipCompressorInputStream(Files.newInputStream(temp)))) {
+            TarArchiveEntry e;
+            while ((e = in.getNextTarEntry()) != null) {
+                if (e.getName().endsWith(".jar")) {
+                    if (!DeployerUtil.shouldIgnore(doNotDeploy, e.getName())) {
+                        Log.infof("Checking %s for contaminants", e.getName());
+                        var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
+                        if (info != null) {
+                            for (var i : info) {
+                                if (!allowedSources.contains(i.source)) {
+                                    //Set<String> result = new HashSet<>(info.stream().map(a -> a.gav).toList());
+                                    contaminants.add(i.gav);
+                                    int index = e.getName().lastIndexOf("/");
+                                    if (index != -1) {
+                                        contaminatedPaths
+                                                .computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
+                                                .add(i.gav);
+                                    } else {
+                                        contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
                                     }
                                 }
                             }
@@ -146,47 +139,29 @@ public class DeployResource {
                     }
                 }
             }
-            Log.infof("Contaminants: %s", contaminatedPaths);
-            this.contaminates.addAll(contaminants);
+        }
+        Log.infof("Contaminants: %s", contaminatedPaths);
+        this.contaminates.addAll(contaminants);
 
-            if (contaminants.isEmpty()) {
-                try (TarArchiveInputStream in = new TarArchiveInputStream(
-                        new GzipCompressorInputStream(Files.newInputStream(temp)))) {
-                    TarArchiveEntry e;
-                    while ((e = in.getNextTarEntry()) != null) {
-                        if (!shouldIgnore(doNotDeploy, e.getName())) {
-                            Log.infof("Received %s", e.getName());
-                            byte[] fileData = in.readAllBytes();
-                            String name = e.getName();
-                            if (name.startsWith("./")) {
-                                name = name.substring(2);
-                            }
-                            String targetPath = deploymentPrefix + "/" + name;
-                            client.putObject(PutObjectRequest.builder()
-                                    .bucket(deploymentBucket)
-                                    .key(targetPath)
-                                    .build(), RequestBody.fromBytes(fileData));
-                            Log.infof("Deployed to: %s", targetPath);
-                        }
-                    }
-                }
-            } else {
-                Log.error("Not performing deployment due to community dependencies contaminating the result");
+        if (contaminants.isEmpty()) {
+
+            try {
+                deployer.deployArchive(temp);
+            } catch (Throwable t) {
+                Log.error("Deployment failed", t);
+                deployFailure = t;
+                flushLogs();
+                throw t;
             }
-        } catch (Throwable t) {
-            Log.error("Deployment failed", t);
-            deployFailure = t;
-            flushLogs();
-            throw t;
+        } else {
+            Log.error("Not performing deployment due to community dependencies contaminating the result");
         }
     }
 
-    static boolean shouldIgnore(Set<String> doNotDeploy, String name) {
-        Matcher m = ARTIFACT_PATH.matcher(name);
-        if (!m.matches()) {
-            return false;
-        }
-        return doNotDeploy.contains(m.group(1));
+    private Deployer getDeployer(String name) {
+        Bean<Deployer> bean = (Bean<Deployer>) beanManager.getBeans(name).iterator().next();
+        CreationalContext<Deployer> ctx = beanManager.createCreationalContext(bean);
+        return (Deployer) beanManager.getReference(bean, Deployer.class, ctx);
     }
 
     private void flushLogs() {
