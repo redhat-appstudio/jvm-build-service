@@ -93,9 +93,9 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         JibContainerBuilder containerBuilder = Jib.fromScratch()
                 .setFormat(ImageFormat.OCI)
                 .addLabel("groupId", ContainerRegistryStorageTest.GROUP)
-                .addLabel("artifactId", "quarkus-parent")
+                .addLabel("artifactId", "foo-parent")
                 .addLabel("version", ContainerRegistryStorageTest.VERSION)
-                .addLabel("description", "Quarkus");
+                .addLabel("description", "Foo");
 
         List<Path> testLayers = createTestLayers();
         for (Path layer : testLayers) {
@@ -164,6 +164,8 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         JsonObject catalogs = new JsonObject(resultCatalog.toString());
         Log.debug("\n\n Test registry catalog:\n" + catalogs.encodePrettily() + "\n");
 
+        connCatalog.disconnect();
+        
         // Print all the tags
         StringBuilder resultTags = new StringBuilder();
         URL urlTags = new URL(
