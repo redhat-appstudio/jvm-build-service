@@ -67,7 +67,7 @@ public class ContainerRegistryDeployer implements Deployer {
 
     @Override
     public void deployArchive(Path tarGzFile) throws Exception {
-        Log.infof("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
+        Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
         // Read the tar to get the gavs and files
         ImageData imageData = getImageData(tarGzFile);
@@ -103,7 +103,7 @@ public class ContainerRegistryDeployer implements Deployer {
             containerBuilder = containerBuilder.addLayer(List.of(layer), imageRoot);
         }
 
-        Log.infof("Image %s created", imageName);
+        Log.debugf("Image %s created", imageName);
 
         containerBuilder.containerize(containerizer);
     }
@@ -121,7 +121,7 @@ public class ContainerRegistryDeployer implements Deployer {
         Path layer1Path = Files.createTempFile("source", ".txt");
         Path layer2Path = Files.createTempFile("logs", ".txt");
 
-        Log.info("\n Container details:\n"
+        Log.debug("\n Container details:\n"
                 + "\t layer 1 (source) " + layer1Path.toString() + "\n"
                 + "\t layer 2 (logs) " + layer2Path.toString() + "\n"
                 + "\t layer 3 (artifacts) " + artifacts.toString());
@@ -133,15 +133,10 @@ public class ContainerRegistryDeployer implements Deployer {
         Path outputPath = Paths.get(Files.createTempDirectory(HACBS).toString(), ARTIFACTS);
         Files.createDirectories(outputPath);
 
-        ImageData imageData = new ImageData();
-
         try (InputStream tarInput = Files.newInputStream(tarGzFile)) {
-            imageData.setGavs(extractTarArchive(tarInput, outputPath.toString()));
+            ImageData imageData = new ImageData(outputPath, extractTarArchive(tarInput, outputPath.toString()));
+            return imageData;
         }
-
-        imageData.setArtifactsPath(outputPath);
-
-        return imageData;
     }
 
     private Set<Gav> extractTarArchive(InputStream tarInput, String folder) throws IOException {

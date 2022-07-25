@@ -2,14 +2,11 @@ package com.redhat.hacbs.sidecar.resources.deploy.containerregistry;
 
 import java.util.Objects;
 
-public class Gav {
-    private String groupId;
-    private String artifactId;
-    private String version;
-    private String tag;
-
-    public Gav() {
-    }
+public final class Gav {
+    private final String groupId;
+    private final String artifactId;
+    private final String version;
+    private final String tag;
 
     public Gav(String groupId, String artifactId, String version, String tag) {
         this.groupId = groupId;
@@ -22,32 +19,16 @@ public class Gav {
         return groupId;
     }
 
-    public void setGroupId(String groupId) {
-        this.groupId = groupId;
-    }
-
     public String getArtifactId() {
         return artifactId;
-    }
-
-    public void setArtifactId(String artifactId) {
-        this.artifactId = artifactId;
     }
 
     public String getVersion() {
         return version;
     }
 
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
     public String getTag() {
         return tag;
-    }
-
-    public void setTag(String tag) {
-        this.tag = tag;
     }
 
     @Override
