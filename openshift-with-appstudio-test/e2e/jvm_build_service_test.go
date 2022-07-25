@@ -61,7 +61,8 @@ func dumpPods(ta *testArgs) {
 	podClient := kubeClient.CoreV1().Pods(ta.ns)
 	podList, err := podClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		debugAndFailTest(ta, fmt.Sprintf("error list pods %v", err))
+		ta.Logf(fmt.Sprintf("error list pods %s", err.Error()))
+		return
 	}
 	ta.Logf(fmt.Sprintf("dumpPods have %d items in list", len(podList.Items)))
 	for _, pod := range podList.Items {
@@ -71,11 +72,13 @@ func dumpPods(ta *testArgs) {
 			req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
 			readCloser, err := req.Stream(context.TODO())
 			if err != nil {
-				debugAndFailTest(ta, fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err.Error()))
+				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err.Error()))
+				continue
 			}
 			b, err := ioutil.ReadAll(readCloser)
 			if err != nil {
-				debugAndFailTest(ta, fmt.Sprintf("error reading pod stream %s", err.Error()))
+				ta.Logf(fmt.Sprintf("error reading pod stream %s", err.Error()))
+				continue
 			}
 			podLog := string(b)
 			ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
@@ -85,8 +88,67 @@ func dumpPods(ta *testArgs) {
 	}
 }
 
+func dumpBadEvents(ta *testArgs) {
+	eventClient := kubeClient.EventsV1().Events(ta.ns)
+	eventList, err := eventClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		ta.Logf(fmt.Sprintf("error listing events: %s", err.Error()))
+		return
+	}
+	ta.Logf(fmt.Sprintf("dumpBadEvents have %d items in total list", len(eventList.Items)))
+	for _, event := range eventList.Items {
+		if event.Type == corev1.EventTypeNormal {
+			continue
+		}
+		ta.Logf(fmt.Sprintf("non-normal event reason %s about obj %s:%s message %s", event.Reason, event.Regarding.Kind, event.Regarding.Name, event.Note))
+	}
+}
+
+func dumpNodes(ta *testArgs) {
+	nodeClient := kubeClient.CoreV1().Nodes()
+	nodeList, err := nodeClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		ta.Logf(fmt.Sprintf("error listin nodes: %s", err.Error()))
+		return
+	}
+	ta.Logf(fmt.Sprintf("dumpNodes found %d nodes in list, but only logging worker nodes", len(nodeList.Items)))
+	for _, node := range nodeList.Items {
+		_, ok := node.Labels["node-role.kubernetes.io/master"]
+		if ok {
+			continue
+		}
+		if node.Status.Allocatable.Cpu() == nil {
+			ta.Logf(fmt.Sprintf("Node %s does not have allocatable cpu", node.Name))
+			continue
+		}
+		if node.Status.Allocatable.Memory() == nil {
+			ta.Logf(fmt.Sprintf("Node %s does not have allocatable mem", node.Name))
+			continue
+		}
+		if node.Status.Capacity.Cpu() == nil {
+			ta.Logf(fmt.Sprintf("Node %s does not have capacity cpu", node.Name))
+			continue
+		}
+		if node.Status.Capacity.Memory() == nil {
+			ta.Logf(fmt.Sprintf("Node %s does not have capacity mem", node.Name))
+			continue
+		}
+		alloccpu := node.Status.Allocatable.Cpu()
+		allocmem := node.Status.Allocatable.Memory()
+		capaccpu := node.Status.Capacity.Cpu()
+		capacmem := node.Status.Capacity.Memory()
+		ta.Logf(fmt.Sprintf("Node %s allocatable CPU %s allocatable mem %s capacity CPU %s capacitymem %s",
+			node.Name,
+			alloccpu.String(),
+			allocmem.String(),
+			capaccpu.String(),
+			capacmem.String()))
+	}
+}
+
 func debugAndFailTest(ta *testArgs, failMsg string) {
 	dumpPods(ta)
+	dumpBadEvents(ta)
 	ta.t.Fatalf(failMsg)
 }
 
@@ -110,6 +172,9 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 			debugAndFailTest(ta, fmt.Sprintf("%#v", err))
 		}
 	}
+
+	dumpNodes(ta)
+
 	ta.gitClone = &v1beta1.Task{}
 	obj := streamRemoteYamlToTektonObj("https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml", ta.gitClone, ta)
 	var ok bool
@@ -298,7 +363,7 @@ func TestExampleRun(t *testing.T) {
 	})
 
 	ta.t.Run("some artfactbuilds and dependencybuilds complete", func(t *testing.T) {
-		err = wait.PollImmediate(ta.interval, 8*ta.timeout, func() (done bool, err error) {
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
