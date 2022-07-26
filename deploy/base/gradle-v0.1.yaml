@@ -43,12 +43,11 @@ spec:
     - name: IMAGE
       description: Gradle base image.
       type: string
-      default: quay.io/dwalluck/gradle:1@sha256:eaf55b0ad7a9a82874e2c3b7ff4c2c055286341eb6d2dfe117202a968ff70f23
+      default: quay.io/dwalluck/gradle:1@sha256:2429dad0ceef471455f4b121521c9eb63972b4cd693b25f51383c68ffd3a13b5
     - name: GOALS
       description: 'The gradle tasks to run (default: build publish)'
       type: array
       default:
-        - -Prelease
         - build
         - publish
     - name: MAVEN_MIRROR_URL

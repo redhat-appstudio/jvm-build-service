@@ -307,12 +307,11 @@ spec:
       - name: IMAGE
         description: Gradle base image.
         type: string
-        default: quay.io/dwalluck/gradle:1@sha256:eaf55b0ad7a9a82874e2c3b7ff4c2c055286341eb6d2dfe117202a968ff70f23
+        default: quay.io/dwalluck/gradle:1@sha256:sha256:2429dad0ceef471455f4b121521c9eb63972b4cd693b25f51383c68ffd3a13b5
       - name: GOALS
         description: 'The gradle tasks to run (default: build publish)'
         type: array
         default:
-          - -Prelease
           - build
           - publish
       - name: MAVEN_MIRROR_URL
@@ -397,7 +396,7 @@ spec:
             value: $(workspaces.maven-settings.path)/.gradle
         script: |
           #!/usr/bin/env bash
-  
+
           mkdir -p ${GRADLE_USER_HOME}
           cat > ${GRADLE_USER_HOME}/gradle.properties << EOF
           org.gradle.caching=false
@@ -405,13 +404,13 @@ spec:
           org.gradle.daemon=false
           # For Spring/Nebula Release Plugins
           release.useLastTag=true
-  
+
           # Increase timeouts
           systemProp.org.gradle.internal.http.connectionTimeout=600000
           systemProp.org.gradle.internal.http.socketTimeout=600000
           systemProp.http.socketTimeout=600000
           systemProp.http.connectionTimeout=600000
-  
+
           # Proxy settings <https://docs.gradle.org/current/userguide/build_environment.html#sec:accessing_the_web_via_a_proxy>
           systemProp.http.proxyHost=$(params.PROXY_HOST)
           systemProp.http.proxyPort=$(params.PROXY_PORT)
@@ -421,7 +420,7 @@ spec:
           EOF
           cat > ${GRADLE_USER_HOME}/init.gradle << EOF
           import org.gradle.util.VersionNumber
-  
+
           allprojects {
               buildscript {
                   repositories {
@@ -452,7 +451,7 @@ spec:
                   gradlePluginPortal()
               }
           }
-  
+
           settingsEvaluated { settings ->
               settings.pluginManagement {
                   repositories {
@@ -471,7 +470,7 @@ spec:
               }
           }
           EOF
-  
+
           # fix-permissions-for-builder
           chown 1001:1001 -R $(workspaces.source.path)
       - name: gradle-tasks
@@ -485,23 +484,23 @@ spec:
         args: [ "$(params.GOALS[*])" ]
         script: |
           #!/usr/bin/env bash
-  
+
           echo "@=$@"
-  
+
           if [ -z "$(params.JAVA_HOME)" ]; then
               echo "JAVA_HOME has not been set" >&2
               exit 1
           fi
-  
+
           export JAVA_HOME=$(params.JAVA_HOME)
           echo "JAVA_HOME=${JAVA_HOME}"
           export PATH="${JAVA_HOME}/bin:${PATH}"
-  
+
           if [ -z "${TOOL_VERSION}" ]; then
               echo "TOOL_VERSION has not been set" >&2
               exit 1
           fi
-  
+
           TOOL_VERSION="$(params.TOOL_VERSION)"
           export GRADLE_HOME="/opt/gradle-${TOOL_VERSION}"
           echo "GRADLE_HOME=${GRADLE_HOME}"
@@ -511,18 +510,18 @@ spec:
                   sed -i -e 's|//allowInsecureProtocol|allowInsecureProtocol|g' ${GRADLE_USER_HOME}/init.gradle
                   ;;
           esac
-  
+
           export LANG=en_US.UTF-8
           export LC_ALL=en_US.UTF-8
-  
+
           if [ -n "$(params.ENFORCE_VERSION)" ]; then
               gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) generateAlignmentMetadata || exit 1
           else
               gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) generateAlignmentMetadata || exit 1
           fi
-  
+
           gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo $@ || exit 1
-  
+
           # fix-permissions-for-builder
           chown 1001:1001 -R $(workspaces.source.path)
       - name: deploy-and-check-for-contaminates
@@ -532,8 +531,8 @@ spec:
         script: |
           tar -cvvzf $(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz -C $(workspaces.source.path)/hacbs-jvm-deployment-repo .
           curl --verbose --data-binary @$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz http://localhost:2000/deploy
-  
-          curl --verbose --fail http://localhost:2000/deploy/result -o $(results.contaminants.path)
+
+          curl --verbose --fail http://localhost:2000/deploy/result -o $(results.contaminants.path) || cat $(workspaces.maven-settings.path)/sidecar.log
           cat $(workspaces.maven-settings.path)/sidecar.log
         resources:
           requests:

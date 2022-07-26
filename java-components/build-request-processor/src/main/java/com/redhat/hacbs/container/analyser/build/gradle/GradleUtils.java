@@ -17,7 +17,7 @@ public final class GradleUtils {
     /**
      * The default Gradle arguments.
      */
-    public static final List<String> DEFAULT_GRADLE_ARGS = List.of("-Prelease", "build", "publish");
+    public static final List<String> DEFAULT_GRADLE_ARGS = List.of("build", "publish");
 
     /**
      * The default Gradle version.
@@ -115,17 +115,7 @@ public final class GradleUtils {
         return true;
     }
 
-    /**
-     * Find a string in Gradle build giles starting from the current directory.
-     *
-     * @param csq the string to find
-     * @return whether the string is found
-     */
-    public static boolean isInBuildGradle(CharSequence csq) {
-        return isInBuildGradle(Path.of("."), csq);
-    }
-
-    static boolean isInBuildGradle(Path path, CharSequence csq) {
+    public static boolean isInBuildGradle(Path path, CharSequence csq) {
         if (!Files.isDirectory(path)) {
             return false;
         }
