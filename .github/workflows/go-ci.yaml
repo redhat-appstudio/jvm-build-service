@@ -3,6 +3,57 @@ on:
   pull_request:
     branches: [ main ]
 jobs:
+  go:
+    name: Check sources
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Install kcp tooling
+        run: |
+          git clone https://github.com/kcp-dev/kcp ~/kcp
+          cd ~/kcp
+          WHAT=./cmd/kubectl-kcp make install
+      - name: Check go mod status
+        run: |
+          go mod tidy
+          if [[ ! -z $(git status -s) ]]
+          then
+            echo "Go mod state is not clean:"
+            git --no-pager diff
+            exit 1
+          fi
+      - name: Check format
+        run: |
+          make fmt
+          if [[ ! -z $(git status -s) ]]
+          then
+            echo "not all golang files properly gofmt'ed:"
+            git --no-pager diff
+            exit 1
+          fi
+      - name: Check generated
+        run: |
+          make generate
+          if [[ ! -z $(git status -s) ]]
+          then
+            echo "generated sources are not up to date:"
+            git --no-pager diff
+            exit 1
+          fi
+      - name: Check kcp
+        run: |
+          CONTROL_PLANE=kcp make generate
+          if [[ ! -z $(git status -s) ]]
+          then
+            echo "generated kcp sources are not up to date:"
+            git --no-pager diff
+            exit 1
+          fi
   unit:
     name: Golang Unit tests
     runs-on: ubuntu-latest
