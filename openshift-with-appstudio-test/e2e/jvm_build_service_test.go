@@ -301,7 +301,7 @@ func TestExampleRun(t *testing.T) {
 		debugAndFailTest(ta, err.Error())
 	}
 
-	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run.yaml")
+	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-e2e-shaded-app.yaml")
 	ta.run = &v1beta1.PipelineRun{}
 	obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
 	ta.run, ok = obj.(*v1beta1.PipelineRun)
