@@ -175,6 +175,19 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 
 	dumpNodes(ta)
 
+	var err error
+	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (done bool, err error) {
+		_, err = kubeClient.CoreV1().ServiceAccounts(ta.ns).Get(context.TODO(), "pipeline", metav1.GetOptions{})
+		if err != nil {
+			ta.Logf(fmt.Sprintf("get of pipeline SA err: %s", err.Error()))
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		debugAndFailTest(ta, "pipeline SA not created in timely fashion")
+	}
+
 	ta.gitClone = &v1beta1.Task{}
 	obj := streamRemoteYamlToTektonObj("https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml", ta.gitClone, ta)
 	var ok bool
@@ -182,7 +195,6 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml did not produce a task: %#v", obj))
 	}
-	var err error
 	ta.gitClone, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.gitClone, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
