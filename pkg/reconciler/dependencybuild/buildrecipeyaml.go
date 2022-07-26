@@ -492,11 +492,11 @@ spec:
               exit 1
           fi
 
-          export JAVA_HOME=$(params.JAVA_HOME)
+          export JAVA_HOME="$(params.JAVA_HOME)"
           echo "JAVA_HOME=${JAVA_HOME}"
           export PATH="${JAVA_HOME}/bin:${PATH}"
 
-          if [ -z "${TOOL_VERSION}" ]; then
+          if [ -z "$(params.TOOL_VERSION)" ]; then
               echo "TOOL_VERSION has not been set" >&2
               exit 1
           fi
@@ -520,7 +520,7 @@ spec:
               gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) generateAlignmentMetadata || exit 1
           fi
 
-          gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo $@ || exit 1
+          gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo "$@" || exit 1
 
           # fix-permissions-for-builder
           chown 1001:1001 -R $(workspaces.source.path)
