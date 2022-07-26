@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -390,6 +391,67 @@ func TestExampleRun(t *testing.T) {
 				return true, nil
 			}
 			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+		}
+	})
+
+	ta.t.Run("contaminated build is resolved", func(t *testing.T) {
+		//our sample repo has Netty which is contaminated by JCTools
+		var contaminated string
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+
+			dbContaminated := false
+			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				return false, err
+			}
+			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
+			for _, db := range dbList.Items {
+				if db.Status.State == v1alpha1.DependencyBuildStateContaminated {
+					dbContaminated = true
+					contaminated = db.Name
+					break
+				}
+			}
+			if dbContaminated {
+				return true, nil
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+		}
+		//make sure JCTools was requested as a result
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
+				return false, err
+			}
+			found := false
+			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
+			for _, ab := range abList.Items {
+				if strings.Contains(ab.Spec.GAV, "jctools") {
+					found = true
+					break
+				}
+			}
+			return found, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+		}
+		//now make sure Netty eventually completes
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error getting netty DependencyBuild: %s", err.Error()))
+				return false, err
+			}
+			return dbList.Status.State == v1alpha1.DependencyBuildStateComplete, err
 		})
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
