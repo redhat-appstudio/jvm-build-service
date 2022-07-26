@@ -54,7 +54,7 @@ func TestStateNew(t *testing.T) {
 		}, &db))
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateAnalyzeBuild))
 
-		runBuildDiscoveryTask(db, g, reconciler, client, ctx)
+		runBuildDiscoveryTask(db, g, reconciler, client, ctx, true)
 
 		g.Expect(client.Get(ctx, types.NamespacedName{
 			Namespace: metav1.NamespaceDefault,
@@ -74,7 +74,7 @@ func TestStateNew(t *testing.T) {
 	})
 }
 
-func runBuildDiscoveryTask(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context) {
+func runBuildDiscoveryTask(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context, success bool) {
 	var pr *pipelinev1beta1.TaskRun
 	trList := &pipelinev1beta1.TaskRunList{}
 	g.Expect(client.List(ctx, trList))
@@ -86,7 +86,11 @@ func runBuildDiscoveryTask(db v1alpha1.DependencyBuild, g *WithT, reconciler *Re
 	}
 	g.Expect(pr).ShouldNot(BeNil())
 	pr.Namespace = metav1.NamespaceDefault
-	pr.Status.TaskRunResults = []pipelinev1beta1.TaskRunResult{{Name: BuildInfoTaskBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[]}`}}
+	if success {
+		pr.Status.TaskRunResults = []pipelinev1beta1.TaskRunResult{{Name: BuildInfoTaskBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[]}`}}
+	} else {
+		pr.Status.TaskRunResults = []pipelinev1beta1.TaskRunResult{{Name: BuildInfoTaskMessage, Value: "build info missing"}}
+	}
 	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	pr.Status.SetCondition(&apis.Condition{
 		Type:               apis.ConditionSucceeded,
@@ -98,8 +102,8 @@ func runBuildDiscoveryTask(db v1alpha1.DependencyBuild, g *WithT, reconciler *Re
 }
 
 func TestStateDetect(t *testing.T) {
-	t.Run("Test reconcile new DependencyBuild", func(t *testing.T) {
-		g := NewGomegaWithT(t)
+
+	setup := func(g *WithT) (v1alpha1.DependencyBuild, runtimeclient.Client, *ReconcileDependencyBuild, context.Context) {
 		db := v1alpha1.DependencyBuild{}
 		db.Namespace = metav1.NamespaceDefault
 		db.Name = "test"
@@ -119,8 +123,13 @@ func TestStateDetect(t *testing.T) {
 			Name:      "test",
 		}, &db))
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateAnalyzeBuild))
+		return db, client, reconciler, ctx
+	}
 
-		runBuildDiscoveryTask(db, g, reconciler, client, ctx)
+	t.Run("Test reconcile new DependencyBuild", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		db, client, reconciler, ctx := setup(g)
+		runBuildDiscoveryTask(db, g, reconciler, client, ctx, true)
 
 		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
@@ -167,6 +176,13 @@ func TestStateDetect(t *testing.T) {
 				}
 			}
 		}
+	})
+	t.Run("Test reconcile build info discovery fails", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		db, client, reconciler, ctx := setup(g)
+		runBuildDiscoveryTask(db, g, reconciler, client, ctx, false)
+
+		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
 	})
 }
 

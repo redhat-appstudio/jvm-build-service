@@ -233,7 +233,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 	}
 	success := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
-	if !success {
+	if !success || len(buildInfo) == 0 {
 		db.Status.State = v1alpha1.DependencyBuildStateFailed
 		db.Status.Message = message
 	} else {
@@ -337,6 +337,15 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	tr.Spec.TaskRef = nil
 	tr.Spec.TaskSpec = taskRun.Spec.TaskSpec
 	tr.Spec.TaskSpec.Sidecars[0].Image = image
+	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
+	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
+	//the actual solution will involve loading deployment config from a ConfigMap
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://localstack.jvm-build-service.svc.cluster.local:4572"})
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"})
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"})
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"})
+	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY", Value: "secretkey"})
+
 	tr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
@@ -444,13 +453,9 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		}
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-			pod := v1.Pod{}
-			poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
-			if poderr == nil {
-				err := r.client.Delete(ctx, &pod)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
+			delerr := r.client.Delete(ctx, tr)
+			if delerr != nil {
+				return reconcile.Result{}, delerr
 			}
 		}
 		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
@@ -507,6 +512,11 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 func createLookupBuildInfoTask(build *v1alpha1.DependencyBuildSpec) *pipelinev1beta1.TaskSpec {
 	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	recipes := os.Getenv("RECIPE_DATABASE")
+	path := build.ScmInfo.Path
+	//TODO should the buidl request process require context to be set ?
+	if len(path) == 0 {
+		path = "."
+	}
 	return &pipelinev1beta1.TaskSpec{
 		Results: []pipelinev1beta1.TaskResult{{Name: BuildInfoTaskMessage}, {Name: BuildInfoTaskBuildInfo}},
 		Steps: []pipelinev1beta1.Step{
@@ -523,7 +533,7 @@ func createLookupBuildInfoTask(build *v1alpha1.DependencyBuildSpec) *pipelinev1b
 						"--scm-tag",
 						build.ScmInfo.Tag,
 						"--context",
-						build.ScmInfo.Path,
+						path,
 						"--version",
 						build.Version,
 						"--message",

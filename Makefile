@@ -28,8 +28,6 @@ e2etest: fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v ./test/...
 
 appstudio-installed-on-openshift-e2e:
-	# disable pruning for e2e's to help us debug
-	export JVM_DELETE_TASKRUN_PODS="0"
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -timeout 120m -v ./openshift-with-appstudio-test/...
 
 build:

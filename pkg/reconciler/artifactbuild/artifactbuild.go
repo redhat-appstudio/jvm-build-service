@@ -172,13 +172,9 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 		}
 	}
 	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
-		pod := corev1.Pod{}
-		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
-		if poderr == nil {
-			err := r.client.Delete(ctx, &pod)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
+		delerr := r.client.Delete(ctx, tr)
+		if delerr != nil {
+			return reconcile.Result{}, delerr
 		}
 	}
 
@@ -303,7 +299,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 		switch db.Status.State {
 		case v1alpha1.DependencyBuildStateComplete:
 			abr.Status.State = v1alpha1.ArtifactBuildStateComplete
-		case DependencyBuildContaminatedBy, v1alpha1.DependencyBuildStateFailed:
+		case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
 			abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 		}
 		if err := r.client.Status().Update(ctx, abr); err != nil {
@@ -358,7 +354,7 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, abr *v
 		if strings.HasPrefix(key, DependencyBuildContaminatedBy) {
 			db := v1alpha1.DependencyBuild{}
 			if err := r.client.Get(ctx, types.NamespacedName{Name: value, Namespace: abr.Namespace}, &db); err != nil {
-				r.eventRecorder.Eventf(abr, corev1.EventTypeNormal, "CannotGetDependencyBuild", "Could not find the DependencyBuild for ArtifactBuild %s/%s: %s", abr.Namespace, abr.Name, err.Error())
+				r.eventRecorder.Eventf(abr, corev1.EventTypeNormal, "CannotGetDependencyBuild", "Could not find the contaminated DependencyBuild for ArtifactBuild %s/%s: %s", abr.Namespace, abr.Name, err.Error())
 				//this was not found
 				continue
 			}
