@@ -108,7 +108,7 @@ public class LookupBuildInfoCommand implements Runnable {
                                 "-Drat.skip=true", "-Dmaven.deploy.skip=false")));
             } else if (GradleUtils.isGradleBuild(path)) {
                 Log.infof("Detected Gradle build in %s", path);
-                var optionalGradleVersion = GradleUtils.getGradleVersionFromWrapperProperties();
+                var optionalGradleVersion = GradleUtils.getGradleVersionFromWrapperProperties(path);
                 var gradleVersion = optionalGradleVersion.orElse(GradleUtils.DEFAULT_GRADLE_VERSION);
                 Log.infof("Chose Gradle version %s from %s", gradleVersion,
                         optionalGradleVersion.isPresent() ? "wrapper" : "default");
@@ -128,7 +128,9 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.javaHome = "/usr/lib/jvm/java-" + ("8".equals(javaVersion) ? "1.8.0" : javaVersion) + "-openjdk";
             }
             if (buildRecipeInfo != null) {
+                Log.infof("Got build recipe info %s", buildRecipeInfo);
                 if (buildRecipeInfo.getAdditionalArgs() != null) {
+                    Log.infof("Got additional args %s", buildRecipeInfo.getAdditionalArgs());
                     for (var i : info.invocations) {
                         i.addAll(buildRecipeInfo.getAdditionalArgs());
                     }

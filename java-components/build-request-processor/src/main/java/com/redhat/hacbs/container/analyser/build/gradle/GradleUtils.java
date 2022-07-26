@@ -10,6 +10,8 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import io.quarkus.logging.Log;
+
 /**
  * Utility class for Gradle.
  */
@@ -47,33 +49,33 @@ public final class GradleUtils {
 
     }
 
+    private static Path getPropertiesFile(Path basedir) {
+        Path path = basedir.resolve(GRADLE_WRAPPER_PROPERTIES);
+        Log.infof("Returning path to gradle/wrapper/gradle-wrapper.properties: %s", path);
+        return path;
+    }
+
     /**
      * Get the Gradle version from {@code gradle/wrapper/gradle-wrapper.properties}.
      *
+     * @param basedir the base directory of {@code gradle/wrapper/gradle-wrapper.properties}
      * @return the Gradle version
      */
-    public static Optional<String> getGradleVersionFromWrapperProperties() {
-        return getGradleVersionFromWrapperProperties(getPropertiesFile());
+    public static Optional<String> getGradleVersionFromWrapperProperties(Path basedir) {
+        try (Reader reader = Files.newBufferedReader(getPropertiesFile(basedir))) {
+            var properties = new Properties();
+            properties.load(reader);
+            return getGradleVersionFromWrapperProperties(properties);
+        } catch (IOException e) {
+            Log.errorf("Error reading gradle-wrapper.properties: %s", e.getMessage(), e);
+            return Optional.empty();
+        }
     }
 
     private static Optional<String> getGradleVersionFromWrapperProperties(Properties properties) {
         var distributionUrl = properties.getProperty(DISTRIBUTION_URL_KEY);
         var matcher = DISTRIBUTION_URL_PATTERN.matcher(distributionUrl);
         return matcher.matches() ? Optional.of(matcher.group("version")) : Optional.empty();
-    }
-
-    static Optional<String> getGradleVersionFromWrapperProperties(Path propertiesFile) {
-        try (Reader reader = Files.newBufferedReader(propertiesFile)) {
-            var properties = new Properties();
-            properties.load(reader);
-            return getGradleVersionFromWrapperProperties(properties);
-        } catch (IOException e) {
-            return Optional.empty();
-        }
-    }
-
-    private static Path getPropertiesFile() {
-        return Path.of(GRADLE_WRAPPER_PROPERTIES);
     }
 
     /**
@@ -102,6 +104,7 @@ public final class GradleUtils {
      * Returns true if and only if the directory contains a readable file named {@code build.gradle} or
      * {@code build.gradle.kts}.
      *
+     * @param basedir the base directory
      * @return whether the current directory contains a Gradle build
      */
     public static boolean isGradleBuild(Path basedir) {
@@ -115,6 +118,12 @@ public final class GradleUtils {
         return true;
     }
 
+    /**
+     *
+     * @param path the path to check
+     * @param csq the character sequence to check for
+     * @return whether the character sequence is found in a build file located directly under the path
+     */
     public static boolean isInBuildGradle(Path path, CharSequence csq) {
         if (!Files.isDirectory(path)) {
             return false;
