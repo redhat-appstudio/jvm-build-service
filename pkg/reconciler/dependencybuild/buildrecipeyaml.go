@@ -434,6 +434,7 @@ spec:
                           }
                           //allowInsecureProtocol = true
                       }
+                      // FIXME: This repository will bypass sidecar
                       gradlePluginPortal()
                   }
               }
@@ -448,6 +449,7 @@ spec:
                       }
                       //allowInsecureProtocol = true
                   }
+                  // FIXME: This repository will bypass sidecar
                   gradlePluginPortal()
               }
           }
@@ -465,6 +467,7 @@ spec:
                           }
                           //allowInsecureProtocol = true
                       }
+                      // FIXME: This repository will bypass sidecar
                       gradlePluginPortal()
                   }
               }
@@ -511,13 +514,17 @@ spec:
                   ;;
           esac
 
-          export LANG=en_US.UTF-8
-          export LC_ALL=en_US.UTF-8
+          export LANG="en_US.UTF-8"
+          export LC_ALL="en_US.UTF-8"
+
+          # FIXME: additionalArgs is added to args, but we need additionalArgs only; assume that we know the original tasks so that we can remove them
+          ADDITIONAL_ARGS=$(echo "$@" | sed 's/build publish \?//')
+          echo ADDITIONAL_ARGS="${ADDITIONAL_ARGS}"
 
           if [ -n "$(params.ENFORCE_VERSION)" ]; then
-              gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) generateAlignmentMetadata || exit 1
+              gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
           else
-              gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) generateAlignmentMetadata || exit 1
+              gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
           fi
 
           gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo "$@" || exit 1
