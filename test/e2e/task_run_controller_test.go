@@ -89,14 +89,14 @@ func createAbr(componentLookupKey types.NamespacedName) {
 
 }
 
-func getTrAbr() *tektonapi.TaskRun {
+func getTrAbr() *tektonapi.PipelineRun {
 	hash := artifactbuild.ABRLabelForGAV(ABRGav)
 	listOpts := &client.ListOptions{
 		Namespace:     TestNamespace,
 		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuild.ArtifactBuildIdLabel: hash}),
 	}
-	trl := tektonapi.TaskRunList{}
-	var tr *tektonapi.TaskRun
+	trl := tektonapi.PipelineRunList{}
+	var tr *tektonapi.PipelineRun
 	Eventually(func() bool {
 		Expect(k8sClient.List(ctx, &trl, listOpts)).ToNot(HaveOccurred())
 		//there should only be one, be guard against multiple
@@ -112,13 +112,13 @@ func getTrAbr() *tektonapi.TaskRun {
 	return tr
 }
 
-func getTrBuildDiscovery() *tektonapi.TaskRun {
+func getTrBuildDiscovery() *tektonapi.PipelineRun {
 	listOpts := &client.ListOptions{
 		Namespace:     TestNamespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{dependencybuild.TaskType: dependencybuild.TaskTypeBuildInfo}),
+		LabelSelector: labels.SelectorFromSet(map[string]string{dependencybuild.PipelineType: dependencybuild.PipelineTypeBuildInfo}),
 	}
-	trl := tektonapi.TaskRunList{}
-	var tr *tektonapi.TaskRun
+	trl := tektonapi.PipelineRunList{}
+	var tr *tektonapi.PipelineRun
 	Eventually(func() bool {
 		Expect(k8sClient.List(ctx, &trl, listOpts)).ToNot(HaveOccurred())
 		//there should only be one, be guard against multiple
@@ -165,21 +165,21 @@ func deleteDb(componentLookupKey types.NamespacedName) {
 	}, timeout, interval).ShouldNot(Succeed())
 }
 
-func listTaskRuns() *tektonapi.TaskRunList {
-	taskRuns := &tektonapi.TaskRunList{}
+func listPipelineRuns() *tektonapi.PipelineRunList {
+	taskRuns := &tektonapi.PipelineRunList{}
 	labelSelectors := client.ListOptions{Raw: &metav1.ListOptions{}}
 	err := k8sClient.List(ctx, taskRuns, &labelSelectors)
 	Expect(err).ToNot(HaveOccurred())
 	return taskRuns
 }
 
-func deleteTaskRuns() {
-	for _, pipelineRun := range listTaskRuns().Items {
+func deletePipelineRuns() {
+	for _, pipelineRun := range listPipelineRuns().Items {
 		Expect(k8sClient.Delete(ctx, &pipelineRun)).Should(Succeed())
 	}
 }
 
-var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
+var _ = Describe("Test discovery PipelineRun complete updates ABR state", func() {
 
 	var (
 		// All related to the component resources have the same key (but different type)
@@ -203,26 +203,26 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 		_ = AfterEach(func() {
 			deleteAbr(abrName)
 			deleteDb(dbName)
-			deleteTaskRuns()
+			deletePipelineRuns()
 		}, 30)
 
 		It("should move state to ArtifactBuildDiscovered on Success", func() {
 			tr := getTrAbr()
 			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-			tr.Status.TaskRunResults = []tektonapi.TaskRunResult{{
-				Name:  artifactbuild.TaskResultScmTag,
+			tr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
+				Name:  artifactbuild.PipelineResultScmTag,
 				Value: "tag1",
 			}, {
-				Name:  artifactbuild.TaskResultScmUrl,
+				Name:  artifactbuild.PipelineResultScmUrl,
 				Value: "url1",
 			}, {
-				Name:  artifactbuild.TaskResultScmType,
+				Name:  artifactbuild.PipelineResultScmType,
 				Value: "git",
 			}, {
-				Name:  artifactbuild.TaskResultContextPath,
+				Name:  artifactbuild.PipelineResultContextPath,
 				Value: "/path1",
 			}, {
-				Name:  artifactbuild.TaskResultMessage,
+				Name:  artifactbuild.PipelineResultMessage,
 				Value: "OK",
 			}}
 			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
@@ -255,11 +255,11 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 				Status:             "True",
 				LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 			})
-			btr.Status.TaskRunResults = []tektonapi.TaskRunResult{{
-				Name:  dependencybuild.BuildInfoTaskMessage,
+			btr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
+				Name:  dependencybuild.BuildInfoPipelineMessage,
 				Value: "OK",
 			}, {
-				Name:  dependencybuild.BuildInfoTaskBuildInfo,
+				Name:  dependencybuild.BuildInfoPipelineBuildInfo,
 				Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"ignoredArtifacts":[]}`,
 			}}
 			Expect(k8sClient.Status().Update(ctx, btr)).Should(Succeed())
@@ -273,7 +273,7 @@ var _ = Describe("Test discovery TaskRun complete updates ABR state", func() {
 			}, timeout, interval).Should(Succeed())
 			Expect(k8sClient.Get(ctx, dbName, &db)).Should(Succeed())
 
-			tr := tektonapi.TaskRun{}
+			tr := tektonapi.PipelineRun{}
 			trKey := types.NamespacedName{
 				Namespace: TestNamespace,
 				Name:      fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes)),

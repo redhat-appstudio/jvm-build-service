@@ -4,13 +4,17 @@ import java.util.List;
 
 public class BuildRecipe {
 
-    private String task;
+    private String pipeline;
     private String image;
     private List<String> commandLine;
 
     private String enforceVersion;
 
     private List<String> ignoredArtifacts;
+
+    boolean maven;
+
+    boolean gradle;
 
     public String getImage() {
         return image;
@@ -39,12 +43,12 @@ public class BuildRecipe {
         return this;
     }
 
-    public String getTask() {
-        return task;
+    public String getPipeline() {
+        return pipeline;
     }
 
-    public BuildRecipe setTask(String task) {
-        this.task = task;
+    public BuildRecipe setPipeline(String pipeline) {
+        this.pipeline = pipeline;
         return this;
     }
 
@@ -54,6 +58,24 @@ public class BuildRecipe {
 
     public BuildRecipe setIgnoredArtifacts(List<String> ignoredArtifacts) {
         this.ignoredArtifacts = ignoredArtifacts;
+        return this;
+    }
+
+    public boolean isGradle() {
+        return gradle;
+    }
+
+    public BuildRecipe setGradle(boolean gradle) {
+        this.gradle = gradle;
+        return this;
+    }
+
+    public boolean isMaven() {
+        return maven;
+    }
+
+    public BuildRecipe setMaven(boolean maven) {
+        this.maven = maven;
         return this;
     }
 }

@@ -27,18 +27,19 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout = 300 * time.Second
-	TaskRunLabel   = "jvmbuildservice.io/taskrun"
+	contextTimeout   = 300 * time.Second
+	PipelineRunLabel = "jvmbuildservice.io/pipelinerun"
 	// DependencyBuildContaminatedBy label prefix that indicates that a dependency build was contaminated by this artifact
 	DependencyBuildContaminatedBy = "jvmbuildservice.io/contaminated-"
 	DependencyBuildIdLabel        = "jvmbuildservice.io/dependencybuild-id"
 	ArtifactBuildIdLabel          = "jvmbuildservice.io/abr-id"
-	TaskResultScmUrl              = "scm-url"
-	TaskResultScmTag              = "scm-tag"
-	TaskResultScmType             = "scm-type"
-	TaskResultContextPath         = "context"
-	TaskResultMessage             = "message"
+	PipelineResultScmUrl          = "scm-url"
+	PipelineResultScmTag          = "scm-tag"
+	PipelineResultScmType         = "scm-type"
+	PipelineResultContextPath     = "context"
+	PipelineResultMessage         = "message"
 	DeleteTaskRunPodsEnv          = "JVM_DELETE_TASKRUN_PODS"
+	TaskName                      = "task"
 )
 
 var (
@@ -81,20 +82,20 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		}
 	}
 
-	tr := pipelinev1beta1.TaskRun{}
-	trerr := r.client.Get(ctx, request.NamespacedName, &tr)
+	pr := pipelinev1beta1.PipelineRun{}
+	trerr := r.client.Get(ctx, request.NamespacedName, &pr)
 	if trerr != nil {
 		if !errors.IsNotFound(trerr) {
-			log.Error(trerr, "Reconcile key %s as taskrun unexpected error", request.NamespacedName.String())
+			log.Error(trerr, "Reconcile key %s as pipelinerun unexpected error", request.NamespacedName.String())
 			return ctrl.Result{}, trerr
 		}
 	}
 
 	if trerr != nil && dberr != nil && abrerr != nil {
 		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
-		msg := "Reconcile key received not found errors for taskruns, dependencybuilds, artifactbuilds (probably deleted): " + request.NamespacedName.String()
+		msg := "Reconcile key received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted): " + request.NamespacedName.String()
 		log.Info(msg)
-		//log.Info("Reconcile key %s received not found errors for taskruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
+		//log.Info("Reconcile key %s received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
 		return ctrl.Result{}, nil
 	}
 
@@ -103,7 +104,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		return r.handleDependencyBuildReceived(ctx, &db)
 
 	case trerr == nil:
-		return r.handleTaskRunReceived(ctx, &tr)
+		return r.handlePipelineRunReceived(ctx, &pr)
 
 	case abrerr == nil:
 		switch abr.Status.State {
@@ -121,15 +122,15 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
-	if tr.Status.CompletionTime == nil {
+func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+	if pr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
 	}
-	ownerRefs := tr.GetOwnerReferences()
+	ownerRefs := pr.GetOwnerReferences()
 	if ownerRefs == nil || len(ownerRefs) == 0 {
-		msg := "taskrun missing onwerrefs %s:%s"
-		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, msg, tr.Namespace, tr.Name)
-		log.Info(msg, tr.Namespace, tr.Name)
+		msg := "pipelinerun missing onwerrefs %s:%s"
+		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+		log.Info(msg, pr.Namespace, pr.Name)
 		return reconcile.Result{}, nil
 	}
 	ownerName := ""
@@ -140,39 +141,39 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 		}
 	}
 	if len(ownerName) == 0 {
-		msg := "taskrun missing artifactbuilds ownerrefs %s:%s"
-		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, "MissingOwner", msg, tr.Namespace, tr.Name)
-		log.Info(msg, tr.Namespace, tr.Name)
+		msg := "pipelinerun missing artifactbuilds ownerrefs %s:%s"
+		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
+		log.Info(msg, pr.Namespace, pr.Name)
 		return reconcile.Result{}, nil
 	}
 
-	key := types.NamespacedName{Namespace: tr.Namespace, Name: ownerName}
+	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
 	abr := v1alpha1.ArtifactBuild{}
 	err := r.client.Get(ctx, key, &abr)
 	if err != nil {
-		msg := "get for taskrun %s:%s owning abr %s:%s yielded error %s"
-		r.eventRecorder.Eventf(tr, corev1.EventTypeWarning, msg, tr.Namespace, tr.Name, tr.Namespace, ownerName, err.Error())
-		log.Error(err, fmt.Sprintf(msg, tr.Namespace, tr.Name, tr.Namespace, ownerName, err.Error()))
+		msg := "get for pipelinerun %s:%s owning abr %s:%s yielded error %s"
+		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error())
+		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error()))
 		return reconcile.Result{}, err
 	}
 
 	//we grab the results here and put them on the ABR
-	for _, res := range tr.Status.TaskRunResults {
+	for _, res := range pr.Status.PipelineResults {
 		switch res.Name {
-		case TaskResultScmUrl:
+		case PipelineResultScmUrl:
 			abr.Status.SCMInfo.SCMURL = res.Value
-		case TaskResultScmTag:
+		case PipelineResultScmTag:
 			abr.Status.SCMInfo.Tag = res.Value
-		case TaskResultScmType:
+		case PipelineResultScmType:
 			abr.Status.SCMInfo.SCMType = res.Value
-		case TaskResultMessage:
+		case PipelineResultMessage:
 			abr.Status.Message = res.Value
-		case TaskResultContextPath:
+		case PipelineResultContextPath:
 			abr.Status.SCMInfo.Path = res.Value
 		}
 	}
 	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
-		delerr := r.client.Delete(ctx, tr)
+		delerr := r.client.Delete(ctx, pr)
 		if delerr != nil {
 			return reconcile.Result{}, delerr
 		}
@@ -182,7 +183,7 @@ func (r *ReconcileArtifactBuild) handleTaskRunReceived(ctx context.Context, tr *
 	//once this object has been created its resolver takes over
 	if abr.Status.SCMInfo.Tag == "" {
 		//this is a failure
-		r.eventRecorder.Eventf(&abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuild %s/%s had an empty tag field %s", abr.Namespace, abr.Name, tr.Status.TaskRunResults)
+		r.eventRecorder.Eventf(&abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuild %s/%s had an empty tag field %s", abr.Namespace, abr.Name, pr.Status.PipelineResults)
 		abr.Status.State = v1alpha1.ArtifactBuildStateMissing
 		return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
 	}
@@ -234,27 +235,40 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 
 func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 
-	// create task run
-	tr := pipelinev1beta1.TaskRun{}
-	tr.Spec.TaskSpec = createLookupScmInfoTask(abr.Spec.GAV)
-	tr.Namespace = abr.Namespace
-	tr.GenerateName = abr.Name + "-scm-discovery-"
-	tr.Labels = map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV), TaskRunLabel: ""}
-	if err := controllerutil.SetOwnerReference(abr, &tr, r.scheme); err != nil {
+	// create pipeline run
+	pr := pipelinev1beta1.PipelineRun{}
+	pr.GenerateName = abr.Name + "-scm-discovery-"
+	pr.Namespace = abr.Namespace
+	task := createLookupScmInfoTask(abr.Spec.GAV)
+	pr.Spec.PipelineSpec = &pipelinev1beta1.PipelineSpec{
+		Tasks: []pipelinev1beta1.PipelineTask{{
+			Name: TaskName,
+			TaskSpec: &pipelinev1beta1.EmbeddedTask{
+				TaskSpec: *task,
+			},
+		}},
+		Results: []pipelinev1beta1.PipelineResult{},
+	}
+	for _, i := range task.Results {
+		pr.Spec.PipelineSpec.Results = append(pr.Spec.PipelineSpec.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: "$(tasks." + TaskName + ".results." + i.Name + ")"})
+	}
+
+	pr.Labels = map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV), PipelineRunLabel: ""}
+	if err := controllerutil.SetOwnerReference(abr, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 	abr.Status.State = v1alpha1.ArtifactBuildStateDiscovering
 	if err := r.client.Status().Update(ctx, abr); err != nil {
 		return reconcile.Result{}, err
 	}
-	if err := r.client.Create(ctx, &tr); err != nil {
+	if err := r.client.Create(ctx, &pr); err != nil {
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
-	// if taskrun to update SCM/Message has not completed, just return
+	// if pipelinerun to update SCM/Message has not completed, just return
 	if len(abr.Status.SCMInfo.SCMURL) == 0 &&
 		len(abr.Status.SCMInfo.Tag) == 0 &&
 		len(abr.Status.SCMInfo.SCMType) == 0 &&
@@ -458,11 +472,11 @@ func createLookupScmInfoTask(gav string) *pipelinev1beta1.TaskSpec {
 	recipes := os.Getenv("RECIPE_DATABASE")
 	return &pipelinev1beta1.TaskSpec{
 		Results: []pipelinev1beta1.TaskResult{
-			{Name: TaskResultScmUrl},
-			{Name: TaskResultScmTag},
-			{Name: TaskResultScmType},
-			{Name: TaskResultContextPath},
-			{Name: TaskResultMessage},
+			{Name: PipelineResultScmUrl},
+			{Name: PipelineResultScmTag},
+			{Name: PipelineResultScmType},
+			{Name: PipelineResultContextPath},
+			{Name: PipelineResultMessage},
 		},
 		Steps: []pipelinev1beta1.Step{
 			{
@@ -474,15 +488,15 @@ func createLookupScmInfoTask(gav string) *pipelinev1beta1.TaskSpec {
 						"--recipes",
 						recipes,
 						"--scm-url",
-						"$(results." + TaskResultScmUrl + ".path)",
+						"$(results." + PipelineResultScmUrl + ".path)",
 						"--scm-tag",
-						"$(results." + TaskResultScmTag + ".path)",
+						"$(results." + PipelineResultScmTag + ".path)",
 						"--scm-type",
-						"$(results." + TaskResultScmType + ".path)",
+						"$(results." + PipelineResultScmType + ".path)",
 						"--message",
-						"$(results." + TaskResultMessage + ".path)",
+						"$(results." + PipelineResultMessage + ".path)",
 						"--context",
-						"$(results." + TaskResultContextPath + ".path)",
+						"$(results." + PipelineResultContextPath + ".path)",
 						"--gav",
 						gav,
 					},

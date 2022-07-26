@@ -7,7 +7,7 @@ spec:
     name: sample-component-build
   params:
     - name: url
-      value: https://github.com/stuartwdouglas/code-with-quarkus
+      value: https://github.com/stuartwdouglas/shaded-java-app
   workspaces:
     - name: maven-settings
       emptyDir: {}

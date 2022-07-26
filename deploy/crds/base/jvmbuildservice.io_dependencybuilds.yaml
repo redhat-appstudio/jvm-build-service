@@ -161,8 +161,7 @@ spec:
                     type: string
                   maven:
                     type: boolean
-                  task:
-                    description: deprecated task string
+                  pipeline:
                     type: string
                 type: object
               failedBuildRecipes:
@@ -186,12 +185,11 @@ spec:
                       type: string
                     maven:
                       type: boolean
-                    task:
-                      description: deprecated task string
+                    pipeline:
                       type: string
                   type: object
                 type: array
-              lastCompletedBuildTaskRun:
+              lastCompletedBuildPipelineRun:
                 type: string
               message:
                 type: string
@@ -216,8 +214,7 @@ spec:
                       type: string
                     maven:
                       type: boolean
-                    task:
-                      description: deprecated task string
+                    pipeline:
                       type: string
                   type: object
                 type: array

@@ -54,7 +54,7 @@ func TestStateNew(t *testing.T) {
 		}, &db))
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateAnalyzeBuild))
 
-		runBuildDiscoveryTask(db, g, reconciler, client, ctx, true)
+		runBuildDiscoveryPipeline(db, g, reconciler, client, ctx, true)
 
 		g.Expect(client.Get(ctx, types.NamespacedName{
 			Namespace: metav1.NamespaceDefault,
@@ -74,12 +74,12 @@ func TestStateNew(t *testing.T) {
 	})
 }
 
-func runBuildDiscoveryTask(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context, success bool) {
-	var pr *pipelinev1beta1.TaskRun
-	trList := &pipelinev1beta1.TaskRunList{}
+func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context, success bool) {
+	var pr *pipelinev1beta1.PipelineRun
+	trList := &pipelinev1beta1.PipelineRunList{}
 	g.Expect(client.List(ctx, trList))
 	for _, i := range trList.Items {
-		if i.Labels[TaskType] == TaskTypeBuildInfo {
+		if i.Labels[PipelineType] == PipelineTypeBuildInfo {
 			pr = &i
 			break
 		}
@@ -87,9 +87,9 @@ func runBuildDiscoveryTask(db v1alpha1.DependencyBuild, g *WithT, reconciler *Re
 	g.Expect(pr).ShouldNot(BeNil())
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.TaskRunResults = []pipelinev1beta1.TaskRunResult{{Name: BuildInfoTaskBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[]}`}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[]}`}}
 	} else {
-		pr.Status.TaskRunResults = []pipelinev1beta1.TaskRunResult{{Name: BuildInfoTaskMessage, Value: "build info missing"}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineMessage, Value: "build info missing"}}
 	}
 	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	pr.Status.SetCondition(&apis.Condition{
@@ -129,7 +129,7 @@ func TestStateDetect(t *testing.T) {
 	t.Run("Test reconcile new DependencyBuild", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		db, client, reconciler, ctx := setup(g)
-		runBuildDiscoveryTask(db, g, reconciler, client, ctx, true)
+		runBuildDiscoveryPipeline(db, g, reconciler, client, ctx, true)
 
 		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
@@ -141,12 +141,12 @@ func TestStateDetect(t *testing.T) {
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
 
-		trList := &pipelinev1beta1.TaskRunList{}
+		trList := &pipelinev1beta1.PipelineRunList{}
 		g.Expect(client.List(ctx, trList))
 
 		g.Expect(len(trList.Items)).Should(Equal(2))
 		for _, pr := range trList.Items {
-			if pr.Labels[TaskType] != TaskTypeBuild {
+			if pr.Labels[PipelineType] != PipelineTypeBuild {
 				continue
 			}
 			g.Expect(pr.Labels[artifactbuild.DependencyBuildIdLabel]).Should(Equal(db.Labels[artifactbuild.DependencyBuildIdLabel]))
@@ -159,19 +159,19 @@ func TestStateDetect(t *testing.T) {
 			g.Expect(len(pr.Spec.Params)).Should(Equal(7))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
-				case TaskScmTag:
+				case PipelineScmTag:
 					g.Expect(param.Value.StringVal).Should(Equal("some-tag"))
-				case TaskPath:
+				case PipelinePath:
 					g.Expect(param.Value.StringVal).Should(Equal("some-path"))
-				case TaskScmUrl:
+				case PipelineScmUrl:
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
-				case TaskImage:
+				case PipelineImage:
 					g.Expect(param.Value.StringVal).Should(Equal("quay.io/sdouglas/hacbs-jdk11-builder:latest"))
-				case TaskGoals:
+				case PipelineGoals:
 					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
-				case TaskEnforceVersion:
+				case PipelineEnforceVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
-				case TaskIgnoredArtifacts:
+				case PipelineIgnoredArtifacts:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				}
 			}
@@ -180,7 +180,7 @@ func TestStateDetect(t *testing.T) {
 	t.Run("Test reconcile build info discovery fails", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		db, client, reconciler, ctx := setup(g)
-		runBuildDiscoveryTask(db, g, reconciler, client, ctx, false)
+		runBuildDiscoveryPipeline(db, g, reconciler, client, ctx, false)
 
 		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
 	})
@@ -192,9 +192,9 @@ func getBuild(client runtimeclient.Client, g *WithT) *v1alpha1.DependencyBuild {
 	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}, &build))
 	return &build
 }
-func getTr(client runtimeclient.Client, g *WithT) *pipelinev1beta1.TaskRun {
+func getTr(client runtimeclient.Client, g *WithT) *pipelinev1beta1.PipelineRun {
 	ctx := context.TODO()
-	build := pipelinev1beta1.TaskRun{}
+	build := pipelinev1beta1.PipelineRun{}
 	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-0"}, &build))
 	return &build
 }
@@ -218,16 +218,16 @@ func TestStateBuilding(t *testing.T) {
 		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 		g.Expect(client.Create(ctx, &db))
 
-		pr := pipelinev1beta1.TaskRun{}
+		pr := pipelinev1beta1.PipelineRun{}
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Name = "test-build-0"
-		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), TaskType: TaskTypeBuild}
+		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineType: PipelineTypeBuild}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme))
 		g.Expect(client.Create(ctx, &pr))
 
 	}
 
-	t.Run("Test reconcile building DependencyBuild with running pipeline, TaskRun arrives first", func(t *testing.T) {
+	t.Run("Test reconcile building DependencyBuild with running pipeline, PipelineRun arrives first", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
@@ -292,7 +292,7 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "True",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		pr.Status.TaskRunResults = []pipelinev1beta1.TaskRunResult{{Name: "contaminants", Value: "com.acme:foo:1.0,com.acme:bar:1.0"}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: "com.acme:foo:1.0,com.acme:bar:1.0"}}
 		g.Expect(client.Update(ctx, pr))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
