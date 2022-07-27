@@ -278,6 +278,11 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 				Namespace: TestNamespace,
 				Name:      fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes)),
 			}
+			//this is slightly racey, need to use eventually
+			//the status can update before the build is ready
+			Eventually(func() error {
+				return k8sClient.Get(ctx, trKey, &tr)
+			}, timeout, interval).Should(Succeed())
 			Expect(k8sClient.Get(ctx, trKey, &tr)).Should(Succeed())
 			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 			con := apis.Condition{

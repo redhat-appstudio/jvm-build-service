@@ -5,7 +5,6 @@ import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -28,6 +27,7 @@ import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.NoCloseInputStream;
 
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.Startup;
 import io.smallrye.common.annotation.Blocking;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -36,6 +36,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 @Path("/deploy")
 @Blocking
 @Singleton
+@Startup
 public class DeployResource {
 
     private static final Pattern ARTIFACT_PATH = Pattern.compile(".*/([^/]+)/([^/]+)/([^/]+)");
@@ -46,12 +47,12 @@ public class DeployResource {
     final String deploymentPrefix;
     /**
      * We can ignore some artifacts that are problematic as part of deployment.
-     *
+     * <p>
      * Generally this is for things like CLI's, that shade in lots of dependencies,
      * but are not generally useful for downstream builds.
-     *
      */
     Set<String> doNotDeploy;
+    Set<String> allowedSources;
 
     final Set<String> contaminates = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -60,11 +61,13 @@ public class DeployResource {
     public DeployResource(S3Client client,
             @ConfigProperty(name = "deployment-bucket") String deploymentBucket,
             @ConfigProperty(name = "deployment-prefix") String deploymentPrefix,
-            @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy) {
+            @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy,
+            @ConfigProperty(name = "allowed-sources", defaultValue = "") Optional<Set<String>> allowedSources) {
         this.client = client;
         this.deploymentBucket = deploymentBucket;
         this.deploymentPrefix = deploymentPrefix;
         this.doNotDeploy = doNotDeploy.orElse(Set.of());
+        this.allowedSources = allowedSources.orElse(Set.of());
         Log.infof("Ignored Artifacts: %s", doNotDeploy);
     }
 
@@ -124,15 +127,18 @@ public class DeployResource {
                             Log.infof("Checking %s for contaminants", e.getName());
                             var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
                             if (info != null) {
-                                List<String> result = info.stream().map(a -> a.gav).toList();
-                                contaminants.addAll(result);
-                                if (!result.isEmpty()) {
-                                    int index = e.getName().lastIndexOf("/");
-                                    if (index != -1) {
-                                        contaminatedPaths.computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
-                                                .addAll(result);
-                                    } else {
-                                        contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).addAll(result);
+                                for (var i : info) {
+                                    if (!allowedSources.contains(i.source)) {
+                                        //Set<String> result = new HashSet<>(info.stream().map(a -> a.gav).toList());
+                                        contaminants.add(i.gav);
+                                        int index = e.getName().lastIndexOf("/");
+                                        if (index != -1) {
+                                            contaminatedPaths
+                                                    .computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
+                                                    .add(i.gav);
+                                        } else {
+                                            contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
+                                        }
                                     }
                                 }
                             }
