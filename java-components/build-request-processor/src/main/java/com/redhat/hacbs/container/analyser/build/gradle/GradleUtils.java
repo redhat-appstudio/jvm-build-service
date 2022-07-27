@@ -4,11 +4,14 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import org.gradle.util.GradleVersion;
 
 import io.quarkus.logging.Log;
 
@@ -24,7 +27,7 @@ public final class GradleUtils {
     /**
      * The default Gradle version.
      */
-    public static final String DEFAULT_GRADLE_VERSION = "7.5";
+    public static final String DEFAULT_GRADLE_VERSION = "7.4.1";
 
     /**
      * Identifier for the plugin {@code com.github.sherter.google-java-format}.
@@ -44,6 +47,9 @@ public final class GradleUtils {
     private static final Pattern GRADLE_5_THROUGH_7 = Pattern.compile("^[567]\\..*$");
 
     private static final Pattern DISTRIBUTION_URL_PATTERN = Pattern.compile("^.*/gradle-(?<version>.*)-(all|bin)\\.zip$");
+
+    private static final List<GradleVersion> AVAILABLE_GRADLE_VERSIONS = List.of(GradleVersion.version("5.4.1"),
+            GradleVersion.version("7.4.1"));
 
     private GradleUtils() {
 
@@ -76,6 +82,13 @@ public final class GradleUtils {
         var distributionUrl = properties.getProperty(DISTRIBUTION_URL_KEY);
         var matcher = DISTRIBUTION_URL_PATTERN.matcher(distributionUrl);
         return matcher.matches() ? Optional.of(matcher.group("version")) : Optional.empty();
+    }
+
+    static String findNearestGradleVersion(String version) {
+        GradleVersion gradleVersion = GradleVersion.version(version);
+        int ret = Collections.binarySearch(AVAILABLE_GRADLE_VERSIONS, gradleVersion);
+        int index = ret >= 0 ? ret : Math.max(0, (-ret) - 2);
+        return AVAILABLE_GRADLE_VERSIONS.get(index).getVersion();
     }
 
     /**
@@ -119,6 +132,7 @@ public final class GradleUtils {
     }
 
     /**
+     * Checks whether the build file in the path contains the given character sequence.
      *
      * @param path the path to check
      * @param csq the character sequence to check for

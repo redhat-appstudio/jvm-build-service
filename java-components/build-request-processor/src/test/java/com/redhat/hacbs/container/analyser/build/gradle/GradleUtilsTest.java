@@ -15,8 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class GradleUtilsTest {
-    private static final String GRADLE_VERSION = "7.6-20220622230534+0000";
-
     private static final String GRADLE_WRAPPER_PROPERTIES = "gradle-wrapper.properties";
 
     @Test
@@ -25,7 +23,7 @@ class GradleUtilsTest {
         assertThat(url).isNotNull();
         URI uri = url.toURI();
         Path propertiesFile = Path.of(uri);
-        assertThat(GradleUtils.getGradleVersionFromWrapperProperties(propertiesFile)).get().isEqualTo(GRADLE_VERSION);
+        assertThat(GradleUtils.getGradleVersionFromWrapperProperties(propertiesFile)).get().isEqualTo("7.5");
     }
 
     @Test
@@ -61,5 +59,15 @@ class GradleUtilsTest {
                 + "' version '0.9'" + System.lineSeparator() + "}");
         assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isTrue();
         assertThat(GradleUtils.isInBuildGradle(basedir, "not found")).isFalse();
+    }
+
+    @Test
+    void testFindNearestGradleVersion() {
+        assertThat(GradleUtils.findNearestGradleVersion("5.4.1")).isEqualTo("5.4.1");
+        assertThat(GradleUtils.findNearestGradleVersion("7.4.1")).isEqualTo("7.4.1");
+        assertThat(GradleUtils.findNearestGradleVersion("4.0")).isEqualTo("5.4.1");
+        assertThat(GradleUtils.findNearestGradleVersion("6.0")).isEqualTo("5.4.1");
+        assertThat(GradleUtils.findNearestGradleVersion("7.0")).isEqualTo("5.4.1");
+        assertThat(GradleUtils.findNearestGradleVersion("7.5")).isEqualTo("7.4.1");
     }
 }
