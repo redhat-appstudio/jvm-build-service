@@ -28,8 +28,7 @@ public class ContainerRegistryDeployerTestResource implements QuarkusTestResourc
     private int startTestRegistry() {
         this.container = new GenericContainer("registry:2.8.1")
                 .withReuse(true)
-                .withExposedPorts(5000)
-                .withEnv("TESTCONTAINERS_RYUK_DISABLED", "true");
+                .withExposedPorts(5000);
 
         this.container.start();
 
