@@ -48,7 +48,7 @@ func TestDependencyBuild(t *testing.T) {
 	}, &abr))
 	g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateDiscovering))
 
-	trList := &pipelinev1beta1.TaskRunList{}
+	trList := &pipelinev1beta1.PipelineRunList{}
 	g.Expect(client.List(ctx, trList))
 	g.Expect(len(trList.Items)).Should(Equal(1))
 	for _, tr := range trList.Items {
@@ -114,17 +114,17 @@ func TestStateDiscovering(t *testing.T) {
 	t.Run("SCM tag cannot be determined", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
-		tr := &pipelinev1beta1.TaskRun{
+		tr := &pipelinev1beta1.PipelineRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-tr",
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
 			},
-			Spec: pipelinev1beta1.TaskRunSpec{},
-			Status: pipelinev1beta1.TaskRunStatus{
-				Status:              v1beta1.Status{},
-				TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{CompletionTime: &now},
+			Spec: pipelinev1beta1.PipelineRunSpec{},
+			Status: pipelinev1beta1.PipelineRunStatus{
+				Status:                  v1beta1.Status{},
+				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now},
 			},
 		}
 		g.Expect(client.Create(ctx, tr))
@@ -140,21 +140,21 @@ func TestStateDiscovering(t *testing.T) {
 	t.Run("First ABR creates DependencyBuild", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
-		tr := &pipelinev1beta1.TaskRun{
+		tr := &pipelinev1beta1.PipelineRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-tr",
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
 			},
-			Spec: pipelinev1beta1.TaskRunSpec{},
-			Status: pipelinev1beta1.TaskRunStatus{
+			Spec: pipelinev1beta1.PipelineRunSpec{},
+			Status: pipelinev1beta1.PipelineRunStatus{
 				Status: v1beta1.Status{},
-				TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{CompletionTime: &now, TaskRunResults: []pipelinev1beta1.TaskRunResult{
-					{Name: TaskResultScmTag, Value: "foo"},
-					{Name: TaskResultScmUrl, Value: "goo"},
-					{Name: TaskResultScmType, Value: "hoo"},
-					{Name: TaskResultContextPath, Value: "ioo"}}},
+				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now, PipelineResults: []pipelinev1beta1.PipelineRunResult{
+					{Name: PipelineResultScmTag, Value: "foo"},
+					{Name: PipelineResultScmUrl, Value: "goo"},
+					{Name: PipelineResultScmType, Value: "hoo"},
+					{Name: PipelineResultContextPath, Value: "ioo"}}},
 			},
 		}
 		abr := getABR(client, g)
@@ -169,21 +169,21 @@ func TestStateDiscovering(t *testing.T) {
 	})
 	t.Run("DependencyBuild already exists for ABR", func(t *testing.T) {
 		g := NewGomegaWithT(t)
-		g.Expect(client.Create(ctx, &pipelinev1beta1.TaskRun{
+		g.Expect(client.Create(ctx, &pipelinev1beta1.PipelineRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
 			},
-			Spec: pipelinev1beta1.TaskRunSpec{},
-			Status: pipelinev1beta1.TaskRunStatus{
+			Spec: pipelinev1beta1.PipelineRunSpec{},
+			Status: pipelinev1beta1.PipelineRunStatus{
 				Status: v1beta1.Status{},
-				TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{CompletionTime: &now, TaskRunResults: []pipelinev1beta1.TaskRunResult{
-					{Name: TaskResultScmTag, Value: "foo"},
-					{Name: TaskResultScmUrl, Value: "goo"},
-					{Name: TaskResultScmType, Value: "hoo"},
-					{Name: TaskResultContextPath, Value: "ioo"}}},
+				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now, PipelineResults: []pipelinev1beta1.PipelineRunResult{
+					{Name: PipelineResultScmTag, Value: "foo"},
+					{Name: PipelineResultScmUrl, Value: "goo"},
+					{Name: PipelineResultScmType, Value: "hoo"},
+					{Name: PipelineResultContextPath, Value: "ioo"}}},
 			},
 		}))
 		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{

@@ -32,6 +32,8 @@ rules:
   - apiGroups:
       - tekton.dev
     resources:
+      - pipelineruns
+      - pipelineruns/status
       - taskruns
       - taskruns/status
     verbs:

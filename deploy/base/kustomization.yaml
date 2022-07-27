@@ -5,7 +5,4 @@ resources:
   - https://github.com/tektoncd/pipeline/releases/download/v0.34.1/release.yaml
   - https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml
   - maven-v0.2.yaml
-  - lookup-artifact-location-v0.1.yaml
-  - run-maven-component-build-v0.1.yaml
-  - run-gradle-component-build-v0.1.yaml
   - rbac.yaml

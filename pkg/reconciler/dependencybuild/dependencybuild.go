@@ -33,25 +33,25 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout       = 300 * time.Second
-	TaskScmUrl           = "URL"
-	TaskScmTag           = "TAG"
-	TaskPath             = "CONTEXT_DIR"
-	TaskImage            = "IMAGE"
-	TaskGoals            = "GOALS"
-	TaskEnforceVersion   = "ENFORCE_VERSION"
-	TaskIgnoredArtifacts = "IGNORED_ARTIFACTS"
+	contextTimeout           = 300 * time.Second
+	PipelineScmUrl           = "URL"
+	PipelineScmTag           = "TAG"
+	PipelinePath             = "CONTEXT_DIR"
+	PipelineImage            = "IMAGE"
+	PipelineGoals            = "GOALS"
+	PipelineEnforceVersion   = "ENFORCE_VERSION"
+	PipelineIgnoredArtifacts = "IGNORED_ARTIFACTS"
 
-	BuildInfoTaskScmUrlParam  = "SCM_URL"
-	BuildInfoTaskTagParam     = "TAG"
-	BuildInfoTaskContextParam = "CONTEXT"
-	BuildInfoTaskVersionParam = "VERSION"
-	BuildInfoTaskMessage      = "message"
-	BuildInfoTaskBuildInfo    = "build-info"
+	BuildInfoPipelineScmUrlParam  = "SCM_URL"
+	BuildInfoPipelineTagParam     = "TAG"
+	BuildInfoPipelineContextParam = "CONTEXT"
+	BuildInfoPipelineVersionParam = "VERSION"
+	BuildInfoPipelineMessage      = "message"
+	BuildInfoPipelineBuildInfo    = "build-info"
 
-	TaskType          = "jvmbuildservice.io/task-type"
-	TaskTypeBuildInfo = "build-info"
-	TaskTypeBuild     = "build"
+	PipelineType          = "jvmbuildservice.io/pipeline-type"
+	PipelineTypeBuildInfo = "build-info"
+	PipelineTypeBuild     = "build"
 )
 
 var (
@@ -86,20 +86,20 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 	}
 
-	tr := pipelinev1beta1.TaskRun{}
-	trerr := r.client.Get(ctx, request.NamespacedName, &tr)
+	pr := pipelinev1beta1.PipelineRun{}
+	trerr := r.client.Get(ctx, request.NamespacedName, &pr)
 	if trerr != nil {
 		if !errors.IsNotFound(trerr) {
-			log.Error(trerr, "Reconcile key %s as taskrun unexpected error", request.NamespacedName.String())
+			log.Error(trerr, "Reconcile key %s as pipelinerun unexpected error", request.NamespacedName.String())
 			return ctrl.Result{}, trerr
 		}
 	}
 
 	if trerr != nil && dberr != nil {
 		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
-		msg := "Reconcile key %s received not found errors for both taskruns and dependencybuilds (probably deleted)\"" + request.NamespacedName.String()
+		msg := "Reconcile key %s received not found errors for both pipelineruns and dependencybuilds (probably deleted)\"" + request.NamespacedName.String()
 		log.Info(msg)
-		//log.Info("Reconcile key %s received not found errors for taskruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
+		//log.Info("Reconcile key %s received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
 		return ctrl.Result{}, nil
 	}
 
@@ -135,12 +135,12 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-		taskType := tr.Labels[TaskType]
-		switch taskType {
-		case TaskTypeBuildInfo:
-			return r.handleStateAnalyzeBuild(ctx, &tr)
-		case TaskTypeBuild:
-			return r.handleTaskRunReceived(ctx, &tr)
+		pipelineType := pr.Labels[PipelineType]
+		switch pipelineType {
+		case PipelineTypeBuildInfo:
+			return r.handleStateAnalyzeBuild(ctx, &pr)
+		case PipelineTypeBuild:
+			return r.handlePipelineRunReceived(ctx, &pr)
 		}
 	}
 
@@ -154,12 +154,12 @@ func hashToString(unique string) string {
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	// create task run
-	tr := pipelinev1beta1.TaskRun{}
-	tr.Spec.TaskSpec = createLookupBuildInfoTask(&db.Spec)
+	// create pipeline run
+	tr := pipelinev1beta1.PipelineRun{}
+	tr.Spec.PipelineSpec = createLookupBuildInfoPipeline(&db.Spec)
 	tr.Namespace = db.Namespace
 	tr.GenerateName = db.Name + "-build-discovery-"
-	tr.Labels = map[string]string{artifactbuild.TaskRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, TaskType: TaskTypeBuildInfo}
+	tr.Labels = map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineType: PipelineTypeBuildInfo}
 	if err := controllerutil.SetOwnerReference(db, &tr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -173,15 +173,15 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alp
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
-	if tr.Status.CompletionTime == nil {
+func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+	if pr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
 	}
-	ownerRefs := tr.GetOwnerReferences()
+	ownerRefs := pr.GetOwnerReferences()
 	if ownerRefs == nil || len(ownerRefs) == 0 {
-		msg := "taskrun missing onwerrefs %s:%s"
-		r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name)
-		log.Info(msg, tr.Namespace, tr.Name)
+		msg := "pipelinerun missing onwerrefs %s:%s"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+		log.Info(msg, pr.Namespace, pr.Name)
 		return reconcile.Result{}, nil
 	}
 	ownerName := ""
@@ -192,19 +192,19 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 	}
 	if len(ownerName) == 0 {
-		msg := "taskrun missing dependencybuild ownerrefs %s:%s"
-		r.eventRecorder.Eventf(tr, v1.EventTypeWarning, "MissingOwner", msg, tr.Namespace, tr.Name)
-		log.Info(msg, tr.Namespace, tr.Name)
+		msg := "pipelinerun missing dependencybuild ownerrefs %s:%s"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
+		log.Info(msg, pr.Namespace, pr.Name)
 		return reconcile.Result{}, nil
 	}
 
-	key := types.NamespacedName{Namespace: tr.Namespace, Name: ownerName}
+	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
 	db := v1alpha1.DependencyBuild{}
 	err := r.client.Get(ctx, key, &db)
 	if err != nil {
-		msg := "get for taskrun %s:%s owning db %s:%s yielded error %s"
-		r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name, tr.Namespace, ownerName, err.Error())
-		log.Error(err, fmt.Sprintf(msg, tr.Namespace, tr.Name, tr.Namespace, ownerName, err.Error()))
+		msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error())
+		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error()))
 		return reconcile.Result{}, err
 	}
 	if db.Status.State != v1alpha1.DependencyBuildStateAnalyzeBuild {
@@ -214,17 +214,17 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	var buildInfo string
 	var message string
 	//we grab the results here and put them on the ABR
-	for _, res := range tr.Status.TaskRunResults {
+	for _, res := range pr.Status.PipelineResults {
 		switch res.Name {
-		case BuildInfoTaskBuildInfo:
+		case BuildInfoPipelineBuildInfo:
 			buildInfo = res.Value
-		case BuildInfoTaskMessage:
+		case BuildInfoPipelineMessage:
 			message = res.Value
 		}
 	}
 	if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
 		pod := v1.Pod{}
-		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: tr.Namespace, Name: tr.Status.PodName}, &pod)
+		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: pr.Status.TaskRuns[artifactbuild.TaskName].Status.PodName}, &pod)
 		if poderr == nil {
 			err := r.client.Delete(ctx, &pod)
 			if err != nil {
@@ -232,7 +232,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			}
 		}
 	}
-	success := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 	if !success || len(buildInfo) == 0 {
 		db.Status.State = v1alpha1.DependencyBuildStateFailed
 		db.Status.Message = message
@@ -297,107 +297,132 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 
 }
 
-func (r *ReconcileDependencyBuild) decodeBytesToTaskRun(bytes []byte, taskRun *pipelinev1beta1.TaskRun) (*pipelinev1beta1.TaskRun, error) {
+func (r *ReconcileDependencyBuild) decodeBytesToPipelineRun(bytes []byte) (*pipelinev1beta1.TaskRun, error) {
 	decodingScheme := runtime.NewScheme()
 	utilruntime.Must(pipelinev1beta1.AddToScheme(decodingScheme))
 	decoderCodecFactory := serializer.NewCodecFactory(decodingScheme)
 	decoder := decoderCodecFactory.UniversalDecoder(pipelinev1beta1.SchemeGroupVersion)
-	err := runtime.DecodeInto(decoder, bytes, taskRun)
-	return taskRun, err
+	taskRun := pipelinev1beta1.TaskRun{}
+	err := runtime.DecodeInto(decoder, bytes, &taskRun)
+	return &taskRun, err
 }
 
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
-	tr := pipelinev1beta1.TaskRun{}
-	tr.Namespace = db.Namespace
+	pr := pipelinev1beta1.PipelineRun{}
+	pr.Namespace = db.Namespace
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
 	// we move the db out of building
-	tr.Name = currentDependencyBuildTaskName(db)
-	tr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.TaskRunLabel: "", TaskType: TaskTypeBuild}
+	pr.Name = currentDependencyBuildPipelineName(db)
+	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
 
 	image := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
-	tr.Spec.TaskRef = &pipelinev1beta1.TaskRef{Name: db.Status.CurrentBuildRecipe.Task, Kind: pipelinev1beta1.ClusterTaskKind}
-	taskRun := &pipelinev1beta1.TaskRun{}
-	taskRunBytes := []byte{}
+	pipelineRunBytes := []byte{}
 	switch {
 	case db.Status.CurrentBuildRecipe.Maven:
-		taskRunBytes = []byte(maven)
+		pipelineRunBytes = []byte(maven)
 	case db.Status.CurrentBuildRecipe.Gradle:
-		taskRunBytes = []byte(gradle)
+		pipelineRunBytes = []byte(gradle)
 	default:
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "MissingRecipeType", "recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 		return reconcile.Result{}, fmt.Errorf("recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 	}
-	var err error
-	taskRun, err = r.decodeBytesToTaskRun(taskRunBytes, taskRun)
+	taskRun, err := r.decodeBytesToPipelineRun(pipelineRunBytes)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	tr.Spec.TaskRef = nil
-	tr.Spec.TaskSpec = taskRun.Spec.TaskSpec
-	tr.Spec.TaskSpec.Sidecars[0].Image = image
+
+	pr.Spec.PipelineRef = nil
+	pr.Spec.PipelineSpec = &pipelinev1beta1.PipelineSpec{
+		Results: []pipelinev1beta1.PipelineResult{},
+		Tasks: []pipelinev1beta1.PipelineTask{
+			{
+				Name: artifactbuild.TaskName,
+				TaskSpec: &pipelinev1beta1.EmbeddedTask{
+					TaskSpec: *taskRun.Spec.TaskSpec,
+				},
+				Params: []pipelinev1beta1.Param{},
+			},
+		},
+	}
+	for _, i := range taskRun.Spec.TaskSpec.Results {
+		pr.Spec.PipelineSpec.Results = append(pr.Spec.PipelineSpec.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: "$(tasks." + artifactbuild.TaskName + ".results." + i.Name + ")"})
+	}
+	for _, i := range taskRun.Spec.TaskSpec.Params {
+		pr.Spec.PipelineSpec.Params = append(pr.Spec.PipelineSpec.Params, pipelinev1beta1.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default})
+		if i.Type == pipelinev1beta1.ParamTypeString {
+			pr.Spec.PipelineSpec.Tasks[0].Params = append(pr.Spec.PipelineSpec.Tasks[0].Params, pipelinev1beta1.Param{Name: i.Name, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(params." + i.Name + ")"}})
+		} else {
+			//TODO: this should really be pulled from the pipelines params but it does not seem to work
+			pr.Spec.PipelineSpec.Tasks[0].Params = append(pr.Spec.PipelineSpec.Tasks[0].Params, pipelinev1beta1.Param{Name: i.Name, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}})
+		}
+	}
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Image = image
 	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
 	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
 	//the actual solution will involve loading deployment config from a ConfigMap
-	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://localstack.jvm-build-service.svc.cluster.local:4572"})
-	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"})
-	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"})
-	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"})
-	tr.Spec.TaskSpec.Sidecars[0].Env = append(tr.Spec.TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY", Value: "secretkey"})
-
-	tr.Spec.Params = []pipelinev1beta1.Param{
-		{Name: TaskScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
-		{Name: TaskScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
-		{Name: TaskPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
-		{Name: TaskImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
-		{Name: TaskGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
-		{Name: TaskEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
-		{Name: TaskIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://localstack.jvm-build-service.svc.cluster.local:4572"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY", Value: "secretkey"})
+	pr.Spec.Params = []pipelinev1beta1.Param{
+		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
+		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
+		{Name: PipelineImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
+		{Name: PipelineGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
+		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
+		{Name: PipelineIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
 	}
-	tr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
+	pr.Spec.PipelineSpec.Workspaces = []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "source"}, {Name: "maven-settings"}}
+	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: "source", EmptyDir: &v1.EmptyDirVolumeSource{}},
 	}
-	tr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
-	if err := controllerutil.SetOwnerReference(db, &tr, r.scheme); err != nil {
+	pr.Spec.PipelineSpec.Tasks[0].Workspaces = []pipelinev1beta1.WorkspacePipelineTaskBinding{
+		{Name: "maven-settings", Workspace: "maven-settings"},
+		{Name: "source", Workspace: "source"}}
+	pr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
+	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 	//now we submit the build
-	if err := r.client.Create(ctx, &tr); err != nil {
+	if err := r.client.Create(ctx, &pr); err != nil {
 		if errors.IsAlreadyExists(err) {
-			log.V(4).Info("handleStateBuilding: taskrun %s:%s already exists, not retrying", tr.Namespace, tr.Name)
+			log.V(4).Info("handleStateBuilding: pipelinerun %s:%s already exists, not retrying", pr.Namespace, pr.Name)
 			return reconcile.Result{}, nil
 		}
-		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "TaskRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
+		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "PipelineRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
 		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func currentDependencyBuildTaskName(db *v1alpha1.DependencyBuild) string {
+func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
 	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 }
 
-func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr *pipelinev1beta1.TaskRun) (reconcile.Result, error) {
-	if tr.Status.CompletionTime != nil {
+func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+	if pr.Status.CompletionTime != nil {
 		// get db
-		ownerRefs := tr.GetOwnerReferences()
+		ownerRefs := pr.GetOwnerReferences()
 		if ownerRefs == nil || len(ownerRefs) == 0 {
-			msg := "taskrun missing onwerrefs %s:%s"
-			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name)
-			log.Info(msg, tr.Namespace, tr.Name)
+			msg := "pipelinerun missing onwerrefs %s:%s"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+			log.Info(msg, pr.Namespace, pr.Name)
 			return reconcile.Result{}, nil
 		}
 		if len(ownerRefs) > 1 {
 			// workaround for event/logging methods that can only take string args
 			count := fmt.Sprintf("%d", len(ownerRefs))
-			msg := "taskrun %s:%s has %s ownerrefs but only using the first dependencybuild ownerfef"
-			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name, count)
-			log.Info(msg, tr.Namespace, tr.Name, count)
+			msg := "pipelinerun %s:%s has %s ownerrefs but only using the first dependencybuild ownerfef"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, count)
+			log.Info(msg, pr.Namespace, pr.Name, count)
 		}
-		// even though we filter out artifactbuild taskruns, let's check the kind and make sure
+		// even though we filter out artifactbuild pipelineruns, let's check the kind and make sure
 		// we use a dependencybuild ownerref
 		var ownerRef *v12.OwnerReference
 		for _, or := range ownerRefs {
@@ -406,38 +431,38 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 			}
 		}
 		if ownerRef == nil {
-			msg := "taskrun missing dependencybuild onwerrefs %s:%s"
-			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name)
-			log.Info(msg, tr.Namespace, tr.Name)
+			msg := "pipelinerun missing dependencybuild onwerrefs %s:%s"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+			log.Info(msg, pr.Namespace, pr.Name)
 			return reconcile.Result{}, nil
 		}
 
-		key := types.NamespacedName{Namespace: tr.Namespace, Name: ownerRef.Name}
+		key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerRef.Name}
 		db := v1alpha1.DependencyBuild{}
 		err := r.client.Get(ctx, key, &db)
 		if err != nil {
-			msg := "get for taskrun %s:%s owning db %s:%s yielded error %s"
-			r.eventRecorder.Eventf(tr, v1.EventTypeWarning, msg, tr.Namespace, tr.Name, tr.Namespace, ownerRef.Name, err.Error())
-			log.Error(err, fmt.Sprintf(msg, tr.Namespace, tr.Name, tr.Namespace, ownerRef.Name, err.Error()))
+			msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error())
+			log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error()))
 			return reconcile.Result{}, err
 		}
 
-		if tr.Name == db.Status.LastCompletedBuildTaskRun || tr.Name != currentDependencyBuildTaskName(&db) {
+		if pr.Name == db.Status.LastCompletedBuildPipelineRun || pr.Name != currentDependencyBuildPipelineName(&db) {
 			//already handled
 			return reconcile.Result{}, nil
 		}
-		db.Status.LastCompletedBuildTaskRun = tr.Name
+		db.Status.LastCompletedBuildPipelineRun = pr.Name
 		//the pr is done, lets potentially update the dependency build
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
 
 		var contaminates []string
-		for _, r := range tr.Status.TaskRunResults {
+		for _, r := range pr.Status.PipelineResults {
 			if r.Name == "contaminants" && len(r.Value) > 0 {
 				contaminates = strings.Split(r.Value, ",")
 			}
 		}
-		success := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
 			if len(contaminates) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
@@ -453,7 +478,7 @@ func (r *ReconcileDependencyBuild) handleTaskRunReceived(ctx context.Context, tr
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		}
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-			delerr := r.client.Delete(ctx, tr)
+			delerr := r.client.Delete(ctx, pr)
 			if delerr != nil {
 				return reconcile.Result{}, delerr
 			}
@@ -509,7 +534,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func createLookupBuildInfoTask(build *v1alpha1.DependencyBuildSpec) *pipelinev1beta1.TaskSpec {
+func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec) *pipelinev1beta1.PipelineSpec {
 	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	recipes := os.Getenv("RECIPE_DATABASE")
 	path := build.ScmInfo.Path
@@ -517,29 +542,39 @@ func createLookupBuildInfoTask(build *v1alpha1.DependencyBuildSpec) *pipelinev1b
 	if len(path) == 0 {
 		path = "."
 	}
-	return &pipelinev1beta1.TaskSpec{
-		Results: []pipelinev1beta1.TaskResult{{Name: BuildInfoTaskMessage}, {Name: BuildInfoTaskBuildInfo}},
-		Steps: []pipelinev1beta1.Step{
+	return &pipelinev1beta1.PipelineSpec{
+		Results: []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}, {Name: BuildInfoPipelineBuildInfo, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}},
+		Tasks: []pipelinev1beta1.PipelineTask{
 			{
-				Container: v1.Container{
-					Name:  "process-build-requests",
-					Image: image,
-					Args: []string{
-						"lookup-build-info",
-						"--recipes",
-						recipes,
-						"--scm-url",
-						build.ScmInfo.SCMURL,
-						"--scm-tag",
-						build.ScmInfo.Tag,
-						"--context",
-						path,
-						"--version",
-						build.Version,
-						"--message",
-						"$(results." + BuildInfoTaskMessage + ".path)",
-						"--build-info",
-						"$(results." + BuildInfoTaskBuildInfo + ".path)",
+				Name: artifactbuild.TaskName,
+				TaskSpec: &pipelinev1beta1.EmbeddedTask{
+					TaskSpec: pipelinev1beta1.TaskSpec{
+						Results: []pipelinev1beta1.TaskResult{{Name: BuildInfoPipelineMessage}, {Name: BuildInfoPipelineBuildInfo}},
+						Steps: []pipelinev1beta1.Step{
+							{
+								Container: v1.Container{
+									Name:  "process-build-requests",
+									Image: image,
+									Args: []string{
+										"lookup-build-info",
+										"--recipes",
+										recipes,
+										"--scm-url",
+										build.ScmInfo.SCMURL,
+										"--scm-tag",
+										build.ScmInfo.Tag,
+										"--context",
+										path,
+										"--version",
+										build.Version,
+										"--message",
+										"$(results." + BuildInfoPipelineMessage + ".path)",
+										"--build-info",
+										"$(results." + BuildInfoPipelineBuildInfo + ".path)",
+									},
+								},
+							},
+						},
 					},
 				},
 			},
