@@ -400,6 +400,7 @@ func TestExampleRun(t *testing.T) {
 	ta.t.Run("contaminated build is resolved", func(t *testing.T) {
 		//our sample repo has Netty which is contaminated by JCTools
 		var contaminated string
+		var jcToolsAbr string
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 
 			dbContaminated := false
@@ -435,6 +436,7 @@ func TestExampleRun(t *testing.T) {
 			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
 			for _, ab := range abList.Items {
 				if strings.Contains(ab.Spec.GAV, "jctools") {
+					jcToolsAbr = ab.Name
 					found = true
 					break
 				}
@@ -444,6 +446,19 @@ func TestExampleRun(t *testing.T) {
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
 		}
+		//now make sure JCTools eventually completes
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+			ab, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Get(context.TODO(), jcToolsAbr, metav1.GetOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error getting JCTools ArtifactBuild: %s", err.Error()))
+				return false, err
+			}
+			ta.Logf(fmt.Sprintf("JCTools State: %s", ab.Status.State))
+			return ab.Status.State == v1alpha1.ArtifactBuildStateComplete, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for JCTools to complete")
+		}
 		//now make sure Netty eventually completes
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
@@ -451,10 +466,11 @@ func TestExampleRun(t *testing.T) {
 				ta.Logf(fmt.Sprintf("error getting netty DependencyBuild: %s", err.Error()))
 				return false, err
 			}
+			ta.Logf(fmt.Sprintf("Netty State: %s", dbList.Status.State))
 			return dbList.Status.State == v1alpha1.DependencyBuildStateComplete, err
 		})
 		if err != nil {
-			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+			debugAndFailTest(ta, "timed out waiting for Netty to complete")
 		}
 	})
 }
