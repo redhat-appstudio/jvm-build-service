@@ -189,6 +189,19 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 		debugAndFailTest(ta, "pipeline SA not created in timely fashion")
 	}
 
+	// have seen delays in CRD presence along with missing pipeline SA
+	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (done bool, err error) {
+		_, err = apiextensionClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "tasks.tekton.dev", metav1.GetOptions{})
+		if err != nil {
+			ta.Logf(fmt.Sprintf("get of task CRD: %s", err.Error()))
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		debugAndFailTest(ta, "task CRD not present in timely fashion")
+	}
+
 	ta.gitClone = &v1beta1.Task{}
 	obj := streamRemoteYamlToTektonObj("https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml", ta.gitClone, ta)
 	var ok bool
