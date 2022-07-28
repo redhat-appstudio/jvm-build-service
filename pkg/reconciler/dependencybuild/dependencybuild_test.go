@@ -174,9 +174,9 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				case PipelineIgnoredArtifacts:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
-				case TaskToolVersion:
+				case PipelineToolVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
-				case TaskJavaVersion:
+				case PipelineJavaVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				}
 			}
