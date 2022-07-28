@@ -1,3 +1,6 @@
+// This package contains the reconciler for the system and user level config
+// System level config is a single ConfigMap, while the user level config is
+// per namespace
 package configmap
 
 import (
@@ -53,6 +56,9 @@ type ReconcileConfigMap struct {
 	builderImages        *BuilderImageConfig
 }
 
+// BuilderImageConfig Shared builder image config, it is updated in this controller
+// and read in the DependencyBuilds controller
+// It must be accessed under lock
 type BuilderImageConfig struct {
 	Lock   sync.Locker
 	Images []BuilderImage
@@ -76,7 +82,6 @@ func newReconciler(mgr ctrl.Manager, config map[string]string, bi *BuilderImageC
 
 func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	log.Info("Received config map %s", "name", request.Name)
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	if request.Name == SystemConfigMapName && request.Namespace == SystemConfigMapNamespace {
