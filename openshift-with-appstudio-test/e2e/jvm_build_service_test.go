@@ -450,6 +450,7 @@ func TestExampleRun(t *testing.T) {
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
 		}
+		ta.Logf(fmt.Sprintf("contaminated dependencybuild: %s", contaminated))
 		//make sure JCTools was requested as a result
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
@@ -486,13 +487,18 @@ func TestExampleRun(t *testing.T) {
 		}
 		//now make sure Netty eventually completes
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
-			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
+			db, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error getting netty DependencyBuild: %s", err.Error()))
 				return false, err
 			}
-			ta.Logf(fmt.Sprintf("Netty State: %s", dbList.Status.State))
-			return dbList.Status.State == v1alpha1.DependencyBuildStateComplete, err
+			ta.Logf(fmt.Sprintf("Netty State: %s", db.Status.State))
+			if db.Status.State == v1alpha1.DependencyBuildStateFailed {
+				msg := fmt.Sprintf("contaminated db %s failed, exitting wait", contaminated)
+				ta.Logf(msg)
+				return false, fmt.Errorf(msg)
+			}
+			return db.Status.State == v1alpha1.DependencyBuildStateComplete, err
 		})
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for Netty to complete")
