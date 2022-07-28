@@ -134,7 +134,6 @@ public class LookupBuildInfoCommand implements Runnable {
             if (buildRecipeInfo != null) {
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
                 if (buildRecipeInfo.getAdditionalArgs() != null) {
-                    Log.infof("Got additional args %s", buildRecipeInfo.getAdditionalArgs());
                     for (var i : info.invocations) {
                         i.addAll(buildRecipeInfo.getAdditionalArgs());
                     }

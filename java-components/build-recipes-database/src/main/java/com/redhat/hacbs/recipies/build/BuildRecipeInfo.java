@@ -63,4 +63,15 @@ public class BuildRecipeInfo {
         this.javaVersion = javaVersion;
         return this;
     }
+
+    @Override
+    public String toString() {
+        return "BuildRecipeInfo{" +
+                "enforceVersion=" + enforceVersion +
+                ", additionalArgs=" + additionalArgs +
+                ", ignoredArtifacts=" + ignoredArtifacts +
+                ", toolVersion='" + toolVersion + '\'' +
+                ", javaVersion='" + javaVersion + '\'' +
+                '}';
+    }
 }
