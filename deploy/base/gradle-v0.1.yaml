@@ -265,8 +265,8 @@ spec:
         export JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-openjdk"
         export PATH="${JAVA_HOME}/bin:${PATH}"
         export PATH="${GRADLE_HOME}/bin:${PATH}"
-        export LANG=en_US.UTF-8
-        export LC_ALL=en_US.UTF-8
+        export LANG="en_US.UTF-8"
+        export LC_ALL="en_US.UTF-8"
 
         if [ -n "$(params.ENFORCE_VERSION)" ]; then
             gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) generateAlignmentMetadata || exit 1
@@ -286,7 +286,7 @@ spec:
         tar -cvvzf $(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz -C $(workspaces.source.path)/hacbs-jvm-deployment-repo .
         curl --verbose --data-binary @$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz http://localhost:2000/deploy
 
-        curl --verbose --fail http://localhost:2000/deploy/result -o $(results.contaminants.path)
+        curl --verbose --fail http://localhost:2000/deploy/result -o $(results.contaminants.path) || cat $(workspaces.maven-settings.path)/sidecar.log
         cat $(workspaces.maven-settings.path)/sidecar.log
       resources:
         requests:
