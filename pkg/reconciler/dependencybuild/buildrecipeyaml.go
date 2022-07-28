@@ -272,7 +272,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
-  name: run-maven-component-build
+  name: run-gradle-component-build
 spec:
   taskSpec:
     description: >-
