@@ -32,7 +32,7 @@ func TestSetupEmptyConfigMap(t *testing.T) {
 	g := NewGomegaWithT(t)
 	configMap := v1.ConfigMap{}
 	configMap.Namespace = metav1.NamespaceDefault
-	configMap.Name = ConfigMapName
+	configMap.Name = UserConfigMapName
 	value := readConfiguredRepositories(configMap, g)
 	g.Expect(*value).Should(Equal("central"))
 }
@@ -41,7 +41,7 @@ func TestSetupRebuildsEnabled(t *testing.T) {
 	g := NewGomegaWithT(t)
 	configMap := v1.ConfigMap{}
 	configMap.Namespace = metav1.NamespaceDefault
-	configMap.Name = ConfigMapName
+	configMap.Name = UserConfigMapName
 	configMap.Data = map[string]string{EnableRebuilds: "true"}
 	value := readConfiguredRepositories(configMap, g)
 	g.Expect(*value).Should(Equal("rebuilt,central"))
@@ -50,7 +50,7 @@ func TestSetupRebuildsEnabledCustomRepo(t *testing.T) {
 	g := NewGomegaWithT(t)
 	configMap := v1.ConfigMap{}
 	configMap.Namespace = metav1.NamespaceDefault
-	configMap.Name = ConfigMapName
+	configMap.Name = UserConfigMapName
 	configMap.Data = map[string]string{EnableRebuilds: "true", "maven-repository-302-gradle": "https://repo.gradle.org/artifactory/libs-releases"}
 	value := readConfiguredRepositories(configMap, g)
 	g.Expect(*value).Should(Equal("rebuilt,central,gradle"))

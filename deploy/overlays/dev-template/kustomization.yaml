@@ -7,6 +7,9 @@ bases:
  - "../../cache/overlays/dev-template"
  - "../../operator/overlays/dev-template"
 
+resources:
+  - system-config.yaml
+
 patches:
  - patch: |-
      - op: replace

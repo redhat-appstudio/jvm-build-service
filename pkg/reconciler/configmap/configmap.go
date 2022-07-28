@@ -2,6 +2,7 @@ package configmap
 
 import (
 	"context"
+	"fmt"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v13 "k8s.io/api/rbac/v1"
@@ -26,38 +27,46 @@ import (
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout           = 300 * time.Second
-	ConfigMapName            = "jvm-build-config"
+	UserConfigMapName        = "jvm-build-config"
 	CacheDeploymentName      = "jvm-build-workspace-artifact-cache"
 	LocalstackDeploymentName = "jvm-build-workspace-localstack"
 	EnableRebuilds           = "enable-rebuilds"
-	CacheImage               = "cache-image"
 	ServiceAccountName       = "hacbs-jvm-cache"
+	SystemConfigMapName      = "jvm-build-system-config"
+	SystemConfigMapNamespace = "jvm-build-service"
+	SystemCacheImage         = "image.cache"
 )
 
 var (
-	log = ctrl.Log.WithName("configmap")
+	RequiredKeys = map[string]bool{SystemCacheImage: true}
+	log          = ctrl.Log.WithName("configmap")
 )
 
 type ReconcileConfigMap struct {
-	client        client.Client
-	scheme        *runtime.Scheme
-	eventRecorder record.EventRecorder
+	client               client.Client
+	scheme               *runtime.Scheme
+	eventRecorder        record.EventRecorder
+	configuredCacheImage string
 }
 
-func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, config map[string]string) reconcile.Reconciler {
 	return &ReconcileConfigMap{
-		client:        mgr.GetClient(),
-		scheme:        mgr.GetScheme(),
-		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
+		client:               mgr.GetClient(),
+		scheme:               mgr.GetScheme(),
+		eventRecorder:        mgr.GetEventRecorderFor("ArtifactBuild"),
+		configuredCacheImage: config[SystemCacheImage],
 	}
 }
 
 func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	log.Info("Recived config map %s", "name", request.Name)
+	log.Info("Received config map %s", "name", request.Name)
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
-	if request.Name != ConfigMapName {
+	if request.Name == SystemConfigMapName && request.Namespace == SystemConfigMapNamespace {
+		return r.handleSystemConfigMap(ctx, request)
+	}
+	if request.Name != UserConfigMapName {
 		return reconcile.Result{}, nil
 	}
 	configMap := corev1.ConfigMap{}
@@ -216,12 +225,8 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 		Name:  "BUILD_POLICY_DEFAULT_STORE_LIST",
 		Value: sb.String(),
 	})
-	//now
-	if configMap.Data[CacheImage] == "" {
-		cache.Spec.Template.Spec.Containers[0].Image = "quay.io/redhat-appstudio/hacbs-jvm-cache:latest"
-	} else {
-		cache.Spec.Template.Spec.Containers[0].Image = configMap.Data[CacheImage]
-	}
+	cache.Spec.Template.Spec.Containers[0].Image = r.configuredCacheImage
+
 	role := v1alpha1.Role{}
 	roleName := types.NamespacedName{Namespace: request.Namespace, Name: "pipeline-anyuid-role"}
 	err = r.client.Get(ctx, roleName, &role)
@@ -361,6 +366,21 @@ func (r *ReconcileConfigMap) setupRebuilts(ctx context.Context, request reconcil
 		}
 	}
 	return nil
+}
+
+func (r *ReconcileConfigMap) handleSystemConfigMap(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	configMap := corev1.ConfigMap{}
+	err := r.client.Get(ctx, request.NamespacedName, &configMap)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if configMap.Data[SystemCacheImage] == "" {
+		log.Info(fmt.Sprintf("System config map missing required key %s, operator will fail to restart if this is not corrected", SystemCacheImage))
+	} else {
+		r.configuredCacheImage = configMap.Data[SystemCacheImage]
+	}
+
+	return reconcile.Result{}, nil
 }
 func i64a(v int64) *int64 {
 	return &v

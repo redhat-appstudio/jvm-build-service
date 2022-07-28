@@ -3,9 +3,9 @@ package controller
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"time"
 
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +20,7 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -34,6 +35,19 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 	// and controller-runtime does not retry on missing CRDs.
 	// so we are going to wait on the CRDs existing before moving forward.
 	apiextensionsClient := apiextensionsclient.NewForConfigOrDie(cfg)
+	if err := wait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
+		_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "taskruns.tekton.dev", metav1.GetOptions{})
+		if err != nil {
+			controllerLog.Info(fmt.Sprintf("get of taskrun CRD failed with: %s", err.Error()))
+			return false, nil
+		}
+		controllerLog.Info("get of taskrun CRD returned successfully")
+		return true, nil
+	}); err != nil {
+		controllerLog.Error(err, "timed out waiting for taskrun CRD to be created")
+		return nil, err
+	}
+
 	if err := wait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
 		_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "taskruns.tekton.dev", metav1.GetOptions{})
 		if err != nil {
@@ -73,6 +87,31 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 		return nil, err
 	}
 
+	var systemConfig = v1.ConfigMap{}
+	if err := wait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
+		err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: configmap.SystemConfigMapNamespace, Name: configmap.SystemConfigMapName}, &systemConfig)
+		if err != nil {
+			return false, err
+		}
+		var keys = map[string]bool{}
+		for k, v := range configmap.RequiredKeys {
+			keys[k] = v
+		}
+		for k := range systemConfig.Data {
+			delete(keys, k)
+		}
+		if len(keys) > 0 {
+			for k := range keys {
+				controllerLog.Info(fmt.Sprintf("Missing required keys in system config map %s", k))
+			}
+			return false, nil
+		}
+		controllerLog.Info("config map loaded and has required keys")
+		return true, nil
+	}); err != nil {
+		controllerLog.Error(err, "timed out waiting for taskrun CRD to be created")
+		return nil, err
+	}
 	if err := artifactbuild.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
@@ -81,7 +120,7 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 		return nil, err
 	}
 
-	if err := configmap.SetupNewReconcilerWithManager(mgr); err != nil {
+	if err := configmap.SetupNewReconcilerWithManager(mgr, systemConfig.Data); err != nil {
 		return nil, err
 	}
 
