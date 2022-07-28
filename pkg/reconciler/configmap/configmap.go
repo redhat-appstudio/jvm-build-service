@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,6 +36,8 @@ const (
 	SystemConfigMapName      = "jvm-build-system-config"
 	SystemConfigMapNamespace = "jvm-build-service"
 	SystemCacheImage         = "image.cache"
+	SystemBuilderImages      = "builder-image.names"
+	SystemBuilderImageFormat = "builder-image.%s.image"
 )
 
 var (
@@ -47,14 +50,27 @@ type ReconcileConfigMap struct {
 	scheme               *runtime.Scheme
 	eventRecorder        record.EventRecorder
 	configuredCacheImage string
+	builderImages        *BuilderImageConfig
 }
 
-func newReconciler(mgr ctrl.Manager, config map[string]string) reconcile.Reconciler {
+type BuilderImageConfig struct {
+	Lock   sync.Locker
+	Images []BuilderImage
+}
+
+type BuilderImage struct {
+	Name  string
+	Image string
+}
+
+func newReconciler(mgr ctrl.Manager, config map[string]string, bi *BuilderImageConfig) reconcile.Reconciler {
+	processBuilderImages(bi, config)
 	return &ReconcileConfigMap{
 		client:               mgr.GetClient(),
 		scheme:               mgr.GetScheme(),
 		eventRecorder:        mgr.GetEventRecorderFor("ArtifactBuild"),
 		configuredCacheImage: config[SystemCacheImage],
+		builderImages:        bi,
 	}
 }
 
@@ -123,38 +139,38 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			}}
 			cache.Spec.Template.Spec.ServiceAccountName = ServiceAccountName
 
-			//and setup the service
-			err = r.client.Get(ctx, types.NamespacedName{Name: CacheDeploymentName, Namespace: configMap.Namespace}, &corev1.Service{})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					service := corev1.Service{
-						ObjectMeta: ctrl.ObjectMeta{
-							Name:      CacheDeploymentName,
-							Namespace: configMap.Namespace,
-						},
-						Spec: corev1.ServiceSpec{
-							Ports: []corev1.ServicePort{
-								{
-									Name:       "http",
-									Port:       80,
-									TargetPort: intstr.IntOrString{IntVal: 8080},
-								},
-							},
-							Type:     corev1.ServiceTypeClusterIP,
-							Selector: map[string]string{"app": CacheDeploymentName},
-						},
-					}
-					err := r.client.Create(ctx, &service)
-					if err != nil {
-						return err
-					}
-				}
-			}
 		} else {
 			return err
 		}
 	}
 
+	//and setup the service
+	err = r.client.Get(ctx, types.NamespacedName{Name: CacheDeploymentName, Namespace: configMap.Namespace}, &corev1.Service{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			service := corev1.Service{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:      CacheDeploymentName,
+					Namespace: configMap.Namespace,
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "http",
+							Port:       80,
+							TargetPort: intstr.IntOrString{IntVal: 8080},
+						},
+					},
+					Type:     corev1.ServiceTypeClusterIP,
+					Selector: map[string]string{"app": CacheDeploymentName},
+				},
+			}
+			err := r.client.Create(ctx, &service)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	type Repo struct {
 		name     string
 		position int
@@ -283,19 +299,19 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 func (r *ReconcileConfigMap) setupRebuilts(ctx context.Context, request reconcile.Request) error {
 	//setup localstack
 	//this is 100% temporary and needs to go away ASAP
-	cache := v1.Deployment{}
+	localstack := v1.Deployment{}
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: LocalstackDeploymentName}
-	err := r.client.Get(ctx, deploymentName, &cache)
+	err := r.client.Get(ctx, deploymentName, &localstack)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			cache.Name = deploymentName.Name
-			cache.Namespace = deploymentName.Namespace
+			localstack.Name = deploymentName.Name
+			localstack.Namespace = deploymentName.Namespace
 			var replicas int32
 			replicas = 1
-			cache.Spec.Replicas = &replicas
-			cache.Spec.Selector = &v12.LabelSelector{MatchLabels: map[string]string{"app": LocalstackDeploymentName}}
-			cache.Spec.Template.ObjectMeta.Labels = map[string]string{"app": LocalstackDeploymentName}
-			cache.Spec.Template.Spec.Containers = []corev1.Container{{
+			localstack.Spec.Replicas = &replicas
+			localstack.Spec.Selector = &v12.LabelSelector{MatchLabels: map[string]string{"app": LocalstackDeploymentName}}
+			localstack.Spec.Template.ObjectMeta.Labels = map[string]string{"app": LocalstackDeploymentName}
+			localstack.Spec.Template.Spec.Containers = []corev1.Container{{
 				Name:            LocalstackDeploymentName,
 				ImagePullPolicy: "Always",
 				SecurityContext: &corev1.SecurityContext{RunAsUser: i64a(0)},
@@ -304,8 +320,16 @@ func (r *ReconcileConfigMap) setupRebuilts(ctx context.Context, request reconcil
 				}},
 				Env: []corev1.EnvVar{{Name: "SERVICES", Value: "s3:4572"}},
 			}}
-			cache.Spec.Template.Spec.Containers[0].Image = "localstack/localstack:0.11.5"
-			//and setup the service
+			localstack.Spec.Template.Spec.Containers[0].Image = "localstack/localstack:0.11.5"
+			return r.client.Create(ctx, &localstack)
+		} else {
+			return err
+		}
+	}
+	//and setup the service
+	err = r.client.Get(ctx, types.NamespacedName{Name: CacheDeploymentName, Namespace: request.Namespace}, &corev1.Service{})
+	if err != nil {
+		if errors.IsNotFound(err) {
 			service := corev1.Service{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      LocalstackDeploymentName,
@@ -327,9 +351,6 @@ func (r *ReconcileConfigMap) setupRebuilts(ctx context.Context, request reconcil
 			if err != nil {
 				return err
 			}
-			return r.client.Create(ctx, &cache)
-		} else {
-			return err
 		}
 	}
 	log.Info("Pipeline service account", "name", request.Name)
@@ -379,8 +400,23 @@ func (r *ReconcileConfigMap) handleSystemConfigMap(ctx context.Context, request 
 	} else {
 		r.configuredCacheImage = configMap.Data[SystemCacheImage]
 	}
+	processBuilderImages(r.builderImages, configMap.Data)
 
 	return reconcile.Result{}, nil
+}
+
+func processBuilderImages(bi *BuilderImageConfig, config map[string]string) {
+	bi.Lock.Lock()
+	defer bi.Lock.Unlock()
+	names := strings.Split(config[SystemBuilderImages], ",")
+	for _, i := range names {
+		image := config[fmt.Sprintf(SystemBuilderImageFormat, i)]
+		if image == "" {
+			log.Info(fmt.Sprintf("Missing system config for builder image %s, image will not be usable", image))
+		} else {
+			bi.Images = append(bi.Images, BuilderImage{Image: image, Name: i})
+		}
+	}
 }
 func i64a(v int64) *int64 {
 	return &v

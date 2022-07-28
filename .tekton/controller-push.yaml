@@ -28,7 +28,10 @@ spec:
         components/build/jvm-build-service/kustomization.yaml &&
         sed -i 
         -e 's|\(quay.io/redhat-appstudio/[^:]*:\).*|\1{{ revision }}|'
-        components/build/jvm-build-service/operator-images.yaml
+        components/build/jvm-build-service/operator-images.yaml&&
+        sed -i 
+        -e 's|\(quay.io/redhat-appstudio/[^:]*:\).*|\1{{ revision }}|'
+        components/build/jvm-build-service/system-config.yaml
   pipelineRef:
     name: docker-build
     bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest

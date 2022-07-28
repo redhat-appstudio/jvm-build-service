@@ -18,9 +18,11 @@ package e2e
 
 import (
 	"context"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"go/build"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -122,7 +124,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	err = artifactbuild.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
-	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager)
+	bi := &configmap.BuilderImageConfig{Lock: &sync.Mutex{}, Images: []configmap.BuilderImage{{Name: "jdk11", Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest"}}}
+	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager, bi)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

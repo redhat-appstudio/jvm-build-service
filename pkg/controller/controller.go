@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
+	"os"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -86,10 +89,14 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 	if err != nil {
 		return nil, err
 	}
-
+	nonCachingClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: options.Scheme})
+	if err != nil {
+		controllerLog.Error(err, "unable to initialize non cached client")
+		os.Exit(1)
+	}
 	var systemConfig = v1.ConfigMap{}
 	if err := wait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
-		err = mgr.GetClient().Get(context.TODO(), types.NamespacedName{Namespace: configmap.SystemConfigMapNamespace, Name: configmap.SystemConfigMapName}, &systemConfig)
+		err = nonCachingClient.Get(context.TODO(), types.NamespacedName{Namespace: configmap.SystemConfigMapNamespace, Name: configmap.SystemConfigMapName}, &systemConfig)
 		if err != nil {
 			return false, err
 		}
@@ -112,15 +119,17 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 		controllerLog.Error(err, "timed out waiting for taskrun CRD to be created")
 		return nil, err
 	}
+
+	bi := configmap.BuilderImageConfig{Images: []configmap.BuilderImage{}, Lock: &sync.Mutex{}}
 	if err := artifactbuild.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 
-	if err := dependencybuild.SetupNewReconcilerWithManager(mgr); err != nil {
+	if err := dependencybuild.SetupNewReconcilerWithManager(mgr, &bi); err != nil {
 		return nil, err
 	}
 
-	if err := configmap.SetupNewReconcilerWithManager(mgr, systemConfig.Data); err != nil {
+	if err := configmap.SetupNewReconcilerWithManager(mgr, systemConfig.Data, &bi); err != nil {
 		return nil, err
 	}
 

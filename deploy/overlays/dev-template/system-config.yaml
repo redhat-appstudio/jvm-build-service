@@ -6,3 +6,11 @@ metadata:
   namespace: jvm-build-service
 data:
   image.cache: quay.io/QUAY_USERNAME/hacbs-jvm-cache:dev
+  builder-image.names: jdk11,jdk8,jdk17
+  builder-image.jdk8.image: quay.io/sdouglas/hacbs-jdk8-builder:dev
+  builder-image.jdk11.image: quay.io/sdouglas/hacbs-jdk11-builder:dev
+  builder-image.jdk17.image: quay.io/sdouglas/hacbs-jdk17-builder:dev
+  #use these if you have built your own local builder images using build-local.sh
+  #builder-image.jdk8.image: quay.io/QUAY_USERNAME/hacbs-jdk8-builder:dev
+  #builder-image.jdk11.image: quay.io/QUAY_USERNAME/hacbs-jdk11-builder:dev
+  #builder-image.jdk17.image: quay.io/QUAY_USERNAME/hacbs-jdk17-builder:dev

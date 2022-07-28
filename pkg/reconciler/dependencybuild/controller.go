@@ -1,6 +1,7 @@
 package dependencybuild
 
 import (
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"k8s.io/apimachinery/pkg/types"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -17,8 +18,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
-func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
-	r := newReconciler(mgr)
+func SetupNewReconcilerWithManager(mgr ctrl.Manager, bi *configmap.BuilderImageConfig) error {
+	r := newReconciler(mgr, bi)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.DependencyBuild{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
