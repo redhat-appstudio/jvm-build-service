@@ -198,7 +198,7 @@ spec:
       imagePullPolicy: Always
       env:
         - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
-          value: "http://hacbs-jvm-cache.jvm-build-service.svc.cluster.local"
+          value: "http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local"
       name: proxy
       livenessProbe:
         httpGet:

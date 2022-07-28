@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"os"
 	"strings"
 	"time"
@@ -59,16 +60,18 @@ var (
 )
 
 type ReconcileDependencyBuild struct {
-	client        client.Client
-	scheme        *runtime.Scheme
-	eventRecorder record.EventRecorder
+	client             client.Client
+	scheme             *runtime.Scheme
+	eventRecorder      record.EventRecorder
+	builderImageConfig *configmap.BuilderImageConfig
 }
 
-func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, bi *configmap.BuilderImageConfig) reconcile.Reconciler {
 	return &ReconcileDependencyBuild{
-		client:        mgr.GetClient(),
-		scheme:        mgr.GetScheme(),
-		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
+		client:             mgr.GetClient(),
+		scheme:             mgr.GetScheme(),
+		eventRecorder:      mgr.GetEventRecorderFor("DependencyBuild"),
+		builderImageConfig: bi,
 	}
 }
 
@@ -257,7 +260,18 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		buildRecipes := []*v1alpha1.BuildRecipe{}
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
-		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
+		//read our builder images from the config
+		//this can be updated by the config map reconciler
+		//so we do it under lock
+		mavenImages := []string{}
+		{
+			r.builderImageConfig.Lock.Lock()
+			defer r.builderImageConfig.Lock.Unlock()
+			for _, i := range r.builderImageConfig.Images {
+				mavenImages = append(mavenImages, i.Image)
+			}
+		}
+		for _, image := range mavenImages {
 			for _, command := range unmarshalled.Invocations {
 				if maven {
 					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Maven: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
@@ -362,7 +376,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
 	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
 	//the actual solution will involve loading deployment config from a ConfigMap
-	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://localstack.jvm-build-service.svc.cluster.local:4572"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_REST_CLIENT_CACHE_SERVICE_URL", Value: "http://" + configmap.CacheDeploymentName + "." + db.Namespace + ".svc.cluster.local"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://" + configmap.LocalstackDeploymentName + "." + db.Namespace + ".svc.cluster.local:4572"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"})

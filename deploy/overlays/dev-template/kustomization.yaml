@@ -8,7 +8,7 @@ bases:
  - "../../operator/overlays/dev-template"
 
 resources:
-  - localstack.yaml
+  - system-config.yaml
 
 patches:
  - patch: |-
@@ -137,3 +137,5 @@ patches:
    target:
      kind: ClusterTask
      name: run-gradle-component-build
+patchesStrategicMerge:
+  - config.yaml
