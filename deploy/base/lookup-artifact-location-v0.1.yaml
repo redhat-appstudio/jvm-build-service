@@ -17,12 +17,12 @@ spec:
       type: string
       description: >-
         The image to use for dependency analysis.
-      default: "quay.io/dwalluck/hacbs-jvm-build-request-processor:dev"
+      default: "quay.io/sdouglas/hacbs-jvm-build-request-processor:dev"
     - name: RECIPE_DATABASE
       type: string
       description: >-
         The git recipe database.
-      default: "https://github.com/dwalluck/tempdata2.git"
+      default: "https://github.com/stuartwdouglas/tempdata2.git"
     - name: GAV
       type: string
       description: >-
@@ -77,12 +77,12 @@ spec:
       type: string
       description: >-
         The image to use for dependency analysis.
-      default: "quay.io/dwalluck/hacbs-jvm-build-request-processor:dev"
+      default: "quay.io/sdouglas/hacbs-jvm-build-request-processor:dev"
     - name: RECIPE_DATABASE
       type: string
       description: >-
         The git recipe database.
-      default: "https://github.com/dwalluck/tempdata2.git"
+      default: "https://github.com/stuartwdouglas/tempdata2.git"
     - name: SCM_URL
       type: string
       description: >-
