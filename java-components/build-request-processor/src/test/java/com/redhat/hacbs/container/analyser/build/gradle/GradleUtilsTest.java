@@ -14,6 +14,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.quarkus.test.junit.QuarkusTest;
+
+@QuarkusTest
 class GradleUtilsTest {
     private static final String GRADLE_WRAPPER_PROPERTIES = "gradle-wrapper.properties";
 
@@ -23,7 +26,8 @@ class GradleUtilsTest {
         assertThat(url).isNotNull();
         URI uri = url.toURI();
         Path propertiesFile = Path.of(uri);
-        assertThat(GradleUtils.getGradleVersionFromWrapperProperties(propertiesFile)).get().isEqualTo("7.5");
+        assertThat(GradleUtils.getGradleVersionFromWrapperProperties(propertiesFile)).get()
+                .isEqualTo("7.6-20220622230534+0000");
     }
 
     @Test
@@ -69,5 +73,7 @@ class GradleUtilsTest {
         assertThat(GradleUtils.findNearestGradleVersion("6.0")).isEqualTo("5.4.1");
         assertThat(GradleUtils.findNearestGradleVersion("7.0")).isEqualTo("5.4.1");
         assertThat(GradleUtils.findNearestGradleVersion("7.5")).isEqualTo("7.4.1");
+        assertThat(GradleUtils.findNearestGradleVersion(null)).isEqualTo("7.4.1");
+        assertThat(GradleUtils.findNearestGradleVersion("")).isEqualTo("7.4.1");
     }
 }

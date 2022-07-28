@@ -25,14 +25,15 @@ public final class GradleUtils {
     public static final List<String> DEFAULT_GRADLE_ARGS = List.of("build", "publish");
 
     /**
-     * The default Gradle version.
-     */
-    public static final String DEFAULT_GRADLE_VERSION = "7.4.1";
-
-    /**
      * Identifier for the plugin {@code com.github.sherter.google-java-format}.
      */
     public static final String GOOGLE_JAVA_FORMAT_PLUGIN = "com.github.sherter.google-java-format";
+
+    /**
+     * List of available Gradle versions in image.
+     */
+    public static final List<GradleVersion> AVAILABLE_GRADLE_VERSIONS = List.of(GradleVersion.version("5.4.1"),
+            GradleVersion.version("7.4.1"));
 
     static final String BUILD_GRADLE = "build.gradle";
 
@@ -48,14 +49,17 @@ public final class GradleUtils {
 
     private static final Pattern DISTRIBUTION_URL_PATTERN = Pattern.compile("^.*/gradle-(?<version>.*)-(all|bin)\\.zip$");
 
-    private static final List<GradleVersion> AVAILABLE_GRADLE_VERSIONS = List.of(GradleVersion.version("5.4.1"),
-            GradleVersion.version("7.4.1"));
-
     private GradleUtils() {
 
     }
 
-    private static Path getPropertiesFile(Path basedir) {
+    /**
+     * Gets the location of the {@code gradle-wrapper.properties} starting from the base directory
+     *
+     * @param basedir the base directory
+     * @return the path to {@code gradle-wrapper.properties}
+     */
+    public static Path getPropertiesFile(Path basedir) {
         Path path = basedir.resolve(GRADLE_WRAPPER_PROPERTIES);
         Log.infof("Returning path to gradle/wrapper/gradle-wrapper.properties: %s", path);
         return path;
@@ -64,11 +68,11 @@ public final class GradleUtils {
     /**
      * Get the Gradle version from {@code gradle/wrapper/gradle-wrapper.properties}.
      *
-     * @param basedir the base directory of {@code gradle/wrapper/gradle-wrapper.properties}
+     * @param propertiesFile the location of {@code gradle/wrapper/gradle-wrapper.properties}
      * @return the Gradle version
      */
-    public static Optional<String> getGradleVersionFromWrapperProperties(Path basedir) {
-        try (Reader reader = Files.newBufferedReader(getPropertiesFile(basedir))) {
+    public static Optional<String> getGradleVersionFromWrapperProperties(Path propertiesFile) {
+        try (Reader reader = Files.newBufferedReader(propertiesFile)) {
             var properties = new Properties();
             properties.load(reader);
             return getGradleVersionFromWrapperProperties(properties);
@@ -84,7 +88,19 @@ public final class GradleUtils {
         return matcher.matches() ? Optional.of(matcher.group("version")) : Optional.empty();
     }
 
-    static String findNearestGradleVersion(String version) {
+    /**
+     * Find the nearest available Gradle version to the given version. If possible, return the nearest version that is
+     * less than or equal to the given version. If the given version is null or empty, return the latest available
+     * version.
+     *
+     * @param version the version
+     * @return the nearest Gradle version
+     */
+    public static String findNearestGradleVersion(String version) {
+        if (version == null || version.isEmpty()) {
+            return AVAILABLE_GRADLE_VERSIONS.get(AVAILABLE_GRADLE_VERSIONS.size() - 1).getVersion();
+        }
+
         GradleVersion gradleVersion = GradleVersion.version(version);
         int ret = Collections.binarySearch(AVAILABLE_GRADLE_VERSIONS, gradleVersion);
         int index = ret >= 0 ? ret : Math.max(0, (-ret) - 2);
