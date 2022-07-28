@@ -36,9 +36,9 @@ public class BuildInfo {
     String toolVersion;
 
     /**
-     * Location of Java home ({@code JAVA_HOME}).
+     * Java version.
      */
-    String javaHome;
+    String javaVersion;
 
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
@@ -81,12 +81,12 @@ public class BuildInfo {
         return this;
     }
 
-    public String getJavaHome() {
-        return javaHome;
+    public String getJavaVersion() {
+        return javaVersion;
     }
 
-    public BuildInfo setJavaHome(String javaHome) {
-        this.javaHome = javaHome;
+    public BuildInfo setJavaVersion(String javaVersion) {
+        this.javaVersion = javaVersion;
         return this;
     }
 }

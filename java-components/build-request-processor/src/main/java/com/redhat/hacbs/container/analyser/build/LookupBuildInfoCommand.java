@@ -125,7 +125,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.tools.put(GRADLE, new VersionRange(gradleVersion, gradleVersion, gradleVersion));
                 info.invocations.add(new ArrayList<>(GradleUtils.DEFAULT_GRADLE_ARGS));
                 info.toolVersion = gradleVersion;
-                info.javaHome = "/usr/lib/jvm/java-" + ("8".equals(javaVersion) ? "1.8.0" : javaVersion) + "-openjdk";
+                info.javaVersion = javaVersion;
             }
             if (buildRecipeInfo != null) {
                 Log.infof("Got build recipe info %s", buildRecipeInfo);

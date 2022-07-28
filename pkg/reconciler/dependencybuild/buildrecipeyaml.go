@@ -16,8 +16,8 @@ spec:
       - name: maven-settings
       - name: source
     params:
-      - name: JAVA_HOME
-        description: Java home.
+      - name: JAVA_VERSION
+        description: Java version.
         type: string
         default: ""
       - name: TOOL_VERSION
@@ -292,8 +292,8 @@ spec:
         type: string
       - name: TAG
         type: string
-      - name: JAVA_HOME
-        description: Java home.
+      - name: JAVA_VERSION
+        description: Java version.
         type: string
         default: ""
       - name: TOOL_VERSION
@@ -490,12 +490,20 @@ spec:
 
           echo "@=$@"
 
-          if [ -z "$(params.JAVA_HOME)" ]; then
-              echo "JAVA_HOME has not been set" >&2
+          if [ -z "$(params.JAVA_VERSION)" ]; then
+              echo "JAVA_VERSION has not been set" >&2
               exit 1
           fi
 
-          export JAVA_HOME="$(params.JAVA_HOME)"
+          case "$(params.JAVA_VERSION)" in
+              8)
+                  export JAVA_HOME="/usr/lib/jvm/java-1.8.0-openjdk"
+                  ;;
+              *)
+                  export JAVA_HOME="/usr/lib/jvm/java-$(params.JAVA_VERSION)-openjdk"
+                  ;;
+          esac
+
           echo "JAVA_HOME=${JAVA_HOME}"
           export PATH="${JAVA_HOME}/bin:${PATH}"
 

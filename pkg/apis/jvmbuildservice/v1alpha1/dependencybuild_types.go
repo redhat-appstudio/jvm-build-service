@@ -74,5 +74,5 @@ type BuildRecipe struct {
 	EnforceVersion   string   `json:"enforceVersion,omitempty"`
 	IgnoredArtifacts []string `json:"ignoredArtifacts,omitempty"`
 	ToolVersion      string   `json:"toolVersion,omitempty"`
-	JavaHome         string   `json:"javaHome,omitempty"`
+	JavaVersion      string   `json:"javaVersion,omitempty"`
 }

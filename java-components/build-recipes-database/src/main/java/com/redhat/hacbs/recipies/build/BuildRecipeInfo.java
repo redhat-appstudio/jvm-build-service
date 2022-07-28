@@ -17,7 +17,7 @@ public class BuildRecipeInfo {
     List<String> additionalArgs = new ArrayList<>();
     List<String> ignoredArtifacts = new ArrayList<>();
     String toolVersion;
-    String javaHome;
+    String javaVersion;
 
     public List<String> getAdditionalArgs() {
         return additionalArgs;
@@ -55,12 +55,12 @@ public class BuildRecipeInfo {
         return this;
     }
 
-    public String getJavaHome() {
-        return javaHome;
+    public String getJavaVersion() {
+        return javaVersion;
     }
 
-    public BuildRecipeInfo setJavaHome(String javaHome) {
-        this.javaHome = javaHome;
+    public BuildRecipeInfo setJavaVersion(String javaVersion) {
+        this.javaVersion = javaVersion;
         return this;
     }
 }

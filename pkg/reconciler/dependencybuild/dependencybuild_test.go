@@ -88,7 +88,7 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(pr).ShouldNot(BeNil())
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[],"toolVersion":null,"javaHome":null}`}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"ignoredArtifacts":[],"toolVersion":null,"javaVersion":null}`}}
 	} else {
 		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineMessage, Value: "build info missing"}}
 	}
@@ -176,7 +176,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				case TaskToolVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
-				case TaskJavaHome:
+				case TaskJavaVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				}
 			}
