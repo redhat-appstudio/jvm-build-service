@@ -7,5 +7,5 @@ metadata:
   name: has
 spec:
   latestResourceSchemas:
-    - v202207261831.artifactbuilds.jvmbuildservice.io
-    - v202207261831.dependencybuilds.jvmbuildservice.io
+    - v202207271726.artifactbuilds.jvmbuildservice.io
+    - v202207271726.dependencybuilds.jvmbuildservice.io
