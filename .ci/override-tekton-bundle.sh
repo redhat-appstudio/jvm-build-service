@@ -1,5 +1,13 @@
 #!/bin/bash
 # This script will generate a new Tekton bundle that allows the overriding of images that are hard-coded into task steps
+# It minimally requires the JVM_BUILD_SERVICE_PR_SHA env var be set.  In the case of non PR openshift CI tests like
+# rehearsal jobs in openshift/release or periodics, we do not need to override the bundle and we just use the latest
+# at quay.io/redhat-appstudio
+if [ -z "$JVM_BUILD_SERVICE_PR_SHA" ];
+then
+  echo "JVM_BUILD_SERVICE_PR_SHA is not set so aborting"
+  exit 0
+fi
 TEMP_FOLDER=$WORKSPACE/tmp/bundle-override
 APPSTUDIO_QE_REPO=quay.io/redhat-appstudio-qe/test-images
 TASK_BUNDLE_IMG=$APPSTUDIO_QE_REPO:task-bundle-$JVM_BUILD_SERVICE_PR_SHA
