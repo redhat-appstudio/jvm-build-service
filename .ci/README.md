@@ -31,5 +31,6 @@ The following environments are used to launch the CI tests in Openshift CI:
 | `JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE` | no | A valid jvm build service request processor container image reference from openshift CI. | `quay.io/redhat-appstudio/hacbs-jvm-request-processor@<SHA reference in infra-deployments>` |
 | `JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO` | no | A valid jvm build service request processor container without tag. | `quay.io/redhat-appstudio/hacbs-jvm-request-processor` |
 | `JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG` | no | A jvm valid build service request processor container tag. | `next` |
+| `JVM_BUILD_SERVICE_PR_SHA` | depends | The commit provided by OpenShift CI on PRs. We want to override the bundles with code changes from PRs, but for testing against the current main commit level of AppStudio we use the current bundles at quay.io | `` |
 | `GITHUB_TOKEN` | yes | A github token used to create AppStudio applications in GITHUB  | ''  |
 | `QUAY_TOKEN` | yes | A quay token to push components images to quay.io | '' |
