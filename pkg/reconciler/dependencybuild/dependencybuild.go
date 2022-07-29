@@ -259,7 +259,8 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		// for now we are ignoring the tool versions
 		// and just using the supplied invocations
 		buildRecipes := []*v1alpha1.BuildRecipe{}
-		_, maven := unmarshalled.Tools["mvn"]
+		// TODO: Change this to "mvn"? Requires more changes, to the Go test and the Java JSON model
+		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
 
 		if maven {
