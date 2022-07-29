@@ -11,17 +11,19 @@ import (
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kubeset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
-	kubeConfig    *rest.Config
-	kubeClient    *kubeset.Clientset
-	projectClient *projectset.Clientset
-	tektonClient  *pipelineclientset.Clientset
-	jvmClient     *jvmclientset.Clientset
+	kubeConfig         *rest.Config
+	kubeClient         *kubeset.Clientset
+	projectClient      *projectset.Clientset
+	tektonClient       *pipelineclientset.Clientset
+	jvmClient          *jvmclientset.Clientset
+	apiextensionClient *apiextensionsclient.Clientset
 )
 
 func getConfig() (*rest.Config, error) {
@@ -76,6 +78,13 @@ func setupClients(t *testing.T) {
 
 	if projectClient == nil {
 		projectClient, err = projectset.NewForConfig(kubeConfig)
+		if err != nil {
+			t.Fatalf("%#v", err)
+		}
+	}
+
+	if apiextensionClient == nil {
+		apiextensionClient, err = apiextensionsclient.NewForConfig(kubeConfig)
 		if err != nil {
 			t.Fatalf("%#v", err)
 		}
