@@ -1,4 +1,4 @@
-package com.redhat.hacbs.sidecar.resources;
+package com.redhat.hacbs.sidecar.resources.deploy;
 
 import java.util.Set;
 
@@ -9,7 +9,7 @@ public class DeployResourceTest {
 
     @Test
     public void testShouldIgnore() {
-        Assertions.assertTrue(DeployResource.shouldIgnore(Set.of("quarkus-cli"),
+        Assertions.assertTrue(DeployerUtil.shouldIgnore(Set.of("quarkus-cli"),
                 "./io/quarkus/quarkus-cli/2.7.6.Final/quarkus-cli-2.7.6.Final-runner.jar"));
     }
 }
