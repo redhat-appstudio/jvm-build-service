@@ -19,7 +19,14 @@ spec:
     value: quay.io/sdouglas/hacbs-jdk11-builder:latest
   - name: GOALS
     value:
-    - build
+      - -DskipTests
+      - clean
+      - install
+      - -Denforcer.skip
+  - name: JAVA_VERSION
+    value: ""
+  - name: TOOL_VERSION
+    value: ""
   workspaces:
   - emptyDir: {}
     name: maven-settings
@@ -33,14 +40,6 @@ spec:
       - name: maven-settings
       - name: source
     params:
-      - name: JAVA_VERSION
-        description: Java version.
-        type: string
-        default: ""
-      - name: TOOL_VERSION
-        description: Maven version.
-        type: string
-        default: ""
       - name: URL
         type: string
       - name: TAG
@@ -56,6 +55,14 @@ spec:
           - clean
           - install
           - -Denforcer.skip
+      - name: JAVA_VERSION
+        description: Java version.
+        type: string
+        default: ""
+      - name: TOOL_VERSION
+        description: Maven version.
+        type: string
+        default: ""
       - name: MAVEN_MIRROR_URL
         description: The Maven repository mirror url
         type: string
@@ -304,6 +311,10 @@ spec:
     value:
     - build
     - publish
+  - name: JAVA_VERSION
+    value: ""
+  - name: TOOL_VERSION
+    value: ""
   workspaces:
   - emptyDir: {}
     name: maven-settings
@@ -327,6 +338,16 @@ spec:
         type: string
       - name: TAG
         type: string
+      - name: IMAGE
+        description: Gradle base image.
+        type: string
+        default: quay.io/dwalluck/gradle:1@sha256:sha256:2429dad0ceef471455f4b121521c9eb63972b4cd693b25f51383c68ffd3a13b5
+      - name: GOALS
+        description: 'The gradle tasks to run (default: build publish)'
+        type: array
+        default:
+          - build
+          - publish
       - name: JAVA_VERSION
         description: Java version.
         type: string
@@ -339,16 +360,6 @@ spec:
         description: Gradle manipulator arguments.
         type: string
         default: "-DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false"
-      - name: IMAGE
-        description: Gradle base image.
-        type: string
-        default: quay.io/dwalluck/gradle:1@sha256:sha256:2429dad0ceef471455f4b121521c9eb63972b4cd693b25f51383c68ffd3a13b5
-      - name: GOALS
-        description: 'The gradle tasks to run (default: build publish)'
-        type: array
-        default:
-          - build
-          - publish
       - name: MAVEN_MIRROR_URL
         description: The Maven repository mirror url
         type: string
