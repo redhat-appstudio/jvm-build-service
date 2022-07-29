@@ -263,18 +263,22 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
 
-		if maven {
+		switch {
+		case maven:
 			for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
 				for _, command := range unmarshalled.Invocations {
 					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Maven: true})
 				}
 			}
-		} else if gradle {
+		case gradle:
 			for _, image := range []string{"quay.io/dwalluck/gradle:latest"} {
 				for _, command := range unmarshalled.Invocations {
 					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Gradle: true})
 				}
 			}
+		default:
+			log.Error(nil, "Neither maven nor gradle was found in the tools map")
+			return reconcile.Result{}, nil
 		}
 
 		db.Status.PotentialBuildRecipes = buildRecipes
