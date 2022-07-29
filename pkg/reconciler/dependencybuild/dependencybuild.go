@@ -223,13 +223,9 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 	}
 	if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-		pod := v1.Pod{}
-		poderr := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: pr.Status.TaskRuns[artifactbuild.TaskName].Status.PodName}, &pod)
-		if poderr == nil {
-			err := r.client.Delete(ctx, &pod)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
+		err := r.client.Delete(ctx, pr)
+		if err != nil {
+			return reconcile.Result{}, err
 		}
 	}
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
