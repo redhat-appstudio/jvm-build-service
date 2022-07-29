@@ -530,12 +530,12 @@ spec:
           echo ADDITIONAL_ARGS="${ADDITIONAL_ARGS}"
 
           if [ -n "$(params.ENFORCE_VERSION)" ]; then
-              gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
+              gradle-manipulator --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
           else
-              gradle-manipulator -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
+              gradle-manipulator --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
           fi
 
-          gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo "$@" || exit 1
+          gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace "$@" || exit 1
 
           # fix-permissions-for-builder
           chown 1001:1001 -R $(workspaces.source.path)
