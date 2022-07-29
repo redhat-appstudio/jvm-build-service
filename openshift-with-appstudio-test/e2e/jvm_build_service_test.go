@@ -244,10 +244,10 @@ func streamFileYamlToTektonObj(path string, obj runtime.Object, ta *testArgs) ru
 
 func TestExampleRun(t *testing.T) {
 	ta := setup(t, nil)
-	// TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
+	//TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
 	// and successful runs (in case a run succeeds, but we find something amiss if we look at passing runs; our in repo
 	// tests do now run in conjunction with say the full suite of e2e's in the e2e-tests runs, so no contention there.
-	// defer projectCleanup(ta)
+	//defer projectCleanup(ta)
 
 	path, err := os.Getwd()
 	if err != nil {
@@ -411,7 +411,7 @@ func TestExampleRun(t *testing.T) {
 	})
 
 	ta.t.Run("contaminated build is resolved", func(t *testing.T) {
-		// our sample repo has Netty which is contaminated by JCTools
+		//our sample repo has Netty which is contaminated by JCTools
 		var contaminated string
 		var jcToolsAbr string
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
@@ -438,7 +438,7 @@ func TestExampleRun(t *testing.T) {
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
 		}
-		// make sure JCTools was requested as a result
+		//make sure JCTools was requested as a result
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
@@ -459,7 +459,7 @@ func TestExampleRun(t *testing.T) {
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
 		}
-		// now make sure JCTools eventually completes
+		//now make sure JCTools eventually completes
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			ab, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Get(context.TODO(), jcToolsAbr, metav1.GetOptions{})
 			if err != nil {
@@ -472,7 +472,7 @@ func TestExampleRun(t *testing.T) {
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for JCTools to complete")
 		}
-		// now make sure Netty eventually completes
+		//now make sure Netty eventually completes
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
 			if err != nil {
