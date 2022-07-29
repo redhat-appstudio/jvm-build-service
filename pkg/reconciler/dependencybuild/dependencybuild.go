@@ -41,6 +41,8 @@ const (
 	PipelineGoals            = "GOALS"
 	PipelineEnforceVersion   = "ENFORCE_VERSION"
 	PipelineIgnoredArtifacts = "IGNORED_ARTIFACTS"
+	PipelineToolVersion      = "TOOL_VERSION"
+	PipelineJavaVersion      = "JAVA_VERSION"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
 	BuildInfoPipelineTagParam     = "TAG"
@@ -96,25 +98,25 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	}
 
 	if trerr != nil && dberr != nil {
-		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
+		// TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
 		msg := "Reconcile key %s received not found errors for both pipelineruns and dependencybuilds (probably deleted)\"" + request.NamespacedName.String()
 		log.Info(msg)
-		//log.Info("Reconcile key %s received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
+		// log.Info("Reconcile key %s received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
 		return ctrl.Result{}, nil
 	}
 
 	switch {
 	case dberr == nil:
-		//we validate that our dep id hash is still valid
-		//if a field has been modified we need to update the label
-		//which may result in a new build
+		// we validate that our dep id hash is still valid
+		// if a field has been modified we need to update the label
+		// which may result in a new build
 		depId := hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
 		if db.Labels == nil || len(db.Labels) == 0 {
 			return reconcile.Result{}, fmt.Errorf("dependency build %s missing labels", depId)
 		}
 		if depId != db.Labels[artifactbuild.DependencyBuildIdLabel] {
-			//if our id has changed we just update the label and set our state back to new
-			//this will kick off a new build
+			// if our id has changed we just update the label and set our state back to new
+			// this will kick off a new build
 			db.Labels[artifactbuild.DependencyBuildIdLabel] = depId
 			db.Status.State = v1alpha1.DependencyBuildStateNew
 			// TODO possibly abort instead, possibly allow but file event, or metric alert later on
@@ -213,7 +215,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 
 	var buildInfo string
 	var message string
-	//we grab the results here and put them on the ABR
+	// we grab the results here and put them on the ABR
 	for _, res := range pr.Status.PipelineResults {
 		switch res.Name {
 		case BuildInfoPipelineBuildInfo:
@@ -242,27 +244,39 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			Invocations      [][]string
 			EnforceVersion   string
 			IgnoredArtifacts []string
+			ToolVersion      string
+			JavaVersion      string
 		}{}
 
 		if err := json.Unmarshal([]byte(buildInfo), &unmarshalled); err != nil {
 			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
 			return reconcile.Result{}, err
 		}
-		//for now we are ignoring the tool versions
-		//and just using the supplied invocations
+		// for now we are ignoring the tool versions
+		// and just using the supplied invocations
 		buildRecipes := []*v1alpha1.BuildRecipe{}
+		// TODO: Change this to "mvn"? Requires more changes, to the Go test and the Java JSON model
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
-		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
-			for _, command := range unmarshalled.Invocations {
-				if maven {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Maven: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
-				}
-				if gradle {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Gradle: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+
+		switch {
+		case maven:
+			for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
+				for _, command := range unmarshalled.Invocations {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Maven: true})
 				}
 			}
+		case gradle:
+			for _, image := range []string{"quay.io/dwalluck/gradle:latest"} {
+				for _, command := range unmarshalled.Invocations {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Gradle: true})
+				}
+			}
+		default:
+			log.Error(nil, "Neither maven nor gradle was found in the tools map")
+			return reconcile.Result{}, nil
 		}
+
 		db.Status.PotentialBuildRecipes = buildRecipes
 		db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 	}
@@ -271,24 +285,24 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 }
 
 func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	//the current recipe has been built, we need to pick a new one
-	//pick the first recipe in the potential list
-	//new build, kick off a pipeline run to run the build
-	//first we update the recipes, but add a flag that this is not submitted yet
+	// the current recipe has been built, we need to pick a new one
+	// pick the first recipe in the potential list
+	// new build, kick off a pipeline run to run the build
+	// first we update the recipes, but add a flag that this is not submitted yet
 	if db.Status.CurrentBuildRecipe != nil {
 		db.Status.FailedBuildRecipes = append(db.Status.FailedBuildRecipes, db.Status.CurrentBuildRecipe)
 	}
-	//no more attempts
+	// no more attempts
 	if len(db.Status.PotentialBuildRecipes) == 0 {
 		db.Status.State = v1alpha1.DependencyBuildStateFailed
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildFailed", "The DependencyBuild %s/%s moved to failed, all recipes exhausted", db.Namespace, db.Name)
 		return reconcile.Result{}, r.client.Status().Update(ctx, db)
 	}
 	db.Status.CurrentBuildRecipe = db.Status.PotentialBuildRecipes[0]
-	//and remove if from the potential list
+	// and remove if from the potential list
 	db.Status.PotentialBuildRecipes = db.Status.PotentialBuildRecipes[1:]
 	db.Status.State = v1alpha1.DependencyBuildStateBuilding
-	//update the recipes
+	// update the recipes
 	return reconcile.Result{}, r.client.Status().Update(ctx, db)
 
 }
@@ -304,7 +318,7 @@ func (r *ReconcileDependencyBuild) decodeBytesToPipelineRun(bytes []byte) (*pipe
 }
 
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	//now submit the pipeline
+	// now submit the pipeline
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.Namespace = db.Namespace
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
@@ -355,9 +369,9 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		}
 	}
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Image = image
-	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
-	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
-	//the actual solution will involve loading deployment config from a ConfigMap
+	// TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
+	// It's not worth adding a heap of env var overrides for something that will likely be gone next week
+	// the actual solution will involve loading deployment config from a ConfigMap
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://localstack.jvm-build-service.svc.cluster.local:4572"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"})
@@ -371,6 +385,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: PipelineGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
 		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
 		{Name: PipelineIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
+		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
+		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
 	pr.Spec.PipelineSpec.Workspaces = []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "source"}, {Name: "maven-settings"}}
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
@@ -384,7 +400,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
-	//now we submit the build
+	// now we submit the build
 	if err := r.client.Create(ctx, &pr); err != nil {
 		if errors.IsAlreadyExists(err) {
 			log.V(4).Info("handleStateBuilding: pipelinerun %s:%s already exists, not retrying", pr.Namespace, pr.Name)
@@ -444,13 +460,13 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 		}
 
 		if pr.Name == db.Status.LastCompletedBuildPipelineRun || pr.Name != currentDependencyBuildPipelineName(&db) {
-			//already handled
+			// already handled
 			return reconcile.Result{}, nil
 		}
 		db.Status.LastCompletedBuildPipelineRun = pr.Name
-		//the pr is done, lets potentially update the dependency build
-		//we just set the state here, the ABR logic is in the ABR controller
-		//this keeps as much of the logic in one place as possible
+		// the pr is done, lets potentially update the dependency build
+		// we just set the state here, the ABR logic is in the ABR controller
+		// this keeps as much of the logic in one place as possible
 
 		var contaminates []string
 		for _, r := range pr.Status.PipelineResults {
@@ -464,13 +480,13 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
 				r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
-				//the dependency was contaminated with community deps
-				//most likely shaded in
+				// the dependency was contaminated with community deps
+				// most likely shaded in
 				db.Status.State = v1alpha1.DependencyBuildStateContaminated
 				db.Status.Contaminants = contaminates
 			}
 		} else {
-			//try again, if there are no more recipes this gets handled in the submit build logic
+			// try again, if there are no more recipes this gets handled in the submit build logic
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		}
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
@@ -487,32 +503,32 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	contaminants := db.Status.Contaminants
 	if len(contaminants) == 0 {
-		//all fixed, just set the state back to building and try again
-		//this is triggered when contaminants are removed by the ABR controller
-		//setting it back to building should re-try the recipe that actually worked
+		// all fixed, just set the state back to building and try again
+		// this is triggered when contaminants are removed by the ABR controller
+		// setting it back to building should re-try the recipe that actually worked
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		return reconcile.Result{}, r.client.Update(ctx, db)
 	}
-	//we want to rebuild the contaminants from source
-	//so we create ABRs for them
-	//if they already exist we link to the ABR
+	// we want to rebuild the contaminants from source
+	// so we create ABRs for them
+	// if they already exist we link to the ABR
 	for _, contaminant := range contaminants {
 		if len(contaminant) == 0 {
 			continue
 		}
 		abrName := artifactbuild.CreateABRName(contaminant)
 		abr := v1alpha1.ArtifactBuild{}
-		//look for existing ABR
+		// look for existing ABR
 		err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
 		suffix := hashToString(contaminant)[0:20]
 		if err != nil {
-			//we just assume this is because it does not exist
-			//TODO: how to check the type of the error?
+			// we just assume this is because it does not exist
+			// TODO: how to check the type of the error?
 			abr.Spec = v1alpha1.ArtifactBuildSpec{GAV: contaminant}
 			abr.Name = abrName
 			abr.Namespace = db.Namespace
 			abr.Annotations = map[string]string{}
-			//use this annotation to link back to the dependency build
+			// use this annotation to link back to the dependency build
 			abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
 			err := r.client.Create(ctx, &abr)
 			if err != nil {

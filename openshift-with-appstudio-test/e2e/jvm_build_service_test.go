@@ -42,6 +42,7 @@ type testArgs struct {
 	interval time.Duration
 
 	gitClone *v1beta1.Task
+	gradle   *v1beta1.Task
 	maven    *v1beta1.Task
 	pipeline *v1beta1.Pipeline
 	run      *v1beta1.PipelineRun
@@ -483,6 +484,252 @@ func TestExampleRun(t *testing.T) {
 		})
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for Netty to complete")
+		}
+	})
+}
+
+func TestExampleGradleRun(t *testing.T) {
+	ta := setup(t, nil)
+	// TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
+	// and successful runs (in case a run succeeds, but we find something amiss if we look at passing runs; our in repo
+	// tests do now run in conjunction with say the full suite of e2e's in the e2e-tests runs, so no contention there.
+	// defer projectCleanup(ta)
+
+	path, err := os.Getwd()
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+	ta.Logf(fmt.Sprintf("current working dir: %s", path))
+
+	gradleYamlPath := filepath.Join(path, "..", "..", "deploy", "base", "gradle-v0.1.yaml")
+	ta.gradle = &v1beta1.Task{}
+	obj := streamFileYamlToTektonObj(gradleYamlPath, ta.gradle, ta)
+	var ok bool
+	ta.gradle, ok = obj.(*v1beta1.Task)
+	if !ok {
+		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a task: %#v", gradleYamlPath, obj))
+	}
+	// override images if need be
+	analyserImage := os.Getenv("JVM_BUILD_SERVICE_ANALYZER_IMAGE")
+	if len(analyserImage) > 0 {
+		ta.Logf(fmt.Sprintf("PR analyzer image: %s", analyserImage))
+		for _, step := range ta.gradle.Spec.Steps {
+			if step.Name != "analyse-dependencies" {
+				continue
+			}
+			ta.Logf(fmt.Sprintf("Updating analyse-dependencies step with image %s", analyserImage))
+			step.Image = analyserImage
+		}
+	}
+	sidecarImage := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
+	if len(sidecarImage) > 0 {
+		ta.Logf(fmt.Sprintf("PR sidecar image: %s", sidecarImage))
+		for _, sidecar := range ta.gradle.Spec.Sidecars {
+			if sidecar.Name != "proxy" {
+				continue
+			}
+			ta.Logf(fmt.Sprintf("Updating proxy sidecar with image %s", sidecarImage))
+			sidecar.Image = sidecarImage
+		}
+	}
+	ta.gradle, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.gradle, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+
+	pipelineYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "pipeline-gradle.yaml")
+	ta.pipeline = &v1beta1.Pipeline{}
+	obj = streamFileYamlToTektonObj(pipelineYamlPath, ta.pipeline, ta)
+	ta.pipeline, ok = obj.(*v1beta1.Pipeline)
+	if !ok {
+		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipeline: %#v", pipelineYamlPath, obj))
+	}
+	ta.pipeline, err = tektonClient.TektonV1beta1().Pipelines(ta.ns).Create(context.TODO(), ta.pipeline, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+
+	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-gradle.yaml")
+	ta.run = &v1beta1.PipelineRun{}
+	obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
+	ta.run, ok = obj.(*v1beta1.PipelineRun)
+	if !ok {
+		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
+	}
+	ta.run, err = tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+
+	ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
+		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+			pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
+				return false, nil
+			}
+			if !pr.IsDone() {
+				prBytes, err := json.MarshalIndent(pr, "", "  ")
+				if err != nil {
+					ta.Logf(fmt.Sprintf("problem marshalling in progress pipelinerun to bytes: %s", err.Error()))
+					return false, nil
+				}
+				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", string(prBytes)))
+			}
+			if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
+				prBytes, err := json.MarshalIndent(pr, "", "  ")
+				if err != nil {
+					ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
+					return false, nil
+				}
+				ta.Logf(fmt.Sprintf("not yet successful pipeline run: %s", string(prBytes)))
+
+			}
+			return true, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out when waiting for the pipeline run to complete")
+		}
+	})
+
+	ta.t.Run("artifactbuilds and dependencybuilds generated", func(t *testing.T) {
+		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error listing artifactbuilds: %s", err.Error()))
+				return false, nil
+			}
+			gotABs := false
+			if len(abList.Items) > 0 {
+				gotABs = true
+			}
+			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error listing dependencybuilds: %s", err.Error()))
+				return false, nil
+			}
+			gotDBs := false
+			if len(dbList.Items) > 0 {
+				gotDBs = true
+			}
+			if gotABs && gotDBs {
+				return true, nil
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for generation of artifactbuilds and dependencybuilds")
+		}
+	})
+
+	ta.t.Run("some artfactbuilds and dependencybuilds complete", func(t *testing.T) {
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
+				return false, nil
+			}
+			abComplete := false
+			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
+			for _, ab := range abList.Items {
+				if ab.Status.State == v1alpha1.ArtifactBuildStateComplete {
+					abComplete = true
+					break
+				}
+			}
+			dbComplete := false
+			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
+			for _, db := range dbList.Items {
+				if db.Status.State == v1alpha1.DependencyBuildStateComplete {
+					dbComplete = true
+					break
+				}
+			}
+			if abComplete && dbComplete {
+				return true, nil
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+		}
+	})
+
+	ta.t.Run("contaminated build is resolved", func(t *testing.T) {
+		// our sample repo has gradle-sample-project which is contaminated by asm
+		var contaminated string
+		var asmAbr string
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+
+			dbContaminated := false
+			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				return false, err
+			}
+			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
+			for _, db := range dbList.Items {
+				if db.Status.State == v1alpha1.DependencyBuildStateContaminated {
+					dbContaminated = true
+					contaminated = db.Name
+					break
+				}
+			}
+			if dbContaminated {
+				return true, nil
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+		}
+		// make sure asm was requested as a result
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
+				return false, err
+			}
+			found := false
+			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
+			for _, ab := range abList.Items {
+				if strings.Contains(ab.Spec.GAV, "asm") {
+					asmAbr = ab.Name
+					found = true
+					break
+				}
+			}
+			return found, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+		}
+		// now make sure asm eventually completes
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+			ab, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Get(context.TODO(), asmAbr, metav1.GetOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error getting asm ArtifactBuild: %s", err.Error()))
+				return false, err
+			}
+			ta.Logf(fmt.Sprintf("asm State: %s", ab.Status.State))
+			return ab.Status.State == v1alpha1.ArtifactBuildStateComplete, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for asm to complete")
+		}
+		// now make sure gradle-sample-project eventually completes
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error getting gradle-sample-project DependencyBuild: %s", err.Error()))
+				return false, err
+			}
+			ta.Logf(fmt.Sprintf("gradle-sample-project State: %s", dbList.Status.State))
+			return dbList.Status.State == v1alpha1.DependencyBuildStateComplete, err
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for gradle-sample-project to complete")
 		}
 	})
 }

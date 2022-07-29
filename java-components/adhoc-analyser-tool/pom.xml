@@ -161,15 +161,4 @@
             </properties>
         </profile>
     </profiles>
-
-    <repositories>
-        <repository>
-            <id>gradle-dependencies</id>
-            <name>Gradle releases repository</name>
-            <url>https://repo.gradle.org/artifactory/libs-releases</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
 </project>

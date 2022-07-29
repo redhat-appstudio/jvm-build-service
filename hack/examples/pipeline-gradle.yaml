@@ -1,0 +1,71 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: sample-component-build
+spec:
+  params:
+    - name: url
+    - name: context
+      default: ""
+    - name: enforce-version
+      default: ""
+    - name: app-path
+      default: "."
+  workspaces:
+    - name: shared-workspace
+    - name: maven-settings
+  tasks:
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: "$(params.url)"
+        - name: subdirectory
+          value: ""
+        - name: deleteExisting
+          value: "true"
+    # - name: debug
+    #   runAfter:
+    #     - fetch-repository
+    #   taskSpec:
+    #     steps:
+    #       - name: list-all
+    #         image: busybox
+    #         command:
+    #           - "ls"
+    #         args:
+    #           - "-hal"
+    #           - "/workspace"
+    #     workspaces:
+    #       - name: source
+    #         mountPath: /workspace
+    #   workspaces:
+    #     - name: source
+    #       workspace: shared-workspace
+    - name: gradle-run
+      taskRef:
+        name: gradle
+      runAfter:
+        - fetch-repository
+      params:
+        - name: MAVEN_MIRROR_URL
+          value: http://localhost:2000/maven2
+        - name: CONTEXT_DIR
+          value: "$(params.context)"
+        - name: ENFORCE_VERSION
+          value: "$(params.enforce-version)"
+        - name: DEPENDENCY_ANALYSER_PATH
+          value: "$(params.app-path)"
+        - name: GOALS
+          value:
+            - build
+            - publish
+      workspaces:
+        - name: maven-settings
+          workspace: maven-settings
+        - name: source
+          workspace: shared-workspace
