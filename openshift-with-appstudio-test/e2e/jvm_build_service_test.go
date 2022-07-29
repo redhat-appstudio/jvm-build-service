@@ -58,8 +58,8 @@ func generateName(base string) string {
 	return fmt.Sprintf("%s%s", base, utilrand.String(randomLength))
 }
 
-func dumpPods(ta *testArgs) {
-	podClient := kubeClient.CoreV1().Pods(ta.ns)
+func dumpPods(ta *testArgs, namespace string) {
+	podClient := kubeClient.CoreV1().Pods(namespace)
 	podList, err := podClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		ta.Logf(fmt.Sprintf("error list pods %s", err.Error()))
@@ -148,7 +148,8 @@ func dumpNodes(ta *testArgs) {
 }
 
 func debugAndFailTest(ta *testArgs, failMsg string) {
-	dumpPods(ta)
+	dumpPods(ta, ta.ns)
+	dumpPods(ta, "jvm-build-service")
 	dumpBadEvents(ta)
 	ta.t.Fatalf(failMsg)
 }
