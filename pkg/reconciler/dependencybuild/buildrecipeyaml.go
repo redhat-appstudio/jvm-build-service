@@ -270,10 +270,10 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-            cpu: "250m"
+            cpu: "10m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "8Gi"
+            cpu: "2"
 `
 
 	// since taskspec does not implment runtime.Object we have to mimic the TaskRun created in dependencybuilds
@@ -471,9 +471,9 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-            cpu: "250m"
+            cpu: "10m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "8Gi"
+            cpu: "2"
 `
 )
