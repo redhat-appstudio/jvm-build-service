@@ -8,6 +8,23 @@ kind: TaskRun
 metadata:
   name: run-maven-component-build
 spec:
+  params:
+  - name: URL
+    value: https://github.com/smallrye/smallrye-common.git
+  - name: TAG
+    value: 1.10.0
+  - name: CONTEXT_DIR
+    value: ""
+  - name: IMAGE
+    value: quay.io/sdouglas/hacbs-jdk11-builder:latest
+  - name: GOALS
+    value:
+    - build
+  workspaces:
+  - emptyDir: {}
+    name: maven-settings
+  - emptyDir: {}
+    name: source
   taskSpec:
     results:
       - name: contaminants
@@ -274,6 +291,24 @@ kind: TaskRun
 metadata:
   name: run-gradle-component-build
 spec:
+  params:
+  - name: URL
+    value: https://gitlab.ow2.org/asm/asm.git
+  - name: TAG
+    value: ASM_9_3
+  - name: CONTEXT_DIR
+    value: ""
+  - name: IMAGE
+    value: quay.io/dwalluck/gradle:latest
+  - name: GOALS
+    value:
+    - build
+    - publish
+  workspaces:
+  - emptyDir: {}
+    name: maven-settings
+  - emptyDir: {}
+    name: source
   taskSpec:
     description: >-
       This Task can be used to run a Gradle build of a component that will be deployed to the sidecar.
