@@ -215,7 +215,7 @@ spec:
           chown 1001:1001 -R $(workspaces.source.path)
           #we can't use array parameters directly here
           #we pass them in as goals
-          /usr/bin/mvn -s "$(workspaces.maven-settings.path)/settings.xml" $@ "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" || { cat $(workspaces.maven-settings.path)/sidecar.log ; false ; }
+          /usr/bin/mvn -e -s "$(workspaces.maven-settings.path)/settings.xml" $@ "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" || { cat $(workspaces.maven-settings.path)/sidecar.log ; false ; }
       - name: deploy-and-check-for-contaminates
         image: "registry.access.redhat.com/ubi8/ubi:8.5"
         securityContext:
