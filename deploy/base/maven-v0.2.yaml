@@ -23,7 +23,7 @@ spec:
     - name: MAVEN_IMAGE
       type: string
       description: Maven base image
-      default: quay.io/quarkus/centos-quarkus-maven@sha256:9ad23db54acb1775a7d976680325819d2ef177c11726622382f1a540a653a8c8 #tag: latest
+      default: registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1653918216
     - name: GOALS
       description: maven goals to run
       type: array
