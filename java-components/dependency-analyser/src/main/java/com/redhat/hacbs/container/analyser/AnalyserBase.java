@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.inject.Inject;
@@ -17,6 +18,7 @@ import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
+import org.cyclonedx.model.Property;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
@@ -66,12 +68,25 @@ public abstract class AnalyserBase implements Runnable {
             String group = split[0];
             String name = split[1];
             String version = split[2];
+
             Component component = new Component();
             component.setType(Component.Type.LIBRARY);
             component.setGroup(group);
             component.setName(name);
             component.setVersion(version);
             component.setPublisher(i.source);
+            component.setPurl(String.format("pkg:maven/%s/%s@%s", group, name, version));
+
+            Property packageTypeProperty = new Property();
+            packageTypeProperty.setName("package:type");
+            packageTypeProperty.setValue("maven");
+
+            Property packageLanguageProperty = new Property();
+            packageLanguageProperty.setName("package:language");
+            packageLanguageProperty.setValue("java");
+
+            component.setProperties(List.of(packageTypeProperty, packageLanguageProperty));
+
             bom.getComponents().add(component);
         }
         BomJsonGenerator generator = BomGeneratorFactory.createJson(CycloneDxSchema.Version.VERSION_14, bom);
