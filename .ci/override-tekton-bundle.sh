@@ -3,8 +3,8 @@
 # It minimally requires the JVM_BUILD_SERVICE_PR_SHA env var be set.  In the case of non PR openshift CI tests like
 # rehearsal jobs in openshift/release or periodics, we do not need to override the bundle and we just use the latest
 # at quay.io/redhat-appstudio
-if [ -z "$JVM_BUILD_SERVICE_PR_SHA" ];
-then
+PR_RUN=${JVM_BUILD_SERVICE_PR_SHA:-notpr}
+if [ "$PR_RUN" == "notpr" ]; then
   echo "JVM_BUILD_SERVICE_PR_SHA is not set so aborting"
   exit 0
 fi
