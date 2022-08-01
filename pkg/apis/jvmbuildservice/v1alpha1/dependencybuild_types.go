@@ -73,4 +73,6 @@ type BuildRecipe struct {
 	CommandLine      []string `json:"commandLine,omitempty"`
 	EnforceVersion   string   `json:"enforceVersion,omitempty"`
 	IgnoredArtifacts []string `json:"ignoredArtifacts,omitempty"`
+	ToolVersion      string   `json:"toolVersion,omitempty"`
+	JavaVersion      string   `json:"javaVersion,omitempty"`
 }

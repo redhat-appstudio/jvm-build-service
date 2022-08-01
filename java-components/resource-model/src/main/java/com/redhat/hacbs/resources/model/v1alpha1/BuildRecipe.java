@@ -61,21 +61,21 @@ public class BuildRecipe {
         return this;
     }
 
-    public boolean isGradle() {
-        return gradle;
-    }
-
-    public BuildRecipe setGradle(boolean gradle) {
-        this.gradle = gradle;
-        return this;
-    }
-
     public boolean isMaven() {
         return maven;
     }
 
     public BuildRecipe setMaven(boolean maven) {
         this.maven = maven;
+        return this;
+    }
+
+    public boolean isGradle() {
+        return gradle;
+    }
+
+    public BuildRecipe setGradle(boolean gradle) {
+        this.gradle = gradle;
         return this;
     }
 }

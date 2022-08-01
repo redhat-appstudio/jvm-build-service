@@ -41,6 +41,8 @@ const (
 	PipelineGoals            = "GOALS"
 	PipelineEnforceVersion   = "ENFORCE_VERSION"
 	PipelineIgnoredArtifacts = "IGNORED_ARTIFACTS"
+	PipelineToolVersion      = "TOOL_VERSION"
+	PipelineJavaVersion      = "JAVA_VERSION"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
 	BuildInfoPipelineTagParam     = "TAG"
@@ -242,27 +244,38 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			Invocations      [][]string
 			EnforceVersion   string
 			IgnoredArtifacts []string
+			ToolVersion      string
+			JavaVersion      string
 		}{}
 
 		if err := json.Unmarshal([]byte(buildInfo), &unmarshalled); err != nil {
 			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
 			return reconcile.Result{}, err
 		}
-		//for now we are ignoring the tool versions
-		//and just using the supplied invocations
+		// for now we are ignoring the tool versions
+		// and just using the supplied invocations
 		buildRecipes := []*v1alpha1.BuildRecipe{}
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
-		for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
-			for _, command := range unmarshalled.Invocations {
-				if maven {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Maven: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
-				}
-				if gradle {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Gradle: true, Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts})
+
+		switch {
+		case maven:
+			for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
+				for _, command := range unmarshalled.Invocations {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Maven: true})
 				}
 			}
+		case gradle:
+			for _, image := range []string{"quay.io/dwalluck/gradle:latest"} {
+				for _, command := range unmarshalled.Invocations {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Gradle: true})
+				}
+			}
+		default:
+			log.Error(nil, "Neither maven nor gradle was found in the tools map", "json", buildInfo)
+			return reconcile.Result{}, nil
 		}
+
 		db.Status.PotentialBuildRecipes = buildRecipes
 		db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 	}
@@ -371,6 +384,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: PipelineGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
 		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
 		{Name: PipelineIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
+		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
+		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
 	pr.Spec.PipelineSpec.Workspaces = []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "source"}, {Name: "maven-settings"}}
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
