@@ -61,4 +61,6 @@ fi
 # Available openshift ci environments https://docs.ci.openshift.org/docs/architecture/step-registry/#available-environment-variables
 export ARTIFACT_DIR=${ARTIFACT_DIR:-"/tmp/appstudio"}
 
+. .ci/override-tekton-bundle.sh
+
 curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/install-appstudio-e2e-mode.sh | bash -s install
