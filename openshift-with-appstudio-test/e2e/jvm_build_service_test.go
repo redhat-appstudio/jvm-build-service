@@ -404,12 +404,14 @@ func TestExampleRun(t *testing.T) {
 					break
 				}
 			}
-			dbComplete := false
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
+			dbComplete := true
 			for _, db := range dbList.Items {
-				if db.Status.State == v1alpha1.DependencyBuildStateComplete {
-					dbComplete = true
+				if db.Status.State != v1alpha1.DependencyBuildStateComplete {
+					ta.Logf(fmt.Sprintf("dependencybuild of %s (%s:%s) not yet complete: %s", db.Name,
+						db.Spec.ScmInfo.SCMURL, db.Spec.ScmInfo.Tag, db.Status.State))
+					dbComplete = false
 					break
 				}
 			}
