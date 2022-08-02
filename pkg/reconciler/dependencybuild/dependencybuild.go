@@ -368,6 +368,10 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		}
 	}
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Image = image
+	if !strings.HasPrefix(image, "quay.io/redhat-appstudio") {
+		// work around for developer mode while we are hard coding the task spec in the controller
+		pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].ImagePullPolicy = v1.PullAlways
+	}
 	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
 	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
 	//the actual solution will involve loading deployment config from a ConfigMap
