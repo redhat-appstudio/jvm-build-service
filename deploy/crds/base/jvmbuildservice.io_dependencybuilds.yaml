@@ -159,9 +159,13 @@ spec:
                     type: array
                   image:
                     type: string
+                  javaVersion:
+                    type: string
                   maven:
                     type: boolean
                   pipeline:
+                    type: string
+                  toolVersion:
                     type: string
                 type: object
               failedBuildRecipes:
@@ -183,9 +187,13 @@ spec:
                       type: array
                     image:
                       type: string
+                    javaVersion:
+                      type: string
                     maven:
                       type: boolean
                     pipeline:
+                      type: string
+                    toolVersion:
                       type: string
                   type: object
                 type: array
@@ -212,9 +220,13 @@ spec:
                       type: array
                     image:
                       type: string
+                    javaVersion:
+                      type: string
                     maven:
                       type: boolean
                     pipeline:
+                      type: string
+                    toolVersion:
                       type: string
                   type: object
                 type: array

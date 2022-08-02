@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202207271726.artifactbuilds.jvmbuildservice.io
+  name: v202207281735.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202207271726.dependencybuilds.jvmbuildservice.io
+  name: v202207281735.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -229,9 +229,13 @@ spec:
                   type: array
                 image:
                   type: string
+                javaVersion:
+                  type: string
                 maven:
                   type: boolean
                 pipeline:
+                  type: string
+                toolVersion:
                   type: string
               type: object
             failedBuildRecipes:
@@ -253,9 +257,13 @@ spec:
                     type: array
                   image:
                     type: string
+                  javaVersion:
+                    type: string
                   maven:
                     type: boolean
                   pipeline:
+                    type: string
+                  toolVersion:
                     type: string
                 type: object
               type: array
@@ -282,9 +290,13 @@ spec:
                     type: array
                   image:
                     type: string
+                  javaVersion:
+                    type: string
                   maven:
                     type: boolean
                   pipeline:
+                    type: string
+                  toolVersion:
                     type: string
                 type: object
               type: array

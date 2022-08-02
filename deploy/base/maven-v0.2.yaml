@@ -93,7 +93,6 @@ spec:
         runAsUser: 0
       script: |
         #!/usr/bin/env bash
-        chown 1001:1001 -R $(workspaces.source.path)
 
         # fix-permissions-for-builder
         chown 1001:1001 -R $(workspaces.source.path)
