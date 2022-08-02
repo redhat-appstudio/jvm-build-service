@@ -7,7 +7,7 @@ spec:
     name: sample-component-build
   params:
     - name: url
-      value: https://github.com/stuartwdouglas/shaded-java-app
+      value: https://github.com/stuartwdouglas/hacbs-test-project
   workspaces:
     - name: maven-settings
       emptyDir: {}

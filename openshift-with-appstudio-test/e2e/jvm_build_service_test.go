@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -159,7 +160,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 		ta = &testArgs{
 			t:        t,
 			timeout:  time.Minute * 10,
-			interval: time.Minute,
+			interval: time.Second * 15,
 		}
 	}
 	setupClients(ta.t)
@@ -396,21 +397,27 @@ func TestExampleRun(t *testing.T) {
 				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
 				return false, nil
 			}
-			abComplete := false
+			//we want to make sure there is more than one ab, and that they are all complete
+			abComplete := len(abList.Items) > 0
 			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
 			for _, ab := range abList.Items {
-				if ab.Status.State == v1alpha1.ArtifactBuildStateComplete {
-					abComplete = true
+				if ab.Status.State != v1alpha1.ArtifactBuildStateComplete {
+					ta.Logf(fmt.Sprintf("artifactbuild %s not complete", ab.Spec.GAV))
+					abComplete = false
 					break
 				}
 			}
-			dbComplete := false
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			dbComplete := len(dbList.Items) > 0
 			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
 			for _, db := range dbList.Items {
-				if db.Status.State == v1alpha1.DependencyBuildStateComplete {
-					dbComplete = true
+				if db.Status.State != v1alpha1.DependencyBuildStateComplete {
+					ta.Logf(fmt.Sprintf("depedencybuild %s not complete", db.Spec.ScmInfo.SCMURL))
+					dbComplete = false
 					break
+				} else if db.Status.State == v1alpha1.DependencyBuildStateFailed {
+					ta.Logf(fmt.Sprintf("depedencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
+					return false, errors.New(fmt.Sprintf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL))
 				}
 			}
 			if abComplete && dbComplete {
@@ -424,12 +431,14 @@ func TestExampleRun(t *testing.T) {
 	})
 
 	ta.t.Run("contaminated build is resolved", func(t *testing.T) {
-		//our sample repo has Netty which is contaminated by JCTools
+		//our sample repo has shaded-jdk11 which is contaminated by simple-jdk8
 		var contaminated string
-		var jcToolsAbr string
+		var simpleJDK8 string
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 
 			dbContaminated := false
+			shadedComplete := false
+			contaminantBuild := false
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
@@ -441,18 +450,24 @@ func TestExampleRun(t *testing.T) {
 					dbContaminated = true
 					contaminated = db.Name
 					break
+				} else if strings.Contains(db.Spec.ScmInfo.SCMURL, "shaded-jdk11") && db.Status.State == v1alpha1.DependencyBuildStateComplete {
+					//its also possible that the build has already resolved itself
+					contaminated = db.Name
+					shadedComplete = true
+				} else if strings.Contains(db.Spec.ScmInfo.SCMURL, "simple-jdk8") {
+					contaminantBuild = true
 				}
 			}
-			if dbContaminated {
+			if dbContaminated || (shadedComplete && contaminantBuild) {
 				return true, nil
 			}
 			return false, nil
 		})
 		if err != nil {
-			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+			debugAndFailTest(ta, "timed out waiting for contaminated build to appear")
 		}
 		ta.Logf(fmt.Sprintf("contaminated dependencybuild: %s", contaminated))
-		//make sure JCTools was requested as a result
+		//make sure simple-jdk8 was requested as a result
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
@@ -462,8 +477,8 @@ func TestExampleRun(t *testing.T) {
 			found := false
 			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
 			for _, ab := range abList.Items {
-				if strings.Contains(ab.Spec.GAV, "jctools") {
-					jcToolsAbr = ab.Name
+				if strings.Contains(ab.Spec.GAV, "simple-jdk8") {
+					simpleJDK8 = ab.Name
 					found = true
 					break
 				}
@@ -471,29 +486,29 @@ func TestExampleRun(t *testing.T) {
 			return found, nil
 		})
 		if err != nil {
-			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
+			debugAndFailTest(ta, "timed out waiting for simple-jdk8 to appear as an artifactbuild")
 		}
-		//now make sure JCTools eventually completes
+		//now make sure simple-jdk8 eventually completes
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
-			ab, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Get(context.TODO(), jcToolsAbr, metav1.GetOptions{})
+			ab, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Get(context.TODO(), simpleJDK8, metav1.GetOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error getting JCTools ArtifactBuild: %s", err.Error()))
+				ta.Logf(fmt.Sprintf("error getting simple-jdk8 ArtifactBuild: %s", err.Error()))
 				return false, err
 			}
-			ta.Logf(fmt.Sprintf("JCTools State: %s", ab.Status.State))
+			ta.Logf(fmt.Sprintf("simple-jdk8 State: %s", ab.Status.State))
 			return ab.Status.State == v1alpha1.ArtifactBuildStateComplete, nil
 		})
 		if err != nil {
-			debugAndFailTest(ta, "timed out waiting for JCTools to complete")
+			debugAndFailTest(ta, "timed out waiting for simple-jdk8 to complete")
 		}
-		//now make sure Netty eventually completes
+		//now make sure shaded-jdk11 eventually completes
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			db, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error getting netty DependencyBuild: %s", err.Error()))
+				ta.Logf(fmt.Sprintf("error getting shaded-jdk11 DependencyBuild: %s", err.Error()))
 				return false, err
 			}
-			ta.Logf(fmt.Sprintf("Netty State: %s", db.Status.State))
+			ta.Logf(fmt.Sprintf("shaded-jdk11 State: %s", db.Status.State))
 			if db.Status.State == v1alpha1.DependencyBuildStateFailed {
 				msg := fmt.Sprintf("contaminated db %s failed, exitting wait", contaminated)
 				ta.Logf(msg)
@@ -502,7 +517,7 @@ func TestExampleRun(t *testing.T) {
 			return db.Status.State == v1alpha1.DependencyBuildStateComplete, err
 		})
 		if err != nil {
-			debugAndFailTest(ta, "timed out waiting for Netty to complete")
+			debugAndFailTest(ta, "timed out waiting for shaded-jdk11 to complete")
 		}
 	})
 }
