@@ -33,6 +33,9 @@ e2etest: fmt vet envtest ## Run tests.
 appstudio-installed-on-openshift-e2e:
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags normal -timeout 120m -v ./openshift-with-appstudio-test/...
 
+appstudio-installed-on-openshift-periodic:
+	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags periodic -timeout 150m -v ./openshift-with-appstudio-test/...
+
 build:
 	go build -o out/jvmbuildservice cmd/controller/main.go
 	env GOOS=linux GOARCH=amd64 go build -mod=vendor -o out/jvmbuildservice ./cmd/controller
