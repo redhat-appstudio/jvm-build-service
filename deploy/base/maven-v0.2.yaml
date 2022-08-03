@@ -198,6 +198,10 @@ spec:
       env:
         - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
           value: "http://hacbs-jvm-cache.jvm-build-service.svc.cluster.local"
+        - name: QUARKUS_LOG_FILE_ENABLE
+          value: "true"
+        - name: QUARKUS_LOG_FILE_PATH
+          value: "$(workspaces.maven-settings.path)/sidecar.log"
       name: proxy
       livenessProbe:
         httpGet:
