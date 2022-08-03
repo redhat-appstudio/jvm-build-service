@@ -223,7 +223,7 @@ spec:
             echo "Enforce version not set, skipping"
           else
             echo "Setting version to $(params.ENFORCE_VERSION)"
-            mvn versions:set -DnewVersion=$(params.ENFORCE_VERSION)
+            mvn -s "$(workspaces.maven-settings.path)/settings.xml" versions:set -DnewVersion=$(params.ENFORCE_VERSION)
           fi
 
           # fix-permissions-for-builder
