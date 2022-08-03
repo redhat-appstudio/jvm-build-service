@@ -252,7 +252,6 @@ spec:
       - image: hacbs-jvm-sidecar
         securityContext:
           runAsUser: 0
-        imagePullPolicy: IfNotPresent
         env:
           - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
             value: "http://hacbs-jvm-cache.jvm-build-service.svc.cluster.local"
@@ -610,7 +609,6 @@ spec:
       - image: hacbs-jvm-sidecar
         securityContext:
           runAsUser: 0
-        imagePullPolicy: IfNotPresent
         env:
           - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
             value: "http://hacbs-jvm-cache.jvm-build-service.svc.cluster.local"
