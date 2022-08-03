@@ -1,3 +1,6 @@
+//go:build normal
+// +build normal
+
 package e2e
 
 import (
