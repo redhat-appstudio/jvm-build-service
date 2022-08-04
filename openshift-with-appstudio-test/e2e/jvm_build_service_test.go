@@ -38,11 +38,15 @@ func TestExampleRun(t *testing.T) {
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
 	ta.t.Run("jvm build service is using the correct sidecar image", func(t *testing.T) {
-		ciSidecarImage := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
 
-		if ciSidecarImage == "" {
-			t.Skip("JVM_BUILD_SERVICE_SIDECAR_IMAGE env var is not exported, skipping the test...")
+		ciSidecarImageRepo := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO")
+		ciSidecarImageTag := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG")
+
+		if ciSidecarImageRepo == "" || ciSidecarImageTag == "" {
+			t.Skip("JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO and/or JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG env var is/are not exported, skipping the test...")
 		}
+
+		ciSidecarImage := fmt.Sprintf("%s:%s", ciSidecarImageRepo, ciSidecarImageTag)
 
 		d, err := kubeClient.AppsV1().Deployments("jvm-build-service").Get(context.Background(), "hacbs-jvm-operator", metav1.GetOptions{})
 		if err != nil {
