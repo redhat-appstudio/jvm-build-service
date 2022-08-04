@@ -11,16 +11,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-
 	applicationservice "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+
 	"knative.dev/pkg/apis"
 )
 
@@ -51,6 +52,7 @@ func TestExampleRun(t *testing.T) {
 		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
 			prs, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).List(context.TODO(), listOptions)
 			if err != nil {
+				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
 				return false, nil
 			}
 			if len(prs.Items) > 0 {
