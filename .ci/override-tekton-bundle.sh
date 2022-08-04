@@ -5,9 +5,12 @@
 # at quay.io/redhat-appstudio
 PR_RUN=${JVM_BUILD_SERVICE_PR_SHA:-notpr}
 if [ "$PR_RUN" == "notpr" ]; then
-  echo "JVM_BUILD_SERVICE_PR_SHA is not set so aborting"
-  exit 0
+  echo "JVM_BUILD_SERVICE_PR_SHA is not set so aborting override"
+  # we return vs. exist because we will still want the calling
+  # common-c-settings-and-functions to continue with appstudio bootstrap
+  return 0
 fi
+echo "JVM_BUILD_SERVICE_PR_SHA is set so overriding tekton bundles"
 TEMP_FOLDER=$WORKSPACE/tmp/bundle-override
 APPSTUDIO_QE_REPO=quay.io/redhat-appstudio-qe/test-images
 TASK_BUNDLE_IMG=$APPSTUDIO_QE_REPO:task-bundle-$JVM_BUILD_SERVICE_PR_SHA
@@ -34,7 +37,7 @@ function createPipelinesFile() {
 }
 
 function createTaskFile() {
-    for bundle in $(grep bundle "$TEMP_FOLDER"/pipelines.yaml | sort -u | awk '{print $2}'); do 
+    for bundle in $(grep bundle "$TEMP_FOLDER"/pipelines.yaml | sort -u | awk '{print $2}'); do
         tasks=$(tkn bundle list "$bundle" | sed "s/task.tekton.dev\///")
 
         for task in $tasks; do
