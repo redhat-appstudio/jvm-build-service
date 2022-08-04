@@ -12,7 +12,7 @@ if [ "$PR_RUN" == "notpr" ]; then
 fi
 echo "JVM_BUILD_SERVICE_PR_SHA is set so overriding tekton bundles"
 TEMP_FOLDER=$WORKSPACE/tmp/bundle-override
-APPSTUDIO_QE_REPO=quay.io/redhat-appstudio-qe/test-images
+APPSTUDIO_QE_REPO=${APPSTUDIO_QE_REPO:-quay.io/redhat-appstudio-qe/test-images}
 TASK_BUNDLE_IMG=$APPSTUDIO_QE_REPO:task-bundle-$JVM_BUILD_SERVICE_PR_SHA
 PIPELINE_BUNDLE_IMG=$APPSTUDIO_QE_REPO:pipeline-bundle-$JVM_BUILD_SERVICE_PR_SHA
 

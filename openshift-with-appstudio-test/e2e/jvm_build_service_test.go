@@ -6,21 +6,23 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
+	applicationservice "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/labels"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
 )
-
 
 func TestExampleRun(t *testing.T) {
 	ta := setup(t, nil)
@@ -35,65 +37,129 @@ func TestExampleRun(t *testing.T) {
 	}
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
-	mavenYamlPath := filepath.Join(path, "..", "..", "deploy", "base", "maven-v0.2.yaml")
-	ta.maven = &v1beta1.Task{}
-	obj := streamFileYamlToTektonObj(mavenYamlPath, ta.maven, ta)
-	var ok bool
-	ta.maven, ok = obj.(*v1beta1.Task)
-	if !ok {
-		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a task: %#v", mavenYamlPath, obj))
-	}
-	// override images if need be
-	analyserImage := os.Getenv("JVM_BUILD_SERVICE_ANALYZER_IMAGE")
-	if len(analyserImage) > 0 {
-		ta.Logf(fmt.Sprintf("PR analyzer image: %s", analyserImage))
-		for _, step := range ta.maven.Spec.Steps {
-			if step.Name != "analyse-dependencies" {
-				continue
-			}
-			ta.Logf(fmt.Sprintf("Updating analyse-dependencies step with image %s", analyserImage))
-			step.Image = analyserImage
-		}
-	}
-	sidecarImage := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
-	if len(sidecarImage) > 0 {
-		ta.Logf(fmt.Sprintf("PR sidecar image: %s", sidecarImage))
-		for _, sidecar := range ta.maven.Spec.Sidecars {
-			if sidecar.Name != "proxy" {
-				continue
-			}
-			ta.Logf(fmt.Sprintf("Updating proxy sidecar with image %s", sidecarImage))
-			sidecar.Image = sidecarImage
-		}
-	}
-	ta.maven, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.maven, metav1.CreateOptions{})
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
+	ta.t.Run("jvm build service is using the correct sidecar image", func(t *testing.T) {
+		ciSidecarImage := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
 
-	pipelineYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "pipeline.yaml")
-	ta.pipeline = &v1beta1.Pipeline{}
-	obj = streamFileYamlToTektonObj(pipelineYamlPath, ta.pipeline, ta)
-	ta.pipeline, ok = obj.(*v1beta1.Pipeline)
-	if !ok {
-		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipeline: %#v", pipelineYamlPath, obj))
-	}
-	ta.pipeline, err = tektonClient.TektonV1beta1().Pipelines(ta.ns).Create(context.TODO(), ta.pipeline, metav1.CreateOptions{})
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
+		if ciSidecarImage == "" {
+			t.Skip("JVM_BUILD_SERVICE_SIDECAR_IMAGE env var is not exported, skipping the test...")
+		}
 
-	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-e2e-shaded-app.yaml")
-	ta.run = &v1beta1.PipelineRun{}
-	obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
-	ta.run, ok = obj.(*v1beta1.PipelineRun)
-	if !ok {
-		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
-	}
-	ta.run, err = tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
+		d, err := kubeClient.AppsV1().Deployments("jvm-build-service").Get(context.Background(), "hacbs-jvm-operator", metav1.GetOptions{})
+		if err != nil {
+			debugAndFailTest(ta, "error when getting hacbs jvm operator deployment")
+		}
+
+		for _, c := range d.Spec.Template.Spec.Containers {
+			if c.Name == "hacbs-jvm-operator" {
+				for _, envVar := range d.Spec.Template.Spec.Containers[0].Env {
+					if envVar.Name == "JVM_BUILD_SERVICE_SIDECAR_IMAGE" {
+						if envVar.Value == ciSidecarImage {
+							return
+						} else {
+							debugAndFailTest(ta, fmt.Sprintf("the hacbs jvm operator doesn't use the sidecar image built in CI. expected: %v, actual: %v", ciSidecarImage, envVar.Value))
+						}
+					}
+				}
+				debugAndFailTest(ta, "the hacbs jvm operator deployment doesn't contain the expected env var 'JVM_BUILD_SERVICE_SIDECAR_IMAGE'")
+			}
+		}
+		debugAndFailTest(ta, "the hacbs jvm operator deployment doesn't contain the expected container 'hacbs-jvm-operator'")
+
+	})
+
+	ta.t.Run("component pipelinerun gets created", func(t *testing.T) {
+		utilruntime.Must(applicationservice.AddToScheme(scheme))
+
+		createAppstudioApp(ta)
+		createAppstudioComponent(ta)
+
+		labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"build.appstudio.openshift.io/component": ta.appstudioComponent.Name}}
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+			Limit:         1,
+		}
+		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+			prs, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).List(context.TODO(), listOptions)
+			if err != nil {
+				return false, nil
+			}
+			if len(prs.Items) > 0 {
+				ta.run = &prs.Items[0]
+				return true, nil
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, fmt.Sprintf("failure occured when waiting for the pipeline run to get created: %v", err))
+		}
+	})
+
+	ta.t.Run("build-container task from component pipelinerun references a correct sidecar image", func(t *testing.T) {
+		ciSidecarImage := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
+		if ciSidecarImage == "" {
+			t.Skip("JVM_BUILD_SERVICE_SIDECAR_IMAGE env var is not exported, skipping the test...")
+		}
+
+		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+			pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
+				return false, nil
+			}
+
+			for _, tr := range pr.Status.TaskRuns {
+				if tr.PipelineTaskName == "build-container" {
+					for _, sc := range tr.Status.TaskSpec.Sidecars {
+						if sc.Name == "proxy" {
+							if sc.Image != ciSidecarImage {
+								debugAndFailTest(ta, fmt.Sprintf("the build-container task from component pipelinerun doesn't contain correct sidecar image. expected: %v, actual: %v", ciSidecarImage, sc.Image))
+							} else {
+								return true, nil
+							}
+						}
+					}
+				}
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, fmt.Sprintf("failure occured when verifying the sidecar image reference in pipelinerun: %v", err))
+		}
+	})
+
+	ta.t.Run("build-container task from component pipelinerun references a correct analyzer image", func(t *testing.T) {
+		ciAnalyzerImage := os.Getenv("JVM_BUILD_SERVICE_ANALYZER_IMAGE")
+
+		if ciAnalyzerImage == "" {
+			t.Skip("JVM_BUILD_SERVICE_ANALYZER_IMAGE env var is not exported, skipping the test...")
+		}
+
+		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+			pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
+				return false, nil
+			}
+
+			for _, tr := range pr.Status.TaskRuns {
+				if tr.PipelineTaskName == "build-container" {
+					for _, step := range tr.Status.TaskSpec.Steps {
+						if step.Name == "analyse-dependencies-java-sbom" {
+							if step.Image != ciAnalyzerImage {
+								debugAndFailTest(ta, fmt.Sprintf("the build-container task from component pipelinerun doesn't reference the correct analyzer image. expected: %v, actual: %v", ciAnalyzerImage, step.Image))
+							} else {
+								return true, nil
+							}
+						}
+					}
+				}
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, fmt.Sprintf("failure occured when verifying the analyzer image reference in pipelinerun: %v", err))
+		}
+	})
 
 	ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
 		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
@@ -103,26 +169,25 @@ func TestExampleRun(t *testing.T) {
 				return false, nil
 			}
 			if !pr.IsDone() {
-				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
 					ta.Logf(fmt.Sprintf("problem marshalling in progress pipelinerun to bytes: %s", err.Error()))
 					return false, nil
 				}
-				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", string(prBytes)))
+				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", pr.Name))
+				return false, nil
 			}
-			if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
+			if pr.IsDone() && !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
 				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
 					ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
 					return false, nil
 				}
-				ta.Logf(fmt.Sprintf("not yet successful pipeline run: %s", string(prBytes)))
-
+				return false, fmt.Errorf("pipeline run did not succeed: %s", string(prBytes))
 			}
 			return true, nil
 		})
 		if err != nil {
-			debugAndFailTest(ta, "timed out when waiting for the pipeline run to complete")
+			debugAndFailTest(ta, fmt.Sprintf("failure occured when waiting for the pipeline run to complete: %v", err))
 		}
 	})
 
@@ -153,6 +218,10 @@ func TestExampleRun(t *testing.T) {
 				}
 			}
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				return false, nil
+			}
 			dbComplete := len(dbList.Items) > 0
 			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
 			for _, db := range dbList.Items {
@@ -162,7 +231,7 @@ func TestExampleRun(t *testing.T) {
 					break
 				} else if db.Status.State == v1alpha1.DependencyBuildStateFailed {
 					ta.Logf(fmt.Sprintf("depedencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
-					return false, errors.New(fmt.Sprintf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL))
+					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
 				}
 			}
 			if abComplete && dbComplete {

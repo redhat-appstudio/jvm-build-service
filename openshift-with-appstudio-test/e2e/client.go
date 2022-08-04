@@ -10,6 +10,8 @@ import (
 	projectset "github.com/openshift/client-go/project/clientset/versioned"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"k8s.io/apimachinery/pkg/runtime"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	kubeset "k8s.io/client-go/kubernetes"
@@ -18,12 +20,14 @@ import (
 )
 
 var (
+	crClient           crclient.Client
 	kubeConfig         *rest.Config
 	kubeClient         *kubeset.Clientset
 	projectClient      *projectset.Clientset
 	tektonClient       *pipelineclientset.Clientset
 	jvmClient          *jvmclientset.Clientset
 	apiextensionClient *apiextensionsclient.Clientset
+	scheme             = runtime.NewScheme()
 )
 
 func getConfig() (*rest.Config, error) {
@@ -85,6 +89,15 @@ func setupClients(t *testing.T) {
 
 	if apiextensionClient == nil {
 		apiextensionClient, err = apiextensionsclient.NewForConfig(kubeConfig)
+		if err != nil {
+			t.Fatalf("%#v", err)
+		}
+	}
+
+	if crClient == nil {
+		crClient, err = crclient.New(kubeConfig, crclient.Options{
+			Scheme: scheme,
+		})
 		if err != nil {
 			t.Fatalf("%#v", err)
 		}
