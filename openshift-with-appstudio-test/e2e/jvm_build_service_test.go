@@ -37,40 +37,6 @@ func TestExampleRun(t *testing.T) {
 	}
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
-	ta.t.Run("jvm build service is using the correct sidecar image", func(t *testing.T) {
-
-		ciSidecarImageRepo := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO")
-		ciSidecarImageTag := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG")
-
-		if ciSidecarImageRepo == "" || ciSidecarImageTag == "" {
-			t.Skip("JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO and/or JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG env var is/are not exported, skipping the test...")
-		}
-
-		ciSidecarImage := fmt.Sprintf("%s:%s", ciSidecarImageRepo, ciSidecarImageTag)
-
-		d, err := kubeClient.AppsV1().Deployments("jvm-build-service").Get(context.Background(), "hacbs-jvm-operator", metav1.GetOptions{})
-		if err != nil {
-			debugAndFailTest(ta, "error when getting hacbs jvm operator deployment")
-		}
-
-		for _, c := range d.Spec.Template.Spec.Containers {
-			if c.Name == "hacbs-jvm-operator" {
-				for _, envVar := range d.Spec.Template.Spec.Containers[0].Env {
-					if envVar.Name == "JVM_BUILD_SERVICE_SIDECAR_IMAGE" {
-						if envVar.Value == ciSidecarImage {
-							return
-						} else {
-							debugAndFailTest(ta, fmt.Sprintf("the hacbs jvm operator doesn't use the sidecar image built in CI. expected: %v, actual: %v", ciSidecarImage, envVar.Value))
-						}
-					}
-				}
-				debugAndFailTest(ta, "the hacbs jvm operator deployment doesn't contain the expected env var 'JVM_BUILD_SERVICE_SIDECAR_IMAGE'")
-			}
-		}
-		debugAndFailTest(ta, "the hacbs jvm operator deployment doesn't contain the expected container 'hacbs-jvm-operator'")
-
-	})
-
 	ta.t.Run("component pipelinerun gets created", func(t *testing.T) {
 		utilruntime.Must(applicationservice.AddToScheme(scheme))
 
@@ -112,7 +78,7 @@ func TestExampleRun(t *testing.T) {
 			}
 
 			for _, tr := range pr.Status.TaskRuns {
-				if tr.PipelineTaskName == "build-container" {
+				if tr.PipelineTaskName == "build-container" && tr.Status != nil && tr.Status.TaskSpec != nil && tr.Status.TaskSpec.Sidecars != nil {
 					for _, sc := range tr.Status.TaskSpec.Sidecars {
 						if sc.Name == "proxy" {
 							if sc.Image != ciSidecarImage {
@@ -146,7 +112,7 @@ func TestExampleRun(t *testing.T) {
 			}
 
 			for _, tr := range pr.Status.TaskRuns {
-				if tr.PipelineTaskName == "build-container" {
+				if tr.PipelineTaskName == "build-container" && tr.Status != nil && tr.Status.TaskSpec != nil && tr.Status.TaskSpec.Steps != nil {
 					for _, step := range tr.Status.TaskSpec.Steps {
 						if step.Name == "analyse-dependencies-java-sbom" {
 							if step.Image != ciAnalyzerImage {
