@@ -36,28 +36,38 @@ if [ "$PR_RUN" != "notpr" ]; then
   # in https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/jvm-build-service/redhat-appstudio-jvm-build-service-main.yaml in place of the SHA
   # and OpenShift ImageStream support will fetch the correct message (i.e. it maps to a docker image tag with direct image registry references)
 
+  export JVM_BUILD_SERVICE_IMAGE_REPO JVM_BUILD_SERVICE_IMAGE_TAG
+
+  JVM_BUILD_SERVICE_IMAGE_REPO=${JVM_BUILD_SERVICE_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-controller"}
   # for ease of use we strip the SHA, via eliminating everything starting with the '@' and whatever follows, and use the constant ImageStreamTag name instead to fetch the correct image
-  export JVM_BUILD_SERVICE_IMAGE=${JVM_BUILD_SERVICE_IMAGE%@*}
-  export JVM_BUILD_SERVICE_IMAGE_REPO=${JVM_BUILD_SERVICE_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-controller"}
+  JVM_BUILD_SERVICE_IMAGE_REPO=${JVM_BUILD_SERVICE_IMAGE_REPO%@*}
   # Tag, i.e. ImageStreamTag, defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/jvm-build-service/redhat-appstudio-jvm-build-service-main.yaml
   # as the default always reconciles in CI.  Override this for local testing.
-  export JVM_BUILD_SERVICE_IMAGE_TAG=${JVM_BUILD_SERVICE_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-image"}
+  JVM_BUILD_SERVICE_IMAGE_TAG=${JVM_BUILD_SERVICE_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-image"}
 
-  export JVM_BUILD_SERVICE_CACHE_IMAGE=${JVM_BUILD_SERVICE_CACHE_IMAGE%@*}
-  export JVM_BUILD_SERVICE_CACHE_IMAGE_REPO=${JVM_BUILD_SERVICE_CACHE_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-cache"}
-  export JVM_BUILD_SERVICE_CACHE_IMAGE_TAG=${JVM_BUILD_SERVICE_CACHE_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-cache-image"}
+  export JVM_BUILD_SERVICE_CACHE_IMAGE_REPO JVM_BUILD_SERVICE_CACHE_IMAGE_TAG
 
-  export JVM_BUILD_SERVICE_SIDECAR_IMAGE=${JVM_BUILD_SERVICE_SIDECAR_IMAGE%@*}
-  export JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO=${JVM_BUILD_SERVICE_SIDECAR_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-sidecar"}
-  export JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG=${JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-sidecar-image"}
+  JVM_BUILD_SERVICE_CACHE_IMAGE_REPO=${JVM_BUILD_SERVICE_CACHE_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-cache"}
+  JVM_BUILD_SERVICE_CACHE_IMAGE_REPO=${JVM_BUILD_SERVICE_CACHE_IMAGE_REPO%@*}
+  JVM_BUILD_SERVICE_CACHE_IMAGE_TAG=${JVM_BUILD_SERVICE_CACHE_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-cache-image"}
 
-  export JVM_BUILD_SERVICE_ANALYZER_IMAGE=${JVM_BUILD_SERVICE_ANALYZER_IMAGE%@*}
-  export JVM_BUILD_SERVICE_ANALYZER_IMAGE_REPO=${JVM_BUILD_SERVICE_ANALYZER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser"}
-  export JVM_BUILD_SERVICE_ANALYZER_IMAGE_TAG=${JVM_BUILD_SERVICE_ANALYZER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-analyzer-image"}
+  export JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG
 
-  export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE%@*}
-  export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-build-request-processor"}
-  export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-reqprocessor-image"}
+  JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO=${JVM_BUILD_SERVICE_SIDECAR_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-sidecar"}
+  JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO=${JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO%@*}
+  JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG=${JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-sidecar-image"}
+
+  export JVM_BUILD_SERVICE_ANALYZER_IMAGE_REPO JVM_BUILD_SERVICE_ANALYZER_IMAGE_TAG
+
+  JVM_BUILD_SERVICE_ANALYZER_IMAGE_REPO=${JVM_BUILD_SERVICE_ANALYZER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser"}
+  JVM_BUILD_SERVICE_ANALYZER_IMAGE_REPO=${JVM_BUILD_SERVICE_ANALYZER_IMAGE_REPO%@*}
+  JVM_BUILD_SERVICE_ANALYZER_IMAGE_TAG=${JVM_BUILD_SERVICE_ANALYZER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-analyzer-image"}
+
+  export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG
+
+  JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-build-request-processor"}
+  JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO%@*}
+  JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-reqprocessor-image"}
 
   export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE=${JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE%@*}
   export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_REPO=${JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jdk8-builder"}
