@@ -23,6 +23,9 @@ if [ "$PR_RUN" != "notpr" ]; then
   # JVM_BUILD_SERVICE_SIDECAR_IMAGE - sidecar image built in openshift CI job workflow.
   # JVM_BUILD_SERVICE_ANALYZER_IMAGE - dependency analyzer image built in openshift CI workflow.
   # JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE - request processor image built in openshift CI workflow.
+  # JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE - JDK build image built in openshift CI workflow.
+  # JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE - JDK build image built in openshift CI workflow.
+  # JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE - JDK build image built in openshift CI workflow.
 
   # More info about how image dependencies work in ci: https://github.com/openshift/ci-tools/blob/master/TEMPLATES.md#parameters-available-to-templates
   # Container env defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/jvm-build-service/redhat-appstudio-jvm-build-service-main.yaml
@@ -55,6 +58,18 @@ if [ "$PR_RUN" != "notpr" ]; then
   export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE%@*}
   export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-build-request-processor"}
   export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-reqprocessor-image"}
+
+  export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE=${JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE%@*}
+  export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_REPO=${JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jdk8-builder"}
+  export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_TAG=${JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-jdk8-builder-image"}
+
+  export JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE=${JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE%@*}
+  export JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_REPO=${JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jdk11-builder"}
+  export JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_TAG=${JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-jdk11-builder-image"}
+
+  export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE=${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE%@*}
+  export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_REPO=${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jdk17-builder"}
+  export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG=${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-jdk17-builder-image"}
 
   if [[ -n "${JOB_SPEC}" && "${REPO_NAME}" == "jvm-build-service" ]]; then
       # Extract PR author and commit SHA to also override default kustomization in infra-deployments repo

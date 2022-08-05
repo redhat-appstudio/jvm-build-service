@@ -1,3 +1,6 @@
+#====================================================================================================
+#This is no longer required, it should be removed once it is no longer reference by infra-deployments
+#====================================================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

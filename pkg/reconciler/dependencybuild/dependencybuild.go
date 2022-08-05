@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"os"
 	"strings"
 	"time"
@@ -156,9 +157,13 @@ func hashToString(unique string) string {
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+	cm, err := configmap.ReadUserConfigMap(r.client, ctx, db.Namespace)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	// create pipeline run
 	tr := pipelinev1beta1.PipelineRun{}
-	tr.Spec.PipelineSpec = createLookupBuildInfoPipeline(&db.Spec)
+	tr.Spec.PipelineSpec = createLookupBuildInfoPipeline(&db.Spec, cm)
 	tr.Namespace = db.Namespace
 	tr.GenerateName = db.Name + "-build-discovery-"
 	tr.Labels = map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineType: PipelineTypeBuildInfo}
@@ -252,6 +257,12 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
 			return reconcile.Result{}, err
 		}
+		//read our builder images from the config
+		var mavenImages []string
+		mavenImages, err = r.processBuilderImages(ctx)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 		// for now we are ignoring the tool versions
 		// and just using the supplied invocations
 		buildRecipes := []*v1alpha1.BuildRecipe{}
@@ -260,12 +271,13 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 
 		switch {
 		case maven:
-			for _, image := range []string{"quay.io/sdouglas/hacbs-jdk11-builder:latest", "quay.io/sdouglas/hacbs-jdk8-builder:latest", "quay.io/sdouglas/hacbs-jdk17-builder:latest"} {
+			for _, image := range mavenImages {
 				for _, command := range unmarshalled.Invocations {
 					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Maven: true})
 				}
 			}
 		case gradle:
+			//TODO: update gradle to use builder images
 			for _, image := range []string{"quay.io/dwalluck/gradle:latest"} {
 				for _, command := range unmarshalled.Invocations {
 					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Gradle: true})
@@ -281,6 +293,24 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	}
 	return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 
+}
+func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context) ([]string, error) {
+	configMap := v1.ConfigMap{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: configmap.SystemConfigMapNamespace, Name: configmap.SystemConfigMapName}, &configMap)
+	if err != nil {
+		return nil, err
+	}
+	result := []string{}
+	names := strings.Split(configMap.Data[configmap.SystemBuilderImages], ",")
+	for _, i := range names {
+		image := configMap.Data[fmt.Sprintf(configmap.SystemBuilderImageFormat, i)]
+		if image == "" {
+			log.Info(fmt.Sprintf("Missing system config for builder image %s, image will not be usable", image))
+		} else {
+			result = append(result, image)
+		}
+	}
+	return result, nil
 }
 
 func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
@@ -375,7 +405,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
 	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
 	//the actual solution will involve loading deployment config from a ConfigMap
-	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://localstack.jvm-build-service.svc.cluster.local:4572"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_REST_CLIENT_CACHE_SERVICE_URL", Value: "http://" + configmap.CacheDeploymentName + "." + db.Namespace + ".svc.cluster.local"})
+	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://" + configmap.LocalstackDeploymentName + "." + db.Namespace + ".svc.cluster.local:4572"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"})
 	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env = append(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars[0].Env, v1.EnvVar{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"})
@@ -549,9 +580,13 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec) *pipelinev1beta1.PipelineSpec {
+func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec, config map[string]string) *pipelinev1beta1.PipelineSpec {
 	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	recipes := os.Getenv("RECIPE_DATABASE")
+	additional, ok := config[configmap.UserConfigAdditionalRecipes]
+	if ok {
+		recipes = recipes + "," + additional
+	}
 	path := build.ScmInfo.Path
 	//TODO should the buidl request process require context to be set ?
 	if len(path) == 0 {

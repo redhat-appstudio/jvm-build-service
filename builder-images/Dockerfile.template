@@ -52,5 +52,3 @@ RUN microdnf clean all && [ ! -d /var/cache/yum ] || rm -rf /var/cache/yum
 USER hacbs
 # Define the working directory
 WORKDIR /project
-# Define run cmd
-CMD ["mvn", "-v"]

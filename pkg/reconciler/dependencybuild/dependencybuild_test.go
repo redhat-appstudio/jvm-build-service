@@ -2,6 +2,9 @@ package dependencybuild
 
 import (
 	"context"
+	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	v1 "k8s.io/api/core/v1"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -26,8 +29,22 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = pipelinev1beta1.AddToScheme(scheme)
+	_ = v1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	reconciler := &ReconcileDependencyBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
+	reconciler := &ReconcileDependencyBuild{
+		client:        client,
+		scheme:        scheme,
+		eventRecorder: &record.FakeRecorder{}}
+
+	sysConfig := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace},
+		Data: map[string]string{
+			configmap.SystemBuilderImages:                            "jdk11",
+			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/sdouglas/hacbs-jdk11-builder:latest",
+		},
+	}
+	_ = client.Create(context.TODO(), &sysConfig)
+
 	return client, reconciler
 }
 

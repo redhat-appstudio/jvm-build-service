@@ -30,7 +30,7 @@ type DependencyBuildStatus struct {
 	//BuildRecipe the current build recipe. If build is done then this recipe was used
 	//to get to the current state
 	CurrentBuildRecipe *BuildRecipe `json:"currentBuildRecipe,omitempty"`
-	//PotentialBuildRecipes additional recipes to try if the current recipe fails
+	// PotentialBuildRecipes additional recipes to try if the current recipe fails
 	PotentialBuildRecipes []*BuildRecipe `json:"potentialBuildRecipes,omitempty"`
 	//FailedBuildRecipes recipes that resulted in a failure
 	//if the current state is failed this may include the current BuildRecipe
