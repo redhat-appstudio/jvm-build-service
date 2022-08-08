@@ -5,6 +5,9 @@ metadata:
 spec:
   params:
     - name: url
+    - default: ""
+      description: Revision to checkout. (branch, tag, sha, ref, etc...)
+      name: revision
     - name: context
       default: ""
     - name: app-path
@@ -22,6 +25,8 @@ spec:
       params:
         - name: url
           value: "$(params.url)"
+        - name: revision
+          value: "$(params.revision)"
         - name: subdirectory
           value: ""
         - name: deleteExisting
