@@ -8,3 +8,4 @@ resources:
   - maven-v0.2.yaml
   - rbac.yaml
   - config.yaml
+  - pipeline.yaml
