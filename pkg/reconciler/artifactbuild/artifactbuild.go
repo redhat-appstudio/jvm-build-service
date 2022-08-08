@@ -174,6 +174,9 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		}
 	}
 	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
+		msg := "pruning pipelinerun %s:%s for artifactbuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name, abr.Namespace, abr.Name, abr.Status.State)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, abr.Namespace, abr.Name, abr.Status.State))
 		delerr := r.client.Delete(ctx, pr)
 		if delerr != nil {
 			return reconcile.Result{}, delerr

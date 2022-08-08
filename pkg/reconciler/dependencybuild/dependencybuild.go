@@ -524,6 +524,10 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		}
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+			msg := "pruning pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
+			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
+
 			delerr := r.client.Delete(ctx, pr)
 			if delerr != nil {
 				return reconcile.Result{}, delerr
