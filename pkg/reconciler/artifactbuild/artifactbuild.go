@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"os"
 	"strings"
 	"time"
@@ -239,7 +240,11 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, abr *v1alph
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.GenerateName = abr.Name + "-scm-discovery-"
 	pr.Namespace = abr.Namespace
-	task := createLookupScmInfoTask(abr.Spec.GAV)
+	cm, err := configmap.ReadUserConfigMap(r.client, ctx, abr.Namespace)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	task := createLookupScmInfoTask(abr.Spec.GAV, cm)
 	pr.Spec.PipelineSpec = &pipelinev1beta1.PipelineSpec{
 		Tasks: []pipelinev1beta1.PipelineTask{{
 			Name: TaskName,
@@ -467,9 +472,14 @@ func CreateABRName(gav string) string {
 	return strings.ToLower(newName.String())
 }
 
-func createLookupScmInfoTask(gav string) *pipelinev1beta1.TaskSpec {
+func createLookupScmInfoTask(gav string, config map[string]string) *pipelinev1beta1.TaskSpec {
 	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	recipes := os.Getenv("RECIPE_DATABASE")
+	additional, ok := config[configmap.UserConfigAdditionalRecipes]
+	if ok {
+		recipes = recipes + "," + additional
+	}
+
 	return &pipelinev1beta1.TaskSpec{
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: PipelineResultScmUrl},

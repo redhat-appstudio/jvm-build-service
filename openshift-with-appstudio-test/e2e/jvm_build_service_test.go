@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -218,7 +219,33 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-
+	cm := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "jvm-build-config", Namespace: ta.ns},
+		Data: map[string]string{
+			"enable-rebuilds":                "true",
+			"maven-repository-300-jboss":     "https://repository.jboss.org/nexus/content/groups/public/",
+			"maven-repository-301-jitpack":   "https://jitpack.io",
+			"maven-repository-302-confluent": "https://packages.confluent.io/maven",
+			"maven-repository-303-gradle":    "https://repo.gradle.org/artifactory/libs-releases"}}
+	_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cm, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (done bool, err error) {
+		_, err = kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), configmap.CacheDeploymentName, metav1.GetOptions{})
+		if err != nil {
+			ta.Logf(fmt.Sprintf("get of cache: %s", err.Error()))
+			return false, nil
+		}
+		_, err = kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), configmap.LocalstackDeploymentName, metav1.GetOptions{})
+		if err != nil {
+			ta.Logf(fmt.Sprintf("get of localstack: %s", err.Error()))
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		debugAndFailTest(ta, "cache and/or localstack not present in timely fashion")
+	}
 	return ta
 }
 

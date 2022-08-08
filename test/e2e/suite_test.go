@@ -124,7 +124,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
-
 	go func() {
 		defer GinkgoRecover()
 		err = k8sManager.Start(ctx)

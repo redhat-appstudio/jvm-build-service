@@ -3,6 +3,8 @@ package artifactbuild
 import (
 	"context"
 	. "github.com/onsi/gomega"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,12 +27,13 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = pipelinev1beta1.AddToScheme(scheme)
+	_ = v1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
 	return client, reconciler
 }
 
-func TestDependencyBuild(t *testing.T) {
+func TestArtifactBuildStateNew(t *testing.T) {
 	g := NewGomegaWithT(t)
 	abr := v1alpha1.ArtifactBuild{}
 	abr.Namespace = metav1.NamespaceDefault
@@ -39,6 +42,14 @@ func TestDependencyBuild(t *testing.T) {
 
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&abr)
+	const customRepo = "https://myrepo.com/repo.git"
+	sysConfig := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: configmap.UserConfigMapName, Namespace: metav1.NamespaceDefault},
+		Data: map[string]string{
+			configmap.UserConfigAdditionalRecipes: customRepo,
+		},
+	}
+	g.Expect(client.Create(context.TODO(), &sysConfig)).Should(Succeed())
 
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}}))
 
@@ -56,6 +67,7 @@ func TestDependencyBuild(t *testing.T) {
 			g.Expect(or.Kind).Should(Equal(abr.Kind))
 			g.Expect(or.Name).Should(Equal(abr.Name))
 		}
+		g.Expect(tr.Spec.PipelineSpec.Tasks[0].TaskSpec.Steps[0].Args[2]).Should(ContainSubstring(customRepo))
 	}
 }
 
