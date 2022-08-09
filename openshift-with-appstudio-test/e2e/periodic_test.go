@@ -134,7 +134,7 @@ func TestServiceRegistry(t *testing.T) {
 	})
 
 	ta.t.Run("current target of artfactbuilds and dependencybuilds complete", func(t *testing.T) {
-		err = wait.PollImmediate(10*time.Minute, 90*time.Minute, func() (done bool, err error) {
+		err = wait.PollImmediate(10*time.Minute, 2*time.Hour, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
@@ -163,8 +163,8 @@ func TestServiceRegistry(t *testing.T) {
 					dbContaminatedCount++
 				}
 			}
-			// currently need a cluster with m*.2xlarge worker nodes to achieve this; testing with a) node auto scaler, b) app studio quota still pending
-			if abComplete && dbCompleteCount > 74 {
+			// currently need a cluster with m*.2xlarge worker nodes (local cluster) or m*.4xlarge cluster (CI) to achieve this; testing with a) node auto scaler, b) app studio quota still pending
+			if abComplete && dbCompleteCount <= dbCompleteCount+dbFailedCount+dbContaminatedCount {
 				return true, nil
 			}
 			ta.Logf(fmt.Sprintf("dependencybuild complete count: %d, failed count: %d, contaminated count: %d", dbCompleteCount, dbFailedCount, dbContaminatedCount))
