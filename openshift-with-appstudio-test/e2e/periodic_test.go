@@ -164,7 +164,7 @@ func TestServiceRegistry(t *testing.T) {
 				}
 			}
 			// currently need a cluster with m*.2xlarge worker nodes (local cluster) or m*.4xlarge cluster (CI) to achieve this; testing with a) node auto scaler, b) app studio quota still pending
-			if abComplete && dbCompleteCount <= dbCompleteCount+dbFailedCount+dbContaminatedCount {
+			if abComplete && dbCompleteCount > 90 && dbCompleteCount <= dbCompleteCount+dbFailedCount+dbContaminatedCount {
 				return true, nil
 			}
 			ta.Logf(fmt.Sprintf("dependencybuild complete count: %d, failed count: %d, contaminated count: %d", dbCompleteCount, dbFailedCount, dbContaminatedCount))
