@@ -189,6 +189,15 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		msg := "pipelinerun missing onwerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
+		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+			msg := "pruning analysis pipelinerun %s:%s for dependencybuild as it is missing owner refs"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
+			err := r.client.Delete(ctx, pr)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
 		return reconcile.Result{}, nil
 	}
 	ownerName := ""
@@ -202,6 +211,16 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		msg := "pipelinerun missing dependencybuild ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
+
+		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+			msg := "pruning analysis pipelinerun %s:%s for dependencybuild as it is missing owner refs"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
+			err := r.client.Delete(ctx, pr)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
 		return reconcile.Result{}, nil
 	}
 
@@ -215,6 +234,15 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		return reconcile.Result{}, err
 	}
 	if db.Status.State != v1alpha1.DependencyBuildStateAnalyzeBuild {
+		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+			msg := "pruning analysis pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
+			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
+			err := r.client.Delete(ctx, pr)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
 		return reconcile.Result{}, nil
 	}
 
@@ -227,12 +255,6 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			buildInfo = res.Value
 		case BuildInfoPipelineMessage:
 			message = res.Value
-		}
-	}
-	if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-		err := r.client.Delete(ctx, pr)
-		if err != nil {
-			return reconcile.Result{}, err
 		}
 	}
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
@@ -291,7 +313,20 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		db.Status.PotentialBuildRecipes = buildRecipes
 		db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 	}
-	return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+	err = r.client.Status().Update(ctx, &db)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+		msg := "pruning analysis pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
+		err := r.client.Delete(ctx, pr)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	return reconcile.Result{}, nil
 
 }
 func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context) ([]string, error) {
@@ -459,6 +494,16 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 			msg := "pipelinerun missing onwerrefs %s:%s"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)
+
+			if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+				msg := "pruning build pipelinerun %s:%s for dependencybuild as it is missing owner refs"
+				r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+				log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
+				delerr := r.client.Delete(ctx, pr)
+				if delerr != nil {
+					return reconcile.Result{}, delerr
+				}
+			}
 			return reconcile.Result{}, nil
 		}
 		if len(ownerRefs) > 1 {
@@ -480,6 +525,16 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 			msg := "pipelinerun missing dependencybuild onwerrefs %s:%s"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)
+
+			if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+				msg := "pruning build pipelinerun %s:%s for dependencybuild as it is missing owner refs"
+				r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+				log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
+				delerr := r.client.Delete(ctx, pr)
+				if delerr != nil {
+					return reconcile.Result{}, delerr
+				}
+			}
 			return reconcile.Result{}, nil
 		}
 
@@ -495,6 +550,16 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 
 		if pr.Name == db.Status.LastCompletedBuildPipelineRun || pr.Name != currentDependencyBuildPipelineName(&db) {
 			//already handled
+			//prune if required
+			if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+				msg := "pruning old build pipelinerun %s:%s from previous run for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+				r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
+				log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
+				delerr := r.client.Delete(ctx, pr)
+				if delerr != nil {
+					return reconcile.Result{}, delerr
+				}
+			}
 			return reconcile.Result{}, nil
 		}
 		db.Status.LastCompletedBuildPipelineRun = pr.Name
@@ -523,13 +588,20 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 			//try again, if there are no more recipes this gets handled in the submit build logic
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		}
+		err = r.client.Status().Update(ctx, &db)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
+			msg := "pruning build pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
+			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
 			delerr := r.client.Delete(ctx, pr)
 			if delerr != nil {
 				return reconcile.Result{}, delerr
 			}
 		}
-		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 	}
 	return reconcile.Result{}, nil
 }
