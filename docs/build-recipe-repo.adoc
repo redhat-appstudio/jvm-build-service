@@ -1,6 +1,6 @@
 = Build Recipe Repo
 
-NOTE: Currently, this repo lives at https://github.com/stuartwdouglas/tempdata2.git, it should move to a more official location soon.
+NOTE: Currently, this repo lives at https://github.com/redhat-appstudio/jvm-build-data.
 
 == Introduction
 

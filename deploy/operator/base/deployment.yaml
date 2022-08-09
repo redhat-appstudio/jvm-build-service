@@ -19,7 +19,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: RECIPE_DATABASE
-              value: "https://github.com/stuartwdouglas/tempdata2.git"
+              value: "https://github.com/redhat-appstudio/jvm-build-data"
           resources:
             requests:
               memory: "256Mi"
