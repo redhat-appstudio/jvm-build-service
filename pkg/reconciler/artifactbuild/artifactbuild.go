@@ -173,12 +173,6 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 			abr.Status.SCMInfo.Path = res.Value
 		}
 	}
-	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
-		delerr := r.client.Delete(ctx, pr)
-		if delerr != nil {
-			return reconcile.Result{}, delerr
-		}
-	}
 
 	//now let's create the dependency build object
 	//once this object has been created its resolver takes over
@@ -186,9 +180,22 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		//this is a failure
 		r.eventRecorder.Eventf(&abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuild %s/%s had an empty tag field %s", abr.Namespace, abr.Name, pr.Status.PipelineResults)
 		abr.Status.State = v1alpha1.ArtifactBuildStateMissing
-		return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
 	}
-	return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
+	err = r.client.Status().Update(ctx, &abr)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if os.Getenv(DeleteTaskRunPodsEnv) == "1" {
+		msg := "pruning pipelinerun %s:%s for artifactbuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name, abr.Namespace, abr.Name, abr.Status.State)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, abr.Namespace, abr.Name, abr.Status.State))
+		delerr := r.client.Delete(ctx, pr)
+		if delerr != nil {
+			return reconcile.Result{}, delerr
+		}
+	}
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
