@@ -8,6 +8,8 @@ spec:
   params:
     - name: url
       value: https://github.com/stuartwdouglas/hacbs-test-project
+    - name: revision
+      value: a2dc78fcc71f7d735a29f6f1715ae2aa41ee2856
   workspaces:
     - name: maven-settings
       emptyDir: {}
