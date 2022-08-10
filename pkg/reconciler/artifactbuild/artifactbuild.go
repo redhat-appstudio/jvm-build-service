@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/kcp-dev/logicalcluster"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,11 +22,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/kcp-dev/logicalcluster"
-
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -51,6 +51,7 @@ type ReconcileArtifactBuild struct {
 	client        client.Client
 	scheme        *runtime.Scheme
 	eventRecorder record.EventRecorder
+	prCreator     tektonwrapper.PipelineRunCreate
 }
 
 func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
@@ -58,6 +59,7 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
+		prCreator:     &tektonwrapper.BatchedCreate{},
 	}
 }
 
@@ -283,7 +285,7 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, abr *v1alph
 	if err := r.client.Status().Update(ctx, abr); err != nil {
 		return reconcile.Result{}, err
 	}
-	if err := r.client.Create(ctx, &pr); err != nil {
+	if err := r.prCreator.CreateWrapperForPipelineRun(ctx, r.client, &pr); err != nil {
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil

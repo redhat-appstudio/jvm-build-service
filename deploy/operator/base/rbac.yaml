@@ -12,6 +12,8 @@ rules:
       - artifactbuilds/status
       - dependencybuilds
       - dependencybuilds/status
+      - tektonwrappers
+      - tektonwrappers/status
     verbs:
       - create
       - delete
@@ -152,6 +154,8 @@ rules:
       - artifactbuilds/status
       - dependencybuilds
       - dependencybuilds/status
+      - tektonwrappers
+      - tektonwrappers/status
     verbs:
       - get
       - list

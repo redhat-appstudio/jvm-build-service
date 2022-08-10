@@ -2,8 +2,14 @@ package artifactbuild
 
 import (
 	"context"
+	"testing"
+
 	. "github.com/onsi/gomega"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,11 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
-
-	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 const gav = "com.acme:foo:1.0"
@@ -30,7 +31,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
+	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}, prCreator: &tektonwrapper.ImmediateCreate{}}
 	return client, reconciler
 }
 

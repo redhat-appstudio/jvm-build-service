@@ -10,6 +10,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,6 +114,10 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	}
 
 	if err := configmap.SetupNewReconcilerWithManager(mgr, systemConfig.Data); err != nil {
+		return nil, err
+	}
+
+	if err := tektonwrapper.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

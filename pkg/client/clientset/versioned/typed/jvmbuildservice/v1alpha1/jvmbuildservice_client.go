@@ -29,6 +29,7 @@ type JvmbuildserviceV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ArtifactBuildsGetter
 	DependencyBuildsGetter
+	TektonWrappersGetter
 }
 
 // JvmbuildserviceV1alpha1Client is used to interact with features provided by the jvmbuildservice.io group.
@@ -42,6 +43,10 @@ func (c *JvmbuildserviceV1alpha1Client) ArtifactBuilds(namespace string) Artifac
 
 func (c *JvmbuildserviceV1alpha1Client) DependencyBuilds(namespace string) DependencyBuildInterface {
 	return newDependencyBuilds(c, namespace)
+}
+
+func (c *JvmbuildserviceV1alpha1Client) TektonWrappers(namespace string) TektonWrapperInterface {
+	return newTektonWrappers(c, namespace)
 }
 
 // NewForConfig creates a new JvmbuildserviceV1alpha1Client for the given config.

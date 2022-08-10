@@ -36,6 +36,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ArtifactBuildList{},
 		&DependencyBuild{},
 		&DependencyBuildList{},
+		&TektonWrapper{},
+		&TektonWrapperList{},
 	)
 	// &Condition{},
 	// &ConditionList{},

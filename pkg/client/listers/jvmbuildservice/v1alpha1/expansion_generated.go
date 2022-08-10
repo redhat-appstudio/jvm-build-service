@@ -32,3 +32,11 @@ type DependencyBuildListerExpansion interface{}
 // DependencyBuildNamespaceListerExpansion allows custom methods to be added to
 // DependencyBuildNamespaceLister.
 type DependencyBuildNamespaceListerExpansion interface{}
+
+// TektonWrapperListerExpansion allows custom methods to be added to
+// TektonWrapperLister.
+type TektonWrapperListerExpansion interface{}
+
+// TektonWrapperNamespaceListerExpansion allows custom methods to be added to
+// TektonWrapperNamespaceLister.
+type TektonWrapperNamespaceListerExpansion interface{}

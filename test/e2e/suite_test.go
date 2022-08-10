@@ -39,6 +39,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	//+kubebuilder:scaffold:imports
 )
@@ -123,6 +124,8 @@ var _ = BeforeSuite(func() {
 	err = artifactbuild.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+	err = tektonwrapper.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	go func() {
 		defer GinkgoRecover()

@@ -4,12 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
-	v1 "k8s.io/api/core/v1"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,11 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
-
-	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileDependencyBuild) {
@@ -35,7 +35,9 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	reconciler := &ReconcileDependencyBuild{
 		client:        client,
 		scheme:        scheme,
-		eventRecorder: &record.FakeRecorder{}}
+		eventRecorder: &record.FakeRecorder{},
+		prCreator:     &tektonwrapper.ImmediateCreate{},
+	}
 
 	sysConfig := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace},
