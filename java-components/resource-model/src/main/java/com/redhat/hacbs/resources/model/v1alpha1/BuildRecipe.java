@@ -16,6 +16,9 @@ public class BuildRecipe {
 
     boolean gradle;
 
+    String javaVersion;
+    String toolVersion;
+
     public String getImage() {
         return image;
     }
@@ -76,6 +79,24 @@ public class BuildRecipe {
 
     public BuildRecipe setGradle(boolean gradle) {
         this.gradle = gradle;
+        return this;
+    }
+
+    public String getJavaVersion() {
+        return javaVersion;
+    }
+
+    public BuildRecipe setJavaVersion(String javaVersion) {
+        this.javaVersion = javaVersion;
+        return this;
+    }
+
+    public String getToolVersion() {
+        return toolVersion;
+    }
+
+    public BuildRecipe setToolVersion(String toolVersion) {
+        this.toolVersion = toolVersion;
         return this;
     }
 }

@@ -363,6 +363,59 @@ func TestExampleRun(t *testing.T) {
 			if exitForLoop {
 				break
 			}
+
+		}
+	})
+	ta.t.Run("Correct JDK identified for JDK11 build", func(t *testing.T) {
+		//test that we don't attempt to use JDK8 on a JDK11+ project
+		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+
+			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				return false, err
+			}
+			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
+			for _, db := range dbList.Items {
+				if !strings.Contains(db.Spec.ScmInfo.SCMURL, "shaded-jdk11") ||
+					db.Status.State == "" ||
+					db.Status.State == v1alpha1.DependencyBuildStateNew ||
+					db.Status.State == v1alpha1.DependencyBuildStateAnalyzeBuild {
+					continue
+				}
+				jdk8 := false
+				jdk11 := false
+				jdk17 := false
+				for _, i := range db.Status.PotentialBuildRecipes {
+					jdk8 = jdk8 || strings.Contains(i.Image, "jdk8")
+					jdk11 = jdk11 || strings.Contains(i.Image, "jdk11")
+					jdk17 = jdk17 || strings.Contains(i.Image, "jdk17")
+				}
+				for _, i := range db.Status.FailedBuildRecipes {
+					jdk8 = jdk8 || strings.Contains(i.Image, "jdk8")
+					jdk11 = jdk11 || strings.Contains(i.Image, "jdk11")
+					jdk17 = jdk17 || strings.Contains(i.Image, "jdk17")
+				}
+				jdk8 = jdk8 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk8")
+				jdk11 = jdk11 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk11")
+				jdk17 = jdk17 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk17")
+
+				if jdk8 {
+					return false, fmt.Errorf("build should not have been attempted with jdk8")
+				}
+				if !jdk11 {
+					return false, fmt.Errorf("build should have been attempted with jdk11")
+				}
+				if !jdk17 {
+					return false, fmt.Errorf("build should have been attempted with jdk17")
+				}
+				return true, nil
+
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for contaminated build to appear")
 		}
 	})
 }

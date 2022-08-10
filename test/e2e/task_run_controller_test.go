@@ -70,6 +70,7 @@ func setupSystemConfig() {
 			Data: map[string]string{
 				configmap.SystemBuilderImages:                            "jdk11",
 				fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/sdouglas/hacbs-jdk11-builder:latest",
+				fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk11"):   "jdk:11",
 			},
 		}
 

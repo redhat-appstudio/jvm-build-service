@@ -6,18 +6,22 @@ import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.AVAILABLE_GRADLE_VERSIONS;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.GOOGLE_JAVA_FORMAT_PLUGIN;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
+import javax.enterprise.inject.Instance;
+import javax.inject.Inject;
+
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.eclipse.jgit.api.Git;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
+import com.redhat.hacbs.container.analyser.build.maven.MavenDiscoveryTask;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
@@ -58,6 +62,9 @@ public class LookupBuildInfoCommand implements Runnable {
      */
     @CommandLine.Option(names = "--build-info")
     Path buildInfo;
+
+    @Inject
+    Instance<MavenDiscoveryTask> mavenDiscoveryTasks;
 
     @Override
     public void run() {
@@ -101,12 +108,29 @@ public class LookupBuildInfoCommand implements Runnable {
                 path = path.resolve(context);
             }
             BuildInfo info = new BuildInfo();
-            if (Files.isRegularFile(path.resolve("pom.xml"))) {
-                info.tools.put(JDK, new VersionRange("8", "17", "11"));
-                info.tools.put(MAVEN, new VersionRange("3.8", "3.8", "3.8"));
-                info.invocations.add(
-                        new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
-                                "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip")));
+            Path pomFile = path.resolve("pom.xml");
+            if (Files.isRegularFile(pomFile)) {
+                try (BufferedReader pomReader = Files.newBufferedReader(pomFile)) {
+                    MavenXpp3Reader reader = new MavenXpp3Reader();
+                    Model model = reader.read(pomReader);
+                    List<DiscoveryResult> results = new ArrayList<>();
+                    results.add(new DiscoveryResult(
+                            Map.of(JDK, new VersionRange("8", "17", "11"), MAVEN, new VersionRange("3.8", "3.8", "3.8")),
+                            Integer.MIN_VALUE));
+                    for (var i : mavenDiscoveryTasks) {
+                        var result = i.discover(model, path);
+                        if (result != null) {
+                            results.add(result);
+                        }
+                    }
+                    Collections.sort(results);
+                    for (var i : results) {
+                        info.tools.putAll(i.toolVersions);
+                    }
+                    info.invocations.add(
+                            new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
+                                    "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip")));
+                }
             } else if (GradleUtils.isGradleBuild(path)) {
                 Log.infof("Detected Gradle build in %s", path);
                 var optionalGradleVersion = GradleUtils
