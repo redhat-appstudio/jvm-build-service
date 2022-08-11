@@ -6,6 +6,12 @@ package configmap
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,14 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
-	"regexp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sort"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -129,6 +130,7 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			var replicas int32
 			replicas = 1
 			cache.Spec.Replicas = &replicas
+			cache.Spec.Strategy = v1.DeploymentStrategy{Type: v1.RecreateDeploymentStrategyType}
 			cache.Spec.Selector = &v12.LabelSelector{MatchLabels: map[string]string{"app": CacheDeploymentName}}
 			cache.Spec.Template.ObjectMeta.Labels = map[string]string{"app": CacheDeploymentName}
 			cache.Spec.Template.Spec.Containers = []corev1.Container{{
