@@ -20,9 +20,9 @@ ENV \
 
 RUN groupadd -r hacbs -g 1001 && useradd -u 1001 -r -g 1001 -m -d ${APP_HOME} -s /sbin/nologin -c "HACBS user" hacbs && cp /etc/passwd /home/hacbs/passwd && chown 1001:1001 /home/hacbs/passwd && mkdir /project && chown 1001:1001 /project
 
-RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y apr-devel wget tar gzip gcc glibc-devel zlib-devel shadow-utils unzip gcc-c++ glibc-langpack-en buildah findutils podman bzip2-devel gcc-c++ libcurl-devel openssl-devel bc which lsof unzip git libstdc++-static glibc-static make autoconf automake libtool tar glibc-devel libgcc.i686 glibc-devel.i686\
+RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y apr-devel wget tar gzip gcc glibc-devel zlib-devel shadow-utils unzip gcc-c++ glibc-langpack-en buildah findutils podman bzip2-devel gcc-c++ libcurl-devel openssl-devel bc which lsof unzip git libstdc++-static glibc-static make autoconf automake libtool tar glibc-devel libgcc.i686 glibc-devel.i686 cmake diffutils file \
     && microdnf clean all \
-    && rpm -q apr-devel wget tar gzip gcc glibc-devel zlib-devel shadow-utils unzip gcc-c++ glibc-langpack-en buildah findutils podman bzip2-devel gcc-c++ libcurl-devel openssl-devel bc which lsof unzip git libstdc++-static glibc-static make autoconf automake libtool tar glibc-devel libgcc.i686 glibc-devel.i686
+    && rpm -q apr-devel wget tar gzip gcc glibc-devel zlib-devel shadow-utils unzip gcc-c++ glibc-langpack-en buildah findutils podman bzip2-devel gcc-c++ libcurl-devel openssl-devel bc which lsof unzip git libstdc++-static glibc-static make autoconf automake libtool tar glibc-devel libgcc.i686 glibc-devel.i686 cmake diffutils file
 
 RUN rm /usr/bin/mvn && mkdir -p /usr/share/maven/ref && curl -fsSL -o /tmp/apache-maven.tar.gz ${BASE_URL}/apache-maven-${MAVEN_VERSION}-bin.tar.gz   && echo "${MAVEN_SHA}  /tmp/apache-maven.tar.gz" | sha512sum -c -   && tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1   && rm -f /tmp/apache-maven.tar.gz   && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
 
