@@ -562,6 +562,12 @@ spec:
           TOOL_VERSION="$(params.TOOL_VERSION)"
           export GRADLE_HOME="/opt/gradle-${TOOL_VERSION}"
           echo "GRADLE_HOME=${GRADLE_HOME}"
+
+          if [ ! -d "${GRADLE_HOME}" ]; then
+              echo "Gradle home directory not found at ${GRADLE_HOME}" >&2
+              exit 1
+          fi
+
           export PATH="${GRADLE_HOME}/bin:${PATH}"
           case "${TOOL_VERSION}" in
               7.*)

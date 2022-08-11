@@ -35,7 +35,7 @@ spec:
     - name: TOOL_VERSION
       description: Gradle version.
       type: string
-      default: ""
+      default: "7.5"
     - name: GRADLE_MANIPULATOR_ARGS
       description: Gradle manipulator arguments.
       type: string
@@ -225,12 +225,29 @@ spec:
       script: |
         #!/usr/bin/env bash
 
-        TOOL_VERSION="$(params.TOOL_VERSION)"
-        [ -n "${TOOL_VERSION}" ] || TOOL_VERSION=$(sed -n "s/distributionUrl=.*\/gradle-\(.*\)-.*\.zip$/\1/p" gradle/wrapper/gradle-wrapper.properties 2>/dev/null)
+        DEFAULT_TOOL_VERSION="$(params.TOOL_VERSION)"
+
+        echo "Default Gradle version is ${DEFAULT_TOOL_VERSION}"
+
+        TOOL_VERSION=$(sed -n "s/distributionUrl=.*\/gradle-\(.*\)-.*\.zip$/\1/p" gradle/wrapper/gradle-wrapper.properties 2>/dev/null)
 
         if [ -n "${TOOL_VERSION}" ]; then
-            export GRADLE_HOME="/opt/gradle-${TOOL_VERSION}"
-            echo "GRADLE_HOME=${GRADLE_HOME}"
+            echo "Found Gradle version ${TOOL_VERSION} in gradle/wrapper/gradle-wrapper.properties"
+
+            if [ -d "/opt/gradle-${TOOL_VERSION}" ]; then
+                echo "Found Gradle home directory at /opt/gradle-${TOOL_VERSION}"
+            else
+                echo "Resetting Gradle version from ${TOOL_VERSION} to ${DEFAULT_TOOL_VERSION} since directory /opt/gradle-${TOOL_VERSION} does not exist"
+                TOOL_VERSION="${DEFAULT_TOOL_VERSION}"
+            fi
+        else
+            echo "Could not set Gradle version from gradle/wrapper/gradle-wrapper.properties" >&2
+        fi
+
+        export GRADLE_HOME="/opt/gradle-${TOOL_VERSION}"
+        echo "GRADLE_HOME=${GRADLE_HOME}"
+
+        if [ -d "${GRADLE_HOME}" ]; then
             case "${TOOL_VERSION}" in
                 7.[3456789]*)
                     SUPPORTED_JAVA_VERSION="17"
@@ -255,7 +272,7 @@ spec:
                     ;;
             esac
         else
-            echo "Could not set Gradle version from gradle/wrapper/gradle-wrapper.properties" >&2
+            echo "Gradle home directory not found at ${GRADLE_HOME}" >&2
             exit 1
         fi
 
