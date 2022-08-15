@@ -26,6 +26,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
 import com.google.cloud.tools.jib.api.Containerizer;
+import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.Jib;
 import com.google.cloud.tools.jib.api.JibContainerBuilder;
@@ -45,6 +46,7 @@ public class ContainerRegistryDeployer implements Deployer {
     private final String host;
     private final int port;
     private final String owner;
+    private final Optional<String> token;
     private final String repository;
     private final boolean insecure;
     private final Set<String> doNotDeploy;
@@ -53,6 +55,7 @@ public class ContainerRegistryDeployer implements Deployer {
             @ConfigProperty(name = "containerregistrydeployer.host", defaultValue = "quay.io") String host,
             @ConfigProperty(name = "containerregistrydeployer.port", defaultValue = "443") int port,
             @ConfigProperty(name = "containerregistrydeployer.owner", defaultValue = "hacbs") String owner,
+            @ConfigProperty(name = "containerregistrydeployer.token") Optional<String> token,
             @ConfigProperty(name = "containerregistrydeployer.repository", defaultValue = "artifact-deployments") String repository,
             @ConfigProperty(name = "containerregistrydeployer.insecure", defaultValue = "false") boolean insecure,
             @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy) {
@@ -60,9 +63,11 @@ public class ContainerRegistryDeployer implements Deployer {
         this.host = host;
         this.port = port;
         this.owner = owner;
+        this.token = token;
         this.repository = repository;
         this.insecure = insecure;
         this.doNotDeploy = doNotDeploy.orElse(Set.of());
+
     }
 
     @Override
@@ -81,8 +86,12 @@ public class ContainerRegistryDeployer implements Deployer {
             CacheDirectoryCreationException, ExecutionException {
 
         String imageName = createImageName(imageData);
+        RegistryImage registryImage = RegistryImage.named(imageName);
+        if (token.isPresent()) {
+            registryImage = registryImage.addCredential(Credential.OAUTH2_TOKEN_USER_NAME, token.get());
+        }
         Containerizer containerizer = Containerizer
-                .to(RegistryImage.named(imageName))
+                .to(registryImage)
                 .setAllowInsecureRegistries(insecure);
 
         Set<Gav> gavs = imageData.getGavs();
