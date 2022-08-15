@@ -41,6 +41,7 @@ const (
 	PipelineResultMessage         = "message"
 	DeleteTaskRunPodsEnv          = "JVM_DELETE_TASKRUN_PODS"
 	TaskName                      = "task"
+	Rebuild                       = "jvmbuildservice.io/rebuild"
 )
 
 var (
@@ -108,6 +109,11 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		return r.handlePipelineRunReceived(ctx, &pr)
 
 	case abrerr == nil:
+		//first check for a rebuild annotation
+		if abr.Annotations[Rebuild] == "true" {
+			return r.handleRebuild(ctx, &abr)
+		}
+
 		switch abr.Status.State {
 		case v1alpha1.ArtifactBuildStateNew, "":
 			return r.handleStateNew(ctx, &abr)
@@ -452,6 +458,41 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, abr *v
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	}
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+	//first look for a dependency build
+	//and delete it if it exists
+	if len(abr.Status.SCMInfo.SCMURL) > 0 {
+		//now lets look for an existing dependencybuild object
+		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		db := &v1alpha1.DependencyBuild{}
+		dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}
+		err := r.client.Get(ctx, dbKey, db)
+		notFound := errors.IsNotFound(err)
+		if err == nil {
+			//delete the dependency build object
+			err := r.client.Delete(ctx, db)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		} else if err != nil && !notFound {
+			return reconcile.Result{}, err
+		}
+	}
+	//set our state back to new
+	abr.Status.State = v1alpha1.ArtifactBuildStateNew
+	abr.Status.SCMInfo = v1alpha1.SCMInfo{}
+	abr.Status.Message = ""
+	err := r.client.Status().Update(ctx, abr)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	//remove this annotation
+	delete(abr.Annotations, Rebuild)
+	err = r.client.Update(ctx, abr)
+	return reconcile.Result{}, err
+
 }
 
 func CreateABRName(gav string) string {

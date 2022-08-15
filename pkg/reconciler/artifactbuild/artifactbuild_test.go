@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -277,6 +278,38 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateComplete))
+	})
+	t.Run("Failed build that is reset", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		abr := getABR(client, g)
+		abr.Status.SCMInfo.SCMURL = "https://github.com/foo.git"
+		abr.Status.SCMInfo.Tag = "1.0"
+		g.Expect(client.Update(ctx, abr))
+		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		db := v1alpha1.DependencyBuild{
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      depId,
+				Namespace: metav1.NamespaceDefault,
+				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
+			},
+			Spec:   v1alpha1.DependencyBuildSpec{},
+			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
+		}
+		g.Expect(controllerutil.SetOwnerReference(abr, &db, reconciler.scheme))
+		g.Expect(client.Create(ctx, &db))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr = getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateFailed))
+		abr.Annotations = map[string]string{Rebuild: "true"}
+		g.Expect(client.Update(ctx, abr))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr = getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
+		err := client.Get(ctx, types.NamespacedName{Name: db.Name, Namespace: db.Namespace}, &db)
+		g.Expect(errors.IsNotFound(err)).Should(BeTrue())
+
 	})
 	t.Run("Contaminated build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
