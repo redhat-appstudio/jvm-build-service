@@ -3,7 +3,6 @@ package tektonwrapper
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"time"
 
@@ -38,11 +37,10 @@ func (b *BatchedCreate) CreateWrapperForPipelineRun(ctx context.Context, client 
 		return err
 	}
 	tw.Spec.PipelineRun = buffer.Bytes()
-	log.Info(fmt.Sprintf("GGM1 buf len %d pr %#v", len(tw.Spec.PipelineRun), run))
+	//TODO make configurable; tuned for service registry build
 	tw.Spec.RequeueAfter = 1 * time.Minute
-	tw.Spec.AbandonAfter = 15 * time.Minute
-	tw.Status.State = v1alpha1.TektonWrapperStateUnattempted
-
+	tw.Spec.AbandonAfter = 3 * time.Hour
+	// cannot set status on create
 	err = client.Create(ctx, tw)
 
 	return err

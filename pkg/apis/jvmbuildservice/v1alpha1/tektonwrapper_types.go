@@ -41,13 +41,15 @@ type TektonWrapperSpec struct {
 }
 
 const (
-	// TektonWrapperStateUnattempted The creation of the embedded PipelineRun has not been attempted
-	TektonWrapperStateUnattempted = "TektonWrapperStateUnattempted"
-	// TektonWrapperStateInProgress The creation of the embedded PipelineRun either failed or had to be delayed
+	// TektonWrapperStateUnprocessed The creation of the embedded PipelineRun has not been attempted, previously failed
+	TektonWrapperStateUnprocessed = "TektonWrapperStateUnprocessed"
+	// TektonWrapperStateThrottled
+	TektonWrapperStateThrottled = "TektonWrapperStateThrottled"
+	// TektonWrapperStateInProgress The creation of the embedded PipelineRun has occurred but the PipelineRun has not reached a terminal state
 	TektonWrapperStateInProgress = "TektonWrapperStateInProgress"
 	// TektonWrapperStateAbandoned The creation of the embedded PipelineRun was abandoned because of cluster resource constraints
 	TektonWrapperStateAbandoned = "TektonWrapperStateAbandoned"
-	// TektonWrapperStateComplete The creation of the embedded PipelineRun was completed successfully
+	// TektonWrapperStateComplete The embedded PipelineRun has reached a terminal statue
 	TektonWrapperStateComplete = "TektonWrapperStateComplete"
 )
 

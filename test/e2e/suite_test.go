@@ -36,6 +36,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
@@ -81,10 +82,16 @@ var _ = BeforeSuite(func() {
 	if fileerr != nil {
 		tektonCRDs = filepath.Join(string(os.PathSeparator), "home", "runner", "work", "jvm-build-service", "jvm-build-service", "vendor", "github.com", "tektoncd", "pipeline", "config")
 	}
+	openshiftQuotaCRDs := filepath.Join(build.Default.GOPATH, "src", "github.com", "redhat-appstudio", "jvm-build-service", "vendor", "github.com", "openshift", "api", "quota", "v1")
+	_, fileerr = os.Open(openshiftQuotaCRDs)
+	if fileerr != nil {
+		openshiftQuotaCRDs = filepath.Join(string(os.PathSeparator), "home", "runner", "work", "jvm-build-service", "jvm-build-service", "vendor", "github.com", "openshift", "api", "quota", "v1")
+	}
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
 			ourCRDs,
 			tektonCRDs,
+			openshiftQuotaCRDs,
 		},
 		ErrorIfCRDPathMissing: true,
 	}
@@ -98,6 +105,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = taskrunapi.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = quotav1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme

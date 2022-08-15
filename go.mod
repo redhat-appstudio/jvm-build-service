@@ -8,7 +8,7 @@ require (
 	github.com/kcp-dev/logicalcluster v1.1.1-0.20220705215104-8e46328c24a5
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
-	github.com/openshift/api v0.0.0-20210521075222-e273a339932a
+	github.com/openshift/api v0.0.0-20211203173402-b8f149d82307
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 	github.com/tektoncd/pipeline v0.33.0
 	k8s.io/api v0.24.3
