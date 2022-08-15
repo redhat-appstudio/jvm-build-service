@@ -43,12 +43,15 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
 
     private final String registry;
     private final String owner;
+    private final Optional<String> token;
     private final boolean enableHttpAndInsecureFailover;
     private final Path cacheRoot;
 
-    public OCIRegistryRepositoryClient(String registry, String owner, boolean enableHttpAndInsecureFailover) {
+    public OCIRegistryRepositoryClient(String registry, String owner, Optional<String> token,
+            boolean enableHttpAndInsecureFailover) {
         this.registry = registry;
         this.owner = owner;
+        this.token = token;
         this.enableHttpAndInsecureFailover = enableHttpAndInsecureFailover;
 
         Config config = ConfigProvider.getConfig();
@@ -68,8 +71,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         String groupPath = group.replace(DOT, File.separator);
         String hashedGav = ShaUtil.sha256sum(group, artifact, version);
 
-        RegistryClient registryClient = getRegistryClient(registry, owner, group, hashedGav,
-                enableHttpAndInsecureFailover);
+        RegistryClient registryClient = getRegistryClient(group, hashedGav);
 
         try {
 
@@ -109,30 +111,39 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         return Optional.empty();
     }
 
-    private RegistryClient getRegistryClient(String registry, String owner, String group, String hashedGav,
-            boolean enableHttpAndInsecureFailover) {
-        ImageReference imageReference = ImageReference.of(registry, owner + File.separator + group, hashedGav);
-        CredentialRetrieverFactory credentialRetrieverFactory = CredentialRetrieverFactory.forImage(imageReference,
-                (s) -> Log.debug(s.getMessage()));
+    private RegistryClient getRegistryClient(String group, String hashedGav) {
 
         RegistryClient.Factory factory = RegistryClient.factory(new EventHandlers.Builder().build(), registry,
                 owner + File.separator + group,
                 new FailoverHttpClient(enableHttpAndInsecureFailover, false, s -> Log.info(s.getMessage())));
 
-        try {
-            Optional<Credential> credential = credentialRetrieverFactory.dockerConfig().retrieve();
-            if (credential.isPresent()) {
-                factory.setCredential(credential.get());
-            } else {
-                Log.debugf("No credential found for %s, proceeding without any", registry);
-            }
-        } catch (CredentialRetrievalException cre) {
-            throw new RuntimeException(cre);
+        Optional<Credential> credential = getCredential(group, hashedGav);
+
+        if (credential.isPresent()) {
+            factory.setCredential(credential.get());
+        } else {
+            Log.debugf("No credential found for %s, proceeding without any", registry);
         }
 
         RegistryClient registryClient = factory.newRegistryClient();
 
         return registryClient;
+    }
+
+    private Optional<Credential> getCredential(String group, String hashedGav) {
+        // If there is token configured for this, use that, else fallback to .docker/config.json
+        if (token.isPresent()) {
+            return Optional.of(Credential.from(Credential.OAUTH2_TOKEN_USER_NAME, token.get()));
+        } else {
+            ImageReference imageReference = ImageReference.of(registry, owner + File.separator + group, hashedGav);
+            CredentialRetrieverFactory credentialRetrieverFactory = CredentialRetrieverFactory.forImage(imageReference,
+                    (s) -> Log.debug(s.getMessage()));
+            try {
+                return credentialRetrieverFactory.dockerConfig().retrieve();
+            } catch (CredentialRetrievalException cre) {
+                throw new RuntimeException(cre);
+            }
+        }
     }
 
     private Optional<Path> getLocalCachePath(RegistryClient registryClient, ManifestTemplate manifest, String digestHash)
