@@ -43,6 +43,10 @@ spec:
               value: https://repo.gradle.org/artifactory/libs-releases
             - name: STORE_GRADLE_TYPE
               value: maven2
+            - name: STORE_ECLIPSELINK_URL
+              value: https://download.eclipse.org/rt/eclipselink/maven.repo
+            - name: STORE_ECLIPSELINK_TYPE
+              value: maven2
           ports:
             - containerPort: 8080
               name: http
