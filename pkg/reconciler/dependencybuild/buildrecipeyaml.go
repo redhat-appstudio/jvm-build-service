@@ -248,44 +248,6 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "300m"
-    sidecars:
-      - image: hacbs-jvm-sidecar
-        securityContext:
-          runAsUser: 0
-        env:
-          - name: QUARKUS_LOG_FILE_ENABLE
-            value: "true"
-          - name: QUARKUS_LOG_FILE_PATH
-            value: "$(workspaces.maven-settings.path)/sidecar.log"
-          - name: IGNORED_ARTIFACTS
-            value: $(params.IGNORED_ARTIFACTS)
-          - name: QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE
-            value: "2"
-          - name: QUARKUS_THREAD_POOL_MAX_THREADS
-            value: "6"
-        name: proxy
-        volumeMounts:
-          - name: $(workspaces.maven-settings.volume)
-            mountPath: $(workspaces.maven-settings.path)
-        livenessProbe:
-          httpGet:
-            path: /q/health/live
-            port: 2000
-          initialDelaySeconds: 1
-          periodSeconds: 3
-        readinessProbe:
-          httpGet:
-            path: /q/health/ready
-            port: 2000
-          initialDelaySeconds: 1
-          periodSeconds: 3
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "10m"
-          limits:
-            memory: "8Gi"
-            cpu: "2"
 `
 
 	// since taskspec does not implment runtime.Object we have to mimic the TaskRun created in dependencybuilds
@@ -610,43 +572,5 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "300m"
-    sidecars:
-      - image: hacbs-jvm-sidecar
-        securityContext:
-          runAsUser: 0
-        env:
-          - name: QUARKUS_LOG_FILE_ENABLE
-            value: "true"
-          - name: QUARKUS_LOG_FILE_PATH
-            value: "$(workspaces.maven-settings.path)/sidecar.log"
-          - name: IGNORED_ARTIFACTS
-            value: $(params.IGNORED_ARTIFACTS)
-          - name: QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE
-            value: "2"
-          - name: QUARKUS_THREAD_POOL_MAX_THREADS
-            value: "6"
-        name: proxy
-        volumeMounts:
-          - name: $(workspaces.maven-settings.volume)
-            mountPath: $(workspaces.maven-settings.path)
-        livenessProbe:
-          httpGet:
-            path: /q/health/live
-            port: 2000
-          initialDelaySeconds: 1
-          periodSeconds: 3
-        readinessProbe:
-          httpGet:
-            path: /q/health/ready
-            port: 2000
-          initialDelaySeconds: 1
-          periodSeconds: 3
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "10m"
-          limits:
-            memory: "8Gi"
-            cpu: "2"
 `
 )

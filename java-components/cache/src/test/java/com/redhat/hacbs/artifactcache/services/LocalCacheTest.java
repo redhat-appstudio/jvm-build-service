@@ -30,7 +30,7 @@ public class LocalCacheTest {
     public final RepositoryClient MOCK_CLIENT = new RepositoryClient() {
         @Override
         public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
-                String target) {
+                String target, Long buildStartTime) {
             return Optional.ofNullable(current);
         }
 
@@ -47,7 +47,7 @@ public class LocalCacheTest {
                 current = new RepositoryClient.RepositoryResult(
                         new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4, Optional.of("wrong sha"),
                         Map.of());
-                localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom");
+                localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", null);
                 Files.walkFileTree(localCache.path, new SimpleFileVisitor<>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -62,7 +62,7 @@ public class LocalCacheTest {
                 current = new RepositoryClient.RepositoryResult(
                         new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4,
                         Optional.of(HashUtil.sha1("test")), Map.of());
-                localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom");
+                localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", null);
                 AtomicReference<Path> cachedFile = new AtomicReference<>();
                 Files.walkFileTree(localCache.path, new SimpleFileVisitor<>() {
                     @Override

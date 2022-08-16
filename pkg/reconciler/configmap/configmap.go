@@ -6,6 +6,7 @@ package configmap
 import (
 	"context"
 	"fmt"
+	v13 "k8s.io/api/rbac/v1"
 	"regexp"
 	"sort"
 	"strconv"
@@ -34,6 +35,7 @@ const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout              = 300 * time.Second
 	UserConfigMapName           = "jvm-build-config"
+	UserSecretName              = "jvm-build-secrets"
 	UserConfigAdditionalRecipes = "additional-build-recipes"
 	CacheDeploymentName         = "jvm-build-workspace-artifact-cache"
 	LocalstackDeploymentName    = "jvm-build-workspace-localstack"
@@ -162,6 +164,7 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			return err
 		}
 	}
+	cache.Spec.Template.Spec.ServiceAccountName = CacheDeploymentName
 
 	//and setup the service
 	err = r.client.Get(ctx, types.NamespacedName{Name: CacheDeploymentName, Namespace: configMap.Namespace}, &corev1.Service{})
@@ -190,6 +193,39 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			}
 		}
 	}
+	//setup the service account
+
+	sa := corev1.ServiceAccount{}
+	saName := types.NamespacedName{Namespace: request.Namespace, Name: CacheDeploymentName}
+	err = r.client.Get(ctx, saName, &sa)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			sa := corev1.ServiceAccount{}
+			sa.Name = CacheDeploymentName
+			sa.Namespace = request.Namespace
+			err := r.client.Create(ctx, &sa)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	cb := v13.RoleBinding{}
+	cbName := types.NamespacedName{Namespace: request.Namespace, Name: CacheDeploymentName}
+	err = r.client.Get(ctx, cbName, &cb)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			cb := v13.RoleBinding{}
+			cb.Name = CacheDeploymentName
+			cb.Namespace = request.Namespace
+			cb.RoleRef = v13.RoleRef{Kind: "ClusterRole", Name: "hacbs-jvm-cache", APIGroup: "rbac.authorization.k8s.io"}
+			cb.Subjects = []v13.Subject{{Kind: "ServiceAccount", Name: CacheDeploymentName, Namespace: request.Namespace}}
+			err := r.client.Create(ctx, &cb)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	type Repo struct {
 		name     string
 		position int
@@ -202,8 +238,10 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 	}
 	//central is at the hard coded 200 position
 	repos := []Repo{{name: "central", position: 200}}
+	trueBool := true
 	if rebuildsEnabled {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
+
 		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:  "QUARKUS_S3_ENDPOINT_OVERRIDE",
 			Value: "http://" + LocalstackDeploymentName + "." + request.Namespace + ".svc.cluster.local:4572",
@@ -223,6 +261,41 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:  "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY",
 			Value: "secretkey",
+		})
+		if configMap.Data["registry.owner"] != "" {
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:      "REGISTRY_OWNER",
+				ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserConfigMapName}, Key: "registry.owner"}},
+			})
+		}
+		if configMap.Data["registry.host"] != "" {
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:      "REGISTRY_HOST",
+				ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserConfigMapName}, Key: "registry.host"}},
+			})
+		}
+		if configMap.Data["registry.port"] != "" {
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:      "REGISTRY_PORT",
+				ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserConfigMapName}, Key: "registry.port"}},
+			})
+		}
+		if configMap.Data["registry.repository"] != "" {
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:      "REGISTRY_REPOSITORY",
+				ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserConfigMapName}, Key: "registry.repository"}},
+			})
+		}
+		if configMap.Data["registry.insecure"] != "" {
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:      "REGISTRY_INSECURE",
+				ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserConfigMapName}, Key: "registry.insecure"}},
+			})
+		}
+		//TODO: ensure this exists
+		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:      "REGISTRY_TOKEN",
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserSecretName}, Key: "registry.token", Optional: &trueBool}},
 		})
 	}
 	regex, err := regexp.Compile(`maven-repository-(\d+)-(\w+)`)

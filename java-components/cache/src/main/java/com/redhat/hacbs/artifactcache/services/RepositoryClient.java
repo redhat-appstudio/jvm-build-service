@@ -17,7 +17,7 @@ public interface RepositoryClient {
      * @return empty if the file is not present, otherwise the file data
      */
     Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
-            String target);
+            String target, Long buildStartTime);
 
     /**
      * Retrieves a metadata file from the repository

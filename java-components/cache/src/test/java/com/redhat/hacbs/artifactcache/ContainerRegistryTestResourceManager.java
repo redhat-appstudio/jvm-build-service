@@ -78,9 +78,10 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
     private void createTestData(String host, int port) throws IOException, InvalidImageReferenceException, InterruptedException,
             RegistryException, CacheDirectoryCreationException, ExecutionException {
 
-        Containerizer containerizer = Containerizer.to(RegistryImage.named(host + ":" + port + "/" + OWNER + "/"
-                + ContainerRegistryStorageTest.GROUP + ":"
-                + ContainerRegistryStorageTest.VERSION))
+        Containerizer containerizer = Containerizer
+                .to(RegistryImage.named(host + ":" + port + "/" + OWNER + "/artifact-deployments"
+                        + ":"
+                        + ContainerRegistryStorageTest.VERSION))
                 .setAllowInsecureRegistries(true);
 
         for (String artifact : ContainerRegistryStorageTest.ARTIFACT_FILE_MAP.keySet()) {
@@ -169,7 +170,7 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         // Print all the tags
         StringBuilder resultTags = new StringBuilder();
         URL urlTags = new URL(
-                "http://" + host + ":" + port + "/v2/" + OWNER + "/" + ContainerRegistryStorageTest.GROUP + "/tags/list");
+                "http://" + host + ":" + port + "/v2/" + OWNER + "/artifact-deployments" + "/tags/list");
         HttpURLConnection conn = (HttpURLConnection) urlTags.openConnection();
         conn.setRequestMethod("GET");
         try (BufferedReader reader = new BufferedReader(

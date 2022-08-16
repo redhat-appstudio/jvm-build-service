@@ -5,9 +5,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +28,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
 import com.google.cloud.tools.jib.api.Containerizer;
-import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.Jib;
 import com.google.cloud.tools.jib.api.JibContainerBuilder;
@@ -46,30 +47,40 @@ public class ContainerRegistryDeployer implements Deployer {
     private final String host;
     private final int port;
     private final String owner;
-    private final Optional<String> token;
     private final String repository;
     private final boolean insecure;
     private final Optional<String> prependTag;
     private final Set<String> doNotDeploy;
 
+    private final String username;
+    private final String password;
+
     public ContainerRegistryDeployer(
-            @ConfigProperty(name = "containerregistrydeployer.host", defaultValue = "quay.io") String host,
-            @ConfigProperty(name = "containerregistrydeployer.port", defaultValue = "443") int port,
-            @ConfigProperty(name = "containerregistrydeployer.owner", defaultValue = "hacbs") String owner,
-            @ConfigProperty(name = "containerregistrydeployer.token") Optional<String> token,
-            @ConfigProperty(name = "containerregistrydeployer.repository", defaultValue = "artifact-deployments") String repository,
-            @ConfigProperty(name = "containerregistrydeployer.insecure", defaultValue = "false") boolean insecure,
-            @ConfigProperty(name = "containerregistrydeployer.prepend-tag", defaultValue = "") Optional<String> prependTag,
+            @ConfigProperty(name = "registry.host", defaultValue = "quay.io") String host,
+            @ConfigProperty(name = "registry.port", defaultValue = "443") int port,
+            @ConfigProperty(name = "registry.owner", defaultValue = "hacbs") String owner,
+            @ConfigProperty(name = "registry.token") Optional<String> token,
+            @ConfigProperty(name = "registry.repository", defaultValue = "artifact-deployments") String repository,
+            @ConfigProperty(name = "registry.insecure", defaultValue = "false") boolean insecure,
+            @ConfigProperty(name = "registry.prepend-tag", defaultValue = "") Optional<String> prependTag,
             @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy) {
 
         this.host = host;
         this.port = port;
         this.owner = owner;
-        this.token = token;
         this.repository = repository;
         this.insecure = insecure;
         this.prependTag = prependTag;
         this.doNotDeploy = doNotDeploy.orElse(Set.of());
+        if (token.isPresent()) {
+            var decoded = new String(Base64.getDecoder().decode(token.get()), StandardCharsets.UTF_8);
+            int pos = decoded.indexOf(":");
+            username = decoded.substring(0, pos);
+            password = decoded.substring(pos + 1);
+        } else {
+            username = null;
+            password = null;
+        }
 
     }
 
@@ -90,8 +101,8 @@ public class ContainerRegistryDeployer implements Deployer {
 
         String imageName = createImageName(imageData);
         RegistryImage registryImage = RegistryImage.named(imageName);
-        if (token.isPresent()) {
-            registryImage = registryImage.addCredential(Credential.OAUTH2_TOKEN_USER_NAME, token.get());
+        if (username != null) {
+            registryImage = registryImage.addCredential(username, password);
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
@@ -122,8 +133,8 @@ public class ContainerRegistryDeployer implements Deployer {
 
     private String createImageName(ImageData imageData) {
         String imageName = UUID.randomUUID().toString();
-        return host + DOUBLE_POINT + port + SLASH + owner + SLASH + repository + SLASH + imageName
-                + DOUBLE_POINT + imageData.getVersions();
+        return host + DOUBLE_POINT + port + SLASH + owner + SLASH + repository
+                + DOUBLE_POINT + imageName;
     }
 
     private List<Path> getLayers(Path artifacts)
@@ -191,6 +202,9 @@ public class ContainerRegistryDeployer implements Deployer {
     }
 
     private Optional<Gav> getGav(String entryName) {
+        if (entryName.startsWith("./")) {
+            entryName = entryName.substring(2);
+        }
         if (entryName.endsWith(DOT_JAR) || entryName.endsWith(DOT_POM)) {
 
             List<String> pathParts = List.of(entryName.split(SLASH));
