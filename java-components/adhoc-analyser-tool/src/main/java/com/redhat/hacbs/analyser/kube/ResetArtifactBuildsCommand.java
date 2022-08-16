@@ -1,6 +1,7 @@
 package com.redhat.hacbs.analyser.kube;
 
 import java.util.List;
+import java.util.Map;
 
 import javax.inject.Inject;
 
@@ -31,15 +32,15 @@ public class ResetArtifactBuildsCommand implements Runnable {
             MixedOperation<ArtifactBuild, KubernetesResourceList<ArtifactBuild>, Resource<ArtifactBuild>> client = kubernetesClient
                     .resources(ArtifactBuild.class);
             if (!build.isEmpty()) {
-                ArtifactBuild item = client.withName(build).get();
-                item.getStatus().setState("");
-                client.updateStatus(item);
+                ArtifactBuild request = client.withName(build).get();
+                request.getMetadata().setAnnotations(Map.of("jvmbuildservice.io/rebuild", "true"));
+                client.createOrReplace(request);
             } else {
                 List<ArtifactBuild> items = client.list().getItems();
                 for (var request : items) {
                     if (!missing || request.getStatus().getState().equals("ArtifactBuildMissing")) {
-                        request.getStatus().setState("");
-                        client.updateStatus(request);
+                        request.getMetadata().setAnnotations(Map.of("jvmbuildservice.io/rebuild", "true"));
+                        client.createOrReplace(request);
                     }
                 }
             }
