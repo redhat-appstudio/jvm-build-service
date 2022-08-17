@@ -6,6 +6,5 @@ const (
 	randomLength           = 5
 	maxGeneratedNameLength = maxNameLength - randomLength
 	testProjectGitUrl      = "https://github.com/stuartwdouglas/hacbs-test-project"
-	// TODO update this
-	testProjectDevfileUrl = "https://raw.githubusercontent.com/psturc/shaded-java-app/main/devfile.yaml"
+	testProjectDevfileUrl  = "https://raw.githubusercontent.com/stuartwdouglas/hacbs-test-project/main/devfile.yaml"
 )
