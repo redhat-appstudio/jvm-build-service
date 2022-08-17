@@ -28,6 +28,16 @@ RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y apr
     && microdnf clean all \
     && rpm -q apr-devel autoconf automake bc buildah bzip2-devel cmake diffutils file findutils gcc gcc-c++ git glibc-devel glibc-devel.i686 glibc-langpack-en glibc-static gzip libcurl-devel libgcc.i686 libstdc++-static libtool lsof make openssl-devel podman shadow-utils tar unzip wget which zlib-devel
 
+RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y emacs-filesystem vim-filesystem
+# XXX: RHEL 8 does not have ninja-build, so grabbing from CentOS 8
+RUN rpm --import https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official \
+    && rpm -q gpg-pubkey-8483c65d-5ccc5b19
+RUN wget --no-verbose https://vault.centos.org/centos/8/PowerTools/x86_64/os/Packages/ninja-build-1.8.2-1.el8.x86_64.rpm \
+    && rpm -K ninja-build-1.8.2-1.el8.x86_64.rpm \
+    && rpm -ivh ninja-build-1.8.2-1.el8.x86_64.rpm \
+    && rm ninja-build-1.8.2-1.el8.x86_64.rpm \
+    && rpm -q ninja-build
+
 RUN rm /usr/bin/mvn && mkdir -p /usr/share/maven/ref && curl -fsSL -o /tmp/apache-maven.tar.gz ${BASE_URL}/apache-maven-3.8.6-bin.tar.gz   && echo "f790857f3b1f90ae8d16281f902c689e4f136ebe584aba45e4b1fa66c80cba826d3e0e52fdd04ed44b4c66f6d3fe3584a057c26dfcac544a60b301e6d0f91c26  /tmp/apache-maven.tar.gz" | sha512sum -c -   && tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1   && rm -f /tmp/apache-maven.tar.gz   && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
 
 RUN set -o errexit -o nounset \
