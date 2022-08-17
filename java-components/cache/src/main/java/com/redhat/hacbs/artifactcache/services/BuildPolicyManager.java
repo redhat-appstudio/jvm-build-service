@@ -29,6 +29,7 @@ class BuildPolicyManager {
     private static final String BUCKET = ".bucket";
     private static final String REGISTRY = ".registry";
     private static final String TOKEN = ".token";
+    private static final String PREPEND_TAG = ".prepend-tag";
     private static final String OWNER = ".owner";
     private static final String INSECURE = ".insecure";
     private static final String PREFIXES = ".prefixes";
@@ -103,11 +104,14 @@ class BuildPolicyManager {
             String registry = config.getOptionalValue(STORE + repo + REGISTRY, String.class).orElse("quay.io");
             Optional<String> owner = config.getOptionalValue(STORE + repo + OWNER, String.class);
             Optional<String> token = config.getOptionalValue(STORE + repo + TOKEN, String.class);
+            Optional<String> prependTag = config.getOptionalValue(STORE + repo + PREPEND_TAG, String.class);
+
             if (owner.isPresent()) {
                 boolean enableHttpAndInsecureFailover = config.getOptionalValue(STORE + repo + INSECURE, Boolean.class)
                         .orElse(Boolean.FALSE);
                 String u = owner.get();
-                RepositoryClient client = new OCIRegistryRepositoryClient(registry, u, token, enableHttpAndInsecureFailover);
+                RepositoryClient client = new OCIRegistryRepositoryClient(registry, u, token, prependTag,
+                        enableHttpAndInsecureFailover);
                 Log.infof("OCI registry %s added with owner %s", registry, u);
                 return new Repository(repo, "oci://" + registry + "/" + u, RepositoryType.OCI_REGISTRY, client);
             } else {
