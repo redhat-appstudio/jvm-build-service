@@ -49,6 +49,7 @@ public class ContainerRegistryDeployer implements Deployer {
     private final Optional<String> token;
     private final String repository;
     private final boolean insecure;
+    private final Optional<String> prependTag;
     private final Set<String> doNotDeploy;
 
     public ContainerRegistryDeployer(
@@ -58,6 +59,7 @@ public class ContainerRegistryDeployer implements Deployer {
             @ConfigProperty(name = "containerregistrydeployer.token") Optional<String> token,
             @ConfigProperty(name = "containerregistrydeployer.repository", defaultValue = "artifact-deployments") String repository,
             @ConfigProperty(name = "containerregistrydeployer.insecure", defaultValue = "false") boolean insecure,
+            @ConfigProperty(name = "containerregistrydeployer.prepend-tag", defaultValue = "") Optional<String> prependTag,
             @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy) {
 
         this.host = host;
@@ -66,6 +68,7 @@ public class ContainerRegistryDeployer implements Deployer {
         this.token = token;
         this.repository = repository;
         this.insecure = insecure;
+        this.prependTag = prependTag;
         this.doNotDeploy = doNotDeploy.orElse(Set.of());
 
     }
@@ -199,6 +202,12 @@ public class ContainerRegistryDeployer implements Deployer {
             String groupId = String.join(DOT, groupIdList);
 
             String tag = DeployerUtil.sha256sum(groupId, artifactId, version);
+            if (prependTag.isPresent()) {
+                tag = prependTag.get() + UNDERSCORE + tag;
+            }
+            if (tag.length() > 128) {
+                tag = tag.substring(0, 128);
+            }
 
             return Optional.of(new Gav(groupId, artifactId, version, tag));
         }
@@ -207,6 +216,7 @@ public class ContainerRegistryDeployer implements Deployer {
 
     private static final String DOUBLE_POINT = ":";
     private static final String SLASH = "/";
+    private static final String UNDERSCORE = "_";
     private static final String DOT_JAR = ".jar";
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";
