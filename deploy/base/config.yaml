@@ -10,3 +10,4 @@ data:
   maven-repository-302-confluent: "https://packages.confluent.io/maven"
   maven-repository-303-gradle: "https://repo.gradle.org/artifactory/libs-releases"
   maven-repository-304-eclipselink: "https://download.eclipse.org/rt/eclipselink/maven.repo"
+  maven-repository-305-redhat: "https://maven.repository.redhat.com/ga"
