@@ -1,13 +1,16 @@
 package tektonwrapper
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	"context"
+	"fmt"
+	"time"
 
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,6 +21,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+var (
+	ctrlLog = ctrl.Log.WithName("tektonwrappercontroller")
+)
+
 func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 	opts := client.Options{Scheme: runtime.NewScheme()}
 	err := quotav1.AddToScheme(opts.Scheme)
@@ -25,7 +32,12 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 	nonCachingClient, err := client.New(mgr.GetConfig(), opts)
+	if err != nil {
+		return err
+	}
 	r := newReconciler(mgr, nonCachingClient)
+	pruner := &pruner{client: mgr.GetClient()}
+	mgr.Add(pruner)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TektonWrapper{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
@@ -64,4 +76,33 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 			}
 		})).
 		Complete(r)
+}
+
+type pruner struct {
+	client client.Client
+}
+
+func (p *pruner) Start(ctx context.Context) error {
+	ticker := time.NewTicker(3 * time.Minute)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			twList := v1alpha1.TektonWrapperList{}
+			err := p.client.List(ctx, &twList)
+			if err != nil {
+				ctrlLog.Info(fmt.Sprintf("pruner list error %s", err.Error()))
+				continue
+			}
+			for _, tw := range twList.Items {
+				if tw.Status.State == v1alpha1.TektonWrapperStateComplete {
+					err = p.client.Delete(ctx, &tw)
+					if err != nil {
+						ctrlLog.Info(fmt.Sprintf("pruner delete err %s", err.Error()))
+					}
+				}
+			}
+		}
+	}
 }

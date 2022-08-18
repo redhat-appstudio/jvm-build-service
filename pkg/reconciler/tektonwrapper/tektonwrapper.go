@@ -3,6 +3,7 @@ package tektonwrapper
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
+	"knative.dev/pkg/apis"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -27,7 +29,8 @@ const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout = 300 * time.Second
 
-	TektonWrapperId = "jvmbuildservice.io/tektonwrapperid"
+	TektonWrapperId      = "jvmbuildservice.io/tektonwrapperid"
+	DeleteTaskRunPodsEnv = "JVM_DELETE_TASKRUN_PODS"
 )
 
 var (
@@ -50,6 +53,22 @@ func newReconciler(mgr ctrl.Manager, nonCachingClient client.Client) reconcile.R
 	}
 }
 
+/*
+NOTE: the use of client.IgnoreNotFound stems from our pruning based off of events, and how deletes are
+propagated through the controller runtime cache, and we pattern our solution based off of what other upstream
+projects have done (for example, https://github.com/kubernetes/test-infra/issues/19426#issuecomment-702368856)
+
+Without this, we have timing windows with concurrent events where our controller logs will be littered with
+ultimately benign messages like
+
+1.661200364795973e+09	ERROR	controller.tektonwrapper	Reconciler error	{"reconciler group": "jvmbuildservice.io", "reconciler kind": "TektonWrapper", "name": "24bd7fad398a2c69b7554d237be7f129-build-0", "namespace": "ggmtest", "error": "TektonWrapper.jvmbuildservice.io \"24bd7fad398a2c69b7554d237be7f129-build-0\" not found"}
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).processNextWorkItem
+	/opt/app-root/src/vendor/sigs.k8s.io/controller-runtime/pkg/internal/controller/controller.go:266
+sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).Start.func2.2
+	/opt/app-root/src/vendor/sigs.k8s.io/controller-runtime/pkg/internal/controller/controller.go:227
+
+*/
+
 func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
@@ -71,7 +90,7 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 	}
 
 	if prerr != nil && twerr != nil {
-		msg := "Reconcile key %s received not found errors for both pipelineruns and tektonwrapper (probably deleted)\"" + request.NamespacedName.String()
+		msg := fmt.Sprintf("Reconcile key %s received not found errors for both pipelineruns and tektonwrapper (probably deleted)\"", request.NamespacedName.String())
 		log.Info(msg)
 		return ctrl.Result{}, nil
 	}
@@ -89,22 +108,30 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 				Namespace: pr.Namespace,
 				Name:      twId,
 			}
+			// best effort one time prune / not worried about retry / purge successful but leave failed for debug
+			if os.Getenv(DeleteTaskRunPodsEnv) == "1" &&
+				pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue() {
+				delerr := r.client.Delete(ctx, pr)
+				if delerr != nil {
+					// just log error, continue to update
+					log.Info(fmt.Sprintf("error while attempting to prune pipelinerun %s:%s: %s", pr.Namespace, pr.Name, delerr.Error()))
+				}
+			}
 			if err := r.client.Get(ctx, twKey, &tw); err != nil {
-				return reconcile.Result{}, err
+				return reconcile.Result{}, client.IgnoreNotFound(err)
 			}
 			tw.Status.State = v1alpha1.TektonWrapperStateComplete
-			return reconcile.Result{}, r.client.Status().Update(ctx, &tw)
+			return reconcile.Result{}, client.IgnoreNotFound(r.client.Status().Update(ctx, &tw))
 		}
 		return reconcile.Result{}, nil
 	}
 
 	switch tw.Status.State {
 	case v1alpha1.TektonWrapperStateComplete:
-		//TODO could initiate pruning of successful PR as well
-		return reconcile.Result{}, r.unthrottledNextOnQueue(ctx, tw.Namespace)
+		return reconcile.Result{}, client.IgnoreNotFound(r.unthrottleNextOnQueuePlusCleanup(ctx, tw.Namespace))
 	case v1alpha1.TektonWrapperStateAbandoned:
 		//TODO could bump future metrics and initiate alerts to help notify admins and users that their projects are
-		// under powered
+		// under powered, and then prune here as well; for now, leaving abandoned wrappers around as the indicator
 		return reconcile.Result{}, nil
 	case v1alpha1.TektonWrapperStateInProgress:
 		//TODO even though we have the PipelineRun watch, we could list on our label and make sure the PipelineRun is
@@ -176,7 +203,7 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 			}
 			r.eventRecorder.Eventf(&tw, corev1.EventTypeWarning, "ThrottledPipelineRun", "%s:%s", pr.Namespace, name)
 			tw.Status.State = v1alpha1.TektonWrapperStateThrottled
-			return reconcile.Result{RequeueAfter: (tw.Spec.RequeueAfter)}, r.client.Status().Update(ctx, &tw)
+			return reconcile.Result{RequeueAfter: (tw.Spec.RequeueAfter)}, client.IgnoreNotFound(r.client.Status().Update(ctx, &tw))
 		case ((hardPodCount - 4) <= activeCount) && tw.Status.State == v1alpha1.TektonWrapperStateThrottled: //TODO subtracting 2 for the artifact cache and localstack pod, then another 2 for safety buffer, but feels like config option long term
 			// previously throttled items still has to wait cause non-terminal items beyond pod limit
 			if !r.timedOut(&tw) {
@@ -184,7 +211,7 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 			}
 			tw.Status.State = v1alpha1.TektonWrapperStateAbandoned
 			r.eventRecorder.Eventf(&tw, corev1.EventTypeWarning, "AbandonedPipelineRun", "after throttling now past throttling timeout and have to abandon %s:%s", pr.Namespace, pr.Name)
-			return reconcile.Result{}, r.client.Status().Update(ctx, &tw)
+			return reconcile.Result{}, client.IgnoreNotFound(r.client.Status().Update(ctx, &tw))
 		}
 	}
 
@@ -201,12 +228,12 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 		if r.timedOut(&tw) {
 			r.eventRecorder.Eventf(&tw, corev1.EventTypeWarning, "AbandonedPipelineRun", "after failed create had to abandon %s:%s", pr.Namespace, pr.Name)
 			tw.Status.State = v1alpha1.TektonWrapperStateAbandoned
-			return reconcile.Result{}, r.client.Status().Update(ctx, &tw)
+			return reconcile.Result{}, client.IgnoreNotFound(r.client.Status().Update(ctx, &tw))
 		}
 		return reconcile.Result{}, prerr
 	}
 	tw.Status.State = v1alpha1.TektonWrapperStateInProgress
-	return reconcile.Result{}, r.client.Status().Update(ctx, &tw)
+	return reconcile.Result{}, client.IgnoreNotFound(r.client.Status().Update(ctx, &tw))
 }
 
 func (r *ReconcileTektonWrapper) timedOut(tw *v1alpha1.TektonWrapper) bool {
@@ -250,7 +277,7 @@ func (r *ReconcileTektonWrapper) tektonWrapperStats(ctx context.Context, namespa
 	return unprocessedCount, activeCount, throttledCount, doneCount, totalCount, nil
 }
 
-func (r *ReconcileTektonWrapper) unthrottledNextOnQueue(ctx context.Context, namespace string) error {
+func (r *ReconcileTektonWrapper) unthrottleNextOnQueuePlusCleanup(ctx context.Context, namespace string) error {
 	var err error
 	twList := v1alpha1.TektonWrapperList{}
 	opts := &client.ListOptions{Namespace: namespace}
@@ -258,8 +285,16 @@ func (r *ReconcileTektonWrapper) unthrottledNextOnQueue(ctx context.Context, nam
 		return err
 	}
 	for _, t := range twList.Items {
+		if t.Status.State == v1alpha1.TektonWrapperStateComplete {
+			// no error checks; best effort prune is sufficient;
+			// do this is separate loop to maximize amount cleaned up
+			r.client.Delete(ctx, &t)
+		}
+	}
+	for _, t := range twList.Items {
 		if t.Status.State == v1alpha1.TektonWrapperStateThrottled {
 			t.Status.State = v1alpha1.TektonWrapperStateUnprocessed
+			// release only 1 throttled item when 1 item is completed
 			return r.client.Status().Update(ctx, &t)
 		}
 	}
