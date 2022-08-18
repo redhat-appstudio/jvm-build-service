@@ -11,6 +11,16 @@ rules:
       - artifactbuilds
     verbs:
       - create
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+    resourceNames:
+      - jvm-build-config
+      - jvm-build-secrets
+    verbs:
+      - get
 ---
 apiVersion: v1
 kind: ServiceAccount
