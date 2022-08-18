@@ -47,6 +47,10 @@ spec:
               value: https://download.eclipse.org/rt/eclipselink/maven.repo
             - name: STORE_ECLIPSELINK_TYPE
               value: maven2
+            - name: STORE_REDHAT_URL
+              value: https://maven.repository.redhat.com/ga
+            - name: STORE_REDHAT_TYPE
+              value: maven2
           ports:
             - containerPort: 8080
               name: http
