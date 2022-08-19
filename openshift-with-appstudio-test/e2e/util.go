@@ -6,12 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
 	projectv1 "github.com/openshift/api/project/v1"
-	applicationservice "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -279,59 +277,4 @@ func streamFileYamlToTektonObj(path string, obj runtime.Object, ta *testArgs) ru
 		debugAndFailTest(ta, err.Error())
 	}
 	return decodeBytesToTektonObjbytes(bytes, obj, ta)
-}
-
-func createAppstudioApp(ta *testArgs) {
-	name := generateName("test-application-")
-	app := &applicationservice.Application{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ta.ns,
-		},
-		Spec: applicationservice.ApplicationSpec{
-			DisplayName: name,
-		},
-	}
-
-	if err := crClient.Create(context.Background(), app); err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
-
-	ta.appstudioApp = app
-
-}
-
-func createAppstudioComponent(ta *testArgs) {
-	name := generateName("test-component-")
-
-	quayOrg := os.Getenv("QUAY_E2E_ORGANIZATION")
-	if quayOrg == "" {
-		quayOrg = "redhat-appstudio-qe"
-	}
-	outputImageUrl := fmt.Sprintf("quay.io/%s/test-images", quayOrg)
-	component := &applicationservice.Component{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ta.ns,
-		},
-		Spec: applicationservice.ComponentSpec{
-			ComponentName: name,
-			Application:   ta.appstudioApp.Name,
-			Source: applicationservice.ComponentSource{
-				ComponentSourceUnion: applicationservice.ComponentSourceUnion{
-					GitSource: &applicationservice.GitSource{
-						URL:        testProjectGitUrl,
-						DevfileURL: testProjectDevfileUrl,
-					},
-				},
-			},
-			ContainerImage: outputImageUrl,
-		},
-	}
-
-	if err := crClient.Create(context.Background(), component); err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
-
-	ta.appstudioComponent = component
 }
