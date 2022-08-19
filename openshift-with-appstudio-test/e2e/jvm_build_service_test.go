@@ -6,7 +6,6 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
 )
-
 
 func TestExampleRun(t *testing.T) {
 	ta := setup(t, nil)
@@ -70,7 +68,6 @@ func TestExampleRun(t *testing.T) {
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-
 	pipelineYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "pipeline.yaml")
 	ta.pipeline = &v1beta1.Pipeline{}
 	obj = streamFileYamlToTektonObj(pipelineYamlPath, ta.pipeline, ta)
@@ -103,26 +100,25 @@ func TestExampleRun(t *testing.T) {
 				return false, nil
 			}
 			if !pr.IsDone() {
-				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
 					ta.Logf(fmt.Sprintf("problem marshalling in progress pipelinerun to bytes: %s", err.Error()))
 					return false, nil
 				}
-				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", string(prBytes)))
+				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", pr.Name))
+				return false, nil
 			}
-			if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
+			if pr.IsDone() && !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
 				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
 					ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
 					return false, nil
 				}
-				ta.Logf(fmt.Sprintf("not yet successful pipeline run: %s", string(prBytes)))
-
+				return false, fmt.Errorf("pipeline run did not succeed: %s", string(prBytes))
 			}
 			return true, nil
 		})
 		if err != nil {
-			debugAndFailTest(ta, "timed out when waiting for the pipeline run to complete")
+			debugAndFailTest(ta, fmt.Sprintf("failure occured when waiting for the pipeline run to complete: %v", err))
 		}
 	})
 
@@ -153,6 +149,10 @@ func TestExampleRun(t *testing.T) {
 				}
 			}
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				return false, nil
+			}
 			dbComplete := len(dbList.Items) > 0
 			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
 			for _, db := range dbList.Items {
@@ -162,7 +162,7 @@ func TestExampleRun(t *testing.T) {
 					break
 				} else if db.Status.State == v1alpha1.DependencyBuildStateFailed {
 					ta.Logf(fmt.Sprintf("depedencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
-					return false, errors.New(fmt.Sprintf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL))
+					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
 				}
 			}
 			if abComplete && dbComplete {
