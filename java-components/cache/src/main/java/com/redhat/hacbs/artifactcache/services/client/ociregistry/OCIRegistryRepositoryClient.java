@@ -44,14 +44,16 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     private final String registry;
     private final String owner;
     private final Optional<String> token;
+    private final Optional<String> prependHashedGav;
     private final boolean enableHttpAndInsecureFailover;
     private final Path cacheRoot;
 
-    public OCIRegistryRepositoryClient(String registry, String owner, Optional<String> token,
+    public OCIRegistryRepositoryClient(String registry, String owner, Optional<String> token, Optional<String> prependHashedGav,
             boolean enableHttpAndInsecureFailover) {
         this.registry = registry;
         this.owner = owner;
         this.token = token;
+        this.prependHashedGav = prependHashedGav;
         this.enableHttpAndInsecureFailover = enableHttpAndInsecureFailover;
 
         Config config = ConfigProvider.getConfig();
@@ -70,6 +72,12 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         long time = System.currentTimeMillis();
         String groupPath = group.replace(DOT, File.separator);
         String hashedGav = ShaUtil.sha256sum(group, artifact, version);
+        if (prependHashedGav.isPresent()) {
+            hashedGav = prependHashedGav.get() + UNDERSCORE + hashedGav;
+        }
+        if (hashedGav.length() > 128) {
+            hashedGav = hashedGav.substring(0, 128);
+        }
 
         RegistryClient registryClient = getRegistryClient(group, hashedGav);
 
@@ -235,6 +243,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         }
     }
 
+    private static final String UNDERSCORE = "_";
     private static final String HACBS = "hacbs";
     private static final String ARTIFACTS = "artifacts";
     private static final String DOT = ".";
