@@ -81,6 +81,11 @@ if [ "$PR_RUN" != "notpr" ]; then
   export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_REPO=${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jdk17-builder"}
   export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG=${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-jdk17-builder-image"}
 
+  export JVM_BUILD_SERVICE_TEST_REPO_URL JVM_BUILD_SERVICE_TEST_REPO_REVISION
+
+  JVM_BUILD_SERVICE_TEST_REPO_URL=$(yq ".spec.params[] | select(.name == \"url\").value" hack/examples/run-e2e-shaded-app.yaml)
+  JVM_BUILD_SERVICE_TEST_REPO_REVISION=$(yq ".spec.params[] | select(.name == \"revision\").value" hack/examples/run-e2e-shaded-app.yaml)
+
   if [[ -n "${JOB_SPEC}" && "${REPO_NAME}" == "jvm-build-service" ]]; then
       # Extract PR author and commit SHA to also override default kustomization in infra-deployments repo
       # https://github.com/redhat-appstudio/infra-deployments/blob/d3b56adc1bd2a7cf500793a7863660ea5117c531/hack/preview.sh#L88
