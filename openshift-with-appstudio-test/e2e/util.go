@@ -295,7 +295,10 @@ func dumpPodsGlob(ta *testArgs, namespace, glob string) {
 		}
 		ta.Logf(fmt.Sprintf("dumpPods looking at pod %s in phase %s", pod.Name, pod.Status.Phase))
 
-		for _, container := range pod.Spec.Containers {
+		containers := []corev1.Container{}
+		containers = append(containers, pod.Spec.InitContainers...)
+		containers = append(containers, pod.Spec.Containers...)
+		for _, container := range containers {
 			req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
 			readCloser, err := req.Stream(context.TODO())
 			if err != nil {
@@ -317,7 +320,6 @@ func dumpPodsGlob(ta *testArgs, namespace, glob string) {
 
 func dbDumpForState(ta *testArgs, state string) {
 	dbList, dberr := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
-	podClient := kubeClient.CoreV1().Pods(ta.ns)
 	if dberr != nil {
 		ta.Logf(fmt.Sprintf("DB list error %s", dberr.Error()))
 	} else {
@@ -325,37 +327,86 @@ func dbDumpForState(ta *testArgs, state string) {
 			if db.Status.State != state {
 				continue
 			}
-			ta.Logf(fmt.Sprintf("*****Examining failed db %s", db.Name))
-			prList := pipelineRuns(ta, db.Name, artifactbuild.DependencyBuildIdLabel)
-			for _, pr := range prList {
-				podList := prPods(ta, pr.Name)
-				for _, pod := range podList {
-					for _, container := range pod.Spec.Containers {
-						req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
-						readCloser, err2 := req.Stream(context.TODO())
-						if err2 != nil {
-							ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
-							continue
-						}
-						b, err2 := ioutil.ReadAll(readCloser)
-						if err2 != nil {
-							ta.Logf(fmt.Sprintf("error reading pod stream %s", err2.Error()))
-							continue
-						}
-						podLog := string(b)
-						ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
-
-					}
-				}
-			}
-			ta.Logf(fmt.Sprintf("******Done with db %s", db.Name))
+			dumpDBPods(ta, db.Name)
 		}
 	}
 }
 
+func dumpDBPods(ta *testArgs, dbName string) {
+	podClient := kubeClient.CoreV1().Pods(ta.ns)
+	ta.Logf(fmt.Sprintf("*****Examining failed db %s", dbName))
+	podList := []corev1.Pod{}
+	prList := pipelineRuns(ta, dbName, artifactbuild.DependencyBuildIdLabel)
+	if len(prList) == 0 {
+		ta.Logf(fmt.Sprintf("the label query fo db %s produced no hits, let's try based on name", dbName))
+		podList = podsByName(ta, dbName)
+	}
+	for _, pr := range prList {
+		podList = prPods(ta, pr.Name)
+	}
+	for _, pod := range podList {
+		containers := []corev1.Container{}
+		containers = append(containers, pod.Spec.InitContainers...)
+		containers = append(containers, pod.Spec.Containers...)
+		for _, container := range containers {
+			req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
+			readCloser, err2 := req.Stream(context.TODO())
+			if err2 != nil {
+				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
+				continue
+			}
+			b, err2 := ioutil.ReadAll(readCloser)
+			if err2 != nil {
+				ta.Logf(fmt.Sprintf("error reading pod stream %s", err2.Error()))
+				continue
+			}
+			podLog := string(b)
+			ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
+
+		}
+	}
+	ta.Logf(fmt.Sprintf("******Done with db %s", dbName))
+
+}
+
+func dumpABPods(ta *testArgs, abName, gav string) {
+	podClient := kubeClient.CoreV1().Pods(ta.ns)
+	ta.Logf(fmt.Sprintf("*****Examining failed ab %s", abName))
+	podList := []corev1.Pod{}
+	prList := pipelineRuns(ta, artifactbuild.ABRLabelForGAV(gav), artifactbuild.ArtifactBuildIdLabel)
+	if len(prList) == 0 {
+		ta.Logf(fmt.Sprintf("the label query fo ab %s produced no hits, let's try based on name", abName))
+		podList = prPods(ta, abName)
+	}
+	for _, pr := range prList {
+		podList = prPods(ta, pr.Name)
+	}
+	for _, pod := range podList {
+		containers := []corev1.Container{}
+		containers = append(containers, pod.Spec.InitContainers...)
+		containers = append(containers, pod.Spec.Containers...)
+		for _, container := range containers {
+			req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
+			readCloser, err2 := req.Stream(context.TODO())
+			if err2 != nil {
+				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
+				continue
+			}
+			b, err2 := ioutil.ReadAll(readCloser)
+			if err2 != nil {
+				ta.Logf(fmt.Sprintf("error reading pod stream %s", err2.Error()))
+				continue
+			}
+			podLog := string(b)
+			ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
+
+		}
+	}
+	ta.Logf(fmt.Sprintf("******Done with ab %s", abName))
+}
+
 func abDumpForState(ta *testArgs, state string) {
 	abList, aberr := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
-	podClient := kubeClient.CoreV1().Pods(ta.ns)
 	if aberr != nil {
 		ta.Logf(fmt.Sprintf("AB list error %s", aberr.Error()))
 	} else {
@@ -363,35 +414,12 @@ func abDumpForState(ta *testArgs, state string) {
 			if ab.Status.State != state {
 				continue
 			}
-			ta.Logf(fmt.Sprintf("*****Examining failed ab %s", ab.Name))
-			prList := pipelineRuns(ta, artifactbuild.ABRLabelForGAV(ab.Spec.GAV), artifactbuild.ArtifactBuildIdLabel)
-			for _, pr := range prList {
-				podList := prPods(ta, pr.Name)
-				for _, pod := range podList {
-					for _, container := range pod.Spec.Containers {
-						req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
-						readCloser, err2 := req.Stream(context.TODO())
-						if err2 != nil {
-							ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
-							continue
-						}
-						b, err2 := ioutil.ReadAll(readCloser)
-						if err2 != nil {
-							ta.Logf(fmt.Sprintf("error reading pod stream %s", err2.Error()))
-							continue
-						}
-						podLog := string(b)
-						ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
-
-					}
-				}
-			}
-			ta.Logf(fmt.Sprintf("******Done with ab %s", ab.Name))
+			dumpABPods(ta, ab.Name, ab.Spec.GAV)
 		}
 	}
 }
 
-func activePipelineRuns(ta *testArgs) bool {
+func activePipelineRuns(ta *testArgs, dbg bool) bool {
 	prClient := tektonClient.TektonV1beta1().PipelineRuns(ta.ns)
 	listOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=", artifactbuild.PipelineRunLabel),
@@ -403,8 +431,14 @@ func activePipelineRuns(ta *testArgs) bool {
 	}
 	for _, pr := range prList.Items {
 		if !pr.IsDone() {
+			if dbg {
+				ta.Logf(fmt.Sprintf("pr %s not done out of %d items", pr.Name, len(prList.Items)))
+			}
 			return true
 		}
+	}
+	if dbg {
+		ta.Logf(fmt.Sprintf("all prs are done out of %d items", len(prList.Items)))
 	}
 	return false
 }
@@ -433,4 +467,22 @@ func prPods(ta *testArgs, name string) []corev1.Pod {
 		return []corev1.Pod{}
 	}
 	return podList.Items
+}
+
+func podsByName(ta *testArgs, name string) []corev1.Pod {
+	podClient := kubeClient.CoreV1().Pods(ta.ns)
+	podList, err := podClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		ta.Logf(fmt.Sprintf("error listing pods %s", err.Error()))
+		return []corev1.Pod{}
+	}
+	retArr := []corev1.Pod{}
+	for _, pod := range podList.Items {
+		if !strings.HasPrefix(pod.Name, name) {
+			continue
+		}
+		// for now we won't try to filter based on pod conditions or container statuses
+		retArr = append(retArr, pod)
+	}
+	return retArr
 }

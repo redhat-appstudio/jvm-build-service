@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -124,71 +126,204 @@ func TestServiceRegistry(t *testing.T) {
 		}
 	})
 
-	ta.t.Run("artifactbuilds and dependencybuilds generated", func(t *testing.T) {
-		err = wait.PollImmediate(4*time.Minute, 24*time.Minute, func() (done bool, err error) {
-			return bothABsAndDBsGenerated(ta)
-		})
-		if err != nil {
-			debugAndFailTest(ta, "timed out waiting for generation of artifactbuilds and dependencybuilds")
-		}
-	})
+	ta.t.Run("current target of artifactbuilds/dependencybuilds complete", func(t *testing.T) {
+		defer dumpBadEvents(ta)
+		defer dumpPods(ta, "jvm-build-service")
+		defer dumpPodsGlob(ta, ta.ns, "localstack")
+		defer dumpPodsGlob(ta, ta.ns, "artifact-cache")
+		// ab pods I do not think get pruned, let's see, along with this many defers
+		defer abDumpForState(ta, v1alpha1.ArtifactBuildStateFailed)
+		defer abDumpForState(ta, v1alpha1.ArtifactBuildStateMissing)
 
-	ta.t.Run("current target of artfactbuilds and dependencybuilds complete", func(t *testing.T) {
-		err = wait.PollImmediate(10*time.Minute, 2*time.Hour, func() (done bool, err error) {
-			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
-			if err != nil {
-				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
-				return false, nil
-			}
-			abComplete := false
-			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
-			for _, ab := range abList.Items {
-				if ab.Status.State == v1alpha1.ArtifactBuildStateComplete {
-					abComplete = true
+		ctx := context.TODO()
+		//abWatch, awerr := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Watch(ctx, metav1.ListOptions{})
+		//if awerr != nil {
+		//	debugAndFailTest(ta, fmt.Sprintf("error creating abWatch: %s", awerr.Error()))
+		//}
+		dbWatch, dwerr := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Watch(ctx, metav1.ListOptions{})
+		if dwerr != nil {
+			debugAndFailTest(ta, fmt.Sprintf("error creating dbWatch: %s", dwerr.Error()))
+		}
+
+		//var abCompleteCount uint32
+		//var abFailedCount uint32
+		//var abMissingCount uint32
+		//var createdAB int32
+		var dbCompleteCount uint32
+		var dbFailedCount uint32
+		var dbContaminatedCount uint32
+		var createdDB int32
+		state := sync.Map{}
+		var changed uint32
+		exitForLoop := false
+
+		for {
+			select {
+			case <-ctx.Done():
+				//abWatch.Stop()
+				dbWatch.Stop()
+				ta.Logf("context done")
+				exitForLoop = true
+				break
+			case <-time.After(2 * time.Hour):
+				//abWatch.Stop()
+				dbWatch.Stop()
+				ta.Logf("timed out waiting for dependencybuilds to reach steady state")
+				exitForLoop = true
+				break
+
+			//case event := <-abWatch.ResultChan():
+			//	if event.Object == nil {
+			//		continue
+			//	}
+			//	ab, ok := event.Object.(*v1alpha1.ArtifactBuild)
+			//	if !ok {
+			//		continue
+			//	}
+			//	switch {
+			//	case ab.Status.State == v1alpha1.ArtifactBuildStateComplete:
+			//		s, k := state.Load(ab.Name)
+			//		if !k || s != v1alpha1.ArtifactBuildStateComplete {
+			//			atomic.AddUint32(&abCompleteCount, 1)
+			//			atomic.StoreUint32(&changed, 1)
+			//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateComplete)
+			//		}
+			//	case ab.Status.State == v1alpha1.ArtifactBuildStateMissing:
+			//		s, k := state.Load(ab.Name)
+			//		if !k || s != v1alpha1.ArtifactBuildStateMissing {
+			//			atomic.AddUint32(&abMissingCount, 1)
+			//			atomic.StoreUint32(&changed, 1)
+			//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateMissing)
+			//		}
+			//	case ab.Status.State == v1alpha1.ArtifactBuildStateFailed:
+			//		s, k := state.Load(ab.Name)
+			//		if !k || s != v1alpha1.ArtifactBuildStateFailed {
+			//			atomic.AddUint32(&abFailedCount, 1)
+			//			atomic.StoreUint32(&changed, 1)
+			//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateFailed)
+			//			dumpABPods(ta, ab.Name, ab.Spec.GAV)
+			//		}
+			//	default:
+			//		s, k := state.Load(ab.Name)
+			//		if k {
+			//			switch {
+			//			case s == v1alpha1.ArtifactBuildStateMissing:
+			//				// decrement
+			//				atomic.AddUint32(&abMissingCount, ^uint32(0))
+			//				atomic.StoreUint32(&changed, 1)
+			//				// reset since must be rebuild
+			//				state.Store(ab.Name, ab.Status.State)
+			//			case s == v1alpha1.ArtifactBuildStateComplete:
+			//				//decrement
+			//				atomic.AddUint32(&abCompleteCount, ^uint32(0))
+			//				atomic.StoreUint32(&changed, 1)
+			//			case s == v1alpha1.ArtifactBuildStateFailed:
+			//				//decrement
+			//				atomic.AddUint32(&abFailedCount, ^uint32(0))
+			//				atomic.StoreUint32(&changed, 1)
+			//				// reset since must be rebuild
+			//				state.Store(ab.Name, ab.Status.State)
+			//			}
+			//		} else {
+			//			atomic.AddInt32(&createdAB, 1)
+			//			atomic.StoreUint32(&changed, 1)
+			//			state.Store(ab.Name, ab.Status.State)
+			//		}
+			//	}
+			//
+			//	dbg := false
+			//	if atomic.CompareAndSwapUint32(&changed, 1, 0) {
+			//		ta.Logf(fmt.Sprintf("artifactbuild created count: %d complete count: %d, failed count: %d, missing count: %d", createdAB, abCompleteCount, abFailedCount, abMissingCount))
+			//		dbg = true
+			//
+			//	}
+			//
+			//	if createdAB > 200 && !activePipelineRuns(ta, dbg) {
+			//		ta.Logf(fmt.Sprintf("artifactbuild FINAL created count: %d complete count: %d, failed count: %d, missing count: %d", createdAB, abCompleteCount, abFailedCount, abMissingCount))
+			//		exitForLoop = true
+			//		abWatch.Stop()
+			//		dbWatch.Stop()
+			//		break
+			//	}
+
+			case event := <-dbWatch.ResultChan():
+				if event.Object == nil {
+					continue
+				}
+				db, ok := event.Object.(*v1alpha1.DependencyBuild)
+				if !ok {
+					continue
+				}
+				switch {
+				case db.Status.State == v1alpha1.DependencyBuildStateComplete:
+					s, k := state.Load(db.Name)
+					if !k || s != v1alpha1.DependencyBuildStateComplete {
+						atomic.AddUint32(&dbCompleteCount, 1)
+						atomic.StoreUint32(&changed, 1)
+						state.Store(db.Name, v1alpha1.DependencyBuildStateComplete)
+					}
+				case db.Status.State == v1alpha1.DependencyBuildStateFailed:
+					s, k := state.Load(db.Name)
+					if !k || s != v1alpha1.DependencyBuildStateFailed {
+						atomic.AddUint32(&dbFailedCount, 1)
+						atomic.StoreUint32(&changed, 1)
+						state.Store(db.Name, v1alpha1.DependencyBuildStateFailed)
+						dumpDBPods(ta, db.Name)
+					}
+				case db.Status.State == v1alpha1.DependencyBuildStateContaminated:
+					s, k := state.Load(db.Name)
+					if !k || s != v1alpha1.DependencyBuildStateContaminated {
+						atomic.AddUint32(&dbContaminatedCount, 1)
+						atomic.StoreUint32(&changed, 1)
+						state.Store(db.Name, v1alpha1.DependencyBuildStateContaminated)
+						dumpDBPods(ta, db.Name)
+					}
+				default:
+					s, k := state.Load(db.Name)
+					if k {
+						switch {
+						case s == v1alpha1.DependencyBuildStateContaminated:
+							// decrement
+							atomic.AddUint32(&dbContaminatedCount, ^uint32(0))
+							atomic.StoreUint32(&changed, 1)
+							// reset since must be rebuild
+							state.Store(db.Name, db.Status.State)
+						case s == v1alpha1.DependencyBuildStateComplete:
+							//decrement
+							atomic.AddUint32(&dbCompleteCount, ^uint32(0))
+							atomic.StoreUint32(&changed, 1)
+						case s == v1alpha1.DependencyBuildStateFailed:
+							//decrement
+							atomic.AddUint32(&dbFailedCount, ^uint32(0))
+							atomic.StoreUint32(&changed, 1)
+							// reset since must be rebuild
+							state.Store(db.Name, db.Status.State)
+						}
+					} else {
+						atomic.AddInt32(&createdDB, 1)
+						atomic.StoreUint32(&changed, 1)
+						state.Store(db.Name, db.Status.State)
+					}
+				}
+
+				dbg := false
+				if atomic.CompareAndSwapUint32(&changed, 1, 0) {
+					ta.Logf(fmt.Sprintf("dependencybuild created count: %d complete count: %d, failed count: %d, contaminated count: %d", createdDB, dbCompleteCount, dbFailedCount, dbContaminatedCount))
+					dbg = true
+
+				}
+
+				if createdDB > 90 && !activePipelineRuns(ta, dbg) {
+					ta.Logf(fmt.Sprintf("dependencybuild FINAL created count: %d complete count: %d, failed count: %d, contaminated count: %d", createdDB, dbCompleteCount, dbFailedCount, dbContaminatedCount))
+					exitForLoop = true
+					dbWatch.Stop()
+					//abWatch.Stop()
 					break
 				}
 			}
-			dbCompleteCount := 0
-			dbFailedCount := 0
-			dbContaminatedCount := 0
-			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
-			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
-			for _, db := range dbList.Items {
-				switch {
-				case db.Status.State == v1alpha1.DependencyBuildStateComplete:
-					dbCompleteCount++
-				case db.Status.State == v1alpha1.DependencyBuildStateFailed:
-					dbFailedCount++
-				case db.Status.State == v1alpha1.DependencyBuildStateContaminated:
-					dbContaminatedCount++
-				}
+			if exitForLoop {
+				break
 			}
-			// currently need a cluster with m*.2xlarge worker nodes (local cluster) or m*.4xlarge cluster (CI) to achieve this; testing with a) node auto scaler, b) app studio quota still pending
-			if abComplete && len(dbList.Items) > 90 && len(dbList.Items) <= dbCompleteCount+dbFailedCount+dbContaminatedCount && !activePipelineRuns(ta) {
-				ta.Logf(fmt.Sprintf("dependencybuild FINAL complete count: %d, failed count: %d, contaminated count: %d", dbCompleteCount, dbFailedCount, dbContaminatedCount))
-				return true, nil
-			}
-			ta.Logf(fmt.Sprintf("dependencybuild complete count: %d, failed count: %d, contaminated count: %d", dbCompleteCount, dbFailedCount, dbContaminatedCount))
-			return false, nil
-		})
-
-		ta.Logf("************** START FAILED DEPENDENCYBUILD DUMP********************")
-		dbDumpForState(ta, v1alpha1.DependencyBuildStateFailed)
-		ta.Logf("************** END FAILED DEPENDENCYBUILD DUMP********************")
-		ta.Logf("************** START FAILED/MISSING ARTFACTBUILD DUMP********************")
-		abDumpForState(ta, v1alpha1.ArtifactBuildStateFailed)
-		ta.Logf("************** END FAILED ARTFACTBUILD DUMP********************")
-		ta.Logf("************** START MISSING ARTFACTBUILD DUMP********************")
-		abDumpForState(ta, v1alpha1.ArtifactBuildStateMissing)
-		ta.Logf("************** END MISSING ARTFACTBUILD DUMP********************")
-
-		dumpBadEvents(ta)
-		dumpPods(ta, "jvm-build-service")
-		dumpPodsGlob(ta, ta.ns, "localstack")
-		dumpPodsGlob(ta, ta.ns, "artifact-cache")
-
-		if err != nil {
-			ta.t.Fatal("timed out waiting for some artifactbuilds and dependencybuilds to complete")
 		}
 	})
 
