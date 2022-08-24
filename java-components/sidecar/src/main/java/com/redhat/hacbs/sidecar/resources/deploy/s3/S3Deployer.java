@@ -19,6 +19,8 @@ import com.redhat.hacbs.sidecar.resources.deploy.DeployerUtil;
 import io.quarkus.logging.Log;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @ApplicationScoped
@@ -54,11 +56,23 @@ public class S3Deployer implements Deployer {
                         name = name.substring(2);
                     }
                     String targetPath = deploymentPrefix + "/" + name;
-                    client.putObject(PutObjectRequest.builder()
-                            .bucket(deploymentBucket)
-                            .key(targetPath)
-                            .build(), RequestBody.fromBytes(fileData));
-                    Log.infof("Deployed to: %s", targetPath);
+                    try {
+                        client.putObject(PutObjectRequest.builder()
+                                .bucket(deploymentBucket)
+                                .key(targetPath)
+                                .build(), RequestBody.fromBytes(fileData));
+                        Log.infof("Deployed to: %s", targetPath);
+
+                    } catch (NoSuchBucketException ignore) {
+                        //we normally create this on startup
+                        client.createBucket(CreateBucketRequest.builder().bucket(deploymentBucket).build());
+                        Log.infof("Creating bucked %s after startup and retrying", deploymentBucket);
+                        client.putObject(PutObjectRequest.builder()
+                                .bucket(deploymentBucket)
+                                .key(targetPath)
+                                .build(), RequestBody.fromBytes(fileData));
+                        Log.infof("Deployed to: %s", targetPath);
+                    }
                 }
             }
         }
