@@ -3,6 +3,18 @@ on:
   pull_request:
     branches: [ main ]
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: './go.mod'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          args: --timeout=5m
   go:
     name: Check sources
     runs-on: ubuntu-latest
@@ -68,14 +80,15 @@ jobs:
         run: make build
       - name: Test
         run: make test
+      - name: Codecov
+        uses: codecov/codecov-action@v3
   envtests:
-    name: Golang envtet integration tests
+    name: Golang envtest integration tests
     runs-on: ubuntu-latest
     steps:
       - name: Install Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.17.x
           go-version-file: ./go.mod
       - name: Check out code
         uses: actions/checkout@v3
@@ -83,3 +96,22 @@ jobs:
         run: make build
       - name: Test
         run: make e2etest
+  security_scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: './go.mod'
+      # https://github.com/securego/gosec/blob/12be14859bc7d4b956b71bef0b443694aa519d8a/README.md#integrating-with-code-scanning
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          # we let the report trigger content trigger a failure using the GitHub Security features.
+          args: '-no-fail -fmt sarif -out results.sarif ./...'
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: results.sarif
