@@ -7,10 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	corev1 "k8s.io/api/core/v1"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -263,6 +266,103 @@ func TestExampleRun(t *testing.T) {
 		})
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for shaded-jdk11 to complete")
+		}
+	})
+
+	ta.t.Run("make sure second build access cached dependencies", func(t *testing.T) {
+		defer dumpBadEvents(ta)
+		defer dumpPods(ta, "jvm-build-service")
+		ta.run = &v1beta1.PipelineRun{}
+		obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
+		ta.run, ok = obj.(*v1beta1.PipelineRun)
+		if !ok {
+			debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
+		}
+		ta.run, err = tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+		}
+
+		ctx := context.TODO()
+		watch, werr := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Watch(ctx, metav1.ListOptions{})
+		if werr != nil {
+			debugAndFailTest(ta, fmt.Sprintf("error creating watch %s", werr.Error()))
+		}
+		defer watch.Stop()
+
+		exitForLoop := false
+		podClient := kubeClient.CoreV1().Pods(ta.ns)
+
+		for {
+			select {
+			// technically this is not needed, since we just created the context above; but if go testing changes
+			// such that it carries a context, we'll want to use that here
+			case <-ctx.Done():
+				ta.Logf("context done")
+				exitForLoop = true
+				break
+			case <-time.After(15 * time.Minute):
+				msg := "timed out waiting for second build to complete"
+				ta.Logf(msg)
+				// call stop here in case the defer is bypass by a call to t.Fatal
+				watch.Stop()
+				debugAndFailTest(ta, msg)
+			case event := <-watch.ResultChan():
+				if event.Object == nil {
+					continue
+				}
+				pr, ok := event.Object.(*v1beta1.PipelineRun)
+				if !ok {
+					continue
+				}
+				if pr.Name != ta.run.Name {
+					if pr.IsDone() {
+						ta.Logf(fmt.Sprintf("got event for pipelinerun %s in a terminal state", pr.Name))
+						continue
+					}
+					debugAndFailTest(ta, fmt.Sprintf("another non-completed pipeline run %s was generated when it should not", pr.Name))
+				}
+				ta.Logf(fmt.Sprintf("done processing event for pr %s", pr.Name))
+				if pr.IsDone() {
+					pods := prPods(ta, pr.Name)
+					if len(pods) == 0 {
+						debugAndFailTest(ta, fmt.Sprintf("pod for pipelinerun %s unexpectedly missing", pr.Name))
+					}
+					containers := []corev1.Container{}
+					containers = append(containers, pods[0].Spec.InitContainers...)
+					containers = append(containers, pods[0].Spec.Containers...)
+					for _, container := range containers {
+						if !strings.Contains(container.Name, "analyse-dependencies") {
+							continue
+						}
+						req := podClient.GetLogs(pods[0].Name, &corev1.PodLogOptions{Container: container.Name})
+						readCloser, err := req.Stream(context.TODO())
+						if err != nil {
+							ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err.Error()))
+							continue
+						}
+						b, err := ioutil.ReadAll(readCloser)
+						if err != nil {
+							ta.Logf(fmt.Sprintf("error reading pod stream %s", err.Error()))
+							continue
+						}
+						cLog := string(b)
+						if strings.Contains(cLog, "\"publisher\" : \"central\"") {
+							debugAndFailTest(ta, fmt.Sprintf("pipelinerun %s has container %s with dep analysis still pointing to central %s", pr.Name, container.Name, cLog))
+						}
+						if !strings.Contains(cLog, "\"publisher\" : \"rebuilt\"") {
+							debugAndFailTest(ta, fmt.Sprintf("pipelinerun %s has container %s with dep analysis that does not access rebuilt %s", pr.Name, container.Name, cLog))
+						}
+						break
+					}
+					ta.Logf(fmt.Sprintf("pr %s is done and has correct analyse-dependencies output, exiting", pr.Name))
+					exitForLoop = true
+					break
+				}
+			}
+			if exitForLoop {
+				break
+			}
 		}
 	})
 }
