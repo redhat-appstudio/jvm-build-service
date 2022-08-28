@@ -100,7 +100,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 
 	if trerr != nil && dberr != nil {
 		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
-		msg := "Reconcile key %s received not found errors for both pipelineruns and dependencybuilds (probably deleted)\"" + request.NamespacedName.String()
+		msg := fmt.Sprintf("Reconcile key %s received not found errors for both pipelineruns and dependencybuilds (probably deleted)\"", request.NamespacedName.String())
 		log.Info(msg)
 		//log.Info("Reconcile key %s received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
 		return ctrl.Result{}, nil
