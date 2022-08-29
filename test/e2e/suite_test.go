@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"context"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"go/build"
 	"os"
 	"path/filepath"
@@ -136,6 +137,8 @@ var _ = BeforeSuite(func() {
 	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	err = tektonwrapper.SetupNewReconcilerWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+	err = clusterresourcequota.SetupNewReconciler(cfg)
 	Expect(err).ToNot(HaveOccurred())
 	go func() {
 		defer GinkgoRecover()

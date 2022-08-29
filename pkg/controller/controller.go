@@ -8,6 +8,7 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
@@ -114,6 +115,10 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	}
 
 	if err := configmap.SetupNewReconcilerWithManager(mgr, systemConfig.Data); err != nil {
+		return nil, err
+	}
+
+	if err := clusterresourcequota.SetupNewReconciler(cfg); err != nil {
 		return nil, err
 	}
 

@@ -7,13 +7,14 @@ import (
 	"strings"
 	"time"
 
-	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,18 +39,16 @@ var (
 )
 
 type ReconcileTektonWrapper struct {
-	client           client.Client
-	nonCachingClient client.Client
-	scheme           *runtime.Scheme
-	eventRecorder    record.EventRecorder
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
 }
 
-func newReconciler(mgr ctrl.Manager, nonCachingClient client.Client) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 	return &ReconcileTektonWrapper{
-		client:           mgr.GetClient(),
-		nonCachingClient: nonCachingClient,
-		scheme:           mgr.GetScheme(),
-		eventRecorder:    mgr.GetEventRecorderFor("TektonWrapper"),
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetEventRecorderFor("TektonWrapper"),
 	}
 }
 
@@ -303,11 +302,9 @@ func (r *ReconcileTektonWrapper) unthrottleNextOnQueuePlusCleanup(ctx context.Co
 }
 
 func (r *ReconcileTektonWrapper) getHardPodCount(ctx context.Context, namespace string) (int, error) {
-	quotaList := quotav1.ClusterResourceQuotaList{}
-	//TODO controller runtime seemed unable to deal with openshift API and its attempt at mapping to CRDs; so for now
-	// we are using a non caching client; as such, we may not be able to afford to this list on every pass through this
-	// reconciler, but we need to get a sense for how often these quotas get defined in appstudio, when they are defined, etc.
-	qerr := r.nonCachingClient.List(ctx, &quotaList)
+	//TODO controller runtime seemed unable to deal with openshift API and its attempt at mapping to CRDs; we were using
+	// a non caching client; but now we've switched to a shared informer based controller and its caching client
+	quotaList, qerr := clusterresourcequota.QuotaClient.QuotaV1().ClusterResourceQuotas().List(ctx, metav1.ListOptions{})
 	if qerr != nil {
 		return 0, qerr
 	}

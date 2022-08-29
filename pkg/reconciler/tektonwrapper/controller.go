@@ -31,11 +31,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
-	nonCachingClient, err := client.New(mgr.GetConfig(), opts)
-	if err != nil {
-		return err
-	}
-	r := newReconciler(mgr, nonCachingClient)
+	r := newReconciler(mgr)
 	pruner := &pruner{client: mgr.GetClient()}
 	mgr.Add(pruner)
 	return ctrl.NewControllerManagedBy(mgr).
