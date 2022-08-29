@@ -8,8 +8,11 @@ data:
   image.cache: quay.io/QUAY_USERNAME/hacbs-jvm-cache:dev
   builder-image.names: jdk11,jdk8,jdk17
   builder-image.jdk8.image: quay.io/sdouglas/hacbs-jdk8-builder:dev
+  builder-image.jdk8.tags: jdk:8,maven:3.8,gradle:7.5
   builder-image.jdk11.image: quay.io/sdouglas/hacbs-jdk11-builder:dev
+  builder-image.jdk11.tags: jdk:11,maven:3.8,gradle:7.5
   builder-image.jdk17.image: quay.io/sdouglas/hacbs-jdk17-builder:dev
+  builder-image.jdk17.tags: jdk:17,maven:3.8,gradle:7.5
   #use these if you have built your own local builder images using build-local.sh
   #builder-image.jdk8.image: quay.io/QUAY_USERNAME/hacbs-jdk8-builder:dev
   #builder-image.jdk11.image: quay.io/QUAY_USERNAME/hacbs-jdk11-builder:dev

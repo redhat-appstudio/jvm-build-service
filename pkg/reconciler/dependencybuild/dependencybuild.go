@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -280,7 +281,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			return reconcile.Result{}, err
 		}
 		//read our builder images from the config
-		var mavenImages []string
+		var mavenImages []BuilderImage
 		mavenImages, err = r.processBuilderImages(ctx)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -290,12 +291,41 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		buildRecipes := []*v1alpha1.BuildRecipe{}
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
+		java := unmarshalled.Tools["jdk"]
 
 		switch {
 		case maven:
+			//todo: this is basic and needs to be improved
 			for _, image := range mavenImages {
+				//we only have one JDK version in the builder at the moment
+				//other tools will potentially have multiple versions
+				//we only want to use builder images that have java versions that the analyser
+				//detected might be appropriate
+				imageJava := image.Tools["jdk"][0]
+				if java.Min != "" {
+					versionResult, err := compareVersions(imageJava, java.Min)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Min))
+						return reconcile.Result{}, err
+					}
+					if versionResult < 0 {
+						log.Info(fmt.Sprintf("Not building with %s because of min java version %s (image version %s)", image.Image, java.Min, imageJava))
+						continue
+					}
+				}
+				if java.Max != "" {
+					versionResult, err := compareVersions(imageJava, java.Max)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Max))
+						return reconcile.Result{}, err
+					}
+					if versionResult > 0 {
+						log.Info(fmt.Sprintf("Not building with %s because of max java version %s (image version %s)", image.Image, java.Min, imageJava))
+						continue
+					}
+				}
 				for _, command := range unmarshalled.Invocations {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Maven: true})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Maven: true})
 				}
 			}
 		case gradle:
@@ -327,21 +357,62 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 	}
 	return reconcile.Result{}, nil
-
 }
-func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context) ([]string, error) {
+
+// compares versions, returns 0 if versions
+// are equivalent, -1 if v1 < v2 and 1 if v2 < v1
+//this is looking for functional equivilence, so 3.6 is considered the same as 3.6.7
+func compareVersions(v1 string, v2 string) (int, error) {
+	v1p := strings.Split(v1, ".")
+	v2p := strings.Split(v2, ".")
+	for i := range v1p {
+		if len(v2p) == i {
+			//we are considering them equal, as the important parts have matched
+			return 0, nil
+		}
+		v1segment, err := strconv.ParseInt(v1p[i], 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		v2segment, err := strconv.ParseInt(v2p[i], 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		if v1segment < v2segment {
+			return -1, nil
+		}
+		if v1segment > v2segment {
+			return 1, nil
+		}
+	}
+	return 0, nil
+}
+
+func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context) ([]BuilderImage, error) {
 	configMap := v1.ConfigMap{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: configmap.SystemConfigMapNamespace, Name: configmap.SystemConfigMapName}, &configMap)
 	if err != nil {
 		return nil, err
 	}
-	result := []string{}
+	result := []BuilderImage{}
 	names := strings.Split(configMap.Data[configmap.SystemBuilderImages], ",")
 	for _, i := range names {
 		image := configMap.Data[fmt.Sprintf(configmap.SystemBuilderImageFormat, i)]
+		tags := configMap.Data[fmt.Sprintf(configmap.SystemBuilderTagFormat, i)]
 		if image == "" {
 			log.Info(fmt.Sprintf("Missing system config for builder image %s, image will not be usable", image))
+		} else if tags == "" {
+			log.Info(fmt.Sprintf("Missing tag system config for builder image %s, image will not be usable", image))
 		} else {
+			tagList := strings.Split(tags, ",")
+			image := BuilderImage{Image: image, Tools: map[string][]string{}}
+			for _, tag := range tagList {
+				split := strings.Split(tag, ":")
+				key := split[0]
+				val := split[1]
+				image.Tools[key] = append(image.Tools[key], val)
+			}
+
 			result = append(result, image)
 		}
 	}
@@ -703,4 +774,9 @@ func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec, config m
 			},
 		},
 	}
+}
+
+type BuilderImage struct {
+	Image string
+	Tools map[string][]string
 }

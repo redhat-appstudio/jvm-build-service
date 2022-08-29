@@ -39,6 +39,7 @@ const (
 	SystemCacheImage            = "image.cache"
 	SystemBuilderImages         = "builder-image.names"
 	SystemBuilderImageFormat    = "builder-image.%s.image"
+	SystemBuilderTagFormat      = "builder-image.%s.tags"
 )
 
 var (
