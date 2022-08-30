@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"github.com/kcp-dev/logicalcluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -330,6 +331,9 @@ type ListOptions struct {
 	// non-namespaced objects, or to list across all namespaces.
 	Namespace string
 
+	// Cluster represents the cluster to list for, or empty to list across all clusters.
+	Cluster logicalcluster.Name
+
 	// Limit specifies the maximum number of results to return from the server. The server may
 	// not support this field on all resource types, but if it does and more results remain it
 	// will set the continue field on the returned list object. This field is not supported if watch
@@ -486,6 +490,14 @@ func (m MatchingFieldsSelector) ApplyToList(opts *ListOptions) {
 // ApplyToDeleteAllOf applies this configuration to the given an List options.
 func (m MatchingFieldsSelector) ApplyToDeleteAllOf(opts *DeleteAllOfOptions) {
 	m.ApplyToList(&opts.ListOptions)
+}
+
+// InCluster restricts the list/delete operation to the given cluster.
+type InCluster logicalcluster.Name
+
+// ApplyToList applies this configuration to the given list options.
+func (n InCluster) ApplyToList(opts *ListOptions) {
+	opts.Cluster = logicalcluster.Name(n)
 }
 
 // InNamespace restricts the list/delete operation to the given namespace.

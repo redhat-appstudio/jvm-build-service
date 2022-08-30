@@ -6,13 +6,11 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"os"
 	"strings"
 	"time"
 	"unicode"
 
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,7 +21,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
+	"github.com/kcp-dev/logicalcluster"
+
+	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 const (
@@ -44,10 +48,6 @@ const (
 	Rebuild                       = "jvmbuildservice.io/rebuild"
 )
 
-var (
-	log = ctrl.Log.WithName("artifactbuild")
-)
-
 type ReconcileArtifactBuild struct {
 	client        client.Client
 	scheme        *runtime.Scheme
@@ -64,8 +64,11 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 
 func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
+	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	defer cancel()
+	log := ctrl.Log.WithName("artifactbuild").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
 	abr := v1alpha1.ArtifactBuild{}
 	abrerr := r.client.Get(ctx, request.NamespacedName, &abr)
 	if abrerr != nil {
@@ -103,10 +106,10 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 	switch {
 	case dberr == nil:
-		return r.handleDependencyBuildReceived(ctx, &db)
+		return r.handleDependencyBuildReceived(ctx, log, &db)
 
 	case trerr == nil:
-		return r.handlePipelineRunReceived(ctx, &pr)
+		return r.handlePipelineRunReceived(ctx, log, &pr)
 
 	case abrerr == nil:
 		//first check for a rebuild annotation
@@ -118,18 +121,18 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		case v1alpha1.ArtifactBuildStateNew, "":
 			return r.handleStateNew(ctx, &abr)
 		case v1alpha1.ArtifactBuildStateDiscovering:
-			return r.handleStateDiscovering(ctx, &abr)
+			return r.handleStateDiscovering(ctx, log, &abr)
 		case v1alpha1.ArtifactBuildStateComplete:
 			return r.handleStateComplete(ctx, &abr)
 		case v1alpha1.ArtifactBuildStateBuilding:
-			return r.handleStateBuilding(ctx, &abr)
+			return r.handleStateBuilding(ctx, log, &abr)
 		}
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
 	}
@@ -204,7 +207,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	ownerRefs := db.GetOwnerReferences()
 	if ownerRefs == nil || len(ownerRefs) == 0 {
 		msg := "dependencybuild missing onwerrefs %s:%s"
@@ -285,7 +288,7 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, abr *v1alph
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 	// if pipelinerun to update SCM/Message has not completed, just return
 	if len(abr.Status.SCMInfo.SCMURL) == 0 &&
 		len(abr.Status.SCMInfo.Tag) == 0 &&
@@ -412,7 +415,7 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, abr *v
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 	depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 	db := &v1alpha1.DependencyBuild{}
 	dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}

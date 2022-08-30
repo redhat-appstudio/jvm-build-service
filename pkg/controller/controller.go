@@ -6,6 +6,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,12 +22,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
@@ -32,7 +30,7 @@ var (
 	controllerLog = ctrl.Log.WithName("controller")
 )
 
-func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, error) {
+func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	// we have seen in e2e testing that this path can get invoked prior to the TaskRun CRD getting generated,
 	// and controller-runtime does not retry on missing CRDs.
 	// so we are going to wait on the CRDs existing before moving forward.
@@ -71,7 +69,7 @@ func NewManager(cfg *rest.Config, options manager.Options) (manager.Manager, err
 			&v1alpha1.ArtifactBuild{}:      {},
 			&v1.ConfigMap{}:                {},
 		}})
-	mgr, err := manager.New(cfg, options)
+	mgr, err := ctrl.NewManager(cfg, options)
 	if err != nil {
 		return nil, err
 	}

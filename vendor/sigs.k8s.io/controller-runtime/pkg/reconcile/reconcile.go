@@ -47,6 +47,10 @@ func (r *Result) IsZero() bool {
 type Request struct {
 	// NamespacedName is the name and namespace of the object to reconcile.
 	types.NamespacedName
+
+	// ClusterName can be used for reconciling requests across multiple clusters,
+	// to prevent objects with the same name and namespace from conflicting
+	ClusterName string
 }
 
 /*

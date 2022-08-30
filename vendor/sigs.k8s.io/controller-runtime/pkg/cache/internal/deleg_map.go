@@ -27,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // InformersMap create and caches Informers for (runtime.Object, schema.GroupVersionKind) pairs.
@@ -52,11 +54,13 @@ func NewInformersMap(config *rest.Config,
 	namespace string,
 	selectors SelectorsByGVK,
 	disableDeepCopy DisableDeepCopyByGVK,
+	newInformerFunc client.NewInformerFunc,
+	indexers cache.Indexers,
 ) *InformersMap {
 	return &InformersMap{
-		structured:   newStructuredInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy),
-		unstructured: newUnstructuredInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy),
-		metadata:     newMetadataInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy),
+		structured:   newStructuredInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, newInformerFunc, indexers),
+		unstructured: newUnstructuredInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, newInformerFunc, indexers),
+		metadata:     newMetadataInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, newInformerFunc, indexers),
 
 		Scheme: scheme,
 	}
@@ -108,18 +112,18 @@ func (m *InformersMap) Get(ctx context.Context, gvk schema.GroupVersionKind, obj
 
 // newStructuredInformersMap creates a new InformersMap for structured objects.
 func newStructuredInformersMap(config *rest.Config, scheme *runtime.Scheme, mapper meta.RESTMapper, resync time.Duration,
-	namespace string, selectors SelectorsByGVK, disableDeepCopy DisableDeepCopyByGVK) *specificInformersMap {
-	return newSpecificInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, createStructuredListWatch)
+	namespace string, selectors SelectorsByGVK, disableDeepCopy DisableDeepCopyByGVK, newInformerFunc client.NewInformerFunc, indexers cache.Indexers) *specificInformersMap {
+	return newSpecificInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, createStructuredListWatch, newInformerFunc, indexers)
 }
 
 // newUnstructuredInformersMap creates a new InformersMap for unstructured objects.
 func newUnstructuredInformersMap(config *rest.Config, scheme *runtime.Scheme, mapper meta.RESTMapper, resync time.Duration,
-	namespace string, selectors SelectorsByGVK, disableDeepCopy DisableDeepCopyByGVK) *specificInformersMap {
-	return newSpecificInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, createUnstructuredListWatch)
+	namespace string, selectors SelectorsByGVK, disableDeepCopy DisableDeepCopyByGVK, newInformerFunc client.NewInformerFunc, indexers cache.Indexers) *specificInformersMap {
+	return newSpecificInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, createUnstructuredListWatch, newInformerFunc, indexers)
 }
 
 // newMetadataInformersMap creates a new InformersMap for metadata-only objects.
 func newMetadataInformersMap(config *rest.Config, scheme *runtime.Scheme, mapper meta.RESTMapper, resync time.Duration,
-	namespace string, selectors SelectorsByGVK, disableDeepCopy DisableDeepCopyByGVK) *specificInformersMap {
-	return newSpecificInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, createMetadataListWatch)
+	namespace string, selectors SelectorsByGVK, disableDeepCopy DisableDeepCopyByGVK, newInformerFunc client.NewInformerFunc, indexers cache.Indexers) *specificInformersMap {
+	return newSpecificInformersMap(config, scheme, mapper, resync, namespace, selectors, disableDeepCopy, createMetadataListWatch, newInformerFunc, indexers)
 }
