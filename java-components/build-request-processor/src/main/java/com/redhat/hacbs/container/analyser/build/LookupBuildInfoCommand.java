@@ -103,7 +103,8 @@ public class LookupBuildInfoCommand implements Runnable {
             throws Exception {
         //TODO: this is a basic hack to prove the concept
         var path = Files.createTempDirectory("checkout");
-        try (var clone = Git.cloneRepository().setURI(scmUrl).setBranch(scmTag).setDirectory(path.toFile()).call()) {
+        try (var clone = Git.cloneRepository().setURI(scmUrl).setDirectory(path.toFile()).call()) {
+            clone.checkout().setName(scmTag).call();
             if (context != null) {
                 path = path.resolve(context);
             }
