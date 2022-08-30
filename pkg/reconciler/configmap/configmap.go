@@ -217,7 +217,7 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			Value: "secretkey",
 		})
 	}
-	regex, err := regexp.Compile(`maven-repository-(\\d+)-(\\w+)`)
+	regex, err := regexp.Compile(`maven-repository-(\d+)-(\w+)`)
 	if err != nil {
 		return err
 	}
