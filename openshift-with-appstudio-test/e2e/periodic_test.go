@@ -172,79 +172,79 @@ func TestServiceRegistry(t *testing.T) {
 				exitForLoop = true
 				break
 
-			//case event := <-abWatch.ResultChan():
-			//	if event.Object == nil {
-			//		continue
-			//	}
-			//	ab, ok := event.Object.(*v1alpha1.ArtifactBuild)
-			//	if !ok {
-			//		continue
-			//	}
-			//	switch {
-			//	case ab.Status.State == v1alpha1.ArtifactBuildStateComplete:
-			//		s, k := state.Load(ab.Name)
-			//		if !k || s != v1alpha1.ArtifactBuildStateComplete {
-			//			atomic.AddUint32(&abCompleteCount, 1)
-			//			atomic.StoreUint32(&changed, 1)
-			//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateComplete)
-			//		}
-			//	case ab.Status.State == v1alpha1.ArtifactBuildStateMissing:
-			//		s, k := state.Load(ab.Name)
-			//		if !k || s != v1alpha1.ArtifactBuildStateMissing {
-			//			atomic.AddUint32(&abMissingCount, 1)
-			//			atomic.StoreUint32(&changed, 1)
-			//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateMissing)
-			//		}
-			//	case ab.Status.State == v1alpha1.ArtifactBuildStateFailed:
-			//		s, k := state.Load(ab.Name)
-			//		if !k || s != v1alpha1.ArtifactBuildStateFailed {
-			//			atomic.AddUint32(&abFailedCount, 1)
-			//			atomic.StoreUint32(&changed, 1)
-			//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateFailed)
-			//			dumpABPods(ta, ab.Name, ab.Spec.GAV)
-			//		}
-			//	default:
-			//		s, k := state.Load(ab.Name)
-			//		if k {
-			//			switch {
-			//			case s == v1alpha1.ArtifactBuildStateMissing:
-			//				// decrement
-			//				atomic.AddUint32(&abMissingCount, ^uint32(0))
-			//				atomic.StoreUint32(&changed, 1)
-			//				// reset since must be rebuild
-			//				state.Store(ab.Name, ab.Status.State)
-			//			case s == v1alpha1.ArtifactBuildStateComplete:
-			//				//decrement
-			//				atomic.AddUint32(&abCompleteCount, ^uint32(0))
-			//				atomic.StoreUint32(&changed, 1)
-			//			case s == v1alpha1.ArtifactBuildStateFailed:
-			//				//decrement
-			//				atomic.AddUint32(&abFailedCount, ^uint32(0))
-			//				atomic.StoreUint32(&changed, 1)
-			//				// reset since must be rebuild
-			//				state.Store(ab.Name, ab.Status.State)
-			//			}
-			//		} else {
-			//			atomic.AddInt32(&createdAB, 1)
-			//			atomic.StoreUint32(&changed, 1)
-			//			state.Store(ab.Name, ab.Status.State)
-			//		}
-			//	}
-			//
-			//	dbg := false
-			//	if atomic.CompareAndSwapUint32(&changed, 1, 0) {
-			//		ta.Logf(fmt.Sprintf("artifactbuild created count: %d complete count: %d, failed count: %d, missing count: %d", createdAB, abCompleteCount, abFailedCount, abMissingCount))
-			//		dbg = true
-			//
-			//	}
-			//
-			//	if createdAB > 200 && !activePipelineRuns(ta, dbg) {
-			//		ta.Logf(fmt.Sprintf("artifactbuild FINAL created count: %d complete count: %d, failed count: %d, missing count: %d", createdAB, abCompleteCount, abFailedCount, abMissingCount))
-			//		exitForLoop = true
-			//		abWatch.Stop()
-			//		dbWatch.Stop()
-			//		break
-			//	}
+				//case event := <-abWatch.ResultChan():
+				//	if event.Object == nil {
+				//		continue
+				//	}
+				//	ab, ok := event.Object.(*v1alpha1.ArtifactBuild)
+				//	if !ok {
+				//		continue
+				//	}
+				//	switch {
+				//	case ab.Status.State == v1alpha1.ArtifactBuildStateComplete:
+				//		s, k := state.Load(ab.Name)
+				//		if !k || s != v1alpha1.ArtifactBuildStateComplete {
+				//			atomic.AddUint32(&abCompleteCount, 1)
+				//			atomic.StoreUint32(&changed, 1)
+				//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateComplete)
+				//		}
+				//	case ab.Status.State == v1alpha1.ArtifactBuildStateMissing:
+				//		s, k := state.Load(ab.Name)
+				//		if !k || s != v1alpha1.ArtifactBuildStateMissing {
+				//			atomic.AddUint32(&abMissingCount, 1)
+				//			atomic.StoreUint32(&changed, 1)
+				//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateMissing)
+				//		}
+				//	case ab.Status.State == v1alpha1.ArtifactBuildStateFailed:
+				//		s, k := state.Load(ab.Name)
+				//		if !k || s != v1alpha1.ArtifactBuildStateFailed {
+				//			atomic.AddUint32(&abFailedCount, 1)
+				//			atomic.StoreUint32(&changed, 1)
+				//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateFailed)
+				//			dumpABPods(ta, ab.Name, ab.Spec.GAV)
+				//		}
+				//	default:
+				//		s, k := state.Load(ab.Name)
+				//		if k {
+				//			switch {
+				//			case s == v1alpha1.ArtifactBuildStateMissing:
+				//				// decrement
+				//				atomic.AddUint32(&abMissingCount, ^uint32(0))
+				//				atomic.StoreUint32(&changed, 1)
+				//				// reset since must be rebuild
+				//				state.Store(ab.Name, ab.Status.State)
+				//			case s == v1alpha1.ArtifactBuildStateComplete:
+				//				//decrement
+				//				atomic.AddUint32(&abCompleteCount, ^uint32(0))
+				//				atomic.StoreUint32(&changed, 1)
+				//			case s == v1alpha1.ArtifactBuildStateFailed:
+				//				//decrement
+				//				atomic.AddUint32(&abFailedCount, ^uint32(0))
+				//				atomic.StoreUint32(&changed, 1)
+				//				// reset since must be rebuild
+				//				state.Store(ab.Name, ab.Status.State)
+				//			}
+				//		} else {
+				//			atomic.AddInt32(&createdAB, 1)
+				//			atomic.StoreUint32(&changed, 1)
+				//			state.Store(ab.Name, ab.Status.State)
+				//		}
+				//	}
+				//
+				//	dbg := false
+				//	if atomic.CompareAndSwapUint32(&changed, 1, 0) {
+				//		ta.Logf(fmt.Sprintf("artifactbuild created count: %d complete count: %d, failed count: %d, missing count: %d", createdAB, abCompleteCount, abFailedCount, abMissingCount))
+				//		dbg = true
+				//
+				//	}
+				//
+				//	if createdAB > 200 && !activePipelineRuns(ta, dbg) {
+				//		ta.Logf(fmt.Sprintf("artifactbuild FINAL created count: %d complete count: %d, failed count: %d, missing count: %d", createdAB, abCompleteCount, abFailedCount, abMissingCount))
+				//		exitForLoop = true
+				//		abWatch.Stop()
+				//		dbWatch.Stop()
+				//		break
+				//	}
 
 			case event := <-dbWatch.ResultChan():
 				if event.Object == nil {

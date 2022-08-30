@@ -128,8 +128,7 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			create = true
 			cache.Name = deploymentName.Name
 			cache.Namespace = deploymentName.Namespace
-			var replicas int32
-			replicas = 1
+			var replicas int32 = 1
 			cache.Spec.Replicas = &replicas
 			cache.Spec.Strategy = v1.DeploymentStrategy{Type: v1.RecreateDeploymentStrategyType}
 			cache.Spec.Selector = &v12.LabelSelector{MatchLabels: map[string]string{"app": CacheDeploymentName}}
@@ -218,7 +217,10 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			Value: "secretkey",
 		})
 	}
-	regex, err := regexp.Compile("maven-repository-(\\d+)-(\\w+)")
+	regex, err := regexp.Compile(`maven-repository-(\\d+)-(\\w+)`)
+	if err != nil {
+		return err
+	}
 	for k, v := range configMap.Data {
 		if regex.MatchString(k) {
 			results := regex.FindStringSubmatch(k)
@@ -277,8 +279,7 @@ func (r *ReconcileConfigMap) setupRebuilds(ctx context.Context, request reconcil
 			log.Info("Creating localstack deployment", "name", LocalstackDeploymentName, "Namespace", request.Namespace)
 			localstack.Name = deploymentName.Name
 			localstack.Namespace = deploymentName.Namespace
-			var replicas int32
-			replicas = 1
+			var replicas int32 = 1
 			localstack.Spec.Replicas = &replicas
 			localstack.Spec.Selector = &v12.LabelSelector{MatchLabels: map[string]string{"app": LocalstackDeploymentName}}
 			localstack.Spec.Template.ObjectMeta.Labels = map[string]string{"app": LocalstackDeploymentName}
@@ -353,8 +354,4 @@ func (r *ReconcileConfigMap) handleSystemConfigMap(ctx context.Context, request 
 		r.configuredCacheImage = configMap.Data[SystemCacheImage]
 	}
 	return reconcile.Result{}, nil
-}
-
-func i64a(v int64) *int64 {
-	return &v
 }

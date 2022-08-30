@@ -186,7 +186,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		return reconcile.Result{}, nil
 	}
 	ownerRefs := pr.GetOwnerReferences()
-	if ownerRefs == nil || len(ownerRefs) == 0 {
+	if len(ownerRefs) == 0 {
 		msg := "pipelinerun missing onwerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
@@ -463,7 +463,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
 
 	image := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
-	pipelineRunBytes := []byte{}
+	var pipelineRunBytes []byte
 	switch {
 	case db.Status.CurrentBuildRecipe.Maven:
 		pipelineRunBytes = []byte(maven)
@@ -562,7 +562,7 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 	if pr.Status.CompletionTime != nil {
 		// get db
 		ownerRefs := pr.GetOwnerReferences()
-		if ownerRefs == nil || len(ownerRefs) == 0 {
+		if len(ownerRefs) == 0 {
 			msg := "pipelinerun missing onwerrefs %s:%s"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)

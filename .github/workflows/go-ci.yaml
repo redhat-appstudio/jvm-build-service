@@ -86,12 +86,12 @@ jobs:
     name: Golang envtest integration tests
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@v3
       - name: Install Go
         uses: actions/setup-go@v3
         with:
           go-version-file: ./go.mod
-      - name: Check out code
-        uses: actions/checkout@v3
       - name: Build
         run: make build
       - name: Test

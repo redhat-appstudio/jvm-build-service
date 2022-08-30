@@ -299,7 +299,7 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(client.Update(ctx, pr))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
-		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
 		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
