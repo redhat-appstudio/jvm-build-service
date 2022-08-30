@@ -268,6 +268,7 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbFailedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateFailed)
+						ta.Logf(fmt.Sprintf("***FAILED DB %s has status messagae %s last completed pipelinerun %s", db.Name, db.Status.Message, db.Status.LastCompletedBuildPipelineRun))
 						dumpDBPods(ta, db.Name)
 					}
 				case db.Status.State == v1alpha1.DependencyBuildStateContaminated:

@@ -194,7 +194,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-			msg := "pruning analysis pipelinerun %s:%s for dependencybuild as it is missing owner refs"
+			msg := " pruning analysis pipelinerun %s:%s for dependencybuild as it is missing owner refs"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 			err := r.client.Delete(ctx, pr)
@@ -217,7 +217,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		log.Info(msg, pr.Namespace, pr.Name)
 
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-			msg := "pruning analysis pipelinerun %s:%s for dependencybuild as it is missing owner refs"
+			msg := " pruning analysis pipelinerun %s:%s for dependencybuild as it is missing owner refs"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 			err := r.client.Delete(ctx, pr)
@@ -239,7 +239,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	}
 	if db.Status.State != v1alpha1.DependencyBuildStateAnalyzeBuild {
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-			msg := "pruning analysis pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+			msg := " pruning analysis pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
 			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
 			err := r.client.Delete(ctx, pr)
@@ -264,6 +264,19 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 	if !success || len(buildInfo) == 0 {
 		db.Status.State = v1alpha1.DependencyBuildStateFailed
+		if len(strings.TrimSpace(message)) == 0 {
+			// service registry testing currently has some failed db's with empty messages;
+			// if results processing still gets us an empty string, we at least process the
+			// pipelinerun status in an attempt to provide some clue as to what happened
+			prbytes, prerr := json.MarshalIndent(pr, "", "    ")
+			prstr := ""
+			if prerr != nil {
+				prstr = prerr.Error()
+			} else {
+				prstr = string(prbytes)
+			}
+			message = fmt.Sprintf("normal pipeline result process did not uncover a useful debug message, pipeline run yaml: %s", prstr)
+		}
 		db.Status.Message = message
 	} else {
 		unmarshalled := struct {
@@ -351,7 +364,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		return reconcile.Result{}, err
 	}
 	if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-		msg := "pruning analysis pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+		msg := " pruning analysis pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
 		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
 		err := r.client.Delete(ctx, pr)
@@ -571,7 +584,7 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 			log.Info(msg, pr.Namespace, pr.Name)
 
 			if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-				msg := "pruning build pipelinerun %s:%s for dependencybuild as it is missing owner refs"
+				msg := " pruning build pipelinerun %s:%s for dependencybuild as it is missing owner refs"
 				r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 				log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 				delerr := r.client.Delete(ctx, pr)
@@ -603,7 +616,7 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 			log.Info(msg, pr.Namespace, pr.Name)
 
 			if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-				msg := "pruning build pipelinerun %s:%s for dependencybuild as it is missing owner refs"
+				msg := " pruning build pipelinerun %s:%s for dependencybuild as it is missing owner refs"
 				r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 				log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 				delerr := r.client.Delete(ctx, pr)
@@ -628,7 +641,7 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 			//already handled
 			//prune if required
 			if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-				msg := "pruning old build pipelinerun %s:%s from previous run for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+				msg := " pruning old build pipelinerun %s:%s from previous run for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
 				r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
 				log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
 				delerr := r.client.Delete(ctx, pr)
@@ -670,7 +683,7 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 		}
 
 		if os.Getenv(artifactbuild.DeleteTaskRunPodsEnv) == "1" {
-			msg := "pruning build pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
+			msg := " pruning build pipelinerun %s:%s for dependencybuild %s:%s whose state is %s sas part of jvm-build-service's attempt to not violate pod quota"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State)
 			log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, db.Namespace, db.Name, db.Status.State))
 			delerr := r.client.Delete(ctx, pr)

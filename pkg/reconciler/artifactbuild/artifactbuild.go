@@ -114,7 +114,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	case abrerr == nil:
 		//first check for a rebuild annotation
 		if abr.Annotations[Rebuild] == "true" {
-			return r.handleRebuild(ctx, &abr)
+			return r.handleRebuild(ctx, log, &abr)
 		}
 
 		switch abr.Status.State {
@@ -463,7 +463,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 	//first look for a dependency build
 	//and delete it if it exists
 	if len(abr.Status.SCMInfo.SCMURL) > 0 {
@@ -475,6 +475,9 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 		notFound := errors.IsNotFound(err)
 		if err == nil {
 			//delete the dependency build object
+			msg := "out and out delete of depenencybuild %s:%s for artifactbuild %s:%s whose state is %s as part of handleRebuild processing"
+			r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, msg, db.Namespace, db.Name, abr.Namespace, abr.Name, abr.Status.State)
+			log.Info(fmt.Sprintf(msg, db.Namespace, db.Name, abr.Namespace, abr.Name, abr.Status.State))
 			err := r.client.Delete(ctx, db)
 			if err != nil {
 				return reconcile.Result{}, err
