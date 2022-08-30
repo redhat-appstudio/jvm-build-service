@@ -118,9 +118,13 @@ public class LookupBuildInfoCommand implements Runnable {
                             Map.of(JDK, new VersionRange("8", "17", "11"), MAVEN, new VersionRange("3.8", "3.8", "3.8")),
                             Integer.MIN_VALUE));
                     for (var i : mavenDiscoveryTasks) {
-                        var result = i.discover(model, path);
-                        if (result != null) {
-                            results.add(result);
+                        try {
+                            var result = i.discover(model, path);
+                            if (result != null) {
+                                results.add(result);
+                            }
+                        } catch (Throwable t) {
+                            Log.errorf(t, "Failed to run analysis step %s", i);
                         }
                     }
                     Collections.sort(results);

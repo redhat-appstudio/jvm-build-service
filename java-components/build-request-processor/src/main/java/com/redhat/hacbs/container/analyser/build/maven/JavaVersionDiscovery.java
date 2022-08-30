@@ -16,6 +16,8 @@ import com.redhat.hacbs.container.analyser.location.VersionRange;
 public class JavaVersionDiscovery implements MavenDiscoveryTask {
     @Override
     public DiscoveryResult discover(Model model, Path checkout) {
+        //TODO: these properties can reference other properties
+        //we need a fully resolved maven model
         String target = model.getProperties().getProperty("maven.compiler.target");
         String source = model.getProperties().getProperty("maven.compiler.source");
         int javaVersion = -1;
