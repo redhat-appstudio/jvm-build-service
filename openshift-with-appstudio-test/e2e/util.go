@@ -1,5 +1,5 @@
-//go:build normal && periodic
-// +build normal,periodic
+//go:build normal || periodic
+// +build normal periodic
 
 package e2e
 
@@ -308,7 +308,7 @@ func dumpPodsGlob(ta *testArgs, namespace, glob string) {
 				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err.Error()))
 				continue
 			}
-			b, err := ioutil.ReadAll(readCloser)
+			b, err := io.ReadAll(readCloser)
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error reading pod stream %s", err.Error()))
 				continue
@@ -358,7 +358,7 @@ func dumpDBPods(ta *testArgs, dbName string) {
 				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
 				continue
 			}
-			b, err2 := ioutil.ReadAll(readCloser)
+			b, err2 := io.ReadAll(readCloser)
 			if err2 != nil {
 				ta.Logf(fmt.Sprintf("error reading pod stream %s", err2.Error()))
 				continue
@@ -395,7 +395,7 @@ func dumpABPods(ta *testArgs, abName, gav string) {
 				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
 				continue
 			}
-			b, err2 := ioutil.ReadAll(readCloser)
+			b, err2 := io.ReadAll(readCloser)
 			if err2 != nil {
 				ta.Logf(fmt.Sprintf("error reading pod stream %s", err2.Error()))
 				continue

@@ -1,5 +1,5 @@
-//go:build normal && periodic
-// +build normal,periodic
+//go:build normal || periodic
+// +build normal periodic
 
 package e2e
 
