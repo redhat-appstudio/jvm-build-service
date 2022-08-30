@@ -2,8 +2,8 @@ package artifactbuild
 
 import (
 	"context"
-	"crypto/md5"
-	"crypto/sha1"
+	"crypto/md5"  //#nosec G501
+	"crypto/sha1" //#nosec G505
 	"encoding/hex"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
@@ -373,7 +373,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 }
 
 func hashString(hashInput string) string {
-	hash := md5.Sum([]byte(hashInput))
+	hash := md5.Sum([]byte(hashInput)) //#nosec
 	depId := hex.EncodeToString(hash[:])
 	return depId
 }
@@ -496,7 +496,7 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 }
 
 func CreateABRName(gav string) string {
-	hashedBytes := sha1.Sum([]byte(gav))
+	hashedBytes := sha1.Sum([]byte(gav)) //#nosec
 	hash := hex.EncodeToString(hashedBytes[:])[0:8]
 	namePart := gav[strings.Index(gav, ":")+1:]
 
