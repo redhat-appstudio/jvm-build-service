@@ -1,6 +1,3 @@
-//go:build normal || periodic
-// +build normal periodic
-
 package e2e
 
 import (

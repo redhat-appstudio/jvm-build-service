@@ -7,7 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 	"os"
 	"path/filepath"
@@ -341,7 +341,7 @@ func TestExampleRun(t *testing.T) {
 							ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err.Error()))
 							continue
 						}
-						b, err := ioutil.ReadAll(readCloser)
+						b, err := io.ReadAll(readCloser)
 						if err != nil {
 							ta.Logf(fmt.Sprintf("error reading pod stream %s", err.Error()))
 							continue
