@@ -43,7 +43,7 @@ spec:
     - name: IMAGE
       description: Gradle base image.
       type: string
-      default: quay.io/dwalluck/gradle@sha256:26270826b44e89c9b151ebb09f532135c387c327350170cde74dbc3eae1760e8
+      default: quay.io/dwalluck/gradle@sha256:9e970da338047141cbb01ae22dee989d22f11f5ab182c1dddfc4a3fc2e5d3e85
     - name: GOALS
       description: 'The gradle tasks to run (default: build publish)'
       type: array

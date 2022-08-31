@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -32,8 +32,9 @@ public final class GradleUtils {
     /**
      * List of available Gradle versions in image.
      */
-    public static final List<GradleVersion> AVAILABLE_GRADLE_VERSIONS = List.of(GradleVersion.version("5.4.1"),
-            GradleVersion.version("7.4.1"));
+    public static final List<GradleVersion> AVAILABLE_GRADLE_VERSIONS = List.of(GradleVersion.version("4.10.3"),
+            GradleVersion.version("5.6.4"), GradleVersion.version("6.9.2"), GradleVersion.version("7.4.1"),
+            GradleVersion.version("7.5.1"));
 
     static final String BUILD_GRADLE = "build.gradle";
 
@@ -48,6 +49,9 @@ public final class GradleUtils {
     private static final Pattern GRADLE_5_THROUGH_7 = Pattern.compile("^[567]\\..*$");
 
     private static final Pattern DISTRIBUTION_URL_PATTERN = Pattern.compile("^.*/gradle-(?<version>.*)-(all|bin)\\.zip$");
+
+    private static final Pattern VERSION_PATTERN = Pattern
+            .compile("((\\d+)(\\.\\d+)+)(-(\\p{Alpha}+)-(\\w+))?(-(SNAPSHOT|\\d{14}([-+]\\d{4})?))?");
 
     private GradleUtils() {
 
@@ -88,6 +92,16 @@ public final class GradleUtils {
         return matcher.matches() ? Optional.of(matcher.group("version")) : Optional.empty();
     }
 
+    private static int getMajorVersion(String version) {
+        Matcher matcher = VERSION_PATTERN.matcher(version);
+
+        if (!matcher.matches()) {
+            return -1;
+        }
+
+        return Integer.parseInt(matcher.group(2));
+    }
+
     /**
      * Find the nearest available Gradle version to the given version. If possible, return the nearest version that is
      * less than or equal to the given version. If the given version is null or empty, return the latest available
@@ -97,14 +111,31 @@ public final class GradleUtils {
      * @return the nearest Gradle version
      */
     public static String findNearestGradleVersion(String version) {
-        if (version == null || version.isEmpty()) {
-            return AVAILABLE_GRADLE_VERSIONS.get(AVAILABLE_GRADLE_VERSIONS.size() - 1).getVersion();
+        int majorVersion = getMajorVersion(version);
+        String latestVersion = AVAILABLE_GRADLE_VERSIONS.get(AVAILABLE_GRADLE_VERSIONS.size() - 1).getVersion();
+
+        if (majorVersion == -1) {
+            return latestVersion;
         }
 
-        GradleVersion gradleVersion = GradleVersion.version(version);
-        int ret = Collections.binarySearch(AVAILABLE_GRADLE_VERSIONS, gradleVersion);
-        int index = ret >= 0 ? ret : Math.max(0, (-ret) - 2);
-        return AVAILABLE_GRADLE_VERSIONS.get(index).getVersion();
+        if (majorVersion < 4) {
+            return AVAILABLE_GRADLE_VERSIONS.get(0).getVersion();
+        }
+
+        if (AVAILABLE_GRADLE_VERSIONS.contains(GradleVersion.version(version))) {
+            return version;
+        }
+
+        for (GradleVersion gradleVersion : AVAILABLE_GRADLE_VERSIONS) {
+            String availableVersion = gradleVersion.getVersion();
+            int gradleMajorVersion = getMajorVersion(availableVersion);
+
+            if (majorVersion == gradleMajorVersion) {
+                return availableVersion;
+            }
+        }
+
+        return latestVersion;
     }
 
     /**
