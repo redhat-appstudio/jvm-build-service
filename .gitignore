@@ -39,6 +39,7 @@ nb-configuration.xml
 .jbang
 .sdkmanrc
 .envrc
+*.out
 
 # Kustomize overlays for development
 deploy/**/development/**

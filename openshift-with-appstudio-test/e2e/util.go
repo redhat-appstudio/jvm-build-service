@@ -1,11 +1,14 @@
+//go:build normal || periodic
+// +build normal periodic
+
 package e2e
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -49,7 +52,7 @@ func dumpPods(ta *testArgs, namespace string) {
 				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err.Error()))
 				continue
 			}
-			b, err := ioutil.ReadAll(readCloser)
+			b, err := io.ReadAll(readCloser)
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error reading pod stream %s", err.Error()))
 				continue
@@ -244,9 +247,9 @@ func bothABsAndDBsGenerated(ta *testArgs) (bool, error) {
 	return false, nil
 }
 
-func projectCleanup(ta *testArgs) {
-	projectClient.ProjectV1().Projects().Delete(context.Background(), ta.ns, metav1.DeleteOptions{})
-}
+//func projectCleanup(ta *testArgs) {
+//	projectClient.ProjectV1().Projects().Delete(context.Background(), ta.ns, metav1.DeleteOptions{})
+//}
 
 func decodeBytesToTektonObjbytes(bytes []byte, obj runtime.Object, ta *testArgs) runtime.Object {
 	decodingScheme := runtime.NewScheme()
@@ -274,7 +277,7 @@ func streamRemoteYamlToTektonObj(url string, obj runtime.Object, ta *testArgs) r
 }
 
 func streamFileYamlToTektonObj(path string, obj runtime.Object, ta *testArgs) runtime.Object {
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
@@ -305,7 +308,7 @@ func dumpPodsGlob(ta *testArgs, namespace, glob string) {
 				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err.Error()))
 				continue
 			}
-			b, err := ioutil.ReadAll(readCloser)
+			b, err := io.ReadAll(readCloser)
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error reading pod stream %s", err.Error()))
 				continue
@@ -355,7 +358,7 @@ func dumpDBPods(ta *testArgs, dbName string) {
 				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
 				continue
 			}
-			b, err2 := ioutil.ReadAll(readCloser)
+			b, err2 := io.ReadAll(readCloser)
 			if err2 != nil {
 				ta.Logf(fmt.Sprintf("error reading pod stream %s", err2.Error()))
 				continue
@@ -392,7 +395,7 @@ func dumpABPods(ta *testArgs, abName, gav string) {
 				ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
 				continue
 			}
-			b, err2 := ioutil.ReadAll(readCloser)
+			b, err2 := io.ReadAll(readCloser)
 			if err2 != nil {
 				ta.Logf(fmt.Sprintf("error reading pod stream %s", err2.Error()))
 				continue

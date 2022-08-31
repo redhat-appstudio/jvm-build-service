@@ -2,7 +2,7 @@ package dependencybuild
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" //#nosec
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -152,7 +152,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 }
 
 func hashToString(unique string) string {
-	hash := md5.Sum([]byte(unique))
+	hash := md5.Sum([]byte(unique)) //#nosec
 	depId := hex.EncodeToString(hash[:])
 	return depId
 }
@@ -186,7 +186,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		return reconcile.Result{}, nil
 	}
 	ownerRefs := pr.GetOwnerReferences()
-	if ownerRefs == nil || len(ownerRefs) == 0 {
+	if len(ownerRefs) == 0 {
 		msg := "pipelinerun missing onwerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
@@ -361,7 +361,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 
 // compares versions, returns 0 if versions
 // are equivalent, -1 if v1 < v2 and 1 if v2 < v1
-//this is looking for functional equivilence, so 3.6 is considered the same as 3.6.7
+// this is looking for functional equivilence, so 3.6 is considered the same as 3.6.7
 func compareVersions(v1 string, v2 string) (int, error) {
 	v1p := strings.Split(v1, ".")
 	v2p := strings.Split(v2, ".")
@@ -463,7 +463,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
 
 	image := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
-	pipelineRunBytes := []byte{}
+	var pipelineRunBytes []byte
 	switch {
 	case db.Status.CurrentBuildRecipe.Maven:
 		pipelineRunBytes = []byte(maven)
@@ -562,7 +562,7 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 	if pr.Status.CompletionTime != nil {
 		// get db
 		ownerRefs := pr.GetOwnerReferences()
-		if ownerRefs == nil || len(ownerRefs) == 0 {
+		if len(ownerRefs) == 0 {
 			msg := "pipelinerun missing onwerrefs %s:%s"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)
@@ -588,9 +588,10 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 		// even though we filter out artifactbuild pipelineruns, let's check the kind and make sure
 		// we use a dependencybuild ownerref
 		var ownerRef *v12.OwnerReference
-		for _, or := range ownerRefs {
+		for i, or := range ownerRefs {
 			if strings.EqualFold(or.Kind, "dependencybuild") || strings.EqualFold(or.Kind, "dependencybuilds") {
-				ownerRef = &or
+				ownerRef = &ownerRefs[i]
+				break
 			}
 		}
 		if ownerRef == nil {

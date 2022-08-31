@@ -2,8 +2,8 @@ package artifactbuild
 
 import (
 	"context"
-	"crypto/md5"
-	"crypto/sha1"
+	"crypto/md5"  //#nosec G501
+	"crypto/sha1" //#nosec G505
 	"encoding/hex"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
@@ -134,7 +134,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		return reconcile.Result{}, nil
 	}
 	ownerRefs := pr.GetOwnerReferences()
-	if ownerRefs == nil || len(ownerRefs) == 0 {
+	if len(ownerRefs) == 0 {
 		msg := "pipelinerun missing onwerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
@@ -206,7 +206,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 
 func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	ownerRefs := db.GetOwnerReferences()
-	if ownerRefs == nil || len(ownerRefs) == 0 {
+	if len(ownerRefs) == 0 {
 		msg := "dependencybuild missing onwerrefs %s:%s"
 		r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name)
 		log.Info(msg, db.Namespace, db.Name)
@@ -373,7 +373,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, abr
 }
 
 func hashString(hashInput string) string {
-	hash := md5.Sum([]byte(hashInput))
+	hash := md5.Sum([]byte(hashInput)) //#nosec
 	depId := hex.EncodeToString(hash[:])
 	return depId
 }
@@ -496,7 +496,7 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 }
 
 func CreateABRName(gav string) string {
-	hashedBytes := sha1.Sum([]byte(gav))
+	hashedBytes := sha1.Sum([]byte(gav)) //#nosec
 	hash := hex.EncodeToString(hashedBytes[:])[0:8]
 	namePart := gav[strings.Index(gav, ":")+1:]
 
@@ -504,7 +504,7 @@ func CreateABRName(gav string) string {
 	//we only use the first 8 characters from the hash to make the name small
 	var newName = strings.Builder{}
 	lastDot := false
-	for _, i := range []rune(namePart) {
+	for _, i := range namePart {
 		if unicode.IsLetter(i) || unicode.IsDigit(i) {
 			newName.WriteRune(i)
 			lastDot = false
