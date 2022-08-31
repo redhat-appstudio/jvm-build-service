@@ -103,7 +103,7 @@ func (c *QuotoController) quotaEventHandler() cache.ResourceEventHandlerFuncs {
 	}
 }
 
-func (c *QuotoController) quotaEventProcessor() {
+/*func (c *QuotoController) quotaEventProcessor() {
 	for {
 		obj, shutdown := c.quotaWorkqueue.Get()
 		if shutdown {
@@ -124,4 +124,4 @@ func (c *QuotoController) quotaEventProcessor() {
 			c.quotaWorkqueue.Forget(obj)
 		}()
 	}
-}
+}*/

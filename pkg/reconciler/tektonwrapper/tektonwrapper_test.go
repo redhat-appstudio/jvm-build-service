@@ -21,8 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const gav = "com.acme:foo:1.0"
-
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileTektonWrapper) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)

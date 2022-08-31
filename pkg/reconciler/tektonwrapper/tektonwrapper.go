@@ -162,12 +162,6 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 		r.eventRecorder.Event(&tw, corev1.EventTypeWarning, "MissingPipelineRun", msg)
 		return reconcile.Result{}, nil
 	}
-	if pr == nil {
-		msg := fmt.Sprintf("TektonWrapper %s:%s could not produced a pipeline run with buf %#v", tw.Namespace, tw.Name, tw.Spec.PipelineRun)
-		log.Info(msg)
-		r.eventRecorder.Event(&tw, corev1.EventTypeWarning, "MissingPipelineRun", msg)
-		return reconcile.Result{}, nil
-	}
 
 	// we hydrate PipelineRun first to use it's namespace/name in an messaging
 	// see if we have quota for this namespace/project
@@ -283,18 +277,18 @@ func (r *ReconcileTektonWrapper) unthrottleNextOnQueuePlusCleanup(ctx context.Co
 	if err = r.client.List(ctx, &twList, opts); err != nil {
 		return err
 	}
-	for _, t := range twList.Items {
+	for i, t := range twList.Items {
 		if t.Status.State == v1alpha1.TektonWrapperStateComplete {
 			// no error checks; best effort prune is sufficient;
 			// do this is separate loop to maximize amount cleaned up
-			r.client.Delete(ctx, &t)
+			_ = r.client.Delete(ctx, &twList.Items[i])
 		}
 	}
-	for _, t := range twList.Items {
+	for i, t := range twList.Items {
 		if t.Status.State == v1alpha1.TektonWrapperStateThrottled {
 			t.Status.State = v1alpha1.TektonWrapperStateUnprocessed
 			// release only 1 throttled item when 1 item is completed
-			return r.client.Status().Update(ctx, &t)
+			return r.client.Status().Update(ctx, &twList.Items[i])
 		}
 	}
 
