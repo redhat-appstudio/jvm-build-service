@@ -24,6 +24,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
+	"github.com/kcp-dev/logicalcluster"
+
+	"github.com/go-logr/logr"
 )
 
 const (
@@ -44,7 +49,6 @@ const (
 
 var (
 	RequiredKeys = map[string]bool{SystemCacheImage: true}
-	log          = ctrl.Log.WithName("configmap")
 )
 
 type ReconcileConfigMap struct {
@@ -65,10 +69,13 @@ func newReconciler(mgr ctrl.Manager, config map[string]string) reconcile.Reconci
 
 func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
+	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	defer cancel()
+	log := ctrl.Log.WithName("configmap").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
 	if request.Name == SystemConfigMapName && request.Namespace == SystemConfigMapNamespace {
-		return r.handleSystemConfigMap(ctx, request)
+		return r.handleSystemConfigMap(ctx, log, request)
 	}
 	if request.Name != UserConfigMapName {
 		return reconcile.Result{}, nil
@@ -86,7 +93,7 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 	}
 	if enabled {
 		log.Info("Setup Rebuilds %s", "name", request.Name)
-		err := r.setupRebuilds(ctx, request)
+		err := r.setupRebuilds(ctx, log, request)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -268,7 +275,7 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 
 }
 
-func (r *ReconcileConfigMap) setupRebuilds(ctx context.Context, request reconcile.Request) error {
+func (r *ReconcileConfigMap) setupRebuilds(ctx context.Context, log logr.Logger, request reconcile.Request) error {
 	//setup localstack
 	//this is 100% temporary and needs to go away ASAP
 	localstack := v1.Deployment{}
@@ -342,7 +349,7 @@ func ReadUserConfigMap(client client.Client, ctx context.Context, namespace stri
 	return configMap.Data, nil
 }
 
-func (r *ReconcileConfigMap) handleSystemConfigMap(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileConfigMap) handleSystemConfigMap(ctx context.Context, log logr.Logger, request reconcile.Request) (reconcile.Result, error) {
 	configMap := corev1.ConfigMap{}
 	err := r.client.Get(ctx, request.NamespacedName, &configMap)
 	if err != nil {

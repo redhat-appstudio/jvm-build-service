@@ -19,6 +19,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -57,6 +58,9 @@ type Options struct {
 	// Mapper, if provided, will be used to map GroupVersionKinds to Resources
 	Mapper meta.RESTMapper
 
+	// HTTPClient, if provided, will be used by all constructed clients to talk to the apiserver
+	HTTPClient *http.Client
+
 	// Opts is used to configure the warning handler responsible for
 	// surfacing and handling warnings messages sent by the API server.
 	Opts WarningHandlerOptions
@@ -79,6 +83,14 @@ func New(config *rest.Config, options Options) (Client, error) {
 func newClient(config *rest.Config, options Options) (*client, error) {
 	if config == nil {
 		return nil, fmt.Errorf("must provide non-nil rest.Config to client.New")
+	}
+
+	if options.HTTPClient == nil {
+		httpClient, err := rest.HTTPClientFor(config)
+		if err != nil {
+			return nil, fmt.Errorf("Could not create HTTPClient from config")
+		}
+		options.HTTPClient = httpClient
 	}
 
 	if !options.Opts.SuppressWarnings {
@@ -113,16 +125,17 @@ func newClient(config *rest.Config, options Options) (*client, error) {
 	}
 
 	clientcache := &clientCache{
-		config: config,
-		scheme: options.Scheme,
-		mapper: options.Mapper,
-		codecs: serializer.NewCodecFactory(options.Scheme),
+		config:     config,
+		httpClient: options.HTTPClient,
+		scheme:     options.Scheme,
+		mapper:     options.Mapper,
+		codecs:     serializer.NewCodecFactory(options.Scheme),
 
 		structuredResourceByType:   make(map[schema.GroupVersionKind]*resourceMeta),
 		unstructuredResourceByType: make(map[schema.GroupVersionKind]*resourceMeta),
 	}
 
-	rawMetaClient, err := metadata.NewForConfig(config)
+	rawMetaClient, err := metadata.NewForConfigAndClient(config, options.HTTPClient)
 	if err != nil {
 		return nil, fmt.Errorf("unable to construct metadata-only client for use as part of client: %w", err)
 	}

@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"os"
 	"strconv"
 	"strings"
@@ -29,8 +28,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
+	"github.com/kcp-dev/logicalcluster"
+
+	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 )
 
 const (
@@ -58,10 +62,6 @@ const (
 	PipelineTypeBuild     = "build"
 )
 
-var (
-	log = ctrl.Log.WithName("dependencybuild")
-)
-
 type ReconcileDependencyBuild struct {
 	client        client.Client
 	scheme        *runtime.Scheme
@@ -78,8 +78,11 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 
 func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
+	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	defer cancel()
+	log := ctrl.Log.WithName("dependencybuild").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
 
 	db := v1alpha1.DependencyBuild{}
 	dberr := r.client.Get(ctx, request.NamespacedName, &db)
@@ -133,7 +136,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		case v1alpha1.DependencyBuildStateComplete, v1alpha1.DependencyBuildStateFailed:
 			return reconcile.Result{}, nil
 		case v1alpha1.DependencyBuildStateBuilding:
-			return r.handleStateBuilding(ctx, &db)
+			return r.handleStateBuilding(ctx, log, &db)
 		case v1alpha1.DependencyBuildStateContaminated:
 			return r.handleStateContaminated(ctx, &db)
 		}
@@ -142,9 +145,9 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		pipelineType := pr.Labels[PipelineType]
 		switch pipelineType {
 		case PipelineTypeBuildInfo:
-			return r.handleStateAnalyzeBuild(ctx, &pr)
+			return r.handleStateAnalyzeBuild(ctx, log, &pr)
 		case PipelineTypeBuild:
-			return r.handlePipelineRunReceived(ctx, &pr)
+			return r.handlePipelineRunReceived(ctx, log, &pr)
 		}
 	}
 
@@ -181,7 +184,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alp
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
 	}
@@ -282,7 +285,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 		//read our builder images from the config
 		var mavenImages []BuilderImage
-		mavenImages, err = r.processBuilderImages(ctx)
+		mavenImages, err = r.processBuilderImages(ctx, log)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -388,7 +391,7 @@ func compareVersions(v1 string, v2 string) (int, error) {
 	return 0, nil
 }
 
-func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context) ([]BuilderImage, error) {
+func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log logr.Logger) ([]BuilderImage, error) {
 	configMap := v1.ConfigMap{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: configmap.SystemConfigMapNamespace, Name: configmap.SystemConfigMapName}, &configMap)
 	if err != nil {
@@ -452,7 +455,7 @@ func (r *ReconcileDependencyBuild) decodeBytesToPipelineRun(bytes []byte) (*pipe
 	return &taskRun, err
 }
 
-func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.Namespace = db.Namespace
@@ -558,7 +561,7 @@ func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
 	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 }
 
-func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime != nil {
 		// get db
 		ownerRefs := pr.GetOwnerReferences()

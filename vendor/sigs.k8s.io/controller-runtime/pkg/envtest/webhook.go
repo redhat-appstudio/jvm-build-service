@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -233,7 +234,7 @@ func (p *webhookPoller) poll() (done bool, err error) {
 		for _, name := range names.List() {
 			var obj = &unstructured.Unstructured{}
 			obj.SetGroupVersionKind(gvk)
-			err := c.Get(context.Background(), client.ObjectKey{
+			err := c.Get(context.Background(), types.NamespacedName{
 				Namespace: "",
 				Name:      name,
 			}, obj)
@@ -315,7 +316,7 @@ func createWebhooks(config *rest.Config, mutHooks []*admissionv1.MutatingWebhook
 // ensureCreated creates or update object if already exists in the cluster.
 func ensureCreated(cs client.Client, obj client.Object) error {
 	existing := obj.DeepCopyObject().(client.Object)
-	err := cs.Get(context.Background(), client.ObjectKey{Name: obj.GetName()}, existing)
+	err := cs.Get(context.Background(), types.NamespacedName{Name: obj.GetName()}, existing)
 	switch {
 	case apierrors.IsNotFound(err):
 		if err := cs.Create(context.Background(), obj); err != nil {

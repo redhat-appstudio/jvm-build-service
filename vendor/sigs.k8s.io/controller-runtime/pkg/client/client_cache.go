@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"net/http"
 	"strings"
 	"sync"
 
@@ -34,6 +35,9 @@ import (
 type clientCache struct {
 	// config is the rest.Config to talk to an apiserver
 	config *rest.Config
+
+	// httpClient is the http.Client to talk to an apiserver
+	httpClient *http.Client
 
 	// scheme maps go structs to GroupVersionKinds
 	scheme *runtime.Scheme
@@ -59,7 +63,7 @@ func (c *clientCache) newResource(gvk schema.GroupVersionKind, isList, isUnstruc
 		gvk.Kind = gvk.Kind[:len(gvk.Kind)-4]
 	}
 
-	client, err := apiutil.RESTClientForGVK(gvk, isUnstructured, c.config, c.codecs)
+	client, err := apiutil.RESTClientForGVKAndClient(gvk, c.httpClient, isUnstructured, c.config, c.codecs)
 	if err != nil {
 		return nil, err
 	}

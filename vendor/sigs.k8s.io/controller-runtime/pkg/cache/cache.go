@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache/internal"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -108,6 +109,14 @@ type Options struct {
 	// So that all informers will not send list requests simultaneously.
 	Resync *time.Duration
 
+	// NewInformerFunc is a function that is used to create SharedIndexInformers.
+	// Defaults to cache.NewSharedIndexInformer from client-go
+	NewInformerFunc client.NewInformerFunc
+
+	// Indexers is the indexers that the informers will be configured to use.
+	// Will always have the standard NamespaceIndex.
+	Indexers cache.Indexers
+
 	// Namespace restricts the cache's ListWatch to the desired namespace
 	// Default watches all namespaces
 	Namespace string
@@ -146,7 +155,7 @@ func New(config *rest.Config, opts Options) (Cache, error) {
 	if err != nil {
 		return nil, err
 	}
-	im := internal.NewInformersMap(config, opts.Scheme, opts.Mapper, *opts.Resync, opts.Namespace, selectorsByGVK, disableDeepCopyByGVK)
+	im := internal.NewInformersMap(config, opts.Scheme, opts.Mapper, *opts.Resync, opts.Namespace, selectorsByGVK, disableDeepCopyByGVK, opts.NewInformerFunc, opts.Indexers)
 	return &informerCache{InformersMap: im}, nil
 }
 
@@ -198,6 +207,10 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 	// Default the resync period to 10 hours if unset
 	if opts.Resync == nil {
 		opts.Resync = &defaultResyncTime
+	}
+
+	if opts.NewInformerFunc == nil {
+		opts.NewInformerFunc = cache.NewSharedIndexInformer
 	}
 	return opts, nil
 }
