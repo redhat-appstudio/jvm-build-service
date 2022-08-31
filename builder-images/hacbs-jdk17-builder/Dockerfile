@@ -8,14 +8,12 @@ ENV \
     MAVEN_HOME="/usr/share/maven" \
     MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1" \
     MAVEN_VERSION="3.8.6" \
-    GRADLE_HOME="/usr/share/gradle" \
     GRADLE_OPTS="-Dorg.gradle.daemon=false" \
-    GRADLE_VERSION="7.5" \
     GRADLE_MANIPULATOR_HOME="/usr/share/gradle-manipulator" \
     GRADLE_MANIPULATOR_VERSION="3.7" \
     HOME="/home/hacbs" \
     NSS_WRAPPER_PASSWD="/etc/passwd" \
-    GRADLE_DOWNLOAD_SHA256=cb87f222c5585bd46838ad4db78463a5c5f3d336e5e2b98dc7c0c586527351c2 \
+    GRADLE_DOWNLOAD_SHA256= \
     CLI_JAR_DOWNLOAD_SHA256=8af7e87638bb237362bf8f486b489c251e474be1cdc40037ba79887c2f0803b9 \
     ANALYZER_INIT_DOWNLOAD_SHA256=3172f34e126d652efccce50ca98c58f9baca27d89b5482268d0a4cb44023aa7e \
     PATH="$PATH:$JAVA_HOME/bin" \
@@ -55,25 +53,25 @@ RUN set -o errexit -o nounset \
     && mkdir "${GRADLE_MANIPULATOR_HOME}" \
     && mv cli.jar analyzer-init.gradle "${GRADLE_MANIPULATOR_HOME}/" \
     && mkdir "${GRADLE_MANIPULATOR_HOME}/bin" \
-    && echo -e "#!/bin/sh\n\ntest -n \"\${GRADLE_HOME}\" || GRADLE_HOME=\"${GRADLE_HOME}\"\nARGS=\"-l \${GRADLE_HOME}\"\njava -jar ${GRADLE_MANIPULATOR_HOME}/cli.jar \"\${ARGS}\" --init-script=${GRADLE_MANIPULATOR_HOME}/analyzer-init.gradle \$@" > ${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator \
+    && echo -e "#!/bin/sh\n\nset -eu\nARGS=\"-l \${GRADLE_HOME}\"\njava -jar ${GRADLE_MANIPULATOR_HOME}/cli.jar \"\${ARGS}\" --init-script=${GRADLE_MANIPULATOR_HOME}/analyzer-init.gradle \$@" > ${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator \
     && chmod 755 ${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator \
-    && ${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator --version \
-    && ln --symbolic "${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator" /usr/bin/gradle-manipulator \
-    && /usr/bin/gradle-manipulator --version \
-    && gradle-manipulator --version
+    && ln --symbolic "${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator" /usr/bin/gradle-manipulator
+    #we test out gradle manipulator as part of the gradle installation
+
 
 RUN set -o errexit -o nounset \
-    && echo "Downloading Gradle" \
-    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-7.5-bin.zip" \
+    && mkdir /opt/gradle \
+         && echo "Downloading Gradle 7.4.2" \
+    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-7.4.2-bin.zip" \
     \
-    && echo "Checking download hash" \
-    && echo "${GRADLE_DOWNLOAD_SHA256} *gradle.zip" | sha256sum --check - \
+    && echo "Checking download hash 7.4.2" \
+    && echo "29e49b10984e585d8118b7d0bc452f944e386458df27371b49b4ac1dec4b7fda *gradle.zip" | sha256sum --check - \
     \
-    && echo "Installing Gradle" \
+    && echo "Installing Gradle 7.4.2" \
     && unzip gradle.zip \
     && rm gradle.zip \
-    && mv "gradle-7.5" "${GRADLE_HOME}/" \
-    && ln --symbolic "${GRADLE_HOME}/bin/gradle" /usr/bin/gradle
+    && mv "gradle-7.4.2" "/opt/gradle/7.4.2/" \
+    && export GRADLE_HOME=/opt/gradle/7.4.2; gradle-manipulator --version true
 
 LABEL \
     io.cekit.version="4.1.0" \

@@ -23,8 +23,6 @@ spec:
       - clean
       - install
       - -Denforcer.skip
-  - name: JAVA_VERSION
-    value: ""
   - name: TOOL_VERSION
     value: ""
   workspaces:
@@ -55,10 +53,6 @@ spec:
           - clean
           - install
           - -Denforcer.skip
-      - name: JAVA_VERSION
-        description: Java version.
-        type: string
-        default: ""
       - name: TOOL_VERSION
         description: Maven version.
         type: string
@@ -270,8 +264,6 @@ spec:
     value:
     - build
     - publish
-  - name: JAVA_VERSION
-    value: ""
   - name: TOOL_VERSION
     value: ""
   workspaces:
@@ -307,10 +299,6 @@ spec:
         default:
           - build
           - publish
-      - name: JAVA_VERSION
-        description: Java version.
-        type: string
-        default: ""
       - name: TOOL_VERSION
         description: Gradle version.
         type: string
@@ -438,10 +426,6 @@ spec:
                           }
                           //allowInsecureProtocol = true
                       }
-                      maven {
-                          name "Gradle Central Plugin Repository"
-                          url "https://plugins.gradle.org/m2/"
-                      }
                   }
               }
               repositories {
@@ -454,10 +438,6 @@ spec:
                           password "$(params.SERVER_PASSWORD)"
                       }
                       //allowInsecureProtocol = true
-                  }
-                  maven {
-                      name "Gradle Central Plugin Repository"
-                      url "https://plugins.gradle.org/m2/"
                   }
               }
           }
@@ -500,21 +480,6 @@ spec:
 
           echo "@=$@"
 
-          if [ -z "$(params.JAVA_VERSION)" ]; then
-              echo "JAVA_VERSION has not been set" >&2
-              exit 1
-          fi
-
-          case "$(params.JAVA_VERSION)" in
-              8)
-                  export JAVA_HOME="/usr/lib/jvm/java-1.8.0-openjdk"
-                  ;;
-              *)
-                  export JAVA_HOME="/usr/lib/jvm/java-$(params.JAVA_VERSION)-openjdk"
-                  ;;
-          esac
-
-          echo "JAVA_HOME=${JAVA_HOME}"
           export PATH="${JAVA_HOME}/bin:${PATH}"
 
           if [ -z "$(params.TOOL_VERSION)" ]; then
@@ -523,7 +488,7 @@ spec:
           fi
 
           TOOL_VERSION="$(params.TOOL_VERSION)"
-          export GRADLE_HOME="/opt/gradle-${TOOL_VERSION}"
+          export GRADLE_HOME="/opt/gradle/${TOOL_VERSION}"
           echo "GRADLE_HOME=${GRADLE_HOME}"
 
           if [ ! -d "${GRADLE_HOME}" ]; then

@@ -49,7 +49,6 @@ const (
 	PipelineEnforceVersion   = "ENFORCE_VERSION"
 	PipelineIgnoredArtifacts = "IGNORED_ARTIFACTS"
 	PipelineToolVersion      = "TOOL_VERSION"
-	PipelineJavaVersion      = "JAVA_VERSION"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
 	BuildInfoPipelineTagParam     = "TAG"
@@ -288,6 +287,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 		//read our builder images from the config
 		var mavenImages []BuilderImage
+		var selectedImages []BuilderImage
 		mavenImages, err = r.processBuilderImages(ctx, log)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -299,51 +299,60 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		_, gradle := unmarshalled.Tools["gradle"]
 		java := unmarshalled.Tools["jdk"]
 
-		switch {
-		case maven:
-			//todo: this is basic and needs to be improved
-			for _, image := range mavenImages {
-				//we only have one JDK version in the builder at the moment
-				//other tools will potentially have multiple versions
-				//we only want to use builder images that have java versions that the analyser
-				//detected might be appropriate
-				imageJava := image.Tools["jdk"][0]
-				if java.Min != "" {
-					versionResult, err := compareVersions(imageJava, java.Min)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Min))
-						return reconcile.Result{}, err
-					}
-					if versionResult < 0 {
-						log.Info(fmt.Sprintf("Not building with %s because of min java version %s (image version %s)", image.Image, java.Min, imageJava))
-						continue
-					}
+		for _, image := range mavenImages {
+			//we only have one JDK version in the builder at the moment
+			//other tools will potentially have multiple versions
+			//we only want to use builder images that have java versions that the analyser
+			//detected might be appropriate
+			imageJava := image.Tools["jdk"][0]
+			if java.Min != "" {
+				versionResult, err := compareVersions(imageJava, java.Min)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Min))
+					return reconcile.Result{}, err
 				}
-				if java.Max != "" {
-					versionResult, err := compareVersions(imageJava, java.Max)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Max))
-						return reconcile.Result{}, err
-					}
-					if versionResult > 0 {
-						log.Info(fmt.Sprintf("Not building with %s because of max java version %s (image version %s)", image.Image, java.Min, imageJava))
-						continue
-					}
-				}
-				for _, command := range unmarshalled.Invocations {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Maven: true})
+				if versionResult < 0 {
+					log.Info(fmt.Sprintf("Not building with %s because of min java version %s (image version %s)", image.Image, java.Min, imageJava))
+					continue
 				}
 			}
-		case gradle:
-			//TODO: update gradle to use builder images
-			for _, image := range []string{"quay.io/dwalluck/gradle:latest"} {
-				for _, command := range unmarshalled.Invocations {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: unmarshalled.ToolVersion, JavaVersion: unmarshalled.JavaVersion, Gradle: true})
+			if java.Max != "" {
+				versionResult, err := compareVersions(imageJava, java.Max)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Max))
+					return reconcile.Result{}, err
+				}
+				if versionResult > 0 {
+					log.Info(fmt.Sprintf("Not building with %s because of max java version %s (image version %s)", image.Image, java.Min, imageJava))
+					continue
 				}
 			}
-		default:
-			log.Error(nil, "Neither maven nor gradle was found in the tools map", "json", buildInfo)
-			return reconcile.Result{}, nil
+			selectedImages = append(selectedImages, image)
+		}
+
+		for _, image := range selectedImages {
+			var tooVersions []string
+			if maven {
+				//TODO: maven version selection
+				//for now we just fake it
+				tooVersions = []string{"3.8.1"}
+			} else if gradle {
+				//gradle has an explicit tool version, but we need to map it to what is in the image
+				gradleVersionsInImage := image.Tools["gradle"]
+				for _, i := range gradleVersionsInImage {
+					if sameMajorVersion(i, unmarshalled.ToolVersion) {
+						tooVersions = append(tooVersions, i)
+					}
+				}
+			} else {
+				log.Error(nil, "Neither maven nor gradle was found in the tools map", "json", buildInfo)
+				return reconcile.Result{}, nil
+			}
+			for _, command := range unmarshalled.Invocations {
+				for _, tv := range tooVersions {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Maven: maven, Gradle: gradle})
+				}
+			}
 		}
 
 		db.Status.PotentialBuildRecipes = buildRecipes
@@ -394,6 +403,15 @@ func compareVersions(v1 string, v2 string) (int, error) {
 	return 0, nil
 }
 
+// compares versions, returns 0 if versions
+// are equivalent, -1 if v1 < v2 and 1 if v2 < v1
+// this is looking for functional equivilence, so 3.6 is considered the same as 3.6.7
+func sameMajorVersion(v1 string, v2 string) bool {
+	v1p := strings.Split(v1, ".")
+	v2p := strings.Split(v2, ".")
+	return v2p[0] == v1p[0]
+}
+
 func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log logr.Logger) ([]BuilderImage, error) {
 	configMap := v1.ConfigMap{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: configmap.SystemConfigMapNamespace, Name: configmap.SystemConfigMapName}, &configMap)
@@ -416,7 +434,7 @@ func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log
 				split := strings.Split(tag, ":")
 				key := split[0]
 				val := split[1]
-				image.Tools[key] = append(image.Tools[key], val)
+				image.Tools[key] = append(image.Tools[key], strings.Split(val, ";")...)
 			}
 
 			result = append(result, image)
@@ -524,7 +542,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
 		{Name: PipelineIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
 		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
-		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
 	pr.Spec.PipelineSpec.Workspaces = []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "source"}, {Name: "maven-settings"}}
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{

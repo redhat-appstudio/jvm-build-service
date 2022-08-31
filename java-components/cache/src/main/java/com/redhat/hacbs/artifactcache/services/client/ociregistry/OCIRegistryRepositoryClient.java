@@ -82,6 +82,11 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     }
 
     @Override
+    public String getName() {
+        return registry;
+    }
+
+    @Override
     public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
             String target, Long buildStartTime) {
         long time = System.currentTimeMillis();

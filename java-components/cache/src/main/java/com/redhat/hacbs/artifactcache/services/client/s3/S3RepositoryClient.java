@@ -27,6 +27,11 @@ public class S3RepositoryClient implements RepositoryClient {
     }
 
     @Override
+    public String getName() {
+        return "s3/" + bucket;
+    }
+
+    @Override
     public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
             String target, Long buildStartTime) {
 

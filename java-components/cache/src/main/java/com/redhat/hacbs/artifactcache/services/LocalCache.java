@@ -54,6 +54,11 @@ public class LocalCache implements RepositoryClient {
     }
 
     @Override
+    public String getName() {
+        return "local cache";
+    }
+
+    @Override
     public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
             String target, Long buildStartTime) {
         //TODO: we don't really care about the policy when using standard maven repositories
@@ -195,7 +200,8 @@ public class LocalCache implements RepositoryClient {
                             }
                             if (!sb.toString().equalsIgnoreCase(result.get().getExpectedSha().get())) {
                                 //TODO: handle this better
-                                Log.error("Filed to cache " + downloadTarget + " calculated sha '" + sb.toString()
+                                Log.error("Filed to cache " + downloadTarget + " from " + repositoryClient.getName()
+                                        + " calculated sha '" + sb.toString()
                                         + "' did not match expected '" + result.get().getExpectedSha().get() + "'");
                                 return clientInvocation.apply(repositoryClient);
                             }

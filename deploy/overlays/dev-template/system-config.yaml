@@ -8,8 +8,5 @@ data:
   image.cache: jvm-build-service-cache-image:dev
   builder-image.names: jdk11,jdk8,jdk17
   builder-image.jdk8.image: jdk8-builder
-  builder-image.jdk8.tags: jdk:8,maven:3.8,gradle:7.5
   builder-image.jdk11.image: jdk11-builder
-  builder-image.jdk11.tags: jdk:11,maven:3.8,gradle:7.5
   builder-image.jdk17.image: jdk17-builder
-  builder-image.jdk17.tags: jdk:17,maven:3.8,gradle:7.5

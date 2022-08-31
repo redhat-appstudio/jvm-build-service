@@ -6,6 +6,8 @@ import java.util.Optional;
 
 public interface RepositoryClient {
 
+    String getName();
+
     /**
      * Retrieves an artifact related file.
      *

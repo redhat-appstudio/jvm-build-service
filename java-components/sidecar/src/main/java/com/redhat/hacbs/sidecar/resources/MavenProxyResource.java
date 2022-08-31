@@ -226,6 +226,8 @@ public class MavenProxyResource {
                         return rb.build();
                     }
                 }
+            } catch (NotFoundException e) {
+                throw e;
             } catch (Exception e) {
                 Log.errorf(e, "Failed to load %s", target);
                 current = e;

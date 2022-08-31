@@ -27,8 +27,13 @@ public class MavenClient implements RepositoryClient {
     }
 
     public static MavenClient of(String name, URI uri) {
-        MavenHttpClient client = RestClientBuilder.newBuilder().baseUri(uri).build(MavenHttpClient.class);
+        MavenHttpClient client = RestClientBuilder.newBuilder().followRedirects(true).baseUri(uri).build(MavenHttpClient.class);
         return new MavenClient(name, uri, client);
+    }
+
+    @Override
+    public String getName() {
+        return name;
     }
 
     @Override
