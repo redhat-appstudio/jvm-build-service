@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"encoding/json"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -68,6 +69,12 @@ type APIBindingSpec struct {
 	// +required
 	// +kubebuilder:validation:Required
 	Reference ExportReference `json:"reference"`
+
+	// acceptedPermissionClaims records the permissions that are granted
+	// to the bound workspace.
+	// Access is granted on a GroupResource basis and can be filtered on objects by many different selectors.
+	// +optional
+	AcceptedPermissionClaims []PermissionClaim `json:"acceptedPermissionClaims,omitempty"`
 }
 
 // ExportReference describes a reference to an APIExport. Exactly one of the
@@ -85,7 +92,8 @@ type ExportReference struct {
 // specified Workspace.
 type WorkspaceExportReference struct {
 	// path is an absolute reference to a workspace, e.g. root:org:ws. The workspace must
-	// be some ancestor or a child of some ancestor.
+	// be some ancestor or a child of some ancestor. If it is unset, the path of the APIBinding
+	// is used.
 	// +optional
 	// +kubebuilder:validation:Pattern:="^root(:[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
 	Path string `json:"path,omitempty"`
@@ -139,6 +147,13 @@ type APIBindingStatus struct {
 	//
 	// +optional
 	Conditions conditionsv1alpha1.Conditions `json:"conditions,omitempty"`
+
+	// observedAcceptedPermissionClaims records the permissions that the export provider is granted
+	// to the bound workspace. This is granted by binding implictily to an export that contains
+	// permissionClaims.
+	// Access is granted on a GroupResource basis and can be filtered on objects by many different selectors.
+	// +optional
+	ObservedAcceptedPermissionClaims []PermissionClaim `json:"ObservedAcceptedPermissionClaims,omitempty"`
 }
 
 // These are valid conditions of APIBinding.
@@ -176,6 +191,15 @@ const (
 	// BindingResourceDeleteSuccess is a condition for APIBinding that indicates the resources relating this binding are deleted
 	// successfully when the APIBinding is deleting
 	BindingResourceDeleteSuccess conditionsv1alpha1.ConditionType = "BindingResourceDeleteSuccess"
+
+	// PermissionClaimsAccepted is a condition for APIBinding that indicates that the permission claims were fully accepted or not.
+	PermissionClaimsAccepted conditionsv1alpha1.ConditionType = "PermissionClaimAccepted"
+
+	// IdentityMismatchClaimInvalidReason is used one or more claims have an identity mismatch, between what is bound and what is accepted.
+	IdentityMismatchClaimInvalidReason = "ClaimIdentityMismatch"
+
+	// UnknownPermissionClaimInvalidReason  is used when no idenitty mismatches exist, but we are unable to update the resources.
+	UnknownPermissionClaimInvalidReason = "Unknown"
 )
 
 // These are annotations for bound CRDs
@@ -313,6 +337,12 @@ func (in *APIExport) SetConditions(conditions conditionsv1alpha1.Conditions) {
 	in.Status.Conditions = conditions
 }
 
+const (
+	// MaximalPermissionPolicyRBACUserGroupPrefix is the prefix for the user and group names
+	// when verifying the APIExport.spec.maximalPermissionPolicy.
+	MaximalPermissionPolicyRBACUserGroupPrefix = "apis.kcp.dev:binding:"
+)
+
 // APIExportSpec defines the desired state of APIExport.
 type APIExportSpec struct {
 	// latestResourceSchemas records the latest APIResourceSchemas that are exposed
@@ -346,15 +376,44 @@ type APIExportSpec struct {
 	// created.
 	//
 	// +optional
-	Identity *Identity `json:"identity"`
+	Identity *Identity `json:"identity,omitempty"`
 
 	// TODO: before beta we should re-evaluate this field name
 
-	// maximalPermissionPolicy will allow for a service provider to set a upper bound on what is allowed
+	// maximalPermissionPolicy will allow for a service provider to set an upper bound on what is allowed
 	// for a consumer of this API. If the policy is not set, no upper bound is applied,
 	// i.e the consuming users can do whatever the user workspace allows the user to do.
+	//
+	// The policy consists of RBAC (Cluster)Roles and (Cluster)Bindings. A request of a user in
+	// a workspace that binds to this APIExport via an APIBinding is additionally checked against
+	// these rules, with the user name and the groups prefixed with `apis.kcp.dev:binding:`.
+	//
+	// For example: assume a user `adam` with groups `system:authenticated` and `a-team` binds to
+	// this APIExport in another workspace root:org:ws. Then a request in that workspace
+	// against a resource of this APIExport is authorized as every other request in that workspace,
+	// but in addition the RBAC policy here in the APIExport workspace has to grant access to the
+	// user `apis.kcp.dev:binding:adam` with the groups `apis.kcp.dev:binding:system:authenticated`
+	// and `apis.kcp.dev:binding:a-team`.
+	//
 	// +optional
-	MaximalPermissionPolicy *APIExportPolicy `json:"maximalPermissionPolicy,omitempty"`
+	MaximalPermissionPolicy *MaximalPermissionPolicy `json:"maximalPermissionPolicy,omitempty"`
+
+	// permissionClaims make resources available in APIExport's virtual workspace that are not part
+	// of the actual APIExport resources.
+	//
+	// PermissionClaims are optional and should be the least access necessary to complete the functions
+	// that the service provider needs. Access is asked for on a GroupResource + identity basis.
+	//
+	// PermissionClaims must be accepted by the user's explicit acknowledgement. Hence, when claims
+	// change, the respecting objects are not visible immediately.
+	//
+	// PermissionClaims overlapping with the APIExport resources are ignored.
+	//
+	// +optional
+	// +listType=map
+	// +listMapKey=group
+	// +listMapKey=resource
+	PermissionClaims []PermissionClaim `json:"permissionClaims,omitempty"`
 }
 
 // Identity defines the identity of an APIExport, i.e. determines the etcd prefix
@@ -363,13 +422,12 @@ type Identity struct {
 	// secretRef is a reference to a secret that contains the API identity in the 'key' file.
 	//
 	// +optional
-	SecretRef *corev1.SecretReference `json:"secretRef"`
+	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
 }
 
-// APIExportPolicy is a wrapper type around the multiple options that would be allowed.
-type APIExportPolicy struct {
+// MaximalPermissionPolicy is a wrapper type around the multiple options that would be allowed.
+type MaximalPermissionPolicy struct {
 	// local is policy that is defined in same namespace as API Export.
-
 	// +optional
 	Local *LocalAPIExportPolicy `json:"local,omitempty"`
 }
@@ -377,6 +435,55 @@ type APIExportPolicy struct {
 // LocalAPIExportPolicy will tell the APIBinding authorizer to check policy in the local namespace
 // of the API Export
 type LocalAPIExportPolicy struct{}
+
+const (
+	APIExportPermissionClaimLabelPrefix = "claimed.internal.apis.kcp.dev/"
+)
+
+// PermissionClaim identifies an object by GR and identity hash.
+// It's purpose is to determine the added permisions that a service provider may
+// request and that a consumer may accept and alllow the service provider access to.
+type PermissionClaim struct {
+	GroupResource `json:","`
+
+	// This is the identity for a given APIExport that the APIResourceSchema belongs to.
+	// The hash can be found on APIExport and APIResourceSchema's status.
+	// It will be empty for core types.
+	// Note that one must look this up for a particular KCP instance.
+	// +optional
+	IdentityHash string `json:"identityHash,omitempty"`
+}
+
+func (p PermissionClaim) String() string {
+	if p.IdentityHash == "" {
+		return fmt.Sprintf("%v.%v", p.Resource, p.Group)
+	}
+	return fmt.Sprintf("%v:%v.%v", p.Resource, p.IdentityHash, p.Group)
+}
+
+func (p PermissionClaim) Equal(claim PermissionClaim) bool {
+	return p.Group == claim.Group &&
+		p.Resource == claim.Resource &&
+		p.IdentityHash == p.IdentityHash
+}
+
+// GroupResource identifies a resource.
+type GroupResource struct {
+	// group is the name of an API group.
+	// For core groups this is the empty string '""'.
+	//
+	// +kubebuilder:validation:Pattern=`^(|[a-z0-9]([-a-z0-9]*[a-z0-9](\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)?)$`
+	// +optional
+	Group string `json:"group,omitempty"`
+
+	// resource is the name of the resource.
+	// Note: it is worth noting that you can not ask for permissions for resource provided by a CRD
+	// not provided by an api export.
+	// +kubebuilder:validation:Pattern=`^[a-z][-a-z0-9]*[a-z0-9]$`
+	// +required
+	// +kubebuilder:Required
+	Resource string `json:"resource"`
+}
 
 // APIExportStatus defines the observed state of APIExport.
 type APIExportStatus struct {
@@ -509,7 +616,7 @@ type APIResourceVersion struct {
 	// subresources specify what subresources this version of the defined custom resource have.
 	//
 	// +optional
-	Subresources apiextensionsv1.CustomResourceSubresources `json:"subresources"`
+	Subresources apiextensionsv1.CustomResourceSubresources `json:"subresources,omitempty"`
 	// additionalPrinterColumns specifies additional columns returned in Table output.
 	// See https://kubernetes.io/docs/reference/using-api/api-concepts/#receiving-resources-as-tables for details.
 	// If no columns are specified, a single column displaying the age of the custom resource is used.

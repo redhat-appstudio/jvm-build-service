@@ -88,7 +88,7 @@ func newClient(config *rest.Config, options Options) (*client, error) {
 	if options.HTTPClient == nil {
 		httpClient, err := rest.HTTPClientFor(config)
 		if err != nil {
-			return nil, fmt.Errorf("Could not create HTTPClient from config")
+			return nil, fmt.Errorf("error creating HTTPClient from config: %w", err)
 		}
 		options.HTTPClient = httpClient
 	}

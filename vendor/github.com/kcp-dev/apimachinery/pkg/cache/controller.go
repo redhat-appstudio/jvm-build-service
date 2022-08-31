@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kcp-dev/logicalcluster"
+	"github.com/kcp-dev/logicalcluster/v2"
 	"k8s.io/apimachinery/pkg/api/meta"
 )
 
@@ -68,4 +68,13 @@ func ClusterAwareKeyFunc(obj interface{}) (string, error) {
 // ToClusterAwareKey is a helper function that formats cluster, namespace, and name for key and index functions
 func ToClusterAwareKey(cluster, namespace, name string) string {
 	return strings.Join([]string{cluster, namespace, name}, "/")
+}
+
+// SplitClusterAwareKey is a helper function that extracts the cluster name, namespace, and name from a cluster-aware key
+func SplitClusterAwareKey(clusterKey string) (string, string, string, error) {
+	bits := strings.Split(clusterKey, "/")
+	if len(bits) != 3 {
+		return "", "", "", fmt.Errorf("%s is not a valid cluster-aware key", clusterKey)
+	}
+	return bits[0], bits[1], bits[2], nil
 }
