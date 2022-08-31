@@ -122,7 +122,7 @@ spec:
         image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0"
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "10m"
           limits:
             memory: "512Mi"
@@ -284,7 +284,7 @@ spec:
             memory: "128Mi"
             cpu: "10m"
           limits:
-            memory: "8Gi"
+            memory: "256Gi"
             cpu: "2"
 `
 
@@ -642,10 +642,10 @@ spec:
           periodSeconds: 3
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "10m"
           limits:
-            memory: "8Gi"
+            memory: "256Gi"
             cpu: "2"
 `
 )
