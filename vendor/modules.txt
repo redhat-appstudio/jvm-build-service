@@ -140,9 +140,6 @@ github.com/kcp-dev/apimachinery/third_party/informers
 github.com/kcp-dev/kcp/pkg/apis/apis
 github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1
 github.com/kcp-dev/kcp/pkg/apis/third_party/conditions/apis/conditions/v1alpha1
-# github.com/kcp-dev/logicalcluster v1.1.1-0.20220705215104-8e46328c24a5
-## explicit; go 1.17
-github.com/kcp-dev/logicalcluster
 # github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
 ## explicit; go 1.18
 github.com/kcp-dev/logicalcluster/v2

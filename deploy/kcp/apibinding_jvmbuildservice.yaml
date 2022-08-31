@@ -1,0 +1,14 @@
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIBinding
+metadata:
+  name: jvmbuildservice-binding
+spec:
+  reference:
+    workspace:
+      path: root:jvmbuildservice
+      exportName: jvmbuildservice
+  acceptedPermissionClaims:
+    - group: ""
+      resource: "secrets"
+    - group: ""
+      resource: "configmaps"

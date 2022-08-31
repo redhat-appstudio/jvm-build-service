@@ -1,0 +1,27 @@
+# This file is generated from CRDs by ./hack/generate-kcp-api.sh script.
+# Please do not modify!
+
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIExport
+metadata:
+  name: jvmbuildservice
+spec:
+  permissionClaims:
+  - group: ""
+    resource: "secrets"
+  - group: ""
+    resource: "configmaps"
+  - group: "jvmbuildservice.io"
+    identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
+    resource: "artifactbuilds"
+  - group: "jvmbuildservice.io"
+    identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
+    resource: "dependencybuilds"
+  - group: "jvmbuildservice.io"
+    identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
+    resource: "tektonwrappers"
+  latestResourceSchemas:
+    - v202209150511.artifactbuilds.jvmbuildservice.io
+    - v202209150511.dependencybuilds.jvmbuildservice.io
+    - v202209150511.rebuiltartifacts.jvmbuildservice.io
+    - v202209150511.tektonwrappers.jvmbuildservice.io

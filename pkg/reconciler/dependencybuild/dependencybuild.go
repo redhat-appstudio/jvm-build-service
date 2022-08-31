@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kcp-dev/logicalcluster"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
+	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
@@ -81,6 +81,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	var cancel context.CancelFunc
 	if request.ClusterName != "" {
+		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
 		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	}
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)

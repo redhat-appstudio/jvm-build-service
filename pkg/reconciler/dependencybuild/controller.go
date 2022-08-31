@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -57,6 +58,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 						Name:      pipelineRun.Name,
 						Namespace: pipelineRun.Namespace,
 					},
+					ClusterName: logicalcluster.From(pipelineRun).String(),
 				},
 			}
 		})).

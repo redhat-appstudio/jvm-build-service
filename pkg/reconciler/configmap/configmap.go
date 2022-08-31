@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
-	"github.com/kcp-dev/logicalcluster"
+	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 )
 
@@ -88,7 +88,7 @@ func ReadConfigValue(name string, userConfig map[string]string, systemConfig map
 	return defaultValue
 }
 
-func newReconciler(mgr ctrl.Manager, config map[string]string) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 	return &ReconcileConfigMap{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
@@ -100,6 +100,7 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	var cancel context.CancelFunc
 	if request.ClusterName != "" {
+		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
 		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	}
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)

@@ -19,9 +19,3 @@ rules:
       - jvm-build-config
     verbs:
       - get
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: pipeline
-  namespace: jvm-build-service

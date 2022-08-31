@@ -36,11 +36,11 @@ rules:
       - watch
 
   - apiGroups:
-    - apiextensions.k8s.io
+      - apiextensions.k8s.io
     resources:
-    - customresourcedefinitions
+      - customresourcedefinitions
     verbs:
-    - get
+      - get
 
   - apiGroups:
       - tekton.dev
@@ -87,7 +87,7 @@ rules:
       - watch
       - delete
   - apiGroups:
-    - "apps"
+      - "apps"
     resources:
       - deployments
     verbs:

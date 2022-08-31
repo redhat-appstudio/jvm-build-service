@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -70,7 +71,12 @@ sigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).Start.func2
 
 func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.WithTimeout(ctx, contextTimeout)
+	var cancel context.CancelFunc
+	if request.ClusterName != "" {
+		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
+		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
+	}
+	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	tw := v1alpha1.TektonWrapper{}
 	twerr := r.client.Get(ctx, request.NamespacedName, &tw)
