@@ -443,6 +443,7 @@ spec:
           mkdir -p ${GRADLE_USER_HOME}
           cat > ${GRADLE_USER_HOME}/gradle.properties << EOF
           org.gradle.caching=false
+          org.gradle.console=plain
           # This prevents the daemon from running (which is unnecessary in one-off builds) and increases the memory allocation
           org.gradle.daemon=false
           # For Spring/Nebula Release Plugins
