@@ -9,7 +9,7 @@ resources:
 
 images:
   - name: hacbs-jvm-cache
-    newName: quay.io/QUAY_USERNAME/hacbs-jvm-cache
+    newName: jvm-build-service-cache-image
     newTag: dev
 
 patches:
