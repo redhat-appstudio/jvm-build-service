@@ -69,10 +69,10 @@ public class LookupBuildInfoCommand implements Runnable {
     @Override
     public void run() {
         try {
-            Path tempDir = Files.createTempDirectory("recipe");
             //checkout the git recipe database
             List<RecipeDirectory> managers = new ArrayList<>();
             for (var i : recipeRepos) {
+                Path tempDir = Files.createTempDirectory("recipe");
                 managers.add(RecipeRepositoryManager.create(i, "main", Optional.empty(), tempDir));
             }
             RecipeGroupManager recipeGroupManager = new RecipeGroupManager(managers);
