@@ -1,6 +1,3 @@
-//go:build normal || periodic
-// +build normal periodic
-
 package e2e
 
 import (
@@ -9,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -180,11 +178,11 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 	}
 
 	ta.gitClone = &v1beta1.Task{}
-	obj := streamRemoteYamlToTektonObj("https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml", ta.gitClone, ta)
+	obj := streamRemoteYamlToTektonObj(gitCloneTaskUrl, ta.gitClone, ta)
 	var ok bool
 	ta.gitClone, ok = obj.(*v1beta1.Task)
 	if !ok {
-		debugAndFailTest(ta, fmt.Sprintf("https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml did not produce a task: %#v", obj))
+		debugAndFailTest(ta, fmt.Sprintf("%s did not produce a task: %#v", gitCloneTaskUrl, obj))
 	}
 	ta.gitClone, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.gitClone, metav1.CreateOptions{})
 	if err != nil {
@@ -264,7 +262,7 @@ func decodeBytesToTektonObjbytes(bytes []byte, obj runtime.Object, ta *testArgs)
 }
 
 func streamRemoteYamlToTektonObj(url string, obj runtime.Object, ta *testArgs) runtime.Object {
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) //#nosec G107
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
@@ -277,7 +275,7 @@ func streamRemoteYamlToTektonObj(url string, obj runtime.Object, ta *testArgs) r
 }
 
 func streamFileYamlToTektonObj(path string, obj runtime.Object, ta *testArgs) runtime.Object {
-	bytes, err := os.ReadFile(path)
+	bytes, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
@@ -321,6 +319,7 @@ func dumpPodsGlob(ta *testArgs, namespace, glob string) {
 	}
 }
 
+/*
 func dbDumpForState(ta *testArgs, state string) {
 	dbList, dberr := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 	if dberr != nil {
@@ -334,6 +333,7 @@ func dbDumpForState(ta *testArgs, state string) {
 		}
 	}
 }
+*/
 
 func dumpDBPods(ta *testArgs, dbName string) {
 	podClient := kubeClient.CoreV1().Pods(ta.ns)

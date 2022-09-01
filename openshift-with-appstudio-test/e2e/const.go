@@ -1,6 +1,3 @@
-//go:build normal || periodic
-// +build normal periodic
-
 package e2e
 
 const (
@@ -8,4 +5,5 @@ const (
 	maxNameLength          = 63
 	randomLength           = 5
 	maxGeneratedNameLength = maxNameLength - randomLength
+	gitCloneTaskUrl        = "https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml"
 )
