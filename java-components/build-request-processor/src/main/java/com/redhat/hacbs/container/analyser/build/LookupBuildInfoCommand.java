@@ -155,9 +155,9 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
 
                 info.tools.put(JDK, new VersionRange("8", "17", javaVersion));
-                info.tools.put(GRADLE, new VersionRange(detectedGradleVersion, detectedGradleVersion, detectedGradleVersion));
+                info.tools.put(GRADLE, new VersionRange(gradleVersion, gradleVersion, gradleVersion));
                 info.invocations.add(new ArrayList<>(GradleUtils.DEFAULT_GRADLE_ARGS));
-                info.toolVersion = detectedGradleVersion;
+                info.toolVersion = gradleVersion;
                 info.javaVersion = javaVersion;
             }
             if (buildRecipeInfo != null) {
