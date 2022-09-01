@@ -106,7 +106,7 @@ public class LookupScmLocationCommand implements Runnable {
                         if (m.matches()) {
                             Log.infof("Tag pattern %s matches", mapping.getPattern());
                             String match = mapping.getTag();
-                            for (int i = 1; i <= m.groupCount(); ++i) {
+                            for (int i = 0; i <= m.groupCount(); ++i) {
                                 match = match.replaceAll("\\$" + i, m.group(i));
                             }
                             Log.infof("Trying to find tag %s", match);
