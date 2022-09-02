@@ -7,13 +7,16 @@ kubectl delete deployments.apps hacbs-jvm-operator -n jvm-build-service
 #kubectl delete deployments.apps hacbs-jvm-cache -n jvm-build-service
 #kubectl delete deployments.apps localstack -n jvm-build-service
 
-
 DIR=`dirname $0`
+$DIR/install-openshift-pipelines.sh
 kubectl apply -f $DIR/namespace.yaml
 kubectl config set-context --current --namespace=test-jvm-namespace
-find $DIR -name development -exec rm -r {} \;
-find $DIR -name dev-template -exec cp -r {} {}/../development \;
-find $DIR -path \*development\*.yaml -exec sed -i s/QUAY_USERNAME/${QUAY_USERNAME}/ {} \;
-find $DIR -path \*development\*.yaml -exec sed -i s/dev-template/development/ {} \;
-
-kubectl apply -k $DIR/overlays/development
+JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller \
+JVM_BUILD_SERVICE_CACHE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-cache \
+JVM_BUILD_SERVICE_SIDECAR_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-sidecar:dev \
+JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-build-request-processor:dev \
+JVM_BUILD_SERVICE_ANALYZER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-dependency-analyser:dev \
+JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk8-builder:dev \
+JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk11-builder:dev \
+JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk17-builder:dev \
+$DIR/patch-yaml.sh

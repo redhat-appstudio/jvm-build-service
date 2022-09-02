@@ -62,8 +62,20 @@ dev-image:
 	docker build . -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
 
+builder-image:
+	docker build . -f ./builder-images/hacbs-jdk8-builder/Dockerfile -t quay.io/$(QUAY_USERNAME)/hacbs-jdk8-builder:dev
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jdk8-builder:dev
+	docker build . -f ./builder-images/hacbs-jdk11-builder/Dockerfile -t quay.io/$(QUAY_USERNAME)/hacbs-jdk11-builder:dev
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jdk11-builder:dev
+	docker build . -f ./builder-images/hacbs-jdk17-builder/Dockerfile -t quay.io/$(QUAY_USERNAME)/hacbs-jdk17-builder:dev
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jdk17-builder:dev
+
 dev: dev-image
+	if ! docker images | grep hacbs-jdk8; then echo "run 'make builder-image'"; exit 1; fi
+	if ! docker images | grep hacbs-jdk11; then echo "run 'make builder-image'"; exit 1; fi
+	if ! docker images | grep hacbs-jdk17; then echo "run 'make builder-image'"; exit 1; fi
 	cd java-components && mvn clean install -Dlocal -DskipTests
+	./deploy/install-openshift-pipelines.sh || true
 	./deploy/development.sh
 
 ENVTEST = $(shell pwd)/bin/setup-envtest

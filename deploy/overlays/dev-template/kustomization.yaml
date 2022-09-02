@@ -13,14 +13,14 @@ patches:
  - patch: |-
      - op: replace
        path: /spec/sidecars/0/image
-       value: quay.io/QUAY_USERNAME/hacbs-jvm-sidecar:dev
+       value: jvm-build-service-sidecar-image
    target:
     kind: Task
     name: maven
  - patch: |-
      - op: replace
        path: /spec/steps/2/image
-       value: quay.io/QUAY_USERNAME/hacbs-jvm-dependency-analyser:dev
+       value: jvm-build-service-analyzer-image
    target:
      kind: Task
      name: maven

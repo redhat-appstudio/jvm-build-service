@@ -6,7 +6,7 @@ bases:
 
 images:
   - name: hacbs-jvm-operator
-    newName: quay.io/QUAY_USERNAME/hacbs-jvm-controller
+    newName: jvm-build-service-image
     newTag: dev
 
 patchesStrategicMerge:

@@ -5,4 +5,4 @@ metadata:
   name: jvm-build-config
 data:
   redirect-artifact-quarkus: "io.quarkus:(.*):2\\.7\\\\..*=io.quarkus:$1:2.7.5.Final-redhat-00011"
-  cache-image: "quay.io/QUAY_USERNAME/hacbs-jvm-cache:dev"
+  cache-image: jvm-build-service-cache-image:dev
