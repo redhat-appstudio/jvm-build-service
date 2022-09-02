@@ -25,7 +25,7 @@ public final class GradleUtils {
     /**
      * Identifier for the plugin {@code com.github.sherter.google-java-format}.
      */
-    public static final String GOOGLE_JAVA_FORMAT_PLUGIN = "com.github.sherter.google-java-format";
+    public static final String GOOGLE_JAVA_FORMAT_PLUGIN = ".*" + Pattern.quote("com.github.sherter.google-java-format") + ".*";
 
     static final String BUILD_GRADLE = "build.gradle";
 
@@ -137,10 +137,10 @@ public final class GradleUtils {
      * Checks whether the build file in the path contains the given character sequence.
      *
      * @param path the path to check
-     * @param csq the character sequence to check for
+     * @param regex the regular expression to match
      * @return whether the character sequence is found in a build file located directly under the path
      */
-    public static boolean isInBuildGradle(Path path, CharSequence csq) {
+    public static boolean isInBuildGradle(Path path, String regex) {
         if (!Files.isDirectory(path)) {
             return false;
         }
@@ -155,7 +155,7 @@ public final class GradleUtils {
                         } catch (IOException e) {
                             return Stream.empty();
                         }
-                    }).anyMatch(s1 -> s1.contains(csq));
+                    }).anyMatch(s1 -> s1.matches(regex));
         } catch (IOException e) {
             return false;
         }
