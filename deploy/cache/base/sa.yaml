@@ -1,8 +1,0 @@
-#====================================================================================================
-#This is no longer required, it should be removed once it is no longer reference by infra-deployments
-#====================================================================================================
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: hacbs-jvm-cache
-  namespace: jvm-build-service
