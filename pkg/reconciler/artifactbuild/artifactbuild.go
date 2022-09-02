@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
 	"github.com/kcp-dev/logicalcluster"
 
 	"github.com/go-logr/logr"
@@ -65,8 +64,10 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	var cancel context.CancelFunc
+	if request.ClusterName != "" {
+		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
+	}
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
-	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	defer cancel()
 	log := ctrl.Log.WithName("artifactbuild").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
 	abr := v1alpha1.ArtifactBuild{}

@@ -22,7 +22,7 @@ import (
 	"reflect"
 
 	kcpcache "github.com/kcp-dev/apimachinery/pkg/cache"
-	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
+	"github.com/kcp-dev/logicalcluster/v2"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
@@ -35,8 +35,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-// TODO(KCP) need to implement and plumb through our own cache reader
 
 // CacheReader is a client.Reader.
 var _ client.Reader = &CacheReader{}
@@ -117,17 +115,9 @@ func (c *CacheReader) List(ctx context.Context, out client.ObjectList, opts ...c
 	listOpts := client.ListOptions{}
 	listOpts.ApplyOptions(opts)
 
-	// TODO(kcp), should we just require people to pass in the cluster list option, or maybe provide
-	// a wrapper that adds it from the context automatically rather than doing this?
-	// It may also make more sense to just use the context and not bother provided a ListOption for it
-	if listOpts.Cluster.Empty() {
-		if cluster, ok := kcpclient.ClusterFromContext(ctx); ok {
-			client.InCluster(cluster).ApplyToList(&listOpts)
-		}
-	}
+	clusterName, _ := logicalcluster.ClusterFromContext(ctx)
 
 	switch {
-	// TODO(kcp) add cluster to this case
 	case listOpts.FieldSelector != nil:
 		// TODO(directxman12): support more complicated field selectors by
 		// combining multiple indices, GetIndexers, etc
@@ -140,16 +130,16 @@ func (c *CacheReader) List(ctx context.Context, out client.ObjectList, opts ...c
 		// namespace.
 		objs, err = c.indexer.ByIndex(FieldIndexName(field), KeyToNamespacedKey(listOpts.Namespace, val))
 	case listOpts.Namespace != "":
-		if listOpts.Cluster.Empty() {
+		if clusterName.Empty() {
 			objs, err = c.indexer.ByIndex(cache.NamespaceIndex, listOpts.Namespace)
 		} else {
-			objs, err = c.indexer.ByIndex(kcpcache.ClusterAndNamespaceIndexName, kcpcache.ToClusterAwareKey(listOpts.Cluster.String(), listOpts.Namespace, ""))
+			objs, err = c.indexer.ByIndex(kcpcache.ClusterAndNamespaceIndexName, kcpcache.ToClusterAwareKey(clusterName.String(), listOpts.Namespace, ""))
 		}
 	default:
-		if listOpts.Cluster.Empty() {
+		if clusterName.Empty() {
 			objs = c.indexer.List()
 		} else {
-			objs, err = c.indexer.ByIndex(kcpcache.ClusterIndexName, kcpcache.ToClusterAwareKey(listOpts.Cluster.String(), "", ""))
+			objs, err = c.indexer.ByIndex(kcpcache.ClusterIndexName, kcpcache.ToClusterAwareKey(clusterName.String(), "", ""))
 		}
 	}
 	if err != nil {
@@ -203,7 +193,7 @@ func (c *CacheReader) List(ctx context.Context, out client.ObjectList, opts ...c
 // String to allow keeping the key format easily in sync with
 // MetaNamespaceKeyFunc.
 func objectKeyToStoreKey(ctx context.Context, k client.ObjectKey) string {
-	cluster, ok := kcpclient.ClusterFromContext(ctx)
+	cluster, ok := logicalcluster.ClusterFromContext(ctx)
 	if ok {
 		return kcpcache.ToClusterAwareKey(cluster.String(), k.Namespace, k.Name)
 	}

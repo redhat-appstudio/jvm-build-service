@@ -17,7 +17,6 @@ limitations under the License.
 package client
 
 import (
-	"github.com/kcp-dev/logicalcluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -319,7 +318,7 @@ func (p PropagationPolicy) ApplyToDeleteAllOf(opts *DeleteAllOfOptions) {
 // pre-parsed selectors (since generally, selectors will be executed
 // against the cache).
 type ListOptions struct {
-	// LabelSelector filters results by label.  Use SetLabelSelector to
+	// LabelSelector filters results by label. Use labels.Parse() to
 	// set from raw string form.
 	LabelSelector labels.Selector
 	// FieldSelector filters results by a particular field.  In order
@@ -330,9 +329,6 @@ type ListOptions struct {
 	// Namespace represents the namespace to list for, or empty for
 	// non-namespaced objects, or to list across all namespaces.
 	Namespace string
-
-	// Cluster represents the cluster to list for, or empty to list across all clusters.
-	Cluster logicalcluster.Name
 
 	// Limit specifies the maximum number of results to return from the server. The server may
 	// not support this field on all resource types, but if it does and more results remain it
@@ -490,14 +486,6 @@ func (m MatchingFieldsSelector) ApplyToList(opts *ListOptions) {
 // ApplyToDeleteAllOf applies this configuration to the given an List options.
 func (m MatchingFieldsSelector) ApplyToDeleteAllOf(opts *DeleteAllOfOptions) {
 	m.ApplyToList(&opts.ListOptions)
-}
-
-// InCluster restricts the list/delete operation to the given cluster.
-type InCluster logicalcluster.Name
-
-// ApplyToList applies this configuration to the given list options.
-func (n InCluster) ApplyToList(opts *ListOptions) {
-	opts.Cluster = logicalcluster.Name(n)
 }
 
 // InNamespace restricts the list/delete operation to the given namespace.

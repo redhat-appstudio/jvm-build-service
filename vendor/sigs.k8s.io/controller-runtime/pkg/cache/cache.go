@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache/internal"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -115,7 +114,7 @@ type Options struct {
 
 	// Indexers is the indexers that the informers will be configured to use.
 	// Will always have the standard NamespaceIndex.
-	Indexers cache.Indexers
+	Indexers toolscache.Indexers
 
 	// Namespace restricts the cache's ListWatch to the desired namespace
 	// Default watches all namespaces
@@ -137,6 +136,18 @@ type Options struct {
 	// Be very careful with this, when enabled you must DeepCopy any object before mutating it,
 	// otherwise you will mutate the object in the cache.
 	UnsafeDisableDeepCopyByObject DisableDeepCopyByObject
+
+	// TransformByObject is a map from GVKs to transformer functions which
+	// get applied when objects of the transformation are about to be committed
+	// to cache.
+	//
+	// This function is called both for new objects to enter the cache,
+	// 	and for updated objects.
+	TransformByObject TransformByObject
+
+	// DefaultTransform is the transform used for all GVKs which do
+	// not have an explicit transform func set in TransformByObject
+	DefaultTransform toolscache.TransformFunc
 }
 
 var defaultResyncTime = 10 * time.Hour
@@ -155,7 +166,12 @@ func New(config *rest.Config, opts Options) (Cache, error) {
 	if err != nil {
 		return nil, err
 	}
-	im := internal.NewInformersMap(config, opts.Scheme, opts.Mapper, *opts.Resync, opts.Namespace, selectorsByGVK, disableDeepCopyByGVK, opts.NewInformerFunc, opts.Indexers)
+	transformByGVK, err := convertToTransformByKindAndGVK(opts.TransformByObject, opts.DefaultTransform, opts.Scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	im := internal.NewInformersMap(config, opts.Scheme, opts.Mapper, *opts.Resync, opts.Namespace, selectorsByGVK, disableDeepCopyByGVK, transformByGVK, opts.NewInformerFunc, opts.Indexers)
 	return &informerCache{InformersMap: im}, nil
 }
 
@@ -210,7 +226,7 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 	}
 
 	if opts.NewInformerFunc == nil {
-		opts.NewInformerFunc = cache.NewSharedIndexInformer
+		opts.NewInformerFunc = toolscache.NewSharedIndexInformer
 	}
 	return opts, nil
 }
@@ -253,4 +269,19 @@ func convertToDisableDeepCopyByGVK(disableDeepCopyByObject DisableDeepCopyByObje
 		}
 	}
 	return disableDeepCopyByGVK, nil
+}
+
+// TransformByObject associate a client.Object's GVK to a transformer function
+// to be applied when storing the object into the cache.
+type TransformByObject map[client.Object]toolscache.TransformFunc
+
+func convertToTransformByKindAndGVK(t TransformByObject, defaultTransform toolscache.TransformFunc, scheme *runtime.Scheme) (internal.TransformFuncByObject, error) {
+	result := internal.NewTransformFuncByObject()
+	for obj, transformation := range t {
+		if err := result.Set(obj, scheme, transformation); err != nil {
+			return nil, err
+		}
+	}
+	result.SetDefault(defaultTransform)
+	return result, nil
 }

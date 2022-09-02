@@ -17,12 +17,12 @@ limitations under the License.
 package client
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
-	"github.com/kcp-dev/logicalcluster"
+	"github.com/kcp-dev/logicalcluster/v2"
 )
 
 // ClusterRoundTripper is a cluster aware wrapper around http.RoundTripper
@@ -38,14 +38,12 @@ func NewClusterRoundTripper(delegate http.RoundTripper) *ClusterRoundTripper {
 }
 
 func (c *ClusterRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	cluster, ok := ClusterFromContext(req.Context())
-	if !ok {
-		return nil, fmt.Errorf("expected cluster in context")
+	cluster, ok := logicalcluster.ClusterFromContext(req.Context())
+	if ok {
+		req = req.Clone(req.Context())
+		req.URL.Path = generatePath(req.URL.Path, cluster)
+		req.URL.RawPath = generatePath(req.URL.RawPath, cluster)
 	}
-	req = req.Clone(req.Context())
-	req.URL.Path = generatePath(req.URL.Path, cluster)
-	req.URL.RawPath = generatePath(req.URL.RawPath, cluster)
-
 	return c.delegate.RoundTrip(req)
 }
 
@@ -54,6 +52,10 @@ var apiRegex = regexp.MustCompile(`(/api/|/apis/)`)
 
 // generatePath formats the request path to target the specified cluster
 func generatePath(originalPath string, cluster logicalcluster.Name) string {
+	// If the originalPath already has cluster.Path() then the path was already modifed and no change needed
+	if strings.Contains(originalPath, cluster.Path()) {
+		return originalPath
+	}
 	// If the originalPath has /api/ or /apis/ in it, it might be anywhere in the path, so we use a regex to find and
 	// replaces /api/ or /apis/ with $cluster/api/ or $cluster/apis/
 	if apiRegex.MatchString(originalPath) {
@@ -70,26 +72,6 @@ func generatePath(originalPath string, cluster logicalcluster.Name) string {
 
 	// finally append the original path
 	path += originalPath
-	
+
 	return path
-}
-
-type key int
-
-const (
-	keyCluster key = iota
-)
-
-// WithCluster injects a cluster name into a context
-func WithCluster(ctx context.Context, cluster logicalcluster.Name) context.Context {
-	if !cluster.Empty() {
-		return context.WithValue(ctx, keyCluster, cluster)
-	}
-	return ctx
-}
-
-// ClusterFromContext extracts a cluster name from the context
-func ClusterFromContext(ctx context.Context) (logicalcluster.Name, bool) {
-	s, ok := ctx.Value(keyCluster).(logicalcluster.Name)
-	return s, ok
 }
