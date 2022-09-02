@@ -434,12 +434,12 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 
 }
 
-func (r *ReconcileDependencyBuild) decodeBytesToTaskRun(bytes []byte) (*pipelinev1beta1.TaskRun, error) {
+func (r *ReconcileDependencyBuild) decodeBytesToTask(bytes []byte) (*pipelinev1beta1.Task, error) {
 	decodingScheme := runtime.NewScheme()
 	utilruntime.Must(pipelinev1beta1.AddToScheme(decodingScheme))
 	decoderCodecFactory := serializer.NewCodecFactory(decodingScheme)
 	decoder := decoderCodecFactory.UniversalDecoder(pipelinev1beta1.SchemeGroupVersion)
-	taskRun := pipelinev1beta1.TaskRun{}
+	taskRun := pipelinev1beta1.Task{}
 	err := runtime.DecodeInto(decoder, bytes, &taskRun)
 	return &taskRun, err
 }
@@ -455,17 +455,17 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
 
 	image := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
-	var taskRunBytes []byte
+	var taskBytes []byte
 	switch {
 	case db.Status.CurrentBuildRecipe.Maven:
-		taskRunBytes = []byte(maven)
+		taskBytes = []byte(maven)
 	case db.Status.CurrentBuildRecipe.Gradle:
-		taskRunBytes = []byte(gradle)
+		taskBytes = []byte(gradle)
 	default:
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "MissingRecipeType", "recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 		return reconcile.Result{}, fmt.Errorf("recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 	}
-	taskRun, err := r.decodeBytesToTaskRun(taskRunBytes)
+	task, err := r.decodeBytesToTask(taskBytes)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -477,16 +477,16 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 			{
 				Name: artifactbuild.TaskName,
 				TaskSpec: &pipelinev1beta1.EmbeddedTask{
-					TaskSpec: *taskRun.Spec.TaskSpec,
+					TaskSpec: task.Spec,
 				},
 				Params: []pipelinev1beta1.Param{},
 			},
 		},
 	}
-	for _, i := range taskRun.Spec.TaskSpec.Results {
+	for _, i := range task.Spec.Results {
 		pr.Spec.PipelineSpec.Results = append(pr.Spec.PipelineSpec.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: "$(tasks." + artifactbuild.TaskName + ".results." + i.Name + ")"})
 	}
-	for _, i := range taskRun.Spec.TaskSpec.Params {
+	for _, i := range task.Spec.Params {
 		pr.Spec.PipelineSpec.Params = append(pr.Spec.PipelineSpec.Params, pipelinev1beta1.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default})
 		if i.Type == pipelinev1beta1.ParamTypeString {
 			pr.Spec.PipelineSpec.Tasks[0].Params = append(pr.Spec.PipelineSpec.Tasks[0].Params, pipelinev1beta1.Param{Name: i.Name, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(params." + i.Name + ")"}})

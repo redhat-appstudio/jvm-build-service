@@ -251,7 +251,7 @@ func TestStateBuilding(t *testing.T) {
 		db.Namespace = metav1.NamespaceDefault
 		db.Name = "test"
 		db.Status.State = v1alpha1.DependencyBuildStateBuilding
-		db.Status.CurrentBuildRecipe = &v1alpha1.BuildRecipe{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest"}
+		db.Status.CurrentBuildRecipe = &v1alpha1.BuildRecipe{Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"}
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"

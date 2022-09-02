@@ -71,11 +71,6 @@ spec:
         The context directory within the repository for sources on
         which we want to execute maven goals.
       default: "."
-    - name: DEPENDENCY_ANALYSER_IMAGE
-      type: string
-      description: >-
-        The image to use for dependency analysis.
-      default: "quay.io/goldmann/hacbs-jvm-dependency-analyser:dev"
     - name: DEPENDENCY_ANALYSER_PATH
       type: string
       description: >-
@@ -179,7 +174,6 @@ spec:
     - name: analyse-dependencies
       securityContext:
         runAsUser: 0
-
       image: quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser:3dcd8603061c7ab2cedfe128c80cac9726721a74
       args:
         - path

@@ -102,11 +102,6 @@ spec:
       description: >-
         Comma-separated list of artifact names that should not be deployed or checked for contaminants.
       default: ""
-    - name: DEPENDENCY_ANALYSER_IMAGE
-      type: string
-      description: >-
-        The image to use for dependency analysis.
-      default: "quay.io/goldmann/hacbs-jvm-dependency-analyser:dev"
     - name: DEPENDENCY_ANALYSER_PATH
       type: string
       description: >-
