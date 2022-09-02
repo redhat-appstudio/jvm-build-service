@@ -18,15 +18,15 @@ export CLI_JAR_SHA=8af7e87638bb237362bf8f486b489c251e474be1cdc40037ba79887c2f080
 export ANALYZER_INIT_SHA=3172f34e126d652efccce50ca98c58f9baca27d89b5482268d0a4cb44023aa7e
 
 export IMAGE_NAME=hacbs-jdk17-builder
-export BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-17
+export BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-17-runtime
 generate
 
 
 export IMAGE_NAME=hacbs-jdk8-builder
-export BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-8
+export BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-8-runtime
 generate
 
 
 export IMAGE_NAME=hacbs-jdk11-builder
-export BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-11
+export BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-11-runtime
 generate
