@@ -19,6 +19,6 @@ spec:
           resources:
             requests:
               storage: 1Gi
-  serviceAccountNames:
-    - serviceAccountName: pipeline
-      taskName: maven-run
+  taskRunSpecs:
+    - pipelineTaskName: maven-run
+      taskServiceAccountName: pipeline
