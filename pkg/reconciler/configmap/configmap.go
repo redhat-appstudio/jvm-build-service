@@ -152,8 +152,8 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 				VolumeMounts: []corev1.VolumeMount{{Name: CacheDeploymentName, MountPath: "/cache"}},
 				Resources: corev1.ResourceRequirements{
 					//TODO: make configurable
-					Requests: map[corev1.ResourceName]resource.Quantity{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("250m")},
-					Limits:   map[corev1.ResourceName]resource.Quantity{"memory": resource.MustParse("700Mi"), "cpu": resource.MustParse("500m")},
+					Requests: map[corev1.ResourceName]resource.Quantity{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("500m")},
+					Limits:   map[corev1.ResourceName]resource.Quantity{"memory": resource.MustParse("700Mi"), "cpu": resource.MustParse("750m")},
 				},
 			}}
 			cache.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: CacheDeploymentName, VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: CacheDeploymentName}}}}
