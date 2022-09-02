@@ -295,7 +295,7 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbFailedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateFailed)
-						dumpDBPods(ta, db.Name)
+						dumpDBPods(ta, db)
 					}
 				case db.Status.State == v1alpha1.DependencyBuildStateContaminated:
 					s, k := state.Load(db.Name)
@@ -303,7 +303,7 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbContaminatedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateContaminated)
-						dumpDBPods(ta, db.Name)
+						dumpDBPods(ta, db)
 					}
 				default:
 					s, k := state.Load(db.Name)

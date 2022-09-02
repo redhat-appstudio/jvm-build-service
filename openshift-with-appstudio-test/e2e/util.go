@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"io"
 	"net/http"
 	"os"
@@ -344,13 +345,14 @@ func dbDumpForState(ta *testArgs, state string) {
 			if db.Status.State != state {
 				continue
 			}
-			dumpDBPods(ta, db.Name)
+			dumpDBPods(ta, &db)
 		}
 	}
 }
 */
 
-func dumpDBPods(ta *testArgs, dbName string) {
+func dumpDBPods(ta *testArgs, db *v1alpha1.DependencyBuild) {
+	dbName := db.Name
 	podClient := kubeClient.CoreV1().Pods(ta.ns)
 	ta.Logf(fmt.Sprintf("*****Examining failed db %s", dbName))
 	podList := []corev1.Pod{}
@@ -381,6 +383,19 @@ func dumpDBPods(ta *testArgs, dbName string) {
 			podLog := string(b)
 			ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
 
+			url := strings.Replace(db.Spec.ScmInfo.SCMURL, "/", "_", -1)
+			url = strings.Replace(url, ":", "_", -1)
+
+			directory := os.Getenv("ARTIFACT_DIR") + "/failed-dependency-builds/" + url
+			ta.Logf(fmt.Sprintf("Creating artifact dir %s", directory))
+			err := os.MkdirAll(directory, 0755) //#nosec G306 G301
+			if err != nil {
+				ta.Logf(fmt.Sprintf("Failed to create artifact dir %s: %s", directory, err))
+			}
+			err = os.WriteFile(directory+"/"+pod.Name, b, 0644) //#nosec G306
+			if err != nil {
+				ta.Logf(fmt.Sprintf("Failed artifact dir %s: %s", directory, err))
+			}
 		}
 	}
 	ta.Logf(fmt.Sprintf("******Done with db %s", dbName))
