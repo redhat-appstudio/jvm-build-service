@@ -34,7 +34,10 @@ import com.redhat.hacbs.sidecar.resources.relocation.Gav;
 import com.redhat.hacbs.sidecar.resources.relocation.RelocationCreator;
 
 import io.quarkus.logging.Log;
+import io.quarkus.vertx.http.runtime.CurrentVertxRequest;
 import io.smallrye.common.annotation.Blocking;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 
 @Path("/maven2")
 @Blocking
@@ -43,6 +46,9 @@ public class MavenProxyResource {
 
     @Inject
     RelocationCreator relocationCreator;
+
+    @Inject
+    CurrentVertxRequest currentVertxRequest;
 
     final CloseableHttpClient remoteClient;
     final String buildPolicy;
@@ -67,7 +73,7 @@ public class MavenProxyResource {
             @ConfigProperty(name = "quarkus.rest-client.cache-service.url") String cacheUrl,
             GavRelocationConfig gavRelocationConfig) {
 
-        remoteClient = HttpClientBuilder.create().build();
+        remoteClient = HttpClientBuilder.create().disableAutomaticRetries().build();
         this.buildPolicy = buildPolicy;
         this.addTrackingDataToArtifacts = addTrackingDataToArtifacts;
         this.retries = retries;
@@ -133,7 +139,7 @@ public class MavenProxyResource {
         //if we fail we retry, don't fail the whole build
         //better to wait for a few seconds and try again than stop a build that has been going for a while
         for (int i = 0; i <= retries; ++i) {
-            Log.debugf("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
+            Log.infof("Retrieving artifact %s/%s/%s/%s attempt %s", group, artifact, version, target, i);
             if (target.endsWith(DOT_SHA1)) {
                 String key = group + SLASH + artifact + SLASH + version + SLASH + target;
                 var modified = computedChecksums.get(key);
@@ -185,6 +191,22 @@ public class MavenProxyResource {
                                 return Files.newInputStream(tempBytecodeTrackedJar);
                             } catch (ZipException e) {
                                 return Files.newInputStream(tempInput);
+                            } finally {
+                                try {
+                                    Files.delete(tempInput);
+                                } catch (IOException e) {
+                                    Log.errorf("Failed to delete temp file %s", tempInput);
+                                }
+                                currentVertxRequest.getCurrent().addEndHandler(new Handler<AsyncResult<Void>>() {
+                                    @Override
+                                    public void handle(AsyncResult<Void> event) {
+                                        try {
+                                            Files.delete(tempBytecodeTrackedJar);
+                                        } catch (IOException e) {
+                                            Log.errorf("Failed to delete temp file %s", tempBytecodeTrackedJar);
+                                        }
+                                    }
+                                });
                             }
                         }
                     } else {

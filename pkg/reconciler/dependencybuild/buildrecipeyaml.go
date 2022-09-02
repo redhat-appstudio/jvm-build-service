@@ -262,7 +262,7 @@ spec:
           - name: QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE
             value: "2"
           - name: QUARKUS_THREAD_POOL_MAX_THREADS
-            value: "4"
+            value: "6"
         name: proxy
         volumeMounts:
           - name: $(workspaces.maven-settings.volume)
@@ -623,7 +623,7 @@ spec:
           - name: QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE
             value: "2"
           - name: QUARKUS_THREAD_POOL_MAX_THREADS
-            value: "4"
+            value: "6"
         name: proxy
         volumeMounts:
           - name: $(workspaces.maven-settings.volume)
