@@ -15,10 +15,8 @@ rules:
       - ""
     resources:
       - configmaps
-      - secrets
     resourceNames:
       - jvm-build-config
-      - jvm-build-secrets
     verbs:
       - get
 ---

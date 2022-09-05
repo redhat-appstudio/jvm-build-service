@@ -41,15 +41,15 @@ import io.vertx.core.json.JsonObject;
 @QuarkusTestResource(value = ContainerRegistryDeployerTestResource.class, restrictToAnnotatedClass = true)
 public class ContainerRegistryDeployerTest {
 
-    @ConfigProperty(name = "containerregistrydeployer.host", defaultValue = "quay.io")
+    @ConfigProperty(name = "registry.host", defaultValue = "quay.io")
     String host;
-    @ConfigProperty(name = "containerregistrydeployer.port", defaultValue = "443")
+    @ConfigProperty(name = "registry.port", defaultValue = "443")
     int port;
-    @ConfigProperty(name = "containerregistrydeployer.owner", defaultValue = "hacbs")
+    @ConfigProperty(name = "registry.owner", defaultValue = "hacbs")
     String owner;
-    @ConfigProperty(name = "containerregistrydeployer.repository", defaultValue = "artifact-deployments")
+    @ConfigProperty(name = "registry.repository", defaultValue = "artifact-deployments")
     String repository;
-    @ConfigProperty(name = "containerregistrydeployer.insecure", defaultValue = "false")
+    @ConfigProperty(name = "registry.insecure", defaultValue = "false")
     boolean insecure;
 
     private static final String GROUP = "com.company.foo";

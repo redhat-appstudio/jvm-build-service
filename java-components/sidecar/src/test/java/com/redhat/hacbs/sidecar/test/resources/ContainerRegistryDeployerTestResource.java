@@ -18,11 +18,11 @@ public class ContainerRegistryDeployerTestResource implements QuarkusTestResourc
 
         return Map.of(
                 "deployer", "ContainerRegistryDeployer",
-                "containerregistrydeployer.host", this.container.getHost(),
-                "containerregistrydeployer.port", String.valueOf(port),
-                "containerregistrydeployer.repository", REPOSITORY,
-                "containerregistrydeployer.owner", OWNER,
-                "containerregistrydeployer.insecure", "true");
+                "registry.host", this.container.getHost(),
+                "registry.port", String.valueOf(port),
+                "registry.repository", REPOSITORY,
+                "registry.owner", OWNER,
+                "registry.insecure", "true");
     }
 
     private int startTestRegistry() {

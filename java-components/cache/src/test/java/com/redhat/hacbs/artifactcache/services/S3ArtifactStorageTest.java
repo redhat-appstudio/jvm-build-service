@@ -60,7 +60,7 @@ public class S3ArtifactStorageTest {
         try {
             Optional<RepositoryClient.RepositoryResult> result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT,
                     VERSION,
-                    FILE);
+                    FILE, null);
             RepositoryClient.RepositoryResult repositoryResult = result.get();
             Assertions.assertEquals(CONTENTS, new String(repositoryResult.data.readAllBytes(), StandardCharsets.UTF_8));
             Assertions.assertFalse(Files.exists(cachedFile));
@@ -71,7 +71,7 @@ public class S3ArtifactStorageTest {
                     RequestBody.fromBytes(CONTENTS.getBytes(StandardCharsets.UTF_8)));
 
             result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT, VERSION,
-                    FILE);
+                    FILE, null);
             repositoryResult = result.get();
             Assertions.assertEquals(CONTENTS, new String(repositoryResult.data.readAllBytes(), StandardCharsets.UTF_8));
             Assertions.assertTrue(Files.exists(cachedFile));
@@ -82,7 +82,7 @@ public class S3ArtifactStorageTest {
 
         //even after the delete this file should still have been cached
         var result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT, VERSION,
-                FILE);
+                FILE, null);
         var repositoryResult = result.get();
         Assertions.assertEquals(CONTENTS, new String(repositoryResult.data.readAllBytes(), StandardCharsets.UTF_8));
         Assertions.assertTrue(Files.exists(cachedFile));

@@ -33,7 +33,7 @@ public class MavenClient implements RepositoryClient {
 
     @Override
     public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
-            String target) {
+            String target, Long buildStartTime) {
         Log.debugf("Retrieving artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
         try (var data = client.getArtifactFile(group, artifact, version, target)) {
             String sha1 = null;

@@ -2,7 +2,7 @@ FROM registry.access.redhat.com/ubi8/openjdk-17:1.13 AS builder
 WORKDIR /work
 COPY . .
 USER 0
-RUN cd java-components/cache && mvn clean package -DskipTests
+RUN cd java-components && mvn clean package -DskipTests
 
 FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.13
 USER 0

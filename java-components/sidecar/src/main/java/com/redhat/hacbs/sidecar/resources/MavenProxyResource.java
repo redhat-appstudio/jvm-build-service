@@ -1,10 +1,8 @@
 package com.redhat.hacbs.sidecar.resources;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,8 +19,10 @@ import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
 
 import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -65,6 +65,8 @@ public class MavenProxyResource {
 
     final Map<Pattern, String> gavRelocations;
 
+    final long startupTime;
+
     public MavenProxyResource(
             @ConfigProperty(name = "build-policy") String buildPolicy,
             @ConfigProperty(name = "add-tracking-data-to-artifacts", defaultValue = "true") boolean addTrackingDataToArtifacts,
@@ -79,6 +81,9 @@ public class MavenProxyResource {
         this.retries = retries;
         this.backoff = backoff;
         this.cacheUrl = cacheUrl;
+        //we send the startup time to the cache, so it knows if it may need
+        //to refresh the rebuilt artifacts list
+        this.startupTime = System.currentTimeMillis();
 
         // Get the relocation patterns
         Map<Pattern, String> m = new HashMap<>();
@@ -97,7 +102,7 @@ public class MavenProxyResource {
 
     @GET
     @Path("{group:.*?}/{artifact}/{version}/{target}")
-    public InputStream get(@PathParam("group") String group, @PathParam("artifact") String artifact,
+    public Response get(@PathParam("group") String group, @PathParam("artifact") String artifact,
             @PathParam("version") String version, @PathParam("target") String target) throws Exception {
 
         if (isRelocation(group, artifact, version)) {
@@ -133,7 +138,7 @@ public class MavenProxyResource {
 
     }
 
-    private InputStream getGavInputStream(String group, String artifact, String version, String target) throws Exception {
+    private Response getGavInputStream(String group, String artifact, String version, String target) throws Exception {
         Exception current = null;
         int currentBackoff = 0;
         //if we fail we retry, don't fail the whole build
@@ -144,12 +149,13 @@ public class MavenProxyResource {
                 String key = group + SLASH + artifact + SLASH + version + SLASH + target;
                 var modified = computedChecksums.get(key);
                 if (modified != null) {
-                    return new ByteArrayInputStream(modified.getBytes(StandardCharsets.UTF_8));
+                    return Response.ok(modified).build();
                 }
             }
             HttpGet httpGet = new HttpGet(
                     cacheUrl + SLASH + MAVEN2 + SLASH + group + SLASH + artifact + SLASH + version + SLASH + target);
             httpGet.addHeader(X_BUILD_POLICY, buildPolicy);
+            httpGet.addHeader(X_BUILD_START, Long.toString(startupTime));
 
             var response = remoteClient.execute(httpGet);
             try {
@@ -188,9 +194,11 @@ public class MavenProxyResource {
                                 String key = group + SLASH + artifact + SLASH + version + SLASH + target + DOT_SHA1;
                                 hashingOutputStream.close();
                                 computedChecksums.put(key, hashingOutputStream.hash);
-                                return Files.newInputStream(tempBytecodeTrackedJar);
+                                return Response.ok(Files.newInputStream(tempBytecodeTrackedJar))
+                                        .header(HttpHeaders.CONTENT_LENGTH, Files.size(tempBytecodeTrackedJar)).build();
                             } catch (ZipException e) {
-                                return Files.newInputStream(tempInput);
+                                return Response.ok(Files.newInputStream(tempInput))
+                                        .header(HttpHeaders.CONTENT_LENGTH, Files.size(tempInput)).build();
                             } finally {
                                 try {
                                     Files.delete(tempInput);
@@ -210,7 +218,12 @@ public class MavenProxyResource {
                             }
                         }
                     } else {
-                        return response.getEntity().getContent();
+                        var rb = Response.ok(response.getEntity().getContent());
+                        Header cl = response.getFirstHeader(HttpHeaders.CONTENT_LENGTH);
+                        if (cl != null) {
+                            rb.header(cl.getName(), cl.getValue());
+                        }
+                        return rb.build();
                     }
                 }
             } catch (Exception e) {
@@ -227,15 +240,15 @@ public class MavenProxyResource {
         throw current;
     }
 
-    private InputStream getGavRelocation(String group, String artifact, String version) {
+    private Response getGavRelocation(String group, String artifact, String version) {
         byte[] b = getGavRelocationBytes(group, artifact, version);
-        return new ByteArrayInputStream(b);
+        return Response.ok(b).entity(b).build();
     }
 
-    private InputStream getGavRelocationSha1(String group, String artifact, String version) {
+    private Response getGavRelocationSha1(String group, String artifact, String version) {
         byte[] b = getGavRelocationBytes(group, artifact, version);
         String sha1 = HashUtil.sha1(b);
-        return new ByteArrayInputStream(sha1.getBytes());
+        return Response.ok(b).entity(sha1).build();
     }
 
     private byte[] getGavRelocationBytes(String group, String artifact, String version) {
@@ -304,6 +317,7 @@ public class MavenProxyResource {
     private static final String DOT_POM_DOT_SHA1 = DOT_POM + DOT_SHA1;
     private static final String X_MAVEN_REPO = "X-maven-repo";
     private static final String X_BUILD_POLICY = "X-build-policy";
+    private static final String X_BUILD_START = "X-build-start";
     private static final String TEMP_JAR = "temp-jar";
     private static final String TEMP_MODIFIED_JAR = "temp-modified-jar";
     private static final String REBUILT = "rebuilt";
