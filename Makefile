@@ -70,10 +70,22 @@ builder-image:
 	docker build . -f ./builder-images/hacbs-jdk17-builder/Dockerfile -t quay.io/$(QUAY_USERNAME)/hacbs-jdk17-builder:dev
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jdk17-builder:dev
 
+tag-existing-builder-image:
+	echo Tagging images from commit `git rev-parse HEAD` if these images are not found run this command from a checkout of origin/main
+	docker pull quay.io/redhat-appstudio/hacbs-jdk8-builder:`git rev-parse HEAD`
+	docker tag quay.io/redhat-appstudio/hacbs-jdk8-builder:`git rev-parse HEAD` quay.io/$(QUAY_USERNAME)/hacbs-jdk8-builder:dev
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jdk8-builder:dev
+	docker pull quay.io/redhat-appstudio/hacbs-jdk11-builder:`git rev-parse HEAD`
+	docker tag quay.io/redhat-appstudio/hacbs-jdk11-builder:`git rev-parse HEAD` quay.io/$(QUAY_USERNAME)/hacbs-jdk11-builder:dev
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jdk11-builder:dev
+	docker pull quay.io/redhat-appstudio/hacbs-jdk17-builder:`git rev-parse HEAD`
+	docker tag quay.io/redhat-appstudio/hacbs-jdk17-builder:`git rev-parse HEAD` quay.io/$(QUAY_USERNAME)/hacbs-jdk17-builder:dev
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jdk17-builder:dev
+
 dev: dev-image
-	if ! docker images | grep hacbs-jdk8; then echo "Local copy of builder images not found. You need to run 'make builder-image'"; exit 1; fi
-	if ! docker images | grep hacbs-jdk11; then echo "Local copy of builder images not found. You need to run 'make builder-image'"; exit 1; fi
-	if ! docker images | grep hacbs-jdk17; then echo "Local copy of builder images not found. You need to run 'make builder-image'"; exit 1; fi
+	if ! docker images | grep hacbs-jdk8; then echo "Local copy of builder images not found. You need to run 'make builder-image' or 'make tag-existing-builder-image'"; exit 1; fi
+	if ! docker images | grep hacbs-jdk11; then echo "Local copy of builder images not found. You need to run 'make builder-image' or 'make tag-existing-builder-image'"; exit 1; fi
+	if ! docker images | grep hacbs-jdk17; then echo "Local copy of builder images not found. You need to run 'make builder-image' or 'make tag-existing-builder-image'"; exit 1; fi
 	cd java-components && mvn clean install -Dlocal -DskipTests
 	./deploy/install-openshift-pipelines.sh || true
 	./deploy/development.sh
