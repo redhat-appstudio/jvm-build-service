@@ -76,7 +76,13 @@ dev: dev-image
 	if ! docker images | grep hacbs-jdk17; then echo "Local copy of builder images not found. You need to run 'make builder-image'"; exit 1; fi
 	cd java-components && mvn clean install -Dlocal -DskipTests
 	./deploy/install-openshift-pipelines.sh || true
-	./deploy/development.sh
+
+dev-openshift: dev
+	./deploy/openshift-development.sh
+
+
+dev-minikube: dev
+	./deploy/minikube-development.sh
 
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
