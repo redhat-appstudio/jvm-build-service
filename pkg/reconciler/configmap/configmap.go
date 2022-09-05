@@ -298,7 +298,7 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserSecretName}, Key: "registry.token", Optional: &trueBool}},
 		})
 	}
-	regex, err := regexp.Compile(`maven-repository-(\d+)-(\w+)`)
+	regex, err := regexp.Compile(`maven-repository-(\d+)-([\w-]+)`)
 	if err != nil {
 		return err
 	}
@@ -311,11 +311,11 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 				return err
 			}
 			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-				Name:  "STORE_" + strings.ToUpper(name) + "_URL",
+				Name:  "STORE_" + strings.ToUpper(strings.Replace(name, "-", "_", -1)) + "_URL",
 				Value: v,
 			})
 			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-				Name:  "STORE_" + strings.ToUpper(name) + "_TYPE",
+				Name:  "STORE_" + strings.ToUpper(strings.Replace(name, "-", "_", -1)) + "_TYPE",
 				Value: "maven2",
 			})
 			repos = append(repos, Repo{position: atoi, name: name})

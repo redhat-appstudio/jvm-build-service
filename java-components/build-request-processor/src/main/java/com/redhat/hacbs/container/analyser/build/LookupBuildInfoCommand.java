@@ -3,7 +3,6 @@ package com.redhat.hacbs.container.analyser.build;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
-import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.AVAILABLE_GRADLE_VERSIONS;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.GOOGLE_JAVA_FORMAT_PLUGIN;
 
 import java.io.BufferedReader;
@@ -140,12 +139,11 @@ public class LookupBuildInfoCommand implements Runnable {
                 Log.infof("Detected Gradle build in %s", path);
                 var optionalGradleVersion = GradleUtils
                         .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(path));
-                var detectedGradleVersion = optionalGradleVersion.orElse(null);
+                var detectedGradleVersion = optionalGradleVersion.orElse("7");
                 Log.infof("Detected Gradle version %s",
                         optionalGradleVersion.isPresent() ? detectedGradleVersion : "none");
-                var gradleVersion = GradleUtils.findNearestGradleVersion(detectedGradleVersion);
-                Log.infof("Chose Gradle version %s from available versions %s", gradleVersion, AVAILABLE_GRADLE_VERSIONS);
-                var javaVersion = GradleUtils.getSupportedJavaVersion(gradleVersion);
+                Log.infof("Chose Gradle version %s", detectedGradleVersion);
+                var javaVersion = GradleUtils.getSupportedJavaVersion(detectedGradleVersion);
                 Log.infof("Chose Java version %s based on Gradle version detected", javaVersion);
 
                 if (GradleUtils.isInBuildGradle(path, GOOGLE_JAVA_FORMAT_PLUGIN)) {
@@ -155,9 +153,9 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
 
                 info.tools.put(JDK, new VersionRange("8", "17", javaVersion));
-                info.tools.put(GRADLE, new VersionRange(gradleVersion, gradleVersion, gradleVersion));
+                info.tools.put(GRADLE, new VersionRange(detectedGradleVersion, detectedGradleVersion, detectedGradleVersion));
                 info.invocations.add(new ArrayList<>(GradleUtils.DEFAULT_GRADLE_ARGS));
-                info.toolVersion = gradleVersion;
+                info.toolVersion = detectedGradleVersion;
                 info.javaVersion = javaVersion;
             }
             if (buildRecipeInfo != null) {

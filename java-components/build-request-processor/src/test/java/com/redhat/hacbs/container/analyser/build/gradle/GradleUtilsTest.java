@@ -65,16 +65,4 @@ class GradleUtilsTest {
         assertThat(GradleUtils.isInBuildGradle(basedir, "not found")).isFalse();
     }
 
-    @Test
-    void testFindNearestGradleVersion() {
-        assertThat(GradleUtils.findNearestGradleVersion("3.0")).isEqualTo("4.10.3");
-        assertThat(GradleUtils.findNearestGradleVersion("4.0")).isEqualTo("4.10.3");
-        assertThat(GradleUtils.findNearestGradleVersion("5.4.1")).isEqualTo("5.6.4");
-        assertThat(GradleUtils.findNearestGradleVersion("6.0")).isEqualTo("6.9.2");
-        assertThat(GradleUtils.findNearestGradleVersion("7.0")).isEqualTo("7.4.1");
-        assertThat(GradleUtils.findNearestGradleVersion("7.4.1")).isEqualTo("7.4.1");
-        assertThat(GradleUtils.findNearestGradleVersion("7.5")).isEqualTo("7.4.1");
-        assertThat(GradleUtils.findNearestGradleVersion("7.5.1")).isEqualTo("7.5.1");
-        assertThat(GradleUtils.findNearestGradleVersion("")).isEqualTo("7.5.1");
-    }
 }

@@ -2,6 +2,7 @@ package dependencybuild
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	v1 "k8s.io/api/core/v1"
@@ -39,9 +40,20 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	sysConfig := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace},
 		Data: map[string]string{
-			configmap.SystemBuilderImages:                            "jdk11",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/sdouglas/hacbs-jdk11-builder:latest",
+			//bogus gradle images used to unit test the selection logic
+			configmap.SystemBuilderImages:                            "jdk11,g5,g6,g7",
+			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
 			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk11"):   "jdk:11,maven:3.8",
+			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk8"):  "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
+			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk8"):    "jdk:8,maven:3.8",
+			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk17"): "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
+			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk17"):   "jdk:17,maven:3.8",
+			fmt.Sprintf(configmap.SystemBuilderImageFormat, "g5"):    "quay.io/redhat-appstudio/hacbs-g5-builder:latest",
+			fmt.Sprintf(configmap.SystemBuilderTagFormat, "g5"):      "jdk:11,gradle:5.4.3",
+			fmt.Sprintf(configmap.SystemBuilderImageFormat, "g6"):    "quay.io/redhat-appstudio/hacbs-g6-builder:latest",
+			fmt.Sprintf(configmap.SystemBuilderTagFormat, "g6"):      "jdk:11,gradle:6.1.2",
+			fmt.Sprintf(configmap.SystemBuilderImageFormat, "g7"):    "quay.io/redhat-appstudio/hacbs-g7-builder:latest",
+			fmt.Sprintf(configmap.SystemBuilderTagFormat, "g7"):      "jdk:11,gradle:7.1.3",
 		},
 	}
 	_ = client.Create(context.TODO(), &sysConfig)
@@ -87,7 +99,7 @@ func TestStateNew(t *testing.T) {
 			Name:      "test",
 		}, &db))
 		g.Expect(db.Status.CurrentBuildRecipe).ShouldNot(BeNil())
-		g.Expect(db.Status.CurrentBuildRecipe.Image).Should(Equal("quay.io/sdouglas/hacbs-jdk11-builder:latest"))
+		g.Expect(db.Status.CurrentBuildRecipe.Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"))
 
 	})
 }
@@ -139,7 +151,7 @@ func TestStateDetect(t *testing.T) {
 		g.Expect(client.Get(ctx, types.NamespacedName{
 			Namespace: metav1.NamespaceDefault,
 			Name:      "test",
-		}, &db))
+		}, &db)).Should(BeNil())
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateAnalyzeBuild))
 		return db, client, reconciler, ctx
 	}
@@ -174,7 +186,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(9))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(8))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineScmTag:
@@ -184,7 +196,7 @@ func TestStateDetect(t *testing.T) {
 				case PipelineScmUrl:
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
 				case PipelineImage:
-					g.Expect(param.Value.StringVal).Should(Equal("quay.io/sdouglas/hacbs-jdk11-builder:latest"))
+					g.Expect(param.Value.StringVal).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"))
 				case PipelineGoals:
 					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
 				case PipelineEnforceVersion:
@@ -192,9 +204,7 @@ func TestStateDetect(t *testing.T) {
 				case PipelineIgnoredArtifacts:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				case PipelineToolVersion:
-					g.Expect(param.Value.StringVal).Should(BeEmpty())
-				case PipelineJavaVersion:
-					g.Expect(param.Value.StringVal).Should(BeEmpty())
+					g.Expect(param.Value.StringVal).Should(Equal("3.8.1"))
 				}
 			}
 		}
@@ -211,13 +221,19 @@ func TestStateDetect(t *testing.T) {
 func getBuild(client runtimeclient.Client, g *WithT) *v1alpha1.DependencyBuild {
 	ctx := context.TODO()
 	build := v1alpha1.DependencyBuild{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}, &build))
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}, &build)).Should(BeNil())
 	return &build
 }
-func getTr(client runtimeclient.Client, g *WithT) *pipelinev1beta1.PipelineRun {
+func getBuildPipeline(client runtimeclient.Client, g *WithT) *pipelinev1beta1.PipelineRun {
 	ctx := context.TODO()
 	build := pipelinev1beta1.PipelineRun{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-0"}, &build))
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-0"}, &build)).Should(BeNil())
+	return &build
+}
+func getBuildInfoPipeline(client runtimeclient.Client, g *WithT) *pipelinev1beta1.PipelineRun {
+	ctx := context.TODO()
+	build := pipelinev1beta1.PipelineRun{}
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-discovery"}, &build)).Should(BeNil())
 	return &build
 }
 func TestStateBuilding(t *testing.T) {
@@ -238,14 +254,14 @@ func TestStateBuilding(t *testing.T) {
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
 		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
-		g.Expect(client.Create(ctx, &db))
+		g.Expect(client.Create(ctx, &db)).Should(BeNil())
 
 		pr := pipelinev1beta1.PipelineRun{}
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Name = "test-build-0"
 		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineType: PipelineTypeBuild}
-		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme))
-		g.Expect(client.Create(ctx, &pr))
+		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme)).Should(BeNil())
+		g.Expect(client.Create(ctx, &pr)).Should(BeNil())
 
 	}
 
@@ -258,7 +274,7 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
 		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
-		getTr(client, g)
+		getBuildPipeline(client, g)
 	})
 	t.Run("Test reconcile building DependencyBuild with running pipeline, DependencyBuild arrives first", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -269,19 +285,19 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateBuilding))
-		getTr(client, g)
+		getBuildPipeline(client, g)
 	})
 	t.Run("Test reconcile building DependencyBuild with succeeded pipeline", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		pr := getTr(client, g)
+		pr := getBuildPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "True",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		g.Expect(client.Update(ctx, pr))
+		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
@@ -289,14 +305,14 @@ func TestStateBuilding(t *testing.T) {
 	t.Run("Test reconcile building DependencyBuild with failed pipeline", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		pr := getTr(client, g)
+		pr := getBuildPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "False",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		g.Expect(client.Update(ctx, pr))
+		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
@@ -307,7 +323,7 @@ func TestStateBuilding(t *testing.T) {
 	t.Run("Test reconcile building DependencyBuild with contaminants", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		pr := getTr(client, g)
+		pr := getBuildPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
@@ -315,7 +331,7 @@ func TestStateBuilding(t *testing.T) {
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
 		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: "com.acme:foo:1.0,com.acme:bar:1.0"}}
-		g.Expect(client.Update(ctx, pr))
+		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateContaminated))
@@ -323,5 +339,55 @@ func TestStateBuilding(t *testing.T) {
 		db = getBuild(client, g)
 		g.Expect(db.Status.Contaminants).Should(ContainElement("com.acme:foo:1.0"))
 		g.Expect(db.Status.Contaminants).Should(ContainElement("com.acme:bar:1.0"))
+	})
+
+}
+
+func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
+	ctx := context.TODO()
+
+	var client runtimeclient.Client
+	var reconciler *ReconcileDependencyBuild
+	taskRunName := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-discovery"}
+	setup := func(g *WithT) {
+		client, reconciler = setupClientAndReconciler()
+		db := v1alpha1.DependencyBuild{}
+		db.Namespace = metav1.NamespaceDefault
+		db.Name = "test"
+		db.Status.State = v1alpha1.DependencyBuildStateAnalyzeBuild
+		db.Spec.ScmInfo.SCMURL = "some-url"
+		db.Spec.ScmInfo.Tag = "some-tag"
+		db.Spec.ScmInfo.Path = "some-path"
+		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
+		g.Expect(client.Create(ctx, &db)).Should(BeNil())
+
+		pr := pipelinev1beta1.PipelineRun{}
+		pr.Namespace = metav1.NamespaceDefault
+		pr.Name = "test-build-discovery"
+		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineType: PipelineTypeBuildInfo}
+		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme))
+		g.Expect(client.Create(ctx, &pr)).Should(BeNil())
+
+	}
+	t.Run("Test build info discovery for maven build", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup(g)
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "5.8.7", Tools: map[string]toolInfo{"gradle": {}}, Invocations: [][]string{{""}}})
+		g.Expect(err).Should(BeNil())
+		pr := getBuildInfoPipeline(client, g)
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: string(buildInfoJson)}}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "True",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+
+		db := getBuild(client, g)
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
+		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(1))
+		g.Expect(db.Status.PotentialBuildRecipes[0].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-g5-builder:latest"))
 	})
 }

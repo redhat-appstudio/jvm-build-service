@@ -9,3 +9,6 @@ resources:
   - rbac.yaml
   - config.yaml
   - pipeline.yaml
+
+patchesStrategicMerge:
+  - system-config.yaml

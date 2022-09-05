@@ -11,8 +11,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import org.gradle.util.GradleVersion;
-
 import io.quarkus.logging.Log;
 
 /**
@@ -28,13 +26,6 @@ public final class GradleUtils {
      * Identifier for the plugin {@code com.github.sherter.google-java-format}.
      */
     public static final String GOOGLE_JAVA_FORMAT_PLUGIN = "com.github.sherter.google-java-format";
-
-    /**
-     * List of available Gradle versions in image.
-     */
-    public static final List<GradleVersion> AVAILABLE_GRADLE_VERSIONS = List.of(GradleVersion.version("4.10.3"),
-            GradleVersion.version("5.6.4"), GradleVersion.version("6.9.2"), GradleVersion.version("7.4.1"),
-            GradleVersion.version("7.5.1"));
 
     static final String BUILD_GRADLE = "build.gradle";
 
@@ -100,42 +91,6 @@ public final class GradleUtils {
         }
 
         return Integer.parseInt(matcher.group(2));
-    }
-
-    /**
-     * Find the nearest available Gradle version to the given version. If possible, return the nearest version that is
-     * less than or equal to the given version. If the given version is null or empty, return the latest available
-     * version.
-     *
-     * @param version the version
-     * @return the nearest Gradle version
-     */
-    public static String findNearestGradleVersion(String version) {
-        int majorVersion = getMajorVersion(version);
-        String latestVersion = AVAILABLE_GRADLE_VERSIONS.get(AVAILABLE_GRADLE_VERSIONS.size() - 1).getVersion();
-
-        if (majorVersion == -1) {
-            return latestVersion;
-        }
-
-        if (majorVersion < 4) {
-            return AVAILABLE_GRADLE_VERSIONS.get(0).getVersion();
-        }
-
-        if (AVAILABLE_GRADLE_VERSIONS.contains(GradleVersion.version(version))) {
-            return version;
-        }
-
-        for (GradleVersion gradleVersion : AVAILABLE_GRADLE_VERSIONS) {
-            String availableVersion = gradleVersion.getVersion();
-            int gradleMajorVersion = getMajorVersion(availableVersion);
-
-            if (majorVersion == gradleMajorVersion) {
-                return availableVersion;
-            }
-        }
-
-        return latestVersion;
     }
 
     /**

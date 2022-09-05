@@ -7,7 +7,6 @@ bases:
  - "../../operator/overlays/dev-template"
 
 resources:
-  - system-config.yaml
   - secret.yaml
 
 patches:
@@ -28,3 +27,4 @@ patches:
 
 patchesStrategicMerge:
   - config.yaml
+  - system-config.yaml

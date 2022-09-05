@@ -29,6 +29,11 @@ public class LocalCacheTest {
 
     public final RepositoryClient MOCK_CLIENT = new RepositoryClient() {
         @Override
+        public String getName() {
+            return "";
+        }
+
+        @Override
         public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
                 String target, Long buildStartTime) {
             return Optional.ofNullable(current);

@@ -8,9 +8,7 @@ ENV \
     MAVEN_HOME="/usr/share/maven" \
     MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1" \
     MAVEN_VERSION="$MAVEN_VERSION" \
-    GRADLE_HOME="/usr/share/gradle" \
     GRADLE_OPTS="-Dorg.gradle.daemon=false" \
-    GRADLE_VERSION="$GRADLE_VERSION" \
     GRADLE_MANIPULATOR_HOME="/usr/share/gradle-manipulator" \
     GRADLE_MANIPULATOR_VERSION="$GRADLE_MANIPULATOR_VERSION" \
     HOME="/home/hacbs" \
@@ -55,25 +53,15 @@ RUN set -o errexit -o nounset \
     && mkdir "${GRADLE_MANIPULATOR_HOME}" \
     && mv cli.jar analyzer-init.gradle "${GRADLE_MANIPULATOR_HOME}/" \
     && mkdir "${GRADLE_MANIPULATOR_HOME}/bin" \
-    && echo -e "#!/bin/sh\n\ntest -n \"\${GRADLE_HOME}\" || GRADLE_HOME=\"${GRADLE_HOME}\"\nARGS=\"-l \${GRADLE_HOME}\"\njava -jar ${GRADLE_MANIPULATOR_HOME}/cli.jar \"\${ARGS}\" --init-script=${GRADLE_MANIPULATOR_HOME}/analyzer-init.gradle \$@" > ${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator \
+    && echo -e "#!/bin/sh\n\nset -eu\nARGS=\"-l \${GRADLE_HOME}\"\njava -jar ${GRADLE_MANIPULATOR_HOME}/cli.jar \"\${ARGS}\" --init-script=${GRADLE_MANIPULATOR_HOME}/analyzer-init.gradle \$@" > ${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator \
     && chmod 755 ${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator \
-    && ${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator --version \
-    && ln --symbolic "${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator" /usr/bin/gradle-manipulator \
-    && /usr/bin/gradle-manipulator --version \
-    && gradle-manipulator --version
+    && ln --symbolic "${GRADLE_MANIPULATOR_HOME}/bin/gradle-manipulator" /usr/bin/gradle-manipulator
+    #we test out gradle manipulator as part of the gradle installation
+
 
 RUN set -o errexit -o nounset \
-    && echo "Downloading Gradle" \
-    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
-    \
-    && echo "Checking download hash" \
-    && echo "${GRADLE_DOWNLOAD_SHA256} *gradle.zip" | sha256sum --check - \
-    \
-    && echo "Installing Gradle" \
-    && unzip gradle.zip \
-    && rm gradle.zip \
-    && mv "gradle-${GRADLE_VERSION}" "${GRADLE_HOME}/" \
-    && ln --symbolic "${GRADLE_HOME}/bin/gradle" /usr/bin/gradle
+    && mkdir /opt/gradle \
+    $GRADLE_STRING
 
 LABEL \
     io.cekit.version="4.1.0" \
