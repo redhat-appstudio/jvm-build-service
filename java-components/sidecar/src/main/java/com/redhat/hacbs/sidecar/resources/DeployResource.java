@@ -56,11 +56,12 @@ public class DeployResource {
     Set<String> allowedSources;
 
     public DeployResource(BeanManager beanManager,
-            @ConfigProperty(name = "deployer", defaultValue = "S3Deployer") String deployer,
+            @ConfigProperty(name = "deployer") Optional<String> deployer,
+            @ConfigProperty(name = "registry.token") Optional<String> token,
             @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy,
             @ConfigProperty(name = "allowed-sources", defaultValue = "") Optional<Set<String>> allowedSources) {
         this.beanManager = beanManager;
-        this.deployer = getDeployer(deployer);
+        this.deployer = getDeployer(deployer, token);
         this.doNotDeploy = doNotDeploy.orElse(Set.of());
         this.allowedSources = allowedSources.orElse(Set.of());
         Log.debugf("Using %s deployer", deployer);
@@ -159,10 +160,14 @@ public class DeployResource {
         }
     }
 
-    private Deployer getDeployer(String name) {
-        Bean<Deployer> bean = (Bean<Deployer>) beanManager.getBeans(name).iterator().next();
+    private Deployer getDeployer(Optional<String> name, Optional<String> registryToken) {
+        //if the registry token is defined and not the deployer we default to the container
+        //registry deployer
+        String actualName = name.orElse(registryToken.isPresent() ? "ContainerRegistryDeployer" : "S3Deployer");
+        Bean<Deployer> bean = (Bean<Deployer>) beanManager.getBeans(actualName).iterator().next();
         CreationalContext<Deployer> ctx = beanManager.createCreationalContext(bean);
         return (Deployer) beanManager.getReference(bean, Deployer.class, ctx);
+
     }
 
     private void flushLogs() {

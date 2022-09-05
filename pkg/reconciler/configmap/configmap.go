@@ -40,6 +40,7 @@ const (
 	CacheDeploymentName         = "jvm-build-workspace-artifact-cache"
 	LocalstackDeploymentName    = "jvm-build-workspace-localstack"
 	EnableRebuilds              = "enable-rebuilds"
+	EnableLocalstack            = "enable-localstack"
 	SystemConfigMapName         = "jvm-build-system-config"
 	SystemConfigMapNamespace    = "jvm-build-service"
 	SystemCacheImage            = "image.cache"
@@ -117,6 +118,10 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, nil
 	}
 	enabled := configMap.Data[EnableRebuilds] == "true"
+	//for now we default it to always be created
+	//but allow it to be disabled
+	//our in repo tests don't need it anymore
+	localstack := configMap.Data[EnableLocalstack] != "false"
 
 	systemConfigMap := corev1.ConfigMap{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: SystemConfigMapName, Namespace: SystemConfigMapNamespace}, &systemConfigMap)
@@ -124,12 +129,12 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 		return reconcile.Result{}, nil
 	}
 	log.Info("Setup Cache %s", "name", request.Name)
-	if err = r.setupCache(ctx, request, enabled, configMap, systemConfigMap); err != nil {
+	if err = r.setupCache(ctx, request, enabled, configMap, systemConfigMap, localstack); err != nil {
 		return reconcile.Result{}, err
 	}
-	if enabled {
+	if enabled && localstack {
 		log.Info("Setup Rebuilds %s", "name", request.Name)
-		err := r.setupRebuilds(ctx, log, request)
+		err := r.setupLocalstack(ctx, log, request)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -138,7 +143,7 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.Request, rebuildsEnabled bool, configMap corev1.ConfigMap, systemConfigMap corev1.ConfigMap) error {
+func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.Request, rebuildsEnabled bool, configMap corev1.ConfigMap, systemConfigMap corev1.ConfigMap, localstack bool) error {
 	//first setup the storage
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: CacheDeploymentName}
 
@@ -277,26 +282,30 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 	if rebuildsEnabled {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
 
-		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "QUARKUS_S3_ENDPOINT_OVERRIDE",
-			Value: "http://" + LocalstackDeploymentName + "." + request.Namespace + ".svc.cluster.local:4572",
-		})
-		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "QUARKUS_S3_AWS_REGION",
-			Value: "us-east-1",
-		})
-		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "QUARKUS_S3_AWS_CREDENTIALS_TYPE",
-			Value: "static",
-		})
-		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID",
-			Value: "accesskey",
-		})
-		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY",
-			Value: "secretkey",
-		})
+		if localstack {
+			//TODO: localstack should eventually go away altogether
+			//for now it is convenient for testing
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:  "QUARKUS_S3_ENDPOINT_OVERRIDE",
+				Value: "http://" + LocalstackDeploymentName + "." + request.Namespace + ".svc.cluster.local:4572",
+			})
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:  "QUARKUS_S3_AWS_REGION",
+				Value: "us-east-1",
+			})
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:  "QUARKUS_S3_AWS_CREDENTIALS_TYPE",
+				Value: "static",
+			})
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:  "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID",
+				Value: "accesskey",
+			})
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:  "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY",
+				Value: "secretkey",
+			})
+		}
 		if configMap.Data["registry.owner"] != "" {
 			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 				Name:      "REGISTRY_OWNER",
@@ -325,6 +334,12 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 				Name:      "REGISTRY_INSECURE",
 				ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserConfigMapName}, Key: "registry.insecure"}},
+			})
+		}
+		if configMap.Data["registry.prepend-tag"] != "" {
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:      "REGISTRY_PREPEND_TAG",
+				ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: UserConfigMapName}, Key: "registry.prepend-tag"}},
 			})
 		}
 		//TODO: ensure this exists
@@ -384,7 +399,7 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 
 }
 
-func (r *ReconcileConfigMap) setupRebuilds(ctx context.Context, log logr.Logger, request reconcile.Request) error {
+func (r *ReconcileConfigMap) setupLocalstack(ctx context.Context, log logr.Logger, request reconcile.Request) error {
 	//setup localstack
 	//this is 100% temporary and needs to go away ASAP
 	localstack := v1.Deployment{}
