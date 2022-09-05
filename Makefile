@@ -71,9 +71,9 @@ builder-image:
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jdk17-builder:dev
 
 dev: dev-image
-	if ! docker images | grep hacbs-jdk8; then echo "run 'make builder-image'"; exit 1; fi
-	if ! docker images | grep hacbs-jdk11; then echo "run 'make builder-image'"; exit 1; fi
-	if ! docker images | grep hacbs-jdk17; then echo "run 'make builder-image'"; exit 1; fi
+	if ! docker images | grep hacbs-jdk8; then echo "Local copy of builder images not found. You need to run 'make builder-image'"; exit 1; fi
+	if ! docker images | grep hacbs-jdk11; then echo "Local copy of builder images not found. You need to run 'make builder-image'"; exit 1; fi
+	if ! docker images | grep hacbs-jdk17; then echo "Local copy of builder images not found. You need to run 'make builder-image'"; exit 1; fi
 	cd java-components && mvn clean install -Dlocal -DskipTests
 	./deploy/install-openshift-pipelines.sh || true
 	./deploy/development.sh
