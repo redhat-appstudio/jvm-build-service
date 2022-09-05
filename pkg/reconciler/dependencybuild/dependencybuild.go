@@ -268,18 +268,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		db.Status.State = v1alpha1.DependencyBuildStateFailed
 		db.Status.Message = message
 	} else {
-		unmarshalled := struct {
-			Tools map[string]struct {
-				Min       string
-				Max       string
-				Preferred string
-			}
-			Invocations      [][]string
-			EnforceVersion   string
-			IgnoredArtifacts []string
-			ToolVersion      string
-			JavaVersion      string
-		}{}
+		unmarshalled := marshalledBuildInfo{}
 
 		if err := json.Unmarshal([]byte(buildInfo), &unmarshalled); err != nil {
 			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
@@ -372,6 +361,21 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+type marshalledBuildInfo struct {
+	Tools            map[string]toolInfo
+	Invocations      [][]string
+	EnforceVersion   string
+	IgnoredArtifacts []string
+	ToolVersion      string
+	JavaVersion      string
+}
+
+type toolInfo struct {
+	Min       string
+	Max       string
+	Preferred string
 }
 
 // compares versions, returns 0 if versions
