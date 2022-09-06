@@ -99,4 +99,4 @@ export ARTIFACT_DIR=${ARTIFACT_DIR:-"/tmp/appstudio"}
 
 . .ci/override-tekton-bundle.sh
 
-curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/install-appstudio-e2e-mode.sh | bash -s install
+curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/1f76dea4e15ed2c7d7f63d5c9603f02e311f2476/scripts/install-appstudio-e2e-mode.sh | bash -s install
