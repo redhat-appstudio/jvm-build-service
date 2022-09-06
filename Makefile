@@ -87,7 +87,6 @@ dev: dev-image
 	if ! docker images | grep hacbs-jdk11; then echo "Local copy of builder images not found. You need to run 'make builder-image' or 'make tag-existing-builder-image'"; exit 1; fi
 	if ! docker images | grep hacbs-jdk17; then echo "Local copy of builder images not found. You need to run 'make builder-image' or 'make tag-existing-builder-image'"; exit 1; fi
 	cd java-components && mvn clean install -Dlocal -DskipTests
-	./deploy/install-openshift-pipelines.sh || true
 
 dev-openshift: dev
 	./deploy/openshift-development.sh
