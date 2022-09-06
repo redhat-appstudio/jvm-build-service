@@ -17,7 +17,7 @@ TASK_BUNDLE_IMG=$APPSTUDIO_QE_REPO:task-bundle-$JVM_BUILD_SERVICE_PR_SHA
 PIPELINE_BUNDLE_IMG=$APPSTUDIO_QE_REPO:pipeline-bundle-$JVM_BUILD_SERVICE_PR_SHA
 
 function getCurrentBuildBundle() {
-    curl -s -o "$TEMP_FOLDER"/build-kustomization.yaml https://raw.githubusercontent.com/redhat-appstudio/infra-deployments/main/components/build/kustomization.yaml
+    curl -s -o "$TEMP_FOLDER"/build-kustomization.yaml https://raw.githubusercontent.com/redhat-appstudio/infra-deployments/pre-kcp/components/build/kustomization.yaml
 
     BUILD_BUNDLE=$(yq e ".configMapGenerator[].literals[]" \
     "$TEMP_FOLDER"/build-kustomization.yaml \
