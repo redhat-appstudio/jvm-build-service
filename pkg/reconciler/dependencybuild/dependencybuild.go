@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
 	"strconv"
 	"strings"
@@ -18,9 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,15 +34,18 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout           = 300 * time.Second
-	PipelineScmUrl           = "URL"
-	PipelineScmTag           = "TAG"
-	PipelinePath             = "CONTEXT_DIR"
-	PipelineImage            = "IMAGE"
-	PipelineGoals            = "GOALS"
-	PipelineEnforceVersion   = "ENFORCE_VERSION"
-	PipelineIgnoredArtifacts = "IGNORED_ARTIFACTS"
-	PipelineToolVersion      = "TOOL_VERSION"
+	contextTimeout                = 300 * time.Second
+	PipelineScmUrl                = "URL"
+	PipelineScmTag                = "TAG"
+	PipelinePath                  = "CONTEXT_DIR"
+	PipelineImage                 = "IMAGE"
+	PipelineGoals                 = "GOALS"
+	PipelineJavaVersion           = "JAVA_VERSION"
+	PipelineToolVersion           = "TOOL_VERSION"
+	PipelineEnforceVersion        = "ENFORCE_VERSION"
+	PipelineIgnoredArtifacts      = "IGNORED_ARTIFACTS"
+	PipelineGradleManipulatorArgs = "GRADLE_MANIPULATOR_ARGS"
+	PipelineResultContaminates    = "contaminants"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
 	BuildInfoPipelineTagParam     = "TAG"
@@ -434,18 +433,9 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 
 }
 
-func (r *ReconcileDependencyBuild) decodeBytesToTask(bytes []byte) (*pipelinev1beta1.Task, error) {
-	decodingScheme := runtime.NewScheme()
-	utilruntime.Must(pipelinev1beta1.AddToScheme(decodingScheme))
-	decoderCodecFactory := serializer.NewCodecFactory(decodingScheme)
-	decoder := decoderCodecFactory.UniversalDecoder(pipelinev1beta1.SchemeGroupVersion)
-	taskRun := pipelinev1beta1.Task{}
-	err := runtime.DecodeInto(decoder, bytes, &taskRun)
-	return &taskRun, err
-}
-
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
+	image := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.Namespace = db.Namespace
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
@@ -454,53 +444,18 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	pr.Name = currentDependencyBuildPipelineName(db)
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
 
-	image := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
-	var taskBytes []byte
-	switch {
-	case db.Status.CurrentBuildRecipe.Maven:
-		taskBytes = []byte(maven)
-	case db.Status.CurrentBuildRecipe.Gradle:
-		taskBytes = []byte(gradle)
-	default:
+	if !db.Status.CurrentBuildRecipe.Maven && !db.Status.CurrentBuildRecipe.Gradle {
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "MissingRecipeType", "recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 		return reconcile.Result{}, fmt.Errorf("recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 	}
-	task, err := r.decodeBytesToTask(taskBytes)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec = &pipelinev1beta1.PipelineSpec{
-		Results: []pipelinev1beta1.PipelineResult{},
-		Tasks: []pipelinev1beta1.PipelineTask{
-			{
-				Name: artifactbuild.TaskName,
-				TaskSpec: &pipelinev1beta1.EmbeddedTask{
-					TaskSpec: task.Spec,
-				},
-				Params: []pipelinev1beta1.Param{},
-			},
-		},
-	}
-	for _, i := range task.Spec.Results {
-		pr.Spec.PipelineSpec.Results = append(pr.Spec.PipelineSpec.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: "$(tasks." + artifactbuild.TaskName + ".results." + i.Name + ")"})
-	}
-	for _, i := range task.Spec.Params {
-		pr.Spec.PipelineSpec.Params = append(pr.Spec.PipelineSpec.Params, pipelinev1beta1.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default})
-		if i.Type == pipelinev1beta1.ParamTypeString {
-			pr.Spec.PipelineSpec.Tasks[0].Params = append(pr.Spec.PipelineSpec.Tasks[0].Params, pipelinev1beta1.Param{Name: i.Name, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(params." + i.Name + ")"}})
-		} else {
-			//TODO: this should really be pulled from the pipelines params but it does not seem to work
-			pr.Spec.PipelineSpec.Tasks[0].Params = append(pr.Spec.PipelineSpec.Tasks[0].Params, pipelinev1beta1.Param{Name: i.Name, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}})
-		}
-	}
-	pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Sidecars = []pipelinev1beta1.Sidecar{createSidecar(image, db.Namespace)}
+	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, image, db.Namespace)
+
 	pr.Spec.ServiceAccountName = "pipeline"
 	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
 	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
 	//the actual solution will involve loading deployment config from a ConfigMap
-	pr.Spec.ServiceAccountName = "pipeline"
 	pr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
@@ -510,15 +465,12 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
 		{Name: PipelineIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
 		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
+		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
-	pr.Spec.PipelineSpec.Workspaces = []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "source"}, {Name: "maven-settings"}}
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
-		{Name: "maven-settings", EmptyDir: &v1.EmptyDirVolumeSource{}},
-		{Name: "source", EmptyDir: &v1.EmptyDirVolumeSource{}},
+		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
+		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
 	}
-	pr.Spec.PipelineSpec.Tasks[0].Workspaces = []pipelinev1beta1.WorkspacePipelineTaskBinding{
-		{Name: "maven-settings", Workspace: "maven-settings"},
-		{Name: "source", Workspace: "source"}}
 	pr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
@@ -596,7 +548,7 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 
 		var contaminates []string
 		for _, r := range pr.Status.PipelineResults {
-			if r.Name == "contaminants" && len(r.Value) > 0 {
+			if r.Name == PipelineResultContaminates && len(r.Value) > 0 {
 				contaminates = strings.Split(r.Value, ",")
 			}
 		}
@@ -725,52 +677,4 @@ func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec, config m
 type BuilderImage struct {
 	Image string
 	Tools map[string][]string
-}
-
-func createSidecar(image string, namespace string) pipelinev1beta1.Sidecar {
-	trueBool := true
-	zero := int64(0)
-	sidecar := pipelinev1beta1.Sidecar{
-		Container: v1.Container{
-			Name:  "proxy",
-			Image: image,
-			Env: []v1.EnvVar{
-				{Name: "QUARKUS_LOG_FILE_ENABLE", Value: "true"},
-				{Name: "QUARKUS_LOG_FILE_PATH", Value: "$(workspaces.maven-settings.path)/sidecar.log"},
-				{Name: "IGNORED_ARTIFACTS", Value: "$(params.IGNORED_ARTIFACTS)"},
-				{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: "2"},
-				{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: "6"},
-				{Name: "QUARKUS_REST_CLIENT_CACHE_SERVICE_URL", Value: "http://" + configmap.CacheDeploymentName + "." + namespace + ".svc.cluster.local"},
-				{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://" + configmap.LocalstackDeploymentName + "." + namespace + ".svc.cluster.local:4572"},
-				{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"},
-				{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"},
-				{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"},
-				{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY", Value: "secretkey"},
-				{Name: "REGISTRY_TOKEN",
-					ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{Key: "registry.token", LocalObjectReference: v1.LocalObjectReference{Name: "jvm-build-secrets"}, Optional: &trueBool}},
-				},
-			},
-			VolumeMounts: []v1.VolumeMount{
-				{Name: "$(workspaces.maven-settings.volume)", MountPath: "$(workspaces.maven-settings.path)"}},
-			LivenessProbe: &v1.Probe{
-				ProbeHandler:        v1.ProbeHandler{HTTPGet: &v1.HTTPGetAction{Path: "/q/health/live", Port: intstr.IntOrString{IntVal: 2000}}},
-				InitialDelaySeconds: 1,
-				PeriodSeconds:       3,
-			},
-			ReadinessProbe: &v1.Probe{
-				ProbeHandler:        v1.ProbeHandler{HTTPGet: &v1.HTTPGetAction{Path: "/q/health/ready", Port: intstr.IntOrString{IntVal: 2000}}},
-				InitialDelaySeconds: 1,
-				PeriodSeconds:       3,
-			},
-			Resources: v1.ResourceRequirements{
-				Requests: map[v1.ResourceName]resource.Quantity{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("10m")},
-				Limits:   map[v1.ResourceName]resource.Quantity{"memory": resource.MustParse("8Gi"), "cpu": resource.MustParse("2")}},
-			SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-		}}
-
-	if !strings.HasPrefix(image, "quay.io/redhat-appstudio") {
-		// work around for developer mode while we are hard coding the task spec in the controller
-		sidecar.ImagePullPolicy = v1.PullAlways
-	}
-	return sidecar
 }

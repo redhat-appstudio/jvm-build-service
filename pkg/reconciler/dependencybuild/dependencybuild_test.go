@@ -188,7 +188,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(8))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(9))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineScmTag:
@@ -207,6 +207,8 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				case PipelineToolVersion:
 					g.Expect(param.Value.StringVal).Should(Equal("3.8.1"))
+				case PipelineJavaVersion:
+					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				}
 			}
 		}
