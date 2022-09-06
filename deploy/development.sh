@@ -20,7 +20,3 @@ JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk8-builder:d
 JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk11-builder:dev \
 JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk17-builder:dev \
 $DIR/patch-yaml.sh
-
-#TODO: we still need to deal with this in infra deployments for the tests
-#so this is not aligned yet
-find $DIR -path \*development\*.yaml -exec sed -i s/QUAY_TOKEN/${QUAY_TOKEN}/ {} \;
