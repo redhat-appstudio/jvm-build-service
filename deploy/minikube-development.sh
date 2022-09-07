@@ -13,3 +13,4 @@ $DIR/base-development.sh
 kubectl create secret docker-registry minikube-pull-secret --from-file=.dockerconfigjson=$HOME/.docker/config.json
 kubectl patch serviceaccount pipeline -p '{"imagePullSecrets": [{"name": "minikube-pull-secret"}]}'
 kubectl patch serviceaccount default -p '{"imagePullSecrets": [{"name": "minikube-pull-secret"}]}'
+kubctl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
