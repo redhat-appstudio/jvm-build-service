@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	projectset "github.com/openshift/client-go/project/clientset/versioned"
+	quotaset   "github.com/openshift/client-go/quota/clientset/versioned"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
@@ -24,6 +25,7 @@ var (
 	tektonClient       *pipelineclientset.Clientset
 	jvmClient          *jvmclientset.Clientset
 	apiextensionClient *apiextensionsclient.Clientset
+	qutoaClient        *quotaset.Clientset
 )
 
 func getConfig() (*rest.Config, error) {
@@ -88,5 +90,9 @@ func setupClients(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%#v", err)
 		}
+	}
+
+	if qutoaClient == nil {
+		qutoaClient = quotaset.NewForConfigOrDie(kubeConfig)
 	}
 }

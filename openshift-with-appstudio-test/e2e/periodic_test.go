@@ -14,16 +14,43 @@ import (
 	"testing"
 	"time"
 
+	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
 )
 
 func TestServiceRegistry(t *testing.T) {
 	ta := setup(t, nil)
+
+	// set up quota to enable throttling
+	quota := &quotav1.ClusterResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("for-%s-deployments", ta.ns),
+		},
+		Spec:       quotav1.ClusterResourceQuotaSpec{
+			Quota: corev1.ResourceQuotaSpec{
+				Hard:          corev1.ResourceList{
+					corev1.ResourceName("count/pods"): resource.MustParse("50"),
+				},
+			},
+			Selector: quotav1.ClusterResourceQuotaSelector{
+				AnnotationSelector: map[string]string{
+					"openshift.io/requester": ta.ns,
+				},
+			},
+		},
+	}
+	_, err := qutoaClient.QuotaV1().ClusterResourceQuotas().Create(context.TODO(), quota, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+
 
 	//TODO start of more common logic to split into commonly used logic between
 	// TestExampleRun and TestServiceRegistry.  Not doing that yet because of

@@ -35,6 +35,10 @@ func (c *FakeJvmbuildserviceV1alpha1) DependencyBuilds(namespace string) v1alpha
 	return &FakeDependencyBuilds{c, namespace}
 }
 
+func (c *FakeJvmbuildserviceV1alpha1) TektonWrappers(namespace string) v1alpha1.TektonWrapperInterface {
+	return &FakeTektonWrappers{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeJvmbuildserviceV1alpha1) RESTClient() rest.Interface {

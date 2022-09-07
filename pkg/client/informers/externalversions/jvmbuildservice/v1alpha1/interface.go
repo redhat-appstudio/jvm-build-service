@@ -27,6 +27,8 @@ type Interface interface {
 	ArtifactBuilds() ArtifactBuildInformer
 	// DependencyBuilds returns a DependencyBuildInformer.
 	DependencyBuilds() DependencyBuildInformer
+	// TektonWrappers returns a TektonWrapperInformer.
+	TektonWrappers() TektonWrapperInformer
 }
 
 type version struct {
@@ -48,4 +50,9 @@ func (v *version) ArtifactBuilds() ArtifactBuildInformer {
 // DependencyBuilds returns a DependencyBuildInformer.
 func (v *version) DependencyBuilds() DependencyBuildInformer {
 	return &dependencyBuildInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TektonWrappers returns a TektonWrapperInformer.
+func (v *version) TektonWrappers() TektonWrapperInformer {
+	return &tektonWrapperInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

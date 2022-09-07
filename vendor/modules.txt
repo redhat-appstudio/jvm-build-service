@@ -204,14 +204,25 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift/api v0.0.0-20210521075222-e273a339932a
+# github.com/openshift/api v0.0.0-20211203173402-b8f149d82307
 ## explicit; go 1.16
 github.com/openshift/api/project/v1
+github.com/openshift/api/quota/v1
 # github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 ## explicit; go 1.16
 github.com/openshift/client-go/project/clientset/versioned
 github.com/openshift/client-go/project/clientset/versioned/scheme
 github.com/openshift/client-go/project/clientset/versioned/typed/project/v1
+github.com/openshift/client-go/quota/clientset/versioned
+github.com/openshift/client-go/quota/clientset/versioned/fake
+github.com/openshift/client-go/quota/clientset/versioned/scheme
+github.com/openshift/client-go/quota/clientset/versioned/typed/quota/v1
+github.com/openshift/client-go/quota/clientset/versioned/typed/quota/v1/fake
+github.com/openshift/client-go/quota/informers/externalversions
+github.com/openshift/client-go/quota/informers/externalversions/internalinterfaces
+github.com/openshift/client-go/quota/informers/externalversions/quota
+github.com/openshift/client-go/quota/informers/externalversions/quota/v1
+github.com/openshift/client-go/quota/listers/quota/v1
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors

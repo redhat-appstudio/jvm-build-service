@@ -20,3 +20,5 @@ package v1alpha1
 type ArtifactBuildExpansion interface{}
 
 type DependencyBuildExpansion interface{}
+
+type TektonWrapperExpansion interface{}
