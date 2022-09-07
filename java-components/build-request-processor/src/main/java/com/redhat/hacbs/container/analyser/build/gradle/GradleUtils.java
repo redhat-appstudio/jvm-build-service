@@ -25,7 +25,7 @@ public final class GradleUtils {
     /**
      * Identifier for the plugin {@code com.github.sherter.google-java-format}.
      */
-    public static final String GOOGLE_JAVA_FORMAT_PLUGIN = ".*" + Pattern.quote("com.github.sherter.google-java-format") + ".*";
+    public static final String GOOGLE_JAVA_FORMAT_PLUGIN = Pattern.quote("com.github.sherter.google-java-format");
 
     static final String BUILD_GRADLE = "build.gradle";
 
@@ -134,30 +134,38 @@ public final class GradleUtils {
     }
 
     /**
-     * Checks whether the build file in the path contains the given character sequence.
+     * Checks whether the given path represents a Gradle build file.
+     *
+     * @param path the path to check
+     * @return whether the given path represents a Gradle build file
+     */
+    public static boolean isGradleBuildFile(Path path) {
+        if (!Files.isRegularFile(path)) {
+            return false;
+        }
+
+        var fileName = path.getFileName().toString();
+        return fileName.equals(BUILD_GRADLE) || fileName.equals(BUILD_GRADLE_KTS);
+    }
+
+    /**
+     * Checks whether the build file in the path contains the given regex.
      *
      * @param path the path to check
      * @param regex the regular expression to match
      * @return whether the character sequence is found in a build file located directly under the path
+     * @throws IOException if an error occurs while reading from the file
      */
-    public static boolean isInBuildGradle(Path path, String regex) {
-        if (!Files.isDirectory(path)) {
-            return false;
-        }
-
+    public static boolean isInBuildGradle(Path path, String regex) throws IOException {
         try (Stream<Path> stream = Files.walk(path)) {
-            return stream.filter(Files::isRegularFile).filter(Files::isReadable)
-                    .filter(p -> p.getFileName().toString()
-                            .equals(BUILD_GRADLE) || p.getFileName().toString().equals(BUILD_GRADLE_KTS))
-                    .flatMap(path1 -> {
-                        try {
-                            return Files.lines(path1);
-                        } catch (IOException e) {
-                            return Stream.empty();
-                        }
-                    }).anyMatch(s1 -> s1.matches(regex));
-        } catch (IOException e) {
-            return false;
+            return stream.filter(GradleUtils::isGradleBuildFile).anyMatch(p -> {
+                try {
+                    var content = Files.readString(p);
+                    return Pattern.compile(regex, Pattern.DOTALL | Pattern.MULTILINE).matcher(content).find();
+                } catch (IOException e) {
+                    return false;
+                }
+            });
         }
     }
 }
