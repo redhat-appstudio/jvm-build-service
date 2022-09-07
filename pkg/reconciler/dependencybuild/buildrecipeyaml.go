@@ -137,9 +137,15 @@ func createPipelineSpec(maven bool, sidecarImage string, namespace string) *pipe
 	}
 	for _, i := range buildSetup.Params {
 		ps.Params = append(ps.Params, pipelinev1beta1.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default, Type: i.Type})
+		var value pipelinev1beta1.ArrayOrString
+		if i.Type == pipelinev1beta1.ParamTypeString {
+			value = pipelinev1beta1.ArrayOrString{Type: i.Type, StringVal: "$(params." + i.Name + ")"}
+		} else {
+			value = pipelinev1beta1.ArrayOrString{Type: i.Type, ArrayVal: []string{"$(params." + i.Name + "[*])"}}
+		}
 		ps.Tasks[0].Params = append(ps.Tasks[0].Params, pipelinev1beta1.Param{
 			Name:  i.Name,
-			Value: pipelinev1beta1.ArrayOrString{Type: i.Type, StringVal: "$(params." + i.Name + ")"}})
+			Value: value})
 	}
 	return ps
 }

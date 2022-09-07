@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -eu
 
 # fix-permissions-for-builder
 chown 1001:1001 -R "$(workspaces.source.path)"
