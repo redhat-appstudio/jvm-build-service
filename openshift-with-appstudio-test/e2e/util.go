@@ -198,7 +198,9 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 			"maven-repository-304-eclipselink":   "https://download.eclipse.org/rt/eclipselink/maven.repo",
 			"maven-repository-305-redhat":        "https://maven.repository.redhat.com/ga",
 			"maven-repository-306-jitpack":       "https://jitpack.io",
-			"maven-repository-307-jsweet":        "https://repository.jsweet.org/artifactory/libs-release-local"}}
+			"maven-repository-307-jsweet":        "https://repository.jsweet.org/artifactory/libs-release-local",
+			"maven-repository-308-mulesoft":      "https://repository.mulesoft.org/nexus/content/repositories/public",
+		}}
 	_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cm, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
