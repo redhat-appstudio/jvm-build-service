@@ -34,6 +34,9 @@ appstudio-installed-on-openshift-e2e:
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags normal -timeout 120m -v ./openshift-with-appstudio-test/...
 
 appstudio-installed-on-openshift-periodic:
+	oc get clusterrole hacbs-jvm-operator || true
+	oc get clusterrolebinding hacbs-jvm-operator || true
+	oc adm policy who-can list serviceaccounts || true
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags periodic -timeout 180m -v ./openshift-with-appstudio-test/...
 
 build:
