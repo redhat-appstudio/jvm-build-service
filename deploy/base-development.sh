@@ -15,7 +15,4 @@ JVM_BUILD_SERVICE_CACHE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-cache \
 JVM_BUILD_SERVICE_SIDECAR_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-sidecar:dev \
 JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-build-request-processor:dev \
 JVM_BUILD_SERVICE_ANALYZER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-dependency-analyser:dev \
-JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk8-builder:dev \
-JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk11-builder:dev \
-JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk17-builder:dev \
 $DIR/patch-yaml.sh
