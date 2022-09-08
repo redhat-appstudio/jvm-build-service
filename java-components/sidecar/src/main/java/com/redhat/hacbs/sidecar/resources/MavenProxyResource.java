@@ -75,7 +75,7 @@ public class MavenProxyResource {
             @ConfigProperty(name = "quarkus.rest-client.cache-service.url") String cacheUrl,
             GavRelocationConfig gavRelocationConfig) {
 
-        remoteClient = HttpClientBuilder.create().disableAutomaticRetries().build();
+        remoteClient = HttpClientBuilder.create().disableAutomaticRetries().setMaxConnPerRoute(10).build();
         this.buildPolicy = buildPolicy;
         this.addTrackingDataToArtifacts = addTrackingDataToArtifacts;
         this.retries = retries;

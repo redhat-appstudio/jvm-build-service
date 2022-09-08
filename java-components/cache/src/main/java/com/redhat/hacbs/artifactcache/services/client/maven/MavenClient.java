@@ -1,34 +1,45 @@
 package com.redhat.hacbs.artifactcache.services.client.maven;
 
-import java.io.InputStream;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Optional;
 
-import javax.ws.rs.NotFoundException;
-
-import org.eclipse.microprofile.rest.client.RestClientBuilder;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.eclipse.microprofile.config.ConfigProvider;
 
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
 
+import io.quarkus.arc.Arc;
 import io.quarkus.logging.Log;
+import io.quarkus.vertx.http.runtime.CurrentVertxRequest;
 
 public class MavenClient implements RepositoryClient {
 
     public static final String SHA_1 = ".sha1";
     private final String name;
     private final URI uri;
-    private final MavenHttpClient client;
 
-    public MavenClient(String name, URI uri, MavenHttpClient client) {
+    private final String stringUri;
+    final CloseableHttpClient remoteClient;
+    final CurrentVertxRequest currentVertxRequest;
+
+    public MavenClient(String name, URI uri) {
+        int threads = ConfigProvider.getConfig().getOptionalValue("quarkus.thread.pool.max.threads", Integer.class).orElse(10);
+        remoteClient = HttpClientBuilder.create().disableAutomaticRetries().setMaxConnPerRoute(threads).setMaxConnTotal(threads)
+                .build();
         this.name = name;
         this.uri = uri;
-        this.client = client;
+        this.stringUri = uri.toASCIIString();
+        currentVertxRequest = Arc.container().instance(CurrentVertxRequest.class).get();
     }
 
     public static MavenClient of(String name, URI uri) {
-        MavenHttpClient client = RestClientBuilder.newBuilder().followRedirects(true).baseUri(uri).build(MavenHttpClient.class);
-        return new MavenClient(name, uri, client);
+        return new MavenClient(name, uri);
     }
 
     @Override
@@ -40,50 +51,71 @@ public class MavenClient implements RepositoryClient {
     public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
             String target, Long buildStartTime) {
         Log.debugf("Retrieving artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
-        try (var data = client.getArtifactFile(group, artifact, version, target)) {
+        String targetUri = uri + "/" + group + "/" + artifact + "/" + version + "/" + target;
+        return downloadMavenFile(group, artifact, version, target, targetUri);
+
+    }
+
+    private Optional<RepositoryResult> downloadMavenFile(String group, String artifact, String version, String target,
+            String targetUri) {
+
+        CloseableHttpResponse response = null;
+        try {
             String sha1 = null;
+            //this must be first, having it lower down can create a deadlock in some situations
+            //if all the connections are being used to download the main artifacts then there are
+            //none in the pool to download the shas
             if (!target.endsWith(SHA_1)) {
-                try (var hash = client.getArtifactFile(group, artifact, version, target + SHA_1)) {
-                    sha1 = hash.readEntity(String.class).trim();
-                    //older maven version would deploy sha files with extra stuff after the sha
-                    if (sha1.contains(" ")) {
-                        sha1 = sha1.split(" ")[0];
+                try (var hash = remoteClient.execute(new HttpGet(
+                        targetUri + SHA_1))) {
+                    if (hash.getStatusLine().getStatusCode() == 404) {
+                        Log.debugf("Could not find sha1 hash for artifact %s/%s/%s/%s from repo %s at %s", group, artifact,
+                                version,
+                                target, name, uri);
+                    } else {
+                        sha1 = new String(hash.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8).trim();
+                        //older maven version would deploy sha files with extra stuff after the sha
+                        if (sha1.contains(" ")) {
+                            sha1 = sha1.split(" ")[0];
+                        }
                     }
-                } catch (NotFoundException e) {
-                    Log.debugf("Could not find sha1 hash for artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version,
-                            target, name, uri);
                 }
             }
+            HttpGet httpGet = new HttpGet(targetUri);
+            try {
+                response = remoteClient.execute(httpGet);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (response.getStatusLine().getStatusCode() == 404) {
+                response.close();
+                return Optional.empty();
+            }
+            if (response.getStatusLine().getStatusCode() != 200) {
+                response.close();
+                throw new RuntimeException("Unexpected status code: " + response.getStatusLine().getStatusCode());
+            }
             Log.debugf("Found artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
-            return Optional.of(new RepositoryResult(data.readEntity(InputStream.class), data.getLength(),
+            return Optional.of(new RepositoryResult(new CloseDelegateInputStream(response.getEntity().getContent(), response),
+                    response.getEntity().getContentLength(),
                     Optional.ofNullable(sha1), Collections.emptyMap()));
-        } catch (NotFoundException e) {
-            Log.debugf("Could not find artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
-            return Optional.empty();
+        } catch (Exception e) {
+            try {
+                if (response != null) {
+                    response.close();
+                }
+            } catch (IOException ex) {
+                //ignore
+            }
+            throw new RuntimeException(e);
         }
-
     }
 
     @Override
     public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
         Log.debugf("Retrieving metadata %s/%s from repo %s at %s", group, target, name, uri);
-        try (var data = client.getMetadataFile(group, target)) {
-            String sha1 = null;
-            if (!target.endsWith(SHA_1)) {
-                try {
-                    var hash = client.getMetadataFile(group, target + SHA_1);
-                    sha1 = hash.readEntity(String.class);
-                } catch (NotFoundException e) {
-                    Log.debugf("Could not find sha1 hash for metadata %s/%s from repo %s at %s", group, target, name, uri);
-                }
-            }
-            Log.debugf("Found metadata %s/%s from repo %s at %s", group, target, name, uri);
-            return Optional.of(new RepositoryResult(data.readEntity(InputStream.class), data.getLength(),
-                    Optional.ofNullable(sha1), Collections.emptyMap()));
-        } catch (NotFoundException e) {
-            Log.debugf("Could not find metadata %s/%s from repo %s at %s", group, target, name, uri);
-            return Optional.empty();
-        }
+        return downloadMavenFile(group, null, null, target, uri + "/" + group + "/" + target);
+
     }
 
     @Override
