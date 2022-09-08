@@ -188,7 +188,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(8))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(9))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineScmTag:
@@ -207,6 +207,8 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				case PipelineToolVersion:
 					g.Expect(param.Value.StringVal).Should(Equal("3.8.1"))
+				case PipelineJavaVersion:
+					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				}
 			}
 		}
@@ -251,7 +253,7 @@ func TestStateBuilding(t *testing.T) {
 		db.Namespace = metav1.NamespaceDefault
 		db.Name = "test"
 		db.Status.State = v1alpha1.DependencyBuildStateBuilding
-		db.Status.CurrentBuildRecipe = &v1alpha1.BuildRecipe{Image: "quay.io/sdouglas/hacbs-jdk11-builder:latest"}
+		db.Status.CurrentBuildRecipe = &v1alpha1.BuildRecipe{Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"}
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"

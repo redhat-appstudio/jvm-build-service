@@ -37,5 +37,6 @@ find $DIR -path \*development\*.yaml -exec sed -i s%jdk11-builder%${JVM_BUILD_SE
 find $DIR -path \*development\*.yaml -exec sed -i s%jdk17-builder%${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE}% {} \;
 find $DIR -path \*development\*.yaml -exec sed -i s/dev-template/development/ {} \;
 find $DIR -path \*development\*.yaml -exec sed -i s/QUAY_TOKEN/${QUAY_TOKEN}/ {} \;
+find $DIR -path \*development\*.yaml -exec sed -i s/QUAY_USERNAME/${QUAY_USERNAME}/ {} \;
 
 kubectl apply -k $DIR/overlays/development
