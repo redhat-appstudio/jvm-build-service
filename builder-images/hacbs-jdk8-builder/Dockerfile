@@ -13,7 +13,6 @@ ENV \
     GRADLE_MANIPULATOR_VERSION="3.7" \
     HOME="/home/hacbs" \
     NSS_WRAPPER_PASSWD="/etc/passwd" \
-    GRADLE_DOWNLOAD_SHA256= \
     CLI_JAR_DOWNLOAD_SHA256=8af7e87638bb237362bf8f486b489c251e474be1cdc40037ba79887c2f0803b9 \
     ANALYZER_INIT_DOWNLOAD_SHA256=3172f34e126d652efccce50ca98c58f9baca27d89b5482268d0a4cb44023aa7e \
     PATH="$PATH:$JAVA_HOME/bin" \
@@ -81,16 +80,6 @@ RUN set -o errexit -o nounset \
     && unzip gradle.zip \
     && rm gradle.zip \
     && mv "gradle-6.9.2" "/opt/gradle/6.9.2/" \
-    && export GRADLE_HOME=/opt/gradle/6.9.2; gradle-manipulator --version     && echo "Downloading Gradle 6.9.2" \
-    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-6.9.2-bin.zip" \
-    \
-    && echo "Checking download hash 6.9.2" \
-    && echo "8b356fd8702d5ffa2e066ed0be45a023a779bba4dd1a68fd11bc2a6bdc981e8f *gradle.zip" | sha256sum --check - \
-    \
-    && echo "Installing Gradle 6.9.2" \
-    && unzip gradle.zip \
-    && rm gradle.zip \
-    && mv "gradle-6.9.2" "/opt/gradle/6.9.2/" \
     && export GRADLE_HOME=/opt/gradle/6.9.2; gradle-manipulator --version     && echo "Downloading Gradle 5.6.4" \
     && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-5.6.4-bin.zip" \
     \
@@ -101,17 +90,17 @@ RUN set -o errexit -o nounset \
     && unzip gradle.zip \
     && rm gradle.zip \
     && mv "gradle-5.6.4" "/opt/gradle/5.6.4/" \
-    && export GRADLE_HOME=/opt/gradle/5.6.4; gradle-manipulator --version     && echo "Downloading Gradle 4.10.2" \
-    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-4.10.2-bin.zip" \
+    && export GRADLE_HOME=/opt/gradle/5.6.4; gradle-manipulator --version     && echo "Downloading Gradle 4.10.3" \
+    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-4.10.3-bin.zip" \
     \
-    && echo "Checking download hash 4.10.2" \
-    && echo "b49c6da1b2cb67a0caf6c7480630b51c70a11ca2016ff2f555eaeda863143a29 *gradle.zip" | sha256sum --check - \
+    && echo "Checking download hash 4.10.3" \
+    && echo "8626cbf206b4e201ade7b87779090690447054bc93f052954c78480fa6ed186e *gradle.zip" | sha256sum --check - \
     \
-    && echo "Installing Gradle 4.10.2" \
+    && echo "Installing Gradle 4.10.3" \
     && unzip gradle.zip \
     && rm gradle.zip \
-    && mv "gradle-4.10.2" "/opt/gradle/4.10.2/" \
-    && export GRADLE_HOME=/opt/gradle/4.10.2; gradle-manipulator --version true
+    && mv "gradle-4.10.3" "/opt/gradle/4.10.3/" \
+    && export GRADLE_HOME=/opt/gradle/4.10.3; gradle-manipulator --version
 
 LABEL \
     io.cekit.version="4.1.0" \
