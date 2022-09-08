@@ -19,3 +19,4 @@ JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk8-builder:d
 JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk11-builder:dev \
 JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jdk17-builder:dev \
 $DIR/patch-yaml.sh
+kubectl apply -k $DIR/overlays/development
