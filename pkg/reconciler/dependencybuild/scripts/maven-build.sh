@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -eu
 if [ -z "$(params.ENFORCE_VERSION)" ]
 then
   echo "Enforce version not set, skipping"
