@@ -13,7 +13,6 @@ ENV \
     GRADLE_MANIPULATOR_VERSION="3.7" \
     HOME="/home/hacbs" \
     NSS_WRAPPER_PASSWD="/etc/passwd" \
-    GRADLE_DOWNLOAD_SHA256= \
     CLI_JAR_DOWNLOAD_SHA256=8af7e87638bb237362bf8f486b489c251e474be1cdc40037ba79887c2f0803b9 \
     ANALYZER_INIT_DOWNLOAD_SHA256=3172f34e126d652efccce50ca98c58f9baca27d89b5482268d0a4cb44023aa7e \
     PATH="$PATH:$JAVA_HOME/bin" \
@@ -71,7 +70,17 @@ RUN set -o errexit -o nounset \
     && unzip gradle.zip \
     && rm gradle.zip \
     && mv "gradle-7.4.2" "/opt/gradle/7.4.2/" \
-    && export GRADLE_HOME=/opt/gradle/7.4.2; gradle-manipulator --version true
+    && export GRADLE_HOME=/opt/gradle/7.4.2; gradle-manipulator --version     && echo "Downloading Gradle 6.9.2" \
+    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-6.9.2-bin.zip" \
+    \
+    && echo "Checking download hash 6.9.2" \
+    && echo "8b356fd8702d5ffa2e066ed0be45a023a779bba4dd1a68fd11bc2a6bdc981e8f *gradle.zip" | sha256sum --check - \
+    \
+    && echo "Installing Gradle 6.9.2" \
+    && unzip gradle.zip \
+    && rm gradle.zip \
+    && mv "gradle-6.9.2" "/opt/gradle/6.9.2/" \
+    && export GRADLE_HOME=/opt/gradle/6.9.2; gradle-manipulator --version
 
 LABEL \
     io.cekit.version="4.1.0" \

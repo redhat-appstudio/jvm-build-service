@@ -19,7 +19,7 @@ generate () {
       res=`envsubst '$GRADLE_DOWNLOAD_SHA256,$GRADLE_VERSION' < $DIR/gradle.template`
       export GRADLE_STRING="$GRADLE_STRING $res"
   done
-  export GRADLE_STRING="$GRADLE_STRING true"
+  export GRADLE_STRING="$GRADLE_STRING"
 
   envsubst '$IMAGE_NAME,$BASE_IMAGE,$MAVEN_VERSION,$MAVEN_SHA,$GRADLE_VERSION,$GRADLE_SHA,$GRADLE_MANIPULATOR_VERSION,$CLI_JAR_SHA,$ANALYZER_INIT_SHA,$GRADLE_STRING' < $DIR/Dockerfile.template > $DIR/$IMAGE_NAME/Dockerfile
   envsubst '$IMAGE_NAME,$BASE_IMAGE' < $DIR/push.yaml > $DIR/../.tekton/$IMAGE_NAME-push.yaml
