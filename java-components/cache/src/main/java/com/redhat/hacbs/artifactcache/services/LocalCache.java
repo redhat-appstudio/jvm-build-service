@@ -1,6 +1,7 @@
 package com.redhat.hacbs.artifactcache.services;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -184,12 +185,19 @@ public class LocalCache implements RepositoryClient {
                     if (result.isPresent()) {
                         MessageDigest md = MessageDigest.getInstance("SHA-1");
                         Path tempFile = Files.createTempFile(downloadTempDir, "download", ".part");
-                        try (InputStream in = result.get().getData(); OutputStream out = Files.newOutputStream(tempFile)) {
+                        InputStream in = result.get().getData();
+                        try (OutputStream out = Files.newOutputStream(tempFile)) {
                             byte[] buffer = new byte[1024];
                             int r;
                             while ((r = in.read(buffer)) > 0) {
                                 out.write(buffer, 0, r);
                                 md.update(buffer, 0, r);
+                            }
+                        } finally {
+                            try {
+                                in.close();
+                            } catch (IOException e) {
+                                Log.errorf(e, "Failed to close HTTP stream");
                             }
                         }
                         if (result.get().getExpectedSha().isPresent()) {
