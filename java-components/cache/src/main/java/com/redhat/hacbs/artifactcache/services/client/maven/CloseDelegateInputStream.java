@@ -16,20 +16,12 @@ public class CloseDelegateInputStream extends InputStream {
 
     @Override
     public int read(byte[] b) throws IOException {
-        int ret = delegate.read(b);
-        if (ret == -1) {
-            closeable.close();
-        }
-        return ret;
+        return delegate.read(b);
     }
 
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        int ret = delegate.read(b, off, len);
-        if (ret == -1) {
-            closeable.close();
-        }
-        return ret;
+        return delegate.read(b, off, len);
     }
 
     @Override
@@ -43,10 +35,6 @@ public class CloseDelegateInputStream extends InputStream {
 
     @Override
     public int read() throws IOException {
-        int ret = delegate.read();
-        if (ret == -1) {
-            closeable.close();
-        }
-        return ret;
+        return delegate.read();
     }
 }
