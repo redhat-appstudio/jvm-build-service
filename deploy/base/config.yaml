@@ -14,9 +14,4 @@ data:
   maven-repository-305-redhat: "https://maven.repository.redhat.com/ga"
   maven-repository-306-gradleplugins: "https://plugins.gradle.org/m2"
   maven-repository-307-jsweet: "https://repository.jsweet.org/artifactory/libs-release-local"
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: jvm-build-system-config
-  namespace: jvm-build-service
+

@@ -12,7 +12,6 @@ export WORKSPACE JVM_BUILD_SERVICE_PR_OWNER JVM_BUILD_SERVICE_PR_SHA
 
 WORKSPACE=$(dirname "$(dirname "$(readlink -f "$0")")");
 export TEST_SUITE="jvm-build-service-suite"
-
 # This script minimally requires the JVM_BUILD_SERVICE_IMAGE env var be set.  In the case of non PR openshift CI tests like
 # rehearsal jobs in openshift/release or periodics, we just use the latest at quay.io/redhat-appstudio
 PR_RUN=${JVM_BUILD_SERVICE_IMAGE:-notpr}
@@ -23,6 +22,11 @@ if [ "$PR_RUN" != "notpr" ]; then
   # JVM_BUILD_SERVICE_SIDECAR_IMAGE - sidecar image built in openshift CI job workflow.
   # JVM_BUILD_SERVICE_ANALYZER_IMAGE - dependency analyzer image built in openshift CI workflow.
   # JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE - request processor image built in openshift CI workflow.
+
+
+  # Note the the following are legacy params, as these images are now maintained in a separate repo
+  # We automatically extract them from our local config map to make testing against the pre-kcp
+  # infra-deployments work
   # JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE - JDK build image built in openshift CI workflow.
   # JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE - JDK build image built in openshift CI workflow.
   # JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE - JDK build image built in openshift CI workflow.
@@ -69,17 +73,18 @@ if [ "$PR_RUN" != "notpr" ]; then
   JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO%@*}
   JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-reqprocessor-image"}
 
-  export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE=${JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE%@*}
-  export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_REPO=${JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jdk8-builder"}
-  export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_TAG=${JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-jdk8-builder-image"}
+  export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_REPO="quay.io/redhat-appstudio/hacbs-jdk8-builder"
+  export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_TAG=$(yq .data.\"builder-image.jdk8.image\" deploy/base/system-config.yaml | cut -d: -f 2)
 
-  export JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE=${JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE%@*}
-  export JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_REPO=${JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jdk11-builder"}
-  export JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_TAG=${JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-jdk11-builder-image"}
+  export JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_REPO="quay.io/redhat-appstudio/hacbs-jdk11-builder"
+  export JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_TAG=$(yq .data.\"builder-image.jdk11.image\" deploy/base/system-config.yaml | cut -d: -f 2)
 
-  export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE=${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE%@*}
-  export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_REPO=${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE:-"quay.io/redhat-appstudio/hacbs-jdk17-builder"}
-  export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG=${JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-jdk17-builder-image"}
+  export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_REPO="quay.io/redhat-appstudio/hacbs-jdk17-builder"
+  export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG=$(yq .data.\"builder-image.jdk17.image\" deploy/base/system-config.yaml | cut -d: -f 2)
+
+  echo "JDK 8 Builder $JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_REPO:$JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_TAG"
+  echo "JDK 11 Builder $JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_REPO:$JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_TAG"
+  echo "JDK 17 Builder $JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_REPO:$JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG"
 
   export JVM_BUILD_SERVICE_TEST_REPO_URL JVM_BUILD_SERVICE_TEST_REPO_REVISION
 
