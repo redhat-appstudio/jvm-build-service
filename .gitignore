@@ -41,5 +41,6 @@ nb-configuration.xml
 .envrc
 *.out
 
-# Kustomize overlays for development
+# Kustomize overlays for development, openshift ci
 deploy/**/development/**
+deploy/**/ci-final/**
