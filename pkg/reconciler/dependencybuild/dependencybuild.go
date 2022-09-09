@@ -634,6 +634,7 @@ func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec, config m
 	if len(path) == 0 {
 		path = "."
 	}
+	zero := int64(0)
 	return &pipelinev1beta1.PipelineSpec{
 		Results: []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}, {Name: BuildInfoPipelineBuildInfo, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}},
 		Tasks: []pipelinev1beta1.PipelineTask{
@@ -663,6 +664,9 @@ func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec, config m
 										"$(results." + BuildInfoPipelineMessage + ".path)",
 										"--build-info",
 										"$(results." + BuildInfoPipelineBuildInfo + ".path)",
+									},
+									SecurityContext: &v1.SecurityContext{
+										RunAsUser: &zero,
 									},
 								},
 							},
