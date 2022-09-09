@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -eu
 
 export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
 mkdir -p ${GRADLE_USER_HOME}
