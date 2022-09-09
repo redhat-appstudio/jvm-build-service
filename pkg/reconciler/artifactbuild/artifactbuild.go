@@ -524,6 +524,7 @@ func createLookupScmInfoTask(gav string, config map[string]string) *pipelinev1be
 		recipes = recipes + "," + additional
 	}
 
+	zero := int64(0)
 	return &pipelinev1beta1.TaskSpec{
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: PipelineResultScmUrl},
@@ -553,6 +554,9 @@ func createLookupScmInfoTask(gav string, config map[string]string) *pipelinev1be
 						"$(results." + PipelineResultContextPath + ".path)",
 						"--gav",
 						gav,
+					},
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser: &zero,
 					},
 				},
 			},
