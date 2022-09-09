@@ -58,7 +58,7 @@ func TestSetupRebuildsEnabledCustomRepo(t *testing.T) {
 
 func readConfiguredRepositories(configMap v1.ConfigMap, g *WithT) *string {
 	ctx := context.TODO()
-	client, reconciler := setupClientAndReconciler(&configMap)
+	client, reconciler := setupClientAndReconciler(&configMap, &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: SystemConfigMapName, Namespace: SystemConfigMapNamespace}})
 
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: configMap.Namespace, Name: configMap.Name}}))
 
