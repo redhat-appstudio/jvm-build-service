@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hacbs-jvm-operator
+  namespace: jvm-build-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hacbs-jvm-operator
+  template:
+    metadata:
+      labels:
+        app: hacbs-jvm-operator
+    spec:
+      containers:
+        - name: hacbs-jvm-operator
+          image: jvm-build-service-image
+          imagePullPolicy: Always
+          env:
+            - name: RECIPE_DATABASE
+              value: "https://github.com/redhat-appstudio/jvm-build-data"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "500m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      serviceAccountName: hacbs-jvm-operator
