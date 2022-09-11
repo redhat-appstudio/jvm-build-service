@@ -6,4 +6,4 @@ metadata:
   namespace: test-jvm-namespace
 data:
   registry.owner: QUAY_USERNAME
-  enable-localstack: false
+  enable-localstack: "false"
