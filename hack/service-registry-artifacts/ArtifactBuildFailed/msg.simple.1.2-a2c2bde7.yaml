@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: msg.simple.1.2-a2c2bde7
+  namespace: test-jvm-namespace
+spec:
+  gav: com.github.java-json-tools:msg-simple:1.2

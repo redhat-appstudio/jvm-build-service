@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: smallrye.common.constraint.1.10.0-32f02777
+  namespace: test-jvm-namespace
+spec:
+  gav: io.smallrye.common:smallrye-common-constraint:1.10.0

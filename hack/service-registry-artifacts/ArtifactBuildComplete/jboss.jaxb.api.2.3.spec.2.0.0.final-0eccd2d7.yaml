@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jboss.jaxb.api.2.3.spec.2.0.0.final-0eccd2d7
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jboss.spec.javax.xml.bind:jboss-jaxb-api_2.3_spec:2.0.0.Final

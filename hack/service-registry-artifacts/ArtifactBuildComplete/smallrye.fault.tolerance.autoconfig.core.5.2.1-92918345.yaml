@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: smallrye.fault.tolerance.autoconfig.core.5.2.1-92918345
+  namespace: test-jvm-namespace
+spec:
+  gav: io.smallrye:smallrye-fault-tolerance-autoconfig-core:5.2.1

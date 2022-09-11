@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: micrometer.core.1.8.3-017e07c4
+  namespace: test-jvm-namespace
+spec:
+  gav: io.micrometer:micrometer-core:1.8.3

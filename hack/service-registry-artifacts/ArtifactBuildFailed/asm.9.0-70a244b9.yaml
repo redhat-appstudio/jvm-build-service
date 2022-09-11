@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-000d50421b8dee628642: 71c8ff5d09f2242b3c9e76a075aeb94b
+  name: asm.9.0-70a244b9
+  namespace: test-jvm-namespace
+spec:
+  gav: org.ow2.asm:asm:9.0

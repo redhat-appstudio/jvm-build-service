@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-f8618b797f59ca97bebf: b430445f7ab85d39f5e95d2699bcec4a
+  name: checker.qual.2.8.1-c385d8a1
+  namespace: test-jvm-namespace
+spec:
+  gav: org.checkerframework:checker-qual:2.8.1

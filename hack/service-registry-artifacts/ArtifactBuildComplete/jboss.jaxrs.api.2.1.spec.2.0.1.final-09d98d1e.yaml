@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jboss.jaxrs.api.2.1.spec.2.0.1.final-09d98d1e
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jboss.spec.javax.ws.rs:jboss-jaxrs-api_2.1_spec:2.0.1.Final

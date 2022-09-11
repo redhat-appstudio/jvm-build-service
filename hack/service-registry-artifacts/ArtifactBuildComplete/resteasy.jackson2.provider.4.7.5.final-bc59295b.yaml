@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: resteasy.jackson2.provider.4.7.5.final-bc59295b
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jboss.resteasy:resteasy-jackson2-provider:4.7.5.Final

@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: protobuf.java.3.21.1-711e524a
+  namespace: test-jvm-namespace
+spec:
+  gav: com.google.protobuf:protobuf-java:3.21.1

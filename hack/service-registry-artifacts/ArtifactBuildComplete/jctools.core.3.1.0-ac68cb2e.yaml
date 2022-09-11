@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-9305f643106be0fa9fb2: d1f3a6d34e891ddc731c33f45f8e05de
+  name: jctools.core.3.1.0-ac68cb2e
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jctools:jctools-core:3.1.0

@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jakarta.transaction.api.1.3.3-4ce6f0f3
+  namespace: test-jvm-namespace
+spec:
+  gav: jakarta.transaction:jakarta.transaction-api:1.3.3

@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: smallrye.reactive.converter.mutiny.2.7.0-b26f427c
+  namespace: test-jvm-namespace
+spec:
+  gav: io.smallrye.reactive:smallrye-reactive-converter-mutiny:2.7.0

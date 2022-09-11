@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: hdrhistogram.2.1.12-2b52bf16
+  namespace: test-jvm-namespace
+spec:
+  gav: org.hdrhistogram:HdrHistogram:2.1.12

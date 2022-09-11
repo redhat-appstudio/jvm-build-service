@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: icu4j.71.1-f226f02f
+  namespace: test-jvm-namespace
+spec:
+  gav: com.ibm.icu:icu4j:71.1

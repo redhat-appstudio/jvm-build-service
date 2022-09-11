@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jakarta.activation.api.1.2.1-1f4b3064
+  namespace: test-jvm-namespace
+spec:
+  gav: jakarta.activation:jakarta.activation-api:1.2.1

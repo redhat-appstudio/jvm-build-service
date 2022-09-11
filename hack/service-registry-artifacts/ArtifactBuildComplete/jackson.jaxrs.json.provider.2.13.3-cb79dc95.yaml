@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jackson.jaxrs.json.provider.2.13.3-cb79dc95
+  namespace: test-jvm-namespace
+spec:
+  gav: com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.13.3

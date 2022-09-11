@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-717ae675bf155feb3ee6: b430445f7ab85d39f5e95d2699bcec4a
+  name: j2objc.annotations.1.3-dfb172c2
+  namespace: test-jvm-namespace
+spec:
+  gav: com.google.j2objc:j2objc-annotations:1.3

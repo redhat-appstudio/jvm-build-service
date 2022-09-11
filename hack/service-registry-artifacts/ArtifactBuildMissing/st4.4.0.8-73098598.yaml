@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-b02a798181e60b3f5eca: d5e0d034a4d0acec36eb48156d21521a
+  name: st4.4.0.8-73098598
+  namespace: test-jvm-namespace
+spec:
+  gav: org.antlr:ST4:4.0.8

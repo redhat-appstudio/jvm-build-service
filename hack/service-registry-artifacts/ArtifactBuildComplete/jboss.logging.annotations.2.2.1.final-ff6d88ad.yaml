@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jboss.logging.annotations.2.2.1.final-ff6d88ad
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jboss.logging:jboss-logging-annotations:2.2.1.Final

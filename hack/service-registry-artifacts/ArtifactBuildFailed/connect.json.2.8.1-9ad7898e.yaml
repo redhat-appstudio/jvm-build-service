@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: connect.json.2.8.1-9ad7898e
+  namespace: test-jvm-namespace
+spec:
+  gav: org.apache.kafka:connect-json:2.8.1

@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jboss.logmanager.embedded.1.0.9-61829eab
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jboss.logmanager:jboss-logmanager-embedded:1.0.9

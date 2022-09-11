@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-591fe2b03c0c7b42b099: 1ba645360e9136d45fe15e3d63a721de
+  name: msv.core.2013.6.1-7719b089
+  namespace: test-jvm-namespace
+spec:
+  gav: net.java.dev.msv:msv-core:2013.6.1

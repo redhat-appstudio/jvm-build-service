@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jimfs.1.1-fd8084ba
+  namespace: test-jvm-namespace
+spec:
+  gav: com.google.jimfs:jimfs:1.1

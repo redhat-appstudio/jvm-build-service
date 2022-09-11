@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: kotlin.stdlib.1.6.10-bd125cda
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jetbrains.kotlin:kotlin-stdlib:1.6.10

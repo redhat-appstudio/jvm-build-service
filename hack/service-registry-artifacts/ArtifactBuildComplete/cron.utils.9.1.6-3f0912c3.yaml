@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: cron.utils.9.1.6-3f0912c3
+  namespace: test-jvm-namespace
+spec:
+  gav: com.cronutils:cron-utils:9.1.6

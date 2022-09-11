@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: slf4j.api.1.7.33-2c084403
+  namespace: test-jvm-namespace
+spec:
+  gav: org.slf4j:slf4j-api:1.7.33

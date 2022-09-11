@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: quarkus.http.servlet.4.1.7-21130ca7
+  namespace: test-jvm-namespace
+spec:
+  gav: io.quarkus.http:quarkus-http-servlet:4.1.7

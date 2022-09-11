@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: stax2.api.4.2.1-e7d0ac5e
+  namespace: test-jvm-namespace
+spec:
+  gav: org.codehaus.woodstox:stax2-api:4.2.1

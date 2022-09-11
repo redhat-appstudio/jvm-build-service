@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: vertx.web.common.4.2.7-bd6ce4f1
+  namespace: test-jvm-namespace
+spec:
+  gav: io.vertx:vertx-web-common:4.2.7

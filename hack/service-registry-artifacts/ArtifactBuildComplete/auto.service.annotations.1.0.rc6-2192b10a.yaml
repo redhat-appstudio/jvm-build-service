@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-54792278f39fab30462e: bda2be2b23d206868f57e9238d1f4c32
+  name: auto.service.annotations.1.0.rc6-2192b10a
+  namespace: test-jvm-namespace
+spec:
+  gav: com.google.auto.service:auto-service-annotations:1.0-rc6

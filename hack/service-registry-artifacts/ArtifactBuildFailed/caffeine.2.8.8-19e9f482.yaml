@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-9e789852d2530e8f89f1: bda2be2b23d206868f57e9238d1f4c32
+  name: caffeine.2.8.8-19e9f482
+  namespace: test-jvm-namespace
+spec:
+  gav: com.github.ben-manes.caffeine:caffeine:2.8.8
