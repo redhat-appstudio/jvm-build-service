@@ -26,6 +26,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
 import com.google.cloud.tools.jib.api.Containerizer;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
@@ -55,6 +56,8 @@ public class ContainerRegistryDeployer implements Deployer {
     private final String username;
     private final String password;
 
+    static final ObjectMapper MAPPER = new ObjectMapper();
+
     public ContainerRegistryDeployer(
             @ConfigProperty(name = "registry.host", defaultValue = "quay.io") String host,
             @ConfigProperty(name = "registry.port", defaultValue = "443") int port,
@@ -74,13 +77,44 @@ public class ContainerRegistryDeployer implements Deployer {
         this.doNotDeploy = doNotDeploy.orElse(Set.of());
         if (token.isPresent()) {
             var decoded = new String(Base64.getDecoder().decode(token.get()), StandardCharsets.UTF_8);
-            int pos = decoded.indexOf(":");
-            username = decoded.substring(0, pos);
-            password = decoded.substring(pos + 1);
+            if (decoded.startsWith("{")) {
+                //we assume this is a .dockerconfig file
+                try (var parser = MAPPER.createParser(decoded)) {
+                    DockerConfig config = parser.readValueAs(DockerConfig.class);
+                    boolean found = false;
+                    String tmpUser = null;
+                    String tmpPw = null;
+                    for (var i : config.getAuths().entrySet()) {
+                        if (host.contains(i.getKey())) { //TODO: is contains enough?
+                            found = true;
+                            var decodedAuth = new String(Base64.getDecoder().decode(i.getValue().getAuth()),
+                                    StandardCharsets.UTF_8);
+                            int pos = decodedAuth.indexOf(":");
+                            tmpUser = decodedAuth.substring(0, pos);
+                            tmpPw = decodedAuth.substring(pos + 1);
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        throw new RuntimeException("Unable to find a host matching " + host
+                                + " in provided dockerconfig, hosts provided: " + config.getAuths().keySet());
+                    }
+                    username = tmpUser;
+                    password = tmpPw;
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                int pos = decoded.indexOf(":");
+                username = decoded.substring(0, pos);
+                password = decoded.substring(pos + 1);
+            }
         } else {
+            Log.errorf("No token configured");
             username = null;
             password = null;
         }
+        Log.infof("Using username %s to publish to %s/%s/%s", username, host, owner, repository);
 
     }
 
