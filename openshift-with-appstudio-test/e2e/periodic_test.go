@@ -19,8 +19,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
 )
@@ -136,6 +136,7 @@ func TestServiceRegistry(t *testing.T) {
 					return false, nil
 				}
 				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", string(prBytes)))
+				return false, nil
 			}
 			if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
 				prBytes, err := json.MarshalIndent(pr, "", "  ")
@@ -143,8 +144,7 @@ func TestServiceRegistry(t *testing.T) {
 					ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
 					return false, nil
 				}
-				ta.Logf(fmt.Sprintf("not yet successful pipeline run: %s", string(prBytes)))
-
+				debugAndFailTest(ta, fmt.Sprintf("unsuccessful pipeline run: %s", string(prBytes)))
 			}
 			return true, nil
 		})

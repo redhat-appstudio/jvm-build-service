@@ -110,13 +110,13 @@ func TestExampleRun(t *testing.T) {
 				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", pr.Name))
 				return false, nil
 			}
-			if pr.IsDone() && !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
+			if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
 				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
 					ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
 					return false, nil
 				}
-				return false, fmt.Errorf("pipeline run did not succeed: %s", string(prBytes))
+				debugAndFailTest(ta, fmt.Sprintf("unsuccessful pipeline run: %s", string(prBytes)))
 			}
 			return true, nil
 		})
