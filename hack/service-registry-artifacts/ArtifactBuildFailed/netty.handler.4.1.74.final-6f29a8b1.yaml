@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: netty.handler.4.1.74.final-6f29a8b1
+  namespace: test-jvm-namespace
+spec:
+  gav: io.netty:netty-handler:4.1.74.Final

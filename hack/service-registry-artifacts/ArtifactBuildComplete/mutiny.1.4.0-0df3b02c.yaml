@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: mutiny.1.4.0-0df3b02c
+  namespace: test-jvm-namespace
+spec:
+  gav: io.smallrye.reactive:mutiny:1.4.0

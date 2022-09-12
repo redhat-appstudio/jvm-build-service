@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: java.dataloader.3.1.2-52c4f915
+  namespace: test-jvm-namespace
+spec:
+  gav: com.graphql-java:java-dataloader:3.1.2

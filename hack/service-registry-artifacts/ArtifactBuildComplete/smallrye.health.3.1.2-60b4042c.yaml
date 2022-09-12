@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: smallrye.health.3.1.2-60b4042c
+  namespace: test-jvm-namespace
+spec:
+  gav: io.smallrye:smallrye-health:3.1.2

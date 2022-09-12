@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: netty.resolver.dns.4.1.74.final-7d71a58f
+  namespace: test-jvm-namespace
+spec:
+  gav: io.netty:netty-resolver-dns:4.1.74.Final

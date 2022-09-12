@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: netty.codec.http.4.1.74.final-4d6098f2
+  namespace: test-jvm-namespace
+spec:
+  gav: io.netty:netty-codec-http:4.1.74.Final

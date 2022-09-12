@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-4effa5267e972d5f20ae: 1ba645360e9136d45fe15e3d63a721de
+  name: xsdlib.2013.6.1-0aed4ed6
+  namespace: test-jvm-namespace
+spec:
+  gav: net.java.dev.msv:xsdlib:2013.6.1

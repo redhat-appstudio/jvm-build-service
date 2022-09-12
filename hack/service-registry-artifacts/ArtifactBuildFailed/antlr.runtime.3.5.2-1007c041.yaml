@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-bfdb1657e48f1639e7f4: f1ec184d8c48b56f6d9b5b942411d111
+  name: antlr.runtime.3.5.2-1007c041
+  namespace: test-jvm-namespace
+spec:
+  gav: org.antlr:antlr-runtime:3.5.2

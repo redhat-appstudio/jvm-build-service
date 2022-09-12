@@ -247,9 +247,9 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			return reconcile.Result{}, err
 		}
 		//read our builder images from the config
-		var mavenImages []BuilderImage
+		var allBuilderImages []BuilderImage
 		var selectedImages []BuilderImage
-		mavenImages, err = r.processBuilderImages(ctx, log)
+		allBuilderImages, err = r.processBuilderImages(ctx, log)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -260,7 +260,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		_, gradle := unmarshalled.Tools["gradle"]
 		java := unmarshalled.Tools["jdk"]
 
-		for _, image := range mavenImages {
+		for _, image := range allBuilderImages {
 			//we only have one JDK version in the builder at the moment
 			//other tools will potentially have multiple versions
 			//we only want to use builder images that have java versions that the analyser

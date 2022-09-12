@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: okio.2.8.0-5a0dc62e
+  namespace: test-jvm-namespace
+spec:
+  gav: com.squareup.okio:okio:2.8.0

@@ -43,19 +43,13 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace},
 		Data: map[string]string{
 			//bogus gradle images used to unit test the selection logic
-			configmap.SystemBuilderImages:                            "jdk11,g5,g6,g7",
+			configmap.SystemBuilderImages:                            "jdk11,jdk8,jdk17",
 			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk11"):   "jdk:11,maven:3.8",
+			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk11"):   "jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
 			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk8"):  "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk8"):    "jdk:8,maven:3.8",
+			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk8"):    "jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
 			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk17"): "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk17"):   "jdk:17,maven:3.8",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "g5"):    "quay.io/redhat-appstudio/hacbs-g5-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "g5"):      "jdk:11,gradle:5.4.3",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "g6"):    "quay.io/redhat-appstudio/hacbs-g6-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "g6"):      "jdk:11,gradle:6.1.2",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "g7"):    "quay.io/redhat-appstudio/hacbs-g7-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "g7"):      "jdk:11,gradle:7.1.3",
+			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk17"):   "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
 		},
 	}
 	_ = client.Create(context.TODO(), &sysConfig)
@@ -373,7 +367,30 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(client.Create(ctx, &pr)).Should(BeNil())
 
 	}
-	t.Run("Test build info discovery for maven build", func(t *testing.T) {
+	t.Run("Test build info discovery for gradle build", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup(g)
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "4.9", JavaVersion: "11", Tools: map[string]toolInfo{"gradle": {Min: "4.9", Max: "4.9", Preferred: "4.9"}, "jdk": {Min: "8", Max: "17", Preferred: "11"}}, Invocations: [][]string{{""}}})
+		g.Expect(err).Should(BeNil())
+		pr := getBuildInfoPipeline(client, g)
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: string(buildInfoJson)}}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "True",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+
+		db := getBuild(client, g)
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
+		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(2))
+		g.Expect(db.Status.PotentialBuildRecipes[0].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"))
+		g.Expect(db.Status.PotentialBuildRecipes[1].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk8-builder:latest"))
+	})
+
+	t.Run("Test build info discovery for gradle build 2", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
 		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "5.8.7", Tools: map[string]toolInfo{"gradle": {}}, Invocations: [][]string{{""}}})
@@ -391,7 +408,8 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
-		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(1))
-		g.Expect(db.Status.PotentialBuildRecipes[0].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-g5-builder:latest"))
+		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(2))
+		g.Expect(db.Status.PotentialBuildRecipes[0].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"))
+		g.Expect(db.Status.PotentialBuildRecipes[1].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk8-builder:latest"))
 	})
 }

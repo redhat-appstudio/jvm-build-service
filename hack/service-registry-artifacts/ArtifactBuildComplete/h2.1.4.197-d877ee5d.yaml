@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: h2.1.4.197-d877ee5d
+  namespace: test-jvm-namespace
+spec:
+  gav: com.h2database:h2:1.4.197

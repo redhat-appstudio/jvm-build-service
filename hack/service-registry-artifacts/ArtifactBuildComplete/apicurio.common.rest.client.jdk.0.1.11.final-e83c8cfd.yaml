@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: apicurio.common.rest.client.jdk.0.1.11.final-e83c8cfd
+  namespace: test-jvm-namespace
+spec:
+  gav: io.apicurio:apicurio-common-rest-client-jdk:0.1.11.Final

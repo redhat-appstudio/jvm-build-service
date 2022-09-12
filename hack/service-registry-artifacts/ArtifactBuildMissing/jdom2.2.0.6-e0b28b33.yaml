@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-be6e6a22de5231a69b93: bf3faa469efdd1de517438465de5200e
+  name: jdom2.2.0.6-e0b28b33
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jdom:jdom2:2.0.6

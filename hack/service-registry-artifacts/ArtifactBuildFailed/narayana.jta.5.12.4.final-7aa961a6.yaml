@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: narayana.jta.5.12.4.final-7aa961a6
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jboss.narayana.jta:narayana-jta:5.12.4.Final

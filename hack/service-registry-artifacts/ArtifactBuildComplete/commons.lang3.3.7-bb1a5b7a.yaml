@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-67ece1a5738c01f0bec8: bf3faa469efdd1de517438465de5200e
+  name: commons.lang3.3.7-bb1a5b7a
+  namespace: test-jvm-namespace
+spec:
+  gav: org.apache.commons:commons-lang3:3.7

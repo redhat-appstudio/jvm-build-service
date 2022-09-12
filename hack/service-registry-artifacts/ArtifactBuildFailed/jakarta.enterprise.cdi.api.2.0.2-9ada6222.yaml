@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jakarta.enterprise.cdi.api.2.0.2-9ada6222
+  namespace: test-jvm-namespace
+spec:
+  gav: jakarta.enterprise:jakarta.enterprise.cdi-api:2.0.2

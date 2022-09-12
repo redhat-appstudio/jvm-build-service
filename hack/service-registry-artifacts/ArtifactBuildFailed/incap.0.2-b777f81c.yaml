@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-870c792a170c9de43d52: b430445f7ab85d39f5e95d2699bcec4a
+  name: incap.0.2-b777f81c
+  namespace: test-jvm-namespace
+spec:
+  gav: net.ltgt.gradle.incap:incap:0.2

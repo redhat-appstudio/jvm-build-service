@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jackson.datatype.jdk8.2.13.3-64ee29a8
+  namespace: test-jvm-namespace
+spec:
+  gav: com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.13.3

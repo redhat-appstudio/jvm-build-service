@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: wire.runtime.3.7.1-1724a2ad
+  namespace: test-jvm-namespace
+spec:
+  gav: com.squareup.wire:wire-runtime:3.7.1

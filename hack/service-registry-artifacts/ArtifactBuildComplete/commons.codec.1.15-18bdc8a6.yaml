@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: commons.codec.1.15-18bdc8a6
+  namespace: test-jvm-namespace
+spec:
+  gav: commons-codec:commons-codec:1.15

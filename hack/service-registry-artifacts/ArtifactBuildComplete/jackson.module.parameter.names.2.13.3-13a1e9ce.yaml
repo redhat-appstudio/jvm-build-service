@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jackson.module.parameter.names.2.13.3-13a1e9ce
+  namespace: test-jvm-namespace
+spec:
+  gav: com.fasterxml.jackson.module:jackson-module-parameter-names:2.13.3

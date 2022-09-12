@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: agroal.pool.1.15-b8e7530a
+  namespace: test-jvm-namespace
+spec:
+  gav: io.agroal:agroal-pool:1.15

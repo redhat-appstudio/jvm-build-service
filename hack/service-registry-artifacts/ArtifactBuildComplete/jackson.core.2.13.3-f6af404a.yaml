@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jackson.core.2.13.3-f6af404a
+  namespace: test-jvm-namespace
+spec:
+  gav: com.fasterxml.jackson.core:jackson-core:2.13.3

@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-b3fa7d9237af697aaa0b: bda2be2b23d206868f57e9238d1f4c32
+  name: software.and.algorithms.1.0-387fd235
+  namespace: test-jvm-namespace
+spec:
+  gav: com.github.kevinstern:software-and-algorithms:1.0

@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: kotlinpoet.1.7.2-7dbfdddf
+  namespace: test-jvm-namespace
+spec:
+  gav: com.squareup:kotlinpoet:1.7.2

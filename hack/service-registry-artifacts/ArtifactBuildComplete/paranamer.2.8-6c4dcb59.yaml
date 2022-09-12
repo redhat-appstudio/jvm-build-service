@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-8a2e33a871254b162b38: 71c8ff5d09f2242b3c9e76a075aeb94b
+  name: paranamer.2.8-6c4dcb59
+  namespace: test-jvm-namespace
+spec:
+  gav: com.thoughtworks.paranamer:paranamer:2.8

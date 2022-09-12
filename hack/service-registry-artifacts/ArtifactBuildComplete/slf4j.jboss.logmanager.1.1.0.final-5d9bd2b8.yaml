@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: slf4j.jboss.logmanager.1.1.0.final-5d9bd2b8
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jboss.slf4j:slf4j-jboss-logmanager:1.1.0.Final

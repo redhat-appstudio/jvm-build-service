@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: simpleclient.tracer.otel.0.12.0-b422a986
+  namespace: test-jvm-namespace
+spec:
+  gav: io.prometheus:simpleclient_tracer_otel:0.12.0

@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jakarta.el.api.3.0.3-bc8638bb
+  namespace: test-jvm-namespace
+spec:
+  gav: jakarta.el:jakarta.el-api:3.0.3

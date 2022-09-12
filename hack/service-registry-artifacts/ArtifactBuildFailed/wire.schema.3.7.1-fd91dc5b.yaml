@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: wire.schema.3.7.1-fd91dc5b
+  namespace: test-jvm-namespace
+spec:
+  gav: com.squareup.wire:wire-schema:3.7.1

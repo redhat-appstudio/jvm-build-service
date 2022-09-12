@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: json.patch.1.13-ec926997
+  namespace: test-jvm-namespace
+spec:
+  gav: com.github.java-json-tools:json-patch:1.13

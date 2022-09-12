@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: commons.logging.jboss.logging.1.0.0.final-f1da8869
+  namespace: test-jvm-namespace
+spec:
+  gav: org.jboss.logging:commons-logging-jboss-logging:1.0.0.Final

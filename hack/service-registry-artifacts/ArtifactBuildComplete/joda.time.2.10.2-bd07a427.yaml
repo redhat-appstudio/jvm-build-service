@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: joda.time.2.10.2-bd07a427
+  namespace: test-jvm-namespace
+spec:
+  gav: joda-time:joda-time:2.10.2

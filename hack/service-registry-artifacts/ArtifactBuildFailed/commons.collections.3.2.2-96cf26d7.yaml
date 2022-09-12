@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: commons.collections.3.2.2-96cf26d7
+  namespace: test-jvm-namespace
+spec:
+  gav: commons-collections:commons-collections:3.2.2

@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: graphql.java.18.1-c97ac593
+  namespace: test-jvm-namespace
+spec:
+  gav: com.graphql-java:graphql-java:18.1

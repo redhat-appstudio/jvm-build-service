@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: json.20220320-1e3bd061
+  namespace: test-jvm-namespace
+spec:
+  gav: org.json:json:20220320

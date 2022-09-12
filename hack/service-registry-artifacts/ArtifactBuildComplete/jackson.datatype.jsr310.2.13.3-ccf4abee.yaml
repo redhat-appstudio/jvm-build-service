@@ -1,0 +1,7 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  name: jackson.datatype.jsr310.2.13.3-ccf4abee
+  namespace: test-jvm-namespace
+spec:
+  gav: com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.3

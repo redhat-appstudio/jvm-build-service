@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-93dff80963e75a56b1ec: b430445f7ab85d39f5e95d2699bcec4a
+  name: javapoet.1.11.1-348811ed
+  namespace: test-jvm-namespace
+spec:
+  gav: com.squareup:javapoet:1.11.1

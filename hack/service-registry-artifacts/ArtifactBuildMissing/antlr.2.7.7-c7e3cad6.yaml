@@ -1,0 +1,9 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: ArtifactBuild
+metadata:
+  annotations:
+    jvmbuildservice.io/contaminated-61bbcfffa623aa2ba2f4: d5e0d034a4d0acec36eb48156d21521a
+  name: antlr.2.7.7-c7e3cad6
+  namespace: test-jvm-namespace
+spec:
+  gav: antlr:antlr:2.7.7
