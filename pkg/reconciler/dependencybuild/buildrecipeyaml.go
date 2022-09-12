@@ -103,8 +103,8 @@ func createPipelineSpec(maven bool, sidecarImage string, namespace string) *pipe
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Resources: v1.ResourceRequirements{
 						//TODO: make configurable
-						Requests: v1.ResourceList{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("10m")},
-						Limits:   v1.ResourceList{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("300m")},
+						Requests: v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
+						Limits:   v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("300m")},
 					},
 				},
 				Script: deploy,
