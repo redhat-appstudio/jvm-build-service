@@ -120,12 +120,13 @@ public class DeployResource {
             while ((e = in.getNextTarEntry()) != null) {
                 if (e.getName().endsWith(".jar")) {
                     if (!DeployerUtil.shouldIgnore(doNotDeploy, e.getName())) {
-                        Log.debugf("Checking %s for contaminants", e.getName());
+                        Log.infof("Checking %s for contaminants", e.getName());
                         var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
                         if (info != null) {
                             for (var i : info) {
                                 if (!allowedSources.contains(i.source)) {
                                     //Set<String> result = new HashSet<>(info.stream().map(a -> a.gav).toList());
+                                    Log.errorf("%s was contaminated by %s", e.getName(), i.gav);
                                     contaminants.add(i.gav);
                                     int index = e.getName().lastIndexOf("/");
                                     if (index != -1) {
@@ -142,7 +143,7 @@ public class DeployResource {
                 }
             }
         }
-        Log.debugf("Contaminants: %s", contaminatedPaths);
+        Log.infof("Contaminants: %s", contaminatedPaths);
         this.contaminates.addAll(contaminants);
 
         if (contaminants.isEmpty()) {
