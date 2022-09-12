@@ -1,12 +1,21 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
+	"html/template"
 	"io"
+	"k8s.io/cli-runtime/pkg/printers"
+	kubeset "k8s.io/client-go/kubernetes"
+	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -123,10 +132,12 @@ func dumpNodes(ta *testArgs) {
 }
 
 func debugAndFailTest(ta *testArgs, failMsg string) {
+	_ = GenerateStatusReport(ta.ns, jvmClient, kubeClient)
 	dumpPods(ta, ta.ns)
 	dumpPods(ta, "jvm-build-service")
 	dumpBadEvents(ta)
 	ta.t.Fatalf(failMsg)
+
 }
 
 func setup(t *testing.T, ta *testArgs) *testArgs {
@@ -274,6 +285,14 @@ func decodeBytesToTektonObjbytes(bytes []byte, obj runtime.Object, ta *testArgs)
 	return obj
 }
 
+func encodeToYaml(obj runtime.Object) string {
+
+	y := printers.YAMLPrinter{}
+	b := bytes.Buffer{}
+	_ = y.PrintObj(obj, &b)
+	return b.String()
+}
+
 func streamRemoteYamlToTektonObj(url string, obj runtime.Object, ta *testArgs) runtime.Object {
 	resp, err := http.Get(url) //#nosec G107
 	if err != nil {
@@ -344,13 +363,14 @@ func dbDumpForState(ta *testArgs, state string) {
 			if db.Status.State != state {
 				continue
 			}
-			dumpDBPods(ta, db.Name)
+			dumpDBPods(ta, &db)
 		}
 	}
 }
 */
 
-func dumpDBPods(ta *testArgs, dbName string) {
+func dumpDBPods(ta *testArgs, db *v1alpha1.DependencyBuild) {
+	dbName := db.Name
 	podClient := kubeClient.CoreV1().Pods(ta.ns)
 	ta.Logf(fmt.Sprintf("*****Examining failed db %s", dbName))
 	podList := []corev1.Pod{}
@@ -360,7 +380,7 @@ func dumpDBPods(ta *testArgs, dbName string) {
 		podList = podsByName(ta, dbName)
 	}
 	for _, pr := range prList {
-		podList = prPods(ta, pr.Name)
+		podList = append(podList, prPods(ta, pr.Name)...)
 	}
 	for _, pod := range podList {
 		containers := []corev1.Container{}
@@ -381,6 +401,20 @@ func dumpDBPods(ta *testArgs, dbName string) {
 			podLog := string(b)
 			ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
 
+			url := strings.Replace(db.Spec.ScmInfo.SCMURL, "https://", "", 1)
+			url = strings.Replace(url, "/", "_", -1)
+			url = strings.Replace(url, ":", "_", -1)
+
+			directory := os.Getenv("ARTIFACT_DIR") + "/failed-dependency-builds/" + url
+			ta.Logf(fmt.Sprintf("Creating artifact dir %s", directory))
+			err := os.MkdirAll(directory, 0755) //#nosec G306 G301
+			if err != nil {
+				ta.Logf(fmt.Sprintf("Failed to create artifact dir %s: %s", directory, err))
+			}
+			err = os.WriteFile(directory+"/"+pod.Name+container.Name, b, 0644) //#nosec G306
+			if err != nil {
+				ta.Logf(fmt.Sprintf("Failed artifact dir %s: %s", directory, err))
+			}
 		}
 	}
 	ta.Logf(fmt.Sprintf("******Done with db %s", dbName))
@@ -504,3 +538,186 @@ func podsByName(ta *testArgs, name string) []corev1.Pod {
 	}
 	return retArr
 }
+
+//go:embed report.html
+var reportTemplate string
+
+// dumping the logs slows down generation
+// when working on the report you might want to turn it off
+// this should always be true in the committed code though
+const DUMP_LOGS = true
+
+func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, kubeClient *kubeset.Clientset) error {
+
+	directory := os.Getenv("ARTIFACT_DIR")
+	if directory == "" {
+		directory = "/tmp/jvm-build-service-report"
+	} else {
+		directory = directory + "/jvm-build-service-report"
+	}
+	err := os.MkdirAll(directory, 0755) //#nosec G306 G301
+	if err != nil {
+		return err
+	}
+	podClient := kubeClient.CoreV1().Pods(namespace)
+	podList, err := podClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	artifact := ArtifactReportData{}
+	dependency := DependencyReportData{}
+	artifactBuilds, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, ab := range artifactBuilds.Items {
+		localDir := ab.Status.State + "/" + ab.Name
+		tmp := ab
+		instance := &ReportInstanceData{Name: ab.Name, State: ab.Status.State, Yaml: encodeToYaml(&tmp)}
+		artifact.Instances = append(artifact.Instances, instance)
+		artifact.Total++
+		print(ab.Status.State + "\n")
+		switch ab.Status.State {
+		case v1alpha1.ArtifactBuildStateComplete:
+			artifact.Complete++
+		case v1alpha1.ArtifactBuildStateFailed:
+			artifact.Failed++
+		case v1alpha1.ArtifactBuildStateMissing:
+			artifact.Missing++
+		default:
+			artifact.Other++
+		}
+		for _, pod := range podList.Items {
+			if strings.HasPrefix(pod.Name, ab.Name) {
+				logFile := dumpPod(pod, directory, localDir, podClient)
+				instance.Logs = append(instance.Logs, logFile...)
+			}
+		}
+	}
+	sort.Sort(SortableArtifact(artifact.Instances))
+
+	dependencyBuilds, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, db := range dependencyBuilds.Items {
+		dependency.Total++
+		localDir := db.Status.State + "/" + db.Name
+		tmp := db
+		instance := &ReportInstanceData{State: db.Status.State, Yaml: encodeToYaml(&tmp), Name: fmt.Sprintf("%s @{%s} (%s)", db.Spec.ScmInfo.SCMURL, db.Spec.ScmInfo.Tag, db.Name)}
+		dependency.Instances = append(dependency.Instances, instance)
+		print(db.Status.State + "\n")
+		switch db.Status.State {
+		case v1alpha1.DependencyBuildStateComplete:
+			dependency.Complete++
+		case v1alpha1.DependencyBuildStateFailed:
+			dependency.Failed++
+		case v1alpha1.DependencyBuildStateContaminated:
+			dependency.Contaminated++
+		default:
+			dependency.Other++
+		}
+		for _, pod := range podList.Items {
+			if strings.HasPrefix(pod.Name, db.Name) {
+				logFile := dumpPod(pod, directory, localDir, podClient)
+				instance.Logs = append(instance.Logs, logFile...)
+			}
+		}
+	}
+	sort.Sort(SortableArtifact(dependency.Instances))
+
+	report := directory + "/index.html"
+
+	data := ReportData{
+		Artifact:   artifact,
+		Dependency: dependency,
+	}
+
+	t, err := template.New("report").Parse(reportTemplate)
+	if err != nil {
+		panic(err)
+	}
+	buf := new(bytes.Buffer)
+	err = t.Execute(buf, data)
+	if err != nil {
+		panic(err)
+	}
+
+	err = os.WriteFile(report, buf.Bytes(), 0644) //#nosec G306
+	if err != nil {
+		return err
+	}
+	print("Created report file://" + report + "\n")
+	return nil
+}
+
+func dumpPod(pod corev1.Pod, baseDirectory string, localDirectory string, kubeClient v12.PodInterface) []string {
+	if !DUMP_LOGS {
+		return []string{}
+	}
+	containers := []corev1.Container{}
+	containers = append(containers, pod.Spec.InitContainers...)
+	containers = append(containers, pod.Spec.Containers...)
+	ret := []string{}
+	for _, container := range containers {
+		req := kubeClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
+		readCloser, err2 := req.Stream(context.TODO())
+		if err2 != nil {
+			print(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err2.Error()))
+			continue
+		}
+		b, err2 := io.ReadAll(readCloser)
+		if err2 != nil {
+			print(fmt.Sprintf("error reading pod stream %s", err2.Error()))
+			continue
+		}
+		directory := baseDirectory + "/" + localDirectory
+		err := os.MkdirAll(directory, 0755) //#nosec G306 G301
+		if err != nil {
+			print(fmt.Sprintf("Failed to create artifact dir %s: %s", directory, err))
+		}
+		localPart := localDirectory + pod.Name + container.Name
+		fileName := baseDirectory + "/" + localPart
+		err = os.WriteFile(fileName, b, 0644) //#nosec G306
+		if err != nil {
+			print(fmt.Sprintf("Failed artifact dir %s: %s", directory, err))
+		}
+		ret = append(ret, localDirectory+pod.Name+container.Name)
+	}
+	return ret
+}
+
+type ArtifactReportData struct {
+	Complete  int
+	Failed    int
+	Missing   int
+	Other     int
+	Total     int
+	Instances []*ReportInstanceData
+}
+
+type DependencyReportData struct {
+	Complete     int
+	Failed       int
+	Contaminated int
+	Other        int
+	Total        int
+	Instances    []*ReportInstanceData
+}
+type ReportData struct {
+	Artifact   ArtifactReportData
+	Dependency DependencyReportData
+}
+
+type ReportInstanceData struct {
+	Name  string
+	Logs  []string
+	State string
+	Yaml  string
+}
+
+type SortableArtifact []*ReportInstanceData
+
+func (a SortableArtifact) Len() int           { return len(a) }
+func (a SortableArtifact) Less(i, j int) bool { return strings.Compare(a[i].Name, a[j].Name) < 0 }
+func (a SortableArtifact) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }

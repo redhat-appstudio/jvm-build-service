@@ -33,9 +33,9 @@ func TestServiceRegistry(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("for-%s-deployments", ta.ns),
 		},
-		Spec:       quotav1.ClusterResourceQuotaSpec{
+		Spec: quotav1.ClusterResourceQuotaSpec{
 			Quota: corev1.ResourceQuotaSpec{
-				Hard:          corev1.ResourceList{
+				Hard: corev1.ResourceList{
 					corev1.ResourceName("count/pods"): resource.MustParse("50"),
 				},
 			},
@@ -50,7 +50,6 @@ func TestServiceRegistry(t *testing.T) {
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-
 
 	//TODO start of more common logic to split into commonly used logic between
 	// TestExampleRun and TestServiceRegistry.  Not doing that yet because of
@@ -295,7 +294,7 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbFailedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateFailed)
-						dumpDBPods(ta, db.Name)
+						dumpDBPods(ta, db)
 					}
 				case db.Status.State == v1alpha1.DependencyBuildStateContaminated:
 					s, k := state.Load(db.Name)
@@ -303,7 +302,7 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbContaminatedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateContaminated)
-						dumpDBPods(ta, db.Name)
+						dumpDBPods(ta, db)
 					}
 				default:
 					s, k := state.Load(db.Name)
@@ -352,6 +351,7 @@ func TestServiceRegistry(t *testing.T) {
 				break
 			}
 		}
+		_ = GenerateStatusReport(ta.ns, jvmClient, kubeClient)
 	})
 
 }
