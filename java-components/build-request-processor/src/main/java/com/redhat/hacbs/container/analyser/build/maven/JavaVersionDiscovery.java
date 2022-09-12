@@ -19,7 +19,13 @@ public class JavaVersionDiscovery implements MavenDiscoveryTask {
         //TODO: these properties can reference other properties
         //we need a fully resolved maven model
         String target = model.getProperties().getProperty("maven.compiler.target");
+        if (target == null) {
+            target = model.getProperties().getProperty("maven.compile.target"); //old property name
+        }
         String source = model.getProperties().getProperty("maven.compiler.source");
+        if (source == null) {
+            source = model.getProperties().getProperty("maven.compile.source"); //old property name
+        }
         int javaVersion = -1;
         if (target != null) {
             javaVersion = JavaVersion.toVersion(target);
@@ -28,6 +34,17 @@ public class JavaVersionDiscovery implements MavenDiscoveryTask {
             var parsed = JavaVersion.toVersion(source);
             if (parsed > javaVersion) {
                 javaVersion = parsed;
+            }
+        }
+        if (javaVersion < 7) {
+            //JDK5 and lower are JDK8 only
+            //JDK6 you can use JDK11, but the build is way more likely to work with JDK8
+            if (javaVersion == 6) {
+                return new DiscoveryResult(
+                        Map.of(BuildInfo.JDK, new VersionRange("8", "11", "8")), 1);
+            } else {
+                return new DiscoveryResult(
+                        Map.of(BuildInfo.JDK, new VersionRange("8", "8", "8")), 1);
             }
         }
         if (javaVersion > 0) {
