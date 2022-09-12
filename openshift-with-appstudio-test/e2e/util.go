@@ -362,7 +362,7 @@ func dumpDBPods(ta *testArgs, db *v1alpha1.DependencyBuild) {
 		podList = podsByName(ta, dbName)
 	}
 	for _, pr := range prList {
-		podList = prPods(ta, pr.Name)
+		podList = append(podList, prPods(ta, pr.Name)...)
 	}
 	for _, pod := range podList {
 		containers := []corev1.Container{}
@@ -383,7 +383,8 @@ func dumpDBPods(ta *testArgs, db *v1alpha1.DependencyBuild) {
 			podLog := string(b)
 			ta.Logf(fmt.Sprintf("pod logs for container %s in pod %s:  %s", container.Name, pod.Name, podLog))
 
-			url := strings.Replace(db.Spec.ScmInfo.SCMURL, "/", "_", -1)
+			url := strings.Replace(db.Spec.ScmInfo.SCMURL, "https://", "", 1)
+			url = strings.Replace(url, "/", "_", -1)
 			url = strings.Replace(url, ":", "_", -1)
 
 			directory := os.Getenv("ARTIFACT_DIR") + "/failed-dependency-builds/" + url
