@@ -307,7 +307,8 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 				}
 			} else {
 				log.Error(nil, "Neither maven nor gradle was found in the tools map", "json", buildInfo)
-				return reconcile.Result{}, nil
+				db.Status.State = v1alpha1.DependencyBuildStateFailed
+				return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 			}
 			for _, command := range unmarshalled.Invocations {
 				for _, tv := range tooVersions {
