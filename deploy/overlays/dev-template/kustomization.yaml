@@ -4,6 +4,7 @@ kind: Kustomization
 bases:
  - "../../crds/base"
  - "../../base"
+ - "../../operator/config"
  - "../../operator/overlays/dev-template"
 
 resources:
@@ -27,4 +28,3 @@ patches:
 
 patchesStrategicMerge:
   - config.yaml
-  - system-config.yaml

@@ -14,6 +14,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +32,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
+	_ = appsv1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileDependencyBuild{
 		client:        client,

@@ -29,6 +29,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -131,7 +132,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
-			return r.handleStateNew(ctx, &db)
+			return r.handleStateNew(ctx, log, &db)
 		case v1alpha1.DependencyBuildStateSubmitBuild:
 			return r.handleStateSubmitBuild(ctx, &db)
 		case v1alpha1.DependencyBuildStateComplete, v1alpha1.DependencyBuildStateFailed:
@@ -161,14 +162,17 @@ func hashToString(unique string) string {
 	return depId
 }
 
-func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	cm, err := configmap.ReadUserConfigMap(r.client, ctx, db.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
-	pr.Spec.PipelineSpec = createLookupBuildInfoPipeline(&db.Spec, cm)
+	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, cm)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	pr.Namespace = db.Namespace
 	pr.GenerateName = db.Name + "-build-discovery-"
 	pr.Labels = map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineType: PipelineTypeBuildInfo}
@@ -436,7 +440,10 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
-	image := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
+	image, err := util.GetImageName(ctx, r.client, log, "sidecar", "JVM_BUILD_SERVICE_SIDECAR_IMAGE")
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.Namespace = db.Namespace
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
@@ -623,8 +630,11 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec, config map[string]string) *pipelinev1beta1.PipelineSpec {
-	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, config map[string]string) (*pipelinev1beta1.PipelineSpec, error) {
+	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+	if err != nil {
+		return nil, err
+	}
 	recipes := os.Getenv("RECIPE_DATABASE")
 	additional, ok := config[configmap.UserConfigAdditionalRecipes]
 	if ok {
@@ -676,7 +686,7 @@ func createLookupBuildInfoPipeline(build *v1alpha1.DependencyBuildSpec, config m
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 type BuilderImage struct {
