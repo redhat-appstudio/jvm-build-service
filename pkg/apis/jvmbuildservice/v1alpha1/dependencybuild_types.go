@@ -26,7 +26,7 @@ type DependencyBuildStatus struct {
 	Conditions   []metav1.Condition `json:"conditions,omitempty"`
 	State        string             `json:"state,omitempty"`
 	Message      string             `json:"message,omitempty"`
-	Contaminants []string           `json:"contaminates,omitempty"`
+	Contaminants []Contaminant      `json:"contaminates,omitempty"`
 	//BuildRecipe the current build recipe. If build is done then this recipe was used
 	//to get to the current state
 	CurrentBuildRecipe *BuildRecipe `json:"currentBuildRecipe,omitempty"`
@@ -75,4 +75,8 @@ type BuildRecipe struct {
 	IgnoredArtifacts []string `json:"ignoredArtifacts,omitempty"`
 	ToolVersion      string   `json:"toolVersion,omitempty"`
 	JavaVersion      string   `json:"javaVersion,omitempty"`
+}
+type Contaminant struct {
+	GAV                   string   `json:"gav,omitempty"`
+	ContaminatedArtifacts []string `json:"contaminatedArtifacts,omitempty"`
 }

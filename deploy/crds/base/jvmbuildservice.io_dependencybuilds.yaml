@@ -139,7 +139,14 @@ spec:
                 type: array
               contaminates:
                 items:
-                  type: string
+                  properties:
+                    contaminatedArtifacts:
+                      items:
+                        type: string
+                      type: array
+                    gav:
+                      type: string
+                  type: object
                 type: array
               currentBuildRecipe:
                 description: BuildRecipe the current build recipe. If build is done

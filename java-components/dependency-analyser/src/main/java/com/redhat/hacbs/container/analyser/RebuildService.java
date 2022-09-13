@@ -7,13 +7,13 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
+import com.redhat.hacbs.resources.util.ResourceNameUtils;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.Status;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.quarkus.logging.Log;
-import io.quarkus.runtime.util.HashUtil;
 
 @Singleton
 public class RebuildService {
@@ -30,26 +30,10 @@ public class RebuildService {
             try {
                 //generate names based on the artifact name + version, and part of a hash
                 //we only use the first 8 characters from the hash to make the name small
-                String hash = HashUtil.sha1(gav).substring(0, 8);
-                StringBuilder newName = new StringBuilder();
-                boolean lastDot = false;
-                String namePart = gav.substring(gav.indexOf(':') + 1);
-                for (var i : namePart.toCharArray()) {
-                    if (Character.isAlphabetic(i) || Character.isDigit(i)) {
-                        newName.append(Character.toLowerCase(i));
-                        lastDot = false;
-                    } else {
-                        if (!lastDot) {
-                            newName.append('.');
-                        }
-                        lastDot = true;
-                    }
-                }
-                newName.append("-");
-                newName.append(hash);
+
                 ArtifactBuild item = new ArtifactBuild();
                 ObjectMeta objectMeta = new ObjectMeta();
-                objectMeta.setName(newName.toString());
+                objectMeta.setName(ResourceNameUtils.nameFromGav(gav));
                 objectMeta.setAdditionalProperty("gav", gav);
                 item.setMetadata(objectMeta);
                 item.getSpec().setGav(gav);

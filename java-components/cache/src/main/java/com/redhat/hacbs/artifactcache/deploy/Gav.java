@@ -1,4 +1,4 @@
-package com.redhat.hacbs.sidecar.resources.deploy.containerregistry;
+package com.redhat.hacbs.artifactcache.deploy;
 
 import java.util.Objects;
 

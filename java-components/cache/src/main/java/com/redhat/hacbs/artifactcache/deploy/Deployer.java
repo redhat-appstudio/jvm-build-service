@@ -1,4 +1,4 @@
-package com.redhat.hacbs.sidecar.resources.deploy;
+package com.redhat.hacbs.artifactcache.deploy;
 
 import java.nio.file.Path;
 

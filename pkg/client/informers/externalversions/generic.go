@@ -56,6 +56,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().ArtifactBuilds().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dependencybuilds"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().DependencyBuilds().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("rebuiltartifacts"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().RebuiltArtifacts().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tektonwrappers"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().TektonWrappers().Informer()}, nil
 

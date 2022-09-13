@@ -4,8 +4,10 @@ kubectl delete deployments.apps hacbs-jvm-operator -n jvm-build-service
 # we don't restart the cache and local storage by default
 # for most cases in development this is not necessary, and just slows things
 # down by needing things to be re-cached/rebuilt
-#kubectl delete deployments.apps hacbs-jvm-cache -n jvm-build-service
+
+kubectl delete deployments.apps jvm-build-workspace-artifact-cache
 #kubectl delete deployments.apps localstack -n jvm-build-service
+#kubectl delete persistentvolumeclaims jvm-build-workspace-artifact-cache
 
 DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml

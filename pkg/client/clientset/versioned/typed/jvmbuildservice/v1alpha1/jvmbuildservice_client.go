@@ -29,6 +29,7 @@ type JvmbuildserviceV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ArtifactBuildsGetter
 	DependencyBuildsGetter
+	RebuiltArtifactsGetter
 	TektonWrappersGetter
 }
 
@@ -43,6 +44,10 @@ func (c *JvmbuildserviceV1alpha1Client) ArtifactBuilds(namespace string) Artifac
 
 func (c *JvmbuildserviceV1alpha1Client) DependencyBuilds(namespace string) DependencyBuildInterface {
 	return newDependencyBuilds(c, namespace)
+}
+
+func (c *JvmbuildserviceV1alpha1Client) RebuiltArtifacts(namespace string) RebuiltArtifactInterface {
+	return newRebuiltArtifacts(c, namespace)
 }
 
 func (c *JvmbuildserviceV1alpha1Client) TektonWrappers(namespace string) TektonWrapperInterface {
