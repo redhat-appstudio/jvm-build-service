@@ -29,6 +29,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
+import com.redhat.hacbs.classfile.tracker.HashingOutputStream;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.sidecar.resources.relocation.Gav;
 import com.redhat.hacbs.sidecar.resources.relocation.RelocationCreator;
@@ -197,7 +198,7 @@ public class MavenProxyResource {
                                         hashingOutputStream);
                                 String key = group + SLASH + artifact + SLASH + version + SLASH + target + DOT_SHA1;
                                 hashingOutputStream.close();
-                                computedChecksums.put(key, hashingOutputStream.hash);
+                                computedChecksums.put(key, hashingOutputStream.getHash());
                                 return Response.ok(Files.newInputStream(tempBytecodeTrackedJar))
                                         .header(HttpHeaders.CONTENT_LENGTH, Files.size(tempBytecodeTrackedJar)).build();
                             } catch (ZipException e) {

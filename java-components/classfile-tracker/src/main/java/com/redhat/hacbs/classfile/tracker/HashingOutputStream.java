@@ -1,11 +1,11 @@
-package com.redhat.hacbs.sidecar.resources;
+package com.redhat.hacbs.classfile.tracker;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-class HashingOutputStream extends OutputStream {
+public class HashingOutputStream extends OutputStream {
 
     final OutputStream delegate;
     final MessageDigest md;
@@ -13,7 +13,7 @@ class HashingOutputStream extends OutputStream {
 
     boolean closed;
 
-    HashingOutputStream(OutputStream delegate) {
+    public HashingOutputStream(OutputStream delegate) {
         this.delegate = delegate;
         try {
             md = MessageDigest.getInstance("SHA-1");
@@ -55,5 +55,9 @@ class HashingOutputStream extends OutputStream {
             }
             hash = sb.toString();
         }
+    }
+
+    public String getHash() {
+        return hash;
     }
 }

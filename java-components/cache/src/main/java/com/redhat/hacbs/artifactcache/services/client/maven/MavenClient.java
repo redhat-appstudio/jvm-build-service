@@ -12,6 +12,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.eclipse.microprofile.config.ConfigProvider;
 
+import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
 
 import io.quarkus.arc.Arc;
@@ -48,15 +49,15 @@ public class MavenClient implements RepositoryClient {
     }
 
     @Override
-    public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
-            String target, Long buildStartTime) {
+    public Optional<ArtifactResult> getArtifactFile(String group, String artifact, String version,
+            String target) {
         Log.debugf("Retrieving artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
         String targetUri = uri + "/" + group + "/" + artifact + "/" + version + "/" + target;
         return downloadMavenFile(group, artifact, version, target, targetUri);
 
     }
 
-    private Optional<RepositoryResult> downloadMavenFile(String group, String artifact, String version, String target,
+    private Optional<ArtifactResult> downloadMavenFile(String group, String artifact, String version, String target,
             String targetUri) {
 
         CloseableHttpResponse response = null;
@@ -96,7 +97,7 @@ public class MavenClient implements RepositoryClient {
                 throw new RuntimeException("Unexpected status code: " + response.getStatusLine().getStatusCode());
             }
             Log.debugf("Found artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
-            return Optional.of(new RepositoryResult(new CloseDelegateInputStream(response.getEntity().getContent(), response),
+            return Optional.of(new ArtifactResult(new CloseDelegateInputStream(response.getEntity().getContent(), response),
                     response.getEntity().getContentLength(),
                     Optional.ofNullable(sha1), Collections.emptyMap()));
         } catch (Exception e) {
@@ -112,7 +113,7 @@ public class MavenClient implements RepositoryClient {
     }
 
     @Override
-    public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
+    public Optional<ArtifactResult> getMetadataFile(String group, String target) {
         Log.debugf("Retrieving metadata %s/%s from repo %s at %s", group, target, name, uri);
         return downloadMavenFile(group, null, null, target, uri + "/" + group + "/" + target);
 

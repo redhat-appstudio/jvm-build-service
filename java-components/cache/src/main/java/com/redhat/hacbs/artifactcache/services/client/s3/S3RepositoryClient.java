@@ -3,6 +3,7 @@ package com.redhat.hacbs.artifactcache.services.client.s3;
 import java.util.List;
 import java.util.Optional;
 
+import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
 
 import io.quarkus.logging.Log;
@@ -32,8 +33,8 @@ public class S3RepositoryClient implements RepositoryClient {
     }
 
     @Override
-    public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
-            String target, Long buildStartTime) {
+    public Optional<ArtifactResult> getArtifactFile(String group, String artifact, String version,
+            String target) {
 
         long time = System.currentTimeMillis();
         String fullTarget = group + "/" + artifact + "/" + version + "/" + target;
@@ -41,7 +42,7 @@ public class S3RepositoryClient implements RepositoryClient {
             String s3key = i + "/" + fullTarget;
             try {
                 var response = client.getObject(buildGetRequest(s3key));
-                return Optional.of(new RepositoryResult(response, response.response().contentLength(),
+                return Optional.of(new ArtifactResult(response, response.response().contentLength(),
                         Optional.ofNullable(response.response().metadata().get(SHA_1)), response.response().metadata()));
 
             } catch (NoSuchKeyException ignore) {
@@ -58,7 +59,7 @@ public class S3RepositoryClient implements RepositoryClient {
     }
 
     @Override
-    public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
+    public Optional<ArtifactResult> getMetadataFile(String group, String target) {
         return Optional.empty();
     }
 

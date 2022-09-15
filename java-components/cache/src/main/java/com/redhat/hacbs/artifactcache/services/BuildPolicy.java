@@ -14,5 +14,4 @@ public class BuildPolicy {
     public List<Repository> getRepositories() {
         return repositories;
     }
-
 }

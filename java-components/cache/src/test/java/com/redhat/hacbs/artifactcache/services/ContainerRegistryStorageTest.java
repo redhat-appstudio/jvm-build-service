@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -40,7 +39,7 @@ public class ContainerRegistryStorageTest {
     private static final String HACBS = "hacbs";
 
     @Inject
-    LocalCache localCache;
+    CacheFacade localCache;
 
     @ConfigProperty(name = "cache-path")
     Path path;
@@ -73,9 +72,9 @@ public class ContainerRegistryStorageTest {
     @Test
     public void testMissingFile() throws Exception {
 
-        Optional<RepositoryClient.RepositoryResult> artifactFile = localCache.getArtifactFile(POLICY, GROUP, "does-not-exist",
+        var artifactFile = localCache.getArtifactFile(POLICY, GROUP, "does-not-exist",
                 VERSION,
-                "does-not-exist", null);
+                "does-not-exist", false);
         Assertions.assertFalse(artifactFile.isPresent());
     }
 
@@ -84,25 +83,24 @@ public class ContainerRegistryStorageTest {
         Path cachedFile = path.resolve(REBUILT).resolve(groupPath).resolve(artifact).resolve(VERSION)
                 .resolve(file);
 
-        Optional<RepositoryClient.RepositoryResult> artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact,
-                VERSION,
-                file, null);
+        var artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact,
+                VERSION, file, false);
 
         if (artifactFile.isPresent()) {
 
-            RepositoryClient.RepositoryResult repositoryResult = artifactFile.get();
+            var repositoryResult = artifactFile.get();
 
-            String calculatedSha1 = HashUtil.sha1(repositoryResult.data.readAllBytes());
-            String expectedSha1 = repositoryResult.expectedSha.orElse("");
+            String calculatedSha1 = HashUtil.sha1(repositoryResult.getData().readAllBytes());
+            String expectedSha1 = repositoryResult.getExpectedSha().orElse("");
 
             Assertions.assertEquals(expectedSha1, calculatedSha1);
             Assertions.assertFalse(Files.exists(cachedFile)); // We do not use LocalCache
             Assertions.assertTrue(Files.exists(containerRegistryCacheRoot));
 
             // these files should still have been cached
-            artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact, VERSION, file, null);
+            artifactFile = localCache.getArtifactFile(POLICY, GROUP, artifact, VERSION, file, false);
             repositoryResult = artifactFile.orElseThrow();
-            Assertions.assertNotNull(repositoryResult.data);
+            Assertions.assertNotNull(repositoryResult.getData());
 
         } else {
             Assertions.fail("Could not download [" + file + "]");

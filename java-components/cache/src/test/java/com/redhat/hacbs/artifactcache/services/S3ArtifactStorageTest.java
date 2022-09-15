@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.Optional;
 
 import javax.inject.Inject;
 
@@ -39,7 +38,7 @@ public class S3ArtifactStorageTest {
     public static final String ARTIFACT_STORE = "artifact-store";
 
     @Inject
-    LocalCache localCache;
+    CacheFacade localCache;
 
     @Inject
     S3Client client;
@@ -55,14 +54,15 @@ public class S3ArtifactStorageTest {
                 .metadata(Map.of(S3RepositoryClient.SHA_1, "BAD_HASH")).build(),
                 RequestBody.fromBytes(CONTENTS.getBytes(StandardCharsets.UTF_8)));
 
-        Path cachedFile = path.resolve("rebuilt").resolve(POLICY).resolve(GROUP).resolve(ARTIFACT).resolve(VERSION)
+        Path cachedFile = path.resolve("rebuilt").resolve(RepositoryCache.ORIGINAL).resolve(GROUP).resolve(ARTIFACT)
+                .resolve(VERSION)
                 .resolve(FILE);
         try {
-            Optional<RepositoryClient.RepositoryResult> result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT,
+            var result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT,
                     VERSION,
-                    FILE, null);
-            RepositoryClient.RepositoryResult repositoryResult = result.get();
-            Assertions.assertEquals(CONTENTS, new String(repositoryResult.data.readAllBytes(), StandardCharsets.UTF_8));
+                    FILE, false);
+            var repositoryResult = result.get();
+            Assertions.assertEquals(CONTENTS, new String(repositoryResult.getData().readAllBytes(), StandardCharsets.UTF_8));
             Assertions.assertFalse(Files.exists(cachedFile));
 
             String hash = HashUtil.sha1(CONTENTS);
@@ -71,9 +71,9 @@ public class S3ArtifactStorageTest {
                     RequestBody.fromBytes(CONTENTS.getBytes(StandardCharsets.UTF_8)));
 
             result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT, VERSION,
-                    FILE, null);
+                    FILE, false);
             repositoryResult = result.get();
-            Assertions.assertEquals(CONTENTS, new String(repositoryResult.data.readAllBytes(), StandardCharsets.UTF_8));
+            Assertions.assertEquals(CONTENTS, new String(repositoryResult.getData().readAllBytes(), StandardCharsets.UTF_8));
             Assertions.assertTrue(Files.exists(cachedFile));
 
         } finally {
@@ -82,9 +82,9 @@ public class S3ArtifactStorageTest {
 
         //even after the delete this file should still have been cached
         var result = localCache.getArtifactFile(POLICY, GROUP, ARTIFACT, VERSION,
-                FILE, null);
+                FILE, false);
         var repositoryResult = result.get();
-        Assertions.assertEquals(CONTENTS, new String(repositoryResult.data.readAllBytes(), StandardCharsets.UTF_8));
+        Assertions.assertEquals(CONTENTS, new String(repositoryResult.getData().readAllBytes(), StandardCharsets.UTF_8));
         Assertions.assertTrue(Files.exists(cachedFile));
         Files.delete(cachedFile);
     }
