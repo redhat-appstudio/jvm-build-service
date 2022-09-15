@@ -150,7 +150,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		case PipelineTypeBuildInfo:
 			return r.handleStateAnalyzeBuild(ctx, log, &pr)
 		case PipelineTypeBuild:
-			return r.handlePipelineRunReceived(ctx, log, &pr)
+			return r.handleBuildPipelineRunReceived(ctx, log, &pr)
 		}
 	}
 
@@ -261,6 +261,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
 		java := unmarshalled.Tools["jdk"]
+		db.Status.CommitTime = unmarshalled.CommitTime
 
 		for _, image := range allBuilderImages {
 			//we only have one JDK version in the builder at the moment
@@ -336,6 +337,7 @@ type marshalledBuildInfo struct {
 	IgnoredArtifacts []string
 	ToolVersion      string
 	JavaVersion      string
+	CommitTime       int64
 }
 
 type toolInfo struct {
@@ -496,7 +498,7 @@ func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
 	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 }
 
-func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime != nil {
 		// get db
 		ownerRefs := pr.GetOwnerReferences()
