@@ -134,6 +134,9 @@ public class DeployResource {
                 deployFile = modified;
                 try (var out = Files.newOutputStream(modified)) {
                     try (var archive = new TarArchiveOutputStream(new GzipCompressorOutputStream(out))) {
+                        archive.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
+                        archive.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_POSIX);
+                        archive.setAddPaxHeadersForNonAsciiNames(true);
                         try (TarArchiveInputStream in = new TarArchiveInputStream(
                                 new GzipCompressorInputStream(Files.newInputStream(temp)))) {
                             TarArchiveEntry e;

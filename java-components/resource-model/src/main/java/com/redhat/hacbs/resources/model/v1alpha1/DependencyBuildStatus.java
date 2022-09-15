@@ -13,6 +13,8 @@ public class DependencyBuildStatus {
 
     private String lastCompletedBuildPipelineRun;
 
+    private long commitTime;
+
     public String getState() {
         return state;
     }
@@ -64,6 +66,15 @@ public class DependencyBuildStatus {
 
     public DependencyBuildStatus setLastCompletedBuildPipelineRun(String lastCompletedBuildPipelineRun) {
         this.lastCompletedBuildPipelineRun = lastCompletedBuildPipelineRun;
+        return this;
+    }
+
+    public long getCommitTime() {
+        return commitTime;
+    }
+
+    public DependencyBuildStatus setCommitTime(long commitTime) {
+        this.commitTime = commitTime;
         return this;
     }
 }

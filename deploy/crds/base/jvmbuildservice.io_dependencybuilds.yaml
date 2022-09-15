@@ -64,6 +64,9 @@ spec:
             type: object
           status:
             properties:
+              commitTime:
+                format: int64
+                type: integer
               conditions:
                 description: 'Conditions for capturing generic status NOTE: inspecting
                   the fabric8 Status class, it looked analogous to k8s Condition,

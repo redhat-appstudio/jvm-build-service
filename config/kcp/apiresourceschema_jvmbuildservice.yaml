@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209140726.artifactbuilds.jvmbuildservice.io
+  name: v202209150511.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209140726.dependencybuilds.jvmbuildservice.io
+  name: v202209150511.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -134,6 +134,9 @@ spec:
           type: object
         status:
           properties:
+            commitTime:
+              format: int64
+              type: integer
             conditions:
               description: 'Conditions for capturing generic status NOTE: inspecting
                 the fabric8 Status class, it looked analogous to k8s Condition, and
@@ -323,7 +326,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209140726.rebuiltartifacts.jvmbuildservice.io
+  name: v202209150511.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -374,7 +377,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209140726.tektonwrappers.jvmbuildservice.io
+  name: v202209150511.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
