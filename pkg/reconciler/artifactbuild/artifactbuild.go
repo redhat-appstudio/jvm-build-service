@@ -26,6 +26,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -121,7 +122,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 		switch abr.Status.State {
 		case v1alpha1.ArtifactBuildStateNew, "":
-			return r.handleStateNew(ctx, &abr)
+			return r.handleStateNew(ctx, log, &abr)
 		case v1alpha1.ArtifactBuildStateDiscovering:
 			return r.handleStateDiscovering(ctx, log, &abr)
 		case v1alpha1.ArtifactBuildStateComplete:
@@ -243,17 +244,20 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 	return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
 }
 
-func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.GenerateName = abr.Name + "-scm-discovery-"
 	pr.Namespace = abr.Namespace
-	cm, err := configmap.ReadUserConfigMap(r.client, ctx, abr.Namespace)
-	if err != nil {
-		return reconcile.Result{}, err
+	cm, err1 := configmap.ReadUserConfigMap(r.client, ctx, abr.Namespace)
+	if err1 != nil {
+		return reconcile.Result{}, err1
 	}
-	task := createLookupScmInfoTask(abr.Spec.GAV, cm)
+	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, cm)
+	if err2 != nil {
+		return reconcile.Result{}, err2
+	}
 	pr.Spec.PipelineSpec = &pipelinev1beta1.PipelineSpec{
 		Tasks: []pipelinev1beta1.PipelineTask{{
 			Name: TaskName,
@@ -516,8 +520,11 @@ func CreateABRName(gav string) string {
 	return strings.ToLower(newName.String())
 }
 
-func createLookupScmInfoTask(gav string, config map[string]string) *pipelinev1beta1.TaskSpec {
-	image := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, config map[string]string) (*pipelinev1beta1.TaskSpec, error) {
+	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+	if err != nil {
+		return nil, err
+	}
 	recipes := os.Getenv("RECIPE_DATABASE")
 	additional, ok := config[configmap.UserConfigAdditionalRecipes]
 	if ok {
@@ -561,5 +568,5 @@ func createLookupScmInfoTask(gav string, config map[string]string) *pipelinev1be
 				},
 			},
 		},
-	}
+	}, nil
 }

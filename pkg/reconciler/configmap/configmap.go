@@ -6,7 +6,6 @@ package configmap
 import (
 	"context"
 	"fmt"
-	v13 "k8s.io/api/rbac/v1"
 	"regexp"
 	"sort"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v13 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,9 +26,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/kcp-dev/logicalcluster"
-
 	"github.com/go-logr/logr"
+	"github.com/kcp-dev/logicalcluster"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 )
 
 const (
@@ -37,13 +37,13 @@ const (
 	UserConfigMapName           = "jvm-build-config"
 	UserSecretName              = "jvm-build-secrets"
 	UserConfigAdditionalRecipes = "additional-build-recipes"
+	ControllerDeploymentName    = "hacbs-jvm-operator"
 	CacheDeploymentName         = "jvm-build-workspace-artifact-cache"
 	LocalstackDeploymentName    = "jvm-build-workspace-localstack"
 	EnableRebuilds              = "enable-rebuilds"
 	EnableLocalstack            = "enable-localstack"
 	SystemConfigMapName         = "jvm-build-system-config"
 	SystemConfigMapNamespace    = "jvm-build-service"
-	SystemCacheImage            = "image.cache"
 	SystemBuilderImages         = "builder-image.names"
 	SystemBuilderImageFormat    = "builder-image.%s.image"
 	SystemBuilderTagFormat      = "builder-image.%s.tags"
@@ -66,7 +66,7 @@ const (
 )
 
 var (
-	RequiredKeys = map[string]bool{SystemCacheImage: true}
+	RequiredKeys = map[string]bool{}
 )
 
 type ReconcileConfigMap struct {
@@ -90,10 +90,9 @@ func ReadConfigValue(name string, userConfig map[string]string, systemConfig map
 
 func newReconciler(mgr ctrl.Manager, config map[string]string) reconcile.Reconciler {
 	return &ReconcileConfigMap{
-		client:               mgr.GetClient(),
-		scheme:               mgr.GetScheme(),
-		eventRecorder:        mgr.GetEventRecorderFor("ArtifactBuild"),
-		configuredCacheImage: config[SystemCacheImage],
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
 	}
 }
 
@@ -128,8 +127,8 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 	if err != nil {
 		return reconcile.Result{}, nil
 	}
-	log.Info("Setup Cache %s", "name", request.Name)
-	if err = r.setupCache(ctx, request, enabled, configMap, systemConfigMap, localstack); err != nil {
+	log.Info(fmt.Sprintf("Setup Cache %s", request.Name))
+	if err = r.setupCache(ctx, request, enabled, configMap, systemConfigMap, localstack, log); err != nil {
 		return reconcile.Result{}, err
 	}
 	if enabled && localstack {
@@ -143,7 +142,7 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.Request, rebuildsEnabled bool, configMap corev1.ConfigMap, systemConfigMap corev1.ConfigMap, localstack bool) error {
+func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.Request, rebuildsEnabled bool, configMap corev1.ConfigMap, systemConfigMap corev1.ConfigMap, localstack bool, log logr.Logger) error {
 	//first setup the storage
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: CacheDeploymentName}
 
@@ -386,6 +385,12 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 		Name:  "BUILD_POLICY_DEFAULT_STORE_LIST",
 		Value: sb.String(),
 	})
+	if len(r.configuredCacheImage) == 0 {
+		r.configuredCacheImage, err = util.GetImageName(ctx, r.client, log, "cache", "JVM_BUILD_SERVICE_CACHE_IMAGE")
+		if err != nil {
+			return err
+		}
+	}
 	cache.Spec.Template.Spec.Containers[0].Image = r.configuredCacheImage
 	if !strings.HasPrefix(r.configuredCacheImage, "quay.io/redhat-appstudio") {
 		// work around for developer mode while we are hard coding the spec in the controller
@@ -478,11 +483,6 @@ func (r *ReconcileConfigMap) handleSystemConfigMap(ctx context.Context, log logr
 	err := r.client.Get(ctx, request.NamespacedName, &configMap)
 	if err != nil {
 		return reconcile.Result{}, err
-	}
-	if configMap.Data[SystemCacheImage] == "" {
-		log.Info(fmt.Sprintf("System config map missing required key %s, operator will fail to restart if this is not corrected", SystemCacheImage))
-	} else {
-		r.configuredCacheImage = configMap.Data[SystemCacheImage]
 	}
 	return reconcile.Result{}, nil
 }

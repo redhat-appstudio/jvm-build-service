@@ -1,10 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+commonLabels:
+  app: hacbs-jvm-operator
 resources:
   - system-config.yaml
 
 patchesStrategicMerge:
-  # see copy from openshift-ci.sh of deploy/base/system-config.yaml
-  - system-config-builders.yaml
+  #note that when updating the ref here you must also update system-config.yaml
   - https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/fbe0f42ebe3d50b16d454c95207dd15be6b5008f/image-config.yaml
