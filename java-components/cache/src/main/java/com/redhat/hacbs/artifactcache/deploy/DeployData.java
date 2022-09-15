@@ -1,16 +1,16 @@
-package com.redhat.hacbs.sidecar.resources.deploy.containerregistry;
+package com.redhat.hacbs.artifactcache.deploy;
 
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public final class ImageData {
+public final class DeployData {
 
     private final Path artifactsPath;
     private final Set<Gav> gavs;
 
-    public ImageData(Path artifactsPath, Set<Gav> gavs) {
+    public DeployData(Path artifactsPath, Set<Gav> gavs) {
         this.artifactsPath = artifactsPath;
         this.gavs = gavs;
     }
@@ -66,7 +66,7 @@ public final class ImageData {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final ImageData other = (ImageData) obj;
+        final DeployData other = (DeployData) obj;
         if (!Objects.equals(this.artifactsPath, other.artifactsPath)) {
             return false;
         }

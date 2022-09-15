@@ -2,7 +2,5 @@
 set -eu
 
 tar -czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .
-curl --data-binary @$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz http://localhost:2000/deploy
-
-curl --fail http://localhost:2000/deploy/result -o "$(results.contaminants.path)" || { cat "$(workspaces.build-settings.path)/sidecar.log" ; false ; }
+curl --fail --data-binary @$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz http://jvm-build-workspace-artifact-cache.$(params.NAMESPACE).svc.cluster.local/v1/deploy/$(params.DEPENDENCY_BUILD) || { cat "$(workspaces.build-settings.path)/sidecar.log" ; false ; }
 cat "$(workspaces.build-settings.path)/sidecar.log"

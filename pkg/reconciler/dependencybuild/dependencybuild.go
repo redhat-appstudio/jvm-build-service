@@ -36,6 +36,7 @@ import (
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout                = 300 * time.Second
+	PipelineBuildId               = "DEPENDENCY_BUILD"
 	PipelineScmUrl                = "URL"
 	PipelineScmTag                = "TAG"
 	PipelinePath                  = "CONTEXT_DIR"
@@ -46,7 +47,6 @@ const (
 	PipelineEnforceVersion        = "ENFORCE_VERSION"
 	PipelineIgnoredArtifacts      = "IGNORED_ARTIFACTS"
 	PipelineGradleManipulatorArgs = "GRADLE_MANIPULATOR_ARGS"
-	PipelineResultContaminates    = "contaminants"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
 	BuildInfoPipelineTagParam     = "TAG"
@@ -135,12 +135,14 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			return r.handleStateNew(ctx, log, &db)
 		case v1alpha1.DependencyBuildStateSubmitBuild:
 			return r.handleStateSubmitBuild(ctx, &db)
-		case v1alpha1.DependencyBuildStateComplete, v1alpha1.DependencyBuildStateFailed:
+		case v1alpha1.DependencyBuildStateFailed:
 			return reconcile.Result{}, nil
 		case v1alpha1.DependencyBuildStateBuilding:
 			return r.handleStateBuilding(ctx, log, &db)
 		case v1alpha1.DependencyBuildStateContaminated:
 			return r.handleStateContaminated(ctx, &db)
+		case v1alpha1.DependencyBuildStateComplete:
+			return r.handleStateCompleted(ctx, &db, log)
 		}
 
 	case trerr == nil:
@@ -149,7 +151,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		case PipelineTypeBuildInfo:
 			return r.handleStateAnalyzeBuild(ctx, log, &pr)
 		case PipelineTypeBuild:
-			return r.handlePipelineRunReceived(ctx, log, &pr)
+			return r.handleBuildPipelineRunReceived(ctx, log, &pr)
 		}
 	}
 
@@ -263,6 +265,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
 		java := unmarshalled.Tools["jdk"]
+		db.Status.CommitTime = unmarshalled.CommitTime
 
 		for _, image := range allBuilderImages {
 			//we only have one JDK version in the builder at the moment
@@ -338,6 +341,7 @@ type marshalledBuildInfo struct {
 	IgnoredArtifacts []string
 	ToolVersion      string
 	JavaVersion      string
+	CommitTime       int64
 }
 
 type toolInfo struct {
@@ -465,6 +469,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
 	//the actual solution will involve loading deployment config from a ConfigMap
 	pr.Spec.Params = []pipelinev1beta1.Param{
+		{Name: PipelineBuildId, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
 		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
 		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
@@ -500,7 +505,7 @@ func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
 	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
 }
 
-func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime != nil {
 		// get db
 		ownerRefs := pr.GetOwnerReferences()
@@ -554,22 +559,20 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
 
-		var contaminates []string
-		for _, r := range pr.Status.PipelineResults {
-			if r.Name == PipelineResultContaminates && len(r.Value) > 0 {
-				contaminates = strings.Split(r.Value, ",")
-			}
-		}
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
-			if len(contaminates) == 0 {
+			if len(db.Status.Contaminants) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
 				r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
 				//the dependency was contaminated with community deps
 				//most likely shaded in
-				db.Status.State = v1alpha1.DependencyBuildStateContaminated
-				db.Status.Contaminants = contaminates
+				err = r.client.Status().Update(ctx, &db)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				//even though there are contaminates they may not be in artifacts we care about
+				return r.handleStateCompleted(ctx, &db, log)
 			}
 		} else {
 			//try again, if there are no more recipes this gets handled in the submit build logic
@@ -584,6 +587,68 @@ func (r *ReconcileDependencyBuild) handlePipelineRunReceived(ctx context.Context
 	return reconcile.Result{}, nil
 }
 
+// This checks that the build is still considered uncontaminated
+// even if some artifacts in the build were contaminated it may still be considered a success if there was
+// no actual request for these artifacts. This can change if new artifacts are requested, so even when complete
+// we still need to verify that hte build is ok
+func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger) (reconcile.Result, error) {
+
+	ownerGavs := map[string]bool{}
+	db.Status.State = v1alpha1.DependencyBuildStateComplete
+	if len(db.Status.Contaminants) == 0 {
+		return reconcile.Result{}, r.client.Status().Update(ctx, db)
+	}
+	l.Info("Resolving contaminates for build", "build", db.Name)
+	//get all the owning artifact builds
+	//if any of these are contaminated
+	for _, ownerRef := range db.OwnerReferences {
+		if strings.EqualFold(ownerRef.Kind, "artifactbuild") || strings.EqualFold(ownerRef.Kind, "artifactbuilds") {
+			ab := v1alpha1.ArtifactBuild{}
+			err := r.client.Get(ctx, types.NamespacedName{Name: ownerRef.Name, Namespace: db.Namespace}, &ab)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			ownerGavs[ab.Spec.GAV] = true
+		}
+	}
+	l.Info("Found owner gavs", "gavs", ownerGavs)
+	for _, contaminant := range db.Status.Contaminants {
+		for _, artifact := range contaminant.ContaminatedArtifacts {
+			if ownerGavs[artifact] {
+				l.Info("Found contaminant affecting owner", "contaminate", contaminant, "owner", artifact)
+				db.Status.State = v1alpha1.DependencyBuildStateContaminated
+				abrName := artifactbuild.CreateABRName(contaminant.GAV)
+				abr := v1alpha1.ArtifactBuild{}
+				//look for existing ABR
+				err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
+				suffix := hashToString(contaminant.GAV)[0:20]
+				if err != nil {
+					//we just assume this is because it does not exist
+					//TODO: how to check the type of the error?
+					abr.Spec = v1alpha1.ArtifactBuildSpec{GAV: contaminant.GAV}
+					abr.Name = abrName
+					abr.Namespace = db.Namespace
+					abr.Annotations = map[string]string{}
+					//use this annotation to link back to the dependency build
+					abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
+					err := r.client.Create(ctx, &abr)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+				} else {
+					abr.Annotations = map[string]string{}
+					abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
+					err := r.client.Update(ctx, &abr)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+				}
+				break
+			}
+		}
+	}
+	return reconcile.Result{}, r.client.Status().Update(ctx, db)
+}
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	contaminants := db.Status.Contaminants
 	if len(contaminants) == 0 {
@@ -592,40 +657,6 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 		//setting it back to building should re-try the recipe that actually worked
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		return reconcile.Result{}, r.client.Update(ctx, db)
-	}
-	//we want to rebuild the contaminants from source
-	//so we create ABRs for them
-	//if they already exist we link to the ABR
-	for _, contaminant := range contaminants {
-		if len(contaminant) == 0 {
-			continue
-		}
-		abrName := artifactbuild.CreateABRName(contaminant)
-		abr := v1alpha1.ArtifactBuild{}
-		//look for existing ABR
-		err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
-		suffix := hashToString(contaminant)[0:20]
-		if err != nil {
-			//we just assume this is because it does not exist
-			//TODO: how to check the type of the error?
-			abr.Spec = v1alpha1.ArtifactBuildSpec{GAV: contaminant}
-			abr.Name = abrName
-			abr.Namespace = db.Namespace
-			abr.Annotations = map[string]string{}
-			//use this annotation to link back to the dependency build
-			abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
-			err := r.client.Create(ctx, &abr)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		} else {
-			abr.Annotations = map[string]string{}
-			abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
-			err := r.client.Update(ctx, &abr)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		}
 	}
 	return reconcile.Result{}, nil
 }

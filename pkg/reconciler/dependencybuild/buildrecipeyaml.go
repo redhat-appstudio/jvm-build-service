@@ -44,9 +44,9 @@ func createPipelineSpec(maven bool, sidecarImage string, namespace string) *pipe
 	}
 	zero := int64(0)
 	buildSetup := pipelinev1beta1.TaskSpec{
-		Results:    []pipelinev1beta1.TaskResult{{Name: PipelineResultContaminates, Description: "Any community GAVs that have ended up in the final output."}},
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
 		Params: []v1alpha1.ParamSpec{
+			{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineScmUrl, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineScmTag, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineImage, Type: pipelinev1beta1.ParamTypeString},
@@ -56,6 +56,7 @@ func createPipelineSpec(maven bool, sidecarImage string, namespace string) *pipe
 			{Name: PipelinePath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineIgnoredArtifacts, Type: pipelinev1beta1.ParamTypeString},
+			{Name: "NAMESPACE", Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: namespace}},
 		},
 		Sidecars: []pipelinev1beta1.Sidecar{createSidecar(sidecarImage, namespace)},
 		Steps: []pipelinev1beta1.Step{

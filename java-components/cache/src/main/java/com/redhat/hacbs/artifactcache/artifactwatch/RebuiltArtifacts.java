@@ -9,6 +9,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
+import com.redhat.hacbs.resources.model.v1alpha1.RebuiltArtifact;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
@@ -30,13 +31,30 @@ public class RebuiltArtifacts {
             }
 
             @Override
-            public void onUpdate(ArtifactBuild artifactBuild, ArtifactBuild t1) {
-                gavs.add(artifactBuild.getSpec().getGav());
+            public void onUpdate(ArtifactBuild old, ArtifactBuild newObj) {
+                gavs.add(newObj.getSpec().getGav());
 
             }
 
             @Override
             public void onDelete(ArtifactBuild artifactBuild, boolean b) {
+
+            }
+        });
+        client.resources(RebuiltArtifact.class).inform().addEventHandler(new ResourceEventHandler<RebuiltArtifact>() {
+            @Override
+            public void onAdd(RebuiltArtifact artifactBuild) {
+                gavs.add(artifactBuild.getSpec().getGav());
+            }
+
+            @Override
+            public void onUpdate(RebuiltArtifact old, RebuiltArtifact newObj) {
+                gavs.add(newObj.getSpec().getGav());
+
+            }
+
+            @Override
+            public void onDelete(RebuiltArtifact artifactBuild, boolean b) {
 
             }
         });

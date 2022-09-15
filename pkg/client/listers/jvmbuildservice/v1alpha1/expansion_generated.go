@@ -33,6 +33,14 @@ type DependencyBuildListerExpansion interface{}
 // DependencyBuildNamespaceLister.
 type DependencyBuildNamespaceListerExpansion interface{}
 
+// RebuiltArtifactListerExpansion allows custom methods to be added to
+// RebuiltArtifactLister.
+type RebuiltArtifactListerExpansion interface{}
+
+// RebuiltArtifactNamespaceListerExpansion allows custom methods to be added to
+// RebuiltArtifactNamespaceLister.
+type RebuiltArtifactNamespaceListerExpansion interface{}
+
 // TektonWrapperListerExpansion allows custom methods to be added to
 // TektonWrapperLister.
 type TektonWrapperListerExpansion interface{}

@@ -1,4 +1,4 @@
-package com.redhat.hacbs.sidecar.test.resources;
+package com.redhat.hacbs.artifactcache.services;
 
 import static io.restassured.RestAssured.given;
 
@@ -23,6 +23,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 
+import javax.inject.Inject;
+
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
@@ -30,14 +32,20 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
+
+import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.logging.Log;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.kubernetes.client.WithKubernetesTestServer;
 import io.restassured.http.ContentType;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 @QuarkusTest
+@WithKubernetesTestServer
 @QuarkusTestResource(value = ContainerRegistryDeployerTestResource.class, restrictToAnnotatedClass = true)
 public class ContainerRegistryDeployerTest {
 
@@ -63,8 +71,16 @@ public class ContainerRegistryDeployerTest {
     private static final String EXPECTED_TAG_1 = "ddb962f47b1e1b33a3c59ce0e5a4a403c4e01373eca7fc6e992281f0c6324cc2";
     private static final String EXPECTED_TAG_2 = "f697132e6cc3e55c91e070ac80eabe7ff4a79ac336323fdadfaa191876d2b0d0";
 
+    @Inject
+    KubernetesClient kubernetesClient;
+
     @Test
     public void testDeployArchive() throws IOException {
+
+        DependencyBuild build = new DependencyBuild();
+        build.setMetadata(new ObjectMeta());
+        build.getMetadata().setName("testbuild");
+        kubernetesClient.resources(DependencyBuild.class).create(build);
 
         // Here we just make sure we can create images.
         Path createTestTarGz = createTestTarGz();
@@ -72,7 +88,7 @@ public class ContainerRegistryDeployerTest {
         try (InputStream inputStream = Files.newInputStream(createTestTarGz)) {
 
             given().body(inputStream).contentType(ContentType.BINARY)
-                    .when().post("/deploy")
+                    .when().post("/v1/deploy/testbuild")
                     .then()
                     .statusCode(204);
 

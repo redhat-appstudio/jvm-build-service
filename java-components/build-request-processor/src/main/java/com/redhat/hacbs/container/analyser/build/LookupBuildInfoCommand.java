@@ -104,10 +104,12 @@ public class LookupBuildInfoCommand implements Runnable {
         var path = Files.createTempDirectory("checkout");
         try (var clone = Git.cloneRepository().setURI(scmUrl).setDirectory(path.toFile()).call()) {
             clone.checkout().setName(scmTag).call();
+            long time = clone.getRepository().parseCommit(clone.getRepository().resolve(scmTag)).getCommitTime() * 1000L;
             if (context != null) {
                 path = path.resolve(context);
             }
             BuildInfo info = new BuildInfo();
+            info.commitTime = time;
             Path pomFile = path.resolve("pom.xml");
             if (Files.isRegularFile(pomFile)) {
                 try (BufferedReader pomReader = Files.newBufferedReader(pomFile)) {

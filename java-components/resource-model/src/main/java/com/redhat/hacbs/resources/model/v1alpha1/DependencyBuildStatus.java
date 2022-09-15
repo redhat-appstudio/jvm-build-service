@@ -5,13 +5,15 @@ import java.util.List;
 public class DependencyBuildStatus {
 
     private String state;
-    private String[] contaminates;
+    private List<Contaminant> contaminates;
 
     private BuildRecipe currentBuildRecipe;
     private List<BuildRecipe> failedBuildRecipes;
     private List<BuildRecipe> potentialBuildRecipes;
 
     private String lastCompletedBuildPipelineRun;
+
+    private long commitTime;
 
     public String getState() {
         return state;
@@ -22,11 +24,11 @@ public class DependencyBuildStatus {
         return this;
     }
 
-    public String[] getContaminates() {
+    public List<Contaminant> getContaminates() {
         return contaminates;
     }
 
-    public DependencyBuildStatus setContaminates(String[] contaminates) {
+    public DependencyBuildStatus setContaminates(List<Contaminant> contaminates) {
         this.contaminates = contaminates;
         return this;
     }
@@ -64,6 +66,15 @@ public class DependencyBuildStatus {
 
     public DependencyBuildStatus setLastCompletedBuildPipelineRun(String lastCompletedBuildPipelineRun) {
         this.lastCompletedBuildPipelineRun = lastCompletedBuildPipelineRun;
+        return this;
+    }
+
+    public long getCommitTime() {
+        return commitTime;
+    }
+
+    public DependencyBuildStatus setCommitTime(long commitTime) {
+        this.commitTime = commitTime;
         return this;
     }
 }

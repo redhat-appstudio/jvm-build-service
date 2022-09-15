@@ -1,4 +1,4 @@
-package com.redhat.hacbs.sidecar.resources.deploy.containerregistry;
+package com.redhat.hacbs.artifactcache.deploy.containerregistry;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -36,8 +36,11 @@ import com.google.cloud.tools.jib.api.RegistryException;
 import com.google.cloud.tools.jib.api.RegistryImage;
 import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
-import com.redhat.hacbs.sidecar.resources.deploy.Deployer;
-import com.redhat.hacbs.sidecar.resources.deploy.DeployerUtil;
+import com.redhat.hacbs.artifactcache.deploy.DeployData;
+import com.redhat.hacbs.artifactcache.deploy.Deployer;
+import com.redhat.hacbs.artifactcache.deploy.DeployerUtil;
+import com.redhat.hacbs.artifactcache.deploy.Gav;
+import com.redhat.hacbs.artifactcache.util.FileUtil;
 
 import io.quarkus.logging.Log;
 
@@ -51,7 +54,6 @@ public class ContainerRegistryDeployer implements Deployer {
     private final String repository;
     private final boolean insecure;
     private final Optional<String> prependTag;
-    private final Set<String> doNotDeploy;
 
     private final String username;
     private final String password;
@@ -65,8 +67,7 @@ public class ContainerRegistryDeployer implements Deployer {
             @ConfigProperty(name = "registry.token") Optional<String> token,
             @ConfigProperty(name = "registry.repository", defaultValue = "artifact-deployments") String repository,
             @ConfigProperty(name = "registry.insecure", defaultValue = "false") boolean insecure,
-            @ConfigProperty(name = "registry.prepend-tag", defaultValue = "") Optional<String> prependTag,
-            @ConfigProperty(name = "ignored-artifacts", defaultValue = "") Optional<Set<String>> doNotDeploy) {
+            @ConfigProperty(name = "registry.prepend-tag", defaultValue = "") Optional<String> prependTag) {
 
         this.host = host;
         this.port = port;
@@ -74,7 +75,6 @@ public class ContainerRegistryDeployer implements Deployer {
         this.repository = repository;
         this.insecure = insecure;
         this.prependTag = prependTag;
-        this.doNotDeploy = doNotDeploy.orElse(Set.of());
         if (token.isPresent()) {
             var decoded = new String(Base64.getDecoder().decode(token.get()), StandardCharsets.UTF_8);
             if (decoded.startsWith("{")) {
@@ -123,13 +123,18 @@ public class ContainerRegistryDeployer implements Deployer {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
         // Read the tar to get the gavs and files
-        ImageData imageData = getImageData(tarGzFile);
+        DeployData imageData = getImageData(tarGzFile);
 
-        // Create the image layers
-        createImages(tarGzFile, imageData);
+        try {
+            // Create the image layers
+            createImages(tarGzFile, imageData);
+
+        } finally {
+            FileUtil.deleteRecursive(imageData.getArtifactsPath());
+        }
     }
 
-    private void createImages(Path tarGzFile, ImageData imageData)
+    private void createImages(Path tarGzFile, DeployData imageData)
             throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
             CacheDirectoryCreationException, ExecutionException {
 
@@ -165,7 +170,7 @@ public class ContainerRegistryDeployer implements Deployer {
         containerBuilder.containerize(containerizer);
     }
 
-    private String createImageName(ImageData imageData) {
+    private String createImageName(DeployData imageData) {
         String imageName = UUID.randomUUID().toString();
         return host + DOUBLE_POINT + port + SLASH + owner + SLASH + repository
                 + DOUBLE_POINT + imageName;
@@ -186,12 +191,12 @@ public class ContainerRegistryDeployer implements Deployer {
         return List.of(layer1Path, layer2Path, artifacts);
     }
 
-    private ImageData getImageData(Path tarGzFile) throws IOException {
+    private DeployData getImageData(Path tarGzFile) throws IOException {
         Path outputPath = Paths.get(Files.createTempDirectory(HACBS).toString(), ARTIFACTS);
         Files.createDirectories(outputPath);
 
         try (InputStream tarInput = Files.newInputStream(tarGzFile)) {
-            ImageData imageData = new ImageData(outputPath, extractTarArchive(tarInput, outputPath.toString()));
+            DeployData imageData = new DeployData(outputPath, extractTarArchive(tarInput, outputPath.toString()));
             return imageData;
         }
     }
@@ -205,11 +210,10 @@ public class ContainerRegistryDeployer implements Deployer {
 
             for (TarArchiveEntry entry = tarArchiveInputStream.getNextTarEntry(); entry != null; entry = tarArchiveInputStream
                     .getNextTarEntry()) {
-                if (!DeployerUtil.shouldIgnore(doNotDeploy, entry.getName())) {
-                    Optional<Gav> maybeGav = extractEntry(entry, tarArchiveInputStream, folder);
-                    if (maybeGav.isPresent()) {
-                        gavs.add(maybeGav.get());
-                    }
+                Optional<Gav> maybeGav = extractEntry(entry, tarArchiveInputStream, folder);
+                if (maybeGav.isPresent()) {
+                    gavs.add(maybeGav.get());
+
                 }
             }
         }
@@ -271,4 +275,5 @@ public class ContainerRegistryDeployer implements Deployer {
     private static final String HACBS = "hacbs";
     private static final String ARTIFACTS = "artifacts";
     private static final int BUFFER_SIZE = 4096;
+
 }

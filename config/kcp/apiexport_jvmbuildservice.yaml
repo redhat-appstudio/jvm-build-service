@@ -7,6 +7,7 @@ metadata:
   name: has
 spec:
   latestResourceSchemas:
-    - v202208111411.artifactbuilds.jvmbuildservice.io
-    - v202208111411.dependencybuilds.jvmbuildservice.io
-    - v202208111411.tektonwrappers.jvmbuildservice.io
+    - v202209150511.artifactbuilds.jvmbuildservice.io
+    - v202209150511.dependencybuilds.jvmbuildservice.io
+    - v202209150511.rebuiltartifacts.jvmbuildservice.io
+    - v202209150511.tektonwrappers.jvmbuildservice.io

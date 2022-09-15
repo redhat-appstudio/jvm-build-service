@@ -327,7 +327,7 @@ func TestStateBuilding(t *testing.T) {
 				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
-			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []string{"com.foo:acme:1.0"}},
+			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []v1alpha1.Contaminant{{GAV: "com.test:test:1.0", ContaminatedArtifacts: []string{"a:b:1"}}}},
 		}
 		g.Expect(controllerutil.SetOwnerReference(abr, db, reconciler.scheme))
 		g.Expect(client.Create(ctx, db))
@@ -373,7 +373,7 @@ func TestStateCompleteFixingContamination(t *testing.T) {
 				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
-			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []string{"com.test:test:1.0"}},
+			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []v1alpha1.Contaminant{{GAV: "com.test:test:1.0", ContaminatedArtifacts: []string{"a:b:1"}}}},
 		}
 		client, reconciler = setupClientAndReconciler(abr, contaiminated)
 	}

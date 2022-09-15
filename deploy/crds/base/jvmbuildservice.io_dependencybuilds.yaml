@@ -64,6 +64,9 @@ spec:
             type: object
           status:
             properties:
+              commitTime:
+                format: int64
+                type: integer
               conditions:
                 description: 'Conditions for capturing generic status NOTE: inspecting
                   the fabric8 Status class, it looked analogous to k8s Condition,
@@ -139,7 +142,14 @@ spec:
                 type: array
               contaminates:
                 items:
-                  type: string
+                  properties:
+                    contaminatedArtifacts:
+                      items:
+                        type: string
+                      type: array
+                    gav:
+                      type: string
+                  type: object
                 type: array
               currentBuildRecipe:
                 description: BuildRecipe the current build recipe. If build is done

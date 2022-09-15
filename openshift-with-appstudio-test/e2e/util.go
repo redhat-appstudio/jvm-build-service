@@ -566,6 +566,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	}
 	artifact := ArtifactReportData{}
 	dependency := DependencyReportData{}
+	dependencyBuildClient := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(namespace)
 	artifactBuilds, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -573,7 +574,15 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	for _, ab := range artifactBuilds.Items {
 		localDir := ab.Status.State + "/" + ab.Name
 		tmp := ab
-		instance := &ReportInstanceData{Name: ab.Name, State: ab.Status.State, Yaml: encodeToYaml(&tmp)}
+		createdBy := ""
+		if ab.Annotations != nil {
+			for k, v := range ab.Annotations {
+				if strings.HasPrefix(k, artifactbuild.DependencyBuildContaminatedBy) {
+					createdBy = " (created by build " + v + ")"
+				}
+			}
+		}
+		instance := &ReportInstanceData{Name: ab.Name + createdBy, State: ab.Status.State, Yaml: encodeToYaml(&tmp)}
 		artifact.Instances = append(artifact.Instances, instance)
 		artifact.Total++
 		print(ab.Status.State + "\n")
@@ -596,7 +605,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	}
 	sort.Sort(SortableArtifact(artifact.Instances))
 
-	dependencyBuilds, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(namespace).List(context.TODO(), metav1.ListOptions{})
+	dependencyBuilds, err := dependencyBuildClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

@@ -1,27 +1,15 @@
-package com.redhat.hacbs.sidecar.resources.deploy;
+package com.redhat.hacbs.artifactcache.deploy;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class DeployerUtil {
 
     private static final String SHA_256 = "SHA-256";
     private static final String GAV_FORMAT = "%s:%s:%s";
-    private static final Pattern ARTIFACT_PATH = Pattern.compile(".*/([^/]+)/([^/]+)/([^/]+)");
 
     private DeployerUtil() {
-    }
-
-    public static boolean shouldIgnore(Set<String> doNotDeploy, String name) {
-        Matcher m = ARTIFACT_PATH.matcher(name);
-        if (!m.matches()) {
-            return false;
-        }
-        return doNotDeploy.contains(m.group(1));
     }
 
     public static String sha256sum(String group, String artifact, String version) {

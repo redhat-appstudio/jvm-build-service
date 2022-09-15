@@ -144,7 +144,11 @@ public class MavenProxyResource {
         //if we fail we retry, don't fail the whole build
         //better to wait for a few seconds and try again than stop a build that has been going for a while
         for (int i = 0; i <= retries; ++i) {
-            Log.infof("Retrieving artifact %s/%s/%s/%s attempt %s", group, artifact, version, target, i);
+            if (i > 0) {
+                Log.infof("Retrieving artifact %s/%s/%s/%s attempt %s", group, artifact, version, target, i);
+            } else {
+                Log.debugf("Retrieving artifact %s/%s/%s/%s attempt %s", group, artifact, version, target, i);
+            }
             if (target.endsWith(DOT_SHA1)) {
                 String key = group + SLASH + artifact + SLASH + version + SLASH + target;
                 var modified = computedChecksums.get(key);

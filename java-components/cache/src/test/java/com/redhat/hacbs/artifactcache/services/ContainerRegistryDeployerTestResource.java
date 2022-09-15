@@ -1,4 +1,4 @@
-package com.redhat.hacbs.sidecar.test.resources;
+package com.redhat.hacbs.artifactcache.services;
 
 import java.util.Map;
 

@@ -27,6 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const TestArtifact = "com.test:test:1.0"
+
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileDependencyBuild) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
@@ -184,7 +186,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(9))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(10))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineScmTag:
@@ -245,6 +247,12 @@ func TestStateBuilding(t *testing.T) {
 	taskRunName := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-0"}
 	setup := func(g *WithT) {
 		client, reconciler = setupClientAndReconciler()
+
+		ab := v1alpha1.ArtifactBuild{Spec: v1alpha1.ArtifactBuildSpec{GAV: TestArtifact}}
+		ab.Name = TestArtifact
+		ab.Namespace = metav1.NamespaceDefault
+		g.Expect(client.Create(ctx, &ab)).Should(BeNil())
+
 		db := v1alpha1.DependencyBuild{}
 		db.Namespace = metav1.NamespaceDefault
 		db.Name = "test"
@@ -254,6 +262,7 @@ func TestStateBuilding(t *testing.T) {
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
 		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
+		g.Expect(controllerutil.SetOwnerReference(&ab, &db, reconciler.scheme)).Should(BeNil())
 		g.Expect(client.Create(ctx, &db)).Should(BeNil())
 
 		pr := pipelinev1beta1.PipelineRun{}
@@ -332,13 +341,13 @@ func TestStateBuilding(t *testing.T) {
 		})
 		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: "com.acme:foo:1.0,com.acme:bar:1.0"}}
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
-		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateContaminated))
+		db.Status.Contaminants = []v1alpha1.Contaminant{{GAV: "com.acme:foo:1.0", ContaminatedArtifacts: []string{TestArtifact}}}
+		g.Expect(client.Update(ctx, db))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
 		db = getBuild(client, g)
-		g.Expect(db.Status.Contaminants).Should(ContainElement("com.acme:foo:1.0"))
-		g.Expect(db.Status.Contaminants).Should(ContainElement("com.acme:bar:1.0"))
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateContaminated))
 	})
 
 }

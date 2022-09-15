@@ -40,6 +40,8 @@ public class BuildInfo {
      */
     String javaVersion;
 
+    long commitTime;
+
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
         return this;
@@ -87,6 +89,15 @@ public class BuildInfo {
 
     public BuildInfo setJavaVersion(String javaVersion) {
         this.javaVersion = javaVersion;
+        return this;
+    }
+
+    public long getCommitTime() {
+        return commitTime;
+    }
+
+    public BuildInfo setCommitTime(long commitTime) {
+        this.commitTime = commitTime;
         return this;
     }
 }
