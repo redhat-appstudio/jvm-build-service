@@ -30,7 +30,7 @@ var gradleBuild string
 //go:embed scripts/deploy.sh
 var deploy string
 
-func createPipelineSpec(maven bool, sidecarImage string, namespace string, commitTime int64) *pipelinev1beta1.PipelineSpec {
+func createPipelineSpec(maven bool, namespace string, commitTime int64) *pipelinev1beta1.PipelineSpec {
 	var settings string
 	var build string
 	if maven {

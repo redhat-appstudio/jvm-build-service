@@ -3,7 +3,8 @@ package com.redhat.hacbs.artifactcache.services.client.maven;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -96,10 +97,14 @@ public class MavenClient implements RepositoryClient {
                 response.close();
                 throw new RuntimeException("Unexpected status code: " + response.getStatusLine().getStatusCode());
             }
+            Map<String, String> headers = new HashMap<>();
+            for (var i : response.getAllHeaders()) {
+                headers.put(i.getName(), i.getValue());
+            }
             Log.debugf("Found artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
             return Optional.of(new ArtifactResult(new CloseDelegateInputStream(response.getEntity().getContent(), response),
                     response.getEntity().getContentLength(),
-                    Optional.ofNullable(sha1), Collections.emptyMap()));
+                    Optional.ofNullable(sha1), headers));
         } catch (Exception e) {
             try {
                 if (response != null) {

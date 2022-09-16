@@ -50,39 +50,43 @@ public class ClassFileTracker {
 
     public static void addTrackingDataToJar(InputStream input, TrackingData data, OutputStream out)
             throws IOException, ZipException {
+        Set<String> seen = new HashSet<>();
         try (ZipInputStream zipIn = new ZipInputStream(input)) {
             try (ZipOutputStream zipOut = new ZipOutputStream(out)) {
                 var entry = zipIn.getNextEntry();
                 while (entry != null) {
-                    if (entry.getName().endsWith(".class")) {
-                        ZipEntry newEntry = new ZipEntry(entry.getName());
-                        if (entry.getLastAccessTime() != null) {
-                            newEntry.setLastAccessTime(entry.getLastAccessTime());
+                    if (!seen.contains(entry.getName())) {
+                        seen.add(entry.getName());
+                        if (entry.getName().endsWith(".class")) {
+                            ZipEntry newEntry = new ZipEntry(entry.getName());
+                            if (entry.getLastAccessTime() != null) {
+                                newEntry.setLastAccessTime(entry.getLastAccessTime());
+                            }
+                            if (entry.getLastModifiedTime() != null) {
+                                newEntry.setLastModifiedTime(entry.getLastModifiedTime());
+                            }
+                            byte[] modified = addTrackingDataToClass(zipIn.readAllBytes(), data, entry.getName());
+                            newEntry.setSize(modified.length);
+                            zipOut.putNextEntry(newEntry);
+                            zipOut.write(modified);
+                        } else if (entry.getName().endsWith(".jar")) {
+                            ZipEntry newEntry = new ZipEntry(entry.getName());
+                            if (entry.getLastAccessTime() != null) {
+                                newEntry.setLastAccessTime(entry.getLastAccessTime());
+                            }
+                            if (entry.getLastModifiedTime() != null) {
+                                newEntry.setLastModifiedTime(entry.getLastModifiedTime());
+                            }
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            addTrackingDataToJar(new NoCloseInputStream(zipIn), data, baos);
+                            byte[] modified = baos.toByteArray();
+                            newEntry.setSize(modified.length);
+                            zipOut.putNextEntry(newEntry);
+                            zipOut.write(modified);
+                        } else if (!isBlockOrSF(entry.getName())) {
+                            zipOut.putNextEntry(entry);
+                            zipOut.write(zipIn.readAllBytes());
                         }
-                        if (entry.getLastModifiedTime() != null) {
-                            newEntry.setLastModifiedTime(entry.getLastModifiedTime());
-                        }
-                        byte[] modified = addTrackingDataToClass(zipIn.readAllBytes(), data, entry.getName());
-                        newEntry.setSize(modified.length);
-                        zipOut.putNextEntry(newEntry);
-                        zipOut.write(modified);
-                    } else if (entry.getName().endsWith(".jar")) {
-                        ZipEntry newEntry = new ZipEntry(entry.getName());
-                        if (entry.getLastAccessTime() != null) {
-                            newEntry.setLastAccessTime(entry.getLastAccessTime());
-                        }
-                        if (entry.getLastModifiedTime() != null) {
-                            newEntry.setLastModifiedTime(entry.getLastModifiedTime());
-                        }
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        addTrackingDataToJar(new NoCloseInputStream(zipIn), data, baos);
-                        byte[] modified = baos.toByteArray();
-                        newEntry.setSize(modified.length);
-                        zipOut.putNextEntry(newEntry);
-                        zipOut.write(modified);
-                    } else if (!isBlockOrSF(entry.getName())) {
-                        zipOut.putNextEntry(entry);
-                        zipOut.write(zipIn.readAllBytes());
                     }
                     entry = zipIn.getNextEntry();
                 }

@@ -17,7 +17,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
-import java.util.zip.ZipException;
 
 import org.jboss.resteasy.reactive.ClientWebApplicationException;
 
@@ -142,7 +141,8 @@ public class RepositoryCache {
                 trackedJarFile = trackedFileTarget;
             } else {
                 instrumentedSha = trackedFileTarget;
-                trackedJarFile = trackedFileTarget.getParent().resolve(fileName.substring(fileName.length() - SHA_1.length()));
+                trackedJarFile = trackedFileTarget.getParent()
+                        .resolve(fileName.substring(0, fileName.length() - SHA_1.length()));
             }
             CountDownLatch existing = inProgressTransformations.get(gav);
             if (existing != null) {
@@ -162,8 +162,9 @@ public class RepositoryCache {
                         hashingOutputStream.close();
 
                         Files.writeString(instrumentedSha, hashingOutputStream.getHash());
-                    } catch (ZipException e) {
+                    } catch (Throwable e) {
                         Log.errorf(e, "Failed to track jar %s", downloaded);
+                        Files.delete(trackedJarFile);
                     } finally {
                         myLatch.countDown();
                         inProgressTransformations.remove(gav);
@@ -173,7 +174,7 @@ public class RepositoryCache {
             if (Files.exists(trackedJarFile)) {
                 if (jarFile) {
                     String sha = null;
-                    if (Files.exists(sha1)) {
+                    if (Files.exists(instrumentedSha)) {
                         sha = Files.readString(instrumentedSha, StandardCharsets.UTF_8);
                     }
                     return Optional

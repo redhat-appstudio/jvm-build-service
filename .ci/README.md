@@ -22,9 +22,6 @@ The following environments are used to launch the CI tests in Openshift CI:
 | `JVM_BUILD_SERVICE_CACHE_IMAGE` | no | A valid jvm build service cache container image reference from openshift CI. | `quay.io/redhat-appstudio/hacbs-jvm-cache@<SHA reference in infra-deployments>` |
 | `JVM_BUILD_SERVICE_CACHE_IMAGE_REPO` | no | A valid jvm build service cache container without tag. | `quay.io/redhat-appstudio/hacbs-jvm-cache` |
 | `JVM_BUILD_SERVICE_CACHE_IMAGE_TAG` | no | A jvm valid build service cache container tag. | `next` |
-| `JVM_BUILD_SERVICE_SIDECAR_IMAGE` | no | A valid jvm build service sidecar container image reference from openshift CI. | `quay.io/redhat-appstudio/hacbs-jvm-sidecar@<SHA reference in infra-deployments>` |
-| `JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO` | no | A valid jvm build service sidecar container without tag. | `quay.io/redhat-appstudio/hacbs-jvm-sidecar` |
-| `JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG` | no | A jvm valid build service sidecar container tag. | `next` |
 | `JVM_BUILD_SERVICE_ANALYZER_IMAGE` | no | A valid jvm build service dependency analyzer container image reference from openshift CI. | `quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser@<SHA reference in infra-deployments>` |
 | `JVM_BUILD_SERVICE_ANALYZER_IMAGE_REPO` | no | A valid jvm build service dependency analyzer container without tag. | `quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser` |
 | `JVM_BUILD_SERVICE_ANALYZER_IMAGE_TAG` | no | A jvm valid build service dependency analyzer container tag. | `next` |

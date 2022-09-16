@@ -50,9 +50,13 @@ public class CacheFacade {
     public Optional<ArtifactResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
             String target, boolean tracked) {
         for (var i : buildPolicyCaches.get(buildPolicy)) {
-            var res = i.getArtifactFile(group, artifact, version, target, tracked);
-            if (res.isPresent()) {
-                return res;
+            try {
+                var res = i.getArtifactFile(group, artifact, version, target, tracked);
+                if (res.isPresent()) {
+                    return res;
+                }
+            } catch (Throwable t) {
+                Log.errorf(t, "Unable to download %s:%s:%s", group, artifact, target);
             }
         }
         return Optional.empty();

@@ -81,17 +81,6 @@ func TestServiceRegistry(t *testing.T) {
 			step.Image = analyserImage
 		}
 	}
-	sidecarImage := os.Getenv("JVM_BUILD_SERVICE_SIDECAR_IMAGE")
-	if len(sidecarImage) > 0 {
-		ta.Logf(fmt.Sprintf("PR sidecar image: %s", sidecarImage))
-		for _, sidecar := range ta.maven.Spec.Sidecars {
-			if sidecar.Name != "proxy" {
-				continue
-			}
-			ta.Logf(fmt.Sprintf("Updating proxy sidecar with image %s", sidecarImage))
-			sidecar.Image = sidecarImage
-		}
-	}
 	ta.maven, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.maven, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())

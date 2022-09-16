@@ -50,13 +50,13 @@ const (
 
 	// The config for the artifact cache
 	ConfigArtifactCacheRequestMemory        = "artifact-cache.request.memory"
-	ConfigArtifactCacheRequestMemoryDefault = "512Mi"
+	ConfigArtifactCacheRequestMemoryDefault = "1024Mi"
 	ConfigArtifactCacheRequestCPU           = "artifact-cache.request.cpu"
-	ConfigArtifactCacheRequestCPUDefault    = "300m"
+	ConfigArtifactCacheRequestCPUDefault    = "1"
 	ConfigArtifactCacheLimitMemory          = "artifact-cache.limit.memory"
-	ConfigArtifactCacheLimitMemoryDefault   = "512Mi"
+	ConfigArtifactCacheLimitMemoryDefault   = "1024Mi"
 	ConfigArtifactCacheLimitCPU             = "artifact-cache.limit.cpu"
-	ConfigArtifactCacheLimitCPUDefault      = "800m"
+	ConfigArtifactCacheLimitCPUDefault      = "4"
 	ConfigArtifactCacheIOThreads            = "artifact-cache.io-threads"
 	ConfigArtifactCacheIOThreadsDefault     = "4"
 	ConfigArtifactCacheWorkerThreads        = "artifact-cache.worker-threads"

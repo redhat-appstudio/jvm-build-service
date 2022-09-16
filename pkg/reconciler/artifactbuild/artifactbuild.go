@@ -118,6 +118,13 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		//first check for a rebuild annotation
 		if abr.Annotations[Rebuild] == "true" {
 			return r.handleRebuild(ctx, &abr)
+		} else if abr.Annotations[Rebuild] == "failed" {
+			if abr.Status.State != v1alpha1.ArtifactBuildStateComplete {
+				return r.handleRebuild(ctx, &abr)
+			} else {
+				delete(abr.Annotations, Rebuild)
+				return reconcile.Result{}, r.client.Update(ctx, &abr)
+			}
 		}
 
 		switch abr.Status.State {
