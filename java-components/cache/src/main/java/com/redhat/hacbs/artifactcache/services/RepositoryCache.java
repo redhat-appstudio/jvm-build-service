@@ -67,7 +67,7 @@ public class RepositoryCache {
         //TODO: we don't really care about the policy when using standard maven repositories
         String targetFile = group.replaceAll("\\.", File.separator) + File.separator + artifact
                 + File.separator + version + File.separator + target;
-        return handleFile(targetFile, group + ":" + artifact + ":" + version,
+        return handleFile(targetFile, group.replaceAll("/", ".") + ":" + artifact + ":" + version,
                 (c) -> c.getArtifactFile(group, artifact, version, target), tracked);
     }
 
@@ -115,12 +115,13 @@ public class RepositoryCache {
         }
     }
 
-    private Optional<ArtifactResult> handleDownloadedFile(Path downloaded, Path trackedFile, boolean tracked, String gav)
+    private Optional<ArtifactResult> handleDownloadedFile(Path downloaded, Path trackedFileTarget, boolean tracked, String gav)
             throws IOException, InterruptedException {
 
         //same headers for both
-        Path headers = downloaded.getParent().resolve(downloaded.getFileName().toString() + HEADERS);
-        Path sha1 = downloaded.getParent().resolve(downloaded.getFileName().toString() + SHA_1);
+        String fileName = downloaded.getFileName().toString();
+        Path headers = downloaded.getParent().resolve(fileName + HEADERS);
+        Path sha1 = downloaded.getParent().resolve(fileName + SHA_1);
         Map<String, String> headerMap = new HashMap<>();
         if (Files.exists(headers)) {
             try (InputStream in = Files.newInputStream(headers)) {
@@ -131,19 +132,30 @@ public class RepositoryCache {
                 }
             }
         }
-        if (tracked && downloaded.endsWith(".jar")) {
-            Path instrumentedSha = trackedFile.getParent().resolve(downloaded.getFileName().toString() + SHA_1);
+        boolean jarFile = downloaded.toString().endsWith(".jar");
+        boolean shaFile = downloaded.toString().endsWith(".jar.sha1");
+        if (tracked && (jarFile || shaFile)) {
+            Path instrumentedSha;
+            Path trackedJarFile;
+            if (jarFile) {
+                instrumentedSha = trackedFileTarget.getParent().resolve(fileName + SHA_1);
+                trackedJarFile = trackedFileTarget;
+            } else {
+                instrumentedSha = trackedFileTarget;
+                trackedJarFile = trackedFileTarget.getParent().resolve(fileName.substring(fileName.length() - SHA_1.length()));
+            }
             CountDownLatch existing = inProgressTransformations.get(gav);
             if (existing != null) {
                 existing.await();
             }
-            if (!Files.exists(trackedFile)) {
+            if (!Files.exists(trackedJarFile)) {
                 CountDownLatch myLatch = new CountDownLatch(1);
                 existing = inProgressTransformations.putIfAbsent(gav, myLatch);
                 if (existing != null) {
                     existing.await();
                 } else {
-                    try (OutputStream out = Files.newOutputStream(trackedFile); var in = Files.newInputStream(downloaded)) {
+                    Files.createDirectories(trackedJarFile.getParent());
+                    try (OutputStream out = Files.newOutputStream(trackedJarFile); var in = Files.newInputStream(downloaded)) {
                         HashingOutputStream hashingOutputStream = new HashingOutputStream(out);
                         ClassFileTracker.addTrackingDataToJar(in,
                                 new TrackingData(gav, repository.getName()), hashingOutputStream);
@@ -158,14 +170,20 @@ public class RepositoryCache {
                     }
                 }
             }
-            if (Files.exists(trackedFile)) {
-                String sha = null;
-                if (Files.exists(sha1)) {
-                    sha = Files.readString(instrumentedSha, StandardCharsets.UTF_8);
+            if (Files.exists(trackedJarFile)) {
+                if (jarFile) {
+                    String sha = null;
+                    if (Files.exists(sha1)) {
+                        sha = Files.readString(instrumentedSha, StandardCharsets.UTF_8);
+                    }
+                    return Optional
+                            .of(new ArtifactResult(Files.newInputStream(trackedJarFile), Files.size(trackedJarFile),
+                                    Optional.ofNullable(sha), headerMap));
+                } else {
+                    return Optional
+                            .of(new ArtifactResult(Files.newInputStream(instrumentedSha), Files.size(instrumentedSha),
+                                    Optional.empty(), Map.of()));
                 }
-                return Optional
-                        .of(new ArtifactResult(Files.newInputStream(trackedFile), Files.size(trackedFile),
-                                Optional.ofNullable(sha), headerMap));
             }
 
         }

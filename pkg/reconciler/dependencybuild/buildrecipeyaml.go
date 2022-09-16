@@ -3,13 +3,11 @@ package dependencybuild
 import (
 	_ "embed"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"strings"
+	"strconv"
 )
 
 const (
@@ -32,7 +30,7 @@ var gradleBuild string
 //go:embed scripts/deploy.sh
 var deploy string
 
-func createPipelineSpec(maven bool, sidecarImage string, namespace string) *pipelinev1beta1.PipelineSpec {
+func createPipelineSpec(maven bool, sidecarImage string, namespace string, commitTime int64) *pipelinev1beta1.PipelineSpec {
 	var settings string
 	var build string
 	if maven {
@@ -56,9 +54,9 @@ func createPipelineSpec(maven bool, sidecarImage string, namespace string) *pipe
 			{Name: PipelinePath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineIgnoredArtifacts, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache." + namespace + ".svc.cluster.local/v1/cache/default/" + strconv.FormatInt(commitTime, 10)}},
 			{Name: "NAMESPACE", Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: namespace}},
 		},
-		Sidecars: []pipelinev1beta1.Sidecar{createSidecar(sidecarImage, namespace)},
 		Steps: []pipelinev1beta1.Step{
 			{
 				Container: v1.Container{
@@ -149,53 +147,4 @@ func createPipelineSpec(maven bool, sidecarImage string, namespace string) *pipe
 			Value: value})
 	}
 	return ps
-}
-
-func createSidecar(image string, namespace string) pipelinev1beta1.Sidecar {
-	trueBool := true
-	zero := int64(0)
-	sidecar := pipelinev1beta1.Sidecar{
-		Container: v1.Container{
-			Name:  "proxy",
-			Image: image,
-			Env: []v1.EnvVar{
-				{Name: "QUARKUS_LOG_FILE_ENABLE", Value: "true"},
-				{Name: "QUARKUS_LOG_FILE_PATH", Value: "$(workspaces." + WorkspaceBuildSettings + ".path)/sidecar.log"},
-				{Name: "IGNORED_ARTIFACTS", Value: "$(params.IGNORED_ARTIFACTS)"},
-				{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: "2"},
-				{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: "6"},
-				{Name: "QUARKUS_REST_CLIENT_CACHE_SERVICE_URL", Value: "http://" + configmap.CacheDeploymentName + "." + namespace + ".svc.cluster.local"},
-				{Name: "QUARKUS_S3_ENDPOINT_OVERRIDE", Value: "http://" + configmap.LocalstackDeploymentName + "." + namespace + ".svc.cluster.local:4572"},
-				{Name: "QUARKUS_S3_AWS_REGION", Value: "us-east-1"},
-				{Name: "QUARKUS_S3_AWS_CREDENTIALS_TYPE", Value: "static"},
-				{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", Value: "accesskey"},
-				{Name: "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY", Value: "secretkey"},
-				{Name: "REGISTRY_TOKEN",
-					ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{Key: "registry.token", LocalObjectReference: v1.LocalObjectReference{Name: "jvm-build-secrets"}, Optional: &trueBool}},
-				},
-			},
-			VolumeMounts: []v1.VolumeMount{
-				{Name: "$(workspaces." + WorkspaceBuildSettings + ".volume)", MountPath: "$(workspaces." + WorkspaceBuildSettings + ".path)"}},
-			LivenessProbe: &v1.Probe{
-				ProbeHandler:        v1.ProbeHandler{HTTPGet: &v1.HTTPGetAction{Path: "/q/health/live", Port: intstr.IntOrString{IntVal: 2000}}},
-				InitialDelaySeconds: 1,
-				PeriodSeconds:       3,
-			},
-			ReadinessProbe: &v1.Probe{
-				ProbeHandler:        v1.ProbeHandler{HTTPGet: &v1.HTTPGetAction{Path: "/q/health/ready", Port: intstr.IntOrString{IntVal: 2000}}},
-				InitialDelaySeconds: 1,
-				PeriodSeconds:       3,
-			},
-			Resources: v1.ResourceRequirements{
-				//TODO: make configurable
-				Requests: map[v1.ResourceName]resource.Quantity{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
-				Limits:   map[v1.ResourceName]resource.Quantity{"memory": resource.MustParse("256Gi"), "cpu": resource.MustParse("2")}},
-			SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-		}}
-
-	if !strings.HasPrefix(image, "quay.io/redhat-appstudio") {
-		// work around for developer mode while we are hard coding the task spec in the controller
-		sidecar.ImagePullPolicy = v1.PullAlways
-	}
-	return sidecar
 }

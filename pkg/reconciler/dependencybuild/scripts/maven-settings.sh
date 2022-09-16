@@ -9,7 +9,7 @@ cat >"$(workspaces.build-settings.path)"/settings.xml <<EOF
   <mirrors>
     <mirror>
       <id>mirror.default</id>
-      <url>http://localhost:2000/maven2</url>
+      <url>$(params.CACHE_URL)</url>
       <mirrorOf>*</mirrorOf>
     </mirror>
   </mirrors>

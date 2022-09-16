@@ -47,6 +47,7 @@ const (
 	PipelineEnforceVersion        = "ENFORCE_VERSION"
 	PipelineIgnoredArtifacts      = "IGNORED_ARTIFACTS"
 	PipelineGradleManipulatorArgs = "GRADLE_MANIPULATOR_ARGS"
+	PipelineCacheUrl              = "CACHE_URL"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
 	BuildInfoPipelineTagParam     = "TAG"
@@ -462,7 +463,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, image, db.Namespace)
+	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, image, db.Namespace, db.Status.CommitTime)
 
 	pr.Spec.ServiceAccountName = "pipeline"
 	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML

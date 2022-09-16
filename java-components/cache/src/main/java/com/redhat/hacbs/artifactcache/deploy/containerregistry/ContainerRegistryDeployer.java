@@ -48,6 +48,9 @@ import io.quarkus.logging.Log;
 @Named("ContainerRegistryDeployer")
 public class ContainerRegistryDeployer implements Deployer {
 
+    final Path baseImageCachePath;
+    final Path applicationCachePath;
+
     private final String host;
     private final int port;
     private final String owner;
@@ -67,7 +70,8 @@ public class ContainerRegistryDeployer implements Deployer {
             @ConfigProperty(name = "registry.token") Optional<String> token,
             @ConfigProperty(name = "registry.repository", defaultValue = "artifact-deployments") String repository,
             @ConfigProperty(name = "registry.insecure", defaultValue = "false") boolean insecure,
-            @ConfigProperty(name = "registry.prepend-tag", defaultValue = "") Optional<String> prependTag) {
+            @ConfigProperty(name = "registry.prepend-tag", defaultValue = "") Optional<String> prependTag,
+            @ConfigProperty(name = "cache-path") Path cachePath) {
 
         this.host = host;
         this.port = port;
@@ -75,6 +79,14 @@ public class ContainerRegistryDeployer implements Deployer {
         this.repository = repository;
         this.insecure = insecure;
         this.prependTag = prependTag;
+        baseImageCachePath = cachePath.resolve("container-deploy-base-images");
+        applicationCachePath = cachePath.resolve("container-deploy-application-images");
+        try {
+            Files.createDirectories(baseImageCachePath);
+            Files.createDirectories(applicationCachePath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         if (token.isPresent()) {
             var decoded = new String(Base64.getDecoder().decode(token.get()), StandardCharsets.UTF_8);
             if (decoded.startsWith("{")) {
@@ -145,6 +157,8 @@ public class ContainerRegistryDeployer implements Deployer {
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
+                .setApplicationLayersCache(applicationCachePath)
+                .setBaseImageLayersCache(baseImageCachePath)
                 .setAllowInsecureRegistries(insecure);
 
         Set<Gav> gavs = imageData.getGavs();

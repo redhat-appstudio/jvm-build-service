@@ -53,7 +53,7 @@ spec:
     - name: MAVEN_MIRROR_URL
       description: The Maven repository mirror url
       type: string
-      default: "http://localhost:2000/maven2"
+      default: "http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local/v1/cache/default/0/"
     - name: SERVER_USER
       description: The username for the server
       type: string
@@ -298,23 +298,6 @@ spec:
 
         # fix-permissions-for-builder
         chown 1001:1001 -R $(workspaces.source.path)
-    - name: deploy-and-check-for-contaminates
-      image: "registry.access.redhat.com/ubi8/ubi:8.5"
-      securityContext:
-        runAsUser: 0
-      script: |
-        tar -cvvzf $(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz -C $(workspaces.source.path)/hacbs-jvm-deployment-repo .
-        curl --verbose --data-binary @$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz http://localhost:2000/deploy
-
-        curl --verbose --fail http://localhost:2000/deploy/result -o $(results.contaminants.path) || cat $(workspaces.maven-settings.path)/sidecar.log
-        cat $(workspaces.maven-settings.path)/sidecar.log
-      resources:
-        requests:
-          memory: "128Mi"
-          cpu: "10m"
-        limits:
-          memory: "512Mi"
-          cpu: "300m"
     - name: analyse-dependencies
       securityContext:
         runAsUser: 0
@@ -329,44 +312,3 @@ spec:
         - "$(results.dependencies.path)"
         - -u
         - "$(results.untrusted-dependencies.path)"
-  sidecars:
-    - image: quay.io/redhat-appstudio/hacbs-jvm-sidecar:3dcd8603061c7ab2cedfe128c80cac9726721a74
-      securityContext:
-        runAsUser: 0
-      imagePullPolicy: Always
-      env:
-        - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
-          value: "http://hacbs-jvm-cache"
-        - name: QUARKUS_LOG_FILE_ENABLE
-          value: "true"
-        - name: QUARKUS_LOG_FILE_PATH
-          value: "$(workspaces.maven-settings.path)/sidecar.log"
-        - name: IGNORED_ARTIFACTS
-          value: $(params.IGNORED_ARTIFACTS)
-        - name: QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE
-          value: "2"
-        - name: QUARKUS_THREAD_POOL_MAX_THREADS
-          value: "4"
-      name: proxy
-      volumeMounts:
-        - name: $(workspaces.maven-settings.volume)
-          mountPath: $(workspaces.maven-settings.path)
-      livenessProbe:
-        httpGet:
-          path: /q/health/live
-          port: 2000
-        initialDelaySeconds: 1
-        periodSeconds: 3
-      readinessProbe:
-        httpGet:
-          path: /q/health/ready
-          port: 2000
-        initialDelaySeconds: 1
-        periodSeconds: 3
-      resources:
-        requests:
-          memory: "128Mi"
-          cpu: "250m"
-        limits:
-          memory: "512Mi"
-          cpu: "500m"

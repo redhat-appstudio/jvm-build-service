@@ -25,7 +25,7 @@ allprojects {
             mavenLocal()
             maven {
                 name "HACBS Maven Repository"
-                url "http://localhost:2000/maven2"
+                url "$(params.CACHE_URL)"
                 //allowInsecureProtocol = true
             }
         }
@@ -34,7 +34,7 @@ allprojects {
         mavenLocal()
         maven {
             name "HACBS Maven Repository"
-            url "http://localhost:2000/maven2"
+            url "$(params.CACHE_URL)"
             //allowInsecureProtocol = true
         }
     }
@@ -46,7 +46,7 @@ settingsEvaluated { settings ->
             mavenLocal()
             maven {
                 name "HACBS Maven Repository"
-                url "http://localhost:2000/maven2"
+                url "$(params.CACHE_URL)"
                 //allowInsecureProtocol = true
             }
             maven {
