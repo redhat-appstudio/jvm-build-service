@@ -6,3 +6,4 @@ resources:
   - jvmbuildservice.io_artifactbuilds.yaml
   - jvmbuildservice.io_tektonwrappers.yaml
   - jvmbuildservice.io_rebuiltartifacts.yaml
+  - jvmbuildservice.io_systemconfigs.yaml

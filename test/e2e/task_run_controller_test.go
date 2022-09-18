@@ -30,6 +30,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -58,24 +59,27 @@ const (
 func setupSystemConfig() {
 	//we need some system level config
 	//add a builder image
-	existing := corev1.ConfigMap{}
-	err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace}, &existing)
+	existing := v1alpha1.SystemConfig{}
+	err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: systemconfig.SystemConfigKey}, &existing)
 	if errors2.IsNotFound(err) {
-
 		nm := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapNamespace}}
 		Expect(k8sClient.Create(context.TODO(), &nm)).Should(Succeed())
 
-		sysConfig := corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace},
-			Data: map[string]string{
-				configmap.SystemBuilderImages:                            "jdk11",
-				fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
-				fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk11"):   "jdk:11",
+		sysConfig := v1alpha1.SystemConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: systemconfig.SystemConfigKey,
+			},
+			Spec: v1alpha1.SystemConfigSpec{
+				JDK8Image:  "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
+				JDK8Tags:   "jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
+				JDK11Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
+				JDK11Tags:  "jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
+				JDK17Image: "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
+				JDK17Tags:  "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
 			},
 		}
 
 		Expect(k8sClient.Create(context.TODO(), &sysConfig)).Should(Succeed())
-
 	}
 }
 

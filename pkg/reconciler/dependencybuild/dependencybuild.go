@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"os"
 	"strconv"
 	"strings"
@@ -391,34 +392,38 @@ func sameMajorVersion(v1 string, v2 string) bool {
 }
 
 func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log logr.Logger) ([]BuilderImage, error) {
-	configMap := v1.ConfigMap{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: configmap.SystemConfigMapNamespace, Name: configmap.SystemConfigMapName}, &configMap)
+	systemConfig := v1alpha1.SystemConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
 		return nil, err
 	}
-	result := []BuilderImage{}
-	names := strings.Split(configMap.Data[configmap.SystemBuilderImages], ",")
-	for _, i := range names {
-		image := configMap.Data[fmt.Sprintf(configmap.SystemBuilderImageFormat, i)]
-		tags := configMap.Data[fmt.Sprintf(configmap.SystemBuilderTagFormat, i)]
-		if image == "" {
-			log.Info(fmt.Sprintf("Missing system config for builder image %s, image will not be usable", image))
-		} else if tags == "" {
-			log.Info(fmt.Sprintf("Missing tag system config for builder image %s, image will not be usable", image))
-		} else {
-			tagList := strings.Split(tags, ",")
-			image := BuilderImage{Image: image, Tools: map[string][]string{}}
-			for _, tag := range tagList {
-				split := strings.Split(tag, ":")
-				key := split[0]
-				val := split[1]
-				image.Tools[key] = append(image.Tools[key], strings.Split(val, ";")...)
-			}
-
-			result = append(result, image)
-		}
+	result := []BuilderImage{
+		{
+			Image: systemConfig.Spec.JDK11Image,
+			Tools: r.processBuilderImageTags(systemConfig.Spec.JDK11Tags),
+		},
+		{
+			Image: systemConfig.Spec.JDK8Image,
+			Tools: r.processBuilderImageTags(systemConfig.Spec.JDK8Tags),
+		},
+		{
+			Image: systemConfig.Spec.JDK17Image,
+			Tools: r.processBuilderImageTags(systemConfig.Spec.JDK17Tags),
+		},
 	}
 	return result, nil
+}
+
+func (r *ReconcileDependencyBuild) processBuilderImageTags(tags string) map[string][]string {
+	tagList := strings.Split(tags, ",")
+	tools := map[string][]string{}
+	for _, tag := range tagList {
+		split := strings.Split(tag, ":")
+		key := split[0]
+		val := split[1]
+		tools[key] = append(tools[key], strings.Split(val, ";")...)
+	}
+	return tools
 }
 
 func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {

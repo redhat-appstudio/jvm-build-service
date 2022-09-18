@@ -3,14 +3,13 @@ package dependencybuild
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -43,17 +42,15 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		prCreator:     &tektonwrapper.ImmediateCreate{},
 	}
 
-	sysConfig := v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace},
-		Data: map[string]string{
-			//bogus gradle images used to unit test the selection logic
-			configmap.SystemBuilderImages:                            "jdk11,jdk8,jdk17",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk11"):   "jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk8"):  "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk8"):    "jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk17"): "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk17"):   "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
+	sysConfig := v1alpha1.SystemConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: systemconfig.SystemConfigKey},
+		Spec: v1alpha1.SystemConfigSpec{
+			JDK8Image:  "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
+			JDK8Tags:   "jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
+			JDK11Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
+			JDK11Tags:  "jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
+			JDK17Image: "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
+			JDK17Tags:  "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
 		},
 	}
 	_ = client.Create(context.TODO(), &sysConfig)

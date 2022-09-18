@@ -39,6 +39,10 @@ func (c *FakeJvmbuildserviceV1alpha1) RebuiltArtifacts(namespace string) v1alpha
 	return &FakeRebuiltArtifacts{c, namespace}
 }
 
+func (c *FakeJvmbuildserviceV1alpha1) SystemConfigs(namespace string) v1alpha1.SystemConfigInterface {
+	return &FakeSystemConfigs{c, namespace}
+}
+
 func (c *FakeJvmbuildserviceV1alpha1) TektonWrappers(namespace string) v1alpha1.TektonWrapperInterface {
 	return &FakeTektonWrappers{c, namespace}
 }

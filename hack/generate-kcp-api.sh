@@ -69,6 +69,9 @@ spec:
   - group: "jvmbuildservice.io"
     identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
     resource: "tektonwrappers"
+  - group: "jvmbuildservice.io"
+    identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
+    resource: "systemconfigs"
   latestResourceSchemas:
 EOF
 

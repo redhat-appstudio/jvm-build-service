@@ -5,6 +5,10 @@ metadata:
   labels:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
 rules:
+  - apiGroups: ["security.openshift.io"]
+    resourceNames: ["anyuid"]
+    resources: ["securitycontextconstraints"]
+    verbs: ["use"]
   - apiGroups:
       - jvmbuildservice.io
     resources:
@@ -16,6 +20,8 @@ rules:
       - tektonwrappers/status
       - rebuiltartifacts
       - rebuiltartifacts/status
+      - systemconfigs
+      - systemconfigs/status
     verbs:
       - create
       - delete
@@ -167,6 +173,8 @@ rules:
       - dependencybuilds/status
       - tektonwrappers
       - tektonwrappers/status
+      - systemconfigs
+      - systemconfigs/statusk
     verbs:
       - get
       - list
@@ -179,6 +187,10 @@ metadata:
   labels:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
 rules:
+  - apiGroups: ["security.openshift.io"]
+    resourceNames: ["anyuid"]
+    resources: ["securitycontextconstraints"]
+    verbs: ["use"]
   - apiGroups:
       - jvmbuildservice.io
     resources:

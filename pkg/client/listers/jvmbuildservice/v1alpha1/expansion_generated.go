@@ -41,6 +41,14 @@ type RebuiltArtifactListerExpansion interface{}
 // RebuiltArtifactNamespaceLister.
 type RebuiltArtifactNamespaceListerExpansion interface{}
 
+// SystemConfigListerExpansion allows custom methods to be added to
+// SystemConfigLister.
+type SystemConfigListerExpansion interface{}
+
+// SystemConfigNamespaceListerExpansion allows custom methods to be added to
+// SystemConfigNamespaceLister.
+type SystemConfigNamespaceListerExpansion interface{}
+
 // TektonWrapperListerExpansion allows custom methods to be added to
 // TektonWrapperLister.
 type TektonWrapperListerExpansion interface{}
