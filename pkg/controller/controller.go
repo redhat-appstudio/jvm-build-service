@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	kcpcache "github.com/kcp-dev/apimachinery/pkg/cache"
+	"github.com/kcp-dev/apimachinery/third_party/informers"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
@@ -22,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	k8scache "k8s.io/client-go/tools/cache"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -66,14 +69,26 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 	if err := pipelinev1beta1.AddToScheme(options.Scheme); err != nil {
 		return nil, err
 	}
-	options.NewCache = cache.BuilderWithOptions(cache.Options{
+
+	c := rest.CopyConfig(cfg)
+	cacheOptions := cache.Options{
 		SelectorsByObject: cache.SelectorsByObject{
 			&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
 			&v1alpha1.DependencyBuild{}:    {},
 			&v1alpha1.ArtifactBuild{}:      {},
 			&v1.ConfigMap{}:                {},
-		}})
-	mgr, err := ctrl.NewManager(cfg, options)
+		}}
+	if kcp {
+		// see https://github.com/kcp-dev/controller-runtime/blob/824b15a11b186ee83a716bbc28d9b7b1ca538f6a/pkg/kcp/wrappers.go#L62-L72
+		c.Host += "/clusters/*"
+		cacheOptions.NewInformerFunc = informers.NewSharedIndexInformer
+		cacheOptions.Indexers = k8scache.Indexers{
+			kcpcache.ClusterIndexName:             kcpcache.ClusterIndexFunc,
+			kcpcache.ClusterAndNamespaceIndexName: kcpcache.ClusterAndNamespaceIndexFunc,
+		}
+	}
+	options.NewCache = cache.BuilderWithOptions(cacheOptions)
+	mgr, err := ctrl.NewManager(c, options)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +109,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		return nil, err
 	}
 
+	// TODO we are not syncing these types here at all ... do we need the kcp modified cfg?
 	if err := clusterresourcequota.SetupNewReconciler(cfg); err != nil {
 		return nil, err
 	}

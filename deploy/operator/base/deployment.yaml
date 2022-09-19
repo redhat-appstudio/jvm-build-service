@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: hacbs-jvm-operator
-          image: hacbs-jvm-operator
+          image: quay.io/gabemontero/hacbs-jvm-controller:dev
           imagePullPolicy: Always
           env:
             - name: RECIPE_DATABASE

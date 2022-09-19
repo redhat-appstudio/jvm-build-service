@@ -75,7 +75,7 @@ func main() {
 		mopts.LeaderElectionConfig = restConfig
 		// see kcp.NewClusterAwareManager; do not call that directly given the additional items we do in
 		// controller.NewManager
-		mopts.NewCache = kcp.NewClusterAwareCache
+		// also, we handle the setting of NewCache in the controller.NewManager call
 		mopts.NewClient = kcp.NewClusterAwareClient
 		mopts.MapperProvider = kcp.NewClusterAwareMapperProvider
 		mgr, err = controller.NewManager(cfg, mopts, true)

@@ -5,10 +5,20 @@ metadata:
 spec:
   reference:
     workspace:
-      path: root:jvmbuildservice
+      path: root:default:pipeline-service-compute
       exportName: jvmbuildservice
   acceptedPermissionClaims:
     - group: ""
       resource: "secrets"
     - group: ""
       resource: "configmaps"
+    - group: "tekton.dev"
+      resource: "pipelineruns"
+    - group: "jvmbuildservice.io"
+      resource: "artifactbuilds"
+    - group: "jvmbuildservice.io"
+      resource: "dependencybuilds"
+    - group: "jvmbuildservice.io"
+      resource: "tektonwrappers"
+    - group: "jvmbuildservice.io"
+      resource: "systemconfigs"

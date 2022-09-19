@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/go-logr/logr v1.2.2
+	github.com/kcp-dev/apimachinery v0.0.0-20220803185518-868856d14e8a
 	github.com/kcp-dev/kcp/pkg/apis v0.6.3
 	github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
 	github.com/onsi/ginkgo v1.16.5
@@ -56,7 +57,6 @@ require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kcp-dev/apimachinery v0.0.0-20220803185518-868856d14e8a // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
