@@ -18,14 +18,14 @@ import io.quarkus.logging.Log;
  */
 public final class GradleUtils {
     /**
-     * The default Gradle arguments.
-     */
-    public static final List<String> DEFAULT_GRADLE_ARGS = List.of("build", "publish");
-
-    /**
      * Identifier for the plugin {@code com.github.sherter.google-java-format}.
      */
     public static final String GOOGLE_JAVA_FORMAT_PLUGIN = Pattern.quote("com.github.sherter.google-java-format");
+
+    /**
+     * Code for applying the plugin {@code maven}.
+     */
+    public static final String MAVEN_PLUGIN = Pattern.quote("apply(plugin: \"maven\");");
 
     static final String BUILD_GRADLE = "build.gradle";
 
@@ -43,6 +43,10 @@ public final class GradleUtils {
 
     private static final Pattern VERSION_PATTERN = Pattern
             .compile("((\\d+)(\\.\\d+)+)(-(\\p{Alpha}+)-(\\w+))?(-(SNAPSHOT|\\d{14}([-+]\\d{4})?))?");
+
+    private static final List<String> DEFAULT_GRADLE_ARGS = List.of("build", "publish");
+
+    private static final List<String> MAVEN_PLUGIN_GRADLE_ARGS = List.of("build", "uploadArchives");
 
     private GradleUtils() {
 
@@ -167,5 +171,16 @@ public final class GradleUtils {
                 }
             });
         }
+    }
+
+    /**
+     * Get the appropriate Gradle arguments for the build in the given path.
+     *
+     * @param path the path to check
+     * @return the Gradle arguments
+     * @throws IOException if an error occurs while reading from the build file(s)
+     */
+    public static List<String> getGradleArgs(Path path) throws IOException {
+        return isInBuildGradle(path, MAVEN_PLUGIN) ? MAVEN_PLUGIN_GRADLE_ARGS : DEFAULT_GRADLE_ARGS;
     }
 }

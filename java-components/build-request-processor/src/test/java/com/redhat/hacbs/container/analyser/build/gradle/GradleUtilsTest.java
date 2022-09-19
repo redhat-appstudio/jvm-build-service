@@ -1,6 +1,7 @@
 package com.redhat.hacbs.container.analyser.build.gradle;
 
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.GOOGLE_JAVA_FORMAT_PLUGIN;
+import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.MAVEN_PLUGIN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -57,12 +58,19 @@ class GradleUtilsTest {
     }
 
     @Test
-    void testFindString(@TempDir Path basedir) throws IOException {
+    void testFindGoogleJavaFormatPlugin(@TempDir Path basedir) throws IOException {
         Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE);
         Files.writeString(buildGradle, "plugins {" + System.lineSeparator() + "  id '" + GOOGLE_JAVA_FORMAT_PLUGIN
-                + "' version '0.9'" + System.lineSeparator() + "}");
+                + "' version '0.9'" + System.lineSeparator() + "}" + System.lineSeparator());
         assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isTrue();
-        assertThat(GradleUtils.isInBuildGradle(basedir, "not found")).isFalse();
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isFalse();
     }
 
+    @Test
+    void testFindMavenPlugin(@TempDir Path basedir) throws IOException {
+        Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE);
+        Files.writeString(buildGradle, "apply(plugin: \"maven\");" + System.lineSeparator());
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isFalse();
+    }
 }

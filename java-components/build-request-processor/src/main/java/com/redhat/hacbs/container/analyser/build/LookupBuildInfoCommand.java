@@ -157,7 +157,7 @@ public class LookupBuildInfoCommand implements Runnable {
 
                 info.tools.put(JDK, new VersionRange("8", "17", javaVersion));
                 info.tools.put(GRADLE, new VersionRange(detectedGradleVersion, detectedGradleVersion, detectedGradleVersion));
-                info.invocations.add(new ArrayList<>(GradleUtils.DEFAULT_GRADLE_ARGS));
+                info.invocations.add(new ArrayList<>(GradleUtils.getGradleArgs(path)));
                 info.toolVersion = detectedGradleVersion;
                 info.javaVersion = javaVersion;
             }
