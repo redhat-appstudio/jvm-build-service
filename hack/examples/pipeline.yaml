@@ -56,7 +56,7 @@ spec:
         - fetch-repository
       params:
         - name: MAVEN_MIRROR_URL
-          value: http://localhost:2000/maven2
+          value: http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local/v1/cache/default/0/
         - name: CONTEXT_DIR
           value: "$(params.context)"
         - name: DEPENDENCY_ANALYSER_PATH

@@ -19,7 +19,6 @@ if [ "$PR_RUN" != "notpr" ]; then
   echo "JVM_BUILD_SERVICE_IMAGE is set"
   # JVM_BUILD_SERVICE_IMAGE - controller image built in openshift CI job workflow.
   # JVM_BUILD_SERVICE_CACHE_IMAGE - cache image built in openshift CI job workflow.
-  # JVM_BUILD_SERVICE_SIDECAR_IMAGE - sidecar image built in openshift CI job workflow.
   # JVM_BUILD_SERVICE_ANALYZER_IMAGE - dependency analyzer image built in openshift CI workflow.
   # JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE - request processor image built in openshift CI workflow.
 
@@ -54,12 +53,6 @@ if [ "$PR_RUN" != "notpr" ]; then
   JVM_BUILD_SERVICE_CACHE_IMAGE_REPO=${JVM_BUILD_SERVICE_CACHE_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-cache"}
   JVM_BUILD_SERVICE_CACHE_IMAGE_REPO=${JVM_BUILD_SERVICE_CACHE_IMAGE_REPO%@*}
   JVM_BUILD_SERVICE_CACHE_IMAGE_TAG=${JVM_BUILD_SERVICE_CACHE_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-cache-image"}
-
-  export JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG
-
-  JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO=${JVM_BUILD_SERVICE_SIDECAR_IMAGE:-"quay.io/redhat-appstudio/hacbs-jvm-sidecar"}
-  JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO=${JVM_BUILD_SERVICE_SIDECAR_IMAGE_REPO%@*}
-  JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG=${JVM_BUILD_SERVICE_SIDECAR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-sidecar-image"}
 
   export JVM_BUILD_SERVICE_ANALYZER_IMAGE_REPO JVM_BUILD_SERVICE_ANALYZER_IMAGE_TAG
 

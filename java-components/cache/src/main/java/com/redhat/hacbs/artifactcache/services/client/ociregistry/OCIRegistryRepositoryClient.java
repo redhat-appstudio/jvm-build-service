@@ -36,6 +36,7 @@ import com.google.cloud.tools.jib.image.json.OciManifestTemplate;
 import com.google.cloud.tools.jib.registry.ManifestAndDigest;
 import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
+import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
 import com.redhat.hacbs.artifactcache.services.client.ShaUtil;
 
@@ -87,8 +88,8 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     }
 
     @Override
-    public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
-            String target, Long buildStartTime) {
+    public Optional<ArtifactResult> getArtifactFile(String group, String artifact, String version,
+            String target) {
         long time = System.currentTimeMillis();
 
         group = group.replace("/", ".");
@@ -121,7 +122,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
                 boolean exists = Files.exists(fileWeAreAfter);
                 if (exists) {
                     return Optional.of(
-                            new RepositoryResult(Files.newInputStream(fileWeAreAfter), Files.size(fileWeAreAfter),
+                            new ArtifactResult(Files.newInputStream(fileWeAreAfter), Files.size(fileWeAreAfter),
                                     getSha1(fileWeAreAfter),
                                     Map.of()));
                 } else {
@@ -152,7 +153,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     }
 
     @Override
-    public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
+    public Optional<ArtifactResult> getMetadataFile(String group, String target) {
         return Optional.empty();
     }
 

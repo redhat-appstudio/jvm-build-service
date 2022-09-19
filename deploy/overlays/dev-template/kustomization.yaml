@@ -13,13 +13,6 @@ resources:
 patches:
  - patch: |-
      - op: replace
-       path: /spec/sidecars/0/image
-       value: jvm-build-service-sidecar-image
-   target:
-    kind: Task
-    name: maven
- - patch: |-
-     - op: replace
        path: /spec/steps/2/image
        value: jvm-build-service-analyzer-image
    target:

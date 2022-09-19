@@ -47,6 +47,7 @@ const (
 	PipelineEnforceVersion        = "ENFORCE_VERSION"
 	PipelineIgnoredArtifacts      = "IGNORED_ARTIFACTS"
 	PipelineGradleManipulatorArgs = "GRADLE_MANIPULATOR_ARGS"
+	PipelineCacheUrl              = "CACHE_URL"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
 	BuildInfoPipelineTagParam     = "TAG"
@@ -444,10 +445,6 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
-	image, err := util.GetImageName(ctx, r.client, log, "sidecar", "JVM_BUILD_SERVICE_SIDECAR_IMAGE")
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.Namespace = db.Namespace
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
@@ -462,7 +459,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, image, db.Namespace)
+	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Namespace, db.Status.CommitTime)
 
 	pr.Spec.ServiceAccountName = "pipeline"
 	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML

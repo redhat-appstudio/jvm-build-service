@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
@@ -17,6 +19,7 @@ import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
+import com.redhat.hacbs.artifactcache.relocation.RelocationRepositoryClient;
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
 import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
 import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
@@ -58,6 +61,7 @@ class BuildPolicyManager {
 
         Map<String, BuildPolicy> ret = new HashMap<>();
         Map<String, Repository> remoteStores = new HashMap<>();
+        Map<String, Map<String, String>> relocations = new HashMap<>();
         //TODO: this is a bit of a hack
         //we read the deployment config and if present use it to configure the 'rebuilt' repo
         var registryOwner = config.getOptionalValue("registry.owner", String.class);
@@ -77,6 +81,14 @@ class BuildPolicyManager {
                             new OCIRegistryRepositoryClient(host, registryOwner.get(), repository, token, prependTag,
                                     insecure, rebuiltArtifacts)));
         }
+        Pattern p = Pattern.compile("build-policy\\.([\\w-_]+)\\.relocation\\.\"?(.*?)\"?");
+        for (var i : config.getPropertyNames()) {
+            Matcher m = p.matcher(i);
+            if (m.matches()) {
+                relocations.computeIfAbsent(m.group(1), (k) -> new HashMap<>()).put(m.group(2),
+                        config.getValue(i, String.class));
+            }
+        }
 
         for (String policy : buildPolicies) {
             Optional<String> stores = config.getOptionalValue(BUILD_POLICY + policy + STORE_LIST, String.class);
@@ -85,6 +97,11 @@ class BuildPolicyManager {
                 continue;
             }
             List<Repository> repositories = new ArrayList<>();
+            var policyRelocations = relocations.get(policy);
+            if (policyRelocations != null) {
+                repositories.add(new Repository("hacbs-artifact-relocations-" + policy, "hacbs-internal://relocations",
+                        RepositoryType.RELOCATIONS, new RelocationRepositoryClient(policyRelocations)));
+            }
             for (var store : stores.get().split(",")) {
                 Repository existing = remoteStores.get(store);
                 if (existing != null) {

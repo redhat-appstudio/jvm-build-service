@@ -169,7 +169,7 @@ spec:
         # with scripts.  I could not get bash to reconcile with tekton var sub, and "$(param.GOALS[*])" vs.
         # "${params.GOALS[*]}".  Hard coding the params for now and ignoring GOALS until I can talk to Stuart
         # and reconcile the param type here vs. having to use a script to change the permissions for running on OpenShift
-        mvn -B -e -s "$(workspaces.maven-settings.path)/settings.xml" -DskipTests clean package || { cat $(workspaces.maven-settings.path)/sidecar.log ; false ; }
+        mvn -B -e -s "$(workspaces.maven-settings.path)/settings.xml" -DskipTests clean package
 
     - name: analyse-dependencies
       securityContext:
@@ -184,35 +184,4 @@ spec:
         - "$(results.dependencies.path)"
         - -u
         - "$(results.untrusted-dependencies.path)"
-  sidecars:
-    - image: quay.io/redhat-appstudio/hacbs-jvm-sidecar:3dcd8603061c7ab2cedfe128c80cac9726721a74
-      securityContext:
-        runAsUser: 0
-      imagePullPolicy: Always
-      env:
-        - name: QUARKUS_REST_CLIENT_CACHE_SERVICE_URL
-          value: "http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local"
-        - name: QUARKUS_LOG_FILE_ENABLE
-          value: "true"
-        - name: QUARKUS_LOG_FILE_PATH
-          value: "$(workspaces.maven-settings.path)/sidecar.log"
-      name: proxy
-      livenessProbe:
-        httpGet:
-          path: /q/health/live
-          port: 2000
-        initialDelaySeconds: 1
-        periodSeconds: 3
-      readinessProbe:
-        httpGet:
-          path: /q/health/ready
-          port: 2000
-        initialDelaySeconds: 1
-        periodSeconds: 3
-      resources:
-        requests:
-          memory: "128Mi"
-          cpu: "250m"
-        limits:
-          memory: "512Mi"
-          cpu: "500m"
+

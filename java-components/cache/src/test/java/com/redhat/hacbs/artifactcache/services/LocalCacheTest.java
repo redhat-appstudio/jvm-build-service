@@ -25,7 +25,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 public class LocalCacheTest {
 
-    RepositoryClient.RepositoryResult current;
+    ArtifactResult current;
 
     public final RepositoryClient MOCK_CLIENT = new RepositoryClient() {
         @Override
@@ -34,13 +34,13 @@ public class LocalCacheTest {
         }
 
         @Override
-        public Optional<RepositoryResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
-                String target, Long buildStartTime) {
+        public Optional<ArtifactResult> getArtifactFile(String group, String artifact, String version,
+                String target) {
             return Optional.ofNullable(current);
         }
 
         @Override
-        public Optional<RepositoryResult> getMetadataFile(String buildPolicy, String group, String target) {
+        public Optional<ArtifactResult> getMetadataFile(String group, String target) {
             return Optional.ofNullable(current);
         }
     };
@@ -49,10 +49,10 @@ public class LocalCacheTest {
     public void testHashHandling() throws Exception {
         runTest((localCache -> {
             try {
-                current = new RepositoryClient.RepositoryResult(
+                current = new ArtifactResult(
                         new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4, Optional.of("wrong sha"),
                         Map.of());
-                localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", null);
+                localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", false);
                 Files.walkFileTree(localCache.path, new SimpleFileVisitor<>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -64,10 +64,10 @@ public class LocalCacheTest {
                 });
 
                 //now try with the correct hash
-                current = new RepositoryClient.RepositoryResult(
+                current = new ArtifactResult(
                         new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4,
                         Optional.of(HashUtil.sha1("test")), Map.of());
-                localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", null);
+                localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", false);
                 AtomicReference<Path> cachedFile = new AtomicReference<>();
                 Files.walkFileTree(localCache.path, new SimpleFileVisitor<>() {
                     @Override
@@ -89,10 +89,10 @@ public class LocalCacheTest {
         }));
     }
 
-    void runTest(Consumer<LocalCache> consumer) throws Exception {
+    void runTest(Consumer<CacheFacade> consumer) throws Exception {
         Path temp = Files.createTempDirectory("cache-test");
         try {
-            LocalCache localCache = new LocalCache(temp,
+            CacheFacade localCache = new CacheFacade(temp,
                     Map.of("default", new BuildPolicy(
                             List.of(new Repository("test", "http://test.com", RepositoryType.MAVEN2, MOCK_CLIENT)))));
 

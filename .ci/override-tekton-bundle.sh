@@ -55,13 +55,6 @@ function updateAnalyzerImage() {
     |= \"$JVM_BUILD_SERVICE_ANALYZER_IMAGE\"" "$TEMP_FOLDER"/task.yaml
 }
 
-function updateSidecarImage() {
-    echo "jvm-build-service sidecar image set to $JVM_BUILD_SERVICE_SIDECAR_IMAGE"
-    yq e -i "select(.metadata.name == \"s2i-java\") \
-    | (.spec.sidecars[] | select(.image == \"*hacbs-jvm-sidecar*\").image) \
-    |= \"$JVM_BUILD_SERVICE_SIDECAR_IMAGE\"" "$TEMP_FOLDER"/task.yaml
-}
-
 function updatePipelineRef() {
     yq e -i "(.spec.tasks[].taskRef | select (.name == \"s2i-java\").bundle) \
     |= \"$TASK_BUNDLE_IMG\"" "$TEMP_FOLDER"/pipelines.yaml
@@ -88,7 +81,6 @@ getCurrentBuildBundle
 createPipelinesFile
 createTaskFile
 updateAnalyzerImage
-updateSidecarImage
 updatePipelineRef
 createDockerConfig
 createAndPushTaskBundle

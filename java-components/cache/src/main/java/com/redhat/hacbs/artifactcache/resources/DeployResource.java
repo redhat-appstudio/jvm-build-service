@@ -101,7 +101,7 @@ public class DeployResource {
                     Optional<Gav> gav = getGav(e.getName());
                     gav.ifPresent(gavs::add);
                     if (e.getName().endsWith(".jar")) {
-                        Log.infof("Checking %s for contaminants", e.getName());
+                        Log.debugf("Checking %s for contaminants", e.getName());
                         var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
                         if (info != null) {
                             for (var i : info) {
