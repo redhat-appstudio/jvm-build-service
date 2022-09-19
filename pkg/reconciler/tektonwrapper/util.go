@@ -27,6 +27,9 @@ func (b *BatchedCreate) CreateWrapperForPipelineRun(ctx context.Context, client 
 	tw.Namespace = run.Namespace
 	tw.Name = run.Name
 	tw.GenerateName = run.GenerateName
+	//we use the same owner references as the pipeline
+	//so these are cleaned up if the owner is deleted
+	tw.OwnerReferences = run.OwnerReferences
 	buffer := bytes.Buffer{}
 	scheme := runtime.NewScheme()
 	utilruntime.Must(v1beta1.AddToScheme(scheme))
