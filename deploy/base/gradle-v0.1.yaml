@@ -154,7 +154,7 @@ spec:
                     mavenLocal()
                     maven {
                         name "HACBS Maven Repository"
-                        url "$(params.MAVEN_MIRROR_URL)"
+                        url "$(params.MAVEN_MIRROR_URL)/v1/cache/default/0/"
                         credentials {
                             username "$(params.SERVER_USER)"
                             password "$(params.SERVER_PASSWORD)"
@@ -171,7 +171,7 @@ spec:
                 mavenLocal()
                 maven {
                     name "HACBS Maven Repository"
-                    url "$(params.MAVEN_MIRROR_URL)"
+                    url "$(params.MAVEN_MIRROR_URL)/v1/cache/default/0/"
                     credentials {
                         username "$(params.SERVER_USER)"
                         password "$(params.SERVER_PASSWORD)"
@@ -191,7 +191,7 @@ spec:
                     mavenLocal()
                     maven {
                         name "HACBS Maven Repository"
-                        url "$(params.MAVEN_MIRROR_URL)"
+                        url "$(params.MAVEN_MIRROR_URL)/v1/cache/default/0/"
                         credentials {
                             username "$(params.SERVER_USER)"
                             password "$(params.SERVER_PASSWORD)"
@@ -302,7 +302,7 @@ spec:
       securityContext:
         runAsUser: 0
 
-      image: quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser:3dcd8603061c7ab2cedfe128c80cac9726721a74
+      image: quay.io/replaced-image:bogus
       args:
         - path
         - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)
@@ -312,3 +312,5 @@ spec:
         - "$(results.dependencies.path)"
         - -u
         - "$(results.untrusted-dependencies.path)"
+        - --cache-url
+        - $(params.MAVEN_MIRROR_URL)/v1/rebuild

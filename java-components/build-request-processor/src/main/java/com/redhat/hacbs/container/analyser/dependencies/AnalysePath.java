@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser;
+package com.redhat.hacbs.container.analyser.dependencies;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
