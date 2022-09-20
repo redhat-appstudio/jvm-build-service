@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
+	v1alpha12 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"os"
 	"strconv"
 	"strings"
@@ -27,7 +29,6 @@ import (
 	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -462,10 +463,10 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	pr.Spec.PipelineRef = nil
 	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Namespace, db.Status.CommitTime)
 
+	falseBool := false
+	pr.Spec.PodTemplate = &v1alpha12.PodTemplate{AutomountServiceAccountToken: &falseBool}
+
 	pr.Spec.ServiceAccountName = "pipeline"
-	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
-	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
-	//the actual solution will involve loading deployment config from a ConfigMap
 	pr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: PipelineBuildId, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
 		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
