@@ -49,10 +49,10 @@ function createTaskFile() {
 }
 
 function updateAnalyzerImage() {
-    echo "jvm-build-service analyzer image set to $JVM_BUILD_SERVICE_ANALYZER_IMAGE"
+    echo "jvm-build-service analyzer image set to $JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE"
     yq e -i "select(.metadata.name == \"s2i-java\") \
     | (.spec.steps[] | select(.name == \"analyse-dependencies-java-sbom\").image) \
-    |= \"$JVM_BUILD_SERVICE_ANALYZER_IMAGE\"" "$TEMP_FOLDER"/task.yaml
+    |= \"$JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE\"" "$TEMP_FOLDER"/task.yaml
 }
 
 function updatePipelineRef() {

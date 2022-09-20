@@ -24,3 +24,5 @@ spec:
   taskRunSpecs:
     - pipelineTaskName: maven-run
       taskServiceAccountName: pipeline
+  podTemplate:
+    automountServiceAccountToken: false
