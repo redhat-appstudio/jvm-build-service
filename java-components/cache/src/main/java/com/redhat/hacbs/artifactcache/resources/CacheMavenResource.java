@@ -4,8 +4,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
+import java.util.List;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
@@ -15,9 +16,12 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
 import org.apache.http.client.utils.DateUtils;
+import org.apache.maven.artifact.repository.metadata.Metadata;
+import org.apache.maven.artifact.repository.metadata.Versioning;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Writer;
 
+import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.CacheFacade;
 import com.redhat.hacbs.resources.util.HashUtil;
 
@@ -64,25 +68,26 @@ public class CacheMavenResource {
             @PathParam("group") String group,
             @PathParam("hash") String hash) throws Exception {
         Log.debugf("Retrieving file %s/%s", group, "maven-metadata.xml");
-        var result = cache.getMetadataFile(buildPolicy, group, "maven-metadata.xml" + hash);
-        if (result.isPresent()) {
+        var result = cache.getMetadataFiles(buildPolicy, group, "maven-metadata.xml" + hash);
+        if (!result.isEmpty()) {
             boolean sha = hash.equals(".sha1");
-            if (commitTime > 0 && (hash.equals("") || sha)) {
+            if ((commitTime > 0 || result.size() > 1) && (hash.equals("") || sha)) {
                 if (sha) {
                     return filterNewerVersions(buildPolicy,
-                            cache.getMetadataFile(buildPolicy, group, "maven-metadata.xml").get().getData(),
+                            cache.getMetadataFiles(buildPolicy, group, "maven-metadata.xml"),
                             new Date(commitTime), group, sha);
                 } else {
-                    return filterNewerVersions(buildPolicy, result.get().getData(), new Date(commitTime), group, sha);
+                    return filterNewerVersions(buildPolicy, result, new Date(commitTime), group, sha);
                 }
             }
-            return result.get().getData();
+            return result.get(0).getData();
         }
         Log.infof("Failed retrieving file %s/%s", group, "maven-metadata.xml");
         throw new NotFoundException();
     }
 
-    private InputStream filterNewerVersions(String buildPolicy, InputStream data, Date commitTime, String group, boolean sha1)
+    private InputStream filterNewerVersions(String buildPolicy, List<ArtifactResult> data, Date commitTime, String group,
+            boolean sha1)
             throws Exception {
         //group is not really a group
         //depending on if there are plugins or versions
@@ -91,47 +96,67 @@ public class CacheMavenResource {
         int lastIndex = group.lastIndexOf('/');
         String artifactId = group.substring(lastIndex + 1);
         String groupId = group.substring(0, lastIndex);
-        try (var in = data) {
-            MetadataXpp3Reader reader = new MetadataXpp3Reader();
-            var model = reader.read(data);
-            if (model.getVersioning() != null) {
-                String release = null;
-                for (Iterator<String> iterator = model.getVersioning().getVersions().iterator(); iterator.hasNext();) {
-                    String version = iterator.next();
-                    var result = cache.getArtifactFile(buildPolicy, groupId, artifactId, version,
-                            artifactId + "-" + version + ".pom", false);
-                    if (result.isPresent()) {
-                        var lastModified = result.get().getMetadata().get("last-modified");
-                        if (lastModified != null) {
-                            var date = DateUtils.parseDate(lastModified);
-                            if (date.after(commitTime)) {
-                                //remove versions released after this artifact
-                                Log.infof("Removing version %s from %s/maven-metadata.xml", version, group);
-                                iterator.remove();
-                            } else {
-                                //TODO: be smarter about how this release version is selected
-                                release = version;
-                            }
-                        }
-                    } else {
-                        iterator.remove();
+        Metadata outputModel = null;
+        boolean firstFile = true;
+        //we need to merge additional versions into a single file
+        //we assume the first one is the 'most correct' in terms of the 'release' and 'latest' fields
+        for (var i : data) {
+            try (var in = i.getData()) {
+                MetadataXpp3Reader reader = new MetadataXpp3Reader();
+                var model = reader.read(in);
+                List<String> versions;
+                if (firstFile) {
+                    outputModel = model.clone();
+                    if (outputModel.getVersioning() == null) {
+                        outputModel.setVersioning(new Versioning());
                     }
-
+                    if (outputModel.getVersioning().getVersions() == null) {
+                        outputModel.getVersioning().setVersions(new ArrayList<>());
+                    }
                 }
-                model.getVersioning().setRelease(release);
-                model.getVersioning().setLatest(release);
-                model.getVersioning().setLastUpdatedTimestamp(commitTime);
+                if (model.getVersioning() != null) {
+                    String release = null;
+                    for (String version : model.getVersioning().getVersions()) {
+                        if (commitTime.getTime() > 0) {
+                            var result = cache.getArtifactFile(buildPolicy, groupId, artifactId, version,
+                                    artifactId + "-" + version + ".pom", false);
+                            if (result.isPresent()) {
+                                var lastModified = result.get().getMetadata().get("last-modified");
+                                if (lastModified != null) {
+                                    var date = DateUtils.parseDate(lastModified);
+                                    if (date.after(commitTime)) {
+                                        //remove versions released after this artifact
+                                        Log.infof("Removing version %s from %s/maven-metadata.xml", version, group);
+                                    } else {
+                                        //TODO: be smarter about how this release version is selected
+                                        release = version;
+                                        outputModel.getVersioning().getVersions().add(version);
+                                    }
+                                } else {
+                                    outputModel.getVersioning().getVersions().add(version);
+                                }
+                            }
+                        } else {
+                            outputModel.getVersioning().getVersions().add(version);
+                        }
+                    }
+                    if (firstFile) {
+                        model.getVersioning().setRelease(release);
+                        model.getVersioning().setLatest(release);
+                        model.getVersioning().setLastUpdatedTimestamp(commitTime);
+                    }
+                }
             }
-            MetadataXpp3Writer writer = new MetadataXpp3Writer();
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            writer.write(out, model);
-            if (sha1) {
-                return new ByteArrayInputStream(HashUtil.sha1(out.toByteArray()).getBytes(StandardCharsets.UTF_8));
-            } else {
-                return new ByteArrayInputStream(out.toByteArray());
-            }
+            firstFile = false;
         }
-
+        MetadataXpp3Writer writer = new MetadataXpp3Writer();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writer.write(out, outputModel);
+        if (sha1) {
+            return new ByteArrayInputStream(HashUtil.sha1(out.toByteArray()).getBytes(StandardCharsets.UTF_8));
+        } else {
+            return new ByteArrayInputStream(out.toByteArray());
+        }
     }
 
 }
