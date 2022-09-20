@@ -72,4 +72,15 @@ public class CacheFacade {
         return Optional.empty();
     }
 
+    public List<ArtifactResult> getMetadataFiles(String buildPolicy, String group, String target) {
+        List<ArtifactResult> results = new ArrayList<>();
+        for (var i : buildPolicyCaches.get(buildPolicy)) {
+            var res = i.getMetadataFile(group, target);
+            if (res.isPresent()) {
+                results.add(res.get());
+            }
+        }
+        return results;
+    }
+
 }

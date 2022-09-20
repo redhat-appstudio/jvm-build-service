@@ -71,9 +71,7 @@ public class RepositoryCache {
     }
 
     public Optional<ArtifactResult> getMetadataFile(String group, String target) {
-        String targetFile = group.replaceAll("\\.", File.separator) + File.separator + target;
-        return handleFile(targetFile, null,
-                (c) -> c.getMetadataFile(group, target), false);
+        return repository.getClient().getMetadataFile(group, target);
     }
 
     private Optional<ArtifactResult> handleFile(String targetFile, String gav,
