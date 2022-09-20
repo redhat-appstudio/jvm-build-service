@@ -7,18 +7,20 @@ spec:
     workspace:
       path: root:default:pipeline-service-compute
       exportName: jvmbuildservice
-  acceptedPermissionClaims:
+  permissionClaims:
     - group: ""
       resource: "secrets"
+      state: "Accepted"
     - group: ""
       resource: "configmaps"
+      state: "Accepted"
+    - group: "apps"
+      resource: "deployments"
+      # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+      identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
+      state: "Accepted"
     - group: "tekton.dev"
       resource: "pipelineruns"
-    - group: "jvmbuildservice.io"
-      resource: "artifactbuilds"
-    - group: "jvmbuildservice.io"
-      resource: "dependencybuilds"
-    - group: "jvmbuildservice.io"
-      resource: "tektonwrappers"
-    - group: "jvmbuildservice.io"
-      resource: "systemconfigs"
+      # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+      identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
+      state: "Accepted"

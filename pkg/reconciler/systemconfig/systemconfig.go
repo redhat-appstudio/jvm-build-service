@@ -40,7 +40,7 @@ func (r *ReconcileSystemConfig) Reconcile(ctx context.Context, request reconcile
 	}
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
-	//log := ctrl.Log.WithName("systemconfig").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
+	log := ctrl.Log.WithName("systemconfig").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
 	systemConfig := v1alpha1.SystemConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &systemConfig)
 	if err != nil {
@@ -66,6 +66,7 @@ func (r *ReconcileSystemConfig) Reconcile(ctx context.Context, request reconcile
 		if len(logMsg) > 1 {
 			return reconcile.Result{}, fmt.Errorf(logMsg)
 		}
+		log.Info("system config available and valid")
 	}
 	return reconcile.Result{}, nil
 }

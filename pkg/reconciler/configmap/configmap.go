@@ -93,6 +93,7 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
 		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	}
+
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	log := ctrl.Log.WithName("configmap").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)

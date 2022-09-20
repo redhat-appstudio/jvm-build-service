@@ -54,7 +54,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 			return nil, err
 		}
 	}
-
 	options.Scheme = runtime.NewScheme()
 
 	// pretty sure this is there by default but we will be explicit like build-service
@@ -81,6 +80,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 	if kcp {
 		// see https://github.com/kcp-dev/controller-runtime/blob/824b15a11b186ee83a716bbc28d9b7b1ca538f6a/pkg/kcp/wrappers.go#L62-L72
 		c.Host += "/clusters/*"
+		controllerLog.Info(fmt.Sprintf("rest config host now %s", c.Host))
 		cacheOptions.NewInformerFunc = informers.NewSharedIndexInformer
 		cacheOptions.Indexers = k8scache.Indexers{
 			kcpcache.ClusterIndexName:             kcpcache.ClusterIndexFunc,

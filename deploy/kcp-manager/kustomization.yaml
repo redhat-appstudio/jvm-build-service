@@ -13,7 +13,6 @@
 #  someName: someValue
 
 bases:
-  - ../crds/base
   - ../operator/base
   - ../operator/config
   - ../kcp-rbac

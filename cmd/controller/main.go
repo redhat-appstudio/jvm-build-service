@@ -129,6 +129,7 @@ func restConfigForAPIExport(ctx context.Context, cfg *rest.Config, apiExportName
 		if err := apiExportClient.Get(ctx, types.NamespacedName{Name: apiExportName}, &apiExport); err != nil {
 			return nil, fmt.Errorf("error getting APIExport %q: %w", apiExportName, err)
 		}
+		mainLog.Info("found our apiexport")
 
 	} else {
 		mainLog.Info("api-export-name is empty - listing")
@@ -147,6 +148,10 @@ func restConfigForAPIExport(ctx context.Context, cfg *rest.Config, apiExportName
 
 	if len(apiExport.Status.VirtualWorkspaces) < 1 {
 		return nil, fmt.Errorf("APIExport %s status.virtualWorkspaces is empty", apiExportName)
+	}
+
+	for _, vws := range apiExport.Status.VirtualWorkspaces {
+		mainLog.Info(fmt.Sprintf("found virtual workspace %s", vws.URL))
 	}
 
 	cfg = rest.CopyConfig(cfg)

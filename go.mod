@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/go-logr/logr v1.2.2
 	github.com/kcp-dev/apimachinery v0.0.0-20220803185518-868856d14e8a
-	github.com/kcp-dev/kcp/pkg/apis v0.6.3
+	github.com/kcp-dev/kcp/pkg/apis v0.8.2
 	github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0

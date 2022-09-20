@@ -135,8 +135,8 @@ github.com/json-iterator/go
 github.com/kcp-dev/apimachinery/pkg/cache
 github.com/kcp-dev/apimachinery/pkg/client
 github.com/kcp-dev/apimachinery/third_party/informers
-# github.com/kcp-dev/kcp/pkg/apis v0.6.3
-## explicit; go 1.17
+# github.com/kcp-dev/kcp/pkg/apis v0.8.2
+## explicit; go 1.18
 github.com/kcp-dev/kcp/pkg/apis/apis
 github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1
 github.com/kcp-dev/kcp/pkg/apis/third_party/conditions/apis/conditions/v1alpha1

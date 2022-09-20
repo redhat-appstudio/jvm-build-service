@@ -11,20 +11,14 @@ spec:
     resource: "secrets"
   - group: ""
     resource: "configmaps"
+  - group: "apps"
+    resource: "deployments"
+    # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+    identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
   - group: "tekton.dev"
     resource: "pipelineruns"
-  - group: "jvmbuildservice.io"
-    identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
-    resource: "artifactbuilds"
-  - group: "jvmbuildservice.io"
-    identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
-    resource: "dependencybuilds"
-  - group: "jvmbuildservice.io"
-    identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
-    resource: "tektonwrappers"
-  - group: "jvmbuildservice.io"
-    identityHash: 2aa7813102d123ead4faa4e5cdf4b9d87b21eb9d9e0424475c9cb3cfd1963e50
-    resource: "systemconfigs"
+    # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+    identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
   latestResourceSchemas:
     - v202209161932.artifactbuilds.jvmbuildservice.io
     - v202209161932.dependencybuilds.jvmbuildservice.io
