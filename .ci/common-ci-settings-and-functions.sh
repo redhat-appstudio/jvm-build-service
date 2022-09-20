@@ -19,7 +19,6 @@ if [ "$PR_RUN" != "notpr" ]; then
   echo "JVM_BUILD_SERVICE_IMAGE is set"
   # JVM_BUILD_SERVICE_IMAGE - controller image built in openshift CI job workflow.
   # JVM_BUILD_SERVICE_CACHE_IMAGE - cache image built in openshift CI job workflow.
-  # JVM_BUILD_SERVICE_ANALYZER_IMAGE - dependency analyzer image built in openshift CI workflow.
   # JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE - request processor image built in openshift CI workflow.
 
 

@@ -14,7 +14,7 @@ patches:
  - patch: |-
      - op: replace
        path: /spec/steps/2/image
-       value: jvm-build-service-analyzer-image
+       value: jvm-build-service-reqprocessor-image
    target:
      kind: Task
      name: maven
