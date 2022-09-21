@@ -23,12 +23,23 @@ public class BuildRecipe {
 
     String toolVersion;
 
+    String preBuildScript;
+
     public String getImage() {
         return image;
     }
 
     public BuildRecipe setImage(String image) {
         this.image = image;
+        return this;
+    }
+
+    public String getPreBuildScript() {
+        return preBuildScript;
+    }
+
+    public BuildRecipe setPreBuildScript(String preBuildScript) {
+        this.preBuildScript = preBuildScript;
         return this;
     }
 

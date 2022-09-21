@@ -324,7 +324,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			}
 			for _, command := range unmarshalled.Invocations {
 				for _, tv := range tooVersions {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Maven: maven, Gradle: gradle})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Maven: maven, Gradle: gradle, PreBuildScript: unmarshalled.PreBuildScript})
 				}
 			}
 		}
@@ -347,6 +347,7 @@ type marshalledBuildInfo struct {
 	ToolVersion      string
 	JavaVersion      string
 	CommitTime       int64
+	PreBuildScript   string
 }
 
 type toolInfo struct {
@@ -470,7 +471,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig)
+	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig, db.Status.CurrentBuildRecipe.PreBuildScript)
 	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return reconcile.Result{}, err

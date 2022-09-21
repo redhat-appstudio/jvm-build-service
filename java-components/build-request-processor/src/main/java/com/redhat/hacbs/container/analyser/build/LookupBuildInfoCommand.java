@@ -171,6 +171,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 if (buildRecipeInfo.isEnforceVersion()) {
                     info.enforceVersion = version;
                 }
+                info.preBuildScript = buildRecipeInfo.getPreBuildScript();
                 info.setIgnoredArtifacts(buildRecipeInfo.getIgnoredArtifacts());
             }
             ObjectMapper mapper = new ObjectMapper();
