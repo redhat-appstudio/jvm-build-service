@@ -5,7 +5,4 @@ resources:
   - gradle-v0.1.yaml
   - https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/tasks/git-clone.yaml
   - maven-v0.2.yaml
-  - clusterrole.yaml
   - config.yaml
-  - pipeline.yaml
-  - sa-op-ns.yaml
