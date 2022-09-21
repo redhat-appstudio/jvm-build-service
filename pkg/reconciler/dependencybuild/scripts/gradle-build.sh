@@ -34,6 +34,10 @@ export LC_ALL="en_US.UTF-8"
 ADDITIONAL_ARGS=$(echo "$@" | sed 's/build publish \?//')
 echo ADDITIONAL_ARGS="${ADDITIONAL_ARGS}"
 
+#This is replaced when the task is created by the golang code
+echo "Pre build script: {{PRE_BUILD_SCRIPT}}"
+{{PRE_BUILD_SCRIPT}}
+
 if [ -n "$(params.ENFORCE_VERSION)" ]; then
     gradle-manipulator --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
 else

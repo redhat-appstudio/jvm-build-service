@@ -8,6 +8,10 @@ else
   mvn -B -e -s "$(workspaces.build-settings.path)/settings.xml" org.codehaus.mojo:versions-maven-plugin:2.12.0:set -DnewVersion="$(params.ENFORCE_VERSION)"
 fi
 
+#This is replaced when the task is created by the golang code
+echo "Pre build script: {{PRE_BUILD_SCRIPT}}"
+{{PRE_BUILD_SCRIPT}}
+
 chown 1001:1001 -R $(workspaces.source.path)
 
 #we can't use array parameters directly here

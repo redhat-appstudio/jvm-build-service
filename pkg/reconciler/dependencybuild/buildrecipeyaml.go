@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -28,7 +29,7 @@ var mavenBuild string
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
 
-func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig) *pipelinev1beta1.PipelineSpec {
+func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig, preBuildString string) *pipelinev1beta1.PipelineSpec {
 	var settings string
 	var build string
 	trueBool := true
@@ -116,7 +117,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					},
 					Args: []string{"$(params.GOALS[*])"},
 				},
-				Script: build,
+				Script: strings.ReplaceAll(build, "{{PRE_BUILD_SCRIPT}}", preBuildString),
 			},
 			{
 				Container: v1.Container{

@@ -175,6 +175,8 @@ spec:
                     type: boolean
                   pipeline:
                     type: string
+                  preBuildScript:
+                    type: string
                   toolVersion:
                     type: string
                 type: object
@@ -202,6 +204,8 @@ spec:
                     maven:
                       type: boolean
                     pipeline:
+                      type: string
+                    preBuildScript:
                       type: string
                     toolVersion:
                       type: string
@@ -235,6 +239,8 @@ spec:
                     maven:
                       type: boolean
                     pipeline:
+                      type: string
+                    preBuildScript:
                       type: string
                     toolVersion:
                       type: string

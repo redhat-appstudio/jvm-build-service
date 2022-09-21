@@ -76,6 +76,7 @@ type BuildRecipe struct {
 	IgnoredArtifacts []string `json:"ignoredArtifacts,omitempty"`
 	ToolVersion      string   `json:"toolVersion,omitempty"`
 	JavaVersion      string   `json:"javaVersion,omitempty"`
+	PreBuildScript   string   `json:"preBuildScript,omitempty"`
 }
 type Contaminant struct {
 	GAV                   string   `json:"gav,omitempty"`
