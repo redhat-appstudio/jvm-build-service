@@ -52,7 +52,9 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
     public RecipeLayoutManager(Path baseDirectory) {
         this.checkoutDirectory = baseDirectory;
-        this.scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.RECIPES);
+        Path legacy = baseDirectory.resolve(RecipeRepositoryManager.RECIPES);
+        Path expected = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
+        this.scmInfoDirectory = Files.isDirectory(expected) ? expected : legacy;
         this.buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
     }
 

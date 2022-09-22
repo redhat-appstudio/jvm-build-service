@@ -36,7 +36,7 @@ public class ConsolidateScmInfoCommand implements Runnable {
 
     @Override
     public void run() {
-        Path recipeBase = repoConfig.path().resolve(RecipeRepositoryManager.RECIPES);
+        Path recipeBase = repoConfig.path().resolve(RecipeRepositoryManager.SCM_INFO);
         try {
             Files.walkFileTree(recipeBase, new SimpleFileVisitor<>() {
                 @Override
