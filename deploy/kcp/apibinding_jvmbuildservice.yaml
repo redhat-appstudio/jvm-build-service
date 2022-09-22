@@ -17,10 +17,10 @@ spec:
     - group: "apps"
       resource: "deployments"
       # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-      identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
+      identityHash: 7d63ec52ebacea410dccbe89e104ee1f2949aa293b657cba63584dd00206573a
       state: "Accepted"
     - group: "tekton.dev"
       resource: "pipelineruns"
       # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-      identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
+      identityHash: 7d63ec52ebacea410dccbe89e104ee1f2949aa293b657cba63584dd00206573a
       state: "Accepted"

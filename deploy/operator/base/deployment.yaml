@@ -18,6 +18,10 @@ spec:
           # for testing on kcp, currently need to hard code this to a dev image, like quay.io/gabemontero/hacbs-jvm-controller:dev
           image: hacbs-jvm-operator
           imagePullPolicy: Always
+          args:
+            - "--v=6"
+            - "--zap-log-level=6"
+            - "--zap-devel=true"
           env:
             - name: RECIPE_DATABASE
               value: "https://github.com/redhat-appstudio/jvm-build-data"

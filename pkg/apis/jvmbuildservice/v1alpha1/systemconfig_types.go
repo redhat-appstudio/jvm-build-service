@@ -2,13 +2,19 @@ package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+const (
+	JDK8Builder  = "jdk8"
+	JDK11Builder = "jdk11"
+	JDK17Builder = "jdk17"
+)
+
 type SystemConfigSpec struct {
-	JDK8Image  string `json:"jdk8image,omitempty"`
-	JDK8Tags   string `json:"jdk8tags,omitempty"`
-	JDK11Image string `json:"jdk11image,omitempty"`
-	JDK11Tags  string `json:"jdk11tags,omitempty"`
-	JDK17Image string `json:"jdk17image,omitempty"`
-	JDK17Tags  string `json:"jdk17tags,omitempty"`
+	Builders map[string]JavaVersionInfo `json:"builders,omitempty"`
+}
+
+type JavaVersionInfo struct {
+	Image string `json:"image,omitempty"`
+	Tag   string `json:"tag,omitempty"`
 }
 
 type SystemConfigStatus struct {

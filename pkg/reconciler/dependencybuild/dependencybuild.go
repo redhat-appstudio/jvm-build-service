@@ -397,19 +397,14 @@ func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log
 	if err != nil {
 		return nil, err
 	}
-	result := []BuilderImage{
-		{
-			Image: systemConfig.Spec.JDK11Image,
-			Tools: r.processBuilderImageTags(systemConfig.Spec.JDK11Tags),
-		},
-		{
-			Image: systemConfig.Spec.JDK8Image,
-			Tools: r.processBuilderImageTags(systemConfig.Spec.JDK8Tags),
-		},
-		{
-			Image: systemConfig.Spec.JDK17Image,
-			Tools: r.processBuilderImageTags(systemConfig.Spec.JDK17Tags),
-		},
+	//TODO how important is the order here?  do we want 11,8,17 per the old form at https://github.com/redhat-appstudio/jvm-build-service/blob/b91ec6e1888e43962cba16fcaee94e0c9f64557d/deploy/operator/config/system-config.yaml#L8
+	// the unit tests's imaage verification certainly assumes a order
+	result := []BuilderImage{}
+	for _, val := range systemConfig.Spec.Builders {
+		result = append(result, BuilderImage{
+			Image: val.Image,
+			Tools: r.processBuilderImageTags(val.Tag),
+		})
 	}
 	return result, nil
 }

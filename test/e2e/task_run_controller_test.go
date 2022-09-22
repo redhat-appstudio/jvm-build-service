@@ -70,12 +70,20 @@ func setupSystemConfig() {
 				Name: systemconfig.SystemConfigKey,
 			},
 			Spec: v1alpha1.SystemConfigSpec{
-				JDK8Image:  "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
-				JDK8Tags:   "jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
-				JDK11Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
-				JDK11Tags:  "jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
-				JDK17Image: "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
-				JDK17Tags:  "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
+				Builders: map[string]v1alpha1.JavaVersionInfo{
+					v1alpha1.JDK8Builder: {
+						Image: "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
+						Tag:   "jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
+					},
+					v1alpha1.JDK11Builder: {
+						Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
+						Tag:   "jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
+					},
+					v1alpha1.JDK17Builder: {
+						Image: "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
+						Tag:   "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
+					},
+				},
 			},
 		}
 

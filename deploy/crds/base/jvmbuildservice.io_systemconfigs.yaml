@@ -35,18 +35,15 @@ spec:
             type: object
           spec:
             properties:
-              jdk8image:
-                type: string
-              jdk8tags:
-                type: string
-              jdk11image:
-                type: string
-              jdk11tags:
-                type: string
-              jdk17image:
-                type: string
-              jdk17tags:
-                type: string
+              builders:
+                additionalProperties:
+                  properties:
+                    image:
+                      type: string
+                    tag:
+                      type: string
+                  type: object
+                type: object
             type: object
           status:
             type: object

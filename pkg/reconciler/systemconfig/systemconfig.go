@@ -3,6 +3,7 @@ package systemconfig
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kcp-dev/logicalcluster/v2"
@@ -18,21 +19,21 @@ import (
 
 const SystemConfigKey = "cluster"
 
-type ReconcileSystemConfig struct {
+type ReconcilerSystemConfig struct {
 	client        client.Client
 	scheme        *runtime.Scheme
 	eventRecorder record.EventRecorder
 }
 
 func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
-	return &ReconcileSystemConfig{
+	return &ReconcilerSystemConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
 	}
 }
 
-func (r *ReconcileSystemConfig) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	var cancel context.CancelFunc
 	if request.ClusterName != "" {
 		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
@@ -47,21 +48,36 @@ func (r *ReconcileSystemConfig) Reconcile(ctx context.Context, request reconcile
 		return reconcile.Result{}, err
 	}
 	if systemConfig.Name == SystemConfigKey {
-		logMsg := ";"
-		logChunk := "jvm-build-service 'cluster' instance of its system config has missing field %s"
+		foundJDK8 := false
+		foundJDK11 := false
+		foundJDK17 := false
+		logMsg := ""
+		logChunk := "jvm-build-service 'cluster' instance of its system config has incorrect builder related information %s\n"
+		for key, bldr := range systemConfig.Spec.Builders {
+			switch key {
+			case v1alpha1.JDK8Builder:
+				foundJDK8 = true
+			case v1alpha1.JDK11Builder:
+				foundJDK11 = true
+			case v1alpha1.JDK17Builder:
+				foundJDK17 = true
+			default:
+				logMsg = logMsg + fmt.Sprintf(logChunk, "unrecognized builder "+key+"\n")
+			}
+			if len(strings.TrimSpace(bldr.Image)) == 0 {
+				logMsg = logMsg + fmt.Sprintf(logChunk, key+" has missing image\n")
+			}
+			if len(strings.TrimSpace(bldr.Tag)) == 0 {
+				logMsg = logMsg + fmt.Sprintf(logChunk, key+" has missing tags\n")
+			}
+		}
 		switch {
-		case len(systemConfig.Spec.JDK8Image) == 0:
-			logMsg = fmt.Sprintf(logChunk, "jdk8image")
-		case len(systemConfig.Spec.JDK8Tags) == 0:
-			logMsg = fmt.Sprintf(logChunk, "jdk8tags")
-		case len(systemConfig.Spec.JDK11Image) == 0:
-			logMsg = fmt.Sprintf(logChunk, "jdk11image")
-		case len(systemConfig.Spec.JDK11Tags) == 0:
-			logMsg = fmt.Sprintf(logChunk, "jdk11tags")
-		case len(systemConfig.Spec.JDK17Image) == 0:
-			logMsg = fmt.Sprintf(logChunk, "jdk17image")
-		case len(systemConfig.Spec.JDK17Tags) == 0:
-			logMsg = fmt.Sprintf(logChunk, "jdk17tags")
+		case !foundJDK8:
+			logMsg = logMsg + v1alpha1.JDK8Builder + " builder is missing\n"
+		case !foundJDK11:
+			logMsg = logMsg + v1alpha1.JDK11Builder + " builder is missing\n"
+		case !foundJDK17:
+			logMsg = logMsg + v1alpha1.JDK17Builder + " builder is missing\n"
 		}
 		if len(logMsg) > 1 {
 			return reconcile.Result{}, fmt.Errorf(logMsg)

@@ -15,10 +15,16 @@ kind: SystemConfig
 metadata:
   name: cluster
 spec:
-  jdk8image: quay.io/redhat-appstudio/hacbs-jdk8-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
-  jdk11image: quay.io/redhat-appstudio/hacbs-jdk11-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
-  jdk17image: quay.io/redhat-appstudio/hacbs-jdk17-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
-  # until we can update builder repo, pull its changes in here vs. patch merge
-  jdk8tags: jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3
-  jdk11tags: jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3
-  jdk17tags: jdk:17,maven:3.8,gradle:7.4.2;6.9.2
+  builders:
+    jdk8:
+      image: quay.io/redhat-appstudio/hacbs-jdk8-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
+      # until we can update builder repo, pull its changes in here vs. patch merge
+      tag: jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3
+    jdk11:
+      image: quay.io/redhat-appstudio/hacbs-jdk11-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
+      # until we can update builder repo, pull its changes in here vs. patch merge
+      tag: jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3
+    jdk17:
+      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
+      # until we can update builder repo, pull its changes in here vs. patch merge
+      tag: jdk:17,maven:3.8,gradle:7.4.2;6.9.2
