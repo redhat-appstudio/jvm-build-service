@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209221244.artifactbuilds.jvmbuildservice.io
+  name: v202209241558.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209221244.dependencybuilds.jvmbuildservice.io
+  name: v202209241558.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -326,7 +326,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209221244.rebuiltartifacts.jvmbuildservice.io
+  name: v202209241558.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -377,7 +377,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209221244.systemconfigs.jvmbuildservice.io
+  name: v202209241558.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -430,7 +430,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209221244.tektonwrappers.jvmbuildservice.io
+  name: v202209241558.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -501,6 +501,87 @@ spec:
               description: State reveals whether the creation of the embedded PipelineRn
                 has been attempted or not, or whether it was successful or not
               type: string
+          type: object
+      required:
+      - spec
+      type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+---
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIResourceSchema
+metadata:
+  creationTimestamp: null
+  name: v202209241558.userconfigs.jvmbuildservice.io
+spec:
+  group: jvmbuildservice.io
+  names:
+    kind: UserConfig
+    listKind: UserConfigList
+    plural: userconfigs
+    singular: userconfig
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      description: UserConfig TODO provide godoc description
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            AdditionalRecipes:
+              type: string
+            disableLocalstack:
+              description: TODO is suppose to go away, but still not ready
+              type: boolean
+            enableRebuilds:
+              type: boolean
+            host:
+              type: string
+            insecure:
+              type: string
+            ioThreads:
+              type: string
+            limitCPU:
+              type: string
+            limitMemory:
+              type: string
+            mavenBaseLocations:
+              additionalProperties:
+                type: string
+              type: object
+            owner:
+              type: string
+            port:
+              type: string
+            prependTag:
+              type: string
+            repository:
+              type: string
+            requestCPU:
+              type: string
+            requestMemory:
+              type: string
+            storage:
+              type: string
+            workerThreads:
+              type: string
+          type: object
+        status:
           type: object
       required:
       - spec

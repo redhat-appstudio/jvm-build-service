@@ -40,6 +40,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TektonWrapperList{},
 		&SystemConfig{},
 		&SystemConfigList{},
+		&UserConfig{},
+		&UserConfigList{},
 	)
 	// &Condition{},
 	// &ConditionList{},

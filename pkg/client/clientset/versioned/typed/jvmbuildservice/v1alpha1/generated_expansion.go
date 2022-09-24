@@ -26,3 +26,5 @@ type RebuiltArtifactExpansion interface{}
 type SystemConfigExpansion interface{}
 
 type TektonWrapperExpansion interface{}
+
+type UserConfigExpansion interface{}

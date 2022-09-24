@@ -32,6 +32,7 @@ type JvmbuildserviceV1alpha1Interface interface {
 	RebuiltArtifactsGetter
 	SystemConfigsGetter
 	TektonWrappersGetter
+	UserConfigsGetter
 }
 
 // JvmbuildserviceV1alpha1Client is used to interact with features provided by the jvmbuildservice.io group.
@@ -57,6 +58,10 @@ func (c *JvmbuildserviceV1alpha1Client) SystemConfigs(namespace string) SystemCo
 
 func (c *JvmbuildserviceV1alpha1Client) TektonWrappers(namespace string) TektonWrapperInterface {
 	return newTektonWrappers(c, namespace)
+}
+
+func (c *JvmbuildserviceV1alpha1Client) UserConfigs(namespace string) UserConfigInterface {
+	return newUserConfigs(c, namespace)
 }
 
 // NewForConfig creates a new JvmbuildserviceV1alpha1Client for the given config.

@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"time"
 
@@ -62,7 +61,7 @@ func setupSystemConfig() {
 	existing := v1alpha1.SystemConfig{}
 	err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: systemconfig.SystemConfigKey}, &existing)
 	if errors2.IsNotFound(err) {
-		nm := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapNamespace}}
+		nm := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ControllerNamespace}}
 		Expect(k8sClient.Create(context.TODO(), &nm)).Should(Succeed())
 
 		sysConfig := v1alpha1.SystemConfig{
@@ -88,6 +87,13 @@ func setupSystemConfig() {
 		}
 
 		Expect(k8sClient.Create(context.TODO(), &sysConfig)).Should(Succeed())
+	}
+	userConfig := v1alpha1.UserConfig{}
+	err = k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}, &userConfig)
+	if errors2.IsNotFound(err) {
+		userConfig.Namespace = metav1.NamespaceDefault
+		userConfig.Name = v1alpha1.UserConfigName
+		Expect(k8sClient.Create(context.TODO(), &userConfig)).Should(Succeed())
 	}
 }
 

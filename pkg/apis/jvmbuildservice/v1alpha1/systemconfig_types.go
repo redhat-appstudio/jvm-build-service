@@ -3,9 +3,10 @@ package v1alpha1
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 const (
-	JDK8Builder  = "jdk8"
-	JDK11Builder = "jdk11"
-	JDK17Builder = "jdk17"
+	JDK8Builder         = "jdk8"
+	JDK11Builder        = "jdk11"
+	JDK17Builder        = "jdk17"
+	ControllerNamespace = "jvm-build-service"
 )
 
 type SystemConfigSpec struct {
@@ -35,7 +36,7 @@ type SystemConfig struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ArtifactBuildList contains a list of SystemConfig
+// SystemConfigList contains a list of SystemConfig
 type SystemConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

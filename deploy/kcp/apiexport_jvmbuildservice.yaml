@@ -20,8 +20,9 @@ spec:
     # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
     identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
   latestResourceSchemas:
-    - v202209221244.artifactbuilds.jvmbuildservice.io
-    - v202209221244.dependencybuilds.jvmbuildservice.io
-    - v202209221244.rebuiltartifacts.jvmbuildservice.io
-    - v202209221244.systemconfigs.jvmbuildservice.io
-    - v202209221244.tektonwrappers.jvmbuildservice.io
+    - v202209241558.artifactbuilds.jvmbuildservice.io
+    - v202209241558.dependencybuilds.jvmbuildservice.io
+    - v202209241558.rebuiltartifacts.jvmbuildservice.io
+    - v202209241558.systemconfigs.jvmbuildservice.io
+    - v202209241558.tektonwrappers.jvmbuildservice.io
+    - v202209241558.userconfigs.jvmbuildservice.io

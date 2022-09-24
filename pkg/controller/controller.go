@@ -10,10 +10,10 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/userconfig"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	v1 "k8s.io/api/core/v1"
@@ -101,11 +101,11 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		return nil, err
 	}
 
-	if err := configmap.SetupNewReconcilerWithManager(mgr); err != nil {
+	if err := systemconfig.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 
-	if err := systemconfig.SetupNewReconcilerWithManager(mgr); err != nil {
+	if err := userconfig.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

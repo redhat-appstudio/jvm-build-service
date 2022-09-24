@@ -33,6 +33,8 @@ type Interface interface {
 	SystemConfigs() SystemConfigInformer
 	// TektonWrappers returns a TektonWrapperInformer.
 	TektonWrappers() TektonWrapperInformer
+	// UserConfigs returns a UserConfigInformer.
+	UserConfigs() UserConfigInformer
 }
 
 type version struct {
@@ -69,4 +71,9 @@ func (v *version) SystemConfigs() SystemConfigInformer {
 // TektonWrappers returns a TektonWrapperInformer.
 func (v *version) TektonWrappers() TektonWrapperInformer {
 	return &tektonWrapperInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// UserConfigs returns a UserConfigInformer.
+func (v *version) UserConfigs() UserConfigInformer {
+	return &userConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
