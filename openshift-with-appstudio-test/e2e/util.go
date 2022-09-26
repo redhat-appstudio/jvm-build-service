@@ -211,10 +211,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 		Spec: v1alpha1.UserConfigSpec{
 			EnableRebuilds:    true,
 			DisableLocalstack: true,
-			AdditionalRecipes: "",
 			MavenBaseLocations: map[string]string{
-				"enable-rebuilds":                    "true",
-				"enable-localstack":                  "false",
 				"maven-repository-300-jboss":         "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-gradleplugins": "https://plugins.gradle.org/m2",
 				"maven-repository-302-confluent":     "https://packages.confluent.io/maven",
@@ -222,11 +219,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 				"maven-repository-304-eclipselink":   "https://download.eclipse.org/rt/eclipselink/maven.repo",
 				"maven-repository-305-redhat":        "https://maven.repository.redhat.com/ga",
 				"maven-repository-306-jitpack":       "https://jitpack.io",
-				"maven-repository-307-jsweet":        "https://repository.jsweet.org/artifactory/libs-release-local",
-				"registry.host":                      "quay.io",
-				"registry.prepend-tag":               strconv.FormatInt(time.Now().UnixMilli(), 10),
-				"registry.owner":                     owner,
-				"registry.repository":                "test-images"},
+				"maven-repository-307-jsweet":        "https://repository.jsweet.org/artifactory/libs-release-local"},
 			CacheSettings: v1alpha1.CacheSettings{},
 			ImageRegistry: v1alpha1.ImageRegistry{
 				Host:       "quay.io",

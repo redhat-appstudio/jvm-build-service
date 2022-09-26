@@ -22,7 +22,7 @@ type UserConfigSpec struct {
 	//TODO is suppose to go away, but still not ready
 	DisableLocalstack bool `json:"disableLocalstack,omitempty"`
 
-	AdditionalRecipes string `json:"AdditionalRecipes,omitempty"`
+	AdditionalRecipes []string `json:"AdditionalRecipes,omitempty"`
 
 	MavenBaseLocations map[string]string `json:"mavenBaseLocations,omitempty"`
 
@@ -48,7 +48,7 @@ type ImageRegistry struct {
 	Port       string `json:"port,omitempty"`
 	Owner      string `json:"owner,omitempty"`
 	Repository string `json:"repository,omitempty"`
-	Insecure   string `json:"insecure,omitempty"`
+	Insecure   bool   `json:"insecure,omitempty"`
 	PrependTag string `json:"prependTag,omitempty"`
 }
 

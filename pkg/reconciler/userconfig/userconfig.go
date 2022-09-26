@@ -290,7 +290,7 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 		cache = settingIfSet(userConfig.Spec.Host, "REGISTRY_HOST", cache)
 		cache = settingIfSet(userConfig.Spec.Port, "REGISTRY_PORT", cache)
 		cache = settingIfSet(userConfig.Spec.Repository, "REGISTRY_REPOSITORY", cache)
-		cache = settingIfSet(userConfig.Spec.Insecure, "REGISTRY_INSECURE", cache)
+		cache = settingIfSet(strconv.FormatBool(userConfig.Spec.Insecure), "REGISTRY_INSECURE", cache)
 		cache = settingIfSet(userConfig.Spec.PrependTag, "REGISTRY_PREPEND_TAG", cache)
 		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:      "REGISTRY_TOKEN",

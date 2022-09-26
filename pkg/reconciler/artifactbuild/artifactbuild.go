@@ -547,11 +547,14 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 	if err != nil {
 		return nil, err
 	}
-	recipes := os.Getenv("RECIPE_DATABASE")
+	recipes := ""
 	additional := userConfig.Spec.AdditionalRecipes
-	if len(strings.TrimSpace(additional)) > 0 {
-		recipes = recipes + "," + additional
+	for _, recipe := range additional {
+		if len(strings.TrimSpace(recipe)) > 0 {
+			recipes = recipes + recipe + ","
+		}
 	}
+	recipes = recipes + os.Getenv("RECIPE_DATABASE")
 
 	zero := int64(0)
 	return &pipelinev1beta1.TaskSpec{

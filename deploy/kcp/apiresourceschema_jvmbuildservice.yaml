@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209241558.artifactbuilds.jvmbuildservice.io
+  name: v202209260410.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209241558.dependencybuilds.jvmbuildservice.io
+  name: v202209260410.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -326,7 +326,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209241558.rebuiltartifacts.jvmbuildservice.io
+  name: v202209260410.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -377,7 +377,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209241558.systemconfigs.jvmbuildservice.io
+  name: v202209260410.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -430,7 +430,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209241558.tektonwrappers.jvmbuildservice.io
+  name: v202209260410.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -515,7 +515,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209241558.userconfigs.jvmbuildservice.io
+  name: v202209260410.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -544,7 +544,9 @@ spec:
         spec:
           properties:
             AdditionalRecipes:
-              type: string
+              items:
+                type: string
+              type: array
             disableLocalstack:
               description: TODO is suppose to go away, but still not ready
               type: boolean
@@ -553,7 +555,7 @@ spec:
             host:
               type: string
             insecure:
-              type: string
+              type: boolean
             ioThreads:
               type: string
             limitCPU:

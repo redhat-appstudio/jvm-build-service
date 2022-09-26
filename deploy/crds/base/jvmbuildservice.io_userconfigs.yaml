@@ -36,7 +36,9 @@ spec:
           spec:
             properties:
               AdditionalRecipes:
-                type: string
+                items:
+                  type: string
+                type: array
               disableLocalstack:
                 description: TODO is suppose to go away, but still not ready
                 type: boolean
@@ -45,7 +47,7 @@ spec:
               host:
                 type: string
               insecure:
-                type: string
+                type: boolean
               ioThreads:
                 type: string
               limitCPU:

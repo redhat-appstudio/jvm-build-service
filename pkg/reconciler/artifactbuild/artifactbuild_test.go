@@ -49,7 +49,7 @@ func TestArtifactBuildStateNew(t *testing.T) {
 	sysConfig := v1alpha1.UserConfig{
 		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.UserConfigName, Namespace: metav1.NamespaceDefault},
 		Spec: v1alpha1.UserConfigSpec{
-			AdditionalRecipes: customRepo,
+			AdditionalRecipes: []string{customRepo},
 		},
 	}
 	g.Expect(client.Create(context.TODO(), &sysConfig)).Should(Succeed())

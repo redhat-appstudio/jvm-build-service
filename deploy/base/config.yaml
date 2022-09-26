@@ -18,6 +18,7 @@ apiVersion: jvmbuildservice.io/v1alpha1
 kind: UserConfig
 metadata:
   name: jvm-build-config
+  namespace: test-jvm-namespace
 spec:
   enableRebuilds: true
   mavenBaseLocations:

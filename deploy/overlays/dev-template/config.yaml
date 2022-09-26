@@ -1,9 +1,9 @@
 ---
-apiVersion: v1
-kind: ConfigMap
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: UserConfig
 metadata:
   name: jvm-build-config
   namespace: test-jvm-namespace
-data:
-  registry.owner: QUAY_USERNAME
-  enable-localstack: "false"
+spec:
+  owner: QUAY_USERNAME
+  disableLocalstack: true
