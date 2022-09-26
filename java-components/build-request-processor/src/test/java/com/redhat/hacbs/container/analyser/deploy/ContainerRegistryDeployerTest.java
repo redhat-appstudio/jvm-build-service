@@ -1,12 +1,9 @@
-package com.redhat.hacbs.artifactcache.services;
-
-import static io.restassured.RestAssured.given;
+package com.redhat.hacbs.container.analyser.deploy;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -23,42 +20,24 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 
-import javax.inject.Inject;
-
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.Assert;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
 
-import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
-
-import io.fabric8.kubernetes.api.model.ObjectMeta;
-import io.fabric8.kubernetes.client.KubernetesClient;
-import io.quarkus.logging.Log;
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.kubernetes.client.WithKubernetesTestServer;
-import io.restassured.http.ContentType;
+import io.quarkus.test.junit.main.QuarkusMainLauncher;
+import io.quarkus.test.junit.main.QuarkusMainTest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-@QuarkusTest
-@WithKubernetesTestServer
-@QuarkusTestResource(value = ContainerRegistryDeployerTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusMainTest
 public class ContainerRegistryDeployerTest {
-
-    @ConfigProperty(name = "registry.host", defaultValue = "quay.io")
-    String host;
-    @ConfigProperty(name = "registry.port", defaultValue = "443")
-    int port;
-    @ConfigProperty(name = "registry.owner", defaultValue = "hacbs")
-    String owner;
-    @ConfigProperty(name = "registry.repository", defaultValue = "artifact-deployments")
-    String repository;
-    @ConfigProperty(name = "registry.insecure", defaultValue = "false")
-    boolean insecure;
+    private static final String REPOSITORY = "artifact-deployments";
+    private static final String OWNER = "hacbs-test";
 
     private static final String GROUP = "com.company.foo";
     private static final String VERSION = "3.25.8";
@@ -71,35 +50,50 @@ public class ContainerRegistryDeployerTest {
     private static final String EXPECTED_TAG_1 = "ddb962f47b1e1b33a3c59ce0e5a4a403c4e01373eca7fc6e992281f0c6324cc2";
     private static final String EXPECTED_TAG_2 = "f697132e6cc3e55c91e070ac80eabe7ff4a79ac336323fdadfaa191876d2b0d0";
 
-    @Inject
-    KubernetesClient kubernetesClient;
+    static GenericContainer container;
+    static int port;
+
+    @BeforeAll
+    public static void start() {
+        port = startTestRegistry();
+    }
+
+    private static int startTestRegistry() {
+        container = new GenericContainer("registry:2.8.1")
+                .withReuse(true)
+                .withExposedPorts(5000);
+
+        container.start();
+
+        Integer port = container.getMappedPort(5000);
+
+        return port;
+    }
+
+    @AfterAll
+    public static void stop() {
+        container.stop();
+    }
 
     @Test
-    public void testDeployArchive() throws IOException {
-
-        DependencyBuild build = new DependencyBuild();
-        build.setMetadata(new ObjectMeta());
-        build.getMetadata().setName("testbuild");
-        kubernetesClient.resources(DependencyBuild.class).create(build);
+    public void testDeployArchive(QuarkusMainLauncher launcher) throws IOException {
 
         // Here we just make sure we can create images.
         Path createTestTarGz = createTestTarGz();
-        Log.infof("Using test tar.gz: " + createTestTarGz);
-        try (InputStream inputStream = Files.newInputStream(createTestTarGz)) {
+        var result = launcher.launch("deploy-container", "--tar-path=" + createTestTarGz.toAbsolutePath().toString(),
+                "--registry-host=" + container.getHost(),
+                "--registry-port=" + port,
+                "--registry-owner=" + OWNER,
+                "--registry-repository=" + REPOSITORY,
+                "--registry-insecure");
 
-            given().body(inputStream).contentType(ContentType.BINARY)
-                    .when().post("/v1/deploy/testbuild")
-                    .then()
-                    .statusCode(204);
-
-        }
-
+        Assertions.assertEquals(0, result.exitCode());
         // Now we validate that the image and tags exist in the registry
         ContainerRegistryDetails containerRegistryDetails = getContainerRegistryDetails();
 
-        Assert.assertTrue(containerRegistryDetails.repoName.startsWith(owner + "/" + repository));
-        Assert.assertTrue(containerRegistryDetails.tags.contains(EXPECTED_TAG_1));
-        Assert.assertTrue(containerRegistryDetails.tags.contains(EXPECTED_TAG_2));
+        Assertions.assertTrue(containerRegistryDetails.repoName.startsWith(OWNER + "/" + REPOSITORY));
+        Assertions.assertTrue(containerRegistryDetails.tags.contains(EXPECTED_TAG_1));
+        Assertions.assertTrue(containerRegistryDetails.tags.contains(EXPECTED_TAG_2));
     }
 
     private Path createTestTarGz() throws IOException {
@@ -207,7 +201,7 @@ public class ContainerRegistryDeployerTest {
     }
 
     private URL getRegistryURL(String path) throws IOException {
-        return new URL("http://" + host + ":" + port + "/v2/" + path);
+        return new URL("http://" + this.container.getHost() + ":" + port + "/v2/" + path);
     }
 
     private String sha1(String value) {

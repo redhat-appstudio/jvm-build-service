@@ -12,6 +12,9 @@ spec:
       default: ""
     - name: app-path
       default: "target"
+  results:
+    - name: java-community-dependencies
+      value: $(tasks.maven-run.results.java-community-dependencies)
   workspaces:
     - name: shared-workspace
     - name: maven-settings
@@ -31,24 +34,6 @@ spec:
           value: ""
         - name: deleteExisting
           value: "true"
-    # - name: debug
-    #   runAfter:
-    #     - fetch-repository
-    #   taskSpec:
-    #     steps:
-    #       - name: list-all
-    #         image: busybox
-    #         command:
-    #           - "ls"
-    #         args:
-    #           - "-hal"
-    #           - "/workspace"
-    #     workspaces:
-    #       - name: source
-    #         mountPath: /workspace
-    #   workspaces:
-    #     - name: source
-    #       workspace: shared-workspace
     - name: maven-run
       taskRef:
         name: maven

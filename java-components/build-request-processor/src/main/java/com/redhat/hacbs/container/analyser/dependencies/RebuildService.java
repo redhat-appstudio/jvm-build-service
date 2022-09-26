@@ -1,32 +1,38 @@
 package com.redhat.hacbs.container.analyser.dependencies;
 
-import java.io.IOException;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
+import java.util.function.UnaryOperator;
 
+import javax.enterprise.inject.Instance;
+import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.HttpClientBuilder;
-
+import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.logging.Log;
 
 @Singleton
 public class RebuildService {
 
-    public void rebuild(String cacheUrl, Set<String> gavs) {
+    @Inject
+    Instance<KubernetesClient> client;
+
+    public void rebuild(String taskRunName, Set<String> gavs) {
+
         Log.infof("Identified %s Community Dependencies: %s", gavs.size(), new TreeSet<>(gavs));
-        try (var client = HttpClientBuilder.create().build()) {
-            var put = new HttpPut(cacheUrl);
-            put.setEntity(new StringEntity(String.join(",", gavs)));
-            try (var result = client.execute(put)) {
-                if (result.getStatusLine().getStatusCode() > 204) {
-                    throw new RuntimeException("Unexpected response from server: " + result.getStatusLine().getStatusCode());
+
+        var client = this.client.get();
+        var resources = client.resources(TaskRun.class);
+        resources.withName(taskRunName).editStatus(new UnaryOperator<TaskRun>() {
+            @Override
+            public TaskRun apply(TaskRun taskRun) {
+                List<TaskRunResult> results = new ArrayList<>();
+                if (taskRun.getStatus().getTaskResults() != null) {
+                    results.addAll(taskRun.getStatus().getTaskResults());
                 }
+                results.add(new TaskRunResult("java-community-dependencies", String.join(",", gavs)));
+                taskRun.getStatus().setTaskResults(results);
+                return taskRun;
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 }

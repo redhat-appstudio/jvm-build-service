@@ -1,4 +1,4 @@
-package com.redhat.hacbs.artifactcache.deploy;
+package com.redhat.hacbs.container.analyser.deploy;
 
 import java.util.Objects;
 

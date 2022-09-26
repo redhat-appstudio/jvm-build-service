@@ -6,4 +6,3 @@ metadata:
   namespace: test-jvm-namespace
 spec:
   owner: QUAY_USERNAME
-  disableLocalstack: true

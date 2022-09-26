@@ -2,6 +2,7 @@ package dependencybuild
 
 import (
 	_ "embed"
+	v1alpha12 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -27,12 +28,10 @@ var mavenBuild string
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
 
-//go:embed scripts/deploy.sh
-var deploy string
-
-func createPipelineSpec(maven bool, namespace string, commitTime int64) *pipelinev1beta1.PipelineSpec {
+func createPipelineSpec(maven bool, namespace string, commitTime int64, userConfig *v1alpha12.UserConfig) *pipelinev1beta1.PipelineSpec {
 	var settings string
 	var build string
+	trueBool := true
 	if maven {
 		settings = mavenSettings
 		build = mavenBuild
@@ -41,6 +40,29 @@ func createPipelineSpec(maven bool, namespace string, commitTime int64) *pipelin
 		build = gradleBuild
 	}
 	zero := int64(0)
+	deployArgs := []string{
+		"deploy-container",
+		"--tar-path=$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz",
+		"--task-run=$(context.taskRun.name)",
+	}
+	if userConfig.Spec.ImageRegistry.Host != "" {
+		deployArgs = append(deployArgs, "--registry-host="+userConfig.Spec.ImageRegistry.Host)
+	}
+	if userConfig.Spec.ImageRegistry.Port != "" {
+		deployArgs = append(deployArgs, "--registry-port="+userConfig.Spec.ImageRegistry.Port)
+	}
+	if userConfig.Spec.ImageRegistry.Owner != "" {
+		deployArgs = append(deployArgs, "--registry-owner="+userConfig.Spec.ImageRegistry.Owner)
+	}
+	if userConfig.Spec.ImageRegistry.Repository != "" {
+		deployArgs = append(deployArgs, "--registry-repository="+userConfig.Spec.ImageRegistry.Owner)
+	}
+	if userConfig.Spec.ImageRegistry.Insecure {
+		deployArgs = append(deployArgs, "--registry-insecure=")
+	}
+	if userConfig.Spec.ImageRegistry.PrependTag != "" {
+		deployArgs = append(deployArgs, "--registry-prepend-tag="+userConfig.Spec.ImageRegistry.PrependTag)
+	}
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
 		Params: []v1alpha1.ParamSpec{
@@ -53,10 +75,12 @@ func createPipelineSpec(maven bool, namespace string, commitTime int64) *pipelin
 			{Name: PipelineToolVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelinePath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineIgnoredArtifacts, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache." + namespace + ".svc.cluster.local/v1/cache/default/" + strconv.FormatInt(commitTime, 10)}},
 			{Name: "NAMESPACE", Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: namespace}},
 		},
+		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}},
 		Steps: []pipelinev1beta1.Step{
 			{
 				Container: v1.Container{
@@ -98,15 +122,18 @@ func createPipelineSpec(maven bool, namespace string, commitTime int64) *pipelin
 			{
 				Container: v1.Container{
 					Name:            "deploy-and-check-for-contaminates",
-					Image:           "registry.access.redhat.com/ubi8/ubi:8.5", //TODO: hard coded
+					Image:           "$(params." + PipelineRequestProcessorImage + ")",
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+					Env: []v1.EnvVar{
+						{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.UserSecretName}, Key: v1alpha12.UserSecretTokenKey, Optional: &trueBool}}},
+					},
 					Resources: v1.ResourceRequirements{
 						//TODO: make configurable
 						Requests: v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
 						Limits:   v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("300m")},
 					},
+					Args: deployArgs,
 				},
-				Script: deploy,
 			},
 		},
 	}
@@ -115,7 +142,6 @@ func createPipelineSpec(maven bool, namespace string, commitTime int64) *pipelin
 	}
 
 	ps := &pipelinev1beta1.PipelineSpec{
-		Results: []pipelinev1beta1.PipelineResult{},
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
 				Name: artifactbuild.TaskName,
