@@ -3,7 +3,6 @@ package userconfig
 import (
 	"context"
 	"fmt"
-	v13 "k8s.io/api/rbac/v1"
 	"regexp"
 	"sort"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,24 +32,16 @@ import (
 
 type ReconcilerUserConfig struct {
 	client               client.Client
-	nonCachingClient     client.Client
-	err                  error
 	scheme               *runtime.Scheme
 	eventRecorder        record.EventRecorder
 	configuredCacheImage string
 }
 
 func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
-	nonCachingClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
 	ret := &ReconcilerUserConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("UserConfig"),
-	}
-	if err == nil {
-		ret.nonCachingClient = nonCachingClient
-	} else {
-		ret.err = err
 	}
 	return ret
 }
@@ -63,7 +55,6 @@ func (r *ReconcilerUserConfig) Reconcile(ctx context.Context, request reconcile.
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
 	log := ctrl.Log.WithName("userconfig").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
-	log.Info("received userconfig")
 	userConfig := v1alpha1.UserConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &userConfig)
 	if err != nil {
@@ -107,12 +98,12 @@ func settingIfSet(field, envName string, cache *appsv1.Deployment) *appsv1.Deplo
 }
 
 func (r *ReconcilerUserConfig) validations(ctx context.Context, log logr.Logger, request reconcile.Request, userConfig *v1alpha1.UserConfig) error {
-	if !userConfig.Spec.EnableRebuilds || r.err != nil || r.nonCachingClient == nil {
+	if !userConfig.Spec.EnableRebuilds {
 		return nil
 	}
 	registrySecret := &corev1.Secret{}
-	// don't want to watch/cache secrets at cluster level
-	err := r.nonCachingClient.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.UserSecretName}, registrySecret)
+	// our client is wired to not cache secrets / establish informers for secrets
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.UserSecretName}, registrySecret)
 	if err != nil {
 		return err
 	}
@@ -121,32 +112,34 @@ func (r *ReconcilerUserConfig) validations(ctx context.Context, log logr.Logger,
 	if !keyPresent1 && !keyPresent2 {
 		return fmt.Errorf("need image registry token set at key %s in secret %s", v1alpha1.UserSecretTokenKey, v1alpha1.UserSecretName)
 	}
+	log.Info(fmt.Sprintf("found %s secret with appropriate token keys in namespace %s, rebuilds are possible", v1alpha1.UserSecretTokenKey, request.Namespace))
 	return nil
 }
 
 func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log logr.Logger, request reconcile.Request, userConfig *v1alpha1.UserConfig) error {
+	var err error
 	//TODO may have to switch to ephemeral storage for KCP until storage story there is sorted out
-	pvc := corev1.PersistentVolumeClaim{}
-	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
-	err := r.client.Get(ctx, deploymentName, &pvc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			pvc = corev1.PersistentVolumeClaim{}
-			pvc.Name = v1alpha1.CacheDeploymentName
-			pvc.Namespace = request.Namespace
-			pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-			qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
-			if err != nil {
-				return err
-			}
-			//TODO: make configurable
-			pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{"storage": qty}
-			err = r.client.Create(ctx, &pvc)
-			if err != nil {
-				return err
-			}
-		}
-	}
+	//pvc := corev1.PersistentVolumeClaim{}
+	//deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
+	//err = r.client.Get(ctx, deploymentName, &pvc)
+	//if err != nil {
+	//	if errors.IsNotFound(err) {
+	//		pvc = corev1.PersistentVolumeClaim{}
+	//		pvc.Name = v1alpha1.CacheDeploymentName
+	//		pvc.Namespace = request.Namespace
+	//		pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+	//		qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
+	//		if err != nil {
+	//			return err
+	//		}
+	//		//TODO: make configurable
+	//		pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{"storage": qty}
+	//		err = r.client.Create(ctx, &pvc)
+	//		if err != nil {
+	//			return err
+	//		}
+	//	}
+	//}
 	//and setup the service
 	err = r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}, &corev1.Service{})
 	if err != nil {
@@ -190,16 +183,16 @@ func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log
 			}
 		}
 	}
-	cb := v13.RoleBinding{}
+	cb := rbacv1.RoleBinding{}
 	cbName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
 	err = r.client.Get(ctx, cbName, &cb)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			cb := v13.RoleBinding{}
+			cb := rbacv1.RoleBinding{}
 			cb.Name = v1alpha1.CacheDeploymentName
 			cb.Namespace = request.Namespace
-			cb.RoleRef = v13.RoleRef{Kind: "ClusterRole", Name: "hacbs-jvm-cache", APIGroup: "rbac.authorization.k8s.io"}
-			cb.Subjects = []v13.Subject{{Kind: "ServiceAccount", Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}}
+			cb.RoleRef = rbacv1.RoleRef{Kind: "ClusterRole", Name: "hacbs-jvm-cache", APIGroup: "rbac.authorization.k8s.io"}
+			cb.Subjects = []rbacv1.Subject{{Kind: "ServiceAccount", Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}}
 			err := r.client.Create(ctx, &cb)
 			if err != nil {
 				return err
@@ -216,6 +209,10 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	create := false
 	if err != nil {
 		if errors.IsNotFound(err) {
+			qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
+			if err != nil {
+				return err
+			}
 			create = true
 			cache.Name = deploymentName.Name
 			cache.Namespace = deploymentName.Namespace
@@ -243,7 +240,22 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 						"cpu":    resource.MustParse(settingOrDefault(userConfig.Spec.LimitCPU, v1alpha1.ConfigArtifactCacheLimitCPUDefault))},
 				},
 			}}
-			cache.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: v1alpha1.CacheDeploymentName, VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: v1alpha1.CacheDeploymentName}}}}
+			cache.Spec.Template.Spec.Volumes = []corev1.Volume{
+				{
+					//Name: v1alpha1.CacheDeploymentName,
+					//VolumeSource: corev1.VolumeSource{
+					//	PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					//		ClaimName: v1alpha1.CacheDeploymentName,
+					//	},
+					//},
+					Name: v1alpha1.CacheDeploymentName,
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{
+							SizeLimit: &qty,
+						},
+					},
+				},
+			}
 
 		} else {
 			return err

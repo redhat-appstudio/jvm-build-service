@@ -12,15 +12,23 @@ spec:
       resource: "secrets"
       state: "Accepted"
     - group: ""
-      resource: "configmaps"
+      resource: "serviceaccounts"
+      state: "Accepted"
+    - group: ""
+      resource: "events"
+      state: "Accepted"
+    - group: ""
+      resource: "services"
+      # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+      identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
       state: "Accepted"
     - group: "apps"
       resource: "deployments"
       # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-      identityHash: 7d63ec52ebacea410dccbe89e104ee1f2949aa293b657cba63584dd00206573a
+      identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
       state: "Accepted"
     - group: "tekton.dev"
       resource: "pipelineruns"
       # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-      identityHash: 7d63ec52ebacea410dccbe89e104ee1f2949aa293b657cba63584dd00206573a
+      identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
       state: "Accepted"
