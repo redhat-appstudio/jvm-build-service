@@ -16,6 +16,8 @@ rules:
       - tektonwrappers/status
       - rebuiltartifacts
       - rebuiltartifacts/status
+      - systemconfigs
+      - systemconfigs/status
     verbs:
       - create
       - delete
@@ -167,6 +169,8 @@ rules:
       - dependencybuilds/status
       - tektonwrappers
       - tektonwrappers/status
+      - systemconfigs
+      - systemconfigs/status
     verbs:
       - get
       - list

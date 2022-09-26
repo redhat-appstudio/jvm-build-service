@@ -11,7 +11,7 @@ fi
 
 THIS_DIR="$(dirname "$(realpath "$0")")"
 CRD_DIR="$( realpath ${THIS_DIR}/../deploy/crds/base)"
-KCP_API_DIR="$( realpath ${THIS_DIR}/../config/kcp)"
+KCP_API_DIR="$( realpath ${THIS_DIR}/../deploy/kcp)"
 
 KCP_API_SCHEMA_FILE_CURRENT="${KCP_API_DIR}/apiresourceschema_jvmbuildservice.yaml"
 KCP_API_SCHEMA_FILE_NEW="${KCP_API_DIR}/apiresourceschema_jvmbuildservice.yaml_new"
@@ -40,7 +40,7 @@ done
 # '  name: v202206151654.artifactbuilds.jvmbuildservice.io'
 if ! diff -I '^  name: v[0-9]\{12\}\..*\.jvmbuildservice\.io$' ${KCP_API_SCHEMA_FILE_CURRENT} ${KCP_API_SCHEMA_FILE_NEW} > /dev/null; then
   mv ${KCP_API_SCHEMA_FILE_NEW} ${KCP_API_SCHEMA_FILE_CURRENT}
-  echo "updated KCP APIResourceSchema for HAS saved at '${KCP_API_SCHEMA_FILE_CURRENT}'"
+  echo "updated KCP APIResourceSchema for jvmbuildservice saved at '${KCP_API_SCHEMA_FILE_CURRENT}'"
 else
   echo "no changes in KCP API"
   rm ${KCP_API_SCHEMA_FILE_NEW}
@@ -53,8 +53,21 @@ cat << EOF > ${KCP_API_EXPORT_FILE}
 apiVersion: apis.kcp.dev/v1alpha1
 kind: APIExport
 metadata:
-  name: has
+  name: jvmbuildservice
 spec:
+  permissionClaims:
+  - group: ""
+    resource: "secrets"
+  - group: ""
+    resource: "configmaps"
+  - group: "apps"
+    resource: "deployments"
+    # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+    identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
+  - group: "tekton.dev"
+    resource: "pipelineruns"
+    # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+    identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
   latestResourceSchemas:
 EOF
 

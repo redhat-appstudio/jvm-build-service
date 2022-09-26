@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
-	"github.com/kcp-dev/logicalcluster"
+	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 )
 
@@ -37,17 +37,11 @@ const (
 	UserConfigMapName           = "jvm-build-config"
 	UserSecretName              = "jvm-build-secrets"
 	UserConfigAdditionalRecipes = "additional-build-recipes"
-	ControllerDeploymentName    = "hacbs-jvm-operator"
 	CacheDeploymentName         = "jvm-build-workspace-artifact-cache"
 	LocalstackDeploymentName    = "jvm-build-workspace-localstack"
 	EnableRebuilds              = "enable-rebuilds"
 	EnableLocalstack            = "enable-localstack"
-	SystemConfigMapName         = "jvm-build-system-config"
 	SystemConfigMapNamespace    = "jvm-build-service"
-	SystemBuilderImages         = "builder-image.names"
-	SystemBuilderImageFormat    = "builder-image.%s.image"
-	SystemBuilderTagFormat      = "builder-image.%s.tags"
-
 	// The config for the artifact cache
 	ConfigArtifactCacheRequestMemory        = "artifact-cache.request.memory"
 	ConfigArtifactCacheRequestMemoryDefault = "1024Mi"
@@ -76,19 +70,15 @@ type ReconcileConfigMap struct {
 	configuredCacheImage string
 }
 
-func ReadConfigValue(name string, userConfig map[string]string, systemConfig map[string]string, defaultValue string) string {
+func ReadConfigValue(name string, userConfig map[string]string, defaultValue string) string {
 	config, ok := userConfig[name]
-	if ok {
-		return config
-	}
-	config, ok = systemConfig[name]
 	if ok {
 		return config
 	}
 	return defaultValue
 }
 
-func newReconciler(mgr ctrl.Manager, config map[string]string) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 	return &ReconcileConfigMap{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
@@ -100,14 +90,13 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	var cancel context.CancelFunc
 	if request.ClusterName != "" {
+		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
 		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	}
+
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	log := ctrl.Log.WithName("configmap").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
-	if request.Name == SystemConfigMapName && request.Namespace == SystemConfigMapNamespace {
-		return r.handleSystemConfigMap(ctx, log, request)
-	}
 	if request.Name != UserConfigMapName {
 		return reconcile.Result{}, nil
 	}
@@ -122,13 +111,8 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 	//our in repo tests don't need it anymore
 	localstack := configMap.Data[EnableLocalstack] != "false"
 
-	systemConfigMap := corev1.ConfigMap{}
-	err = r.client.Get(ctx, types.NamespacedName{Name: SystemConfigMapName, Namespace: SystemConfigMapNamespace}, &systemConfigMap)
-	if err != nil {
-		return reconcile.Result{}, nil
-	}
 	log.Info(fmt.Sprintf("Setup Cache %s", request.Name))
-	if err = r.setupCache(ctx, request, enabled, configMap, systemConfigMap, localstack, log); err != nil {
+	if err = r.setupCache(ctx, request, enabled, configMap, localstack, log); err != nil {
 		return reconcile.Result{}, err
 	}
 	if enabled && localstack {
@@ -142,7 +126,7 @@ func (r *ReconcileConfigMap) Reconcile(ctx context.Context, request reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.Request, rebuildsEnabled bool, configMap corev1.ConfigMap, systemConfigMap corev1.ConfigMap, localstack bool, log logr.Logger) error {
+func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.Request, rebuildsEnabled bool, configMap corev1.ConfigMap, localstack bool, log logr.Logger) error {
 	//first setup the storage
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: CacheDeploymentName}
 
@@ -154,7 +138,7 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 			pvc.Name = CacheDeploymentName
 			pvc.Namespace = request.Namespace
 			pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-			qty, err := resource.ParseQuantity(ReadConfigValue(ConfigArtifactCacheStorage, configMap.Data, systemConfigMap.Data, ConfigArtifactCacheStorageDefault))
+			qty, err := resource.ParseQuantity(ReadConfigValue(ConfigArtifactCacheStorage, configMap.Data, ConfigArtifactCacheStorageDefault))
 			if err != nil {
 				return err
 			}
@@ -190,8 +174,8 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 				}},
 				VolumeMounts: []corev1.VolumeMount{{Name: CacheDeploymentName, MountPath: "/cache"}},
 				Resources: corev1.ResourceRequirements{
-					Requests: map[corev1.ResourceName]resource.Quantity{"memory": resource.MustParse(ReadConfigValue(ConfigArtifactCacheRequestMemory, configMap.Data, systemConfigMap.Data, ConfigArtifactCacheRequestMemoryDefault)), "cpu": resource.MustParse(ReadConfigValue(ConfigArtifactCacheRequestCPU, configMap.Data, systemConfigMap.Data, ConfigArtifactCacheRequestCPUDefault))},
-					Limits:   map[corev1.ResourceName]resource.Quantity{"memory": resource.MustParse(ReadConfigValue(ConfigArtifactCacheLimitMemory, configMap.Data, systemConfigMap.Data, ConfigArtifactCacheLimitMemoryDefault)), "cpu": resource.MustParse(ReadConfigValue(ConfigArtifactCacheLimitCPU, configMap.Data, systemConfigMap.Data, ConfigArtifactCacheLimitCPUDefault))},
+					Requests: map[corev1.ResourceName]resource.Quantity{"memory": resource.MustParse(ReadConfigValue(ConfigArtifactCacheRequestMemory, configMap.Data, ConfigArtifactCacheRequestMemoryDefault)), "cpu": resource.MustParse(ReadConfigValue(ConfigArtifactCacheRequestCPU, configMap.Data, ConfigArtifactCacheRequestCPUDefault))},
+					Limits:   map[corev1.ResourceName]resource.Quantity{"memory": resource.MustParse(ReadConfigValue(ConfigArtifactCacheLimitMemory, configMap.Data, ConfigArtifactCacheLimitMemoryDefault)), "cpu": resource.MustParse(ReadConfigValue(ConfigArtifactCacheLimitCPU, configMap.Data, ConfigArtifactCacheLimitCPUDefault))},
 				},
 			}}
 			cache.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: CacheDeploymentName, VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: CacheDeploymentName}}}}
@@ -266,8 +250,8 @@ func (r *ReconcileConfigMap) setupCache(ctx context.Context, request reconcile.R
 		name     string
 		position int
 	}
-	workerThreads := ReadConfigValue(ConfigArtifactCacheWorkerThreads, configMap.Data, systemConfigMap.Data, ConfigArtifactCacheWorkerThreadsDefault)
-	ioThreads := ReadConfigValue(ConfigArtifactCacheIOThreads, configMap.Data, systemConfigMap.Data, ConfigArtifactCacheIOThreadsDefault)
+	workerThreads := ReadConfigValue(ConfigArtifactCacheWorkerThreads, configMap.Data, ConfigArtifactCacheWorkerThreadsDefault)
+	ioThreads := ReadConfigValue(ConfigArtifactCacheIOThreads, configMap.Data, ConfigArtifactCacheIOThreadsDefault)
 
 	//TODO: make configurable
 	cache.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
@@ -476,13 +460,4 @@ func ReadUserConfigMap(client client.Client, ctx context.Context, namespace stri
 		return nil, nil
 	}
 	return configMap.Data, nil
-}
-
-func (r *ReconcileConfigMap) handleSystemConfigMap(ctx context.Context, log logr.Logger, request reconcile.Request) (reconcile.Result, error) {
-	configMap := corev1.ConfigMap{}
-	err := r.client.Get(ctx, request.NamespacedName, &configMap)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	return reconcile.Result{}, nil
 }

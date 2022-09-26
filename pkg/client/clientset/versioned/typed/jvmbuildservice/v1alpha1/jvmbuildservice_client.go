@@ -30,6 +30,7 @@ type JvmbuildserviceV1alpha1Interface interface {
 	ArtifactBuildsGetter
 	DependencyBuildsGetter
 	RebuiltArtifactsGetter
+	SystemConfigsGetter
 	TektonWrappersGetter
 }
 
@@ -48,6 +49,10 @@ func (c *JvmbuildserviceV1alpha1Client) DependencyBuilds(namespace string) Depen
 
 func (c *JvmbuildserviceV1alpha1Client) RebuiltArtifacts(namespace string) RebuiltArtifactInterface {
 	return newRebuiltArtifacts(c, namespace)
+}
+
+func (c *JvmbuildserviceV1alpha1Client) SystemConfigs(namespace string) SystemConfigInterface {
+	return newSystemConfigs(c, namespace)
 }
 
 func (c *JvmbuildserviceV1alpha1Client) TektonWrappers(namespace string) TektonWrapperInterface {

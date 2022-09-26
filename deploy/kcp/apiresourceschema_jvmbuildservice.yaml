@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209150511.artifactbuilds.jvmbuildservice.io
+  name: v202209221244.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209150511.dependencybuilds.jvmbuildservice.io
+  name: v202209221244.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -326,7 +326,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209150511.rebuiltartifacts.jvmbuildservice.io
+  name: v202209221244.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -377,7 +377,60 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202209150511.tektonwrappers.jvmbuildservice.io
+  name: v202209221244.systemconfigs.jvmbuildservice.io
+spec:
+  group: jvmbuildservice.io
+  names:
+    kind: SystemConfig
+    listKind: SystemConfigList
+    plural: systemconfigs
+    singular: systemconfig
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      description: SystemConfig TODO provide godoc description
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            builders:
+              additionalProperties:
+                properties:
+                  image:
+                    type: string
+                  tag:
+                    type: string
+                type: object
+              type: object
+          type: object
+        status:
+          type: object
+      required:
+      - spec
+      type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+---
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIResourceSchema
+metadata:
+  creationTimestamp: null
+  name: v202209221244.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:

@@ -1,0 +1,26 @@
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIBinding
+metadata:
+  name: jvmbuildservice-binding
+spec:
+  reference:
+    workspace:
+      path: root:default:pipeline-service-compute
+      exportName: jvmbuildservice
+  permissionClaims:
+    - group: ""
+      resource: "secrets"
+      state: "Accepted"
+    - group: ""
+      resource: "configmaps"
+      state: "Accepted"
+    - group: "apps"
+      resource: "deployments"
+      # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+      identityHash: 7d63ec52ebacea410dccbe89e104ee1f2949aa293b657cba63584dd00206573a
+      state: "Accepted"
+    - group: "tekton.dev"
+      resource: "pipelineruns"
+      # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+      identityHash: 7d63ec52ebacea410dccbe89e104ee1f2949aa293b657cba63584dd00206573a
+      state: "Accepted"

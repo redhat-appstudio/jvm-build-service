@@ -8,6 +8,45 @@ done
 
 $DIR/base-development.sh
 
+# base-development.sh switches to the test-jvm-namespace namespace
+kubectl create sa pipeline
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pipeline
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups:
+      - jvmbuildservice.io
+    resources:
+      - artifactbuilds
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - jvm-build-config
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pipeline
+subjects:
+  - kind: ServiceAccount
+    name: pipeline
+    namespace: test-jvm-namespace
+EOF
+
 #minikube cannot access registry.redhat.io by default
 #you need to have these credentials in your docker config
 kubectl create secret docker-registry minikube-pull-secret --from-file=.dockerconfigjson=$HOME/.docker/config.json

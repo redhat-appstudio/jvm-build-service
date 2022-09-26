@@ -13,8 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
-
-	"github.com/redhat-appstudio/jvm-build-service/pkg/controller"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -22,11 +21,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	//+kubebuilder:scaffold:imports
+	"github.com/go-logr/logr"
 	apisv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/controller"
 )
 
 var (
-	mainLog = ctrl.Log.WithName("main")
+	mainLog logr.Logger
 )
 
 func main() {
@@ -34,11 +35,9 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr string
 	var abAPIExportName string
-	var dbAPIExportName string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.StringVar(&abAPIExportName, "ab-api-export-name", "", "The name of the ArtifactBuild APIExport.")
-	flag.StringVar(&dbAPIExportName, "db-api-export-name", "", "The name of the DependencyBuild APIExport.")
+	flag.StringVar(&abAPIExportName, "api-export-name", "jvmbuildservice", "The name of the jvmbuildservice APIExport.")
 
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -47,9 +46,12 @@ func main() {
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
+	klog.InitFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	logger := zap.New(zap.UseFlagOptions(&opts))
+	ctrl.SetLogger(logger)
+	mainLog = ctrl.Log.WithName("main")
 	ctx := ctrl.SetupSignalHandler()
 	restConfig := ctrl.GetConfigOrDie()
 
@@ -66,9 +68,10 @@ func main() {
 	if kcpAPIsGroupPresent(restConfig) {
 		mainLog.Info("Looking up virtual workspace URL")
 		var cfg *rest.Config
-		cfg, err = restConfigForAPIExport(ctx, restConfig, abAPIExportName, dbAPIExportName)
+		cfg, err = restConfigForAPIExport(ctx, restConfig, abAPIExportName)
 		if err != nil {
 			mainLog.Error(err, "error looking up virtual workspace URL")
+			os.Exit(1)
 		}
 
 		mainLog.Info("Using virtual workspace URL", "url", cfg.Host)
@@ -76,17 +79,17 @@ func main() {
 		mopts.LeaderElectionConfig = restConfig
 		// see kcp.NewClusterAwareManager; do not call that directly given the additional items we do in
 		// controller.NewManager
-		mopts.NewCache = kcp.NewClusterAwareCache
+		// also, we handle the setting of NewCache in the controller.NewManager call
 		mopts.NewClient = kcp.NewClusterAwareClient
 		mopts.MapperProvider = kcp.NewClusterAwareMapperProvider
-		mgr, err = controller.NewManager(cfg, mopts)
+		mgr, err = controller.NewManager(cfg, mopts, true)
 		if err != nil {
 			mainLog.Error(err, "unable to start cluster aware manager")
 			os.Exit(1)
 		}
 	} else {
 		mainLog.Info("The apis.kcp.dev group is not present - creating standard manager")
-		mgr, err = controller.NewManager(restConfig, mopts)
+		mgr, err = controller.NewManager(restConfig, mopts, false)
 		if err != nil {
 			mainLog.Error(err, "unable to start manager")
 			os.Exit(1)
@@ -113,7 +116,7 @@ func main() {
 
 // restConfigForAPIExport returns a *rest.Config properly configured to communicate with the endpoint for the
 // APIExport's virtual workspace.
-func restConfigForAPIExport(ctx context.Context, cfg *rest.Config, apiExportNames ...string) (*rest.Config, error) {
+func restConfigForAPIExport(ctx context.Context, cfg *rest.Config, apiExportName string) (*rest.Config, error) {
 	scheme := runtime.NewScheme()
 	if err := apisv1alpha1.AddToScheme(scheme); err != nil {
 		return nil, fmt.Errorf("error adding apis.kcp.dev/v1alpha1 to scheme: %w", err)
@@ -126,12 +129,12 @@ func restConfigForAPIExport(ctx context.Context, cfg *rest.Config, apiExportName
 
 	var apiExport apisv1alpha1.APIExport
 
-	if len(apiExportNames) > 0 {
-		for _, apiExportName := range apiExportNames {
-			if err := apiExportClient.Get(ctx, types.NamespacedName{Name: apiExportName}, &apiExport); err != nil {
-				return nil, fmt.Errorf("error getting APIExport %q: %w", apiExportName, err)
-			}
+	if len(apiExportName) > 0 {
+		if err := apiExportClient.Get(ctx, types.NamespacedName{Name: apiExportName}, &apiExport); err != nil {
+			return nil, fmt.Errorf("error getting APIExport %q: %w", apiExportName, err)
 		}
+		mainLog.Info("found our apiexport")
+
 	} else {
 		mainLog.Info("api-export-name is empty - listing")
 		exports := &apisv1alpha1.APIExportList{}
@@ -148,7 +151,11 @@ func restConfigForAPIExport(ctx context.Context, cfg *rest.Config, apiExportName
 	}
 
 	if len(apiExport.Status.VirtualWorkspaces) < 1 {
-		return nil, fmt.Errorf("APIExport %q status.virtualWorkspaces is empty", apiExportNames)
+		return nil, fmt.Errorf("APIExport %s status.virtualWorkspaces is empty", apiExportName)
+	}
+
+	for _, vws := range apiExport.Status.VirtualWorkspaces {
+		mainLog.Info(fmt.Sprintf("found virtual workspace %s", vws.URL))
 	}
 
 	cfg = rest.CopyConfig(cfg)

@@ -3,14 +3,13 @@ package dependencybuild
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"testing"
 	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -43,17 +42,23 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		prCreator:     &tektonwrapper.ImmediateCreate{},
 	}
 
-	sysConfig := v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: configmap.SystemConfigMapName, Namespace: configmap.SystemConfigMapNamespace},
-		Data: map[string]string{
-			//bogus gradle images used to unit test the selection logic
-			configmap.SystemBuilderImages:                            "jdk11,jdk8,jdk17",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk11"): "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk11"):   "jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk8"):  "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk8"):    "jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
-			fmt.Sprintf(configmap.SystemBuilderImageFormat, "jdk17"): "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
-			fmt.Sprintf(configmap.SystemBuilderTagFormat, "jdk17"):   "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
+	sysConfig := v1alpha1.SystemConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: systemconfig.SystemConfigKey},
+		Spec: v1alpha1.SystemConfigSpec{
+			Builders: map[string]v1alpha1.JavaVersionInfo{
+				v1alpha1.JDK8Builder: {
+					Image: "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
+					Tag:   "jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
+				},
+				v1alpha1.JDK11Builder: {
+					Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
+					Tag:   "jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3",
+				},
+				v1alpha1.JDK17Builder: {
+					Image: "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
+					Tag:   "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
+				},
+			},
 		},
 	}
 	_ = client.Create(context.TODO(), &sysConfig)
@@ -99,7 +104,7 @@ func TestStateNew(t *testing.T) {
 			Name:      "test",
 		}, &db))
 		g.Expect(db.Status.CurrentBuildRecipe).ShouldNot(BeNil())
-		g.Expect(db.Status.CurrentBuildRecipe.Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"))
+		g.Expect(db.Status.CurrentBuildRecipe.Image).Should(HavePrefix("quay.io/redhat-appstudio/hacbs-jdk"))
 
 	})
 }
@@ -196,7 +201,7 @@ func TestStateDetect(t *testing.T) {
 				case PipelineScmUrl:
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
 				case PipelineImage:
-					g.Expect(param.Value.StringVal).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"))
+					g.Expect(param.Value.StringVal).Should(HavePrefix("quay.io/redhat-appstudio/hacbs-jdk"))
 				case PipelineGoals:
 					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
 				case PipelineEnforceVersion:
@@ -397,8 +402,18 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(2))
-		g.Expect(db.Status.PotentialBuildRecipes[0].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"))
-		g.Expect(db.Status.PotentialBuildRecipes[1].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk8-builder:latest"))
+		find11 := false
+		find8 := false
+		for _, recipe := range db.Status.PotentialBuildRecipes {
+			switch recipe.Image {
+			case "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest":
+				find11 = true
+			case "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest":
+				find8 = true
+			}
+		}
+		g.Expect(find11).To(BeTrue())
+		g.Expect(find8).To(BeTrue())
 	})
 
 	t.Run("Test build info discovery for gradle build 2", func(t *testing.T) {
@@ -420,7 +435,17 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(2))
-		g.Expect(db.Status.PotentialBuildRecipes[0].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"))
-		g.Expect(db.Status.PotentialBuildRecipes[1].Image).Should(Equal("quay.io/redhat-appstudio/hacbs-jdk8-builder:latest"))
+		find11 := false
+		find8 := false
+		for _, recipe := range db.Status.PotentialBuildRecipes {
+			switch recipe.Image {
+			case "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest":
+				find11 = true
+			case "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest":
+				find8 = true
+			}
+		}
+		g.Expect(find11).To(BeTrue())
+		g.Expect(find8).To(BeTrue())
 	})
 }

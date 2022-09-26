@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/kcp-dev/logicalcluster"
+	"github.com/kcp-dev/logicalcluster/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -67,11 +67,16 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	var cancel context.CancelFunc
 	if request.ClusterName != "" {
+		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
 		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
 	}
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	log := ctrl.Log.WithName("artifactbuild").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
+	//_, clusterSet := logicalcluster.ClusterFromContext(ctx)
+	//if !clusterSet {
+	//	log.Info("cluster is not set in context", request.String())
+	//}
 	abr := v1alpha1.ArtifactBuild{}
 	abrerr := r.client.Get(ctx, request.NamespacedName, &abr)
 	if abrerr != nil {
@@ -109,12 +114,15 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 	switch {
 	case dberr == nil:
+		//log.Info("cluster set on obj ", r.clusterSetOnObj(&db))
 		return r.handleDependencyBuildReceived(ctx, log, &db)
 
 	case trerr == nil:
+		//log.Info("cluster set on obj ", r.clusterSetOnObj(&pr))
 		return r.handlePipelineRunReceived(ctx, log, &pr)
 
 	case abrerr == nil:
+		//log.Info("cluster set on obj ", r.clusterSetOnObj(&abr))
 		//first check for a rebuild annotation
 		if abr.Annotations[Rebuild] == "true" {
 			return r.handleRebuild(ctx, &abr)
@@ -141,6 +149,10 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 	return reconcile.Result{}, nil
 }
+
+//func (r *ReconcileArtifactBuild) clusterSetOnObj(object logicalcluster.Object) bool {
+//	return len(logicalcluster.From(object).String()) > 0
+//}
 
 func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime == nil {

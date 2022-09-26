@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	projectset "github.com/openshift/client-go/project/clientset/versioned"
-	quotaset   "github.com/openshift/client-go/quota/clientset/versioned"
+	quotaset "github.com/openshift/client-go/quota/clientset/versioned"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 

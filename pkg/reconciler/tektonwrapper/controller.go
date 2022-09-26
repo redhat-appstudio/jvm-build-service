@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kcp-dev/logicalcluster/v2"
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -68,6 +69,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 						Name:      pipelineRun.Name,
 						Namespace: pipelineRun.Namespace,
 					},
+					ClusterName: logicalcluster.From(pipelineRun).String(),
 				},
 			}
 		})).

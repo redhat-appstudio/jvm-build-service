@@ -23,4 +23,6 @@ type DependencyBuildExpansion interface{}
 
 type RebuiltArtifactExpansion interface{}
 
+type SystemConfigExpansion interface{}
+
 type TektonWrapperExpansion interface{}
