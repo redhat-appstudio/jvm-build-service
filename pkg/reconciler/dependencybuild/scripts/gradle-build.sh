@@ -42,5 +42,6 @@ fi
 
 gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace "$@" || exit 1
 
+tar -czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .
 # fix-permissions-for-builder
 chown 1001:1001 -R $(workspaces.source.path)

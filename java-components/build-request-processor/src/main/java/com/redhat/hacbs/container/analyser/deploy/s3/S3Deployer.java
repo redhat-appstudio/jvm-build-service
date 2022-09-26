@@ -1,18 +1,13 @@
-package com.redhat.hacbs.artifactcache.deploy.s3;
+package com.redhat.hacbs.container.analyser.deploy.s3;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Named;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.artifactcache.deploy.Deployer;
+import com.redhat.hacbs.container.analyser.deploy.Deployer;
 
 import io.quarkus.logging.Log;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -21,8 +16,6 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-@ApplicationScoped
-@Named("S3Deployer")
 public class S3Deployer implements Deployer {
 
     final S3Client client;
@@ -30,11 +23,11 @@ public class S3Deployer implements Deployer {
     final String deploymentPrefix;
 
     public S3Deployer(S3Client client,
-            @ConfigProperty(name = "deployment-bucket", defaultValue = "build-artifacts") String deploymentBucket,
-            @ConfigProperty(name = "deployment-prefix", defaultValue = "") Optional<String> deploymentPrefix) {
+            String deploymentBucket,
+            String deploymentPrefix) {
         this.client = client;
         this.deploymentBucket = deploymentBucket;
-        this.deploymentPrefix = deploymentPrefix.orElse("");
+        this.deploymentPrefix = deploymentPrefix;
     }
 
     @Override

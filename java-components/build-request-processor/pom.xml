@@ -16,6 +16,14 @@
             <artifactId>httpclient</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkiverse.amazonservices</groupId>
+            <artifactId>quarkus-amazon-s3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.redhat.hacbs</groupId>
             <artifactId>hacbs-classfile-tracker</artifactId>
         </dependency>
@@ -30,6 +38,10 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-client-reactive</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-kubernetes-client</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
