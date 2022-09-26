@@ -62,6 +62,10 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		},
 	}
 	_ = client.Create(context.TODO(), &sysConfig)
+	usrConfig := v1alpha1.UserConfig{
+		ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName},
+	}
+	_ = client.Create(context.TODO(), &usrConfig)
 
 	return client, reconciler
 }

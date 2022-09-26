@@ -18,6 +18,8 @@ rules:
       - rebuiltartifacts/status
       - systemconfigs
       - systemconfigs/status
+      - userconfigs
+      - userconfigs/status
     verbs:
       - create
       - delete
@@ -79,15 +81,11 @@ rules:
       - delete
   - apiGroups:
       - ""
+    # note - tekton gives its controller read access to secrets, so any pods there can access secrets in the pods namespace
     resources:
-      - configmaps
+      - secrets
     verbs:
       - get
-      - create
-      - patch
-      - list
-      - watch
-      - delete
   - apiGroups:
     - "apps"
     resources:
@@ -171,6 +169,8 @@ rules:
       - tektonwrappers/status
       - systemconfigs
       - systemconfigs/status
+      - userconfigs
+      - userconfigs/status
     verbs:
       - get
       - list

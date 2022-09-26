@@ -6,7 +6,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -47,10 +46,10 @@ func TestArtifactBuildStateNew(t *testing.T) {
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&abr)
 	const customRepo = "https://myrepo.com/repo.git"
-	sysConfig := v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: configmap.UserConfigMapName, Namespace: metav1.NamespaceDefault},
-		Data: map[string]string{
-			configmap.UserConfigAdditionalRecipes: customRepo,
+	sysConfig := v1alpha1.UserConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.UserConfigName, Namespace: metav1.NamespaceDefault},
+		Spec: v1alpha1.UserConfigSpec{
+			AdditionalRecipes: []string{customRepo},
 		},
 	}
 	g.Expect(client.Create(context.TODO(), &sysConfig)).Should(Succeed())

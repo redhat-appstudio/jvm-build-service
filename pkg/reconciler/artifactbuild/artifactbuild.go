@@ -24,7 +24,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -269,11 +268,12 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.GenerateName = abr.Name + "-scm-discovery-"
 	pr.Namespace = abr.Namespace
-	cm, err1 := configmap.ReadUserConfigMap(r.client, ctx, abr.Namespace)
-	if err1 != nil {
-		return reconcile.Result{}, err1
+	userConfig := &v1alpha1.UserConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: abr.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
+	if err != nil && !errors.IsNotFound(err) {
+		return reconcile.Result{}, err
 	}
-	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, cm)
+	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, userConfig)
 	if err2 != nil {
 		return reconcile.Result{}, err2
 	}
@@ -542,16 +542,19 @@ func CreateABRName(gav string) string {
 	return strings.ToLower(newName.String())
 }
 
-func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, config map[string]string) (*pipelinev1beta1.TaskSpec, error) {
+func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, userConfig *v1alpha1.UserConfig) (*pipelinev1beta1.TaskSpec, error) {
 	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	if err != nil {
 		return nil, err
 	}
-	recipes := os.Getenv("RECIPE_DATABASE")
-	additional, ok := config[configmap.UserConfigAdditionalRecipes]
-	if ok {
-		recipes = recipes + "," + additional
+	recipes := ""
+	additional := userConfig.Spec.AdditionalRecipes
+	for _, recipe := range additional {
+		if len(strings.TrimSpace(recipe)) > 0 {
+			recipes = recipes + recipe + ","
+		}
 	}
+	recipes = recipes + os.Getenv("RECIPE_DATABASE")
 
 	zero := int64(0)
 	return &pipelinev1beta1.TaskSpec{

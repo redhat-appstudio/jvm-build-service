@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"os"
 	"strconv"
 	"strings"
@@ -28,7 +27,7 @@ import (
 	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -168,13 +167,14 @@ func hashToString(unique string) string {
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	cm, err := configmap.ReadUserConfigMap(r.client, ctx, db.Namespace)
-	if err != nil {
+	userConfig := &v1alpha1.UserConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
+	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
-	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, cm)
+	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, userConfig)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -659,16 +659,19 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, config map[string]string) (*pipelinev1beta1.PipelineSpec, error) {
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, userConfig *v1alpha1.UserConfig) (*pipelinev1beta1.PipelineSpec, error) {
 	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	if err != nil {
 		return nil, err
 	}
-	recipes := os.Getenv("RECIPE_DATABASE")
-	additional, ok := config[configmap.UserConfigAdditionalRecipes]
-	if ok {
-		recipes = recipes + "," + additional
+	recipes := ""
+	additional := userConfig.Spec.AdditionalRecipes
+	for _, recipe := range additional {
+		if len(strings.TrimSpace(recipe)) > 0 {
+			recipes = recipes + recipe + ","
+		}
 	}
+	recipes = recipes + os.Getenv("RECIPE_DATABASE")
 	path := build.ScmInfo.Path
 	//TODO should the buidl request process require context to be set ?
 	if len(path) == 0 {

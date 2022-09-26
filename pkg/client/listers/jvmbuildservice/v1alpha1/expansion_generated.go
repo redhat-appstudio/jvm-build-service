@@ -56,3 +56,11 @@ type TektonWrapperListerExpansion interface{}
 // TektonWrapperNamespaceListerExpansion allows custom methods to be added to
 // TektonWrapperNamespaceLister.
 type TektonWrapperNamespaceListerExpansion interface{}
+
+// UserConfigListerExpansion allows custom methods to be added to
+// UserConfigLister.
+type UserConfigListerExpansion interface{}
+
+// UserConfigNamespaceListerExpansion allows custom methods to be added to
+// UserConfigNamespaceLister.
+type UserConfigNamespaceListerExpansion interface{}

@@ -5,13 +5,8 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"html/template"
 	"io"
-	"k8s.io/cli-runtime/pkg/printers"
-	kubeset "k8s.io/client-go/kubernetes"
-	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,8 +17,9 @@ import (
 	"time"
 
 	projectv1 "github.com/openshift/api/project/v1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +29,9 @@ import (
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/cli-runtime/pkg/printers"
+	kubeset "k8s.io/client-go/kubernetes"
+	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 func generateName(base string) string {
@@ -204,23 +203,34 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 	if owner == "" {
 		owner = "redhat-appstudio-qe"
 	}
-	cm := corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "jvm-build-config", Namespace: ta.ns},
-		Data: map[string]string{
-			"enable-rebuilds":                    "true",
-			"enable-localstack":                  "false",
-			"maven-repository-300-jboss":         "https://repository.jboss.org/nexus/content/groups/public/",
-			"maven-repository-301-gradleplugins": "https://plugins.gradle.org/m2",
-			"maven-repository-302-confluent":     "https://packages.confluent.io/maven",
-			"maven-repository-303-gradle":        "https://repo.gradle.org/artifactory/libs-releases",
-			"maven-repository-304-eclipselink":   "https://download.eclipse.org/rt/eclipselink/maven.repo",
-			"maven-repository-305-redhat":        "https://maven.repository.redhat.com/ga",
-			"maven-repository-306-jitpack":       "https://jitpack.io",
-			"maven-repository-307-jsweet":        "https://repository.jsweet.org/artifactory/libs-release-local",
-			"registry.host":                      "quay.io",
-			"registry.prepend-tag":               strconv.FormatInt(time.Now().UnixMilli(), 10),
-			"registry.owner":                     owner,
-			"registry.repository":                "test-images"}}
-	_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cm, metav1.CreateOptions{})
+	userConfig := v1alpha1.UserConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ta.ns,
+			Name:      v1alpha1.UserConfigName,
+		},
+		Spec: v1alpha1.UserConfigSpec{
+			EnableRebuilds:    true,
+			DisableLocalstack: true,
+			MavenBaseLocations: map[string]string{
+				"maven-repository-300-jboss":         "https://repository.jboss.org/nexus/content/groups/public/",
+				"maven-repository-301-gradleplugins": "https://plugins.gradle.org/m2",
+				"maven-repository-302-confluent":     "https://packages.confluent.io/maven",
+				"maven-repository-303-gradle":        "https://repo.gradle.org/artifactory/libs-releases",
+				"maven-repository-304-eclipselink":   "https://download.eclipse.org/rt/eclipselink/maven.repo",
+				"maven-repository-305-redhat":        "https://maven.repository.redhat.com/ga",
+				"maven-repository-306-jitpack":       "https://jitpack.io",
+				"maven-repository-307-jsweet":        "https://repository.jsweet.org/artifactory/libs-release-local"},
+			CacheSettings: v1alpha1.CacheSettings{},
+			ImageRegistry: v1alpha1.ImageRegistry{
+				Host:       "quay.io",
+				Owner:      owner,
+				Repository: "test-images",
+				PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
+			},
+		},
+		Status: v1alpha1.UserConfigStatus{},
+	}
+	_, err = jvmClient.JvmbuildserviceV1alpha1().UserConfigs(ta.ns).Create(context.TODO(), &userConfig, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
@@ -231,7 +241,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 		debugAndFailTest(ta, err.Error())
 	}
 	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (done bool, err error) {
-		_, err = kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), configmap.CacheDeploymentName, metav1.GetOptions{})
+		_, err = kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.CacheDeploymentName, metav1.GetOptions{})
 		if err != nil {
 			ta.Logf(fmt.Sprintf("get of cache: %s", err.Error()))
 			return false, nil
