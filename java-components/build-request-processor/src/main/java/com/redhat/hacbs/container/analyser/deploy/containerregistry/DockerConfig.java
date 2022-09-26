@@ -1,4 +1,4 @@
-package com.redhat.hacbs.artifactcache.deploy.containerregistry;
+package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 
 import java.util.Map;
 

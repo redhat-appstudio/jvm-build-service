@@ -43,6 +43,9 @@ const (
 	PipelineResultContextPath     = "context"
 	PipelineResultMessage         = "message"
 	TaskName                      = "task"
+	JavaCommunityDependencies     = "java-community-dependencies"
+	Contaminants                  = "contaminants"
+	DeployedResources             = "deployed-resources"
 	Rebuild                       = "jvmbuildservice.io/rebuild"
 )
 
@@ -95,15 +98,15 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	}
 
 	pr := pipelinev1beta1.PipelineRun{}
-	trerr := r.client.Get(ctx, request.NamespacedName, &pr)
-	if trerr != nil {
-		if !errors.IsNotFound(trerr) {
-			log.Error(trerr, "Reconcile key %s as pipelinerun unexpected error", request.NamespacedName.String())
-			return ctrl.Result{}, trerr
+	prerr := r.client.Get(ctx, request.NamespacedName, &pr)
+	if prerr != nil {
+		if !errors.IsNotFound(prerr) {
+			log.Error(prerr, "Reconcile key %s as pipelinerun unexpected error", request.NamespacedName.String())
+			return ctrl.Result{}, prerr
 		}
 	}
 
-	if trerr != nil && dberr != nil && abrerr != nil {
+	if prerr != nil && dberr != nil && abrerr != nil {
 		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
 		msg := "Reconcile key received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted): " + request.NamespacedName.String()
 		log.Info(msg)
@@ -116,8 +119,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		//log.Info("cluster set on obj ", r.clusterSetOnObj(&db))
 		return r.handleDependencyBuildReceived(ctx, log, &db)
 
-	case trerr == nil:
-		//log.Info("cluster set on obj ", r.clusterSetOnObj(&pr))
+	case prerr == nil:
 		return r.handlePipelineRunReceived(ctx, log, &pr)
 
 	case abrerr == nil:
@@ -154,6 +156,15 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 //}
 
 func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+
+	if pr.Status.PipelineResults != nil {
+		for _, prRes := range pr.Status.PipelineResults {
+			if prRes.Name == JavaCommunityDependencies {
+				return reconcile.Result{}, r.handleCommunityDependencies(ctx, strings.Split(prRes.Value, ","), pr.Namespace, log)
+			}
+		}
+	}
+
 	if pr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
 	}
@@ -594,4 +605,28 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 			},
 		},
 	}, nil
+}
+
+func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context, split []string, namespace string, log logr.Logger) error {
+	log.Info("Found pipeline run with community dependencies")
+	for _, gav := range split {
+		name := CreateABRName(gav)
+		log.Info("Found community dependency: ", "gav", gav)
+		abr := v1alpha1.ArtifactBuild{}
+		err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &abr)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				abr.Spec.GAV = gav
+				abr.Name = name
+				abr.Namespace = namespace
+				err := r.client.Create(ctx, &abr)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	}
+	return nil
 }

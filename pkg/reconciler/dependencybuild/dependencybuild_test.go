@@ -195,7 +195,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(10))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(11))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineScmTag:
@@ -348,9 +348,16 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "True",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: "com.acme:foo:1.0,com.acme:bar:1.0"}}
+		ab := v1alpha1.ArtifactBuild{}
+		//we need an abr for this to be considered contaminated
+		ab.Name = artifactbuild.CreateABRName(TestArtifact)
+		ab.Namespace = pr.Namespace
+		ab.Spec.GAV = TestArtifact
+		g.Expect(client.Create(ctx, &ab)).Should(BeNil())
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: "[{\"gav\": \"com.acme:foo:1.0\", \"contaminatedArtifacts\": [\"" + TestArtifact + "\"]}]"}}
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		db := getBuild(client, g)
+		g.Expect(controllerutil.SetOwnerReference(&ab, db, reconciler.scheme)).Should(BeNil())
 		db.Status.Contaminants = []v1alpha1.Contaminant{{GAV: "com.acme:foo:1.0", ContaminatedArtifacts: []string{TestArtifact}}}
 		g.Expect(client.Update(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))

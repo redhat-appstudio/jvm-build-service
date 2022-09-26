@@ -81,6 +81,8 @@ spec:
       description: The total number of dependencies in the output
     - name: untrusted-dependencies
       description: The total number of dependencies that came from an untrusted source, such as Maven central
+    - name: java-community-dependencies
+      description: The list of community dependencies
   steps:
     - name: mvn-settings
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
@@ -185,6 +187,5 @@ spec:
         - "$(results.dependencies.path)"
         - -u
         - "$(results.untrusted-dependencies.path)"
-        - --cache-url
-        - $(params.MAVEN_MIRROR_URL)/v1/rebuild
-
+        - --task-run-name
+        - $(context.taskRun.name)

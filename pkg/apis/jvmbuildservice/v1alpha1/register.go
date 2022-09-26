@@ -42,6 +42,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&SystemConfigList{},
 		&UserConfig{},
 		&UserConfigList{},
+		&RebuiltArtifact{},
+		&RebuiltArtifactList{},
 	)
 	// &Condition{},
 	// &ConditionList{},

@@ -1,4 +1,4 @@
-package com.redhat.hacbs.artifactcache.util;
+package com.redhat.hacbs.container.analyser.util;
 
 import java.io.IOException;
 import java.nio.file.Files;

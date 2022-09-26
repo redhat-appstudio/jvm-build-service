@@ -18,20 +18,28 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.ArtifactBuild{}).
 		Watches(&source.Kind{Type: &v1beta1.PipelineRun{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 			pipelineRun := o.(*v1beta1.PipelineRun)
-
-			// check if the TaskRun is related to ArtifactBuild
-			if pipelineRun.GetLabels() == nil {
-				return []reconcile.Request{}
+			communitArtifacts := false
+			if pipelineRun.Status.PipelineResults != nil {
+				for _, r := range pipelineRun.Status.PipelineResults {
+					if r.Name == JavaCommunityDependencies {
+						communitArtifacts = true
+					}
+				}
 			}
-			_, ok := pipelineRun.GetLabels()[PipelineRunLabel]
-			if !ok {
-				return []reconcile.Request{}
+			if !communitArtifacts {
+				// check if the TaskRun is related to ArtifactBuild
+				if pipelineRun.GetLabels() == nil {
+					return []reconcile.Request{}
+				}
+				_, ok := pipelineRun.GetLabels()[PipelineRunLabel]
+				if !ok {
+					return []reconcile.Request{}
+				}
+				_, ok = pipelineRun.GetLabels()[ArtifactBuildIdLabel]
+				if !ok {
+					return []reconcile.Request{}
+				}
 			}
-			_, ok = pipelineRun.GetLabels()[ArtifactBuildIdLabel]
-			if !ok {
-				return []reconcile.Request{}
-			}
-
 			return []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
