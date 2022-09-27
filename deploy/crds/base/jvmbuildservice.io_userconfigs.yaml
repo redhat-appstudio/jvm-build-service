@@ -39,9 +39,6 @@ spec:
                 items:
                   type: string
                 type: array
-              disableLocalstack:
-                description: TODO is suppose to go away, but still not ready
-                type: boolean
               enableRebuilds:
                 type: boolean
               host:

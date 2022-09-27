@@ -30,10 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const (
-	LocalstackDeploymentName = "jvm-build-workspace-localstack"
-)
-
 type ReconcilerUserConfig struct {
 	client               client.Client
 	nonCachingClient     client.Client
@@ -88,14 +84,6 @@ func (r *ReconcilerUserConfig) Reconcile(ctx context.Context, request reconcile.
 		err = r.cacheDeployment(ctx, log, request, &userConfig)
 		if err != nil {
 			return reconcile.Result{}, err
-		}
-		// mimic to run by default, but allow for explicit disable, that was in original configmap impl
-		if userConfig.Spec.EnableRebuilds && !userConfig.Spec.DisableLocalstack {
-			log.Info("Setup Rebuilds %s", "name", request.Name)
-			err := r.setupLocalstack(ctx, log, request)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
 		}
 	}
 	return reconcile.Result{}, nil
@@ -276,15 +264,6 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	trueBool := true
 	if userConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
-		if !userConfig.Spec.DisableLocalstack {
-			//TODO: localstack should eventually go away altogether
-			//for now it is convenient for testing
-			cache = settingIfSet("http://"+v1alpha1.LocalstackDeploymentName+"."+request.Namespace+".svc.cluster.local:4572", "QUARKUS_S3_ENDPOINT_OVERRIDE", cache)
-			cache = settingIfSet("us-east-1", "QUARKUS_S3_AWS_REGION", cache)
-			cache = settingIfSet("static", "QUARKUS_S3_AWS_CREDENTIALS_TYPE", cache)
-			cache = settingIfSet("accesskey", "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_ACCESS_KEY_ID", cache)
-			cache = settingIfSet("secretkey", "QUARKUS_S3_AWS_CREDENTIALS_STATIC_PROVIDER_SECRET_ACCESS_KEY", cache)
-		}
 
 		cache = settingIfSet(userConfig.Spec.Owner, "REGISTRY_OWNER", cache)
 		cache = settingIfSet(userConfig.Spec.Host, "REGISTRY_HOST", cache)
@@ -345,69 +324,4 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	} else {
 		return r.client.Update(ctx, cache)
 	}
-}
-
-func (r *ReconcilerUserConfig) setupLocalstack(ctx context.Context, log logr.Logger, request reconcile.Request) error {
-	//setup localstack
-	//this is 100% temporary and needs to go away ASAP
-	localstack := appsv1.Deployment{}
-	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: LocalstackDeploymentName}
-	err := r.client.Get(ctx, deploymentName, &localstack)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Creating localstack deployment", "name", LocalstackDeploymentName, "Namespace", request.Namespace)
-			localstack.Name = deploymentName.Name
-			localstack.Namespace = deploymentName.Namespace
-			var replicas int32 = 1
-			localstack.Spec.Replicas = &replicas
-			localstack.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"app": LocalstackDeploymentName}}
-			localstack.Spec.Template.ObjectMeta.Labels = map[string]string{"app": LocalstackDeploymentName}
-			localstack.Spec.Template.Spec.Containers = []corev1.Container{{
-				Name:            LocalstackDeploymentName,
-				ImagePullPolicy: "Always",
-				Ports: []corev1.ContainerPort{{
-					ContainerPort: 4572,
-				}},
-				Env: []corev1.EnvVar{{Name: "SERVICES", Value: "s3:4572"}},
-			}}
-			localstack.Spec.Template.Spec.Containers[0].Image = "localstack/localstack:0.11.5"
-			err = r.client.Create(ctx, &localstack)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	//and setup the service
-	err = r.client.Get(ctx, types.NamespacedName{Name: LocalstackDeploymentName, Namespace: request.Namespace}, &corev1.Service{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Creating localstack service", "name", LocalstackDeploymentName, "Namespace", request.Namespace)
-			service := corev1.Service{
-				ObjectMeta: ctrl.ObjectMeta{
-					Name:      LocalstackDeploymentName,
-					Namespace: request.Namespace,
-				},
-				Spec: corev1.ServiceSpec{
-					Ports: []corev1.ServicePort{
-						{
-							Name:     "s3",
-							Port:     4572,
-							Protocol: corev1.ProtocolTCP,
-						},
-					},
-					Type:     corev1.ServiceTypeLoadBalancer,
-					Selector: map[string]string{"app": LocalstackDeploymentName},
-				},
-			}
-			err := r.client.Create(ctx, &service)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	return nil
 }

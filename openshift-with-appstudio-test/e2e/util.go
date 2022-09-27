@@ -209,8 +209,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 			Name:      v1alpha1.UserConfigName,
 		},
 		Spec: v1alpha1.UserConfigSpec{
-			EnableRebuilds:    true,
-			DisableLocalstack: true,
+			EnableRebuilds: true,
 			MavenBaseLocations: map[string]string{
 				"maven-repository-300-jboss":         "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-gradleplugins": "https://plugins.gradle.org/m2",
@@ -249,7 +248,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 		return true, nil
 	})
 	if err != nil {
-		debugAndFailTest(ta, "cache and/or localstack not present in timely fashion")
+		debugAndFailTest(ta, "cache not present in timely fashion")
 	}
 	return ta
 }
