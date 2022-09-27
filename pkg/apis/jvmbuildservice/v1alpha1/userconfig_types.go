@@ -7,7 +7,6 @@ const (
 	UserSecretName                          = "jvm-build-secrets"
 	UserSecretTokenKey                      = "registry.token"
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
-	LocalstackDeploymentName                = "jvm-build-workspace-localstack"
 	ConfigArtifactCacheRequestMemoryDefault = "1024Mi"
 	ConfigArtifactCacheRequestCPUDefault    = "1"
 	ConfigArtifactCacheLimitMemoryDefault   = "1024Mi"
@@ -19,8 +18,6 @@ const (
 
 type UserConfigSpec struct {
 	EnableRebuilds bool `json:"enableRebuilds,omitempty"`
-	//TODO is suppose to go away, but still not ready
-	DisableLocalstack bool `json:"disableLocalstack,omitempty"`
 
 	AdditionalRecipes []string `json:"AdditionalRecipes,omitempty"`
 

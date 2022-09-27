@@ -6,7 +6,6 @@ kubectl delete deployments.apps hacbs-jvm-operator -n jvm-build-service
 # down by needing things to be re-cached/rebuilt
 
 kubectl delete deployments.apps jvm-build-workspace-artifact-cache
-#kubectl delete deployments.apps localstack -n jvm-build-service
 #kubectl delete persistentvolumeclaims jvm-build-workspace-artifact-cache
 
 DIR=`dirname $0`

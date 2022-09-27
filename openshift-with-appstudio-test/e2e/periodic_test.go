@@ -144,7 +144,6 @@ func TestServiceRegistry(t *testing.T) {
 	ta.t.Run("current target of artifactbuilds/dependencybuilds complete", func(t *testing.T) {
 		defer dumpBadEvents(ta)
 		defer dumpPods(ta, "jvm-build-service")
-		defer dumpPodsGlob(ta, ta.ns, "localstack")
 		defer dumpPodsGlob(ta, ta.ns, "artifact-cache")
 		// ab pods I do not think get pruned, let's see, along with this many defers
 		defer abDumpForState(ta, v1alpha1.ArtifactBuildStateFailed)
