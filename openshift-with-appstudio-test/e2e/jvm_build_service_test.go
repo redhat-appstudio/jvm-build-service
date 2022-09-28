@@ -72,6 +72,9 @@ func TestExampleRun(t *testing.T) {
 		debugAndFailTest(ta, err.Error())
 	}
 
+	// sleep to handle those intermittent timing windows where the pipelinerun can reconcile before the pipeline it refs
+	time.Sleep(30*time.Second)
+
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-e2e-shaded-app.yaml")
 	ta.run = &v1beta1.PipelineRun{}
 	obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
