@@ -14,6 +14,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
@@ -53,6 +54,9 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     private final Credential credential;
 
     final RebuiltArtifacts rebuiltArtifacts;
+
+    final AtomicInteger hits = new AtomicInteger();
+    final AtomicInteger total = new AtomicInteger();
 
     public OCIRegistryRepositoryClient(String registry, String owner, String repository, Optional<String> token,
             Optional<String> prependHashedGav,
@@ -103,10 +107,15 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         }
 
         String gav = group + ":" + artifact + ":" + version;
-        if (!rebuiltArtifacts.getGavs().contains(gav)) {
+        total.incrementAndGet();
+        if (!rebuiltArtifacts.isPossiblyRebuilt(gav)) {
+            Log.infof("RATIO: %s,%s", hits.get(), total.get());
             return Optional.empty();
         }
         Log.debugf("Attempting to retrieve %s for artifact %s", hashedGav, gav);
+        hits.incrementAndGet();
+        Log.infof("HIT: " + gav);
+        Log.infof("RATIO: %s,%s", hits.get(), total.get());
         RegistryClient registryClient = getRegistryClient();
 
         try {
