@@ -57,15 +57,6 @@ jobs:
             git --no-pager diff
             exit 1
           fi
-      - name: Check kcp
-        run: |
-          CONTROL_PLANE=kcp make generate
-          if [[ ! -z $(git status -s) ]]
-          then
-            echo "generated kcp sources are not up to date:"
-            git --no-pager diff
-            exit 1
-          fi
   unit:
     name: Golang Unit tests
     runs-on: ubuntu-latest
