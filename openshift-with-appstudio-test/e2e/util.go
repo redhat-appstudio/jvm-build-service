@@ -219,7 +219,10 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 				"maven-repository-305-redhat":        "https://maven.repository.redhat.com/ga",
 				"maven-repository-306-jitpack":       "https://jitpack.io",
 				"maven-repository-307-jsweet":        "https://repository.jsweet.org/artifactory/libs-release-local"},
-			CacheSettings: v1alpha1.CacheSettings{},
+			CacheSettings: v1alpha1.CacheSettings{
+				RequestMemory: "8Gi",
+				LimitMemory:   "8Gi",
+			},
 			ImageRegistry: v1alpha1.ImageRegistry{
 				Host:       "quay.io",
 				Owner:      owner,
