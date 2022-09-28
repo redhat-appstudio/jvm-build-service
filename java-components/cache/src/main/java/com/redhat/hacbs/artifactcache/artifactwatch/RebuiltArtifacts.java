@@ -33,12 +33,11 @@ public class RebuiltArtifacts {
             @Override
             public void onUpdate(ArtifactBuild old, ArtifactBuild newObj) {
                 gavs.add(newObj.getSpec().getGav());
-
             }
 
             @Override
             public void onDelete(ArtifactBuild artifactBuild, boolean b) {
-
+                gavs.remove(artifactBuild.getSpec().getGav());
             }
         });
         client.resources(RebuiltArtifact.class).inform().addEventHandler(new ResourceEventHandler<RebuiltArtifact>() {
@@ -50,12 +49,11 @@ public class RebuiltArtifacts {
             @Override
             public void onUpdate(RebuiltArtifact old, RebuiltArtifact newObj) {
                 gavs.add(newObj.getSpec().getGav());
-
             }
 
             @Override
             public void onDelete(RebuiltArtifact artifactBuild, boolean b) {
-
+                gavs.remove(artifactBuild.getSpec().getGav());
             }
         });
     }

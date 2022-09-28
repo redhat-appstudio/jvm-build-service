@@ -7,8 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	versioned "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"io"
 	corev1 "k8s.io/api/core/v1"
+	kubeset "k8s.io/client-go/kubernetes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,6 +27,9 @@ import (
 
 func TestExampleRun(t *testing.T) {
 	ta := setup(t, nil)
+	defer func(namespace string, jvmClient *versioned.Clientset, kubeClient *kubeset.Clientset) {
+		_ = GenerateStatusReport(namespace, jvmClient, kubeClient)
+	}(ta.ns, jvmClient, kubeClient)
 	//TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
 	// and successful runs (in case a run succeeds, but we find something amiss if we look at passing runs; our in repo
 	// tests do now run in conjunction with say the full suite of e2e's in the e2e-tests runs, so no contention there.
