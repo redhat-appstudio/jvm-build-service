@@ -11,6 +11,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/rebuiltartifact"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/userconfig"
@@ -73,6 +74,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 			&pipelinev1beta1.PipelineRun{}: {},
 			&v1alpha1.DependencyBuild{}:    {},
 			&v1alpha1.ArtifactBuild{}:      {},
+			&v1alpha1.RebuiltArtifact{}:    {},
 		}}
 	if kcp {
 		// see https://github.com/kcp-dev/controller-runtime/blob/824b15a11b186ee83a716bbc28d9b7b1ca538f6a/pkg/kcp/wrappers.go#L62-L72
@@ -103,6 +105,9 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 	}
 
 	if err := userconfig.SetupNewReconcilerWithManager(mgr); err != nil {
+		return nil, err
+	}
+	if err := rebuiltartifact.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

@@ -98,6 +98,18 @@ rules:
       - list
       - watch
   - apiGroups:
+    - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - create
+      - patch
+      - list
+      - watch
+      - delete
+      - update
+  - apiGroups:
       - ""
     resources:
       - services
@@ -184,39 +196,10 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
 rules:
   - apiGroups:
-      - jvmbuildservice.io
+      - ""
     resources:
-      - artifactbuilds
-      - artifactbuilds/status
+      - configmaps
     verbs:
       - get
       - list
       - watch
-      - create
-  - apiGroups:
-      - apiextensions.k8s.io
-    resources:
-      - customresourcedefinitions
-    verbs:
-      - get
-  - apiGroups:
-      - jvmbuildservice.io
-    resources:
-      - dependencybuilds
-      - dependencybuilds/status
-    verbs:
-      - get
-      - list
-      - watch
-      - patch
-      - update
-  - apiGroups:
-      - jvmbuildservice.io
-    resources:
-      - rebuiltartifacts
-      - rebuiltartifacts/status
-    verbs:
-      - get
-      - list
-      - watch
-      - create
