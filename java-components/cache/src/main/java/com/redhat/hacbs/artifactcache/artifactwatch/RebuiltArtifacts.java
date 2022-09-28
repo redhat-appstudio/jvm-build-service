@@ -13,6 +13,7 @@ import com.redhat.hacbs.resources.model.v1alpha1.RebuiltArtifact;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
+import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class RebuiltArtifacts {
@@ -27,11 +28,13 @@ public class RebuiltArtifacts {
         client.resources(ArtifactBuild.class).inform().addEventHandler(new ResourceEventHandler<ArtifactBuild>() {
             @Override
             public void onAdd(ArtifactBuild artifactBuild) {
+                Log.infof("Adding new rebuild ArtifactBuild %s", artifactBuild.getSpec().getGav());
                 gavs.add(artifactBuild.getSpec().getGav());
             }
 
             @Override
             public void onUpdate(ArtifactBuild old, ArtifactBuild newObj) {
+                Log.infof("Adding modified rebuild ArtifactBuild %s", newObj.getSpec().getGav());
                 gavs.add(newObj.getSpec().getGav());
             }
 
@@ -43,11 +46,13 @@ public class RebuiltArtifacts {
         client.resources(RebuiltArtifact.class).inform().addEventHandler(new ResourceEventHandler<RebuiltArtifact>() {
             @Override
             public void onAdd(RebuiltArtifact artifactBuild) {
+                Log.infof("Adding new RebuiltArtifact %s", artifactBuild.getSpec().getGav());
                 gavs.add(artifactBuild.getSpec().getGav());
             }
 
             @Override
             public void onUpdate(RebuiltArtifact old, RebuiltArtifact newObj) {
+                Log.infof("Adding updated RebuiltArtifact %s", newObj.getSpec().getGav());
                 gavs.add(newObj.getSpec().getGav());
             }
 
