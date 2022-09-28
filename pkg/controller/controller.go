@@ -28,6 +28,9 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
+	ctrlkcp "sigs.k8s.io/controller-runtime/pkg/kcp"
 )
 
 var (
@@ -69,26 +72,55 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		return nil, err
 	}
 
-	c := rest.CopyConfig(cfg)
-	cacheOptions := cache.Options{
-		SelectorsByObject: cache.SelectorsByObject{
-			&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
-			&v1alpha1.DependencyBuild{}:    {},
-			&v1alpha1.ArtifactBuild{}:      {},
-			&v1.ConfigMap{}:                {},
-		}}
+	var mgr ctrl.Manager
+	var err error
 	if kcp {
-		// see https://github.com/kcp-dev/controller-runtime/blob/824b15a11b186ee83a716bbc28d9b7b1ca538f6a/pkg/kcp/wrappers.go#L62-L72
-		c.Host += "/clusters/*"
-		controllerLog.Info(fmt.Sprintf("rest config host now %s", c.Host))
-		cacheOptions.NewInformerFunc = informers.NewSharedIndexInformer
-		cacheOptions.Indexers = k8scache.Indexers{
-			kcpcache.ClusterIndexName:             kcpcache.ClusterIndexFunc,
-			kcpcache.ClusterAndNamespaceIndexName: kcpcache.ClusterAndNamespaceIndexFunc,
+		newClusterAwareCacheFunc := func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+			// copy from https://github.com/kcp-dev/controller-runtime/blob/824b15a11b186ee83a716bbc28d9b7b1ca538f6a/pkg/kcp/wrappers.go#L62-L72
+			c := rest.CopyConfig(config)
+			c.Host += "/clusters/*"
+			opts.NewInformerFunc = informers.NewSharedIndexInformer
+			opts.Indexers = k8scache.Indexers{
+				kcpcache.ClusterIndexName:             kcpcache.ClusterIndexFunc,
+				kcpcache.ClusterAndNamespaceIndexName: kcpcache.ClusterAndNamespaceIndexFunc,
+			}
+
+			// addition beyond ctrlkcp.NewClusterAwareCache that we need for our watches
+			opts.SelectorsByObject = cache.SelectorsByObject{
+				&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
+				&v1alpha1.DependencyBuild{}:    {},
+				&v1alpha1.ArtifactBuild{}:      {},
+				&v1.ConfigMap{}:                {},
+			}
+			return cache.New(c, opts)
 		}
+		options.NewCache = newClusterAwareCacheFunc
+		newClusterAwareClientFunc := func(cache cache.Cache, config *rest.Config, opts client.Options, uncachedObjects ...client.Object) (client.Client, error) {
+			httpClient, err := ctrlkcp.ClusterAwareHTTPClient(config)
+			if err != nil {
+				return nil, err
+			}
+			opts.HTTPClient = httpClient
+			secretObj := v1.Secret{}
+			// we fetch the image registry secret for validation, but we don't want to cache / establish watches for that
+			uncachedObjects = append(uncachedObjects, &secretObj)
+			return cluster.DefaultNewClient(cache, config, opts, uncachedObjects...)
+
+		}
+		options.NewClient = newClusterAwareClientFunc
+		// set up mgr with all the kcp overrides
+		mgr, err = ctrlkcp.NewClusterAwareManager(cfg, options)
+	} else {
+		options.NewCache = cache.BuilderWithOptions(cache.Options{
+			SelectorsByObject: cache.SelectorsByObject{
+				&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
+				&v1alpha1.DependencyBuild{}:    {},
+				&v1alpha1.ArtifactBuild{}:      {},
+				&v1.ConfigMap{}:                {},
+			}})
+
+		mgr, err = ctrl.NewManager(cfg, options)
 	}
-	options.NewCache = cache.BuilderWithOptions(cacheOptions)
-	mgr, err := ctrl.NewManager(c, options)
 	if err != nil {
 		return nil, err
 	}
