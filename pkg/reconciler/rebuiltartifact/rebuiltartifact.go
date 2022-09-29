@@ -18,18 +18,23 @@ import (
 )
 
 type ReconcilerRebuiltArtifact struct {
-	client        client.Client
-	scheme        *runtime.Scheme
-	eventRecorder record.EventRecorder
+	client           client.Client
+	scheme           *runtime.Scheme
+	eventRecorder    record.EventRecorder
+	nonCachingClient client.Client
 }
 
-func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager) (reconcile.Reconciler, error) {
+	nonCachingClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
 	ret := &ReconcilerRebuiltArtifact{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("RebuiltArtifact"),
 	}
-	return ret
+	if err == nil {
+		ret.nonCachingClient = nonCachingClient
+	}
+	return ret, err
 }
 
 func (r *ReconcilerRebuiltArtifact) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -76,19 +81,19 @@ func (r *ReconcilerRebuiltArtifact) Reconcile(ctx context.Context, request recon
 	}
 	log.Info("Constructed bloom filter", "filterLength", len(filter))
 	cm := v1.ConfigMap{}
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: "jvm-build-service-filter"}, &cm)
+	err = r.nonCachingClient.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: "jvm-build-service-filter"}, &cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			cm.BinaryData = map[string][]byte{"filter": filter}
 			cm.Name = "jvm-build-service-filter"
 			cm.Namespace = request.Namespace
-			return reconcile.Result{}, r.client.Create(ctx, &cm)
+			return reconcile.Result{}, r.nonCachingClient.Create(ctx, &cm)
 		}
 		return reconcile.Result{}, err
 	}
 	cm.BinaryData["filter"] = filter
 
-	return reconcile.Result{}, r.client.Update(ctx, &cm)
+	return reconcile.Result{}, r.nonCachingClient.Update(ctx, &cm)
 }
 
 func doHash(multiplicand int32, gav string) int32 {

@@ -13,6 +13,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 import com.redhat.hacbs.artifactcache.ContainerRegistryTestResourceManager;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
@@ -47,8 +49,7 @@ public class ContainerRegistryStorageTest {
 
     @BeforeEach
     public void setup() {
-        //Mockito.when(rebuiltArtifacts.isPossiblyRebuilt()).thenReturn(ARTIFACT_FILE_MAP.keySet().stream()
-        //        .map(s -> GROUP + ":" + s + ":" + VERSION).collect(Collectors.toSet()));
+        Mockito.when(rebuiltArtifacts.isPossiblyRebuilt(ArgumentMatchers.any(String.class))).thenReturn(true);
     }
 
     @Test
