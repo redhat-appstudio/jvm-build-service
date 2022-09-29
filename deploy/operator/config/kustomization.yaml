@@ -6,6 +6,6 @@ commonLabels:
 resources:
   - system-config.yaml
 
-#patchesStrategicMerge:
-#  #note that when updating the ref here you must also update system-config.yaml
-#  - https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/fbe0f42ebe3d50b16d454c95207dd15be6b5008f/image-config.yaml
+patchesStrategicMerge:
+  #note that when updating the ref here you must also update system-config.yaml
+  - https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/9d571619a763f7106f1e37a9340159ea6f598cc9/image-config.yaml
