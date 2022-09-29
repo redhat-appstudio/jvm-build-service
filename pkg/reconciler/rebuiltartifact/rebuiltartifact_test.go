@@ -2,6 +2,7 @@ package rebuiltartifact
 
 import (
 	"context"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -27,116 +28,53 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = corev1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcilerRebuiltArtifact{
-		client:        client,
-		scheme:        scheme,
-		eventRecorder: &record.FakeRecorder{},
+		client:           client,
+		scheme:           scheme,
+		eventRecorder:    &record.FakeRecorder{},
+		nonCachingClient: client,
 	}
 	return client, reconciler
 }
+func setupRebuilt(gav string) *v1alpha1.RebuiltArtifact {
+	rebuilt := v1alpha1.RebuiltArtifact{}
+	rebuilt.Namespace = metav1.NamespaceDefault
+	rebuilt.Name = artifactbuild.CreateABRName(gav)
+	rebuilt.Spec.GAV = gav
+	return &rebuilt
+}
 
-func setupSectet() *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: metav1.NamespaceDefault,
-			Name:      v1alpha1.UserSecretName,
-		},
-		Data: map[string][]byte{
-			v1alpha1.UserSecretTokenKey: []byte("foo"),
-		},
+func TestGenerateBloomFilter(t *testing.T) {
+	g := NewGomegaWithT(t)
+	ctx := context.TODO()
+	const gav1 = "io.test:test:1.0"
+	const gav2 = "io.test-gav2:test-artifact:2.0"
+	rb := setupRebuilt(gav1)
+	objs := []runtimeclient.Object{rb}
+	client, reconciler := setupClientAndReconciler(objs...)
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: artifactbuild.CreateABRName(gav1)}})
+	g.Expect(err).To(BeNil())
+	cm := corev1.ConfigMap{}
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: rb.Namespace, Name: JvmBuildServiceFilterConfigMap}, &cm)).Should(BeNil())
+	filter := cm.BinaryData["filter"]
+	g.Expect(filter).ShouldNot(BeEmpty())
+	g.Expect(len(filter) >= 2).Should(BeTrue())
+	rb2 := setupRebuilt(gav2)
+	g.Expect(client.Create(ctx, rb2)).To(BeNil())
+	_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: artifactbuild.CreateABRName(gav2)}})
+	g.Expect(err).To(BeNil())
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: rb.Namespace, Name: JvmBuildServiceFilterConfigMap}, &cm)).Should(BeNil())
+	filter2 := cm.BinaryData["filter"]
+	g.Expect(filter2).ShouldNot(BeEmpty())
+	g.Expect(filter2).ShouldNot(Equal(filter))
+	g.Expect(client.Delete(ctx, rb)).To(BeNil())
+	g.Expect(client.Delete(ctx, rb2)).To(BeNil())
+	_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: artifactbuild.CreateABRName(gav2)}})
+	g.Expect(err).To(BeNil())
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: rb.Namespace, Name: JvmBuildServiceFilterConfigMap}, &cm)).Should(BeNil())
+	filter = cm.BinaryData["filter"]
+	//should now be an empty bloom filter
+	for _, i := range filter {
+		g.Expect(i).Should(Equal(uint8(0)))
 	}
-}
-
-func setupUserConfig() *v1alpha1.UserConfig {
-	userConfig := v1alpha1.UserConfig{}
-	userConfig.Namespace = metav1.NamespaceDefault
-	userConfig.Name = v1alpha1.UserConfigName
-	return &userConfig
-}
-
-func readConfiguredRepositories(client runtimeclient.Client, g *WithT) *string {
-	ctx := context.TODO()
-	deployment := appsv1.Deployment{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &deployment))
-
-	var value *string
-	for _, val := range deployment.Spec.Template.Spec.Containers[0].Env {
-		if val.Name == "BUILD_POLICY_DEFAULT_STORE_LIST" {
-			value = &val.Value
-			break
-		}
-	}
-	return value
-}
-
-func TestMissingRegistrySecret(t *testing.T) {
-	g := NewGomegaWithT(t)
-	ctx := context.TODO()
-	userConfig := setupUserConfig()
-	userConfig.Spec.EnableRebuilds = true
-	objs := []runtimeclient.Object{userConfig}
-	_, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
-	g.Expect(err).NotTo(BeNil())
-}
-
-func TestMissingRegistrySecretRebuildFalse(t *testing.T) {
-	g := NewGomegaWithT(t)
-	ctx := context.TODO()
-	objs := []runtimeclient.Object{setupUserConfig()}
-	_, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
-	g.Expect(err).To(BeNil())
-}
-
-func TestMissingRegistrySecretKey(t *testing.T) {
-	g := NewGomegaWithT(t)
-	ctx := context.TODO()
-	secret := setupSectet()
-	delete(secret.Data, v1alpha1.UserSecretTokenKey)
-	userConfig := setupUserConfig()
-	userConfig.Spec.EnableRebuilds = true
-	objs := []runtimeclient.Object{userConfig, secret}
-	_, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
-	g.Expect(err).NotTo(BeNil())
-}
-
-func TestSetupEmptyConfigWithSecret(t *testing.T) {
-	g := NewGomegaWithT(t)
-	ctx := context.TODO()
-	objs := []runtimeclient.Object{setupUserConfig(), setupSectet()}
-	client, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
-	g.Expect(err).To(BeNil())
-	value := readConfiguredRepositories(client, g)
-	g.Expect(*value).Should(Equal("central"))
-}
-
-func TestRebuildEnabled(t *testing.T) {
-	g := NewGomegaWithT(t)
-	ctx := context.TODO()
-	userConfig := setupUserConfig()
-	userConfig.Spec.EnableRebuilds = true
-	objs := []runtimeclient.Object{userConfig, setupSectet()}
-	client, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
-	g.Expect(err).To(BeNil())
-	value := readConfiguredRepositories(client, g)
-	g.Expect(*value).Should(Equal("rebuilt,central"))
-
-}
-
-func TestRebuildEnabledCustomRepo(t *testing.T) {
-	g := NewGomegaWithT(t)
-	ctx := context.TODO()
-	userConfig := setupUserConfig()
-	userConfig.Spec.EnableRebuilds = true
-	userConfig.Spec.MavenBaseLocations = map[string]string{"maven-repository-302-gradle": "https://repo.gradle.org/artifactory/libs-releases"}
-	objs := []runtimeclient.Object{userConfig, setupSectet()}
-	client, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
-	g.Expect(err).To(BeNil())
-	value := readConfiguredRepositories(client, g)
-	g.Expect(*value).Should(Equal("rebuilt,central,gradle"))
 
 }
