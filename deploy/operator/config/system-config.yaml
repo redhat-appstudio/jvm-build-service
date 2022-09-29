@@ -17,14 +17,8 @@ metadata:
 spec:
   builders:
     jdk8:
-      image: quay.io/redhat-appstudio/hacbs-jdk8-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
-      # until we can update builder repo, pull its changes in here vs. patch merge
-      tag: jdk:8,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3
+      image: quay.io/redhat-appstudio/hacbs-jdk8-builder:9d571619a763f7106f1e37a9340159ea6f598cc9
     jdk11:
-      image: quay.io/redhat-appstudio/hacbs-jdk11-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
-      # until we can update builder repo, pull its changes in here vs. patch merge
-      tag: jdk:11,maven:3.8,gradle:7.4.2;6.9.2;5.6.4;4.10.3
+      image: quay.io/redhat-appstudio/hacbs-jdk11-builder:9d571619a763f7106f1e37a9340159ea6f598cc9
     jdk17:
-      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
-      # until we can update builder repo, pull its changes in here vs. patch merge
-      tag: jdk:17,maven:3.8,gradle:7.4.2;6.9.2
+      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:9d571619a763f7106f1e37a9340159ea6f598cc9
