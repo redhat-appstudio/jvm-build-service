@@ -17,6 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const JvmBuildServiceFilterConfigMap = "jvm-build-service-filter"
+
 type ReconcilerRebuiltArtifact struct {
 	client           client.Client
 	scheme           *runtime.Scheme
@@ -51,11 +53,8 @@ func (r *ReconcilerRebuiltArtifact) Reconcile(ctx context.Context, request recon
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	if len(rebuiltArtifact.Items) == 0 {
-		return reconcile.Result{}, nil
-	}
 
-	//otherwise we need to build a bloom filter
+	//create a bloom filter
 	//max size for the filter, will easily fit in a config map
 	const max = 1024 * 1000
 	size := len(rebuiltArtifact.Items) * 2 //16 bits per item, should give very low error rates
@@ -81,11 +80,11 @@ func (r *ReconcilerRebuiltArtifact) Reconcile(ctx context.Context, request recon
 	}
 	log.Info("Constructed bloom filter", "filterLength", len(filter))
 	cm := v1.ConfigMap{}
-	err = r.nonCachingClient.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: "jvm-build-service-filter"}, &cm)
+	err = r.nonCachingClient.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: JvmBuildServiceFilterConfigMap}, &cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			cm.BinaryData = map[string][]byte{"filter": filter}
-			cm.Name = "jvm-build-service-filter"
+			cm.Name = JvmBuildServiceFilterConfigMap
 			cm.Namespace = request.Namespace
 			return reconcile.Result{}, r.nonCachingClient.Create(ctx, &cm)
 		}
