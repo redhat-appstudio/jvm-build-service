@@ -11,7 +11,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -167,38 +166,6 @@ func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log
 			}
 		}
 	}
-	//setup the service account
-
-	sa := corev1.ServiceAccount{}
-	saName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
-	err = r.client.Get(ctx, saName, &sa)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			sa := corev1.ServiceAccount{}
-			sa.Name = v1alpha1.CacheDeploymentName
-			sa.Namespace = request.Namespace
-			err := r.client.Create(ctx, &sa)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	cb := rbacv1.RoleBinding{}
-	cbName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
-	err = r.client.Get(ctx, cbName, &cb)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			cb := rbacv1.RoleBinding{}
-			cb.Name = v1alpha1.CacheDeploymentName
-			cb.Namespace = request.Namespace
-			cb.RoleRef = rbacv1.RoleRef{Kind: "ClusterRole", Name: "hacbs-jvm-cache", APIGroup: "rbac.authorization.k8s.io"}
-			cb.Subjects = []rbacv1.Subject{{Kind: "ServiceAccount", Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}}
-			err := r.client.Create(ctx, &cb)
-			if err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
@@ -261,7 +228,7 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 			return err
 		}
 	}
-	cache.Spec.Template.Spec.ServiceAccountName = v1alpha1.CacheDeploymentName
+	cache.Spec.Template.Spec.ServiceAccountName = "pipeline"
 	cache.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
 		{Name: "CACHE_PATH", Value: "/cache"},
 		{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: settingOrDefault(userConfig.Spec.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault)},
