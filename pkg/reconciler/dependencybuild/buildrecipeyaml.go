@@ -55,7 +55,7 @@ func createPipelineSpec(maven bool, namespace string, commitTime int64, userConf
 		deployArgs = append(deployArgs, "--registry-owner="+userConfig.Spec.ImageRegistry.Owner)
 	}
 	if userConfig.Spec.ImageRegistry.Repository != "" {
-		deployArgs = append(deployArgs, "--registry-repository="+userConfig.Spec.ImageRegistry.Owner)
+		deployArgs = append(deployArgs, "--registry-repository="+userConfig.Spec.ImageRegistry.Repository)
 	}
 	if userConfig.Spec.ImageRegistry.Insecure {
 		deployArgs = append(deployArgs, "--registry-insecure=")

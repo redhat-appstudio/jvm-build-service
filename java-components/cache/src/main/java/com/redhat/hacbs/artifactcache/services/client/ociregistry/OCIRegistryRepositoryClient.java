@@ -106,7 +106,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         if (!rebuiltArtifacts.getGavs().contains(gav)) {
             return Optional.empty();
         }
-        Log.infof("Attempting to retrieve %s for artifact %s", hashedGav, gav);
+        Log.debugf("Attempting to retrieve %s for artifact %s", hashedGav, gav);
         RegistryClient registryClient = getRegistryClient();
 
         try {
@@ -140,7 +140,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
                 if (cause instanceof ResponseException) {
                     ResponseException e = (ResponseException) cause;
                     if (e.getStatusCode() == 404) {
-                        Log.infof("Failed to find artifact %s", hashedGav, gav);
+                        Log.debugf("Failed to find artifact %s", hashedGav, gav);
                         return Optional.empty();
                     }
                 }
