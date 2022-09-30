@@ -1,11 +1,20 @@
 package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Base64;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.zip.GZIPInputStream;
 
@@ -14,7 +23,13 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.tools.jib.api.*;
+import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
+import com.google.cloud.tools.jib.api.Containerizer;
+import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
+import com.google.cloud.tools.jib.api.Jib;
+import com.google.cloud.tools.jib.api.JibContainerBuilder;
+import com.google.cloud.tools.jib.api.RegistryException;
+import com.google.cloud.tools.jib.api.RegistryImage;
 import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
 import com.redhat.hacbs.container.analyser.deploy.DeployData;
@@ -94,6 +109,7 @@ public class ContainerRegistryDeployer implements Deployer {
             password = null;
         }
         Log.infof("Using username %s to publish to %s/%s/%s", username, host, owner, repository);
+        Log.infof("Prepend tag is %s", prependTag);
 
     }
 
@@ -106,14 +122,14 @@ public class ContainerRegistryDeployer implements Deployer {
 
         try {
             // Create the image layers
-            createImages(tarGzFile, imageData);
+            createImages(imageData);
 
         } finally {
             FileUtil.deleteRecursive(imageData.getArtifactsPath());
         }
     }
 
-    private void createImages(Path tarGzFile, DeployData imageData)
+    private void createImages(DeployData imageData)
             throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
             CacheDirectoryCreationException, ExecutionException {
 
@@ -125,10 +141,12 @@ public class ContainerRegistryDeployer implements Deployer {
         Containerizer containerizer = Containerizer
                 .to(registryImage)
                 .setAllowInsecureRegistries(insecure);
+        Log.infof("Deploying base image %s", imageName);
 
         Set<Gav> gavs = imageData.getGavs();
 
         for (Gav gav : gavs) {
+            Log.infof("Deploying image with tag %s", gav.getTag());
             containerizer = containerizer.withAdditionalTag(gav.getTag());
         }
 
