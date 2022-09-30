@@ -149,7 +149,6 @@ public abstract class DeployCommand implements Runnable {
 
                     Resource<TaskRun> taskRunResource = kubernetesClient.resources(TaskRun.class)
                             .withName(taskRun);
-                    Log.infof("Updating task %s with contaminants %s", taskRun, contaminants);
                     List<Contaminant> newContaminates = new ArrayList<>();
                     for (var i : contaminatedGavs.entrySet()) {
                         newContaminates.add(new Contaminant(i.getKey(), new ArrayList<>(i.getValue())));
@@ -162,6 +161,7 @@ public abstract class DeployCommand implements Runnable {
                             if (taskRun.getStatus().getTaskResults() != null) {
                                 results.addAll(taskRun.getStatus().getTaskResults());
                             }
+                            Log.infof("Updating results %s with contaminants %s", taskRun, serialisedContaminants);
                             results.add(new TaskRunResult("contaminants", serialisedContaminants));
                             results.add(new TaskRunResult("deployed-resources", String.join(",", gavs)));
                             taskRun.getStatus().setTaskResults(results);
