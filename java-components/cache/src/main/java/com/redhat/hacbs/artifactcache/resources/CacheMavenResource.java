@@ -124,7 +124,7 @@ public class CacheMavenResource {
                                 var lastModified = result.get().getMetadata().get("last-modified");
                                 if (lastModified != null) {
                                     var date = DateUtils.parseDate(lastModified);
-                                    if (date.after(commitTime)) {
+                                    if (date != null && date.after(commitTime)) {
                                         //remove versions released after this artifact
                                         Log.infof("Removing version %s from %s/maven-metadata.xml", version, group);
                                     } else {
