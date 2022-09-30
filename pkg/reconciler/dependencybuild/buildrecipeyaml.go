@@ -28,7 +28,7 @@ var mavenBuild string
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
 
-func createPipelineSpec(maven bool, namespace string, commitTime int64, userConfig *v1alpha12.UserConfig) *pipelinev1beta1.PipelineSpec {
+func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig) *pipelinev1beta1.PipelineSpec {
 	var settings string
 	var build string
 	trueBool := true
@@ -77,8 +77,7 @@ func createPipelineSpec(maven bool, namespace string, commitTime int64, userConf
 			{Name: PipelineEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineIgnoredArtifacts, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache." + namespace + ".svc.cluster.local/v1/cache/default/" + strconv.FormatInt(commitTime, 10)}},
-			{Name: "NAMESPACE", Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: namespace}},
+			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache.$(context.pipelineRun.namespace).svc.cluster.local/v1/cache/default/" + strconv.FormatInt(commitTime, 10)}},
 		},
 		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}},
 		Steps: []pipelinev1beta1.Step{
