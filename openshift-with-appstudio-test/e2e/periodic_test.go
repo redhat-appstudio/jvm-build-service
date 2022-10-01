@@ -145,6 +145,7 @@ func TestServiceRegistry(t *testing.T) {
 		}
 	})
 
+	didNotCompleteInTime := false
 	ta.t.Run("current target of artifactbuilds/dependencybuilds complete", func(t *testing.T) {
 		defer GenerateStatusReport(ta.ns, jvmClient, kubeClient)
 		ctx := context.TODO()
@@ -168,6 +169,7 @@ func TestServiceRegistry(t *testing.T) {
 		state := sync.Map{}
 		var changed uint32
 		exitForLoop := false
+		timeoutChannel := time.After(90*time.Minute)
 
 		for {
 			select {
@@ -177,11 +179,12 @@ func TestServiceRegistry(t *testing.T) {
 				ta.Logf("context done")
 				exitForLoop = true
 				break
-			case <-time.After(2 * time.Hour):
+			case <-timeoutChannel:
 				//abWatch.Stop()
 				dbWatch.Stop()
 				ta.Logf("timed out waiting for dependencybuilds to reach steady state")
 				exitForLoop = true
+				didNotCompleteInTime = true
 				break
 
 				//case event := <-abWatch.ResultChan():
@@ -337,4 +340,7 @@ func TestServiceRegistry(t *testing.T) {
 		}
 	})
 
+	if didNotCompleteInTime {
+		t.Fatalf("CHECK THE GENERATED REPORT AND SEE IF THE DEPENDENCYBUILDS IN BUILDING STATE ARE STUCK OR JUST SLOW")
+	}
 }

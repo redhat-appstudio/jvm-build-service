@@ -414,6 +414,8 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 			dependency.Failed++
 		case v1alpha1.DependencyBuildStateContaminated:
 			dependency.Contaminated++
+		case v1alpha1.DependencyBuildStateBuilding:
+			dependency.Building++
 		default:
 			dependency.Other++
 		}
@@ -513,6 +515,7 @@ type DependencyReportData struct {
 	Complete     int
 	Failed       int
 	Contaminated int
+	Building     int
 	Other        int
 	Total        int
 	Instances    []*ReportInstanceData
