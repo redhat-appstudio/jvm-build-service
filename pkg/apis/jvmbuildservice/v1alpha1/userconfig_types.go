@@ -23,8 +23,9 @@ type UserConfigSpec struct {
 
 	MavenBaseLocations map[string]string `json:"mavenBaseLocations,omitempty"`
 
-	CacheSettings `json:",inline"`
-	ImageRegistry `json:",inline"`
+	CacheSettings      `json:",inline"`
+	ImageRegistry      `json:",inline"`
+	RelocationPatterns []RelocationPatternElement `json:"relocationPatterns,omitempty"`
 }
 
 type UserConfigStatus struct {
@@ -47,6 +48,24 @@ type ImageRegistry struct {
 	Repository string `json:"repository,omitempty"`
 	Insecure   bool   `json:"insecure,omitempty"`
 	PrependTag string `json:"prependTag,omitempty"`
+}
+
+type RelocationPatternElement struct {
+	RelocationPattern RelocationPattern `json:"relocationPattern"`
+}
+
+type RelocationPattern struct {
+	BuildPolicy string           `json:"buildPolicy,omitempty" default:"default"`
+	Patterns    []PatternElement `json:"patterns,omitempty"`
+}
+
+type PatternElement struct {
+	Pattern Pattern `json:"pattern"`
+}
+
+type Pattern struct {
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 // +genclient
