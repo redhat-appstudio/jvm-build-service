@@ -9,7 +9,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
@@ -22,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.build.maven.MavenDiscoveryTask;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
+import com.redhat.hacbs.gradle.BuildInformationPlugin;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.location.BuildInfoRequest;
@@ -140,25 +146,32 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
             } else if (GradleUtils.isGradleBuild(path)) {
                 Log.infof("Detected Gradle build in %s", path);
-                var optionalGradleVersion = GradleUtils
-                        .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(path));
-                var detectedGradleVersion = optionalGradleVersion.orElse("7");
-                Log.infof("Detected Gradle version %s",
-                        optionalGradleVersion.isPresent() ? detectedGradleVersion : "none");
-                Log.infof("Chose Gradle version %s", detectedGradleVersion);
-                var javaVersion = GradleUtils.getSupportedJavaVersion(detectedGradleVersion);
-                Log.infof("Chose Java version %s based on Gradle version detected", javaVersion);
+                var gradleBuildInformation = BuildInformationPlugin.getBuildInformation(path);
+                var gradleVersion = gradleBuildInformation.getGradleVersion();
+                Log.infof("Detected Gradle version %s", gradleVersion);
+                var minimumSupportedJavaVersion = GradleUtils.getMinimumSupportedJavaVersion(gradleVersion);
+                Log.infof("Minimum supported Java version %s", minimumSupportedJavaVersion);
+                var supportedJavaVersion = GradleUtils.getSupportedJavaVersion(gradleVersion);
+                Log.infof("Maximum supported Java version %s", supportedJavaVersion);
+                var detectedJavaVersion = gradleBuildInformation.getJavaVersion();
+                Log.infof("Detected Java version %s", detectedJavaVersion);
+                var preferredJavaVersion = Math.max(detectedJavaVersion, 8);
 
-                if (GradleUtils.isInBuildGradle(path, GOOGLE_JAVA_FORMAT_PLUGIN)) {
-                    javaVersion = "11";
+                if (gradleBuildInformation.getPlugins().contains(GOOGLE_JAVA_FORMAT_PLUGIN)) {
+                    preferredJavaVersion = Math.min(preferredJavaVersion, 11);
                     Log.infof("Detected %s in build files and set Java version to %s", GOOGLE_JAVA_FORMAT_PLUGIN,
-                            javaVersion);
+                            preferredJavaVersion);
+                } else {
+                    preferredJavaVersion = Math.min(preferredJavaVersion, supportedJavaVersion);
                 }
 
+                Log.infof("Preferred Java version %s", preferredJavaVersion);
+
+                var javaVersion = String.valueOf(preferredJavaVersion);
                 info.tools.put(JDK, new VersionRange("8", "17", javaVersion));
-                info.tools.put(GRADLE, new VersionRange(detectedGradleVersion, detectedGradleVersion, detectedGradleVersion));
+                info.tools.put(GRADLE, new VersionRange(gradleVersion, gradleVersion, gradleVersion));
                 info.invocations.add(new ArrayList<>(GradleUtils.DEFAULT_GRADLE_ARGS));
-                info.toolVersion = detectedGradleVersion;
+                info.toolVersion = gradleVersion;
                 info.javaVersion = javaVersion;
             }
             if (buildRecipeInfo != null) {

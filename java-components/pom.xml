@@ -30,7 +30,7 @@
         <aws-java-sdk-s3.version>1.12.169</aws-java-sdk-s3.version>
         <quarkus-jgit.version>1.2.0</quarkus-jgit.version>
         <quarkus-operator-sdk.version>3.0.7</quarkus-operator-sdk.version>
-        <gradle-tooling-api.version>7.5</gradle-tooling-api.version>
+        <gradle.version>7.5</gradle.version>
         <quarkus-github-api.version>1.302.0</quarkus-github-api.version>
         <cyclonedx-core-java.version>7.1.4</cyclonedx-core-java.version>
     </properties>
@@ -43,6 +43,7 @@
         <module>classfile-tracker</module>
         <module>dependency-analyser</module>
         <module>resource-model</module>
+        <module>gradle-buildinformation-plugin</module>
         <module>build-request-processor</module>
     </modules>
 
@@ -61,6 +62,11 @@
                 <version>${quarkus.platform.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.redhat.hacbs</groupId>
+                <artifactId>gradle-buildinformation-plugin</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.redhat.hacbs</groupId>
@@ -115,7 +121,18 @@
             <dependency>
                 <groupId>org.gradle</groupId>
                 <artifactId>gradle-tooling-api</artifactId>
-                <version>${gradle-tooling-api.version}</version>
+                <version>${gradle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.gradleplugins</groupId>
+                <artifactId>gradle-api</artifactId>
+                <version>${gradle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.gradleplugins</groupId>
+                <artifactId>gradle-test-kit</artifactId>
+                <version>${gradle.version}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>io.quarkiverse.githubapi</groupId>
