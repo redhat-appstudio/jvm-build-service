@@ -53,7 +53,7 @@ cat << EOF > ${KCP_API_EXPORT_FILE}
 apiVersion: apis.kcp.dev/v1alpha1
 kind: APIExport
 metadata:
-  name: jvmbuildservice
+  name: jvm-build-service
 spec:
   permissionClaims:
   - group: ""
@@ -64,16 +64,16 @@ spec:
     resource: "events"
   - group: ""
     resource: "services"
-    # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-    identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
+    # replace by pipeline-service identityHash, though most likely creation of the artifact-cache will have to move out of the controller
+    identityHash: pipeline-service
   - group: "apps"
     resource: "deployments"
-    # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-    identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
+    # replace by pipeline-service identityHash, though most likely creation of the artifact-cache will have to move out of the controller
+    identityHash: pipeline-service
   - group: "tekton.dev"
     resource: "pipelineruns"
-    # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-    identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
+    # replace by pipeline-service identityHash
+    identityHash: pipeline-service
   latestResourceSchemas:
 EOF
 
