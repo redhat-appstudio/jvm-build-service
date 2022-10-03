@@ -1,0 +1,9 @@
+---
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: UserConfig
+metadata:
+  name: jvm-build-config
+spec:
+  owner: QUAY_USERNAME
+  host: quay.io
+  repository: test-images
