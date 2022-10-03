@@ -16,7 +16,9 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/userconfig"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,6 +30,8 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlkcp "sigs.k8s.io/controller-runtime/pkg/kcp"
 )
 
 var (
@@ -69,26 +73,48 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		return nil, err
 	}
 
-	c := rest.CopyConfig(cfg)
-	cacheOptions := cache.Options{
-		SelectorsByObject: cache.SelectorsByObject{
-			&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
-			&v1alpha1.DependencyBuild{}:    {},
-			&v1alpha1.ArtifactBuild{}:      {},
-			&v1.ConfigMap{}:                {},
-		}}
-	if kcp {
-		// see https://github.com/kcp-dev/controller-runtime/blob/824b15a11b186ee83a716bbc28d9b7b1ca538f6a/pkg/kcp/wrappers.go#L62-L72
-		c.Host += "/clusters/*"
-		controllerLog.Info(fmt.Sprintf("rest config host now %s", c.Host))
-		cacheOptions.NewInformerFunc = informers.NewSharedIndexInformer
-		cacheOptions.Indexers = k8scache.Indexers{
-			kcpcache.ClusterIndexName:             kcpcache.ClusterIndexFunc,
-			kcpcache.ClusterAndNamespaceIndexName: kcpcache.ClusterAndNamespaceIndexFunc,
-		}
+	var mgr ctrl.Manager
+	var err error
+	// this replaces the need for creating a non-caching client to access these various types
+	options.ClientDisableCacheFor = []client.Object{
+		&v1.Secret{},
+		&v1.Service{},
+		&v1.ServiceAccount{},
+		&rbacv1.RoleBinding{},
+		&appsv1.Deployment{},
 	}
-	options.NewCache = cache.BuilderWithOptions(cacheOptions)
-	mgr, err := ctrl.NewManager(c, options)
+	if kcp {
+		newClusterAwareCacheFunc := func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+			// copy from https://github.com/kcp-dev/controller-runtime/blob/824b15a11b186ee83a716bbc28d9b7b1ca538f6a/pkg/kcp/wrappers.go#L62-L72
+			c := rest.CopyConfig(config)
+			c.Host += "/clusters/*"
+			opts.NewInformerFunc = informers.NewSharedIndexInformer
+			opts.Indexers = k8scache.Indexers{
+				kcpcache.ClusterIndexName:             kcpcache.ClusterIndexFunc,
+				kcpcache.ClusterAndNamespaceIndexName: kcpcache.ClusterAndNamespaceIndexFunc,
+			}
+
+			// addition beyond ctrlkcp.NewClusterAwareCache that we need for our watches
+			opts.SelectorsByObject = cache.SelectorsByObject{
+				&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
+				&v1alpha1.DependencyBuild{}:    {},
+				&v1alpha1.ArtifactBuild{}:      {},
+			}
+			return cache.New(c, opts)
+		}
+		options.NewCache = newClusterAwareCacheFunc
+		// set up mgr with all the kcp overrides
+		mgr, err = ctrlkcp.NewClusterAwareManager(cfg, options)
+	} else {
+		options.NewCache = cache.BuilderWithOptions(cache.Options{
+			SelectorsByObject: cache.SelectorsByObject{
+				&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
+				&v1alpha1.DependencyBuild{}:    {},
+				&v1alpha1.ArtifactBuild{}:      {},
+			}})
+
+		mgr, err = ctrl.NewManager(cfg, options)
+	}
 	if err != nil {
 		return nil, err
 	}

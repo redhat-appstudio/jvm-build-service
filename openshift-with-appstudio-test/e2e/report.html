@@ -42,6 +42,7 @@
                     <li class="list-group-item"><span class="badge bg-primary">{{.Dependency.Complete}}</span> Complete</li>
                     <li class="list-group-item"><span class="badge bg-danger">{{.Dependency.Failed}}</span> Failed</li>
                     <li class="list-group-item"><span class="badge bg-warning">{{.Dependency.Contaminated}}</span> Contaminated</li>
+                    <li class="list-group-item"><span class="badge bg-warning">{{.Dependency.Building}}</span> Building</li>
                     <li class="list-group-item"><span class="badge bg-secondary">{{.Dependency.Other}}</span> Other</li>
                 </ul>
             </div>
@@ -95,6 +96,7 @@
             <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target=".dbStateDependencyBuildStateComplete" aria-expanded="false" >Toggle Complete</button>
             <button class="btn btn-warning" type="button" data-bs-toggle="collapse" data-bs-target=".dbStateDependencyBuildStateContaminated" aria-expanded="false" >Toggle Contaminated</button>
             <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target=".dbStateDependencyBuildStateFailed" aria-expanded="false" >Toggle Failed</button>
+            <button class="btn btn-danger" type="button" data-bs-toggle="collapse" data-bs-target=".dbStateDependencyBuildStateBuilding" aria-expanded="false" >Toggle Building</button>
         </p>
         <p/>
         <div class="accordion" id="dependencyAccordion">
@@ -105,6 +107,7 @@
                         {{ if eq "DependencyBuildStateComplete" $e.State }}<span class="badge bg-primary">Complete</span>
                         {{ else if eq "DependencyBuildStateFailed" $e.State }}<span class="badge bg-danger">Failed</span>
                         {{ else if eq "DependencyBuildStateContaminated" $e.State }}<span class="badge bg-warning">Contaminated</span>
+                        {{ else if eq "DependencyBuildStateBuilding" $e.State }}<span class="badge bg-warning">Building</span>
                         {{ else}}<span class="badge bg-secondary">{{ $e.State }}</span>{{ end }}
                         &nbsp;{{ $e.Name }}
                     </button>

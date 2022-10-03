@@ -98,6 +98,10 @@ func TestServiceRegistry(t *testing.T) {
 		debugAndFailTest(ta, err.Error())
 	}
 
+	// delay to avoid weird timing issue where pipelinerun can reconcile before pipeline
+	ta.Logf("sleeping 30 seconds to avoid PR formatting complaint.")
+	time.Sleep(30 * time.Second)
+
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-service-registry.yaml")
 	ta.run = &v1beta1.PipelineRun{}
 	obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
@@ -111,7 +115,7 @@ func TestServiceRegistry(t *testing.T) {
 	}
 
 	ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
-		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+		err = wait.PollImmediate(3*ta.interval, 3*ta.timeout, func() (done bool, err error) {
 			pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
@@ -141,14 +145,9 @@ func TestServiceRegistry(t *testing.T) {
 		}
 	})
 
+	didNotCompleteInTime := false
 	ta.t.Run("current target of artifactbuilds/dependencybuilds complete", func(t *testing.T) {
-		defer dumpBadEvents(ta)
-		defer dumpPods(ta, "jvm-build-service")
-		defer dumpPodsGlob(ta, ta.ns, "artifact-cache")
-		// ab pods I do not think get pruned, let's see, along with this many defers
-		defer abDumpForState(ta, v1alpha1.ArtifactBuildStateFailed)
-		defer abDumpForState(ta, v1alpha1.ArtifactBuildStateMissing)
-
+		defer GenerateStatusReport(ta.ns, jvmClient, kubeClient)
 		ctx := context.TODO()
 		//abWatch, awerr := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Watch(ctx, metav1.ListOptions{})
 		//if awerr != nil {
@@ -170,6 +169,7 @@ func TestServiceRegistry(t *testing.T) {
 		state := sync.Map{}
 		var changed uint32
 		exitForLoop := false
+		timeoutChannel := time.After(90*time.Minute)
 
 		for {
 			select {
@@ -179,11 +179,12 @@ func TestServiceRegistry(t *testing.T) {
 				ta.Logf("context done")
 				exitForLoop = true
 				break
-			case <-time.After(2 * time.Hour):
+			case <-timeoutChannel:
 				//abWatch.Stop()
 				dbWatch.Stop()
 				ta.Logf("timed out waiting for dependencybuilds to reach steady state")
 				exitForLoop = true
+				didNotCompleteInTime = true
 				break
 
 				//case event := <-abWatch.ResultChan():
@@ -282,7 +283,6 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbFailedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateFailed)
-						dumpDBPods(ta, db)
 					}
 				case db.Status.State == v1alpha1.DependencyBuildStateContaminated:
 					s, k := state.Load(db.Name)
@@ -290,7 +290,6 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbContaminatedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateContaminated)
-						dumpDBPods(ta, db)
 					}
 				default:
 					s, k := state.Load(db.Name)
@@ -339,7 +338,9 @@ func TestServiceRegistry(t *testing.T) {
 				break
 			}
 		}
-		_ = GenerateStatusReport(ta.ns, jvmClient, kubeClient)
 	})
 
+	if didNotCompleteInTime {
+		t.Fatalf("CHECK THE GENERATED REPORT AND SEE IF THE DEPENDENCYBUILDS IN BUILDING STATE ARE STUCK OR JUST SLOW")
+	}
 }

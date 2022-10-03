@@ -10,15 +10,21 @@ spec:
   - group: ""
     resource: "secrets"
   - group: ""
-    resource: "configmaps"
+    resource: "serviceaccounts"
+  - group: ""
+    resource: "events"
+  - group: ""
+    resource: "services"
+    # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
+    identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
   - group: "apps"
     resource: "deployments"
     # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-    identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
+    identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
   - group: "tekton.dev"
     resource: "pipelineruns"
     # this hash for now needs to be updated on each cluster/openshift-pipelines deploy
-    identityHash: f387b7cf54f779f0cca2dcb6dfaf11dce880bcbc335fbe4a4633e79a179a39b5
+    identityHash: 59691d5d7588af6a90387d033caf4fae105eac1398fadbdc0a9ea9db0aab851f
   latestResourceSchemas:
     - v202209270158.artifactbuilds.jvmbuildservice.io
     - v202209270158.dependencybuilds.jvmbuildservice.io

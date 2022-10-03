@@ -27,10 +27,9 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = corev1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcilerUserConfig{
-		client:           client,
-		nonCachingClient: client,
-		scheme:           scheme,
-		eventRecorder:    &record.FakeRecorder{},
+		client:        client,
+		scheme:        scheme,
+		eventRecorder: &record.FakeRecorder{},
 	}
 	return client, reconciler
 }
