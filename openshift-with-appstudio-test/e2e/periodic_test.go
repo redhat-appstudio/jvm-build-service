@@ -165,11 +165,12 @@ func TestServiceRegistry(t *testing.T) {
 		var dbCompleteCount uint32
 		var dbFailedCount uint32
 		var dbContaminatedCount uint32
+		var dbBuildingCount uint32
 		var createdDB int32
 		state := sync.Map{}
 		var changed uint32
 		exitForLoop := false
-		timeoutChannel := time.After(90*time.Minute)
+		timeoutChannel := time.After(2 * time.Hour)
 
 		for {
 			select {
@@ -276,6 +277,8 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbCompleteCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateComplete)
+						// decrement building
+						atomic.AddUint32(&dbBuildingCount, ^uint32(0))
 					}
 				case db.Status.State == v1alpha1.DependencyBuildStateFailed:
 					s, k := state.Load(db.Name)
@@ -283,6 +286,8 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbFailedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateFailed)
+						// decrement building
+						atomic.AddUint32(&dbBuildingCount, ^uint32(0))
 					}
 				case db.Status.State == v1alpha1.DependencyBuildStateContaminated:
 					s, k := state.Load(db.Name)
@@ -290,6 +295,15 @@ func TestServiceRegistry(t *testing.T) {
 						atomic.AddUint32(&dbContaminatedCount, 1)
 						atomic.StoreUint32(&changed, 1)
 						state.Store(db.Name, v1alpha1.DependencyBuildStateContaminated)
+						// decrement building
+						atomic.AddUint32(&dbBuildingCount, ^uint32(0))
+					}
+				case db.Status.State == v1alpha1.DependencyBuildStateBuilding:
+					s, k := state.Load(db.Name)
+					if !k || s != v1alpha1.DependencyBuildStateBuilding {
+						atomic.AddUint32(&dbBuildingCount, 1)
+						atomic.StoreUint32(&changed, 1)
+						state.Store(db.Name, v1alpha1.DependencyBuildStateBuilding)
 					}
 				default:
 					s, k := state.Load(db.Name)
@@ -321,12 +335,12 @@ func TestServiceRegistry(t *testing.T) {
 
 				dbg := false
 				if atomic.CompareAndSwapUint32(&changed, 1, 0) {
-					ta.Logf(fmt.Sprintf("dependencybuild created count: %d complete count: %d, failed count: %d, contaminated count: %d", createdDB, dbCompleteCount, dbFailedCount, dbContaminatedCount))
+					ta.Logf(fmt.Sprintf("dependencybuild created count: %d complete count: %d, failed count: %d, contaminated count: %d building count %d", createdDB, dbCompleteCount, dbFailedCount, dbContaminatedCount, dbBuildingCount))
 					dbg = true
 
 				}
 
-				if createdDB > 90 && !activePipelineRuns(ta, dbg) {
+				if createdDB > 90 && !activePipelineRuns(ta, dbg) && dbBuildingCount == 0 {
 					ta.Logf(fmt.Sprintf("dependencybuild FINAL created count: %d complete count: %d, failed count: %d, contaminated count: %d", createdDB, dbCompleteCount, dbFailedCount, dbContaminatedCount))
 					exitForLoop = true
 					dbWatch.Stop()
