@@ -15,6 +15,7 @@ import org.eclipse.microprofile.config.ConfigProvider;
 
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
+import com.redhat.hacbs.artifactcache.util.RequestCleanup;
 
 import io.quarkus.arc.Arc;
 import io.quarkus.logging.Log;
@@ -30,6 +31,8 @@ public class MavenClient implements RepositoryClient {
     final CloseableHttpClient remoteClient;
     final CurrentVertxRequest currentVertxRequest;
 
+    final RequestCleanup requestCleanup;
+
     public MavenClient(String name, URI uri) {
         int threads = ConfigProvider.getConfig().getOptionalValue("quarkus.thread.pool.max.threads", Integer.class).orElse(10);
         remoteClient = HttpClientBuilder.create().disableAutomaticRetries().setMaxConnPerRoute(threads).setMaxConnTotal(threads)
@@ -38,6 +41,7 @@ public class MavenClient implements RepositoryClient {
         this.uri = uri;
         this.stringUri = uri.toASCIIString();
         currentVertxRequest = Arc.container().instance(CurrentVertxRequest.class).get();
+        requestCleanup = RequestCleanup.instance();
     }
 
     public static MavenClient of(String name, URI uri) {
@@ -70,6 +74,7 @@ public class MavenClient implements RepositoryClient {
             if (!target.endsWith(SHA_1)) {
                 try (var hash = remoteClient.execute(new HttpGet(
                         targetUri + SHA_1))) {
+                    requestCleanup.addResource(hash);
                     if (hash.getStatusLine().getStatusCode() == 404) {
                         Log.debugf("Could not find sha1 hash for artifact %s/%s/%s/%s from repo %s at %s", group, artifact,
                                 version,
@@ -86,6 +91,7 @@ public class MavenClient implements RepositoryClient {
             HttpGet httpGet = new HttpGet(targetUri);
             try {
                 response = remoteClient.execute(httpGet);
+                requestCleanup.addResource(response);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
