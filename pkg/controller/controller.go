@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/labels"
 	"time"
 
 	kcpcache "github.com/kcp-dev/apimachinery/pkg/cache"
@@ -108,7 +107,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 	} else {
 		options.NewCache = cache.BuilderWithOptions(cache.Options{
 			SelectorsByObject: cache.SelectorsByObject{
-				&pipelinev1beta1.PipelineRun{}: {Label: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: ""})},
+				&pipelinev1beta1.PipelineRun{}: {},
 				&v1alpha1.DependencyBuild{}:    {},
 				&v1alpha1.ArtifactBuild{}:      {},
 			}})
