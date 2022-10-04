@@ -103,7 +103,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         }
 
         String gav = group + ":" + artifact + ":" + version;
-        if (!rebuiltArtifacts.getGavs().contains(gav)) {
+        if (!rebuiltArtifacts.isPossiblyRebuilt(gav)) {
             return Optional.empty();
         }
         Log.debugf("Attempting to retrieve %s for artifact %s", hashedGav, gav);

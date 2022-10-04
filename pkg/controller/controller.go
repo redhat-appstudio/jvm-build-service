@@ -11,6 +11,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/rebuiltartifact"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/userconfig"
@@ -98,6 +99,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 				&pipelinev1beta1.PipelineRun{}: {},
 				&v1alpha1.DependencyBuild{}:    {},
 				&v1alpha1.ArtifactBuild{}:      {},
+				&v1alpha1.RebuiltArtifact{}:    {},
 			}
 			return cache.New(c, opts)
 		}
@@ -110,6 +112,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 				&pipelinev1beta1.PipelineRun{}: {},
 				&v1alpha1.DependencyBuild{}:    {},
 				&v1alpha1.ArtifactBuild{}:      {},
+				&v1alpha1.RebuiltArtifact{}:    {},
 			}})
 
 		mgr, err = ctrl.NewManager(cfg, options)
@@ -131,6 +134,9 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 	}
 
 	if err := userconfig.SetupNewReconcilerWithManager(mgr); err != nil {
+		return nil, err
+	}
+	if err := rebuiltartifact.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 
