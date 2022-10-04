@@ -6,7 +6,12 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
@@ -26,6 +31,7 @@ import com.redhat.hacbs.artifactcache.services.CacheFacade;
 import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.ExecutorRecorder;
 import io.smallrye.common.annotation.Blocking;
 
 @Path("/v1/cache/")
@@ -98,6 +104,7 @@ public class CacheMavenResource {
     private InputStream filterNewerVersions(String buildPolicy, List<ArtifactResult> data, Date commitTime, String group,
             boolean sha1)
             throws Exception {
+        long start = System.currentTimeMillis();
         try {
             //group is not really a group
             //depending on if there are plugins or versions
@@ -110,6 +117,7 @@ public class CacheMavenResource {
             boolean firstFile = true;
             //we need to merge additional versions into a single file
             //we assume the first one is the 'most correct' in terms of the 'release' and 'latest' fields
+
             for (var i : data) {
                 try (var in = i.getData()) {
                     MetadataXpp3Reader reader = new MetadataXpp3Reader();
@@ -124,12 +132,34 @@ public class CacheMavenResource {
                     }
                     if (model.getVersioning() != null) {
                         String release = null;
+
+                        //we need to get the last modified time of all of these versions
+                        //we do it async because otherwise for some things it can be really slow
+                        Map<String, Future<String>> versionDates = new HashMap<>();
+
+                        if (commitTime.getTime() > 0) {
+                            for (String version : model.getVersioning().getVersions()) {
+                                versionDates.put(version,
+                                        ((ExecutorService) ExecutorRecorder.getCurrent()).submit(new Callable<String>() {
+                                            @Override
+                                            public String call() throws Exception {
+                                                var result = cache.getArtifactFile(buildPolicy, groupId, artifactId, version,
+                                                        artifactId + "-" + version + ".pom", false);
+                                                if (result.isPresent()) {
+                                                    var lastModified = result.get().getMetadata().get("last-modified");
+                                                    result.get().close();
+                                                    return lastModified;
+                                                }
+                                                return null;
+                                            }
+                                        }));
+                            }
+                        }
                         for (String version : model.getVersioning().getVersions()) {
                             if (commitTime.getTime() > 0) {
-                                var result = cache.getArtifactFile(buildPolicy, groupId, artifactId, version,
-                                        artifactId + "-" + version + ".pom", false);
-                                if (result.isPresent()) {
-                                    var lastModified = result.get().getMetadata().get("last-modified");
+                                var result = versionDates.get(version);
+                                if (result.get() != null) {
+                                    var lastModified = result.get();
                                     if (lastModified != null) {
                                         var date = DateUtils.parseDate(lastModified);
                                         if (date != null && date.after(commitTime)) {
@@ -160,6 +190,7 @@ public class CacheMavenResource {
             MetadataXpp3Writer writer = new MetadataXpp3Writer();
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             writer.write(out, outputModel);
+            Log.infof("Generated %s/maven-metadata.xml in %sms", group, System.currentTimeMillis() - start);
             if (sha1) {
                 return new ByteArrayInputStream(HashUtil.sha1(out.toByteArray()).getBytes(StandardCharsets.UTF_8));
             } else {
