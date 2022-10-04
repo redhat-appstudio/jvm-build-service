@@ -7,10 +7,16 @@ const (
 	JDK11Builder        = "jdk11"
 	JDK17Builder        = "jdk17"
 	ControllerNamespace = "jvm-build-service"
+
+	OpenShiftQuota = QuotaImpl("openshift")
+	K8SQuota       = QuotaImpl("kubernetes")
 )
+
+type QuotaImpl string
 
 type SystemConfigSpec struct {
 	Builders map[string]JavaVersionInfo `json:"builders,omitempty"`
+	Quota    QuotaImpl                  `json:"quota,omitempty"`
 }
 
 type JavaVersionInfo struct {

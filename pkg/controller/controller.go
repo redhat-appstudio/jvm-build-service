@@ -9,7 +9,6 @@ import (
 	"github.com/kcp-dev/apimachinery/third_party/informers"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/rebuiltartifact"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
@@ -137,11 +136,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		return nil, err
 	}
 	if err := rebuiltartifact.SetupNewReconcilerWithManager(mgr); err != nil {
-		return nil, err
-	}
-
-	// TODO we are not syncing these types here at all ... do we need the kcp modified cfg?
-	if err := clusterresourcequota.SetupNewReconciler(cfg); err != nil {
 		return nil, err
 	}
 
