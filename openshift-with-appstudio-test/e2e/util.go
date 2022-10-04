@@ -195,6 +195,21 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 				Repository: "test-images",
 				PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
 			},
+			RelocationPatterns: []v1alpha1.RelocationPatternElement{
+				{
+					RelocationPattern: v1alpha1.RelocationPattern{
+						BuildPolicy: "default",
+						Patterns: []v1alpha1.PatternElement{
+							{
+								Pattern: v1alpha1.Pattern{
+									From: "(io.github.stuartwdouglas.hacbs-test.simple):(simple-jdk17):(99-does-not-exist)",
+									To:   "io.github.stuartwdouglas.hacbs-test.simple:simple-jdk17:0.1.2",
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		Status: v1alpha1.UserConfigStatus{},
 	}
