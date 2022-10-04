@@ -135,7 +135,7 @@ public class LookupBuildInfoCommand implements Runnable {
                     }
                     info.invocations.add(
                             new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
-                                    "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip")));
+                                    "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip")));
                 }
             } else if (GradleUtils.isGradleBuild(path)) {
                 Log.infof("Detected Gradle build in %s", path);
