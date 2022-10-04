@@ -169,7 +169,7 @@ func TestServiceRegistry(t *testing.T) {
 		state := sync.Map{}
 		var changed uint32
 		exitForLoop := false
-		timeoutChannel := time.After(90*time.Minute)
+		timeoutChannel := time.After(2*time.Hour)
 
 		for {
 			select {
