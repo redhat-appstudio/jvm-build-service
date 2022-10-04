@@ -116,7 +116,6 @@ func (r *ReconcilerUserConfig) validations(ctx context.Context, log logr.Logger,
 }
 
 func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log logr.Logger, request reconcile.Request, userConfig *v1alpha1.UserConfig) error {
-	var err error
 	//TODO may have to switch to ephemeral storage for KCP until storage story there is sorted out
 	//pvc := corev1.PersistentVolumeClaim{}
 	//deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
@@ -140,7 +139,7 @@ func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log
 	//	}
 	//}
 	//and setup the service
-	err = r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}, &corev1.Service{})
+	err := r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}, &corev1.Service{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			service := corev1.Service{

@@ -13,7 +13,7 @@ var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:-")
 func randSeq(n int) string {
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = letters[rand.Intn(len(letters))] //#nosec G404
 	}
 	return string(b)
 }
@@ -25,7 +25,7 @@ func main() {
 	for _, size := range sizes {
 		var items []string
 		for i := 0; i < size; i = i + 1 {
-			items = append(items, randSeq(5+rand.Intn(40)))
+			items = append(items, randSeq(5+rand.Intn(40))) //#nosec G404
 		}
 		results = append(results, bloomFilterData{Filter: base64.StdEncoding.EncodeToString(rebuiltartifact.CreateBloomFilter(items)), Items: items})
 	}
@@ -34,7 +34,7 @@ func main() {
 		panic(err)
 	}
 
-	err = os.WriteFile("hack/bloom-filter-test-data.json", json, 0644)
+	err = os.WriteFile("hack/bloom-filter-test-data.json", json, 0644) //#nosec G306
 	if err != nil {
 		panic(err)
 	}
