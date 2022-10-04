@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import com.redhat.hacbs.artifactcache.resources.CacheMavenResource;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
@@ -13,6 +14,7 @@ import io.restassured.parsing.Parser;
 
 @QuarkusTest
 @TestHTTPEndpoint(CacheMavenResource.class)
+@QuarkusTestResource(value = ContainerRegistryDeployerTestResource.class, restrictToAnnotatedClass = true)
 public class RelocationResourceTestCase {
 
     long time = System.currentTimeMillis();
