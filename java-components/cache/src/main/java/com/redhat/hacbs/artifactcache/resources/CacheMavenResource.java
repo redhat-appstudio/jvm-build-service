@@ -120,9 +120,7 @@ public class CacheMavenResource {
                         if (outputModel.getVersioning() == null) {
                             outputModel.setVersioning(new Versioning());
                         }
-                        if (outputModel.getVersioning().getVersions() == null) {
-                            outputModel.getVersioning().setVersions(new ArrayList<>());
-                        }
+                        outputModel.getVersioning().setVersions(new ArrayList<>());
                     }
                     if (model.getVersioning() != null) {
                         String release = null;
@@ -151,9 +149,9 @@ public class CacheMavenResource {
                             }
                         }
                         if (firstFile) {
-                            model.getVersioning().setRelease(release);
-                            model.getVersioning().setLatest(release);
-                            model.getVersioning().setLastUpdatedTimestamp(commitTime);
+                            outputModel.getVersioning().setRelease(release);
+                            outputModel.getVersioning().setLatest(release);
+                            outputModel.getVersioning().setLastUpdatedTimestamp(commitTime);
                         }
                     }
                 }
