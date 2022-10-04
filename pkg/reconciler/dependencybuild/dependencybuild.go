@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"os"
 	"strconv"
 	"strings"
@@ -27,7 +28,6 @@ import (
 	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -41,6 +41,7 @@ const (
 	PipelineScmTag                = "TAG"
 	PipelinePath                  = "CONTEXT_DIR"
 	PipelineImage                 = "IMAGE"
+	PipelineRequestProcessorImage = "REQUEST_PROCESSOR_IMAGE"
 	PipelineGoals                 = "GOALS"
 	PipelineJavaVersion           = "JAVA_VERSION"
 	PipelineToolVersion           = "TOOL_VERSION"
@@ -458,20 +459,25 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "MissingRecipeType", "recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 		return reconcile.Result{}, fmt.Errorf("recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 	}
-
+	userConfig := &v1alpha1.UserConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
+	if err != nil && !errors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	}
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Namespace, db.Status.CommitTime)
-
+	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Namespace, db.Status.CommitTime, userConfig)
+	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	pr.Spec.ServiceAccountName = "pipeline"
-	//TODO: this is all going away, but for now we have lost the ability to confiugure this via YAML
-	//It's not worth adding a heap of env var overrides for something that will likely be gone next week
-	//the actual solution will involve loading deployment config from a ConfigMap
 	pr.Spec.Params = []pipelinev1beta1.Param{
 		{Name: PipelineBuildId, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
 		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
 		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: PipelineImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
+		{Name: PipelineRequestProcessorImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: buildRequestProcessorImage}},
 		{Name: PipelineGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
 		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
 		{Name: PipelineIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
@@ -559,9 +565,37 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
+			for _, i := range pr.Status.PipelineResults {
+				if i.Name == artifactbuild.Contaminants {
+
+					db.Status.Contaminants = []v1alpha1.Contaminant{}
+					//unmarshal directly into the contaminants field
+					err := json.Unmarshal([]byte(i.Value), &db.Status.Contaminants)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+				} else if i.Name == artifactbuild.DeployedResources {
+					//we need to create 'DeployedArtifact' resources for the objects that were deployed
+					deployed := strings.Split(i.Value, ",")
+					for _, i := range deployed {
+						ra := v1alpha1.RebuiltArtifact{}
+						ra.Namespace = pr.Namespace
+						ra.Name = artifactbuild.CreateABRName(i)
+						ra.Spec.GAV = i
+						err := r.client.Create(ctx, &ra)
+						if err != nil {
+							if !errors.IsAlreadyExists(err) {
+								return reconcile.Result{}, err
+							}
+						}
+					}
+				}
+			}
+
 			if len(db.Status.Contaminants) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
+				db.Status.State = v1alpha1.DependencyBuildStateContaminated
 				r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
 				//the dependency was contaminated with community deps
 				//most likely shaded in
@@ -660,7 +694,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 }
 
 func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, userConfig *v1alpha1.UserConfig) (*pipelinev1beta1.PipelineSpec, error) {
-	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+	image, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return nil, err
 	}
@@ -719,6 +753,11 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 			},
 		},
 	}, nil
+}
+
+func (r *ReconcileDependencyBuild) buildRequestProcessorImage(ctx context.Context, log logr.Logger) (string, error) {
+	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+	return image, err
 }
 
 type BuilderImage struct {

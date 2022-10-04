@@ -81,6 +81,8 @@ spec:
       description: The total number of dependencies in the output
     - name: untrusted-dependencies
       description: The total number of dependencies that came from an untrusted source, such as Maven central
+    - name: java-community-dependencies
+      description: The list of community dependencies
   steps:
     - name: mvn-settings
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
@@ -148,7 +150,7 @@ spec:
         if [ -n "$(params.MAVEN_MIRROR_URL)" ]; then
           xml="    <mirror>\
             <id>mirror.default</id>\
-            <url>$(params.MAVEN_MIRROR_URL)</url>\
+            <url>$(params.MAVEN_MIRROR_URL)/v1/cache/default/0/</url>\
             <mirrorOf>*</mirrorOf>\
           </mirror>"
           sed -i "s|<!-- ### mirrors from ENV ### -->|$xml|" $(workspaces.maven-settings.path)/settings.xml
@@ -174,8 +176,9 @@ spec:
     - name: analyse-dependencies
       securityContext:
         runAsUser: 0
-      image: quay.io/redhat-appstudio/hacbs-jvm-dependency-analyser:3dcd8603061c7ab2cedfe128c80cac9726721a74
+      image: quay.io/replaced-image:bogus
       args:
+        - analyse-dependencies
         - path
         - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)
         - -s
@@ -184,4 +187,5 @@ spec:
         - "$(results.dependencies.path)"
         - -u
         - "$(results.untrusted-dependencies.path)"
-
+        - --task-run-name
+        - $(context.taskRun.name)

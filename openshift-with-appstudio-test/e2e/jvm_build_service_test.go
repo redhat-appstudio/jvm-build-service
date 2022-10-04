@@ -25,6 +25,7 @@ import (
 
 func TestExampleRun(t *testing.T) {
 	ta := setup(t, nil)
+	defer GenerateStatusReport(ta.ns, jvmClient, kubeClient)
 	//TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
 	// and successful runs (in case a run succeeds, but we find something amiss if we look at passing runs; our in repo
 	// tests do now run in conjunction with say the full suite of e2e's in the e2e-tests runs, so no contention there.
@@ -45,15 +46,15 @@ func TestExampleRun(t *testing.T) {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a task: %#v", mavenYamlPath, obj))
 	}
 	// override images if need be
-	analyserImage := os.Getenv("JVM_BUILD_SERVICE_ANALYZER_IMAGE")
+	analyserImage := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	if len(analyserImage) > 0 {
 		ta.Logf(fmt.Sprintf("PR analyzer image: %s", analyserImage))
-		for _, step := range ta.maven.Spec.Steps {
+		for i, step := range ta.maven.Spec.Steps {
 			if step.Name != "analyse-dependencies" {
 				continue
 			}
 			ta.Logf(fmt.Sprintf("Updating analyse-dependencies step with image %s", analyserImage))
-			step.Image = analyserImage
+			ta.maven.Spec.Steps[i].Image = analyserImage
 		}
 	}
 	ta.maven, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.maven, metav1.CreateOptions{})

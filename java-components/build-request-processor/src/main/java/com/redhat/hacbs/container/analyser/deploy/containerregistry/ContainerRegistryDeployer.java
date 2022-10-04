@@ -1,4 +1,4 @@
-package com.redhat.hacbs.artifactcache.deploy.containerregistry;
+package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -18,13 +18,9 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.zip.GZIPInputStream;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Named;
-
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
@@ -36,27 +32,22 @@ import com.google.cloud.tools.jib.api.RegistryException;
 import com.google.cloud.tools.jib.api.RegistryImage;
 import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
-import com.redhat.hacbs.artifactcache.deploy.DeployData;
-import com.redhat.hacbs.artifactcache.deploy.Deployer;
-import com.redhat.hacbs.artifactcache.deploy.DeployerUtil;
-import com.redhat.hacbs.artifactcache.deploy.Gav;
-import com.redhat.hacbs.artifactcache.util.FileUtil;
+import com.redhat.hacbs.container.analyser.deploy.DeployData;
+import com.redhat.hacbs.container.analyser.deploy.Deployer;
+import com.redhat.hacbs.container.analyser.deploy.DeployerUtil;
+import com.redhat.hacbs.container.analyser.deploy.Gav;
+import com.redhat.hacbs.container.analyser.util.FileUtil;
 
 import io.quarkus.logging.Log;
 
-@ApplicationScoped
-@Named("ContainerRegistryDeployer")
 public class ContainerRegistryDeployer implements Deployer {
-
-    final Path baseImageCachePath;
-    final Path applicationCachePath;
 
     private final String host;
     private final int port;
     private final String owner;
     private final String repository;
     private final boolean insecure;
-    private final Optional<String> prependTag;
+    private final String prependTag;
 
     private final String username;
     private final String password;
@@ -64,14 +55,13 @@ public class ContainerRegistryDeployer implements Deployer {
     static final ObjectMapper MAPPER = new ObjectMapper();
 
     public ContainerRegistryDeployer(
-            @ConfigProperty(name = "registry.host", defaultValue = "quay.io") String host,
-            @ConfigProperty(name = "registry.port", defaultValue = "443") int port,
-            @ConfigProperty(name = "registry.owner", defaultValue = "hacbs") String owner,
-            @ConfigProperty(name = "registry.token") Optional<String> token,
-            @ConfigProperty(name = "registry.repository", defaultValue = "artifact-deployments") String repository,
-            @ConfigProperty(name = "registry.insecure", defaultValue = "false") boolean insecure,
-            @ConfigProperty(name = "registry.prepend-tag", defaultValue = "") Optional<String> prependTag,
-            @ConfigProperty(name = "cache-path") Path cachePath) {
+            String host,
+            int port,
+            String owner,
+            String token,
+            String repository,
+            boolean insecure,
+            String prependTag) {
 
         this.host = host;
         this.port = port;
@@ -79,16 +69,8 @@ public class ContainerRegistryDeployer implements Deployer {
         this.repository = repository;
         this.insecure = insecure;
         this.prependTag = prependTag;
-        baseImageCachePath = cachePath.resolve("container-deploy-base-images");
-        applicationCachePath = cachePath.resolve("container-deploy-application-images");
-        try {
-            Files.createDirectories(baseImageCachePath);
-            Files.createDirectories(applicationCachePath);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        if (token.isPresent()) {
-            var decoded = new String(Base64.getDecoder().decode(token.get()), StandardCharsets.UTF_8);
+        if (!token.isBlank()) {
+            var decoded = new String(Base64.getDecoder().decode(token), StandardCharsets.UTF_8);
             if (decoded.startsWith("{")) {
                 //we assume this is a .dockerconfig file
                 try (var parser = MAPPER.createParser(decoded)) {
@@ -127,6 +109,7 @@ public class ContainerRegistryDeployer implements Deployer {
             password = null;
         }
         Log.infof("Using username %s to publish to %s/%s/%s", username, host, owner, repository);
+        Log.infof("Prepend tag is %s", prependTag);
 
     }
 
@@ -139,14 +122,14 @@ public class ContainerRegistryDeployer implements Deployer {
 
         try {
             // Create the image layers
-            createImages(tarGzFile, imageData);
+            createImages(imageData);
 
         } finally {
             FileUtil.deleteRecursive(imageData.getArtifactsPath());
         }
     }
 
-    private void createImages(Path tarGzFile, DeployData imageData)
+    private void createImages(DeployData imageData)
             throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
             CacheDirectoryCreationException, ExecutionException {
 
@@ -157,13 +140,13 @@ public class ContainerRegistryDeployer implements Deployer {
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
-                .setApplicationLayersCache(applicationCachePath)
-                .setBaseImageLayersCache(baseImageCachePath)
                 .setAllowInsecureRegistries(insecure);
+        Log.infof("Deploying base image %s", imageName);
 
         Set<Gav> gavs = imageData.getGavs();
 
         for (Gav gav : gavs) {
+            Log.infof("Deploying image with tag %s", gav.getTag());
             containerizer = containerizer.withAdditionalTag(gav.getTag());
         }
 
@@ -268,8 +251,8 @@ public class ContainerRegistryDeployer implements Deployer {
             String groupId = String.join(DOT, groupIdList);
 
             String tag = DeployerUtil.sha256sum(groupId, artifactId, version);
-            if (prependTag.isPresent()) {
-                tag = prependTag.get() + UNDERSCORE + tag;
+            if (!prependTag.isBlank()) {
+                tag = prependTag + UNDERSCORE + tag;
             }
             if (tag.length() > 128) {
                 tag = tag.substring(0, 128);

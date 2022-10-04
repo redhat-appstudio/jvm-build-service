@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser;
+package com.redhat.hacbs.container.analyser.dependencies;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +28,9 @@ import picocli.CommandLine;
 
 public abstract class AnalyserBase implements Runnable {
 
+    @CommandLine.Option(names = "--task-run-name")
+    String taskRunName;
+
     @CommandLine.Option(names = "--allowed-sources", defaultValue = "redhat,rebuilt", split = ",")
     Set<String> allowedSources;
 
@@ -49,7 +52,7 @@ public abstract class AnalyserBase implements Runnable {
             Set<String> gavs = new HashSet<>();
             Set<TrackingData> trackingData = new HashSet<>();
             doAnalysis(gavs, trackingData);
-            rebuild.rebuild(gavs);
+            rebuild.rebuild(taskRunName, gavs);
             writeResults(gavs, trackingData);
             writeSbom(trackingData);
         } catch (Exception e) {
