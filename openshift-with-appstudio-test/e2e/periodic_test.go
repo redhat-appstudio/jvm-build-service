@@ -98,10 +98,6 @@ func TestServiceRegistry(t *testing.T) {
 		debugAndFailTest(ta, err.Error())
 	}
 
-	// delay to avoid weird timing issue where pipelinerun can reconcile before pipeline
-	ta.Logf("sleeping 30 seconds to avoid PR formatting complaint.")
-	time.Sleep(30 * time.Second)
-
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-service-registry.yaml")
 	ta.run = &v1beta1.PipelineRun{}
 	obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
