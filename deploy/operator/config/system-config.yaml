@@ -18,7 +18,10 @@ spec:
   builders:
     jdk8:
       image: quay.io/redhat-appstudio/hacbs-jdk8-builder:9d571619a763f7106f1e37a9340159ea6f598cc9
+      priority: 2000
     jdk11:
       image: quay.io/redhat-appstudio/hacbs-jdk11-builder:9d571619a763f7106f1e37a9340159ea6f598cc9
+      priority: 3000
     jdk17:
       image: quay.io/redhat-appstudio/hacbs-jdk17-builder:9d571619a763f7106f1e37a9340159ea6f598cc9
+      priority: 1000

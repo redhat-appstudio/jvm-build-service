@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -403,10 +404,14 @@ func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log
 	result := []BuilderImage{}
 	for _, val := range systemConfig.Spec.Builders {
 		result = append(result, BuilderImage{
-			Image: val.Image,
-			Tools: r.processBuilderImageTags(val.Tag),
+			Image:    val.Image,
+			Tools:    r.processBuilderImageTags(val.Tag),
+			Priority: val.Priority,
 		})
 	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Priority > result[j].Priority
+	})
 	return result, nil
 }
 
@@ -761,6 +766,7 @@ func (r *ReconcileDependencyBuild) buildRequestProcessorImage(ctx context.Contex
 }
 
 type BuilderImage struct {
-	Image string
-	Tools map[string][]string
+	Image    string
+	Tools    map[string][]string
+	Priority int
 }
