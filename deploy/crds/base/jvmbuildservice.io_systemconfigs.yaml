@@ -40,6 +40,8 @@ spec:
                   properties:
                     image:
                       type: string
+                    priority:
+                      type: integer
                     tag:
                       type: string
                   type: object

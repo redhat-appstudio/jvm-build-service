@@ -128,8 +128,8 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					},
 					Resources: v1.ResourceRequirements{
 						//TODO: make configurable
-						Requests: v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
-						Limits:   v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("300m")},
+						Requests: v1.ResourceList{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("10m")},
+						Limits:   v1.ResourceList{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("300m")},
 					},
 					Args: deployArgs,
 				},

@@ -14,8 +14,9 @@ type SystemConfigSpec struct {
 }
 
 type JavaVersionInfo struct {
-	Image string `json:"image,omitempty"`
-	Tag   string `json:"tag,omitempty"`
+	Image    string `json:"image,omitempty"`
+	Tag      string `json:"tag,omitempty"`
+	Priority int    `json:"priority,omitempty"`
 }
 
 type SystemConfigStatus struct {
