@@ -238,39 +238,45 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 		log.Info(msg, db.Namespace, db.Name)
 		return reconcile.Result{}, nil
 	}
-	ownerName := ""
+	//update all the owners based on the current state
 	for _, ownerRef := range ownerRefs {
 		if strings.EqualFold(ownerRef.Kind, "artifactbuild") {
-			ownerName = ownerRef.Name
-			break
+			ownerName := ownerRef.Name
+			if len(ownerName) == 0 {
+				msg := "dependencybuild missing artifactbuilds owner refs %s:%s"
+				r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name)
+				log.Info(msg, db.Namespace, db.Name)
+				continue
+			}
+
+			key := types.NamespacedName{Namespace: db.Namespace, Name: ownerName}
+			abr := v1alpha1.ArtifactBuild{}
+			err := r.client.Get(ctx, key, &abr)
+			if err != nil {
+				msg := "get for dependencybuild %s:%s owning abr %s:%s yielded error %s"
+				r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error())
+				log.Error(err, fmt.Sprintf(msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error()))
+				return reconcile.Result{}, err
+			}
+			oldState := abr.Status.State
+			switch db.Status.State {
+			case v1alpha1.DependencyBuildStateFailed:
+			case v1alpha1.DependencyBuildStateContaminated:
+				abr.Status.State = v1alpha1.ArtifactBuildStateFailed
+			case v1alpha1.DependencyBuildStateComplete:
+				abr.Status.State = v1alpha1.ArtifactBuildStateComplete
+			default:
+				abr.Status.State = v1alpha1.ArtifactBuildStateBuilding
+			}
+			if oldState != abr.Status.State {
+				err = r.client.Status().Update(ctx, &abr)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+			}
 		}
 	}
-	if len(ownerName) == 0 {
-		msg := "dependencybuild missing artifactbuilds owner refs %s:%s"
-		r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name)
-		log.Info(msg, db.Namespace, db.Name)
-		return reconcile.Result{}, nil
-	}
-
-	key := types.NamespacedName{Namespace: db.Namespace, Name: ownerName}
-	abr := v1alpha1.ArtifactBuild{}
-	err := r.client.Get(ctx, key, &abr)
-	if err != nil {
-		msg := "get for dependencybuild %s:%s owning abr %s:%s yielded error %s"
-		r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error())
-		log.Error(err, fmt.Sprintf(msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error()))
-		return reconcile.Result{}, err
-	}
-	if db.Status.State == v1alpha1.DependencyBuildStateFailed ||
-		db.Status.State == v1alpha1.DependencyBuildStateContaminated {
-		abr.Status.State = v1alpha1.ArtifactBuildStateFailed
-	} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
-		abr.Status.State = v1alpha1.ArtifactBuildStateComplete
-		return reconcile.Result{Requeue: true}, r.client.Status().Update(ctx, &abr)
-	}
-
-	// if need be
-	return reconcile.Result{}, r.client.Status().Update(ctx, &abr)
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
@@ -489,8 +495,10 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 	case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
 		abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+	default:
+		abr.Status.State = v1alpha1.ArtifactBuildStateBuilding
+		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	}
-	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
