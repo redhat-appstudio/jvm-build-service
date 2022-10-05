@@ -63,6 +63,16 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 	if userConfig.Spec.ImageRegistry.PrependTag != "" {
 		deployArgs = append(deployArgs, "--registry-prepend-tag="+userConfig.Spec.ImageRegistry.PrependTag)
 	}
+
+	preprocessorArgs := []string{
+		"maven-prepare",
+		"-r",
+		"$(params.CACHE_URL)",
+		"$(workspaces." + WorkspaceSource + ".path)",
+	}
+	if !maven {
+		preprocessorArgs[0] = "gradle-prepare"
+	}
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
 		Params: []v1alpha1.ParamSpec{
@@ -103,6 +113,19 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					},
 				},
 				Script: settings,
+			},
+			{
+				Container: v1.Container{
+					Name:            "preprocessor",
+					Image:           "$(params." + PipelineRequestProcessorImage + ")",
+					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+					Resources: v1.ResourceRequirements{
+						//TODO: make configurable
+						Requests: v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
+						Limits:   v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("300m")},
+					},
+					Args: preprocessorArgs,
+				},
 			},
 			{
 				Container: v1.Container{
