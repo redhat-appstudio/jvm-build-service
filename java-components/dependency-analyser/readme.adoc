@@ -1,3 +1,0 @@
-== Container Analyser
-
-This task can analyse a container and create CR's representing any community GAV's that need to be built as a result of the analysis.
