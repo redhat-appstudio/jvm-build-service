@@ -24,6 +24,10 @@ import (
 )
 
 const gav = "com.acme:foo:1.0"
+const repo = "https://github.com/foo.git"
+const version = "1.0"
+const otherName = "other-artifact"
+const name = "test"
 
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileArtifactBuild) {
 	scheme := runtime.NewScheme()
@@ -75,9 +79,13 @@ func TestArtifactBuildStateNew(t *testing.T) {
 }
 
 func getABR(client runtimeclient.Client, g *WithT) *v1alpha1.ArtifactBuild {
+	return getNamedABR(client, g, "test")
+}
+
+func getNamedABR(client runtimeclient.Client, g *WithT, name string) *v1alpha1.ArtifactBuild {
 	ctx := context.TODO()
 	abr := v1alpha1.ArtifactBuild{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}, &abr))
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: name}, &abr)).To(BeNil())
 	return &abr
 }
 
@@ -228,7 +236,7 @@ func TestStateBuilding(t *testing.T) {
 		abr := &v1alpha1.ArtifactBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
+				Name:      name,
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
 			},
@@ -237,7 +245,19 @@ func TestStateBuilding(t *testing.T) {
 				State: v1alpha1.ArtifactBuildStateBuilding,
 			},
 		}
-		client, reconciler = setupClientAndReconciler(abr)
+		other := &v1alpha1.ArtifactBuild{
+			TypeMeta: metav1.TypeMeta{},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      otherName,
+				Namespace: metav1.NamespaceDefault,
+				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+			},
+			Spec: v1alpha1.ArtifactBuildSpec{},
+			Status: v1alpha1.ArtifactBuildStatus{
+				State: v1alpha1.ArtifactBuildStateBuilding,
+			},
+		}
+		client, reconciler = setupClientAndReconciler(abr, other)
 	}
 	t.Run("Failed build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -285,9 +305,14 @@ func TestStateBuilding(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
 		abr := getABR(client, g)
-		abr.Status.SCMInfo.SCMURL = "https://github.com/foo.git"
-		abr.Status.SCMInfo.Tag = "1.0"
+		abr.Status.SCMInfo.SCMURL = repo
+		abr.Status.SCMInfo.Tag = version
 		g.Expect(client.Update(ctx, abr))
+
+		other := getNamedABR(client, g, otherName)
+		other.Status.SCMInfo.SCMURL = repo
+		other.Status.SCMInfo.Tag = version
+		g.Expect(client.Update(ctx, other))
 		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		db := v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
@@ -300,17 +325,34 @@ func TestStateBuilding(t *testing.T) {
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
 		}
 		g.Expect(controllerutil.SetOwnerReference(abr, &db, reconciler.scheme))
+		g.Expect(controllerutil.SetOwnerReference(other, &db, reconciler.scheme))
 		g.Expect(client.Create(ctx, &db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr = getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateFailed))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: otherName}}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: otherName}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateFailed))
 		abr.Annotations = map[string]string{Rebuild: "true"}
 		g.Expect(client.Update(ctx, abr))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: otherName}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
+		g.Expect(abr.Annotations[Rebuild]).Should(Equal("true")) //first reconcile does not remove the annotation
 		err := client.Get(ctx, types.NamespacedName{Name: db.Name, Namespace: db.Namespace}, &db)
 		g.Expect(errors.IsNotFound(err)).Should(BeTrue())
+		other = getNamedABR(client, g, otherName)
+		g.Expect(other.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr = getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
+		g.Expect(abr.Annotations[Rebuild]).Should(Equal("")) //second reconcile removes the annotation
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
+		abr = getABR(client, g)
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateDiscovering)) //3rd reconcile kicks off discovery
 
 	})
 	t.Run("Contaminated build", func(t *testing.T) {
