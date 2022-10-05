@@ -168,6 +168,8 @@ func TestServiceRegistry(t *testing.T) {
 		exitForLoop := false
 		timeoutChannel := time.After(2 * time.Hour)
 
+		stable := map[string]bool{v1alpha1.DependencyBuildStateComplete: true, v1alpha1.DependencyBuildStateFailed: true, v1alpha1.DependencyBuildStateContaminated: true}
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -183,81 +185,6 @@ func TestServiceRegistry(t *testing.T) {
 				exitForLoop = true
 				didNotCompleteInTime = true
 				break
-
-				//case event := <-abWatch.ResultChan():
-				//	if event.Object == nil {
-				//		continue
-				//	}
-				//	ab, ok := event.Object.(*v1alpha1.ArtifactBuild)
-				//	if !ok {
-				//		continue
-				//	}
-				//	switch {
-				//	case ab.Status.State == v1alpha1.ArtifactBuildStateComplete:
-				//		s, k := state.Load(ab.Name)
-				//		if !k || s != v1alpha1.ArtifactBuildStateComplete {
-				//			atomic.AddUint32(&abCompleteCount, 1)
-				//			atomic.StoreUint32(&changed, 1)
-				//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateComplete)
-				//		}
-				//	case ab.Status.State == v1alpha1.ArtifactBuildStateMissing:
-				//		s, k := state.Load(ab.Name)
-				//		if !k || s != v1alpha1.ArtifactBuildStateMissing {
-				//			atomic.AddUint32(&abMissingCount, 1)
-				//			atomic.StoreUint32(&changed, 1)
-				//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateMissing)
-				//		}
-				//	case ab.Status.State == v1alpha1.ArtifactBuildStateFailed:
-				//		s, k := state.Load(ab.Name)
-				//		if !k || s != v1alpha1.ArtifactBuildStateFailed {
-				//			atomic.AddUint32(&abFailedCount, 1)
-				//			atomic.StoreUint32(&changed, 1)
-				//			state.Store(ab.Name, v1alpha1.ArtifactBuildStateFailed)
-				//			dumpABPods(ta, ab.Name, ab.Spec.GAV)
-				//		}
-				//	default:
-				//		s, k := state.Load(ab.Name)
-				//		if k {
-				//			switch {
-				//			case s == v1alpha1.ArtifactBuildStateMissing:
-				//				// decrement
-				//				atomic.AddUint32(&abMissingCount, ^uint32(0))
-				//				atomic.StoreUint32(&changed, 1)
-				//				// reset since must be rebuild
-				//				state.Store(ab.Name, ab.Status.State)
-				//			case s == v1alpha1.ArtifactBuildStateComplete:
-				//				//decrement
-				//				atomic.AddUint32(&abCompleteCount, ^uint32(0))
-				//				atomic.StoreUint32(&changed, 1)
-				//			case s == v1alpha1.ArtifactBuildStateFailed:
-				//				//decrement
-				//				atomic.AddUint32(&abFailedCount, ^uint32(0))
-				//				atomic.StoreUint32(&changed, 1)
-				//				// reset since must be rebuild
-				//				state.Store(ab.Name, ab.Status.State)
-				//			}
-				//		} else {
-				//			atomic.AddInt32(&createdAB, 1)
-				//			atomic.StoreUint32(&changed, 1)
-				//			state.Store(ab.Name, ab.Status.State)
-				//		}
-				//	}
-				//
-				//	dbg := false
-				//	if atomic.CompareAndSwapUint32(&changed, 1, 0) {
-				//		ta.Logf(fmt.Sprintf("artifactbuild created count: %d complete count: %d, failed count: %d, missing count: %d", createdAB, abCompleteCount, abFailedCount, abMissingCount))
-				//		dbg = true
-				//
-				//	}
-				//
-				//	if createdAB > 200 && !activePipelineRuns(ta, dbg) {
-				//		ta.Logf(fmt.Sprintf("artifactbuild FINAL created count: %d complete count: %d, failed count: %d, missing count: %d", createdAB, abCompleteCount, abFailedCount, abMissingCount))
-				//		exitForLoop = true
-				//		abWatch.Stop()
-				//		dbWatch.Stop()
-				//		break
-				//	}
-
 			case event := <-dbWatch.ResultChan():
 				if event.Object == nil {
 					continue
@@ -266,66 +193,47 @@ func TestServiceRegistry(t *testing.T) {
 				if !ok {
 					continue
 				}
-				switch {
-				case db.Status.State == v1alpha1.DependencyBuildStateComplete:
-					s, k := state.Load(db.Name)
-					if !k || s != v1alpha1.DependencyBuildStateComplete {
-						atomic.AddUint32(&dbCompleteCount, 1)
-						atomic.StoreUint32(&changed, 1)
-						state.Store(db.Name, v1alpha1.DependencyBuildStateComplete)
-						// decrement building
+				s, k := state.Load(db.Name)
+				stableState := stable[db.Status.State] //if the DB is currently in a stable state
+				var oldStableState bool
+				if k {
+					oldStableState = stable[s.(string)] //if the DB used to be in a stable state
+				}
+				state.Store(db.Name, db.Status.State)
+
+				//if this is the first time we have seen it increment the created count
+				if !k {
+					atomic.AddInt32(&createdDB, 1)
+				}
+				//if the state has changed to/from a stable or unstable state modify the building count
+				if stableState != oldStableState || !k {
+					if stableState {
 						atomic.AddUint32(&dbBuildingCount, ^uint32(0))
-					}
-				case db.Status.State == v1alpha1.DependencyBuildStateFailed:
-					s, k := state.Load(db.Name)
-					if !k || s != v1alpha1.DependencyBuildStateFailed {
-						atomic.AddUint32(&dbFailedCount, 1)
-						atomic.StoreUint32(&changed, 1)
-						state.Store(db.Name, v1alpha1.DependencyBuildStateFailed)
-						// decrement building
-						atomic.AddUint32(&dbBuildingCount, ^uint32(0))
-					}
-				case db.Status.State == v1alpha1.DependencyBuildStateContaminated:
-					s, k := state.Load(db.Name)
-					if !k || s != v1alpha1.DependencyBuildStateContaminated {
-						atomic.AddUint32(&dbContaminatedCount, 1)
-						atomic.StoreUint32(&changed, 1)
-						state.Store(db.Name, v1alpha1.DependencyBuildStateContaminated)
-						// decrement building
-						atomic.AddUint32(&dbBuildingCount, ^uint32(0))
-					}
-				case db.Status.State == v1alpha1.DependencyBuildStateBuilding:
-					s, k := state.Load(db.Name)
-					if !k || s != v1alpha1.DependencyBuildStateBuilding {
-						atomic.AddUint32(&dbBuildingCount, 1)
-						atomic.StoreUint32(&changed, 1)
-						state.Store(db.Name, v1alpha1.DependencyBuildStateBuilding)
-					}
-				default:
-					s, k := state.Load(db.Name)
-					if k {
-						switch {
-						case s == v1alpha1.DependencyBuildStateContaminated:
-							// decrement
-							atomic.AddUint32(&dbContaminatedCount, ^uint32(0))
-							atomic.StoreUint32(&changed, 1)
-							// reset since must be rebuild
-							state.Store(db.Name, db.Status.State)
-						case s == v1alpha1.DependencyBuildStateComplete:
-							//decrement
-							atomic.AddUint32(&dbCompleteCount, ^uint32(0))
-							atomic.StoreUint32(&changed, 1)
-						case s == v1alpha1.DependencyBuildStateFailed:
-							//decrement
-							atomic.AddUint32(&dbFailedCount, ^uint32(0))
-							atomic.StoreUint32(&changed, 1)
-							// reset since must be rebuild
-							state.Store(db.Name, db.Status.State)
-						}
 					} else {
-						atomic.AddInt32(&createdDB, 1)
-						atomic.StoreUint32(&changed, 1)
-						state.Store(db.Name, db.Status.State)
+						atomic.AddUint32(&dbBuildingCount, 1)
+					}
+				}
+				//if the state has changed, or there is a new DB we need to check the current state
+				if s != db.Status.State || !k {
+					atomic.StoreUint32(&changed, 1) //mark as changed to it will be reported on, as this was a change
+
+					//if it entered a stable state we increment the counter for that state
+					switch db.Status.State {
+					case v1alpha1.DependencyBuildStateComplete:
+						atomic.AddUint32(&dbCompleteCount, 1)
+					case v1alpha1.DependencyBuildStateFailed:
+						atomic.AddUint32(&dbFailedCount, 1)
+					case v1alpha1.DependencyBuildStateContaminated:
+						atomic.AddUint32(&dbContaminatedCount, 1)
+					}
+					//if it left a stable state we increment the counter for that state
+					switch s {
+					case v1alpha1.DependencyBuildStateComplete:
+						atomic.AddUint32(&dbCompleteCount, ^uint32(0))
+					case v1alpha1.DependencyBuildStateFailed:
+						atomic.AddUint32(&dbFailedCount, ^uint32(0))
+					case v1alpha1.DependencyBuildStateContaminated:
+						atomic.AddUint32(&dbContaminatedCount, ^uint32(0))
 					}
 				}
 
