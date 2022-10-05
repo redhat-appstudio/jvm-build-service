@@ -36,12 +36,10 @@
     </properties>
 
     <modules>
-        <module>sidecar</module>
         <module>cache</module>
         <module>build-recipes-database</module>
         <module>adhoc-analyser-tool</module>
         <module>classfile-tracker</module>
-        <module>dependency-analyser</module>
         <module>resource-model</module>
         <module>gradle-buildinformation-plugin</module>
         <module>build-request-processor</module>
