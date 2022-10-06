@@ -10,11 +10,13 @@ function cleanAllArtifacts() {
      kubectl delete artifactbuilds.jvmbuildservice.io --all
      kubectl delete rebuiltartifacts.jvmbuildservice.io --all
      kubectl delete persistentvolumeclaims jvm-build-workspace-artifact-cache
-
+     kubectl delete configmap jvm-build-service-filter
 }
 
 kubectl delete deployments.apps jvm-build-workspace-artifact-cache
-#cleanAllArtifacts
+if [ "$1" = "--clean" ]; then
+    cleanAllArtifacts
+fi
 
 DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml
