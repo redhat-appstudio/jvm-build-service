@@ -1,15 +1,4 @@
 ---
-#apiVersion: v1
-#kind: ConfigMap
-#metadata:
-#  name: jvm-build-system-config
-#  namespace: jvm-build-service
-#data:
-#  builder-image.names: jdk11,jdk8,jdk17
-#  #note that when updating the ref here you must also update kustomization.yaml
-#  builder-image.jdk8.image: quay.io/redhat-appstudio/hacbs-jdk8-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
-#  builder-image.jdk11.image: quay.io/redhat-appstudio/hacbs-jdk11-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
-#  builder-image.jdk17.image: quay.io/redhat-appstudio/hacbs-jdk17-builder:fbe0f42ebe3d50b16d454c95207dd15be6b5008f
 apiVersion: jvmbuildservice.io/v1alpha1
 kind: SystemConfig
 metadata:

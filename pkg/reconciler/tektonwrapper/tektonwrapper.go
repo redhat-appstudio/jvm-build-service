@@ -302,40 +302,61 @@ func (r *ReconcileTektonWrapper) unthrottleNextOnQueuePlusCleanup(ctx context.Co
 }
 
 func (r *ReconcileTektonWrapper) getHardPodCount(ctx context.Context, namespace string) (int, error) {
-	//TODO controller runtime seemed unable to deal with openshift API and its attempt at mapping to CRDs; we were using
-	// a non caching client; but now we've switched to a shared informer based controller and its caching client
-	quotaList, qerr := clusterresourcequota.QuotaClient.QuotaV1().ClusterResourceQuotas().List(ctx, metav1.ListOptions{})
-	if qerr != nil {
-		return 0, qerr
+	if clusterresourcequota.QuotaClient != nil {
+		//TODO controller runtime seemed unable to deal with openshift API and its attempt at mapping to CRDs; we were using
+		// a non caching client; but now we've switched to a shared informer based controller and its caching client
+		quotaList, qerr := clusterresourcequota.QuotaClient.QuotaV1().ClusterResourceQuotas().List(ctx, metav1.ListOptions{})
+		if qerr != nil {
+			return 0, qerr
+		}
+		hardPodCount := 0
+		for _, quota := range quotaList.Items {
+			// find applicable quota for this namespace
+			ns, ok := quota.Spec.Selector.AnnotationSelector["openshift.io/requester"]
+
+			if !ok {
+				continue
+			}
+			if ns != namespace {
+				continue
+			}
+			//TODO the current assumption here is serial TaskRuns for the PipelineRun, hence, 1 Pod
+			// per PipelineRun; if we employ concurrent TaskRuns, we'll need to account for that and
+			// increase the "pod count" for a PipelineRun
+			if quota.Spec.Quota.Hard.Pods() != nil {
+				hardPodCount = int(quota.Spec.Quota.Hard.Pods().Value())
+			}
+
+			if hardPodCount <= 0 {
+				var quant resource.Quantity
+				quant, ok = quota.Spec.Quota.Hard[corev1.ResourceName("count/pods")]
+				if ok {
+					hardPodCount = int(quant.Value())
+				}
+			}
+			if hardPodCount > 0 {
+				break
+			}
+		}
+		return hardPodCount, nil
+	}
+	quotaList := corev1.ResourceQuotaList{}
+	err := r.client.List(ctx, &quotaList)
+	if err != nil {
+		return 0, err
 	}
 	hardPodCount := 0
 	for _, quota := range quotaList.Items {
-		// find applicable quota for this namespace
-		ns, ok := quota.Spec.Selector.AnnotationSelector["openshift.io/requester"]
-
-		if !ok {
+		if quota.Namespace != namespace {
 			continue
 		}
-		if ns != namespace {
-			continue
-		}
-		//TODO the current assumption here is serial TaskRuns for the PipelineRun, hence, 1 Pod
-		// per PipelineRun; if we employ concurrent TaskRuns, we'll need to account for that and
-		// increase the "pod count" for a PipelineRun
-		if quota.Spec.Quota.Hard.Pods() != nil {
-			hardPodCount = int(quota.Spec.Quota.Hard.Pods().Value())
-		}
-
-		if hardPodCount <= 0 {
-			var quant resource.Quantity
-			quant, ok = quota.Spec.Quota.Hard[corev1.ResourceName("count/pods")]
-			if ok {
-				hardPodCount = int(quant.Value())
-			}
+		if quota.Spec.Hard.Pods() != nil {
+			hardPodCount = int(quota.Spec.Hard.Pods().Value())
 		}
 		if hardPodCount > 0 {
 			break
 		}
 	}
 	return hardPodCount, nil
+
 }
