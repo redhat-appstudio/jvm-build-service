@@ -14,14 +14,11 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import com.redhat.hacbs.gradle.BuildInformationPlugin;
-import com.redhat.hacbs.gradle.GradleBuildInformation;
-
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 class GradleUtilsTest {
-    private static final String GRADLE_WRAPPER_PROPERTIES = "/gradle/wrapper/gradle-wrapper.properties";
+    private static final String GRADLE_WRAPPER_PROPERTIES = "gradle-wrapper.properties";
 
     @Test
     void testGetGradleVersion() throws URISyntaxException {
@@ -29,9 +26,8 @@ class GradleUtilsTest {
         assertThat(url).isNotNull();
         URI uri = url.toURI();
         Path propertiesFile = Path.of(uri);
-        Path projectDir = propertiesFile.getParent().getParent().getParent();
-        GradleBuildInformation gradleBuildInformation = BuildInformationPlugin.getBuildInformation(projectDir);
-        assertThat(gradleBuildInformation.getGradleVersion()).isEqualTo("7.4");
+        assertThat(GradleUtils.getGradleVersionFromWrapperProperties(propertiesFile)).get()
+                .isEqualTo("7.6-20220622230534+0000");
     }
 
     @Test
@@ -50,41 +46,23 @@ class GradleUtilsTest {
     }
 
     @Test
-    void testGetMinimumSupportedJavaVersion() {
+    void testSupportedJavaVersion() {
         assertThatThrownBy(() -> GradleUtils.getSupportedJavaVersion("3.0"))
                 .isExactlyInstanceOf(IllegalArgumentException.class);
-        assertThat(GradleUtils.getMinimumSupportedJavaVersion("4.0")).isEqualTo(7);
-        assertThat(GradleUtils.getMinimumSupportedJavaVersion("5.0")).isEqualTo(8);
-        assertThat(GradleUtils.getMinimumSupportedJavaVersion("6.0")).isEqualTo(8);
-        assertThat(GradleUtils.getMinimumSupportedJavaVersion("7.0")).isEqualTo(8);
-        assertThat(GradleUtils.getMinimumSupportedJavaVersion("8.0")).isEqualTo(8);
+        assertThat(GradleUtils.getSupportedJavaVersion("4.0")).isEqualTo("8");
+        assertThat(GradleUtils.getSupportedJavaVersion("5.0")).isEqualTo("11");
+        assertThat(GradleUtils.getSupportedJavaVersion("6.0")).isEqualTo("11");
+        assertThat(GradleUtils.getSupportedJavaVersion("7.0")).isEqualTo("11");
+        assertThat(GradleUtils.getSupportedJavaVersion("7.3")).isEqualTo("17");
     }
 
     @Test
-    void testGetSupportedJavaVersion() {
-        assertThatThrownBy(() -> GradleUtils.getSupportedJavaVersion("3.0"))
-                .isExactlyInstanceOf(IllegalArgumentException.class);
-        assertThat(GradleUtils.getSupportedJavaVersion("4.0")).isEqualTo(8);
-        assertThat(GradleUtils.getSupportedJavaVersion("5.0")).isEqualTo(11);
-        assertThat(GradleUtils.getSupportedJavaVersion("6.0")).isEqualTo(11);
-        assertThat(GradleUtils.getSupportedJavaVersion("7.0")).isEqualTo(11);
-        assertThat(GradleUtils.getSupportedJavaVersion("7.3")).isEqualTo(17);
-        assertThat(GradleUtils.getSupportedJavaVersion("8.0")).isEqualTo(17);
+    void testFindString(@TempDir Path basedir) throws IOException {
+        Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE);
+        Files.writeString(buildGradle, "plugins {" + System.lineSeparator() + "  id '" + GOOGLE_JAVA_FORMAT_PLUGIN
+                + "' version '0.9'" + System.lineSeparator() + "}");
+        assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(basedir, "not found")).isFalse();
     }
 
-    @Test
-    void testGetPlugins(@TempDir Path projectDir) throws IOException {
-        Path buildGradle = projectDir.resolve(GradleUtils.BUILD_GRADLE);
-        Files.writeString(buildGradle, """
-                plugins {
-                    id 'com.github.sherter.google-java-format' version '0.9'
-                }
-
-                repositories {
-                    mavenCentral()
-                }
-                """);
-        GradleBuildInformation gradleBuildInformation = BuildInformationPlugin.getBuildInformation(projectDir);
-        assertThat(gradleBuildInformation.getPlugins()).contains(GOOGLE_JAVA_FORMAT_PLUGIN);
-    }
 }

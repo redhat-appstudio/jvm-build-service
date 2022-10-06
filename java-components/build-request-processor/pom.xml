@@ -52,10 +52,6 @@
             <artifactId>hacbs-resource-model</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.redhat.hacbs</groupId>
-            <artifactId>gradle-buildinformation-plugin</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-picocli</artifactId>
         </dependency>
@@ -74,10 +70,6 @@
         <dependency>
             <groupId>org.gradle</groupId>
             <artifactId>gradle-tooling-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>dev.gradleplugins</groupId>
-            <artifactId>gradle-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
