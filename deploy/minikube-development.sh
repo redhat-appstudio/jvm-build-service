@@ -6,7 +6,7 @@ while ! oc get pods -n tekton-pipelines | grep tekton-pipelines-controller | gre
     sleep 1
 done
 
-$DIR/base-development.sh
+$DIR/base-development.sh  $1
 
 # base-development.sh switches to the test-jvm-namespace namespace
 kubectl create sa pipeline
