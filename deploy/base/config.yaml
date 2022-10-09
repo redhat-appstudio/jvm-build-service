@@ -15,4 +15,5 @@ spec:
     maven-repository-306-gradleplugins: "https://plugins.gradle.org/m2"
     maven-repository-307-jsweet: "https://repository.jsweet.org/artifactory/libs-release-local"
     maven-repository-308-jenkins: "https://repo.jenkins-ci.org/public/"
+    maven-repository-309-spring-plugins: "https://repo.springsource.org/plugins-release"
 

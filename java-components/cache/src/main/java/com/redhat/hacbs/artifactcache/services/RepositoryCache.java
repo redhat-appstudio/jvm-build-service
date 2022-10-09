@@ -71,7 +71,12 @@ public class RepositoryCache {
     }
 
     public Optional<ArtifactResult> getMetadataFile(String group, String target) {
-        return repository.getClient().getMetadataFile(group, target);
+        try {
+            return repository.getClient().getMetadataFile(group, target);
+        } catch (Exception e) {
+            Log.debugf(e, "Failed to metadata %s/%s from %s", group, target, repository.getUri());
+            return Optional.empty();
+        }
     }
 
     private Optional<ArtifactResult> handleFile(String targetFile, String gav,

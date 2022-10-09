@@ -179,14 +179,15 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 		Spec: v1alpha1.UserConfigSpec{
 			EnableRebuilds: true,
 			MavenBaseLocations: map[string]string{
-				"maven-repository-300-jboss":         "https://repository.jboss.org/nexus/content/groups/public/",
-				"maven-repository-301-gradleplugins": "https://plugins.gradle.org/m2",
-				"maven-repository-302-confluent":     "https://packages.confluent.io/maven",
-				"maven-repository-303-gradle":        "https://repo.gradle.org/artifactory/libs-releases",
-				"maven-repository-304-eclipselink":   "https://download.eclipse.org/rt/eclipselink/maven.repo",
-				"maven-repository-305-redhat":        "https://maven.repository.redhat.com/ga",
-				"maven-repository-306-jitpack":       "https://jitpack.io",
-				"maven-repository-307-jsweet":        "https://repository.jsweet.org/artifactory/libs-release-local"},
+				"maven-repository-300-jboss":          "https://repository.jboss.org/nexus/content/groups/public/",
+				"maven-repository-301-gradleplugins":  "https://plugins.gradle.org/m2",
+				"maven-repository-302-confluent":      "https://packages.confluent.io/maven",
+				"maven-repository-303-gradle":         "https://repo.gradle.org/artifactory/libs-releases",
+				"maven-repository-304-eclipselink":    "https://download.eclipse.org/rt/eclipselink/maven.repo",
+				"maven-repository-305-redhat":         "https://maven.repository.redhat.com/ga",
+				"maven-repository-306-jitpack":        "https://jitpack.io",
+				"maven-repository-307-jsweet":         "https://repository.jsweet.org/artifactory/libs-release-local",
+				"maven-repository-309-spring-plugins": "https://repo.springsource.org/plugins-release"},
 			CacheSettings: v1alpha1.CacheSettings{},
 			ImageRegistry: v1alpha1.ImageRegistry{
 				Host:       "quay.io",
