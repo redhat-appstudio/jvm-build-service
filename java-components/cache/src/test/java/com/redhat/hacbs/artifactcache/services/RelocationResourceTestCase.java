@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.artifactcache.ContainerRegistryTestResourceManager;
 import com.redhat.hacbs.artifactcache.resources.CacheMavenResource;
 
 import io.quarkus.test.common.QuarkusTestResource;
@@ -14,7 +15,7 @@ import io.restassured.parsing.Parser;
 
 @QuarkusTest
 @TestHTTPEndpoint(CacheMavenResource.class)
-@QuarkusTestResource(value = ContainerRegistryDeployerTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = ContainerRegistryTestResourceManager.class, restrictToAnnotatedClass = true)
 public class RelocationResourceTestCase {
 
     long time = System.currentTimeMillis();
