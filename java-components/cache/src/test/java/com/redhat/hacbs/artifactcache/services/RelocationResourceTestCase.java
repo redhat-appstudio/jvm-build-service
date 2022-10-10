@@ -2,14 +2,19 @@ package com.redhat.hacbs.artifactcache.services;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 import com.redhat.hacbs.artifactcache.ContainerRegistryTestResourceManager;
+import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.resources.CacheMavenResource;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.mockito.InjectMock;
 import io.restassured.RestAssured;
 import io.restassured.parsing.Parser;
 
@@ -19,6 +24,14 @@ import io.restassured.parsing.Parser;
 public class RelocationResourceTestCase {
 
     long time = System.currentTimeMillis();
+
+    @InjectMock
+    RebuiltArtifacts rebuiltArtifacts;
+
+    @BeforeEach
+    public void setup() {
+        Mockito.when(rebuiltArtifacts.isPossiblyRebuilt(ArgumentMatchers.any(String.class))).thenReturn(true);
+    }
 
     @Test
     public void testRelocationExactPom() {
