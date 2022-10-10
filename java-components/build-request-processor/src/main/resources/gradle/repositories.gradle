@@ -14,15 +14,21 @@ class EnterpriseRepositoryPlugin implements Plugin<Gradle> {
                     if (repo instanceof MavenArtifactRepository) {
                         if (repo.url.toString().contains("bintray.com") && !bintray) {
                             bintray = true
-//                            maven {
-//                                name "BINRAY COMPATIBILITY"
-//                                url BINTRAY_URL
-//                                allowInsecureProtocol true
-//                            }
+//                          maven {
+//                              name "BINRAY COMPATIBILITY"
+//                              url BINTRAY_URL
+//                              if (hasProperty('allowInsecureProtocol')) {
+//                                  allowInsecureProtocol true
+//                              }
+//                          }
                         }
                     }
                     println "Repository ${repo.properties['url']} removed."
                     remove repo
+                } else if (repo instanceof MavenArtifactRepository) {
+                    if (repo.hasProperty('allowInsecureProtocol')) {
+                        repo.allowInsecureProtocol = true
+                    }
                 }
             }
 
@@ -30,7 +36,6 @@ class EnterpriseRepositoryPlugin implements Plugin<Gradle> {
             maven {
                 name "HACBS CACHE"
                 url ENTERPRISE_REPOSITORY_URL
-                allowInsecureProtocol true
             }
         }
 
