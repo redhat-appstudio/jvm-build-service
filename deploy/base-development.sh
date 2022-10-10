@@ -6,11 +6,7 @@ kubectl delete deployments.apps hacbs-jvm-operator -n jvm-build-service
 # down by needing things to be re-cached/rebuilt
 
 function cleanAllArtifacts() {
-     kubectl delete pipelineruns --all
-     kubectl delete artifactbuilds.jvmbuildservice.io --all
-     kubectl delete rebuiltartifacts.jvmbuildservice.io --all
-     kubectl delete persistentvolumeclaims jvm-build-workspace-artifact-cache
-     kubectl delete configmap jvm-build-service-filter
+     kubectl delete namespaces test-jvm-namespace
 }
 
 kubectl delete deployments.apps jvm-build-workspace-artifact-cache

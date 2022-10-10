@@ -420,7 +420,11 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		dependency.Total++
 		localDir := db.Status.State + "/" + db.Name
 		tmp := db
-		instance := &ReportInstanceData{State: db.Status.State, Yaml: encodeToYaml(&tmp), Name: fmt.Sprintf("%s @{%s} (%s)", db.Spec.ScmInfo.SCMURL, db.Spec.ScmInfo.Tag, db.Name)}
+		tool := "maven"
+		if db.Status.CurrentBuildRecipe != nil && db.Status.CurrentBuildRecipe.Gradle {
+			tool = "gradle"
+		}
+		instance := &ReportInstanceData{State: db.Status.State, Yaml: encodeToYaml(&tmp), Name: fmt.Sprintf("%s @{%s} (%s) %s", db.Spec.ScmInfo.SCMURL, db.Spec.ScmInfo.Tag, db.Name, tool)}
 		dependency.Instances = append(dependency.Instances, instance)
 		print(db.Status.State + "\n")
 		switch db.Status.State {

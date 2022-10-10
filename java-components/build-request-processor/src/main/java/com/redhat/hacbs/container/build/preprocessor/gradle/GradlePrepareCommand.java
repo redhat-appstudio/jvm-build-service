@@ -9,13 +9,13 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
+import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 /**
  * A simple preprocessor that attempts to get gradle build files into a state where GME can work on them.
- *
- * At present this is just a shell as we are experimenting with other options, but it will likely be needed in some form
- * so it is here to keep the maven/gradle pipelines comprable.
+ * <p>
+ * At present it just sets up the init script
  */
 @CommandLine.Command(name = "gradle-prepare")
 public class GradlePrepareCommand extends AbstractPreprocessor {
@@ -25,6 +25,7 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
     @Override
     public void run() {
         try {
+            setupInitScripts();
             Files.walkFileTree(buildRoot, new SimpleFileVisitor<>() {
 
                 @Override
@@ -43,6 +44,17 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
             throw new RuntimeException(e);
         }
 
+    }
+
+    private void setupInitScripts() throws IOException {
+
+        Path initDir = buildRoot.resolve(".hacbs-init");
+        Files.createDirectories(initDir);
+        Path init = initDir.resolve("repositories.gradle");
+        try (var in = getClass().getClassLoader().getResourceAsStream("gradle/repositories.gradle")) {
+            Files.write(init, in.readAllBytes());
+            Log.infof("Wrote init script to %s", init.toAbsolutePath());
+        }
     }
 
     private void handleBuildKotlin(Path file) throws IOException {

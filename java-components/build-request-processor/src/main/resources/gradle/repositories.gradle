@@ -1,0 +1,51 @@
+apply plugin: EnterpriseRepositoryPlugin
+
+class EnterpriseRepositoryPlugin implements Plugin<Gradle> {
+
+    private static String ENTERPRISE_REPOSITORY_URL = System.getenv("CACHE_URL") != null ? System.getenv("CACHE_URL") : "http://localhost:8080/v1/cache/default/0"
+    private static String BINTRAY_URL = ENTERPRISE_REPOSITORY_URL + "/hacbs-bintray"
+
+    void apply(Gradle gradle) {
+        def fixRepositories = {
+            def bintray = false
+            all { ArtifactRepository repo ->
+                if (!(repo instanceof MavenArtifactRepository) ||
+                        (repo.url.toString() != ENTERPRISE_REPOSITORY_URL && repo.url.toString() != BINTRAY_URL )) {
+                    if (repo instanceof MavenArtifactRepository) {
+                        if (repo.url.toString().contains("bintray.com") && !bintray) {
+                            bintray = true
+//                            maven {
+//                                name "BINRAY COMPATIBILITY"
+//                                url BINTRAY_URL
+//                                allowInsecureProtocol true
+//                            }
+                        }
+                    }
+                    println "Repository ${repo.properties['url']} removed."
+                    remove repo
+                }
+            }
+
+            // add the enterprise repository
+            maven {
+                name "HACBS CACHE"
+                url ENTERPRISE_REPOSITORY_URL
+                allowInsecureProtocol true
+            }
+        }
+
+        gradle.allprojects(new Action<Project>() {
+
+            @Override
+            void execute(Project project) {
+
+                project.repositories fixRepositories
+                project.buildscript.repositories fixRepositories
+            }
+        })
+        gradle.settingsEvaluated { settings ->
+            settings.pluginManagement.repositories fixRepositories
+        }
+
+    }
+}

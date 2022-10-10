@@ -34,13 +34,20 @@ export LC_ALL="en_US.UTF-8"
 ADDITIONAL_ARGS=$(echo "$@" | sed 's/build publish \?//')
 echo ADDITIONAL_ARGS="${ADDITIONAL_ARGS}"
 
+INIT_SCRIPTS=""
+for i in .hacbs-init/*
+do
+  INIT_SCRIPTS="$INIT_SCRIPTS -I $i"
+done
+echo "INIT SCRIPTS: $INIT_SCRIPTS"
+
 if [ -n "$(params.ENFORCE_VERSION)" ]; then
     gradle-manipulator --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
 else
-    gradle-manipulator --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
+    gradle-manipulator $INIT_SCRIPTS --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
 fi
 
-gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace "$@" || exit 1
+gradle  $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace -x test "$@" || exit 1
 
 tar -czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .
 # fix-permissions-for-builder
