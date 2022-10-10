@@ -126,9 +126,14 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		//log.Info("cluster set on obj ", r.clusterSetOnObj(&abr))
 		//first check for a rebuild annotation
 		if abr.Annotations[Rebuild] == "true" {
-			return r.handleRebuild(ctx, &abr)
+			if abr.Status.State != v1alpha1.ArtifactBuildStateNew {
+				return r.handleRebuild(ctx, &abr)
+			} else {
+				delete(abr.Annotations, Rebuild)
+				return reconcile.Result{}, r.client.Update(ctx, &abr)
+			}
 		} else if abr.Annotations[Rebuild] == "failed" {
-			if abr.Status.State != v1alpha1.ArtifactBuildStateComplete {
+			if abr.Status.State != v1alpha1.ArtifactBuildStateComplete && abr.Status.State != v1alpha1.ArtifactBuildStateNew {
 				return r.handleRebuild(ctx, &abr)
 			} else {
 				delete(abr.Annotations, Rebuild)
@@ -512,6 +517,32 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 		err := r.client.Get(ctx, dbKey, db)
 		notFound := errors.IsNotFound(err)
 		if err == nil {
+			//make sure to annotate all other owners so they also see state updates
+			//this won't cause a 'thundering herd' type problem as they are all deleted anyway
+			for _, ownerRef := range db.OwnerReferences {
+				if strings.EqualFold(ownerRef.Kind, "artifactbuild") || strings.EqualFold(ownerRef.Kind, "artifactbuilds") {
+					if ownerRef.Name != abr.Name {
+						other := v1alpha1.ArtifactBuild{}
+						err := r.client.Get(ctx, types.NamespacedName{Name: ownerRef.Name, Namespace: abr.Namespace}, &other)
+						if err != nil {
+							return reconcile.Result{}, err
+						}
+						if other.Annotations == nil {
+							other.Annotations = map[string]string{Rebuild: "true"}
+						} else {
+							other.Annotations[Rebuild] = "true"
+						}
+						err = r.client.Update(ctx, &other)
+						if err != nil {
+							return reconcile.Result{}, err
+						}
+
+					}
+
+				}
+
+			}
+
 			//delete the dependency build object
 			err := r.client.Delete(ctx, db)
 			if err != nil {
@@ -526,12 +557,6 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 	abr.Status.SCMInfo = v1alpha1.SCMInfo{}
 	abr.Status.Message = ""
 	err := r.client.Status().Update(ctx, abr)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	//remove this annotation
-	delete(abr.Annotations, Rebuild)
-	err = r.client.Update(ctx, abr)
 	return reconcile.Result{}, err
 
 }
