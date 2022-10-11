@@ -293,7 +293,7 @@ func TestStateBuilding(t *testing.T) {
 				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
-			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete},
+			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete, DeployedArtifacts: []string{abr.Spec.GAV}},
 		}
 		g.Expect(controllerutil.SetOwnerReference(abr, db, reconciler.scheme))
 		g.Expect(client.Create(ctx, db))

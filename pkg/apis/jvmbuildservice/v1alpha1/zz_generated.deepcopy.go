@@ -304,6 +304,11 @@ func (in *DependencyBuildStatus) DeepCopyInto(out *DependencyBuildStatus) {
 			}
 		}
 	}
+	if in.DeployedArtifacts != nil {
+		in, out := &in.DeployedArtifacts, &out.DeployedArtifacts
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

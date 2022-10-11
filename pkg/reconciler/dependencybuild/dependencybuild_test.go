@@ -315,10 +315,12 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "True",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: artifactbuild.DeployedResources, Value: TestArtifact}}
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
+		g.Expect(db.Status.DeployedArtifacts).Should(ContainElement(TestArtifact))
 	})
 	t.Run("Test reconcile building DependencyBuild with failed pipeline", func(t *testing.T) {
 		g := NewGomegaWithT(t)

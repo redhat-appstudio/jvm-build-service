@@ -148,7 +148,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 			return r.handleStateDiscovering(ctx, log, &abr)
 		case v1alpha1.ArtifactBuildStateComplete:
 			return r.handleStateComplete(ctx, log, &abr)
-		case v1alpha1.ArtifactBuildStateBuilding:
+		case v1alpha1.ArtifactBuildStateBuilding, v1alpha1.ArtifactBuildStateFailed: //ABR can go from failed to complete when contamination is resolved, so we treat it the same as building
 			return r.handleStateBuilding(ctx, log, &abr)
 		}
 	}
@@ -269,7 +269,7 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 			case v1alpha1.DependencyBuildStateContaminated:
 				abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 			case v1alpha1.DependencyBuildStateComplete:
-				abr.Status.State = v1alpha1.ArtifactBuildStateComplete
+				return r.handleDependencyBuildSucess(ctx, db, &abr)
 			default:
 				abr.Status.State = v1alpha1.ArtifactBuildStateBuilding
 			}
@@ -371,7 +371,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		//if the build is done update our state accordingly
 		switch db.Status.State {
 		case v1alpha1.DependencyBuildStateComplete:
-			abr.Status.State = v1alpha1.ArtifactBuildStateComplete
+			return r.handleDependencyBuildSucess(ctx, db, abr)
 		case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
 			abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 		}
@@ -411,6 +411,18 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 
 	return reconcile.Result{}, nil
 
+}
+
+func (r *ReconcileArtifactBuild) handleDependencyBuildSucess(ctx context.Context, db *v1alpha1.DependencyBuild, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+	for _, i := range db.Status.DeployedArtifacts {
+		if i == abr.Spec.GAV {
+			abr.Status.State = v1alpha1.ArtifactBuildStateComplete
+			return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+		}
+	}
+	abr.Status.Message = "Discovered dependency build did not deploy this artifact, check SCM information is correct"
+	abr.Status.State = v1alpha1.ArtifactBuildStateFailed
+	return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 }
 
 func hashString(hashInput string) string {
@@ -467,7 +479,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 	case errors.IsNotFound(err):
 		//we don't have a build for this ABR, this is very odd
 		//move back to new and start again
-		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "MissingDependencyBuild", "The ArtifactBuild %s/%s in state Building was missing a DependencyBuild", abr.Namespace, abr.Name)
+		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "MissingDependencyBuild", "The ArtifactBuild %s/%s in state %s was missing a DependencyBuild", abr.Namespace, abr.Name, abr.Status.State)
 		abr.Status.State = v1alpha1.ArtifactBuildStateNew
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	default:
@@ -495,8 +507,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 	//if the build is done update our state accordingly
 	switch db.Status.State {
 	case v1alpha1.DependencyBuildStateComplete:
-		abr.Status.State = v1alpha1.ArtifactBuildStateComplete
-		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+		return r.handleDependencyBuildSucess(ctx, db, abr)
 	case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
 		abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
