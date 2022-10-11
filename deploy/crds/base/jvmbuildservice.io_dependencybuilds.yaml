@@ -178,6 +178,10 @@ spec:
                   toolVersion:
                     type: string
                 type: object
+              deployedArtifacts:
+                items:
+                  type: string
+                type: array
               failedBuildRecipes:
                 description: FailedBuildRecipes recipes that resulted in a failure
                   if the current state is failed this may include the current BuildRecipe

@@ -582,6 +582,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				} else if i.Name == artifactbuild.DeployedResources {
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed := strings.Split(i.Value, ",")
+					db.Status.DeployedArtifacts = deployed
 					for _, i := range deployed {
 						ra := v1alpha1.RebuiltArtifact{}
 						ra.Namespace = pr.Namespace

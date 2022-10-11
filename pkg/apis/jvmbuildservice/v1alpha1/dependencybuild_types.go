@@ -37,6 +37,7 @@ type DependencyBuildStatus struct {
 	FailedBuildRecipes            []*BuildRecipe `json:"failedBuildRecipes,omitempty"`
 	LastCompletedBuildPipelineRun string         `json:"lastCompletedBuildPipelineRun,omitempty"`
 	CommitTime                    int64          `json:"commitTime,omitempty"`
+	DeployedArtifacts             []string       `json:"deployedArtifacts,omitempty"`
 }
 
 // +genclient

@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210100115.artifactbuilds.jvmbuildservice.io
+  name: v202210110553.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210100115.dependencybuilds.jvmbuildservice.io
+  name: v202210110553.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -248,6 +248,10 @@ spec:
                 toolVersion:
                   type: string
               type: object
+            deployedArtifacts:
+              items:
+                type: string
+              type: array
             failedBuildRecipes:
               description: FailedBuildRecipes recipes that resulted in a failure if
                 the current state is failed this may include the current BuildRecipe
@@ -326,7 +330,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210100115.rebuiltartifacts.jvmbuildservice.io
+  name: v202210110553.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -377,7 +381,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210100115.systemconfigs.jvmbuildservice.io
+  name: v202210110553.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -434,7 +438,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210100115.tektonwrappers.jvmbuildservice.io
+  name: v202210110553.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -519,7 +523,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210100115.userconfigs.jvmbuildservice.io
+  name: v202210110553.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
