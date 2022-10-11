@@ -5,3 +5,11 @@ metadata:
   name: jvm-build-config
 spec:
   owner: QUAY_USERNAME
+  disableLocalstack: true
+  relocationPatterns:
+    - relocationPattern:
+        buildPolicy: "default"
+        patterns:
+          - pattern:
+              from: (io.github.stuartwdouglas.hacbs-test.simple):(simple-jdk17):(99-does-not-exist)
+              to: io.github.stuartwdouglas.hacbs-test.simple:simple-jdk17:0.1.2

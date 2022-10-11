@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210050443.artifactbuilds.jvmbuildservice.io
+  name: v202210100115.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210050443.dependencybuilds.jvmbuildservice.io
+  name: v202210100115.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -326,7 +326,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210050443.rebuiltartifacts.jvmbuildservice.io
+  name: v202210100115.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -377,7 +377,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210050443.systemconfigs.jvmbuildservice.io
+  name: v202210100115.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -434,7 +434,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210050443.tektonwrappers.jvmbuildservice.io
+  name: v202210100115.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -519,7 +519,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210050443.userconfigs.jvmbuildservice.io
+  name: v202210100115.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -573,6 +573,35 @@ spec:
               type: string
             prependTag:
               type: string
+            relocationPatterns:
+              items:
+                properties:
+                  relocationPattern:
+                    properties:
+                      buildPolicy:
+                        type: string
+                      patterns:
+                        items:
+                          properties:
+                            pattern:
+                              properties:
+                                from:
+                                  type: string
+                                to:
+                                  type: string
+                              required:
+                              - from
+                              - to
+                              type: object
+                          required:
+                          - pattern
+                          type: object
+                        type: array
+                    type: object
+                required:
+                - relocationPattern
+                type: object
+              type: array
             repository:
               type: string
             requestCPU:

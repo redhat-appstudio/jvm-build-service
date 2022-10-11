@@ -61,6 +61,35 @@ spec:
                 type: string
               prependTag:
                 type: string
+              relocationPatterns:
+                items:
+                  properties:
+                    relocationPattern:
+                      properties:
+                        buildPolicy:
+                          type: string
+                        patterns:
+                          items:
+                            properties:
+                              pattern:
+                                properties:
+                                  from:
+                                    type: string
+                                  to:
+                                    type: string
+                                required:
+                                - from
+                                - to
+                                type: object
+                            required:
+                            - pattern
+                            type: object
+                          type: array
+                      type: object
+                  required:
+                  - relocationPattern
+                  type: object
+                type: array
               repository:
                 type: string
               requestCPU:

@@ -9,7 +9,7 @@ spec:
     - name: url
       value: https://github.com/stuartwdouglas/hacbs-test-project
     - name: revision
-      value: 233724555ee2aff17a97b0ddf2f143308209c6a3
+      value: b366d7dc4d9a98153895faf3145af1c43a68ef75
   workspaces:
     - name: maven-settings
       emptyDir: {}
