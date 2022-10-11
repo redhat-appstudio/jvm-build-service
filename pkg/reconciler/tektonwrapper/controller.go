@@ -26,13 +26,13 @@ var (
 	ctrlLog = ctrl.Log.WithName("tektonwrappercontroller")
 )
 
-func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
+func SetupNewReconcilerWithManager(mgr ctrl.Manager, kcp bool) error {
 	opts := client.Options{Scheme: runtime.NewScheme()}
 	err := quotav1.AddToScheme(opts.Scheme)
 	if err != nil {
 		return err
 	}
-	r := newReconciler(mgr)
+	r := newReconciler(mgr, kcp)
 	pruner := &pruner{client: mgr.GetClient()}
 	_ = mgr.Add(pruner)
 	return ctrl.NewControllerManagedBy(mgr).

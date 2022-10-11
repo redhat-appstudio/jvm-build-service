@@ -43,13 +43,15 @@ type ReconcileTektonWrapper struct {
 	client        client.Client
 	scheme        *runtime.Scheme
 	eventRecorder record.EventRecorder
+	kcp           bool
 }
 
-func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, kcp bool) reconcile.Reconciler {
 	return &ReconcileTektonWrapper{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("TektonWrapper"),
+		kcp:           kcp,
 	}
 }
 
@@ -302,6 +304,7 @@ func (r *ReconcileTektonWrapper) unthrottleNextOnQueuePlusCleanup(ctx context.Co
 }
 
 func (r *ReconcileTektonWrapper) getHardPodCount(ctx context.Context, namespace string) (int, error) {
+	// this should be nil in kcp
 	if clusterresourcequota.QuotaClient != nil {
 		//TODO controller runtime seemed unable to deal with openshift API and its attempt at mapping to CRDs; we were using
 		// a non caching client; but now we've switched to a shared informer based controller and its caching client
@@ -340,23 +343,30 @@ func (r *ReconcileTektonWrapper) getHardPodCount(ctx context.Context, namespace 
 		}
 		return hardPodCount, nil
 	}
-	quotaList := corev1.ResourceQuotaList{}
-	err := r.client.List(ctx, &quotaList)
-	if err != nil {
-		return 0, err
+	//TODO when we sort out our perm claim for reqsourcequotas like https://github.com/openshift-pipelines/pipeline-service-workspace-controller/blob/main/config/kcp/apibinding.yaml
+	// we can start accessing this in kcp
+	if !r.kcp {
+		quotaList := corev1.ResourceQuotaList{}
+		err := r.client.List(ctx, &quotaList)
+		if err != nil {
+			return 0, err
+		}
+		hardPodCount := 0
+		for _, quota := range quotaList.Items {
+			if quota.Namespace != namespace {
+				continue
+			}
+			if quota.Spec.Hard.Pods() != nil {
+				hardPodCount = int(quota.Spec.Hard.Pods().Value())
+			}
+			if hardPodCount > 0 {
+				break
+			}
+		}
+		return hardPodCount, nil
+
 	}
-	hardPodCount := 0
-	for _, quota := range quotaList.Items {
-		if quota.Namespace != namespace {
-			continue
-		}
-		if quota.Spec.Hard.Pods() != nil {
-			hardPodCount = int(quota.Spec.Hard.Pods().Value())
-		}
-		if hardPodCount > 0 {
-			break
-		}
-	}
-	return hardPodCount, nil
+	//TODO use our default from e2e testing for now until we sort out accessing resourcequota in kcp
+	return 50, nil
 
 }
