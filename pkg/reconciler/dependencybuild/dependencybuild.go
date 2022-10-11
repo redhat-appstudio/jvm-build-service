@@ -601,14 +601,10 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			if len(db.Status.Contaminants) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
-				db.Status.State = v1alpha1.DependencyBuildStateContaminated
 				r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
 				//the dependency was contaminated with community deps
 				//most likely shaded in
-				err = r.client.Status().Update(ctx, &db)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
+				//we don't need to update the status here, it will be handled by the handleStateComplete method
 				//even though there are contaminates they may not be in artifacts we care about
 				return r.handleStateCompleted(ctx, &db, log)
 			}
@@ -629,6 +625,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 // even if some artifacts in the build were contaminated it may still be considered a success if there was
 // no actual request for these artifacts. This can change if new artifacts are requested, so even when complete
 // we still need to verify that hte build is ok
+// this method will always update the status if it does not return an error
 func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger) (reconcile.Result, error) {
 
 	ownerGavs := map[string]bool{}

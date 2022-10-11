@@ -148,7 +148,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 			return r.handleStateDiscovering(ctx, log, &abr)
 		case v1alpha1.ArtifactBuildStateComplete:
 			return r.handleStateComplete(ctx, log, &abr)
-		case v1alpha1.ArtifactBuildStateBuilding:
+		case v1alpha1.ArtifactBuildStateBuilding, v1alpha1.ArtifactBuildStateFailed: //ABR can go from failed to complete when contamination is resolved, so we treat it the same as building
 			return r.handleStateBuilding(ctx, log, &abr)
 		}
 	}
@@ -479,7 +479,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 	case errors.IsNotFound(err):
 		//we don't have a build for this ABR, this is very odd
 		//move back to new and start again
-		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "MissingDependencyBuild", "The ArtifactBuild %s/%s in state Building was missing a DependencyBuild", abr.Namespace, abr.Name)
+		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "MissingDependencyBuild", "The ArtifactBuild %s/%s in state %s was missing a DependencyBuild", abr.Namespace, abr.Name, abr.Status.State)
 		abr.Status.State = v1alpha1.ArtifactBuildStateNew
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	default:
