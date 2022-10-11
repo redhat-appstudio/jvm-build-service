@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -eu
 
-export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
-mkdir -p ${GRADLE_USER_HOME}
-cat > ${GRADLE_USER_HOME}/gradle.properties << EOF
+GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
+export GRADLE_USER_HOME
+mkdir -p "${GRADLE_USER_HOME}"
+cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF
 org.gradle.caching=false
 org.gradle.console=plain
 # This prevents the daemon from running (which is unnecessary in one-off builds) and increases the memory allocation
@@ -18,7 +19,7 @@ systemProp.http.socketTimeout=600000
 systemProp.http.connectionTimeout=600000
 
 EOF
-cat > ${GRADLE_USER_HOME}/init.gradle << EOF
+cat > "${GRADLE_USER_HOME}"/init.gradle << EOF
 allprojects {
     buildscript {
         repositories {
