@@ -23,7 +23,7 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-@QuarkusTestResource(S3TestResourceManager.class)
+@QuarkusTestResource(value = S3TestResourceManager.class, restrictToAnnotatedClass = true)
 @QuarkusTest
 public class S3ArtifactStorageTest {
 

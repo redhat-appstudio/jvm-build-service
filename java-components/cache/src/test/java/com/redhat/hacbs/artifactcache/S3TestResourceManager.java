@@ -19,6 +19,7 @@ public class S3TestResourceManager implements QuarkusTestResourceLifecycleManage
         localstack.start();
 
         return Map.of(
+                "store.rebuilt.type", "s3",
                 "quarkus.s3.endpoint-override", localstack.getEndpointOverride(LocalStackContainer.Service.S3).toASCIIString(),
                 "quarkus.s3.aws.region", "us-east-1",
                 "quarkus.s3.aws.credentials.type", "static",

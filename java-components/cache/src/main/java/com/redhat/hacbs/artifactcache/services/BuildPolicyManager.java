@@ -70,21 +70,6 @@ class BuildPolicyManager {
             var repository = config.getOptionalValue("registry" + REPOSITORY, String.class).orElse(ARTIFACT_DEPLOYMENTS);
             var insecure = config.getOptionalValue("registry" + INSECURE, boolean.class).orElse(false);
             var prependTag = config.getOptionalValue("registry" + PREPEND_TAG, String.class);
-            for (String buildPolicy : buildPolicies) {
-
-                // Get any relocation for a certain Build Policy
-                String key = "build-policy." + buildPolicy + ".relocation.pattern";
-                Optional<List<String>> maybeRelocations = config.getOptionalValues(key, String.class);
-                if (maybeRelocations.isPresent()) {
-                    Map<String, String> relocationsForBuildPolicy = new HashMap<>();
-                    List<String> relocationsValues = maybeRelocations.get();
-                    for (String relocation : relocationsValues) {
-                        String[] fromTo = relocation.split("=");
-                        relocationsForBuildPolicy.put(fromTo[0], fromTo[1]);
-                    }
-                    relocations.put(buildPolicy, relocationsForBuildPolicy);
-                }
-            }
 
             remoteStores.put("rebuilt",
                     new Repository("rebuilt",
@@ -93,6 +78,22 @@ class BuildPolicyManager {
                             RepositoryType.OCI_REGISTRY,
                             new OCIRegistryRepositoryClient(host, registryOwner.get(), repository, token, prependTag,
                                     insecure, rebuiltArtifacts)));
+        }
+
+        for (String buildPolicy : buildPolicies) {
+
+            // Get any relocation for a certain Build Policy
+            String key = "build-policy." + buildPolicy + ".relocation.pattern";
+            Optional<List<String>> maybeRelocations = config.getOptionalValues(key, String.class);
+            if (maybeRelocations.isPresent()) {
+                Map<String, String> relocationsForBuildPolicy = new HashMap<>();
+                List<String> relocationsValues = maybeRelocations.get();
+                for (String relocation : relocationsValues) {
+                    String[] fromTo = relocation.split("=");
+                    relocationsForBuildPolicy.put(fromTo[0], fromTo[1]);
+                }
+                relocations.put(buildPolicy, relocationsForBuildPolicy);
+            }
         }
 
         for (String policy : buildPolicies) {

@@ -7,11 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-import com.redhat.hacbs.artifactcache.ContainerRegistryTestResourceManager;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.resources.CacheMavenResource;
 
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectMock;
@@ -20,7 +18,6 @@ import io.restassured.parsing.Parser;
 
 @QuarkusTest
 @TestHTTPEndpoint(CacheMavenResource.class)
-@QuarkusTestResource(value = ContainerRegistryTestResourceManager.class, restrictToAnnotatedClass = true)
 public class RelocationResourceTestCase {
 
     long time = System.currentTimeMillis();
