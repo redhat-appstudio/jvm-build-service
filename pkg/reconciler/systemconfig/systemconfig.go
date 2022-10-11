@@ -28,15 +28,17 @@ type ReconcilerSystemConfig struct {
 	eventRecorder record.EventRecorder
 	config        *rest.Config
 	mgr           ctrl.Manager
+	kcp           bool
 }
 
-func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, kcp bool) reconcile.Reconciler {
 	return &ReconcilerSystemConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
 		config:        mgr.GetConfig(),
 		mgr:           mgr,
+		kcp:           kcp,
 	}
 }
 
@@ -92,6 +94,7 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 
 		switch systemConfig.Spec.Quota {
 		case v1alpha1.K8SQuota:
+			//TODO remove kcp check once we sort out permission claims a la https://github.com/openshift-pipelines/pipeline-service-workspace-controller/blob/main/config/kcp/apibinding.yaml
 			err = k8sresourcequota.SetupNewReconcilerWithManager(r.mgr)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -99,7 +102,7 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 		case v1alpha1.OpenShiftQuota:
 			fallthrough
 		default:
-			if r.config != nil {
+			if r.config != nil && !r.kcp {
 				err = clusterresourcequota.SetupNewReconciler(r.config)
 				if err != nil {
 					return reconcile.Result{}, err
