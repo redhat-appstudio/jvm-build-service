@@ -33,9 +33,9 @@ import io.quarkus.dev.console.StatusLine;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "checkout-repositories")
+@CommandLine.Command(name = "legacy-checkout-repositories")
 @Singleton
-public class CheckoutRepositoriesCommand implements Runnable {
+public class LegacyCheckoutRepositoriesCommand implements Runnable {
 
     public static final String CLONE_FAILURE = "CLONE_FAILURE";
     @Inject

@@ -44,9 +44,9 @@ import io.quarkus.logging.Log;
 import io.quarkus.runtime.ApplicationLifecycleManager;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "analyse-repositories")
+@CommandLine.Command(name = "legacy-initial-analyse-repositories")
 @Singleton
-public class AnalyseRepositoriesCommand implements Runnable {
+public class LegacyAnalyseRepositoriesCommand implements Runnable {
 
     public static final String CLONE_FAILURE = "CLONE_FAILURE";
     @Inject
