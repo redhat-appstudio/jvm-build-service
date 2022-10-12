@@ -2,7 +2,13 @@ package com.redhat.hacbs.container.analyser.deploy;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import javax.enterprise.inject.spi.BeanManager;
@@ -91,6 +97,17 @@ public abstract class DeployCommand implements Runnable {
                             }
                         }
                     }
+                }
+                if (gavs.isEmpty()) {
+                    Log.errorf("No content to deploy found in deploy tarball");
+                    try (TarArchiveInputStream in = new TarArchiveInputStream(
+                            new GzipCompressorInputStream(Files.newInputStream(tarPath)))) {
+                        TarArchiveEntry e;
+                        while ((e = in.getNextTarEntry()) != null) {
+                            Log.errorf("Contents: %s", e.getName());
+                        }
+                    }
+                    throw new RuntimeException("deploy failed");
                 }
                 //we still deploy, but without the contaminates
                 java.nio.file.Path deployFile = tarPath;
