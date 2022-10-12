@@ -47,13 +47,15 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
     }
 
     private void setupInitScripts() throws IOException {
-
-        Path initDir = buildRoot.resolve(".hacbs-init");
+        var initScripts = new String[] { "repositories.gradle", "uploadArchives.gradle" };
+        var initDir = buildRoot.resolve(".hacbs-init");
         Files.createDirectories(initDir);
-        Path init = initDir.resolve("repositories.gradle");
-        try (var in = getClass().getClassLoader().getResourceAsStream("gradle/repositories.gradle")) {
-            Files.write(init, in.readAllBytes());
-            Log.infof("Wrote init script to %s", init.toAbsolutePath());
+        for (var initScript : initScripts) {
+            var init = initDir.resolve(initScript);
+            try (var in = getClass().getClassLoader().getResourceAsStream("gradle/" + initScript)) {
+                Files.copy(in, init);
+                Log.infof("Wrote init script to %s", init.toAbsolutePath());
+            }
         }
     }
 
