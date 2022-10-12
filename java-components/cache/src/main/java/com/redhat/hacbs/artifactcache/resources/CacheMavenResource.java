@@ -5,8 +5,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
@@ -20,6 +23,7 @@ import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.artifact.repository.metadata.Versioning;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Writer;
+import org.apache.maven.artifact.versioning.ComparableVersion;
 
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.CacheFacade;
@@ -108,13 +112,17 @@ public class CacheMavenResource {
             String groupId = group.substring(0, lastIndex);
             Metadata outputModel = null;
             boolean firstFile = true;
+            Set<String> seenVersions = new TreeSet<>(new Comparator<String>() {
+                @Override
+                public int compare(String o1, String o2) {
+                    return new ComparableVersion(o2).compareTo(new ComparableVersion(o1));
+                }
+            });
             //we need to merge additional versions into a single file
-            //we assume the first one is the 'most correct' in terms of the 'release' and 'latest' fields
             for (var i : data) {
                 try (var in = i.getData()) {
                     MetadataXpp3Reader reader = new MetadataXpp3Reader();
                     var model = reader.read(in);
-                    List<String> versions;
                     if (firstFile) {
                         outputModel = model.clone();
                         if (outputModel.getVersioning() == null) {
@@ -123,39 +131,50 @@ public class CacheMavenResource {
                         outputModel.getVersioning().setVersions(new ArrayList<>());
                     }
                     if (model.getVersioning() != null) {
-                        String release = null;
-                        for (String version : model.getVersioning().getVersions()) {
-                            if (commitTime.getTime() > 0) {
-                                var result = cache.getArtifactFile(buildPolicy, groupId, artifactId, version,
-                                        artifactId + "-" + version + ".pom", false);
-                                if (result.isPresent()) {
-                                    var lastModified = result.get().getMetadata().get("last-modified");
-                                    if (lastModified != null) {
-                                        var date = DateUtils.parseDate(lastModified);
-                                        if (date != null && date.after(commitTime)) {
-                                            //remove versions released after this artifact
-                                            Log.infof("Removing version %s from %s/maven-metadata.xml", version, group);
-                                        } else {
-                                            //TODO: be smarter about how this release version is selected
-                                            release = version;
-                                            outputModel.getVersioning().getVersions().add(version);
-                                        }
-                                    } else {
-                                        outputModel.getVersioning().getVersions().add(version);
-                                    }
-                                }
-                            } else {
-                                outputModel.getVersioning().getVersions().add(version);
-                            }
-                        }
-                        if (firstFile) {
-                            outputModel.getVersioning().setRelease(release);
-                            outputModel.getVersioning().setLatest(release);
-                            outputModel.getVersioning().setLastUpdatedTimestamp(commitTime);
-                        }
+                        seenVersions.addAll(model.getVersioning().getVersions());
                     }
                 }
                 firstFile = false;
+            }
+            //iterate most recent to oldest
+            //once we have started including older versions then we can stop checking
+            //technically an older point release may still end up being present that was
+            //not there at the commit time, but in practice this should not be an issue
+            boolean addAll = false;
+            for (var version : seenVersions) {
+                if (version.contains("SNAPSHOT")) {
+                    continue;
+                }
+                if (addAll) {
+                    outputModel.getVersioning().getVersions().add(version);
+                } else {
+                    if (commitTime.getTime() > 0) {
+                        var result = cache.getArtifactMetadata(buildPolicy, groupId, artifactId, version,
+                                artifactId + "-" + version + ".pom", false);
+                        if (result.isPresent()) {
+                            var lastModified = result.get().get("last-modified");
+                            if (lastModified != null) {
+                                var date = DateUtils.parseDate(lastModified);
+                                if (date != null && date.after(commitTime)) {
+                                    //remove versions released after this artifact
+                                    Log.infof("Removing version %s from %s/maven-metadata.xml", version, group);
+                                    continue;
+                                }
+                            }
+                        } else {
+                            //not found, don't add it
+                            continue;
+                        }
+                    }
+                    //the default behaviour is to add the version, set it to latest and move to add all mode
+                    //if the artifact is not found or too new then it this is skipped by the continue statements
+                    //above
+                    outputModel.getVersioning().getVersions().add(version);
+                    outputModel.getVersioning().setRelease(version);
+                    outputModel.getVersioning().setLatest(version);
+                    outputModel.getVersioning().setLastUpdatedTimestamp(commitTime);
+                    addAll = true;
+                }
             }
             MetadataXpp3Writer writer = new MetadataXpp3Writer();
             ByteArrayOutputStream out = new ByteArrayOutputStream();

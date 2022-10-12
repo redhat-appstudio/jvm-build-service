@@ -32,7 +32,6 @@ import io.quarkus.logging.Log;
 public class RepositoryCache {
 
     public static final String SHA_1 = ".sha1";
-    public static final String CACHEMISS = ".cachemiss";
     public static final String DOWNLOADS = ".downloads";
     public static final String HEADERS = ".hacbs-http-headers";
     public static final String ORIGINAL = "original";
@@ -62,12 +61,12 @@ public class RepositoryCache {
     }
 
     public Optional<ArtifactResult> getArtifactFile(String group, String artifact, String version, String target,
-            boolean tracked) {
+            boolean tracked, boolean cacheOnly) {
         //TODO: we don't really care about the policy when using standard maven repositories
         String targetFile = group.replaceAll("\\.", File.separator) + File.separator + artifact
                 + File.separator + version + File.separator + target;
         return handleFile(targetFile, group.replaceAll("/", ".") + ":" + artifact + ":" + version,
-                (c) -> c.getArtifactFile(group, artifact, version, target), tracked);
+                (c) -> c.getArtifactFile(group, artifact, version, target), tracked, cacheOnly);
     }
 
     public Optional<ArtifactResult> getMetadataFile(String group, String target) {
@@ -80,7 +79,7 @@ public class RepositoryCache {
     }
 
     private Optional<ArtifactResult> handleFile(String targetFile, String gav,
-            Function<RepositoryClient, Optional<ArtifactResult>> clientInvocation, boolean tracked) {
+            Function<RepositoryClient, Optional<ArtifactResult>> clientInvocation, boolean tracked, boolean cacheOnly) {
         try {
             var check = inProgressDownloads.get(targetFile);
             if (check != null) {
@@ -96,6 +95,9 @@ public class RepositoryCache {
                     check.awaitReady();
                 }
                 return handleDownloadedFile(actual, trackedFile, tracked, gav);
+            }
+            if (cacheOnly) {
+                return Optional.empty();
             }
             DownloadingFile newFile = new DownloadingFile(targetFile);
             var existing = inProgressDownloads.putIfAbsent(targetFile, newFile);
