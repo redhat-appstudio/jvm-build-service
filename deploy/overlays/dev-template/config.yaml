@@ -5,7 +5,6 @@ metadata:
   name: jvm-build-config
 spec:
   owner: QUAY_USERNAME
-  disableLocalstack: true
   relocationPatterns:
     - relocationPattern:
         buildPolicy: "default"
