@@ -161,7 +161,8 @@ public abstract class DeployCommand implements Runnable {
                             if (taskRun.getStatus().getTaskResults() != null) {
                                 results.addAll(taskRun.getStatus().getTaskResults());
                             }
-                            Log.infof("Updating results %s with contaminants %s", taskRun, serialisedContaminants);
+                            Log.infof("Updating results %s with contaminants %s and deployed resources %s",
+                                    taskRun.getMetadata().getName(), serialisedContaminants, gavs);
                             results.add(new TaskRunResult("contaminants", serialisedContaminants));
                             results.add(new TaskRunResult("deployed-resources", String.join(",", gavs)));
                             taskRun.getStatus().setTaskResults(results);
