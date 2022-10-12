@@ -1,5 +1,16 @@
 package com.redhat.hacbs.analyser.repoutils;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
+import org.eclipse.jgit.api.Git;
+
 import com.redhat.hacbs.analyser.maven.GradleAnalyser;
 import com.redhat.hacbs.analyser.maven.MavenAnalyser;
 import com.redhat.hacbs.analyser.maven.MavenProject;
@@ -11,21 +22,11 @@ import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
 import com.redhat.hacbs.recipies.scm.RepositoryInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
-import org.eclipse.jgit.api.Git;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 
 public class RepositoryAnalysis {
 
-
-    public static void run(RecipeLayoutManager recipeLayoutManager, RecipeGroupManager groupManager, String repo, boolean legacy) {
+    public static void run(RecipeLayoutManager recipeLayoutManager, RecipeGroupManager groupManager, String repo,
+            boolean legacy) {
         Map<String, String> doubleUps = new TreeMap<>();
         Set<Path> doubleUpFiles = new HashSet<>();
         try {
@@ -33,7 +34,7 @@ public class RepositoryAnalysis {
             Git checkout;
             System.out.println("Checking out " + repo + " into " + checkoutPath);
             checkout = Git.cloneRepository().setDirectory(checkoutPath.toFile())
-                .setURI(repo).call();
+                    .setURI(repo).call();
             try (checkout) {
                 analyseRepository(doubleUps, doubleUpFiles, recipeLayoutManager, groupManager, repo, checkoutPath, legacy);
             }
@@ -49,18 +50,19 @@ public class RepositoryAnalysis {
     }
 
     private static boolean analyseRepository(Map<String, String> doubleUps, Set<Path> doubleUpFiles,
-                                             RecipeLayoutManager recipeLayoutManager, RecipeGroupManager groupManager, String repository, Path checkoutPath, boolean legacy)
-        throws IOException {
+            RecipeLayoutManager recipeLayoutManager, RecipeGroupManager groupManager, String repository, Path checkoutPath,
+            boolean legacy)
+            throws IOException {
         MavenProject result = analyseProject(checkoutPath);
         if (result == null)
             return true;
         Set<GAV> locationRequests = new HashSet<>();
         for (var module : result.getProjects().values()) {
             locationRequests.add(new GAV(module.getGav().getGroupId(), module.getGav().getArtifactId(),
-                module.getGav().getVersion()));
+                    module.getGav().getVersion()));
         }
         var existing = groupManager
-            .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
+                .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
         if (!legacy) {
             for (var module : result.getProjects().values()) {
                 var existingModule = existing.getRecipes().get(module.getGav());
@@ -76,7 +78,7 @@ public class RepositoryAnalysis {
                 }
                 ScmInfo info = new ScmInfo("git", repository, result.getPath());
                 recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, info,
-                    module.getGav().getGroupId(), module.getGav().getArtifactId(), null));
+                        module.getGav().getGroupId(), module.getGav().getArtifactId(), null));
             }
         } else {
             //legacy mode, we just want to add legacy info to an existing file
@@ -112,7 +114,7 @@ public class RepositoryAnalysis {
         if (Files.exists(path.resolve("pom.xml"))) {
             result = MavenAnalyser.doProjectDiscovery(path);
         } else if (Files.exists(path.resolve("build.gradle"))
-            || Files.exists(path.resolve("build.gradle.kts"))) {
+                || Files.exists(path.resolve("build.gradle.kts"))) {
             result = GradleAnalyser.doProjectDiscovery(path);
         } else {
             return null;
