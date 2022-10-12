@@ -32,7 +32,17 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 	if err != nil && !errors.IsNotFound(err) {
 		return "", err
 	}
-	// ignore not found errors, fake/unit test path
+	// not found errors are either fake/unit test path, or that we are on KCP and don't have access to the namespace
+	// name the controller is running under, and hence cannot inspect its image ref; we distinguish between the two
+	// via an env var that is only set from infra-deployments as part of KCP+workload cluster bootstrap
+	imgTag := os.Getenv("IMAGE_TAG")
+	if len(strings.TrimSpace(imgTag)) > 0 && err != nil {
+		repo := os.Getenv("IMAGE_REPO")
+		if len(strings.TrimSpace(repo)) == 0 {
+			repo = "redhat-appstudio"
+		}
+		return fmt.Sprintf("quay.io/%s/hacbs-jvm-%s:%s", repo, substr, imgTag), nil
+	}
 	retImg := ""
 	if err == nil {
 		if len(controllerDeployment.Spec.Template.Spec.Containers) == 0 {
@@ -51,6 +61,7 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 			retImg = ciImageName
 		}
 		log.Info(fmt.Sprintf("GetImageName using %s for hacbs-jvm-%s", retImg, substr))
+		return retImg, nil
 	}
-	return retImg, nil
+	return retImg, fmt.Errorf("could not determine image for %s where IMAGE_TAG env is %s and deployment get error is %s", substr, imgTag, err.Error())
 }
