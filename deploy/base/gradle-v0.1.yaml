@@ -161,10 +161,6 @@ spec:
                         }
                         //allowInsecureProtocol = true
                     }
-                    maven {
-                        name "Gradle Central Plugin Repository"
-                        url "https://plugins.gradle.org/m2/"
-                    }
                 }
             }
             repositories {
@@ -177,10 +173,6 @@ spec:
                         password "$(params.SERVER_PASSWORD)"
                     }
                     //allowInsecureProtocol = true
-                }
-                maven {
-                    name "Gradle Central Plugin Repository"
-                    url "https://plugins.gradle.org/m2/"
                 }
             }
         }
@@ -197,10 +189,6 @@ spec:
                             password "$(params.SERVER_PASSWORD)"
                         }
                         //allowInsecureProtocol = true
-                    }
-                    maven {
-                        name "Gradle Central Plugin Repository"
-                        url "https://plugins.gradle.org/m2/"
                     }
                 }
             }

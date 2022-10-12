@@ -49,10 +49,6 @@ settingsEvaluated { settings ->
                 url "$(params.CACHE_URL)"
                 //allowInsecureProtocol = true
             }
-            maven {
-                name "Gradle Central Plugin Repository"
-                url "https://plugins.gradle.org/m2/"
-            }
         }
     }
 }
