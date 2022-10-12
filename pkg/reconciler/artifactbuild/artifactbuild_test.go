@@ -2,6 +2,7 @@ package artifactbuild
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -37,6 +38,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = appsv1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}, prCreator: &tektonwrapper.ImmediateCreate{}}
+	os.Setenv("IMAGE_TAG", "foo")
 	return client, reconciler
 }
 

@@ -2,6 +2,7 @@ package userconfig
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -31,6 +32,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		scheme:        scheme,
 		eventRecorder: &record.FakeRecorder{},
 	}
+	os.Setenv("IMAGE_TAG", "foo")
 	return client, reconciler
 }
 
