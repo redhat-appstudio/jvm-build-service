@@ -397,7 +397,11 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 				}
 			}
 		}
-		instance := &ReportInstanceData{Name: ab.Name + createdBy, State: ab.Status.State, Yaml: encodeToYaml(&tmp)}
+		message := ""
+		if ab.Status.State != v1alpha1.ArtifactBuildStateComplete {
+			message = " " + ab.Status.Message
+		}
+		instance := &ReportInstanceData{Name: ab.Name + createdBy + message, State: ab.Status.State, Yaml: encodeToYaml(&tmp)}
 		artifact.Instances = append(artifact.Instances, instance)
 		artifact.Total++
 		print(ab.Status.State + "\n")
