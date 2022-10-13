@@ -41,6 +41,10 @@ do
 done
 echo "INIT SCRIPTS: $INIT_SCRIPTS"
 
+#our dependency tracing breaks verification-metadata.xml
+#TODO: should we disable tracing for these builds? It means we can't track dependencies directly, so we can't detect contaminants
+rm -f gradle/verification-metadata.xml
+
 if [ -n "$(params.ENFORCE_VERSION)" ]; then
     gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
 else
