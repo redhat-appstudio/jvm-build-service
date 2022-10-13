@@ -20,7 +20,11 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "gradle-prepare")
 public class GradlePrepareCommand extends AbstractPreprocessor {
 
-    public static final String REPOSITORIES_REGEX = "(repositories|uploadArchives)\\s*\\{";
+    public static final String[] INIT_SCRIPTS = {
+            "repositories.gradle",
+            "uploadArchives.gradle",
+            "javadoc.gradle"
+    };
 
     @Override
     public void run() {
@@ -47,10 +51,9 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
     }
 
     private void setupInitScripts() throws IOException {
-        var initScripts = new String[] { "repositories.gradle", "uploadArchives.gradle" };
         var initDir = buildRoot.resolve(".hacbs-init");
         Files.createDirectories(initDir);
-        for (var initScript : initScripts) {
+        for (var initScript : INIT_SCRIPTS) {
             var init = initDir.resolve(initScript);
             try (var in = getClass().getClassLoader().getResourceAsStream("gradle/" + initScript)) {
                 Files.copy(in, init);
