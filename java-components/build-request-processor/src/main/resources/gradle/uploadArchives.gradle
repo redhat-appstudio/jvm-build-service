@@ -1,0 +1,21 @@
+gradle.allprojects {
+    project -> pluginManager.withPlugin('maven') {
+        afterEvaluate {
+            def url = System.getProperty('AProxDeployUrl')
+
+            if (!url) {
+                throw new GradleException('You must set system property \'AProxDeployUrl\' to the Maven deployment repository URL')
+            }
+
+            uploadArchives {
+                repositories {
+                    mavenDeployer {
+                        repository(url: url) {
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

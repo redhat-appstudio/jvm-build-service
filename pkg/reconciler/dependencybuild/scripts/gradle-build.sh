@@ -42,12 +42,12 @@ done
 echo "INIT SCRIPTS: $INIT_SCRIPTS"
 
 if [ -n "$(params.ENFORCE_VERSION)" ]; then
-    gradle-manipulator $INIT_SCRIPTS --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
+    gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
 else
-    gradle-manipulator $INIT_SCRIPTS --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
+    gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
 fi
 
-gradle  $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace -x test -Prelease.version=$(params.ENFORCE_VERSION) -Prelease.stage=final "$@" || exit 1
+gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace -x test -Prelease.version=$(params.ENFORCE_VERSION) -Prelease.stage=final "$@" || exit 1
 
 tar -czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .
 # fix-permissions-for-builder
