@@ -135,6 +135,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Env: []v1.EnvVar{
 						{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
+						{Name: PipelineEnforceVersion, Value: "$(params." + PipelineEnforceVersion + ")"},
 					},
 					Resources: v1.ResourceRequirements{
 						//TODO: limits management and configuration

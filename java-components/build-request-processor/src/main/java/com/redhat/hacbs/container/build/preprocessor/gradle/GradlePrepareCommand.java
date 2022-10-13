@@ -23,7 +23,8 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
     public static final String[] INIT_SCRIPTS = {
             "repositories.gradle",
             "uploadArchives.gradle",
-            "javadoc.gradle"
+            "javadoc.gradle",
+            "version.gradle"
     };
 
     @Override
