@@ -1,0 +1,18 @@
+apply plugin: VersionPlugin
+
+class VersionPlugin implements Plugin<Gradle> {
+
+    private static String VERSION = System.getenv("ENFORCE_VERSION")
+
+    void apply(Gradle gradle) {
+        if (VERSION == null || VERSION.isEmpty()) {
+            return
+        }
+        gradle.allprojects({
+            afterEvaluate {
+                version VERSION
+            }
+        })
+
+    }
+}

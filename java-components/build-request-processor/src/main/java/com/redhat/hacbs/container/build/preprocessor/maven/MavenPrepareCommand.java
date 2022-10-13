@@ -31,7 +31,8 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
     static final Set<PluginInfo> TO_REMOVE = Set.of(
             new PluginInfo("org.glassfish.copyright", "glassfish-copyright-maven-plugin"),
             new PluginInfo("org.sonatype.plugins", "nexus-staging-maven-plugin"),
-            new PluginInfo("com.mycila", "license-maven-plugin"));
+            new PluginInfo("com.mycila", "license-maven-plugin"),
+            new PluginInfo("de.jjohannes", "gradle-module-metadata-maven-plugin"));
 
     @Override
     public void run() {

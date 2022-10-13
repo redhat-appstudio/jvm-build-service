@@ -1,6 +1,6 @@
-apply plugin: EnterpriseRepositoryPlugin
+apply plugin: RepositoryPlugin
 
-class EnterpriseRepositoryPlugin implements Plugin<Gradle> {
+class RepositoryPlugin implements Plugin<Gradle> {
 
     private static String ENTERPRISE_REPOSITORY_URL = System.getenv("CACHE_URL") != null ? System.getenv("CACHE_URL") : "http://localhost:8080/v1/cache/default/0"
     private static String BINTRAY_URL = ENTERPRISE_REPOSITORY_URL + "/hacbs-bintray"
@@ -11,6 +11,9 @@ class EnterpriseRepositoryPlugin implements Plugin<Gradle> {
             all { ArtifactRepository repo ->
                 if (!(repo instanceof MavenArtifactRepository) ||
                         (repo.url.toString() != ENTERPRISE_REPOSITORY_URL && repo.url.toString() != BINTRAY_URL )) {
+                    if (repo.toString().contains("PluginArtifactRepository")) {
+                        return
+                    }
                     if (repo instanceof MavenArtifactRepository) {
                         if (repo.url.toString().contains("bintray.com") && !bintray) {
                             bintray = true
@@ -23,7 +26,7 @@ class EnterpriseRepositoryPlugin implements Plugin<Gradle> {
 //                          }
                         }
                     }
-                    println "Repository ${repo.properties['url']} removed."
+                    println "Repository ${repo.properties['url']} ${repo} removed."
                     remove repo
                 } else if (repo instanceof MavenArtifactRepository) {
                     if (repo.hasProperty('allowInsecureProtocol')) {

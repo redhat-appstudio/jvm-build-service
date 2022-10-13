@@ -193,7 +193,8 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 				"maven-repository-311-ajoberstar":          "https://ajoberstar.org/bintray-backup",
 				"maven-repository-312-googleandroid":       "https://dl.google.com/dl/android/maven2/",
 				"maven-repository-313-kotlinnative14linux": "https://download.jetbrains.com/kotlin/native/builds/releases/1.4/linux",
-				"maven-repository-314-jcs":                 "https://packages.jetbrains.team/maven/p/jcs/maven"},
+				"maven-repository-314-jcs":                 "https://packages.jetbrains.team/maven/p/jcs/maven",
+				"maven-repository-315-kotlin-bootstrap":    "https://maven.pkg.jetbrains.space/kotlin/p/kotlin/bootstrap/"},
 
 			CacheSettings: v1alpha1.CacheSettings{},
 			ImageRegistry: v1alpha1.ImageRegistry{
@@ -396,7 +397,11 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 				}
 			}
 		}
-		instance := &ReportInstanceData{Name: ab.Name + createdBy, State: ab.Status.State, Yaml: encodeToYaml(&tmp)}
+		message := ""
+		if ab.Status.State != v1alpha1.ArtifactBuildStateComplete {
+			message = " " + ab.Status.Message
+		}
+		instance := &ReportInstanceData{Name: ab.Name + createdBy + message, State: ab.Status.State, Yaml: encodeToYaml(&tmp)}
 		artifact.Instances = append(artifact.Instances, instance)
 		artifact.Total++
 		print(ab.Status.State + "\n")
