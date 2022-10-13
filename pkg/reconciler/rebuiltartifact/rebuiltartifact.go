@@ -20,23 +20,17 @@ import (
 const JvmBuildServiceFilterConfigMap = "jvm-build-service-filter"
 
 type ReconcilerRebuiltArtifact struct {
-	client           client.Client
-	scheme           *runtime.Scheme
-	eventRecorder    record.EventRecorder
-	nonCachingClient client.Client
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
 }
 
-func newReconciler(mgr ctrl.Manager) (reconcile.Reconciler, error) {
-	nonCachingClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
-	ret := &ReconcilerRebuiltArtifact{
+func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+	return &ReconcilerRebuiltArtifact{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("RebuiltArtifact"),
 	}
-	if err == nil {
-		ret.nonCachingClient = nonCachingClient
-	}
-	return ret, err
 }
 
 func (r *ReconcilerRebuiltArtifact) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -65,19 +59,19 @@ func (r *ReconcilerRebuiltArtifact) Reconcile(ctx context.Context, request recon
 	filter := CreateBloomFilter(items)
 	log.Info("Constructed bloom filter", "filterLength", len(filter))
 	cm := v1.ConfigMap{}
-	err = r.nonCachingClient.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: JvmBuildServiceFilterConfigMap}, &cm)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: JvmBuildServiceFilterConfigMap}, &cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			cm.BinaryData = map[string][]byte{"filter": filter}
 			cm.Name = JvmBuildServiceFilterConfigMap
 			cm.Namespace = request.Namespace
-			return reconcile.Result{}, r.nonCachingClient.Create(ctx, &cm)
+			return reconcile.Result{}, r.client.Create(ctx, &cm)
 		}
 		return reconcile.Result{}, err
 	}
 	cm.BinaryData["filter"] = filter
 
-	return reconcile.Result{}, r.nonCachingClient.Update(ctx, &cm)
+	return reconcile.Result{}, r.client.Update(ctx, &cm)
 }
 
 func doHash(multiplicand int32, gav string) int32 {

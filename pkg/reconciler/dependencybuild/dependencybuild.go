@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"os"
 	"sort"
 	"strconv"
@@ -29,6 +28,7 @@ import (
 	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -396,7 +396,14 @@ func sameMajorVersion(v1 string, v2 string) bool {
 
 func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log logr.Logger) ([]BuilderImage, error) {
 	systemConfig := v1alpha1.SystemConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
+	getCtx := ctx
+	cluster, ok := logicalcluster.ClusterFromContext(ctx)
+	if ok {
+		if cluster.String() != util.SystemConfigCluster {
+			getCtx = logicalcluster.WithCluster(ctx, logicalcluster.New(util.SystemConfigCluster))
+		}
+	}
+	err := r.client.Get(getCtx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
 		return nil, err
 	}

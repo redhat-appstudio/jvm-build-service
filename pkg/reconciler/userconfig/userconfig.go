@@ -34,13 +34,15 @@ type ReconcilerUserConfig struct {
 	scheme               *runtime.Scheme
 	eventRecorder        record.EventRecorder
 	configuredCacheImage string
+	kcp                  bool
 }
 
-func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, kcp bool) reconcile.Reconciler {
 	ret := &ReconcilerUserConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("UserConfig"),
+		kcp:           kcp,
 	}
 	return ret
 }
@@ -66,6 +68,10 @@ func (r *ReconcilerUserConfig) Reconcile(ctx context.Context, request reconcile.
 			return reconcile.Result{}, err
 		}
 
+		// we cannot manipulate deployments in kcp right now
+		if r.kcp {
+			return reconcile.Result{}, nil
+		}
 		err = r.deploymentSupportObjects(ctx, log, request, &userConfig)
 		if err != nil {
 			return reconcile.Result{}, err

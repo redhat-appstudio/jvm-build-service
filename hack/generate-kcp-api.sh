@@ -59,6 +59,8 @@ spec:
   - group: ""
     resource: "secrets"
   - group: ""
+    resource: "configmaps"
+  - group: ""
     resource: "serviceaccounts"
   - group: ""
     resource: "events"

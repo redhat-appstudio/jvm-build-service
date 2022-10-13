@@ -3,13 +3,14 @@ package systemconfig
 import (
 	"context"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"strings"
 	"time"
 
 	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/k8sresourcequota"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -109,7 +110,8 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 				}
 			}
 		}
-		log.Info("system config available and valid")
+		log.Info(fmt.Sprintf("system config available and valid on cluster %s", request.ClusterName))
+		util.SystemConfigCluster = request.ClusterName
 	}
 	return reconcile.Result{}, nil
 }
