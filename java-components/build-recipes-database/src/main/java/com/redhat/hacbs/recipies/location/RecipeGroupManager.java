@@ -127,7 +127,7 @@ public class RecipeGroupManager {
 
         List<Path> paths = new ArrayList<>();
         for (var r : repositories) {
-            var possible = r.getBuildPaths(scmUri, buildInfoRequest.getTag());
+            var possible = r.getBuildPaths(scmUri, buildInfoRequest.getVersion());
             if (possible.isPresent()) {
                 paths.add(possible.get());
             }

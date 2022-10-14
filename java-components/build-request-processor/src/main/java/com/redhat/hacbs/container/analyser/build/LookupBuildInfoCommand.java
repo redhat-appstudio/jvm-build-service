@@ -77,7 +77,7 @@ public class LookupBuildInfoCommand implements Runnable {
             RecipeGroupManager recipeGroupManager = new RecipeGroupManager(managers);
 
             var result = recipeGroupManager
-                    .requestBuildInformation(new BuildInfoRequest(scmUrl, tag, Set.of(BuildRecipe.BUILD)));
+                    .requestBuildInformation(new BuildInfoRequest(scmUrl, version, Set.of(BuildRecipe.BUILD)));
 
             BuildRecipeInfo buildRecipeInfo = null;
             if (result.getData().containsKey(BuildRecipe.BUILD)) {
