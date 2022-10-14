@@ -1,7 +1,10 @@
 package com.redhat.hacbs.container.analyser.build.gradle;
 
+import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.DEFAULT_GRADLE_ARGS;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.GOOGLE_JAVA_FORMAT_PLUGIN;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.MAVEN_PLUGIN;
+import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.MAVEN_PLUGIN_GRADLE_ARGS;
+import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.MAVEN_PUBLISH_PLUGIN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -72,8 +75,32 @@ class GradleUtilsTest {
         Files.writeString(buildGradle, "apply(plugin: \"maven\");" + System.lineSeparator());
         assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
         assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isFalse();
-        Files.writeString(buildGradle, "  apply plugin: 'maven'" + System.lineSeparator());
+        assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(MAVEN_PLUGIN_GRADLE_ARGS);
+        Files.writeString(buildGradle, "apply plugin: 'maven'" + System.lineSeparator());
         assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
         assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isFalse();
+        assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(MAVEN_PLUGIN_GRADLE_ARGS);
+        Files.writeString(buildGradle, "apply(plugin: \"maven-publish\");" + System.lineSeparator());
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PUBLISH_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isFalse();
+        assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(DEFAULT_GRADLE_ARGS);
+        Files.writeString(buildGradle, "apply plugin: 'maven-publish'" + System.lineSeparator());
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PUBLISH_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isFalse();
+        assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(DEFAULT_GRADLE_ARGS);
+    }
+
+    @Test
+    void testFindMavenPluginMultiple(@TempDir Path basedir) throws IOException {
+        Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE);
+        Files.writeString(buildGradle, """
+                    apply plugin: "maven"
+                    apply plugin: "signing"
+                    apply plugin: "maven-publish"
+                """.indent(8));
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PUBLISH_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isFalse();
+        assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(DEFAULT_GRADLE_ARGS);
     }
 }
