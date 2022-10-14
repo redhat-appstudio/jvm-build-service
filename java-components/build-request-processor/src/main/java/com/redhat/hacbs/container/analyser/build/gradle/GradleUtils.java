@@ -25,7 +25,8 @@ public final class GradleUtils {
     /**
      * Code for applying the plugin {@code maven}.
      */
-    public static final String MAVEN_PLUGIN = Pattern.quote("apply(plugin: \"maven\");");
+    public static final String MAVEN_PLUGIN = "^\\s*(" + "apply\\s*\\(\\s*plugin:\\s*[\"']maven[\"']\\s*\\)\\s*;?" + "|"
+            + "apply\\s+plugin:\\s*[\"']maven[\"']\\s*;?" + ")";
 
     static final String BUILD_GRADLE = "build.gradle";
 

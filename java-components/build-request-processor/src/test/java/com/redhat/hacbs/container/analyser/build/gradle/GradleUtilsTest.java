@@ -72,5 +72,8 @@ class GradleUtilsTest {
         Files.writeString(buildGradle, "apply(plugin: \"maven\");" + System.lineSeparator());
         assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
         assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isFalse();
+        Files.writeString(buildGradle, "  apply plugin: 'maven'" + System.lineSeparator());
+        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(basedir, GOOGLE_JAVA_FORMAT_PLUGIN)).isFalse();
     }
 }
