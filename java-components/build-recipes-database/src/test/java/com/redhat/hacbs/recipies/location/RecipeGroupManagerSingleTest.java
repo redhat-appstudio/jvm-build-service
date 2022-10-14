@@ -73,22 +73,6 @@ public class RecipeGroupManagerSingleTest {
     }
 
     @Test
-    public void testArtifactLevelRedirect() {
-        GAV req = new GAV("io.vertx", "vertx-web", "1.0");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
-        Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
-    }
-
-    @Test
-    public void testGroupAndArtifactLevelRedirect() {
-        var req = new GAV("org.jboss.vertx", "vertx-web", "1.0");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
-        Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
-    }
-
-    @Test
     public void testBuildInfoRecipe() throws IOException {
         var result = manager.requestBuildInformation(
                 new BuildInfoRequest("https://github.com/quarkusio/quarkus.git", "1.0", Set.of(BuildRecipe.BUILD)));
