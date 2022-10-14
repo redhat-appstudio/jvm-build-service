@@ -42,6 +42,8 @@ public class BuildInfo {
 
     long commitTime;
 
+    String preBuildScript;
+
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
         return this;
@@ -53,6 +55,15 @@ public class BuildInfo {
 
     public BuildInfo setInvocations(List<List<String>> invocations) {
         this.invocations = invocations;
+        return this;
+    }
+
+    public String getPreBuildScript() {
+        return preBuildScript;
+    }
+
+    public BuildInfo setPreBuildScript(String preBuildScript) {
+        this.preBuildScript = preBuildScript;
         return this;
     }
 

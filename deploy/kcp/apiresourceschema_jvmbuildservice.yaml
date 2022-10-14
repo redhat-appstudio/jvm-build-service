@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210110553.artifactbuilds.jvmbuildservice.io
+  name: v202210140040.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210110553.dependencybuilds.jvmbuildservice.io
+  name: v202210140040.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -245,6 +245,8 @@ spec:
                   type: boolean
                 pipeline:
                   type: string
+                preBuildScript:
+                  type: string
                 toolVersion:
                   type: string
               type: object
@@ -276,6 +278,8 @@ spec:
                   maven:
                     type: boolean
                   pipeline:
+                    type: string
+                  preBuildScript:
                     type: string
                   toolVersion:
                     type: string
@@ -310,6 +314,8 @@ spec:
                     type: boolean
                   pipeline:
                     type: string
+                  preBuildScript:
+                    type: string
                   toolVersion:
                     type: string
                 type: object
@@ -330,7 +336,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210110553.rebuiltartifacts.jvmbuildservice.io
+  name: v202210140040.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -381,7 +387,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210110553.systemconfigs.jvmbuildservice.io
+  name: v202210140040.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -438,7 +444,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210110553.tektonwrappers.jvmbuildservice.io
+  name: v202210140040.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -523,7 +529,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210110553.userconfigs.jvmbuildservice.io
+  name: v202210140040.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:

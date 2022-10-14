@@ -19,6 +19,8 @@ public class BuildRecipeInfo {
     String toolVersion;
     String javaVersion;
 
+    String preBuildScript;
+
     public List<String> getAdditionalArgs() {
         return additionalArgs;
     }
@@ -61,6 +63,15 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setJavaVersion(String javaVersion) {
         this.javaVersion = javaVersion;
+        return this;
+    }
+
+    public String getPreBuildScript() {
+        return preBuildScript;
+    }
+
+    public BuildRecipeInfo setPreBuildScript(String preBuildScript) {
+        this.preBuildScript = preBuildScript;
         return this;
     }
 

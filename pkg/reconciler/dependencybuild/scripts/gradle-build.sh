@@ -55,6 +55,10 @@ do
 done
 echo "INIT SCRIPTS: $INIT_SCRIPTS"
 
+#This is replaced when the task is created by the golang code
+echo "Pre build script: {{PRE_BUILD_SCRIPT}}"
+{{PRE_BUILD_SCRIPT}}
+
 #our dependency tracing breaks verification-metadata.xml
 #TODO: should we disable tracing for these builds? It means we can't track dependencies directly, so we can't detect contaminants
 rm -f gradle/verification-metadata.xml
