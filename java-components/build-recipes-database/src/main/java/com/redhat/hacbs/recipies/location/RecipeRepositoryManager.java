@@ -11,8 +11,6 @@ import org.eclipse.jgit.api.errors.GitAPIException;
  * A recipe database stored in git.
  */
 public class RecipeRepositoryManager implements RecipeDirectory {
-    @Deprecated
-    public static final String RECIPES = "recipes";
     public static final String SCM_INFO = "scm-info";
     public static final String BUILD_INFO = "build-info";
     private final Git git;
