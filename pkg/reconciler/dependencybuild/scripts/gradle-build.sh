@@ -6,6 +6,20 @@ echo "@=$@"
 
 export PATH="${JAVA_HOME}/bin:${PATH}"
 
+#some gradle builds get the version from the tag
+#the git init task does not fetch tags
+#so just create one to fool the plugin
+git config user.email "HACBS@redhat.com"
+git config user.name "HACBS"
+if [ -z "$(params.ENFORCE_VERSION)" ]
+then
+  echo "Enforce version not set, recreating original tag $(params.TAG)"
+  git tag -m $(params.TAG) -a $(params.TAG) || true
+else
+  echo "Creating tag $(params.ENFORCE_VERSION) to match enforced version"
+  git tag -m $(params.ENFORCE_VERSION) -a $(params.ENFORCE_VERSION) || true
+fi
+
 if [ -z "$(params.TOOL_VERSION)" ]; then
     echo "TOOL_VERSION has not been set" >&2
     exit 1
@@ -47,7 +61,7 @@ rm -f gradle/verification-metadata.xml
 
 gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
 
-gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace -x test -Prelease.version=$(params.ENFORCE_VERSION) -Prelease.stage=final "$@" || exit 1
+gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace -x test -Prelease.version=$(params.ENFORCE_VERSION) "$@" || exit 1
 
 tar -czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .
 # fix-permissions-for-builder
