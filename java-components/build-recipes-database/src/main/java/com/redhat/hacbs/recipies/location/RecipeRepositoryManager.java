@@ -56,9 +56,9 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     }
 
     @Override
-    public Optional<Path> getBuildPaths(String scmUri, String tag) {
+    public Optional<Path> getBuildPaths(String scmUri, String version) {
         doUpdate();
-        return recipeLayoutManager.getBuildPaths(scmUri, tag);
+        return recipeLayoutManager.getBuildPaths(scmUri, version);
     }
 
     private void doUpdate() {

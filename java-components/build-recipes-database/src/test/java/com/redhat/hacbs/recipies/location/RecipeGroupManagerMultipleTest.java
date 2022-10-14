@@ -11,7 +11,6 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -44,13 +43,13 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testVersionOverride() {
         //the original override should still work
-        GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart1");
+        GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-alpha1");
         var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
         //but now we have added a new one as well
-        req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart2");
+        req = new GAV("io.quarkus", "quarkus-core", "1.0-alpha2");
         result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -73,12 +72,17 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testArtifactAndVersionOverride() {
         //same here
-        GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-stuart1");
+        GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-alpha1");
         var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
-        req = new GAV("io.test", "test-gizmo", "1.0-stuart1");
+        req = new GAV("io.test", "test-gizmo", "1.0-alpha1");
+        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
+                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+
+        req = new GAV("io.test", "test-gizmo", "0.9");
         result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
@@ -89,24 +93,6 @@ public class RecipeGroupManagerMultipleTest {
         GAV req = new GAV("io.vertx", "not-real", "1.0");
         var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
-    }
-
-    @Test
-    @Disabled("Redirects are currently scoped to the repository")
-    public void testArtifactLevelRedirect() {
-        GAV req = new GAV("io.vertx", "vertx-web", "1.0");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
-        Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
-    }
-
-    @Test
-    @Disabled("Redirects are currently scoped to the repository")
-    public void testGroupAndArtifactLevelRedirect() {
-        var req = new GAV("org.jboss.vertx", "vertx-web", "1.0");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
-        Assertions.assertEquals("https://github.com/vert-x3/vertx-web.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
 

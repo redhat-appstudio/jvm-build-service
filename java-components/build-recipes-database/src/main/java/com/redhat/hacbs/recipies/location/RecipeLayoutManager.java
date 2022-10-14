@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Optional;
 import java.util.logging.Logger;
+
+import org.apache.maven.artifact.versioning.ComparableVersion;
 
 /**
  * Manages an individual recipe database of build recipes.
@@ -49,26 +51,57 @@ public class RecipeLayoutManager implements RecipeDirectory {
         Path groupPath = this.scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar));
         Path artifactFolder = groupPath.resolve(ARTIFACT);
         Path artifactPath = artifactFolder.resolve(artifactId);
-        Path versionFolder = groupPath.resolve(VERSION);
-        Path versionPath = versionFolder.resolve(version);
-        Path artifactAndVersionPath = artifactPath.resolve(VERSION).resolve(version);
+        Path artifactAndVersionPath = null;
         if (!Files.exists(groupPath)) {
             return Optional.empty();
         }
-        return Optional.of(new RecipePathMatch(groupPath,
-                Files.exists(artifactPath) ? artifactPath : null,
-                Files.exists(versionPath) ? versionPath : null,
-                Files.exists(artifactAndVersionPath) ? artifactAndVersionPath : null,
-                !Files.exists(artifactFolder) && !Files.exists(versionFolder)));
+        boolean groupAuthoritative = true;
+        if (Files.exists(artifactPath)) {
+            artifactAndVersionPath = resolveVersion(artifactPath, version).orElse(null);
+            groupAuthoritative = false;
+        } else {
+            artifactPath = null;
+        }
+        Path versionPath = resolveVersion(groupPath, version).orElse(null);
+        if (versionPath != null) {
+            groupAuthoritative = false;
+        }
+
+        return Optional
+                .of(new RecipePathMatch(groupPath, artifactPath, versionPath, artifactAndVersionPath, groupAuthoritative));
     }
 
     @Override
-    public Optional<Path> getBuildPaths(String scmUri, String tag) {
+    public Optional<Path> getBuildPaths(String scmUri, String version) {
         Path target = buildInfoDirectory.resolve(scmUri);
         if (!Files.exists(target)) {
             return Optional.empty();
         }
-        return Optional.of(target);
+        return Optional.of(resolveVersion(target, version).orElse(target));
+    }
+
+    private Optional<Path> resolveVersion(Path target, String version) {
+        Path versions = target.resolve(VERSION);
+        if (!Files.exists(versions)) {
+            return Optional.empty();
+        }
+        ComparableVersion requestedVersion = new ComparableVersion(version);
+        ComparableVersion currentVersion = null;
+        Path currentPath = null;
+        try (var s = Files.list(versions)) {
+            for (var path : s.toList()) {
+                ComparableVersion pv = new ComparableVersion(path.getFileName().toString());
+                if (requestedVersion.compareTo(pv) <= 0) {
+                    if (currentVersion == null || pv.compareTo(currentVersion) > 0) {
+                        currentVersion = pv;
+                        currentPath = path;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return Optional.ofNullable(currentPath);
     }
 
     @Override

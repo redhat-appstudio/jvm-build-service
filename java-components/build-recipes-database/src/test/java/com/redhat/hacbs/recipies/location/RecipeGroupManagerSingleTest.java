@@ -42,8 +42,12 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testVersionOverride() {
-        GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-stuart1");
+        GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-alpha1");
         var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
+                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+        req = new GAV("io.quarkus", "quarkus-core", "0.9");
+        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }
@@ -58,8 +62,12 @@ public class RecipeGroupManagerSingleTest {
 
     @Test
     public void testArtifactAndVersionOverride() {
-        GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-stuart1");
+        GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-alpha1");
         var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
+                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+        req = new GAV("io.quarkus", "quarkus-gizmo", "0.9");
+        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
     }

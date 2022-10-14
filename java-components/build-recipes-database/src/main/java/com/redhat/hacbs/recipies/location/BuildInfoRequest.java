@@ -7,12 +7,12 @@ import com.redhat.hacbs.recipies.BuildRecipe;
 public class BuildInfoRequest {
 
     private final String scmUri;
-    private final String tag;
+    private final String version;
     private final Set<BuildRecipe> recipeFiles;
 
-    public BuildInfoRequest(String scmUri, String tag, Set<BuildRecipe> recipeFiles) {
+    public BuildInfoRequest(String scmUri, String version, Set<BuildRecipe> recipeFiles) {
         this.scmUri = scmUri;
-        this.tag = tag;
+        this.version = version;
         this.recipeFiles = recipeFiles;
     }
 
@@ -24,7 +24,7 @@ public class BuildInfoRequest {
         return scmUri;
     }
 
-    public String getTag() {
-        return tag;
+    public String getVersion() {
+        return version;
     }
 }

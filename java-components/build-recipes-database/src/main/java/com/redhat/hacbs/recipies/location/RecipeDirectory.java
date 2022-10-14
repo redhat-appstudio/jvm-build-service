@@ -15,7 +15,7 @@ public interface RecipeDirectory {
      */
     Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version);
 
-    Optional<Path> getBuildPaths(String scmUri, String tag);
+    Optional<Path> getBuildPaths(String scmUri, String version);
 
     default <T> void writeArtifactData(AddRecipeRequest<T> data) {
         throw new IllegalStateException("Not implemented");
