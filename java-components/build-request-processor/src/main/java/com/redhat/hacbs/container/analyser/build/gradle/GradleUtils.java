@@ -23,10 +23,20 @@ public final class GradleUtils {
     public static final String GOOGLE_JAVA_FORMAT_PLUGIN = Pattern.quote("com.github.sherter.google-java-format");
 
     /**
+     * Format for applying plugins.
+     */
+    public static final String PLUGIN_FORMAT = "^\\s*(" + "apply\\s*\\(\\s*plugin:\\s*[\"']%s[\"']\\s*\\)\\s*;?" + "|"
+            + "apply\\s+plugin:\\s*[\"']%s[\"']\\s*;?" + ")";
+
+    /**
      * Code for applying the plugin {@code maven}.
      */
-    public static final String MAVEN_PLUGIN = "^\\s*(" + "apply\\s*\\(\\s*plugin:\\s*[\"']maven[\"']\\s*\\)\\s*;?" + "|"
-            + "apply\\s+plugin:\\s*[\"']maven[\"']\\s*;?" + ")";
+    public static final String MAVEN_PLUGIN = String.format(PLUGIN_FORMAT, "maven", "maven");
+
+    /**
+     * Code for applying the plugin {@code maven-publish}.
+     */
+    public static final String MAVEN_PUBLISH_PLUGIN = String.format(PLUGIN_FORMAT, "maven-publish", "maven-publish");
 
     static final String BUILD_GRADLE = "build.gradle";
 
@@ -45,9 +55,15 @@ public final class GradleUtils {
     private static final Pattern VERSION_PATTERN = Pattern
             .compile("((\\d+)(\\.\\d+)+)(-(\\p{Alpha}+)-(\\w+))?(-(SNAPSHOT|\\d{14}([-+]\\d{4})?))?");
 
-    private static final List<String> DEFAULT_GRADLE_ARGS = List.of("build", "publish");
+    /**
+     * Default Gradle arguments.
+     */
+    public static final List<String> DEFAULT_GRADLE_ARGS = List.of("build", "publish");
 
-    private static final List<String> MAVEN_PLUGIN_GRADLE_ARGS = List.of("build", "uploadArchives");
+    /**
+     * Gradle arguments if 'maven' plugin is detected.
+     */
+    public static final List<String> MAVEN_PLUGIN_GRADLE_ARGS = List.of("build", "uploadArchives");
 
     private GradleUtils() {
 
@@ -182,6 +198,15 @@ public final class GradleUtils {
      * @throws IOException if an error occurs while reading from the build file(s)
      */
     public static List<String> getGradleArgs(Path path) throws IOException {
-        return isInBuildGradle(path, MAVEN_PLUGIN) ? MAVEN_PLUGIN_GRADLE_ARGS : DEFAULT_GRADLE_ARGS;
+        boolean hasMavenPlugin = isInBuildGradle(path, MAVEN_PLUGIN);
+        boolean hasMavenPublishPlugin = isInBuildGradle(path, MAVEN_PUBLISH_PLUGIN);
+
+        if (hasMavenPlugin && hasMavenPublishPlugin) {
+            return DEFAULT_GRADLE_ARGS;
+        } else if (hasMavenPlugin) {
+            return MAVEN_PLUGIN_GRADLE_ARGS;
+        } else {
+            return DEFAULT_GRADLE_ARGS;
+        }
     }
 }
