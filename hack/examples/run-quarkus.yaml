@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: quarkus-build-
+spec:
+  pipelineRef:
+    name: sample-component-build
+  params:
+    - name: url
+      value: https://github.com/quarkusio/quarkus.git
+    - name: app-path
+      value: ./integration-tests/
+    - name: revision
+      value: 2.13.2.Final
+  workspaces:
+    - name: maven-settings
+      emptyDir: {}
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
+          resources:
+            requests:
+              storage: 5Gi
+  taskRunSpecs:
+    - pipelineTaskName: maven-run
+      taskServiceAccountName: pipeline
+
