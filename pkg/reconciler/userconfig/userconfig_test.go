@@ -2,12 +2,12 @@ package userconfig
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	. "github.com/onsi/gomega"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +32,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		scheme:        scheme,
 		eventRecorder: &record.FakeRecorder{},
 	}
-	os.Setenv("IMAGE_TAG", "foo")
+	util.ImageTag = "foo"
 	return client, reconciler
 }
 

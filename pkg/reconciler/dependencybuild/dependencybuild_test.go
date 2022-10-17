@@ -3,7 +3,6 @@ package dependencybuild
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"testing"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -68,8 +68,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName},
 	}
 	_ = client.Create(context.TODO(), &usrConfig)
-	os.Setenv("IMAGE_TAG", "foo")
-
+	util.ImageTag = "foo"
 	return client, reconciler
 }
 

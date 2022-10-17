@@ -42,6 +42,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	//+kubebuilder:scaffold:imports
 )
@@ -140,6 +141,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	err = clusterresourcequota.SetupNewReconciler(cfg)
 	Expect(err).ToNot(HaveOccurred())
+	util.ImageTag = "foo"
 	go func() {
 		defer GinkgoRecover()
 		err = k8sManager.Start(ctx)

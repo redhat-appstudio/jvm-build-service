@@ -76,6 +76,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 	var err error
 	// this replaces the need for creating a non-caching client to access these various types
 	options.ClientDisableCacheFor = []client.Object{
+		&v1.ConfigMap{},
 		&v1.Secret{},
 		&v1.Service{},
 		&v1.ServiceAccount{},
@@ -132,7 +133,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		return nil, err
 	}
 
-	if err := userconfig.SetupNewReconcilerWithManager(mgr); err != nil {
+	if err := userconfig.SetupNewReconcilerWithManager(mgr, kcp); err != nil {
 		return nil, err
 	}
 	if err := rebuiltartifact.SetupNewReconcilerWithManager(mgr); err != nil {

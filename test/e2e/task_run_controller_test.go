@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
-	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -96,7 +95,6 @@ func setupSystemConfig() {
 		userConfig.Name = v1alpha1.UserConfigName
 		Expect(k8sClient.Create(context.TODO(), &userConfig)).Should(Succeed())
 	}
-	os.Setenv("IMAGE_TAG", "foo")
 }
 
 func createDB(componentLookupKey types.NamespacedName) {

@@ -2,12 +2,12 @@ package artifactbuild
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -38,7 +38,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = appsv1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}, prCreator: &tektonwrapper.ImmediateCreate{}}
-	os.Setenv("IMAGE_TAG", "foo")
+	util.ImageTag = "foo"
 	return client, reconciler
 }
 

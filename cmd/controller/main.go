@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	apisv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/controller"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 )
 
 var (
@@ -65,6 +66,8 @@ func main() {
 		LeaderElectionID:       "5483be8f.redhat.com",
 	}
 
+	util.ImageTag = os.Getenv("IMAGE_TAG")
+	util.ImageRepo = os.Getenv("IMAGE_REPO")
 	if kcpAPIsGroupPresent(restConfig) {
 		mainLog.Info("Looking up virtual workspace URL")
 		var cfg *rest.Config
@@ -75,6 +78,7 @@ func main() {
 		}
 
 		mainLog.Info("Using virtual workspace URL", "url", cfg.Host)
+		util.KCP = true
 
 		mopts.LeaderElectionConfig = restConfig
 		// see kcp.NewClusterAwareManager; do not call that directly given the additional items we do in

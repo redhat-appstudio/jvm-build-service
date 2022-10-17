@@ -6,9 +6,6 @@ import (
 )
 
 func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
-	r, err := newReconciler(mgr)
-	if err != nil {
-		return err
-	}
+	r := newReconciler(mgr)
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.RebuiltArtifact{}).Complete(r)
 }

@@ -33,7 +33,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager, kcp bool) error {
 		return err
 	}
 	r := newReconciler(mgr, kcp)
-	pruner := &pruner{client: mgr.GetClient()}
+	pruner := &pruner{client: mgr.GetClient(), kcp: kcp}
 	_ = mgr.Add(pruner)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TektonWrapper{}, builder.WithPredicates(predicate.Funcs{
@@ -78,6 +78,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager, kcp bool) error {
 
 type pruner struct {
 	client client.Client
+	kcp    bool
 }
 
 func (p *pruner) Start(ctx context.Context) error {
@@ -95,7 +96,12 @@ func (p *pruner) Start(ctx context.Context) error {
 			}
 			for i, tw := range twList.Items {
 				if tw.Status.State == v1alpha1.TektonWrapperStateComplete {
-					err = p.client.Delete(ctx, &twList.Items[i])
+					delCtx := ctx
+					if p.kcp {
+						tcluster := tw.Annotations[logicalcluster.AnnotationKey]
+						delCtx = logicalcluster.WithCluster(ctx, logicalcluster.New(tcluster))
+					}
+					err = p.client.Delete(delCtx, &twList.Items[i])
 					if err != nil {
 						ctrlLog.Info(fmt.Sprintf("pruner delete err %s", err.Error()))
 					}
