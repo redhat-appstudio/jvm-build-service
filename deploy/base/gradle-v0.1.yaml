@@ -39,7 +39,7 @@ spec:
     - name: GRADLE_MANIPULATOR_ARGS
       description: Gradle manipulator arguments.
       type: string
-      default: "-DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false"
+      default: "-DdependencySource=NONE -DdokkaPlugin=false -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false"
     - name: IMAGE
       description: Gradle base image.
       type: string

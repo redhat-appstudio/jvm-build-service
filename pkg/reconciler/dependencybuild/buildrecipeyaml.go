@@ -165,7 +165,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 		},
 	}
 	if !maven {
-		buildSetup.Params = append(buildSetup.Params, v1alpha1.ParamSpec{Name: PipelineGradleManipulatorArgs, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "-DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false"}})
+		buildSetup.Params = append(buildSetup.Params, v1alpha1.ParamSpec{Name: PipelineGradleManipulatorArgs, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "-DdependencySource=NONE -DdokkaPlugin=false -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false"}})
 	}
 
 	ps := &pipelinev1beta1.PipelineSpec{
