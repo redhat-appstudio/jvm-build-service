@@ -14,20 +14,10 @@ spec:
       resource: "configmaps"
       state: "Accepted"
     - group: ""
-      resource: "serviceaccounts"
-      state: "Accepted"
-    - group: ""
       resource: "events"
       state: "Accepted"
     - group: ""
-      resource: "services"
-      # replace by pipeline-service identityHash, though most likely creation of the artifact-cache will have to move out of the controller
-      identityHash: pipeline-service
-      state: "Accepted"
-    - group: "apps"
-      resource: "deployments"
-      # replace by pipeline-service identityHash, though most likely creation of the artifact-cache will have to move out of the controller
-      identityHash: pipeline-service
+      resource: "resourcequotas"
       state: "Accepted"
     - group: "tekton.dev"
       resource: "pipelineruns"
