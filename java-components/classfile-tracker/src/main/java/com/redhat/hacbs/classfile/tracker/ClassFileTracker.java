@@ -116,9 +116,14 @@ public class ClassFileTracker {
             while (entry != null) {
                 if (entry.getName().endsWith(".class")) {
                     try {
-                        TrackingData data = readTrackingInformationFromClass(zipIn.readAllBytes());
-                        if (data != null) {
-                            ret.add(data);
+                        //TODO: kotlin inline methods mean some code from other archives end up in the final output
+                        //I don't think we need to rebuild everything that has inlined code, as it means we will
+                        //needs to build lots of different version of the kotlin standard library
+                        if (!entry.getName().contains("$inlined$")) {
+                            TrackingData data = readTrackingInformationFromClass(zipIn.readAllBytes());
+                            if (data != null) {
+                                ret.add(data);
+                            }
                         }
                     } catch (Exception e) {
                         Logger.getLogger("dependency-analyser").log(Level.SEVERE,
