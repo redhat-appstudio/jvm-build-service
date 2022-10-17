@@ -99,7 +99,7 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 	if prerr != nil && twerr != nil {
 		msg := fmt.Sprintf("Reconcile key %s received not found errors for both pipelineruns and tektonwrapper (probably deleted)\"", request.NamespacedName.String())
 		log.Info(msg)
-		return ctrl.Result{}, nil
+		return reconcile.Result{}, client.IgnoreNotFound(r.unthrottleNextOnQueuePlusCleanup(ctx, tw.Namespace))
 	}
 
 	switch {
@@ -182,7 +182,7 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 
 	if hardPodCount > 0 {
 		// see how close we are to quota
-		_, activeCount, _, doneCount, totalCount, lerr := r.tektonWrapperStats(ctx, tw.Namespace)
+		_, activeCount, throttledCount, doneCount, totalCount, lerr := r.tektonWrapperStats(ctx, tw.Namespace)
 		if lerr != nil {
 			return reconcile.Result{}, lerr
 		}
@@ -195,6 +195,9 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 		switch {
 		case (totalCount - doneCount) < hardPodCount:
 			// below hard pod count quota so create PR
+			break
+		case totalCount == throttledCount:
+			// initial race condition possible if controller starts a bunch before we get events:
 			break
 		case tw.Status.State == v1alpha1.TektonWrapperStateUnprocessed:
 			// fresh item needs to be queued cause non-terminal items beyond pod limit
