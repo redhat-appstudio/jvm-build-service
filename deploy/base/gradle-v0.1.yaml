@@ -146,6 +146,10 @@ spec:
         systemProp.http.proxyUser=$(params.PROXY_USER)
         systemProp.http.proxyPassword=$(params.PROXY_PASSWORD)
         systemProp.http.nonProxyHosts=$(params.PROXY_NON_PROXY_HOSTS)
+
+        # Settings for <https://github.com/vanniktech/gradle-maven-publish-plugin>
+        RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo
+        RELEASE_SIGNING_ENABLED=false
         EOF
         cat > ${GRADLE_USER_HOME}/init.gradle << EOF
         allprojects {
