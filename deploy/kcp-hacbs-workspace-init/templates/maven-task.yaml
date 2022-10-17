@@ -177,7 +177,7 @@ spec:
     - name: analyse-dependencies
       securityContext:
         runAsUser: 0
-      image: quay.io/replaced-image:bogus
+      image: quay.io/{{ .Values.quayRespository }}/hacbs-jvm-build-request-processor:{{ .Values.quayTag }}
       args:
         - analyse-dependencies
         - path
