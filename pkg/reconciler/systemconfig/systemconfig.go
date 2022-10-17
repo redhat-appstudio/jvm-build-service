@@ -93,21 +93,16 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 			return reconcile.Result{}, fmt.Errorf(logMsg)
 		}
 
-		switch systemConfig.Spec.Quota {
-		case v1alpha1.K8SQuota:
-			//TODO remove kcp check once we sort out permission claims a la https://github.com/openshift-pipelines/pipeline-service-workspace-controller/blob/main/config/kcp/apibinding.yaml
+		switch {
+		case r.kcp || systemConfig.Spec.Quota == v1alpha1.K8SQuota:
 			err = k8sresourcequota.SetupNewReconcilerWithManager(r.mgr)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-		case v1alpha1.OpenShiftQuota:
-			fallthrough
-		default:
-			if r.config != nil && !r.kcp {
-				err = clusterresourcequota.SetupNewReconciler(r.config)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
+		case (len(systemConfig.Spec.Quota) == 0 || systemConfig.Spec.Quota == v1alpha1.OpenShiftQuota) && r.config != nil && !r.kcp:
+			err = clusterresourcequota.SetupNewReconciler(r.config)
+			if err != nil {
+				return reconcile.Result{}, err
 			}
 		}
 		log.Info(fmt.Sprintf("system config available and valid on cluster %s", request.ClusterName))
