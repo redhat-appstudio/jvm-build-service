@@ -99,7 +99,7 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 	if prerr != nil && twerr != nil {
 		msg := fmt.Sprintf("Reconcile key %s received not found errors for both pipelineruns and tektonwrapper (probably deleted)\"", request.NamespacedName.String())
 		log.Info(msg)
-		return ctrl.Result{}, nil
+		return reconcile.Result{}, client.IgnoreNotFound(r.unthrottleNextOnQueuePlusCleanup(ctx, tw.Namespace))
 	}
 
 	switch {
@@ -182,7 +182,7 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 
 	if hardPodCount > 0 {
 		// see how close we are to quota
-		_, activeCount, _, doneCount, totalCount, lerr := r.tektonWrapperStats(ctx, tw.Namespace)
+		_, activeCount, throttledCount, doneCount, totalCount, lerr := r.tektonWrapperStats(ctx, tw.Namespace)
 		if lerr != nil {
 			return reconcile.Result{}, lerr
 		}
@@ -195,6 +195,9 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 		switch {
 		case (totalCount - doneCount) < hardPodCount:
 			// below hard pod count quota so create PR
+			break
+		case totalCount == throttledCount:
+			// initial race condition possible if controller starts a bunch before we get events:
 			break
 		case tw.Status.State == v1alpha1.TektonWrapperStateUnprocessed:
 			// fresh item needs to be queued cause non-terminal items beyond pod limit
@@ -305,7 +308,7 @@ func (r *ReconcileTektonWrapper) unthrottleNextOnQueuePlusCleanup(ctx context.Co
 
 func (r *ReconcileTektonWrapper) getHardPodCount(ctx context.Context, namespace string) (int, error) {
 	// this should be nil in kcp
-	if clusterresourcequota.QuotaClient != nil {
+	if clusterresourcequota.QuotaClient != nil && !r.kcp {
 		//TODO controller runtime seemed unable to deal with openshift API and its attempt at mapping to CRDs; we were using
 		// a non caching client; but now we've switched to a shared informer based controller and its caching client
 		quotaList, qerr := clusterresourcequota.QuotaClient.QuotaV1().ClusterResourceQuotas().List(ctx, metav1.ListOptions{})
@@ -343,30 +346,22 @@ func (r *ReconcileTektonWrapper) getHardPodCount(ctx context.Context, namespace 
 		}
 		return hardPodCount, nil
 	}
-	//TODO when we sort out our perm claim for reqsourcequotas like https://github.com/openshift-pipelines/pipeline-service-workspace-controller/blob/main/config/kcp/apibinding.yaml
-	// we can start accessing this in kcp
-	if !r.kcp {
-		quotaList := corev1.ResourceQuotaList{}
-		err := r.client.List(ctx, &quotaList)
-		if err != nil {
-			return 0, err
-		}
-		hardPodCount := 0
-		for _, quota := range quotaList.Items {
-			if quota.Namespace != namespace {
-				continue
-			}
-			if quota.Spec.Hard.Pods() != nil {
-				hardPodCount = int(quota.Spec.Hard.Pods().Value())
-			}
-			if hardPodCount > 0 {
-				break
-			}
-		}
-		return hardPodCount, nil
-
+	quotaList := corev1.ResourceQuotaList{}
+	err := r.client.List(ctx, &quotaList)
+	if err != nil {
+		return 0, err
 	}
-	//TODO use our default from e2e testing for now until we sort out accessing resourcequota in kcp
-	return 50, nil
-
+	hardPodCount := 0
+	for _, quota := range quotaList.Items {
+		if quota.Namespace != namespace {
+			continue
+		}
+		if quota.Spec.Hard.Pods() != nil {
+			hardPodCount = int(quota.Spec.Hard.Pods().Value())
+		}
+		if hardPodCount > 0 {
+			break
+		}
+	}
+	return hardPodCount, nil
 }

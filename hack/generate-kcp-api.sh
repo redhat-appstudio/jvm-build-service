@@ -61,17 +61,9 @@ spec:
   - group: ""
     resource: "configmaps"
   - group: ""
-    resource: "serviceaccounts"
-  - group: ""
     resource: "events"
   - group: ""
-    resource: "services"
-    # replace by pipeline-service identityHash, though most likely creation of the artifact-cache will have to move out of the controller
-    identityHash: pipeline-service
-  - group: "apps"
-    resource: "deployments"
-    # replace by pipeline-service identityHash, though most likely creation of the artifact-cache will have to move out of the controller
-    identityHash: pipeline-service
+    resource: "resourcequotas"
   - group: "tekton.dev"
     resource: "pipelineruns"
     # replace by pipeline-service identityHash
