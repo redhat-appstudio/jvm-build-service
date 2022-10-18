@@ -36,6 +36,13 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	_ = appsv1.AddToScheme(scheme)
+	sysConfig := &v1alpha1.UserConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.UserConfigName, Namespace: metav1.NamespaceDefault},
+		Spec: v1alpha1.UserConfigSpec{
+			EnableRebuilds: true,
+		},
+	}
+	objs = append(objs, sysConfig)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}, prCreator: &tektonwrapper.ImmediateCreate{}}
 	util.ImageTag = "foo"
@@ -52,13 +59,11 @@ func TestArtifactBuildStateNew(t *testing.T) {
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&abr)
 	const customRepo = "https://myrepo.com/repo.git"
-	sysConfig := v1alpha1.UserConfig{
-		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.UserConfigName, Namespace: metav1.NamespaceDefault},
-		Spec: v1alpha1.UserConfigSpec{
-			AdditionalRecipes: []string{customRepo},
-		},
-	}
-	g.Expect(client.Create(context.TODO(), &sysConfig)).Should(Succeed())
+	sysConfig := v1alpha1.UserConfig{}
+	g.Expect(client.Get(ctx, types.NamespacedName{Name: v1alpha1.UserConfigName, Namespace: metav1.NamespaceDefault}, &sysConfig)).Should(Succeed())
+	sysConfig.Spec.AdditionalRecipes = []string{customRepo}
+
+	g.Expect(client.Update(context.TODO(), &sysConfig)).Should(Succeed())
 
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}}))
 

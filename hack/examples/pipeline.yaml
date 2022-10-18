@@ -52,6 +52,7 @@ spec:
             - clean
             - package
             - -Denforcer.skip
+            - -DskipDocs=true
       workspaces:
         - name: maven-settings
           workspace: maven-settings

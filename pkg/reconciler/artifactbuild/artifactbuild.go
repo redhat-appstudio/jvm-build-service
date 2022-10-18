@@ -79,6 +79,17 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	//if !clusterSet {
 	//	log.Info("cluster is not set in context", request.String())
 	//}
+
+	userConfig := &v1alpha1.UserConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
+	if err != nil && !errors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	}
+	//if rebuilds are not enabled we don't do anything here
+	if !userConfig.Spec.EnableRebuilds {
+		return reconcile.Result{}, nil
+	}
+
 	abr := v1alpha1.ArtifactBuild{}
 	abrerr := r.client.Get(ctx, request.NamespacedName, &abr)
 	if abrerr != nil {
@@ -143,7 +154,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 		switch abr.Status.State {
 		case v1alpha1.ArtifactBuildStateNew, "":
-			return r.handleStateNew(ctx, log, &abr)
+			return r.handleStateNew(ctx, log, &abr, userConfig)
 		case v1alpha1.ArtifactBuildStateDiscovering:
 			return r.handleStateDiscovering(ctx, log, &abr)
 		case v1alpha1.ArtifactBuildStateComplete:
@@ -284,17 +295,12 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild, userConfig *v1alpha1.UserConfig) (reconcile.Result, error) {
 
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.GenerateName = abr.Name + "-scm-discovery-"
 	pr.Namespace = abr.Namespace
-	userConfig := &v1alpha1.UserConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: abr.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
-	if err != nil && !errors.IsNotFound(err) {
-		return reconcile.Result{}, err
-	}
 	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, userConfig)
 	if err2 != nil {
 		return reconcile.Result{}, err2

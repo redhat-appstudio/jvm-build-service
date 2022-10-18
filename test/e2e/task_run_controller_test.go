@@ -93,6 +93,7 @@ func setupSystemConfig() {
 	if errors2.IsNotFound(err) {
 		userConfig.Namespace = metav1.NamespaceDefault
 		userConfig.Name = v1alpha1.UserConfigName
+		userConfig.Spec.EnableRebuilds = true
 		Expect(k8sClient.Create(context.TODO(), &userConfig)).Should(Succeed())
 	}
 }
