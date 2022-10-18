@@ -29,7 +29,7 @@ var mavenBuild string
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
 
-func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig, preBuildString string) *pipelinev1beta1.PipelineSpec {
+func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig, preBuildString string) (*pipelinev1beta1.PipelineSpec, error) {
 	var settings string
 	var build string
 	trueBool := true
@@ -74,6 +74,26 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 	if !maven {
 		preprocessorArgs[0] = "gradle-prepare"
 	}
+	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.TaskRequestMemory, "256Mi"))
+	if err != nil {
+		return nil, err
+	}
+	buildContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.BuildRequestMemory, "512Mi"))
+	if err != nil {
+		return nil, err
+	}
+	defaultContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
+	if err != nil {
+		return nil, err
+	}
+	defaultContainerLimitCPU, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.TaskLimitCPU, "300m"))
+	if err != nil {
+		return nil, err
+	}
+	buildContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
+	if err != nil {
+		return nil, err
+	}
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
 		Params: []v1alpha1.ParamSpec{
@@ -97,8 +117,8 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					Name:  "git-clone",
 					Image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0", //TODO: should not be hard coded
 					Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("10m")},
-						Limits:   v1.ResourceList{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("300m")},
+						Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+						Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 					},
 					Args: []string{"-path=$(workspaces." + WorkspaceSource + ".path)", "-url=$(params." + PipelineScmUrl + ")", "-revision=$(params." + PipelineScmTag + ")"},
 				},
@@ -109,8 +129,8 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					Image:           "registry.access.redhat.com/ubi8/ubi:8.5", //TODO: should not be hard coded
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("10m")},
-						Limits:   v1.ResourceList{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("300m")},
+						Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+						Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 					},
 				},
 				Script: settings,
@@ -122,8 +142,8 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Resources: v1.ResourceRequirements{
 						//TODO: make configurable
-						Requests: v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
-						Limits:   v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("300m")},
+						Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+						Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 					},
 					Args: preprocessorArgs,
 				},
@@ -140,7 +160,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					},
 					Resources: v1.ResourceRequirements{
 						//TODO: limits management and configuration
-						Requests: v1.ResourceList{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("300m")},
+						Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": buildContainerRequestCPU},
 					},
 					Args: []string{"$(params.GOALS[*])"},
 				},
@@ -156,8 +176,8 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					},
 					Resources: v1.ResourceRequirements{
 						//TODO: make configurable
-						Requests: v1.ResourceList{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("10m")},
-						Limits:   v1.ResourceList{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("300m")},
+						Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+						Limits:   v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 					},
 					Args: deployArgs,
 				},
@@ -199,5 +219,12 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 			Name:  i.Name,
 			Value: value})
 	}
-	return ps
+	return ps, nil
+}
+
+func settingOrDefault(setting, def string) string {
+	if len(strings.TrimSpace(setting)) == 0 {
+		return def
+	}
+	return setting
 }

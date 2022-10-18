@@ -181,7 +181,7 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	create := false
 	if err != nil {
 		if errors.IsNotFound(err) {
-			qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
+			qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.CacheSettings.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
 			if err != nil {
 				return err
 			}
@@ -205,11 +205,11 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
-						"memory": resource.MustParse(settingOrDefault(userConfig.Spec.RequestMemory, v1alpha1.ConfigArtifactCacheRequestMemoryDefault)),
-						"cpu":    resource.MustParse(settingOrDefault(userConfig.Spec.RequestCPU, v1alpha1.ConfigArtifactCacheRequestCPUDefault))},
+						"memory": resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.RequestMemory, v1alpha1.ConfigArtifactCacheRequestMemoryDefault)),
+						"cpu":    resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.RequestCPU, v1alpha1.ConfigArtifactCacheRequestCPUDefault))},
 					Limits: map[corev1.ResourceName]resource.Quantity{
-						"memory": resource.MustParse(settingOrDefault(userConfig.Spec.LimitMemory, v1alpha1.ConfigArtifactCacheLimitMemoryDefault)),
-						"cpu":    resource.MustParse(settingOrDefault(userConfig.Spec.LimitCPU, v1alpha1.ConfigArtifactCacheLimitCPUDefault))},
+						"memory": resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.LimitMemory, v1alpha1.ConfigArtifactCacheLimitMemoryDefault)),
+						"cpu":    resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.LimitCPU, v1alpha1.ConfigArtifactCacheLimitCPUDefault))},
 				},
 			}}
 			cache.Spec.Template.Spec.Volumes = []corev1.Volume{
@@ -236,8 +236,8 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	cache.Spec.Template.Spec.ServiceAccountName = "pipeline"
 	cache.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
 		{Name: "CACHE_PATH", Value: "/cache"},
-		{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: settingOrDefault(userConfig.Spec.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault)},
-		{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: settingOrDefault(userConfig.Spec.WorkerThreads, v1alpha1.ConfigArtifactCacheWorkerThreadsDefault)},
+		{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: settingOrDefault(userConfig.Spec.CacheSettings.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault)},
+		{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: settingOrDefault(userConfig.Spec.CacheSettings.WorkerThreads, v1alpha1.ConfigArtifactCacheWorkerThreadsDefault)},
 	}
 	type Repo struct {
 		name     string
