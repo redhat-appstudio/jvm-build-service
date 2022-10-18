@@ -20,10 +20,7 @@ spec:
       value: Dockerfile
     - name: infra-deployment-update-script
       value: >
-        sed -i 
-        -e 's|\(https://github.com/redhat-appstudio/jvm-build-service/.*?ref=\)\(.*\)|\1{{ revision }}|'
-        -e 's/\(newTag: \).*/\1{{ revision }}/'
-        components/hacbs/jvm-build-service/base/kustomization.yaml
+        sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/hacbs/jvm-build-service/base/kustomization.yaml
 
         ./hack/generate-apiexport-overlays.sh components/hacbs/jvm-build-service/
   pipelineRef:
