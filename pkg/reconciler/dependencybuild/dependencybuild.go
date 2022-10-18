@@ -478,7 +478,10 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig, db.Status.CurrentBuildRecipe.PreBuildScript)
+	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig, db.Status.CurrentBuildRecipe.PreBuildScript)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return reconcile.Result{}, err

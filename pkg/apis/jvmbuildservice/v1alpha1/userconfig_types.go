@@ -23,8 +23,9 @@ type UserConfigSpec struct {
 
 	MavenBaseLocations map[string]string `json:"mavenBaseLocations,omitempty"`
 
-	CacheSettings      `json:",inline"`
 	ImageRegistry      `json:",inline"`
+	CacheSettings      CacheSettings              `json:"cacheSettings,omitempty"`
+	BuildSettings      BuildSettings              `json:"buildSettings,omitempty"`
 	RelocationPatterns []RelocationPatternElement `json:"relocationPatterns,omitempty"`
 }
 
@@ -41,6 +42,20 @@ type CacheSettings struct {
 	Storage       string `json:"storage,omitempty"`
 }
 
+type BuildSettings struct {
+	// The requested memory for the build and deploy steps of a pipeline
+	BuildRequestMemory string `json:"buildRequestMemory,omitempty"`
+	// The requested CPU for the build and deploy steps of a pipeline
+	BuildRequestCPU string `json:"buildRequestCPU,omitempty"`
+	// The requested memory for all other steps of a pipeline
+	TaskRequestMemory string `json:"taskRequestMemory,omitempty"`
+	// The requested CPU for all other steps of a pipeline
+	TaskRequestCPU string `json:"taskRequestCPU,omitempty"`
+	// The memory limit for all other steps of a pipeline
+	TaskLimitMemory string `json:"taskLimitMemory,omitempty"`
+	// The CPU limit for all other steps of a pipeline
+	TaskLimitCPU string `json:"taskLimitCPU,omitempty"`
+}
 type ImageRegistry struct {
 	Host       string `json:"host,omitempty"`
 	Port       string `json:"port,omitempty"`

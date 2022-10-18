@@ -39,18 +39,52 @@ spec:
                 items:
                   type: string
                 type: array
+              buildSettings:
+                properties:
+                  buildRequestCPU:
+                    description: The requested CPU for the build and deploy steps
+                      of a pipeline
+                    type: string
+                  buildRequestMemory:
+                    description: The requested memory for the build and deploy steps
+                      of a pipeline
+                    type: string
+                  taskLimitCPU:
+                    description: The CPU limit for all other steps of a pipeline
+                    type: string
+                  taskLimitMemory:
+                    description: The memory limit for all other steps of a pipeline
+                    type: string
+                  taskRequestCPU:
+                    description: The requested CPU for all other steps of a pipeline
+                    type: string
+                  taskRequestMemory:
+                    description: The requested memory for all other steps of a pipeline
+                    type: string
+                type: object
+              cacheSettings:
+                properties:
+                  ioThreads:
+                    type: string
+                  limitCPU:
+                    type: string
+                  limitMemory:
+                    type: string
+                  requestCPU:
+                    type: string
+                  requestMemory:
+                    type: string
+                  storage:
+                    type: string
+                  workerThreads:
+                    type: string
+                type: object
               enableRebuilds:
                 type: boolean
               host:
                 type: string
               insecure:
                 type: boolean
-              ioThreads:
-                type: string
-              limitCPU:
-                type: string
-              limitMemory:
-                type: string
               mavenBaseLocations:
                 additionalProperties:
                   type: string
@@ -91,14 +125,6 @@ spec:
                   type: object
                 type: array
               repository:
-                type: string
-              requestCPU:
-                type: string
-              requestMemory:
-                type: string
-              storage:
-                type: string
-              workerThreads:
                 type: string
             type: object
           status:

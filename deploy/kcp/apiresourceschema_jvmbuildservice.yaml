@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210140040.artifactbuilds.jvmbuildservice.io
+  name: v202210180116.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210140040.dependencybuilds.jvmbuildservice.io
+  name: v202210180116.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -336,7 +336,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210140040.rebuiltartifacts.jvmbuildservice.io
+  name: v202210180116.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -387,7 +387,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210140040.systemconfigs.jvmbuildservice.io
+  name: v202210180116.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -444,7 +444,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210140040.tektonwrappers.jvmbuildservice.io
+  name: v202210180116.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -529,7 +529,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210140040.userconfigs.jvmbuildservice.io
+  name: v202210180116.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -561,18 +561,52 @@ spec:
               items:
                 type: string
               type: array
+            buildSettings:
+              properties:
+                buildRequestCPU:
+                  description: The requested CPU for the build and deploy steps of
+                    a pipeline
+                  type: string
+                buildRequestMemory:
+                  description: The requested memory for the build and deploy steps
+                    of a pipeline
+                  type: string
+                taskLimitCPU:
+                  description: The CPU limit for all other steps of a pipeline
+                  type: string
+                taskLimitMemory:
+                  description: The memory limit for all other steps of a pipeline
+                  type: string
+                taskRequestCPU:
+                  description: The requested CPU for all other steps of a pipeline
+                  type: string
+                taskRequestMemory:
+                  description: The requested memory for all other steps of a pipeline
+                  type: string
+              type: object
+            cacheSettings:
+              properties:
+                ioThreads:
+                  type: string
+                limitCPU:
+                  type: string
+                limitMemory:
+                  type: string
+                requestCPU:
+                  type: string
+                requestMemory:
+                  type: string
+                storage:
+                  type: string
+                workerThreads:
+                  type: string
+              type: object
             enableRebuilds:
               type: boolean
             host:
               type: string
             insecure:
               type: boolean
-            ioThreads:
-              type: string
-            limitCPU:
-              type: string
-            limitMemory:
-              type: string
             mavenBaseLocations:
               additionalProperties:
                 type: string
@@ -613,14 +647,6 @@ spec:
                 type: object
               type: array
             repository:
-              type: string
-            requestCPU:
-              type: string
-            requestMemory:
-              type: string
-            storage:
-              type: string
-            workerThreads:
               type: string
           type: object
         status:
