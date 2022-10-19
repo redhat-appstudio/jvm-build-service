@@ -8,3 +8,14 @@ This repository contains components used to deploy the HACBS JVM build service.
 
 See each component's directory for specific documentation.
 
+=== KCP setup in anticipation of workspace resource controller
+
+- continue to set `QUAY_USERNAME` and `QUAY_TOKEN` like we currently do in our developer flow.
+- also set `QUAY_TAG` to `dev`
+- download `helm` via `curl -L https://mirror.openshift.com/pub/openshift-v4/clients/helm/latest/helm-linux-amd64 -o /usr/local/bin/helm`
+- mimic the setting of `CLUSTER_KUBECONFIG` and `KCP_KUBECONFIG` as you have them set in your infra-deployments `preview.env` file
+- from KCP, enter the `hacbs` workspace in the infra-deployments bootstrapped env, i.e. `oc ws hacbs`
+- from KCP, create a test namespace i.e. `oc create ns jvm-bld-test`
+- from KCP, enter that new test namespace i.e. `oc project jvm-bld-test` or `kubectl config set-context --current --namespace=jvm-bld-test`
+- run `./deploy/init-hacbs-user-workspace-sa-rbac.sh` against your compute/workload cluster where you have set `HACBS_WORKSPACE_NAMESPACE` to your KCP test namesapce i.e. `jvm-build-test`
+- run `./deploy/init-hacbs-user-workspace.sh` to initialize you KCP test namespace with the artifact cache and `Tasks` needed to run our test `Pipelines` and `PipelineRuns`
