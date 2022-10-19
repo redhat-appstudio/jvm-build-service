@@ -7,17 +7,8 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
 rules:
   - apiGroups:
-      - ""
-    resources:
-      - configmaps
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
       - tekton.dev
     resources:
-      - pipelineruns/status
       - taskruns/status
     verbs:
       - create

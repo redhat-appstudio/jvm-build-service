@@ -14,18 +14,6 @@ rules:
       - get
       - list
       - watch
-  - apiGroups:
-      - tekton.dev
-    resources:
-      - pipelineruns/status
-      - taskruns/status
-    verbs:
-      - create
-      - get
-      - list
-      - patch
-      - update
-      - watch
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
