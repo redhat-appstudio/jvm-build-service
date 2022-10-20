@@ -1,6 +1,7 @@
 package com.redhat.hacbs.artifactcache.services;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
@@ -13,7 +14,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.jar.JarOutputStream;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -89,6 +93,35 @@ public class LocalCacheTest {
         }));
     }
 
+    @Test
+    public void testHashRequestedFirstTrackedArtifact() throws Exception {
+        runTest((localCache -> {
+            try {
+                byte[] jarFile = createJarFile();
+                current = new ArtifactResult(
+                        new ByteArrayInputStream(jarFile), jarFile.length, Optional.of(HashUtil.sha1(jarFile)),
+                        Map.of());
+                localCache.getArtifactFile("default", "test", "test", "1.0", "test.jar.sha1", true);
+                var result = localCache.getArtifactFile("default", "test", "test", "1.0", "test.jar", true);
+                try (ZipInputStream in = new ZipInputStream(result.get().getData())) {
+                    var entry = in.getNextEntry();
+                    boolean found = false;
+                    while (entry != null) {
+                        System.out.println(entry);
+                        if (entry.getName().equals(getClass().getName().replace(".", "/") + ".class")) {
+                            found = true;
+                        }
+                        entry = in.getNextEntry();
+                    }
+                    Assertions.assertTrue(found);
+                }
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }));
+    }
+
     void runTest(Consumer<CacheFacade> consumer) throws Exception {
         Path temp = Files.createTempDirectory("cache-test");
         try {
@@ -114,6 +147,15 @@ public class LocalCacheTest {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    byte[] createJarFile() throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        JarOutputStream jar = new JarOutputStream(baos);
+        jar.putNextEntry(new ZipEntry(getClass().getName().replace(".", "/") + ".class"));
+        jar.write(getClass().getResourceAsStream(getClass().getSimpleName() + ".class").readAllBytes());
+        jar.close();
+        return baos.toByteArray();
     }
 
 }
