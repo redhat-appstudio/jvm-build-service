@@ -9,7 +9,9 @@ else
 fi
 
 #This is replaced when the task is created by the golang code
-echo "Pre build script: {{PRE_BUILD_SCRIPT}}"
+cat <<EOF
+Pre build script: {{PRE_BUILD_SCRIPT}}
+EOF
 {{PRE_BUILD_SCRIPT}}
 
 chown 1001:1001 -R $(workspaces.source.path)
