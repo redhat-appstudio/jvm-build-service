@@ -5,4 +5,4 @@ DIR=`dirname $0`
 #QUAY_USERNAME and QUAY_TOKEN are the same env's you use in the other dev flow scripts
 #QUAY_TAG is either the sha for the images up at quay.io/redhat-appstudio or 'dev' if you are using
 # the jmv-build-service `make dev` flow.
-KUBECONFIG=$KCP_KUBECONFIG helm install --set quayRespository=$QUAY_USERNAME --set quayToken=$QUAY_TOKEN --set quayTag=$QUAY_TAG $DIR/kcp-hacbs-workspace-init --debug --generate-name
+KUBECONFIG=$KCP_KUBECONFIG helm install --set quayJvmBuildServiceRepo=$QUAY_USERNAME --set quayTestRepoOwner=$QUAY_E2E_ORGANIZATION --set quayToken=$QUAY_TOKEN --set quayJvmBuildServiceTag=$QUAY_TAG $DIR/kcp-hacbs-workspace-init --debug --generate-name
