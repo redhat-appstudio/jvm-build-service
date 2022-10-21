@@ -115,6 +115,33 @@ public final class GradleUtils {
     }
 
     /**
+     * Gets the Java version from the Gradle build files, if any, and matches it with a supported Java version, if
+     * possible.
+     *
+     * @param path the path to check
+     * @return the specified Java version, or empty if none
+     * @throws IOException if an error occurs while reading from the build files
+     */
+    public static String getSpecifiedJavaVersion(Path path) throws IOException {
+        if (isInBuildGradle(path,
+                "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?1[2-7][^0-9]['\"]?")) {
+            return "17";
+        }
+
+        if (isInBuildGradle(path,
+                "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?(9|1[0-1])[^0-9]['\"]?")) {
+            return "11";
+        }
+
+        if (isInBuildGradle(path,
+                "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?[1-8][^0-9]['\"]?")) {
+            return "8";
+        }
+
+        return "";
+    }
+
+    /**
      * Gets the supported Java version for the given Gradle version
      *
      * @param gradleVersion the Gradle version

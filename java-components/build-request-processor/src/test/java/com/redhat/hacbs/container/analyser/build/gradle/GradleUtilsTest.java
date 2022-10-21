@@ -50,6 +50,46 @@ class GradleUtilsTest {
     }
 
     @Test
+    void testSpecifiedJavaVersion(@TempDir Path basedir) throws IOException {
+        Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE);
+        Files.writeString(buildGradle, "sourceCompatibility = 1.6" + System.lineSeparator()
+                + "targetCompatibility = 1.6" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEqualTo("8");
+        Files.writeString(buildGradle, "sourceCompatibility = JavaVersion.VERSION_1_7;" + System.lineSeparator()
+                + "targetCompatibility = JavaVersion.VERSION_1_7;" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEqualTo("8");
+        Files.writeString(buildGradle, "sourceCompatibility = JavaVersion.VERSION_1_8" + System.lineSeparator()
+                + "targetCompatibility = JavaVersion.VERSION_1_8" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEqualTo("8");
+        Files.writeString(buildGradle, "sourceCompatibility = JavaVersion.VERSION_1_8.toString()" + System.lineSeparator()
+                + "targetCompatibility = JavaVersion.VERSION_1_8.toString()" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEqualTo("8");
+        Files.writeString(buildGradle, "sourceCompatibility = 1.8" + System.lineSeparator()
+                + "targetCompatibility = 1.8" + System.lineSeparator());
+        Files.writeString(buildGradle, "sourceCompatibility = 8" + System.lineSeparator()
+                + "targetCompatibility = 8" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEqualTo("8");
+        Files.writeString(buildGradle, "sourceCompatibility = 9" + System.lineSeparator()
+                + "targetCompatibility = 9" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEqualTo("11");
+        Files.writeString(buildGradle, "sourceCompatibility = JavaVersion.VERSION_11" + System.lineSeparator()
+                + "targetCompatibility = JavaVersion.VERSION_11" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEqualTo("11");
+        Files.writeString(buildGradle, "sourceCompatibility = minJavaVersion" + System.lineSeparator()
+                + "targetCompatibility = minJavaVersion" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEmpty();
+        Files.writeString(buildGradle, "sourceCompatibility = JavaVersion.VERSION_17" + System.lineSeparator()
+                + "targetCompatibility = JavaVersion.VERSION_17" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEqualTo("17");
+        Files.writeString(buildGradle, "sourceCompatibility = JavaVersion.VERSION_18" + System.lineSeparator()
+                + "targetCompatibility = JavaVersion.VERSION_18" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEmpty();
+        Files.writeString(buildGradle, "sourceCompatibility = JavaVersion.VERSION_20" + System.lineSeparator()
+                + "targetCompatibility = JavaVersion.VERSION_20" + System.lineSeparator());
+        assertThat(GradleUtils.getSpecifiedJavaVersion(buildGradle)).isEmpty();
+    }
+
+    @Test
     void testSupportedJavaVersion() {
         assertThatThrownBy(() -> GradleUtils.getSupportedJavaVersion("3.0"))
                 .isExactlyInstanceOf(IllegalArgumentException.class);
