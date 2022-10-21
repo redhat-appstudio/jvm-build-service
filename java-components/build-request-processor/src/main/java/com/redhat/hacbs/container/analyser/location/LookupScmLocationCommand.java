@@ -94,7 +94,8 @@ public class LookupScmLocationCommand implements Runnable {
                 try {
                     String version = toBuild.getVersion();
                     String selectedTag = null;
-                    Set<String> exactContains = new HashSet<>();
+                    Set<String> versionExactContains = new HashSet<>();
+                    Set<String> tagExactContains = new HashSet<>();
                     var tags = Git.lsRemoteRepository().setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
                     Set<String> tagNames = tags.stream().map(s -> s.getName().replace("refs/tags/", ""))
                             .collect(Collectors.toSet());
@@ -126,17 +127,19 @@ public class LookupScmLocationCommand implements Runnable {
                                 selectedTag = version;
                                 break;
                             } else if (name.contains(version)) {
-                                exactContains.add(name);
+                                versionExactContains.add(name);
+                            } else if (version.contains(name)) {
+                                tagExactContains.add(name);
                             }
                         }
                     }
                     if (selectedTag == null) {
                         //no exact match
-                        if (exactContains.size() == 1) {
+                        if (versionExactContains.size() == 1) {
                             //only one contained the full version
-                            selectedTag = exactContains.iterator().next();
+                            selectedTag = versionExactContains.iterator().next();
                         } else {
-                            for (var i : exactContains) {
+                            for (var i : versionExactContains) {
                                 //look for a tag that ends with the version (i.e. no -rc1 or similar)
                                 if (i.endsWith(version)) {
                                     if (selectedTag == null) {
@@ -145,9 +148,13 @@ public class LookupScmLocationCommand implements Runnable {
                                         throw new RuntimeException(
                                                 "Could not determine tag for " + version
                                                         + " multiple possible tags were found: "
-                                                        + exactContains);
+                                                        + versionExactContains);
                                     }
                                 }
+                            }
+                            if (selectedTag == null && tagExactContains.size() == 1) {
+                                //this is for cases where the tag is something like 1.2.3 and the version is 1.2.3.Final
+                                selectedTag = tagExactContains.iterator().next();
                             }
                             if (selectedTag == null) {
                                 RuntimeException runtimeException = new RuntimeException(
