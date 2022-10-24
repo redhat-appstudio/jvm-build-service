@@ -18,6 +18,7 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
+import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 /**
@@ -43,7 +44,11 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     String fileName = file.getFileName().toString();
                     if (fileName.equals("pom.xml")) {
-                        handleBuild(file, buildRoot.resolve("pom.xml").equals(file));
+                        try {
+                            handleBuild(file, buildRoot.resolve("pom.xml").equals(file));
+                        } catch (Exception e) {
+                            Log.errorf(e, "Failed to pre-process file %s", file);
+                        }
                     }
                     return FileVisitResult.CONTINUE;
                 }
