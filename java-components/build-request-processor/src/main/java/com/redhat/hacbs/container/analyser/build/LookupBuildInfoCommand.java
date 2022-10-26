@@ -9,11 +9,18 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 
+import org.apache.commons.cli.ParseException;
+import org.apache.maven.cli.CLIManager;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.eclipse.jgit.api.Git;
@@ -110,8 +117,30 @@ public class LookupBuildInfoCommand implements Runnable {
             }
             BuildInfo info = new BuildInfo();
             info.commitTime = time;
-            Path pomFile = path.resolve("pom.xml");
+            Path pomFile = null;
+            if (buildRecipeInfo != null && buildRecipeInfo.getAdditionalArgs() != null) {
+                try {
+                    CLIManager cliManager = new CLIManager();
+                    org.apache.commons.cli.CommandLine commandLine = cliManager
+                            .parse(buildRecipeInfo.getAdditionalArgs().toArray(new String[0]));
+                    if (commandLine.hasOption(CLIManager.ALTERNATE_POM_FILE)) {
+                        String alternatePomFile = commandLine.getOptionValue(CLIManager.ALTERNATE_POM_FILE);
+                        if (alternatePomFile != null) {
+                            pomFile = path.resolve(alternatePomFile);
+                            if (Files.isDirectory(pomFile)) {
+                                pomFile = pomFile.resolve("pom.xml");
+                            }
+                        }
+                    }
+                } catch (ParseException e) {
+                    Log.errorf(e, "Failed to parse command line %s", buildRecipeInfo.getAdditionalArgs());
+                }
+            }
+            if (pomFile == null) {
+                pomFile = path.resolve("pom.xml");
+            }
             if (Files.isRegularFile(pomFile)) {
+                Log.infof("Found Maven pom file at %s", pomFile);
                 try (BufferedReader pomReader = Files.newBufferedReader(pomFile)) {
                     MavenXpp3Reader reader = new MavenXpp3Reader();
                     Model model = reader.read(pomReader);
