@@ -215,6 +215,12 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 									To:   "io.github.stuartwdouglas.hacbs-test.simple:simple-jdk17:0.1.2",
 								},
 							},
+							{
+								Pattern: v1alpha1.Pattern{
+									From: "org.graalvm.sdk:graal-sdk:21.3.2",
+									To:   "org.graalvm.sdk:graal-sdk:21.3.2.0-1-redhat-00001",
+								},
+							},
 						},
 					},
 				},
