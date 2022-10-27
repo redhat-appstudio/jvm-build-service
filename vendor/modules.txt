@@ -43,8 +43,6 @@ github.com/evanphx/json-patch/v5
 # github.com/fsnotify/fsnotify v1.5.1
 ## explicit; go 1.13
 github.com/fsnotify/fsnotify
-# github.com/ghodss/yaml v1.0.0
-## explicit
 # github.com/go-kit/log v0.1.0
 ## explicit; go 1.16
 github.com/go-kit/log
@@ -142,6 +140,8 @@ github.com/kcp-dev/kcp/pkg/apis/third_party/conditions/apis/conditions/v1alpha1
 # github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
 ## explicit; go 1.18
 github.com/kcp-dev/logicalcluster/v2
+# github.com/kr/pretty v0.2.1
+## explicit; go 1.12
 # github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
 ## explicit
 github.com/liggitt/tabwriter
