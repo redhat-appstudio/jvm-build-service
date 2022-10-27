@@ -82,7 +82,7 @@ spec:
       description: The total number of dependencies in the output
     - name: untrusted-dependencies
       description: The total number of dependencies that came from an untrusted source, such as Maven central
-    - name: java-community-dependencies
+    - name: JAVA_COMMUNITY_DEPENDENCIES
       description: The list of community dependencies
   steps:
     - name: mvn-settings

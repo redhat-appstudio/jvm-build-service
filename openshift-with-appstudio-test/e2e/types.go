@@ -2,10 +2,9 @@ package e2e
 
 import (
 	"fmt"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"testing"
 	"time"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 type testArgs struct {

@@ -13,8 +13,8 @@ spec:
     - name: app-path
       default: "target"
   results:
-    - name: java-community-dependencies
-      value: $(tasks.maven-run.results.java-community-dependencies)
+    - name: JAVA_COMMUNITY_DEPENDENCIES
+      value: $(tasks.maven-run.results.JAVA_COMMUNITY_DEPENDENCIES)
   workspaces:
     - name: shared-workspace
     - name: maven-settings
