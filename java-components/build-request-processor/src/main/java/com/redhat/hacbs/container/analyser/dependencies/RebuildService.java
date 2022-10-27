@@ -29,7 +29,7 @@ public class RebuildService {
                 if (taskRun.getStatus().getTaskResults() != null) {
                     results.addAll(taskRun.getStatus().getTaskResults());
                 }
-                results.add(new TaskRunResult("java-community-dependencies", String.join(",", gavs)));
+                results.add(new TaskRunResult("JAVA_COMMUNITY_DEPENDENCIES", String.join(",", gavs)));
                 taskRun.getStatus().setTaskResults(results);
                 return taskRun;
             }

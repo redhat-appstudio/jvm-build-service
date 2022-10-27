@@ -43,9 +43,9 @@ const (
 	PipelineResultContextPath     = "context"
 	PipelineResultMessage         = "message"
 	TaskName                      = "task"
-	JavaCommunityDependencies     = "java-community-dependencies"
-	Contaminants                  = "contaminants"
-	DeployedResources             = "deployed-resources"
+	JavaCommunityDependencies     = "JAVA_COMMUNITY_DEPENDENCIES"
+	Contaminants                  = "CONTAMINANTS"
+	DeployedResources             = "DEPLOYED_RESOURCES"
 	Rebuild                       = "jvmbuildservice.io/rebuild"
 )
 
@@ -628,29 +628,27 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 		},
 		Steps: []pipelinev1beta1.Step{
 			{
-				Container: corev1.Container{
-					Name:  "lookup-artifact-location",
-					Image: image,
-					Args: []string{
-						"lookup-scm",
-						"--recipes",
-						recipes,
-						"--scm-url",
-						"$(results." + PipelineResultScmUrl + ".path)",
-						"--scm-tag",
-						"$(results." + PipelineResultScmTag + ".path)",
-						"--scm-type",
-						"$(results." + PipelineResultScmType + ".path)",
-						"--message",
-						"$(results." + PipelineResultMessage + ".path)",
-						"--context",
-						"$(results." + PipelineResultContextPath + ".path)",
-						"--gav",
-						gav,
-					},
-					SecurityContext: &corev1.SecurityContext{
-						RunAsUser: &zero,
-					},
+				Name:  "lookup-artifact-location",
+				Image: image,
+				Args: []string{
+					"lookup-scm",
+					"--recipes",
+					recipes,
+					"--scm-url",
+					"$(results." + PipelineResultScmUrl + ".path)",
+					"--scm-tag",
+					"$(results." + PipelineResultScmTag + ".path)",
+					"--scm-type",
+					"$(results." + PipelineResultScmType + ".path)",
+					"--message",
+					"$(results." + PipelineResultMessage + ".path)",
+					"--context",
+					"$(results." + PipelineResultContextPath + ".path)",
+					"--gav",
+					gav,
+				},
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: &zero,
 				},
 			},
 		},

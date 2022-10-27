@@ -113,74 +113,65 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}},
 		Steps: []pipelinev1beta1.Step{
 			{
-				Container: v1.Container{
-					Name:  "git-clone",
-					Image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0", //TODO: should not be hard coded
-					Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-						Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
-					},
-					Args: []string{"-path=$(workspaces." + WorkspaceSource + ".path)", "-url=$(params." + PipelineScmUrl + ")", "-revision=$(params." + PipelineScmTag + ")"},
+				Name:  "git-clone",
+				Image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0", //TODO: should not be hard coded
+				Resources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 				},
+				Args: []string{"-path=$(workspaces." + WorkspaceSource + ".path)", "-url=$(params." + PipelineScmUrl + ")", "-revision=$(params." + PipelineScmTag + ")"},
 			},
 			{
-				Container: v1.Container{
-					Name:            "settings",
-					Image:           "registry.access.redhat.com/ubi8/ubi:8.5", //TODO: should not be hard coded
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					Resources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-						Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
-					},
+				Name:            "settings",
+				Image:           "registry.access.redhat.com/ubi8/ubi:8.5", //TODO: should not be hard coded
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Resources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 				},
 				Script: settings,
 			},
 			{
-				Container: v1.Container{
-					Name:            "preprocessor",
-					Image:           "$(params." + PipelineRequestProcessorImage + ")",
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					Resources: v1.ResourceRequirements{
-						//TODO: make configurable
-						Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-						Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
-					},
-					Args: preprocessorArgs,
+				Name:            "preprocessor",
+				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Resources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 				},
+				Args: preprocessorArgs,
 			},
 			{
-				Container: v1.Container{
-					Name:            "build",
-					Image:           "$(params." + PipelineImage + ")",
-					WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/$(params." + PipelinePath + ")",
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					Env: []v1.EnvVar{
-						{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
-						{Name: PipelineEnforceVersion, Value: "$(params." + PipelineEnforceVersion + ")"},
-					},
-					Resources: v1.ResourceRequirements{
-						//TODO: limits management and configuration
-						Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": buildContainerRequestCPU},
-					},
-					Args: []string{"$(params.GOALS[*])"},
+				Name:            "build",
+				Image:           "$(params." + PipelineImage + ")",
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/$(params." + PipelinePath + ")",
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env: []v1.EnvVar{
+					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
+					{Name: PipelineEnforceVersion, Value: "$(params." + PipelineEnforceVersion + ")"},
 				},
+				Resources: v1.ResourceRequirements{
+					//TODO: limits management and configuration
+					Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": buildContainerRequestCPU},
+				},
+				Args: []string{"$(params.GOALS[*])"},
+
 				Script: strings.ReplaceAll(build, "{{PRE_BUILD_SCRIPT}}", preBuildString),
 			},
 			{
-				Container: v1.Container{
-					Name:            "deploy-and-check-for-contaminates",
-					Image:           "$(params." + PipelineRequestProcessorImage + ")",
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					Env: []v1.EnvVar{
-						{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.UserSecretName}, Key: v1alpha12.UserSecretTokenKey, Optional: &trueBool}}},
-					},
-					Resources: v1.ResourceRequirements{
-						//TODO: make configurable
-						Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-						Limits:   v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": defaultContainerLimitCPU},
-					},
-					Args: deployArgs,
+				Name:            "deploy-and-check-for-contaminates",
+				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env: []v1.EnvVar{
+					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.UserSecretName}, Key: v1alpha12.UserSecretTokenKey, Optional: &trueBool}}},
 				},
+				Resources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+					Limits:   v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": defaultContainerLimitCPU},
+				},
+				Args: deployArgs,
 			},
 		},
 	}

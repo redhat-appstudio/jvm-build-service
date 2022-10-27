@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: hacbs-pipeline-
+spec:
+  pipelineRef:
+    name: java-builder
+    bundle: quay.io/sdouglas/hacbs-templates-bundle:latest
+  params:
+    - name: git-url
+      value: https://github.com/stuartwdouglas/hacbs-test-project
+    - name: revision
+      value: b366d7dc4d9a98153895faf3145af1c43a68ef75
+    - name: output-image
+      value: quay.io/sdouglas/test:latest
+  workspaces:
+    - name: registry-auth
+      secret:
+        secretName: jvm-build-secrets
+
+    - name: workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
+          resources:
+            requests:
+              storage: 1Gi
