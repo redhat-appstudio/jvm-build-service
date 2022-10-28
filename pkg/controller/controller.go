@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"time"
 
 	kcpcache "github.com/kcp-dev/apimachinery/pkg/cache"
@@ -107,9 +109,16 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		// set up mgr with all the kcp overrides
 		mgr, err = ctrlkcp.NewClusterAwareManager(cfg, options)
 	} else {
+		//if we are running this locally on the same cluster as the ckcp we want to ignore any synced pipeline runs
+		noKcp := labels.NewSelector()
+		requirement, lerr := labels.NewRequirement("internal.workload.kcp.dev/cluster", selection.DoesNotExist, []string{})
+		if lerr != nil {
+			return nil, lerr
+		}
+		noKcp.Add(*requirement)
 		options.NewCache = cache.BuilderWithOptions(cache.Options{
 			SelectorsByObject: cache.SelectorsByObject{
-				&pipelinev1beta1.PipelineRun{}: {},
+				&pipelinev1beta1.PipelineRun{}: {Label: noKcp},
 				&v1alpha1.DependencyBuild{}:    {},
 				&v1alpha1.ArtifactBuild{}:      {},
 				&v1alpha1.RebuiltArtifact{}:    {},
