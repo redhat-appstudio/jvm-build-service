@@ -4,6 +4,7 @@ import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.GOOGLE_JAVA_FORMAT_PLUGIN;
+import static org.eclipse.jgit.api.ResetCommand.ResetType.HARD;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -110,7 +111,7 @@ public class LookupBuildInfoCommand implements Runnable {
         //TODO: this is a basic hack to prove the concept
         var path = Files.createTempDirectory("checkout");
         try (var clone = Git.cloneRepository().setURI(scmUrl).setDirectory(path.toFile()).call()) {
-            clone.checkout().setName(scmTag).call();
+            clone.reset().setMode(HARD).setRef(scmTag).call();
             long time = clone.getRepository().parseCommit(clone.getRepository().resolve(scmTag)).getCommitTime() * 1000L;
             if (context != null) {
                 path = path.resolve(context);
