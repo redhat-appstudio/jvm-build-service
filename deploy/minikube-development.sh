@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DIR=`dirname $0`
-kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.34.1/release.yaml
+kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.37.5/release.yaml
 while ! oc get pods -n tekton-pipelines | grep tekton-pipelines-controller | grep Running; do
     sleep 1
 done
@@ -32,6 +32,19 @@ rules:
       - jvm-build-config
     verbs:
       - get
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - taskruns
+      - taskruns/status
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - patch
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
