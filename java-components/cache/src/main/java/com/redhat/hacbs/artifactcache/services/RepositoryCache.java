@@ -238,6 +238,7 @@ public class RepositoryCache {
 
         final String key;
         boolean ready = false;
+        Throwable problem;
 
         DownloadingFile(String key) {
             this.key = key;
@@ -251,6 +252,9 @@ public class RepositoryCache {
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
+                }
+                if (problem != null) {
+                    throw new RuntimeException(problem);
                 }
             }
         }
@@ -350,7 +354,10 @@ public class RepositoryCache {
                 }
                 Log.errorf(e, "Failed to download artifact %s from %s", downloadTarget, repositoryClient);
                 return Optional.empty();
-            } catch (Exception e) {
+            } catch (Throwable e) {
+                synchronized (this) {
+                    problem = e;
+                }
                 Log.errorf(e, "Failed to download artifact %s from %s", downloadTarget, repositoryClient);
                 return Optional.empty();
             } finally {
