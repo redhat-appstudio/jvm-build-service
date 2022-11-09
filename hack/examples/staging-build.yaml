@@ -7,5 +7,6 @@ spec:
   application: test-application
   source:
     git:
-      url: https://github.com/stuartwdouglas/code-with-quarkus
+      url: https://github.com/stuartwdouglas/hacbs-test-project
+      revision: b366d7dc4d9a98153895faf3145af1c43a68ef75
 
