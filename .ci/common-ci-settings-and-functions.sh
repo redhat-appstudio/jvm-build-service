@@ -59,6 +59,9 @@ if [ "$PR_RUN" != "notpr" ]; then
   JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_REPO%@*}
   JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE_TAG:-"redhat-appstudio-jvm-build-service-reqprocessor-image"}
 
+  export JVM_BUILD_SERVICE_JDK7_BUILDER_IMAGE_REPO="quay.io/redhat-appstudio/hacbs-jdk7-builder"
+  export JVM_BUILD_SERVICE_JDK7_BUILDER_IMAGE_TAG=$(yq .data.\"builder-image.jdk7.image\" deploy/base/system-config.yaml | cut -d: -f 2)
+
   export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_REPO="quay.io/redhat-appstudio/hacbs-jdk8-builder"
   export JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_TAG=$(yq .data.\"builder-image.jdk8.image\" deploy/base/system-config.yaml | cut -d: -f 2)
 
@@ -68,6 +71,7 @@ if [ "$PR_RUN" != "notpr" ]; then
   export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_REPO="quay.io/redhat-appstudio/hacbs-jdk17-builder"
   export JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG=$(yq .data.\"builder-image.jdk17.image\" deploy/base/system-config.yaml | cut -d: -f 2)
 
+  echo "JDK 7 Builder $JVM_BUILD_SERVICE_JDK7_BUILDER_IMAGE_REPO:$JVM_BUILD_SERVICE_JDK7_BUILDER_IMAGE_TAG"
   echo "JDK 8 Builder $JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_REPO:$JVM_BUILD_SERVICE_JDK8_BUILDER_IMAGE_TAG"
   echo "JDK 11 Builder $JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_REPO:$JVM_BUILD_SERVICE_JDK11_BUILDER_IMAGE_TAG"
   echo "JDK 17 Builder $JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_REPO:$JVM_BUILD_SERVICE_JDK17_BUILDER_IMAGE_TAG"

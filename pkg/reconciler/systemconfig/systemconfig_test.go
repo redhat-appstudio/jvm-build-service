@@ -52,6 +52,10 @@ func TestValidSystemConfig(t *testing.T) {
 					Image: "foo",
 					Tag:   "bar",
 				},
+				v1alpha1.JDK7Builder: {
+					Image: "foo",
+					Tag:   "bar",
+				},
 			},
 		},
 	}
@@ -80,7 +84,8 @@ func TestSystemConfigMissingImage(t *testing.T) {
 		Spec: v1alpha1.SystemConfigSpec{
 			Builders: map[string]v1alpha1.JavaVersionInfo{
 				v1alpha1.JDK8Builder: {
-					Tag: "bar",
+					Image: "foo",
+					Tag:   "bar",
 				},
 				v1alpha1.JDK11Builder: {
 					Image: "foo",
@@ -89,6 +94,9 @@ func TestSystemConfigMissingImage(t *testing.T) {
 				v1alpha1.JDK17Builder: {
 					Image: "foo",
 					Tag:   "bar",
+				},
+				v1alpha1.JDK7Builder: {
+					Tag: "bar",
 				},
 			},
 		},
@@ -119,6 +127,49 @@ func TestSystemConfigMissingTag(t *testing.T) {
 			Builders: map[string]v1alpha1.JavaVersionInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "foo",
+					Tag:   "bar",
+				},
+				v1alpha1.JDK11Builder: {
+					Image: "foo",
+					Tag:   "bar",
+				},
+				v1alpha1.JDK17Builder: {
+					Image: "foo",
+					Tag:   "bar",
+				},
+				v1alpha1.JDK7Builder: {
+					Image: "foo",
+				},
+			},
+		},
+	}
+	validCfg.Namespace = metav1.NamespaceDefault
+	validCfg.Name = SystemConfigKey
+
+	ctx := context.TODO()
+	err := client.Create(ctx, &validCfg)
+	g.Expect(err).NotTo(HaveOccurred())
+	var result reconcile.Result
+	result, err = reconciler.Reconcile(ctx, reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: validCfg.Namespace,
+			Name:      validCfg.Name,
+		},
+	})
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(result).NotTo(BeNil())
+}
+
+func TestMissing7SystemConfig(t *testing.T) {
+	g := NewGomegaWithT(t)
+	client, reconciler := setupClientAndReconciler()
+
+	validCfg := v1alpha1.SystemConfig{
+		Spec: v1alpha1.SystemConfigSpec{
+			Builders: map[string]v1alpha1.JavaVersionInfo{
+				v1alpha1.JDK8Builder: {
+					Image: "foo",
+					Tag:   "bar",
 				},
 				v1alpha1.JDK11Builder: {
 					Image: "foo",
@@ -163,6 +214,10 @@ func TestMissing8SystemConfig(t *testing.T) {
 					Image: "foo",
 					Tag:   "bar",
 				},
+				v1alpha1.JDK7Builder: {
+					Image: "foo",
+					Tag:   "bar",
+				},
 			},
 		},
 	}
@@ -198,6 +253,10 @@ func TestMissing11SystemConfig(t *testing.T) {
 					Image: "foo",
 					Tag:   "bar",
 				},
+				v1alpha1.JDK7Builder: {
+					Image: "foo",
+					Tag:   "bar",
+				},
 			},
 		},
 	}
@@ -230,6 +289,10 @@ func TestMissing17SystemConfig(t *testing.T) {
 					Tag:   "bar",
 				},
 				v1alpha1.JDK11Builder: {
+					Image: "foo",
+					Tag:   "bar",
+				},
+				v1alpha1.JDK7Builder: {
 					Image: "foo",
 					Tag:   "bar",
 				},

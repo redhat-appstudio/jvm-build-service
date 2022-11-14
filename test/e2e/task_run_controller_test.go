@@ -82,6 +82,10 @@ func setupSystemConfig() {
 						Image: "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
 						Tag:   "jdk:17,maven:3.8,gradle:7.4.2;6.9.2",
 					},
+					v1alpha1.JDK7Builder: {
+						Image: "quay.io/redhat-appstudio/hacbs-jdk7-builder:latest",
+						Tag:   "jdk:7,maven:3.8",
+					},
 				},
 			},
 		}
