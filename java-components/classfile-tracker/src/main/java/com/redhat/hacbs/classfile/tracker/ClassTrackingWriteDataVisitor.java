@@ -1,10 +1,14 @@
 package com.redhat.hacbs.classfile.tracker;
 
+import java.util.Objects;
+
+import org.objectweb.asm.Attribute;
 import org.objectweb.asm.ClassVisitor;
 
 class ClassTrackingWriteDataVisitor extends ClassVisitor {
 
     final TrackingData contents;
+    boolean existing = false;
 
     public ClassTrackingWriteDataVisitor(int api, TrackingData contents) {
         super(api);
@@ -17,8 +21,18 @@ class ClassTrackingWriteDataVisitor extends ClassVisitor {
     }
 
     @Override
+    public void visitAttribute(Attribute attribute) {
+        if (Objects.equals(attribute.type, ClassFileSourceAttribute.ATTRIBUTE_NAME)) {
+            existing = true;
+        }
+        super.visitAttribute(attribute);
+    }
+
+    @Override
     public void visitEnd() {
-        visitAttribute(new ClassFileSourceAttribute(contents));
+        if (!existing) {
+            visitAttribute(new ClassFileSourceAttribute(contents));
+        }
         super.visitEnd();
     }
 
