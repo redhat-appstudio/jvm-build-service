@@ -58,6 +58,7 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, err
 	}
 	if systemConfig.Name == SystemConfigKey {
+		foundJDK7 := false
 		foundJDK8 := false
 		foundJDK11 := false
 		foundJDK17 := false
@@ -65,6 +66,8 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 		logChunk := "jvm-build-service 'cluster' instance of its system config has incorrect builder related information %s\n"
 		for key, bldr := range systemConfig.Spec.Builders {
 			switch key {
+			case v1alpha1.JDK7Builder:
+				foundJDK7 = true
 			case v1alpha1.JDK8Builder:
 				foundJDK8 = true
 			case v1alpha1.JDK11Builder:
@@ -82,6 +85,8 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 			}
 		}
 		switch {
+		case !foundJDK7:
+			logMsg = logMsg + v1alpha1.JDK7Builder + " builder is missing\n"
 		case !foundJDK8:
 			logMsg = logMsg + v1alpha1.JDK8Builder + " builder is missing\n"
 		case !foundJDK11:

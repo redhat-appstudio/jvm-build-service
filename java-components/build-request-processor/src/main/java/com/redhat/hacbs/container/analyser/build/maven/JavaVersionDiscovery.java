@@ -42,10 +42,10 @@ public class JavaVersionDiscovery implements MavenDiscoveryTask {
                 //JDK6 you can use JDK11, but the build is way more likely to work with JDK8
                 if (javaVersion == 6) {
                     return new DiscoveryResult(
-                            Map.of(BuildInfo.JDK, new VersionRange("8", "11", "8")), 1);
+                            Map.of(BuildInfo.JDK, new VersionRange("7", "11", "8")), 1);
                 } else {
                     return new DiscoveryResult(
-                            Map.of(BuildInfo.JDK, new VersionRange("8", "8", "8")), 1);
+                            Map.of(BuildInfo.JDK, new VersionRange("7", "8", "8")), 1);
                 }
             }
             return new DiscoveryResult(

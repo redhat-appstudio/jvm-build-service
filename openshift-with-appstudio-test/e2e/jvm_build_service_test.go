@@ -371,10 +371,12 @@ func TestExampleRun(t *testing.T) {
 					db.Status.State == v1alpha1.DependencyBuildStateAnalyzeBuild {
 					continue
 				}
+				jdk7 := false
 				jdk8 := false
 				jdk11 := false
 				jdk17 := false
 				for _, i := range db.Status.PotentialBuildRecipes {
+					jdk7 = jdk7 || strings.Contains(i.Image, "jdk7")
 					jdk8 = jdk8 || strings.Contains(i.Image, "jdk8")
 					jdk11 = jdk11 || strings.Contains(i.Image, "jdk11")
 					jdk17 = jdk17 || strings.Contains(i.Image, "jdk17")
@@ -384,10 +386,14 @@ func TestExampleRun(t *testing.T) {
 					jdk11 = jdk11 || strings.Contains(i.Image, "jdk11")
 					jdk17 = jdk17 || strings.Contains(i.Image, "jdk17")
 				}
+				jdk7 = jdk7 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk7")
 				jdk8 = jdk8 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk8")
 				jdk11 = jdk11 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk11")
 				jdk17 = jdk17 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk17")
 
+				if jdk7 {
+					return false, fmt.Errorf("build should not have been attempted with jdk7")
+				}
 				if jdk8 {
 					return false, fmt.Errorf("build should not have been attempted with jdk8")
 				}

@@ -147,7 +147,7 @@ public class LookupBuildInfoCommand implements Runnable {
                     Model model = reader.read(pomReader);
                     List<DiscoveryResult> results = new ArrayList<>();
                     results.add(new DiscoveryResult(
-                            Map.of(JDK, new VersionRange("8", "17", "11"), MAVEN, new VersionRange("3.8", "3.8", "3.8")),
+                            Map.of(JDK, new VersionRange("7", "17", "11"), MAVEN, new VersionRange("3.8", "3.8", "3.8")),
                             Integer.MIN_VALUE));
                     for (var i : mavenDiscoveryTasks) {
                         try {
