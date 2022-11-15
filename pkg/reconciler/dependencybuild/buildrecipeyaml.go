@@ -114,7 +114,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:  "git-clone",
-				Image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0", //TODO: should not be hard coded
+				Image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.37.4", //TODO: should not be hard coded
 				Resources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
 					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
