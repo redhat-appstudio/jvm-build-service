@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
@@ -52,6 +53,8 @@ public class ContainerRegistryDeployer implements Deployer {
     private final String username;
     private final String password;
 
+    private final Consumer<String> imageNameCallback;
+
     static final ObjectMapper MAPPER = new ObjectMapper();
 
     public ContainerRegistryDeployer(
@@ -61,7 +64,7 @@ public class ContainerRegistryDeployer implements Deployer {
             String token,
             String repository,
             boolean insecure,
-            String prependTag) {
+            String prependTag, Consumer<String> imageNameCallback) {
 
         this.host = host;
         this.port = port;
@@ -69,6 +72,7 @@ public class ContainerRegistryDeployer implements Deployer {
         this.repository = repository;
         this.insecure = insecure;
         this.prependTag = prependTag;
+        this.imageNameCallback = imageNameCallback;
         if (!token.isBlank()) {
             var decoded = new String(Base64.getDecoder().decode(token), StandardCharsets.UTF_8);
             if (decoded.startsWith("{")) {
@@ -114,7 +118,7 @@ public class ContainerRegistryDeployer implements Deployer {
     }
 
     @Override
-    public void deployArchive(Path tarGzFile) throws Exception {
+    public void deployArchive(Path tarGzFile, Path sourcePath, Path logsPath) throws Exception {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
         // Read the tar to get the gavs and files
@@ -122,18 +126,21 @@ public class ContainerRegistryDeployer implements Deployer {
 
         try {
             // Create the image layers
-            createImages(imageData);
+            createImages(imageData, sourcePath, logsPath);
 
         } finally {
             FileUtil.deleteRecursive(imageData.getArtifactsPath());
         }
     }
 
-    private void createImages(DeployData imageData)
+    private void createImages(DeployData imageData, Path sourcePath, Path logsPath)
             throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
             CacheDirectoryCreationException, ExecutionException {
 
-        String imageName = createImageName(imageData);
+        String imageName = createImageName();
+        if (imageNameCallback != null) {
+            imageNameCallback.accept(imageName);
+        }
         RegistryImage registryImage = RegistryImage.named(imageName);
         if (username != null) {
             registryImage = registryImage.addCredential(username, password);
@@ -157,7 +164,7 @@ public class ContainerRegistryDeployer implements Deployer {
                 .addLabel("version", imageData.getVersions())
                 .addLabel("artifactId", imageData.getArtifactIds());
 
-        List<Path> layers = getLayers(imageData.getArtifactsPath());
+        List<Path> layers = getLayers(imageData.getArtifactsPath(), sourcePath, logsPath);
         for (Path layer : layers) {
             containerBuilder = containerBuilder.addLayer(List.of(layer), imageRoot);
         }
@@ -167,25 +174,23 @@ public class ContainerRegistryDeployer implements Deployer {
         containerBuilder.containerize(containerizer);
     }
 
-    private String createImageName(DeployData imageData) {
+    private String createImageName() {
         String imageName = UUID.randomUUID().toString();
         return host + DOUBLE_POINT + port + SLASH + owner + SLASH + repository
                 + DOUBLE_POINT + imageName;
     }
 
-    private List<Path> getLayers(Path artifacts)
+    private List<Path> getLayers(Path artifacts, Path source, Path logs)
             throws IOException {
 
         // TODO: For now we create dummy source and logs
-        Path layer1Path = Files.createTempFile("source", ".txt");
-        Path layer2Path = Files.createTempFile("logs", ".txt");
 
         Log.debug("\n Container details:\n"
-                + "\t layer 1 (source) " + layer1Path.toString() + "\n"
-                + "\t layer 2 (logs) " + layer2Path.toString() + "\n"
+                + "\t layer 1 (source) " + source.toString() + "\n"
+                + "\t layer 2 (logs) " + logs.toString() + "\n"
                 + "\t layer 3 (artifacts) " + artifacts.toString());
 
-        return List.of(layer1Path, layer2Path, artifacts);
+        return List.of(source, logs, artifacts);
     }
 
     private DeployData getImageData(Path tarGzFile) throws IOException {

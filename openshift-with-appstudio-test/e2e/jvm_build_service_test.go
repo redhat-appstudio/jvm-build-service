@@ -4,6 +4,8 @@
 package e2e
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,6 +23,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
+
+	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 func TestExampleRun(t *testing.T) {
@@ -124,7 +130,7 @@ func TestExampleRun(t *testing.T) {
 		}
 	})
 
-	ta.t.Run("some artfactbuilds and dependencybuilds complete", func(t *testing.T) {
+	ta.t.Run("all artfactbuilds and dependencybuilds complete", func(t *testing.T) {
 		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
@@ -410,6 +416,87 @@ func TestExampleRun(t *testing.T) {
 		})
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for contaminated build to appear")
+		}
+	})
+
+	ta.t.Run("Logs and source included in image", func(t *testing.T) {
+
+		rebuiltList, err := jvmClient.JvmbuildserviceV1alpha1().RebuiltArtifacts(ta.ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			panic(err)
+		}
+		for _, artifact := range rebuiltList.Items {
+			sourceFound := false
+			logsFound := false
+			imageName := artifact.Spec.Image
+
+			println(imageName)
+			ref, err := name.ParseReference(imageName)
+			if err != nil {
+				panic(err)
+			}
+
+			rmt, err := remote.Get(ref)
+			if err != nil {
+				panic(err)
+			}
+
+			img, err := rmt.Image()
+			if err != nil {
+				panic(err)
+			}
+			export := path + "/foo.tar"
+			if err := crane.Save(img, "foo", export); err != nil {
+				panic(err)
+			}
+			f, err := os.Open(export)
+			if err != nil {
+				panic(err)
+			}
+			defer f.Close()
+			tr := tar.NewReader(f)
+			for {
+				cur, err := tr.Next()
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					panic(err)
+				}
+				if cur.Typeflag != tar.TypeReg {
+					continue
+				}
+				println(cur.Name)
+				if strings.HasSuffix(cur.Name, ".tar.gz") {
+					zip, err := gzip.NewReader(tr)
+					if err != nil {
+						panic(err)
+					}
+					innerTar := tar.NewReader(zip)
+					for {
+						cur, err := innerTar.Next()
+						if err == io.EOF {
+							break
+						} else if err != nil {
+							panic(err)
+						}
+						if cur.Typeflag != tar.TypeReg {
+							continue
+						}
+						println(cur.Name)
+						if cur.Name == "logs/maven.log" || cur.Name == "logs/gradle.log" {
+							logsFound = true
+						} else if cur.Name == "source/.git/HEAD" {
+							sourceFound = true
+						}
+					}
+				}
+			}
+			if !sourceFound {
+				panic("Source was not found in image " + imageName)
+			}
+			if !logsFound {
+				panic("Logs were not found in image " + imageName)
+			}
 		}
 	})
 }

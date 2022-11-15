@@ -581,6 +581,12 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
+			var image string
+			for _, i := range pr.Status.PipelineResults {
+				if i.Name == artifactbuild.Image {
+					image = i.Value
+				}
+			}
 			for _, i := range pr.Status.PipelineResults {
 				if i.Name == artifactbuild.Contaminants {
 
@@ -599,10 +605,22 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 						ra.Namespace = pr.Namespace
 						ra.Name = artifactbuild.CreateABRName(i)
 						ra.Spec.GAV = i
+						ra.Spec.Image = image
 						err := r.client.Create(ctx, &ra)
 						if err != nil {
 							if !errors.IsAlreadyExists(err) {
 								return reconcile.Result{}, err
+							} else {
+								//if it already exists we update the image field
+								err := r.client.Get(ctx, types.NamespacedName{Namespace: ra.Namespace, Name: ra.Name}, &ra)
+								if err != nil {
+									return reconcile.Result{}, err
+								}
+								ra.Spec.Image = image
+								err = r.client.Update(ctx, &ra)
+								if err != nil {
+									return reconcile.Result{}, err
+								}
 							}
 						}
 					}

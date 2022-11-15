@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210180116.artifactbuilds.jvmbuildservice.io
+  name: v202211150439.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210180116.dependencybuilds.jvmbuildservice.io
+  name: v202211150439.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -336,7 +336,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210180116.rebuiltartifacts.jvmbuildservice.io
+  name: v202211150439.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -372,6 +372,8 @@ spec:
             gav:
               description: The GAV of the rebuilt artifact
               type: string
+            image:
+              type: string
           type: object
         status:
           type: object
@@ -387,7 +389,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210180116.systemconfigs.jvmbuildservice.io
+  name: v202211150439.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -444,7 +446,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210180116.tektonwrappers.jvmbuildservice.io
+  name: v202211150439.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -529,7 +531,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202210180116.userconfigs.jvmbuildservice.io
+  name: v202211150439.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:

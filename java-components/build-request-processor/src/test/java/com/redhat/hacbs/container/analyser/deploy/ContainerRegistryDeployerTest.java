@@ -80,11 +80,17 @@ public class ContainerRegistryDeployerTest {
 
         // Here we just make sure we can create images.
         Path createTestTarGz = createTestTarGz();
+        Path source = Files.createTempDirectory("hacbs");
+        Files.writeString(source.resolve("pom.xml"), "");
+        Path logs = Files.createTempDirectory("hacbs");
+        Files.writeString(logs.resolve("maven.log"), "");
         var result = launcher.launch("deploy-container", "--tar-path=" + createTestTarGz.toAbsolutePath().toString(),
                 "--registry-host=" + container.getHost(),
                 "--registry-port=" + port,
                 "--registry-owner=" + OWNER,
                 "--registry-repository=" + REPOSITORY,
+                "--source-path=" + source.toAbsolutePath().toString(),
+                "--logs-path=" + logs.toAbsolutePath().toString(),
                 "--registry-insecure");
 
         Assertions.assertEquals(0, result.exitCode());

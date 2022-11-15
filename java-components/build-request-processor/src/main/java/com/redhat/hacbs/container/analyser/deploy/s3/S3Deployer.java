@@ -31,7 +31,7 @@ public class S3Deployer implements Deployer {
     }
 
     @Override
-    public void deployArchive(Path tarGzFile) throws Exception {
+    public void deployArchive(Path tarGzFile, Path sourcePath, Path logsPath) throws Exception {
         try (TarArchiveInputStream in = new TarArchiveInputStream(
                 new GzipCompressorInputStream(Files.newInputStream(tarGzFile)))) {
             TarArchiveEntry e;

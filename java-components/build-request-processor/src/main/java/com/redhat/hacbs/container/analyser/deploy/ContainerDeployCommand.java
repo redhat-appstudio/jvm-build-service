@@ -2,6 +2,7 @@ package com.redhat.hacbs.container.analyser.deploy;
 
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import javax.enterprise.inject.spi.BeanManager;
 import javax.inject.Inject;
@@ -37,11 +38,16 @@ public class ContainerDeployCommand extends DeployCommand {
     }
 
     @Override
-    protected void doDeployment(Path deployFile) throws Exception {
+    protected void doDeployment(Path deployFile, Path sourcePath, Path logsPath) throws Exception {
         ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                 insecure,
-                prependTag);
-        deployer.deployArchive(deployFile);
+                prependTag, new Consumer<String>() {
+                    @Override
+                    public void accept(String s) {
+                        imageName = s;
+                    }
+                });
+        deployer.deployArchive(deployFile, sourcePath, logsPath);
 
     }
 }

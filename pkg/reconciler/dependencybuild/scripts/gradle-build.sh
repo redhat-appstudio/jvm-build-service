@@ -62,14 +62,14 @@ EOF
 
 {{PRE_BUILD_SCRIPT}}
 
+mkdir $(workspaces.source.path)/logs
 #our dependency tracing breaks verification-metadata.xml
 #TODO: should we disable tracing for these builds? It means we can't track dependencies directly, so we can't detect contaminants
 rm -f gradle/verification-metadata.xml
 
-gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata || exit 1
+gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) "${ADDITIONAL_ARGS}" generateAlignmentMetadata  | tee $(workspaces.source.path)/logs/gme.log
 
-gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace -x test -Prelease.version=$(params.ENFORCE_VERSION) "$@" || exit 1
+gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace -x test -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle.log
 
 tar -czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .
-# fix-permissions-for-builder
-chown 1001:1001 -R $(workspaces.source.path)
+

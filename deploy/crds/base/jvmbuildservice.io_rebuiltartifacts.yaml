@@ -43,6 +43,8 @@ spec:
               gav:
                 description: The GAV of the rebuilt artifact
                 type: string
+              image:
+                type: string
             type: object
           status:
             type: object

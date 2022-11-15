@@ -29,8 +29,8 @@ public class S3DeployCommand extends DeployCommand {
     }
 
     @Override
-    protected void doDeployment(Path deployFile) throws Exception {
+    protected void doDeployment(Path deployFile, Path sourcePath, Path logsPath) throws Exception {
         S3Deployer deployer = new S3Deployer(s3Client, deploymentBucket, prefix);
-        deployer.deployArchive(deployFile);
+        deployer.deployArchive(deployFile, sourcePath, logsPath);
     }
 }
