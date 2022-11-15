@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 public class ClassTrackingModificationTestCase {
 
-    public static final TrackingData DATA = new TrackingData("com.acme:acme:1.0", null);
+    public static final TrackingData DATA = new TrackingData("com.acme:acme:1.0", null, Collections.emptyMap());
 
     @Test
     public void testBytecodeClassLevelTracking() throws Exception {

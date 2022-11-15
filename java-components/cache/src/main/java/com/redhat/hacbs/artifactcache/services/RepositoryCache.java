@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -192,7 +193,7 @@ public class RepositoryCache {
                 try (OutputStream out = Files.newOutputStream(trackedJarFile); var in = Files.newInputStream(downloaded)) {
                     HashingOutputStream hashingOutputStream = new HashingOutputStream(out);
                     ClassFileTracker.addTrackingDataToJar(in,
-                            new TrackingData(gav, repository.getName()), hashingOutputStream);
+                            new TrackingData(gav, repository.getName(), Collections.emptyMap()), hashingOutputStream);
                     hashingOutputStream.close();
 
                     Files.writeString(instrumentedSha, hashingOutputStream.getHash());
@@ -303,7 +304,8 @@ public class RepositoryCache {
                                 try (var inFromFile = Files.newInputStream(tempFile);
                                         var transformedOut = Files.newOutputStream(tempTransformedFile)) {
                                     ClassFileTracker.addTrackingDataToJar(inFromFile,
-                                            new TrackingData(gav, repository.getName()), transformedOut);
+                                            new TrackingData(gav, repository.getName(), Collections.emptyMap()),
+                                            transformedOut);
                                 }
                                 Files.delete(tempFile);
                                 return Optional.of(new ArtifactResult(Files.newInputStream(tempTransformedFile),
