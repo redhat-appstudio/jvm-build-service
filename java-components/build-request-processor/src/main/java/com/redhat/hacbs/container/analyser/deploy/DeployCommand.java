@@ -50,6 +50,14 @@ public abstract class DeployCommand implements Runnable {
     @CommandLine.Option(required = false, names = "--task-run")
     String taskRun;
 
+    @CommandLine.Option(required = false, names = "--source-path")
+    Path sourcePath;
+
+    @CommandLine.Option(required = false, names = "--logs-path")
+    Path logsPath;
+
+    protected String imageName;
+
     public DeployCommand(BeanManager beanManager,
             KubernetesClient kubernetesClient) {
         this.beanManager = beanManager;
@@ -162,6 +170,17 @@ public abstract class DeployCommand implements Runnable {
                 Log.infof("Contaminants: %s", contaminatedPaths);
                 //update the DB with contaminant information
 
+                if (!allSkipped) {
+                    try {
+                        doDeployment(deployFile, sourcePath, logsPath);
+                    } catch (Throwable t) {
+                        Log.error("Deployment failed", t);
+                        flushLogs();
+                        throw t;
+                    }
+                } else {
+                    Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
+                }
                 if (taskRun != null) {
 
                     Resource<TaskRun> taskRunResource = kubernetesClient.resources(TaskRun.class)
@@ -182,22 +201,11 @@ public abstract class DeployCommand implements Runnable {
                                     taskRun.getMetadata().getName(), serialisedContaminants, gavs);
                             results.add(new TaskRunResult("CONTAMINANTS", serialisedContaminants));
                             results.add(new TaskRunResult("DEPLOYED_RESOURCES", String.join(",", gavs)));
+                            results.add(new TaskRunResult("IMAGE", imageName));
                             taskRun.getStatus().setTaskResults(results);
                             return taskRun;
                         }
                     });
-                }
-
-                if (!allSkipped) {
-                    try {
-                        doDeployment(deployFile);
-                    } catch (Throwable t) {
-                        Log.error("Deployment failed", t);
-                        flushLogs();
-                        throw t;
-                    }
-                } else {
-                    Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
                 }
             } finally {
                 if (Files.exists(modified)) {
@@ -210,7 +218,7 @@ public abstract class DeployCommand implements Runnable {
         }
     }
 
-    protected abstract void doDeployment(Path deployFile) throws Exception;
+    protected abstract void doDeployment(Path deployFile, Path sourcePath, Path logsPath) throws Exception;
 
     private void flushLogs() {
         System.err.flush();

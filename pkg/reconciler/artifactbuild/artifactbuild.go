@@ -46,6 +46,7 @@ const (
 	JavaCommunityDependencies     = "JAVA_COMMUNITY_DEPENDENCIES"
 	Contaminants                  = "CONTAMINANTS"
 	DeployedResources             = "DEPLOYED_RESOURCES"
+	Image                         = "IMAGE"
 	Rebuild                       = "jvmbuildservice.io/rebuild"
 )
 

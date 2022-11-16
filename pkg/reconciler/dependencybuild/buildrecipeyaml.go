@@ -44,6 +44,8 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 	deployArgs := []string{
 		"deploy-container",
 		"--tar-path=$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz",
+		"--logs-path=$(workspaces.source.path)/logs",
+		"--source-path=$(workspaces.source.path)/source",
 		"--task-run=$(context.taskRun.name)",
 	}
 	if userConfig.Spec.ImageRegistry.Host != "" {
@@ -69,7 +71,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 		"maven-prepare",
 		"-r",
 		"$(params.CACHE_URL)",
-		"$(workspaces." + WorkspaceSource + ".path)",
+		"$(workspaces." + WorkspaceSource + ".path)/source",
 	}
 	if !maven {
 		preprocessorArgs[0] = "gradle-prepare"
@@ -110,16 +112,17 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 			{Name: PipelineIgnoredArtifacts, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache.$(context.pipelineRun.namespace).svc.cluster.local/v1/cache/default/" + strconv.FormatInt(commitTime, 10)}},
 		},
-		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}},
+		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}, {Name: artifactbuild.Image}},
 		Steps: []pipelinev1beta1.Step{
 			{
-				Name:  "git-clone",
-				Image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.37.4", //TODO: should not be hard coded
+				Name:            "git-clone",
+				Image:           "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.37.4", //TODO: should not be hard coded
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Resources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
 					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 				},
-				Args: []string{"-path=$(workspaces." + WorkspaceSource + ".path)", "-url=$(params." + PipelineScmUrl + ")", "-revision=$(params." + PipelineScmTag + ")"},
+				Args: []string{"-path=$(workspaces." + WorkspaceSource + ".path)/source", "-url=$(params." + PipelineScmUrl + ")", "-revision=$(params." + PipelineScmTag + ")"},
 			},
 			{
 				Name:            "settings",
@@ -145,7 +148,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 			{
 				Name:            "build",
 				Image:           "$(params." + PipelineImage + ")",
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/$(params." + PipelinePath + ")",
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/source/$(params." + PipelinePath + ")",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
 					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
