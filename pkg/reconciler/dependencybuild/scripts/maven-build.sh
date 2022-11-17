@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -eu
+set -o pipefail
 
 mkdir $(workspaces.source.path)/logs
 

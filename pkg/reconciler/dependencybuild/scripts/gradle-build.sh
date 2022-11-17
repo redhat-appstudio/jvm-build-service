@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -eu
+set -o pipefail
 
 export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
 echo "@=$@"
