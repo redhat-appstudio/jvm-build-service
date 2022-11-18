@@ -33,6 +33,7 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
             new PluginInfo("org.glassfish.copyright", "glassfish-copyright-maven-plugin"),
             new PluginInfo("org.sonatype.plugins", "nexus-staging-maven-plugin"),
             new PluginInfo("com.mycila", "license-maven-plugin"),
+            new PluginInfo("org.codehaus.mojo", "findbugs-maven-plugin"), //older version of this will break the build on our version of maven
             new PluginInfo("de.jjohannes", "gradle-module-metadata-maven-plugin"));
 
     @Override

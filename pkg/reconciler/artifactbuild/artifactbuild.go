@@ -647,6 +647,9 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					"$(results." + PipelineResultContextPath + ".path)",
 					"--gav",
 					gav,
+					"--cache-url",
+					//TODO KCP compatibility with cache name
+					"http://jvm-build-workspace-artifact-cache." + userConfig.Namespace + ".svc.cluster.local/v1/cache/default/0",
 				},
 				SecurityContext: &corev1.SecurityContext{
 					RunAsUser: &zero,
