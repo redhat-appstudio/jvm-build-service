@@ -146,6 +146,10 @@ public class LookupBuildInfoCommand implements Runnable {
                     MavenXpp3Reader reader = new MavenXpp3Reader();
                     Model model = reader.read(pomReader);
                     List<DiscoveryResult> results = new ArrayList<>();
+                    if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
+                        //not tagged properly, deal with it automatically
+                        info.enforceVersion = version;
+                    }
                     results.add(new DiscoveryResult(
                             Map.of(JDK, new VersionRange("7", "17", "11"), MAVEN, new VersionRange("3.8", "3.8", "3.8")),
                             Integer.MIN_VALUE));

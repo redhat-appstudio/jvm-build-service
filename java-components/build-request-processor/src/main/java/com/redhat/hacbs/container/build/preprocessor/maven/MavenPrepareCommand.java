@@ -15,6 +15,7 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
@@ -102,9 +103,33 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
                     i.setConfiguration(null);
                     modified = true;
                 }
+            } else if (i.getArtifactId().equals("maven-javadoc-plugin")) {
+                modified |= stripFailures(i.getConfiguration());
+                for (var e : i.getExecutions()) {
+                    modified |= stripFailures(e.getConfiguration());
+                }
             }
         }
         return modified;
+    }
+
+    private boolean stripFailures(Object configuration) {
+        if (configuration == null) {
+            return false;
+        }
+        boolean modified = false;
+        Xpp3Dom dom = (Xpp3Dom) configuration;
+        for (int i = 0; i < dom.getChildCount(); ++i) {
+            var child = dom.getChild(i);
+            if (child.getName().equals("failOnWarnings") ||
+                    child.getName().equals("failOnError")) {
+                dom.removeChild(i);
+                --i;
+                modified = true;
+            }
+        }
+        return modified;
+
     }
 
     record PluginInfo(String group, String artifact) {
