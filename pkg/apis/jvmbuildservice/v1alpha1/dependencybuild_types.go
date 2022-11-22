@@ -68,18 +68,25 @@ type DependencyBuildList struct {
 }
 
 type BuildRecipe struct {
-	Pipeline         string   `json:"pipeline,omitempty"`
-	Maven            bool     `json:"maven,omitempty"`
-	Gradle           bool     `json:"gradle,omitempty"`
-	Image            string   `json:"image,omitempty"`
-	CommandLine      []string `json:"commandLine,omitempty"`
-	EnforceVersion   string   `json:"enforceVersion,omitempty"`
-	IgnoredArtifacts []string `json:"ignoredArtifacts,omitempty"`
-	ToolVersion      string   `json:"toolVersion,omitempty"`
-	JavaVersion      string   `json:"javaVersion,omitempty"`
-	PreBuildScript   string   `json:"preBuildScript,omitempty"`
+	Pipeline            string               `json:"pipeline,omitempty"`
+	Maven               bool                 `json:"maven,omitempty"`
+	Gradle              bool                 `json:"gradle,omitempty"`
+	Image               string               `json:"image,omitempty"`
+	CommandLine         []string             `json:"commandLine,omitempty"`
+	EnforceVersion      string               `json:"enforceVersion,omitempty"`
+	ToolVersion         string               `json:"toolVersion,omitempty"`
+	JavaVersion         string               `json:"javaVersion,omitempty"`
+	PreBuildScript      string               `json:"preBuildScript,omitempty"`
+	AdditionalDownloads []AdditionalDownload `json:"additionalDownloads,omitempty"`
 }
 type Contaminant struct {
 	GAV                   string   `json:"gav,omitempty"`
 	ContaminatedArtifacts []string `json:"contaminatedArtifacts,omitempty"`
+}
+type AdditionalDownload struct {
+	Uri        string `json:"uri,omitempty"`
+	Sha256     string `json:"sha256,omitempty"`
+	FileName   string `json:"fileName,omitempty"`
+	BinaryPath string `json:"binaryPath,omitempty"`
+	FileType   string `json:"type"`
 }

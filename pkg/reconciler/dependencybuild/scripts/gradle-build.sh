@@ -7,6 +7,10 @@ echo "@=$@"
 
 export PATH="${JAVA_HOME}/bin:${PATH}"
 
+mkdir $(workspaces.source.path)/logs
+mkdir $(workspaces.source.path)/packages
+{{INSTALL_PACKAGE_SCRIPT}}
+
 #some gradle builds get the version from the tag
 #the git init task does not fetch tags
 #so just create one to fool the plugin
@@ -63,7 +67,6 @@ EOF
 
 {{PRE_BUILD_SCRIPT}}
 
-mkdir $(workspaces.source.path)/logs
 #our dependency tracing breaks verification-metadata.xml
 #TODO: should we disable tracing for these builds? It means we can't track dependencies directly, so we can't detect contaminants
 rm -f gradle/verification-metadata.xml

@@ -36,5 +36,5 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	e2e.GenerateStatusReport("test-jvm-namespace", jvmClient, clientset)
+	e2e.GenerateStatusReport("apheleia", jvmClient, clientset)
 }

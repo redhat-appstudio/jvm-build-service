@@ -19,7 +19,7 @@ const (
 type UserConfigSpec struct {
 	EnableRebuilds bool `json:"enableRebuilds,omitempty"`
 
-	AdditionalRecipes []string `json:"AdditionalRecipes,omitempty"`
+	AdditionalRecipes []string `json:"additionalRecipes,omitempty"`
 
 	MavenBaseLocations map[string]string `json:"mavenBaseLocations,omitempty"`
 

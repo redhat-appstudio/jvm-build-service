@@ -13,8 +13,6 @@ public class BuildRecipe {
 
     private String enforceVersion;
 
-    private List<String> ignoredArtifacts;
-
     boolean maven;
 
     boolean gradle;
@@ -67,15 +65,6 @@ public class BuildRecipe {
 
     public BuildRecipe setPipeline(String pipeline) {
         this.pipeline = pipeline;
-        return this;
-    }
-
-    public List<String> getIgnoredArtifacts() {
-        return ignoredArtifacts;
-    }
-
-    public BuildRecipe setIgnoredArtifacts(List<String> ignoredArtifacts) {
-        this.ignoredArtifacts = ignoredArtifacts;
         return this;
     }
 

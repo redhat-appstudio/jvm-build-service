@@ -168,7 +168,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         info.tools.putAll(i.toolVersions);
                     }
                     info.invocations.add(
-                            new ArrayList<>(List.of("clean", "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
+                            new ArrayList<>(List.of("install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
                                     "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
                                     "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false")));
                 }
@@ -214,7 +214,7 @@ public class LookupBuildInfoCommand implements Runnable {
                     info.enforceVersion = version;
                 }
                 info.preBuildScript = buildRecipeInfo.getPreBuildScript();
-                info.setIgnoredArtifacts(buildRecipeInfo.getIgnoredArtifacts());
+                info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
             }
             ObjectMapper mapper = new ObjectMapper();
             mapper.writeValue(buildInfo.toFile(), info);

@@ -155,6 +155,23 @@ spec:
                 description: BuildRecipe the current build recipe. If build is done
                   then this recipe was used to get to the current state
                 properties:
+                  additionalDownloads:
+                    items:
+                      properties:
+                        binaryPath:
+                          type: string
+                        fileName:
+                          type: string
+                        sha256:
+                          type: string
+                        type:
+                          type: string
+                        uri:
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    type: array
                   commandLine:
                     items:
                       type: string
@@ -163,10 +180,6 @@ spec:
                     type: string
                   gradle:
                     type: boolean
-                  ignoredArtifacts:
-                    items:
-                      type: string
-                    type: array
                   image:
                     type: string
                   javaVersion:
@@ -189,6 +202,23 @@ spec:
                   if the current state is failed this may include the current BuildRecipe
                 items:
                   properties:
+                    additionalDownloads:
+                      items:
+                        properties:
+                          binaryPath:
+                            type: string
+                          fileName:
+                            type: string
+                          sha256:
+                            type: string
+                          type:
+                            type: string
+                          uri:
+                            type: string
+                        required:
+                        - type
+                        type: object
+                      type: array
                     commandLine:
                       items:
                         type: string
@@ -197,10 +227,6 @@ spec:
                       type: string
                     gradle:
                       type: boolean
-                    ignoredArtifacts:
-                      items:
-                        type: string
-                      type: array
                     image:
                       type: string
                     javaVersion:
@@ -224,6 +250,23 @@ spec:
                   current recipe fails
                 items:
                   properties:
+                    additionalDownloads:
+                      items:
+                        properties:
+                          binaryPath:
+                            type: string
+                          fileName:
+                            type: string
+                          sha256:
+                            type: string
+                          type:
+                            type: string
+                          uri:
+                            type: string
+                        required:
+                        - type
+                        type: object
+                      type: array
                     commandLine:
                       items:
                         type: string
@@ -232,10 +275,6 @@ spec:
                       type: string
                     gradle:
                       type: boolean
-                    ignoredArtifacts:
-                      items:
-                        type: string
-                      type: array
                     image:
                       type: string
                     javaVersion:

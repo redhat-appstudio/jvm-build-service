@@ -47,7 +47,6 @@ const (
 	PipelineJavaVersion           = "JAVA_VERSION"
 	PipelineToolVersion           = "TOOL_VERSION"
 	PipelineEnforceVersion        = "ENFORCE_VERSION"
-	PipelineIgnoredArtifacts      = "IGNORED_ARTIFACTS"
 	PipelineGradleManipulatorArgs = "GRADLE_MANIPULATOR_ARGS"
 	PipelineCacheUrl              = "CACHE_URL"
 
@@ -324,7 +323,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			}
 			for _, command := range unmarshalled.Invocations {
 				for _, tv := range tooVersions {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, IgnoredArtifacts: unmarshalled.IgnoredArtifacts, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Maven: maven, Gradle: gradle, PreBuildScript: unmarshalled.PreBuildScript})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Maven: maven, Gradle: gradle, PreBuildScript: unmarshalled.PreBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads})
 				}
 			}
 		}
@@ -340,14 +339,14 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 }
 
 type marshalledBuildInfo struct {
-	Tools            map[string]toolInfo
-	Invocations      [][]string
-	EnforceVersion   string
-	IgnoredArtifacts []string
-	ToolVersion      string
-	JavaVersion      string
-	CommitTime       int64
-	PreBuildScript   string
+	Tools               map[string]toolInfo
+	Invocations         [][]string
+	EnforceVersion      string
+	AdditionalDownloads []v1alpha1.AdditionalDownload
+	ToolVersion         string
+	JavaVersion         string
+	CommitTime          int64
+	PreBuildScript      string
 }
 
 type toolInfo struct {
@@ -478,7 +477,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig, db.Status.CurrentBuildRecipe.PreBuildScript)
+	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig, db.Status.CurrentBuildRecipe)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -496,7 +495,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineRequestProcessorImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: buildRequestProcessorImage}},
 		{Name: PipelineGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
 		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
-		{Name: PipelineIgnoredArtifacts, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strings.Join(db.Status.CurrentBuildRecipe.IgnoredArtifacts, ",")}},
 		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
 		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
