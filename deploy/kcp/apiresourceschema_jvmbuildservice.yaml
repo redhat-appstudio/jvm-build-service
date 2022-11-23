@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211150439.artifactbuilds.jvmbuildservice.io
+  name: v202211220441.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211150439.dependencybuilds.jvmbuildservice.io
+  name: v202211220441.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -225,6 +225,23 @@ spec:
               description: BuildRecipe the current build recipe. If build is done
                 then this recipe was used to get to the current state
               properties:
+                additionalDownloads:
+                  items:
+                    properties:
+                      binaryPath:
+                        type: string
+                      fileName:
+                        type: string
+                      sha256:
+                        type: string
+                      type:
+                        type: string
+                      uri:
+                        type: string
+                    required:
+                    - type
+                    type: object
+                  type: array
                 commandLine:
                   items:
                     type: string
@@ -233,10 +250,6 @@ spec:
                   type: string
                 gradle:
                   type: boolean
-                ignoredArtifacts:
-                  items:
-                    type: string
-                  type: array
                 image:
                   type: string
                 javaVersion:
@@ -259,6 +272,23 @@ spec:
                 the current state is failed this may include the current BuildRecipe
               items:
                 properties:
+                  additionalDownloads:
+                    items:
+                      properties:
+                        binaryPath:
+                          type: string
+                        fileName:
+                          type: string
+                        sha256:
+                          type: string
+                        type:
+                          type: string
+                        uri:
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    type: array
                   commandLine:
                     items:
                       type: string
@@ -267,10 +297,6 @@ spec:
                     type: string
                   gradle:
                     type: boolean
-                  ignoredArtifacts:
-                    items:
-                      type: string
-                    type: array
                   image:
                     type: string
                   javaVersion:
@@ -294,6 +320,23 @@ spec:
                 current recipe fails
               items:
                 properties:
+                  additionalDownloads:
+                    items:
+                      properties:
+                        binaryPath:
+                          type: string
+                        fileName:
+                          type: string
+                        sha256:
+                          type: string
+                        type:
+                          type: string
+                        uri:
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    type: array
                   commandLine:
                     items:
                       type: string
@@ -302,10 +345,6 @@ spec:
                     type: string
                   gradle:
                     type: boolean
-                  ignoredArtifacts:
-                    items:
-                      type: string
-                    type: array
                   image:
                     type: string
                   javaVersion:
@@ -336,7 +375,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211150439.rebuiltartifacts.jvmbuildservice.io
+  name: v202211220441.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -389,7 +428,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211150439.systemconfigs.jvmbuildservice.io
+  name: v202211220441.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -446,7 +485,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211150439.tektonwrappers.jvmbuildservice.io
+  name: v202211220441.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -531,7 +570,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211150439.userconfigs.jvmbuildservice.io
+  name: v202211220441.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -559,7 +598,7 @@ spec:
           type: object
         spec:
           properties:
-            AdditionalRecipes:
+            additionalRecipes:
               items:
                 type: string
               type: array

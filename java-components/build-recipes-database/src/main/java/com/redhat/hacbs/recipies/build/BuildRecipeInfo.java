@@ -15,11 +15,12 @@ public class BuildRecipeInfo {
      */
     boolean enforceVersion;
     List<String> additionalArgs = new ArrayList<>();
-    List<String> ignoredArtifacts = new ArrayList<>();
     String toolVersion;
     String javaVersion;
 
     String preBuildScript;
+
+    List<AdditionalDownload> additionalDownloads = new ArrayList<>();
 
     public List<String> getAdditionalArgs() {
         return additionalArgs;
@@ -36,15 +37,6 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setEnforceVersion(boolean enforceVersion) {
         this.enforceVersion = enforceVersion;
-        return this;
-    }
-
-    public List<String> getIgnoredArtifacts() {
-        return ignoredArtifacts;
-    }
-
-    public BuildRecipeInfo setIgnoredArtifacts(List<String> ignoredArtifacts) {
-        this.ignoredArtifacts = ignoredArtifacts;
         return this;
     }
 
@@ -75,12 +67,20 @@ public class BuildRecipeInfo {
         return this;
     }
 
+    public List<AdditionalDownload> getAdditionalDownloads() {
+        return additionalDownloads;
+    }
+
+    public BuildRecipeInfo setAdditionalDownloads(List<AdditionalDownload> additionalDownloads) {
+        this.additionalDownloads = additionalDownloads;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildRecipeInfo{" +
                 "enforceVersion=" + enforceVersion +
                 ", additionalArgs=" + additionalArgs +
-                ", ignoredArtifacts=" + ignoredArtifacts +
                 ", toolVersion='" + toolVersion + '\'' +
                 ", javaVersion='" + javaVersion + '\'' +
                 '}';

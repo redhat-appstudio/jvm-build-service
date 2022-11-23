@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.redhat.hacbs.container.analyser.location.VersionRange;
+import com.redhat.hacbs.recipies.build.AdditionalDownload;
 
 public class BuildInfo {
 
@@ -24,8 +25,6 @@ public class BuildInfo {
 
     String enforceVersion;
 
-    List<String> ignoredArtifacts = new ArrayList<>();
-
     public Map<String, VersionRange> getTools() {
         return tools;
     }
@@ -43,6 +42,8 @@ public class BuildInfo {
     long commitTime;
 
     String preBuildScript;
+
+    List<AdditionalDownload> additionalDownloads = new ArrayList<>();
 
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
@@ -76,15 +77,6 @@ public class BuildInfo {
         return this;
     }
 
-    public List<String> getIgnoredArtifacts() {
-        return ignoredArtifacts;
-    }
-
-    public BuildInfo setIgnoredArtifacts(List<String> ignoredArtifacts) {
-        this.ignoredArtifacts = ignoredArtifacts;
-        return this;
-    }
-
     public String getToolVersion() {
         return toolVersion;
     }
@@ -109,6 +101,15 @@ public class BuildInfo {
 
     public BuildInfo setCommitTime(long commitTime) {
         this.commitTime = commitTime;
+        return this;
+    }
+
+    public List<AdditionalDownload> getAdditionalDownloads() {
+        return additionalDownloads;
+    }
+
+    public BuildInfo setAdditionalDownloads(List<AdditionalDownload> additionalDownloads) {
+        this.additionalDownloads = additionalDownloads;
         return this;
     }
 }

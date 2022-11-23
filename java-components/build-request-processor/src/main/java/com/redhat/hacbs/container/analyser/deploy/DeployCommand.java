@@ -1,7 +1,11 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -172,6 +176,7 @@ public abstract class DeployCommand implements Runnable {
 
                 if (!allSkipped) {
                     try {
+                        cleanBrokenSymlinks(sourcePath);
                         doDeployment(deployFile, sourcePath, logsPath);
                     } catch (Throwable t) {
                         Log.error("Deployment failed", t);
@@ -216,6 +221,25 @@ public abstract class DeployCommand implements Runnable {
             Log.error("Deployment failed", e);
             throw new RuntimeException(e);
         }
+    }
+
+    private void cleanBrokenSymlinks(Path sourcePath) throws IOException {
+        Files.walkFileTree(sourcePath, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                try (var s = Files.list(dir)) {
+                    List<Path> paths = s.toList();
+                    for (var i : paths) {
+                        //broken symlinks will fail this check
+                        if (!Files.exists(i)) {
+                            Files.delete(i);
+                        }
+                    }
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+
     }
 
     protected abstract void doDeployment(Path deployFile, Path sourcePath, Path logsPath) throws Exception;

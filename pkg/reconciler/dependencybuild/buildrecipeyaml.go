@@ -29,7 +29,10 @@ var mavenBuild string
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
 
-func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig, preBuildString string) (*pipelinev1beta1.PipelineSpec, error) {
+//go:embed scripts/install-package.sh
+var packageTemplate string
+
+func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig, recipe *v1alpha12.BuildRecipe) (*pipelinev1beta1.PipelineSpec, error) {
 	var settings string
 	var build string
 	trueBool := true
@@ -65,6 +68,36 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 	}
 	if userConfig.Spec.ImageRegistry.PrependTag != "" {
 		deployArgs = append(deployArgs, "--registry-prepend-tag="+userConfig.Spec.ImageRegistry.PrependTag)
+	}
+
+	install := ""
+	for count, i := range recipe.AdditionalDownloads {
+		if i.FileType == "tar" {
+			if i.BinaryPath == "" {
+				install = "echo 'Binary path not specified for package " + i.Uri + "'; exit 1"
+			}
+
+		} else if i.FileType == "executable" {
+			if i.FileName == "" {
+				install = "echo 'File name not specified for package " + i.Uri + "'; exit 1"
+			}
+		} else {
+			//unknown
+			//we still run the pipeline so there is logs
+			install = "echo 'Unknown file type " + i.FileType + " for package " + i.Uri + "'; exit 1"
+			break
+		}
+		template := packageTemplate
+		fileName := i.FileName
+		if fileName == "" {
+			fileName = "package-" + strconv.Itoa(count)
+		}
+		template = strings.ReplaceAll(template, "{URI}", i.Uri)
+		template = strings.ReplaceAll(template, "{FILENAME}", fileName)
+		template = strings.ReplaceAll(template, "{SHA256}", i.Sha256)
+		template = strings.ReplaceAll(template, "{TYPE}", i.FileType)
+		template = strings.ReplaceAll(template, "{BINARY_PATH}", i.BinaryPath)
+		install = install + template
 	}
 
 	preprocessorArgs := []string{
@@ -109,7 +142,6 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 			{Name: PipelinePath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineIgnoredArtifacts, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache.$(context.pipelineRun.namespace).svc.cluster.local/v1/cache/default/" + strconv.FormatInt(commitTime, 10)}},
 		},
 		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}, {Name: artifactbuild.Image}},
@@ -160,7 +192,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 				},
 				Args: []string{"$(params.GOALS[*])"},
 
-				Script: strings.ReplaceAll(build, "{{PRE_BUILD_SCRIPT}}", preBuildString),
+				Script: strings.ReplaceAll(strings.ReplaceAll(build, "{{INSTALL_PACKAGE_SCRIPT}}", install), "{{PRE_BUILD_SCRIPT}}", recipe.PreBuildScript),
 			},
 			{
 				Name:            "deploy-and-check-for-contaminates",
