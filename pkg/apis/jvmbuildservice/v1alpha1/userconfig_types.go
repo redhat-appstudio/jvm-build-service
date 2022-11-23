@@ -5,7 +5,7 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 const (
 	UserConfigName                          = "jvm-build-config"
 	UserSecretName                          = "jvm-build-secrets"
-	UserSecretTokenKey                      = "registry.token"
+	UserSecretTokenKey                      = ".dockerconfigjson" //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
 	ConfigArtifactCacheRequestMemoryDefault = "512Mi"
 	ConfigArtifactCacheRequestCPUDefault    = "1"

@@ -37,7 +37,7 @@ spec:
         - name: REGISTRY_TOKEN
           valueFrom:
             secretKeyRef:
-              key: registry.token
+              key: .dockerconfigjson
               name: jvm-build-secrets
         - name: BUILD_POLICY_DEFAULT_RELOCATION_PATTERN
           value: (io.github.stuartwdouglas.hacbs-test.simple):(simple-jdk17):(99-does-not-exist)=io.github.stuartwdouglas.hacbs-test.simple:simple-jdk17:0.1.2

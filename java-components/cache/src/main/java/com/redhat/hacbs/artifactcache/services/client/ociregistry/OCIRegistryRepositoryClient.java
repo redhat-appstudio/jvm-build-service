@@ -22,6 +22,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.DescriptorDigest;
 import com.google.cloud.tools.jib.api.RegistryException;
@@ -44,6 +45,7 @@ import io.quarkus.logging.Log;
 
 public class OCIRegistryRepositoryClient implements RepositoryClient {
 
+    static final ObjectMapper MAPPER = new ObjectMapper();
     private final String registry;
     private final String owner;
     private final Optional<String> prependHashedGav;
@@ -54,7 +56,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
 
     final RebuiltArtifacts rebuiltArtifacts;
 
-    public OCIRegistryRepositoryClient(String registry, String owner, String repository, Optional<String> token,
+    public OCIRegistryRepositoryClient(String registry, String owner, String repository, Optional<String> authToken,
             Optional<String> prependHashedGav,
             boolean enableHttpAndInsecureFailover, RebuiltArtifacts rebuiltArtifacts) {
         this.prependHashedGav = prependHashedGav;
@@ -63,14 +65,46 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         this.repository = repository;
         this.enableHttpAndInsecureFailover = enableHttpAndInsecureFailover;
         this.rebuiltArtifacts = rebuiltArtifacts;
-        if (token.isPresent()) {
-            var decoded = new String(Base64.getDecoder().decode(token.get()), StandardCharsets.UTF_8);
-            int pos = decoded.indexOf(":");
-            var username = decoded.substring(0, pos);
-            var password = decoded.substring(pos + 1);
-            credential = Credential.from(username, password);
+
+        if (authToken.isPresent() && !authToken.get().isBlank()) {
+            var decoded = new String(Base64.getDecoder().decode(authToken.get()), StandardCharsets.UTF_8);
+            if (decoded.startsWith("{")) {
+                //we assume this is a .dockerconfig file
+                try (var parser = MAPPER.createParser(decoded)) {
+                    DockerConfig config = parser.readValueAs(DockerConfig.class);
+                    boolean found = false;
+                    String tmpUser = null;
+                    String tmpPw = null;
+                    String host = null;
+                    for (var i : config.getAuths().entrySet()) {
+                        if (registry.contains(i.getKey())) { //TODO: is contains enough?
+                            found = true;
+                            var decodedAuth = new String(Base64.getDecoder().decode(i.getValue().getAuth()),
+                                    StandardCharsets.UTF_8);
+                            int pos = decodedAuth.indexOf(":");
+                            tmpUser = decodedAuth.substring(0, pos);
+                            tmpPw = decodedAuth.substring(pos + 1);
+                            host = i.getKey();
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        throw new RuntimeException("Unable to find a host matching " + registry
+                                + " in provided dockerconfig, hosts provided: " + config.getAuths().keySet());
+                    }
+                    credential = Credential.from(tmpUser, tmpPw);
+                    Log.infof("Credential provided as .dockerconfig, selected host %s for registry %s", host, registry);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                int pos = decoded.indexOf(":");
+                credential = Credential.from(decoded.substring(0, pos), decoded.substring(pos + 1));
+                Log.infof("Credential provided as base64 encoded token");
+            }
         } else {
             credential = null;
+            Log.infof("No credential provided");
         }
         Config config = ConfigProvider.getConfig();
         Path cachePath = config.getValue("cache-path", Path.class);

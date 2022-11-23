@@ -7,9 +7,6 @@ bases:
  - "../../operator/config"
  - "../../operator/overlays/dev-template"
 
-resources:
-  - secret.yaml
-
 patches:
  - patch: |-
      - op: replace
