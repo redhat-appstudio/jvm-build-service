@@ -12,7 +12,6 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/rebuiltartifact"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/userconfig"
@@ -143,9 +142,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 	}
 
 	if err := userconfig.SetupNewReconcilerWithManager(mgr, kcp); err != nil {
-		return nil, err
-	}
-	if err := rebuiltartifact.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 
