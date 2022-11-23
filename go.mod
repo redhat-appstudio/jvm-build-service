@@ -23,10 +23,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.12.2
 )
 
-require (
-	github.com/docker/docker v20.10.12+incompatible // indirect
-	github.com/google/go-containerregistry v0.8.1-0.20220216220642-00c59d91847c
-)
+require github.com/google/go-containerregistry v0.8.1-0.20220216220642-00c59d91847c
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
@@ -41,6 +38,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v20.10.12+incompatible // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
+	github.com/docker/docker v20.10.12+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect

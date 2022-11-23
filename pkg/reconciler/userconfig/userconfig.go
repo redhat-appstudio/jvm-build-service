@@ -123,29 +123,28 @@ func (r *ReconcilerUserConfig) validations(ctx context.Context, log logr.Logger,
 
 func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log logr.Logger, request reconcile.Request, userConfig *v1alpha1.UserConfig) error {
 	//TODO may have to switch to ephemeral storage for KCP until storage story there is sorted out
-	//pvc := corev1.PersistentVolumeClaim{}
-	//deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
-	//err = r.client.Get(ctx, deploymentName, &pvc)
-	//if err != nil {
-	//	if errors.IsNotFound(err) {
-	//		pvc = corev1.PersistentVolumeClaim{}
-	//		pvc.Name = v1alpha1.CacheDeploymentName
-	//		pvc.Namespace = request.Namespace
-	//		pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-	//		qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
-	//		if err != nil {
-	//			return err
-	//		}
-	//		//TODO: make configurable
-	//		pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{"storage": qty}
-	//		err = r.client.Create(ctx, &pvc)
-	//		if err != nil {
-	//			return err
-	//		}
-	//	}
-	//}
+	pvc := corev1.PersistentVolumeClaim{}
+	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
+	err := r.client.Get(ctx, deploymentName, &pvc)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			pvc = corev1.PersistentVolumeClaim{}
+			pvc.Name = v1alpha1.CacheDeploymentName
+			pvc.Namespace = request.Namespace
+			pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+			qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.CacheSettings.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
+			if err != nil {
+				return err
+			}
+			pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{"storage": qty}
+			err = r.client.Create(ctx, &pvc)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	//and setup the service
-	err := r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}, &corev1.Service{})
+	err = r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}, &corev1.Service{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			service := corev1.Service{
@@ -181,10 +180,6 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	create := false
 	if err != nil {
 		if errors.IsNotFound(err) {
-			qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.CacheSettings.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
-			if err != nil {
-				return err
-			}
 			create = true
 			cache.Name = deploymentName.Name
 			cache.Namespace = deploymentName.Namespace
@@ -212,22 +207,7 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 						"cpu":    resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.LimitCPU, v1alpha1.ConfigArtifactCacheLimitCPUDefault))},
 				},
 			}}
-			cache.Spec.Template.Spec.Volumes = []corev1.Volume{
-				{
-					//Name: v1alpha1.CacheDeploymentName,
-					//VolumeSource: corev1.VolumeSource{
-					//	PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					//		ClaimName: v1alpha1.CacheDeploymentName,
-					//	},
-					//},
-					Name: v1alpha1.CacheDeploymentName,
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{
-							SizeLimit: &qty,
-						},
-					},
-				},
-			}
+			cache.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: v1alpha1.CacheDeploymentName, VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: v1alpha1.CacheDeploymentName}}}}
 
 		} else {
 			return err
