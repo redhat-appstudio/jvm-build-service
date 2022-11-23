@@ -176,6 +176,8 @@ spec:
                     items:
                       type: string
                     type: array
+                  disableSubmodules:
+                    type: boolean
                   enforceVersion:
                     type: string
                   gradle:
@@ -223,6 +225,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    disableSubmodules:
+                      type: boolean
                     enforceVersion:
                       type: string
                     gradle:
@@ -271,6 +275,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    disableSubmodules:
+                      type: boolean
                     enforceVersion:
                       type: string
                     gradle:

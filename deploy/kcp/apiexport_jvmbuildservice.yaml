@@ -20,9 +20,9 @@ spec:
     # replace by pipeline-service identityHash
     identityHash: pipeline-service
   latestResourceSchemas:
-    - v202211220441.artifactbuilds.jvmbuildservice.io
-    - v202211220441.dependencybuilds.jvmbuildservice.io
-    - v202211220441.rebuiltartifacts.jvmbuildservice.io
-    - v202211220441.systemconfigs.jvmbuildservice.io
-    - v202211220441.tektonwrappers.jvmbuildservice.io
-    - v202211220441.userconfigs.jvmbuildservice.io
+    - v202211232238.artifactbuilds.jvmbuildservice.io
+    - v202211232238.dependencybuilds.jvmbuildservice.io
+    - v202211232238.rebuiltartifacts.jvmbuildservice.io
+    - v202211232238.systemconfigs.jvmbuildservice.io
+    - v202211232238.tektonwrappers.jvmbuildservice.io
+    - v202211232238.userconfigs.jvmbuildservice.io

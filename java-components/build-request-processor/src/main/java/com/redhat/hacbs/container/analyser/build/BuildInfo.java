@@ -44,6 +44,7 @@ public class BuildInfo {
     String preBuildScript;
 
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
+    boolean disableSubmodules;
 
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
@@ -110,6 +111,15 @@ public class BuildInfo {
 
     public BuildInfo setAdditionalDownloads(List<AdditionalDownload> additionalDownloads) {
         this.additionalDownloads = additionalDownloads;
+        return this;
+    }
+
+    public boolean isDisableSubmodules() {
+        return disableSubmodules;
+    }
+
+    public BuildInfo setDisableSubmodules(boolean disableSubmodules) {
+        this.disableSubmodules = disableSubmodules;
         return this;
     }
 }

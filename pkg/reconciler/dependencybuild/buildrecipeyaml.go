@@ -109,6 +109,11 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 	if !maven {
 		preprocessorArgs[0] = "gradle-prepare"
 	}
+	gitArgs := []string{"-path=$(workspaces." + WorkspaceSource + ".path)/source", "-url=$(params." + PipelineScmUrl + ")", "-revision=$(params." + PipelineScmTag + ")"}
+
+	if recipe.DisableSubmodules {
+		gitArgs = append(gitArgs, "-submodules=false")
+	}
 	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.TaskRequestMemory, "256Mi"))
 	if err != nil {
 		return nil, err
@@ -154,7 +159,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
 					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 				},
-				Args: []string{"-path=$(workspaces." + WorkspaceSource + ".path)/source", "-url=$(params." + PipelineScmUrl + ")", "-revision=$(params." + PipelineScmTag + ")"},
+				Args: gitArgs,
 			},
 			{
 				Name:            "settings",
