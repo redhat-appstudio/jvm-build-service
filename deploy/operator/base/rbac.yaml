@@ -81,6 +81,16 @@ rules:
       - delete
   - apiGroups:
       - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - create
+      - patch
+      - list
+      - watch
+  - apiGroups:
+      - ""
     # note - tekton gives its controller read access to secrets, so any pods there can access secrets in the pods namespace
     resources:
       - secrets
