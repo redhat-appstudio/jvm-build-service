@@ -20,6 +20,8 @@ public class BuildRecipeInfo {
 
     String preBuildScript;
 
+    boolean disableSubmodules;
+
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
 
     public List<String> getAdditionalArgs() {
@@ -76,6 +78,15 @@ public class BuildRecipeInfo {
         return this;
     }
 
+    public boolean isDisableSubmodules() {
+        return disableSubmodules;
+    }
+
+    public BuildRecipeInfo setDisableSubmodules(boolean disableSubmodules) {
+        this.disableSubmodules = disableSubmodules;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildRecipeInfo{" +
@@ -83,6 +94,9 @@ public class BuildRecipeInfo {
                 ", additionalArgs=" + additionalArgs +
                 ", toolVersion='" + toolVersion + '\'' +
                 ", javaVersion='" + javaVersion + '\'' +
+                ", preBuildScript='" + preBuildScript + '\'' +
+                ", disableSubmodules=" + disableSubmodules +
+                ", additionalDownloads=" + additionalDownloads +
                 '}';
     }
 }

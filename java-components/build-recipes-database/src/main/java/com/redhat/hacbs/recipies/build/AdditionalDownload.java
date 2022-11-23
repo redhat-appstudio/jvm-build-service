@@ -65,4 +65,15 @@ public class AdditionalDownload {
         this.type = type;
         return this;
     }
+
+    @Override
+    public String toString() {
+        return "AdditionalDownload{" +
+                "uri='" + uri + '\'' +
+                ", sha256='" + sha256 + '\'' +
+                ", fileName='" + fileName + '\'' +
+                ", binaryPath='" + binaryPath + '\'' +
+                ", type='" + type + '\'' +
+                '}';
+    }
 }

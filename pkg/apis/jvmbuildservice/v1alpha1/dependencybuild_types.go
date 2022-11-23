@@ -78,6 +78,7 @@ type BuildRecipe struct {
 	JavaVersion         string               `json:"javaVersion,omitempty"`
 	PreBuildScript      string               `json:"preBuildScript,omitempty"`
 	AdditionalDownloads []AdditionalDownload `json:"additionalDownloads,omitempty"`
+	DisableSubmodules   bool                 `json:"disableSubmodules,omitempty"`
 }
 type Contaminant struct {
 	GAV                   string   `json:"gav,omitempty"`
