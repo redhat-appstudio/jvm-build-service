@@ -20,9 +20,7 @@ spec:
       value: Dockerfile
     - name: infra-deployment-update-script
       value: >
-        sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/hacbs/jvm-build-service/base/kustomization.yaml
-
-        ./hack/generate-apiexport-overlays.sh components/hacbs/jvm-build-service/
+        sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/jvm-build-service/kustomization.yaml
   pipelineRef:
     name: docker-build
     bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
