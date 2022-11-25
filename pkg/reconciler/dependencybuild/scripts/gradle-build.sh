@@ -2,7 +2,7 @@
 set -eu
 set -o pipefail
 
-export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
+export GRADLE_USER_HOME="$(workspaces.source.path)/settings/.gradle"
 echo "@=$@"
 
 export PATH="${JAVA_HOME}/bin:${PATH}"

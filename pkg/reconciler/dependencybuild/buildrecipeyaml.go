@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	WorkspaceBuildSettings = "build-settings"
-	WorkspaceSource        = "source"
+	WorkspaceSource = "source"
 )
 
 //go:embed scripts/maven-settings.sh
@@ -135,7 +134,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 		return nil, err
 	}
 	buildSetup := pipelinev1beta1.TaskSpec{
-		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
+		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceSource}},
 		Params: []v1alpha1.ParamSpec{
 			{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineScmUrl, Type: pipelinev1beta1.ParamTypeString},
@@ -227,12 +226,11 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 					TaskSpec: buildSetup,
 				},
 				Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
-					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 					{Name: WorkspaceSource, Workspace: "source"},
 				},
 			},
 		},
-		Workspaces: []v1alpha1.PipelineWorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
+		Workspaces: []v1alpha1.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}},
 	}
 
 	for _, i := range buildSetup.Results {

@@ -2,7 +2,8 @@
 set -eu
 set -o pipefail
 
-GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
+mkdir "$(workspaces.source.path)/settings"
+GRADLE_USER_HOME="$(workspaces.source.path)/settings/.gradle"
 export GRADLE_USER_HOME
 mkdir -p "${GRADLE_USER_HOME}"
 cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF

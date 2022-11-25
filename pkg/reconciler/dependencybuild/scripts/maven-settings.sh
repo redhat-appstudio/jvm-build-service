@@ -2,10 +2,8 @@
 set -eu
 set -o pipefail
 
-# fix-permissions-for-builder
-chown 1001:1001 -R "$(workspaces.source.path)/source"
-
-cat >"$(workspaces.build-settings.path)"/settings.xml <<EOF
+mkdir "$(workspaces.source.path)/settings"
+cat >"$(workspaces.source.path)/settings/settings.xml" <<EOF
 <settings>
   <mirrors>
     <mirror>

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"os"
 	"sort"
 	"strconv"
@@ -500,8 +501,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
-		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
-		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
+		{Name: WorkspaceSource, VolumeClaimTemplate: generateVolumeClaimTemplate(userConfig)},
 	}
 	pr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
@@ -793,4 +793,28 @@ type BuilderImage struct {
 	Image    string
 	Tools    map[string][]string
 	Priority int
+}
+
+// Generate volumeClaimTemplate for pipeline runs that requires their own PVC during run.
+func generateVolumeClaimTemplate(config *v1alpha1.UserConfig) *v1.PersistentVolumeClaim {
+
+	size := config.Spec.BuildSettings.VolumeSize
+	//if this is not specified we get an error
+	qty, err := resource.ParseQuantity(size)
+	if err != nil {
+		qty = resource.MustParse("1Gi")
+	}
+
+	return &v1.PersistentVolumeClaim{
+		Spec: v1.PersistentVolumeClaimSpec{
+			AccessModes: []v1.PersistentVolumeAccessMode{
+				"ReadWriteOnce",
+			},
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					"storage": qty,
+				},
+			},
+		},
+	}
 }

@@ -55,6 +55,8 @@ type BuildSettings struct {
 	TaskLimitMemory string `json:"taskLimitMemory,omitempty"`
 	// The CPU limit for all other steps of a pipeline
 	TaskLimitCPU string `json:"taskLimitCPU,omitempty"`
+	// VolumeSize
+	VolumeSize string `json:"volumeSize,omitempty"`
 }
 type ImageRegistry struct {
 	Host       string `json:"host,omitempty"`

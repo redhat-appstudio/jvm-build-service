@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211232238.artifactbuilds.jvmbuildservice.io
+  name: v202211250112.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211232238.dependencybuilds.jvmbuildservice.io
+  name: v202211250112.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -381,7 +381,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211232238.rebuiltartifacts.jvmbuildservice.io
+  name: v202211250112.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -434,7 +434,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211232238.systemconfigs.jvmbuildservice.io
+  name: v202211250112.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -491,7 +491,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211232238.tektonwrappers.jvmbuildservice.io
+  name: v202211250112.tektonwrappers.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -576,7 +576,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211232238.userconfigs.jvmbuildservice.io
+  name: v202211250112.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -629,6 +629,9 @@ spec:
                   type: string
                 taskRequestMemory:
                   description: The requested memory for all other steps of a pipeline
+                  type: string
+                volumeSize:
+                  description: VolumeSize
                   type: string
               type: object
             cacheSettings:
