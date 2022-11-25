@@ -111,27 +111,14 @@ public abstract class AnalyserBase implements Runnable {
 
     FileVisitResult handleFile(String fileName, InputStream contents, Set<TrackingData> trackingData, Set<String> gavs)
             throws IOException {
-        if (fileName.endsWith(".class")) {
-            Log.debugf("Processing %s", fileName);
-            var data = ClassFileTracker.readTrackingInformationFromClass(contents.readAllBytes());
+        Log.debugf("Processing %s", fileName);
+        var jarData = ClassFileTracker.readTrackingDataFromFile(contents, fileName);
+        trackingData.addAll(jarData);
+        for (var data : jarData) {
             if (data != null) {
-                trackingData.add(data);
                 if (!allowedSources.contains(data.source)) {
                     Log.debugf("Found GAV %s in %s", data.gav, fileName);
                     gavs.add(data.gav);
-                }
-            }
-        } else if (fileName.endsWith(".jar")) {
-            Log.debugf("Processing %s", fileName);
-            var jarData = ClassFileTracker.readTrackingDataFromJar(contents,
-                    fileName);
-            trackingData.addAll(jarData);
-            for (var data : jarData) {
-                if (data != null) {
-                    if (!allowedSources.contains(data.source)) {
-                        Log.debugf("Found GAV %s in %s", data.gav, fileName);
-                        gavs.add(data.gav);
-                    }
                 }
             }
         }

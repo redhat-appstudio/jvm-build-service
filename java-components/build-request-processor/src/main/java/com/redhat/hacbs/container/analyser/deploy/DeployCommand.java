@@ -85,28 +85,27 @@ public abstract class DeployCommand implements Runnable {
                         Optional<Gav> gav = getGav(e.getName());
                         gav.ifPresent(
                                 gav1 -> gavs.add(gav1.getGroupId() + ":" + gav1.getArtifactId() + ":" + gav1.getVersion()));
-                        if (e.getName().endsWith(".jar")) {
-                            Log.debugf("Checking %s for contaminants", e.getName());
-                            var info = ClassFileTracker.readTrackingDataFromJar(new NoCloseInputStream(in), e.getName());
-                            for (var i : info) {
-                                if (!allowedSources.contains(i.source)) {
-                                    //Set<String> result = new HashSet<>(info.stream().map(a -> a.gav).toList());
-                                    Log.errorf("%s was contaminated by %s from %s", e.getName(), i.gav, i.source);
-                                    gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav,
-                                            s -> new HashSet<>())
-                                            .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
-                                    contaminants.add(i.gav);
-                                    int index = e.getName().lastIndexOf("/");
-                                    if (index != -1) {
-                                        contaminatedPaths
-                                                .computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
-                                                .add(i.gav);
-                                    } else {
-                                        contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
-                                    }
+                        Log.debugf("Checking %s for contaminants", e.getName());
+                        //we check every file as we also want to catch .tar.gz etc
+                        var info = ClassFileTracker.readTrackingDataFromFile(new NoCloseInputStream(in), e.getName());
+                        for (var i : info) {
+                            if (!allowedSources.contains(i.source)) {
+                                //Set<String> result = new HashSet<>(info.stream().map(a -> a.gav).toList());
+                                Log.errorf("%s was contaminated by %s from %s", e.getName(), i.gav, i.source);
+                                gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav,
+                                        s -> new HashSet<>())
+                                        .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
+                                contaminants.add(i.gav);
+                                int index = e.getName().lastIndexOf("/");
+                                if (index != -1) {
+                                    contaminatedPaths
+                                            .computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
+                                            .add(i.gav);
+                                } else {
+                                    contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
                                 }
-
                             }
+
                         }
                     }
                 }

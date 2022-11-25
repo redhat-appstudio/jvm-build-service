@@ -5,21 +5,27 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.objectweb.asm.Attribute;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
 public class ClassFileTracker {
+
+    public static final Logger LOGGER = Logger.getLogger("dependency-analyser");
 
     public static byte[] addTrackingDataToClass(byte[] classData, TrackingData data, String name) {
         try {
@@ -126,7 +132,7 @@ public class ClassFileTracker {
                             }
                         }
                     } catch (Exception e) {
-                        Logger.getLogger("dependency-analyser").log(Level.SEVERE,
+                        LOGGER.log(Level.SEVERE,
                                 "Failed to read class " + entry.getName() + " from " + jarFile, e);
                     }
                 } else if (entry.getName().endsWith(".jar")) {
@@ -138,4 +144,52 @@ public class ClassFileTracker {
         return ret;
     }
 
+    public static Set<TrackingData> readTrackingDataFromFile(InputStream contents, String fileName) throws IOException {
+        if (fileName.endsWith(".class")) {
+            return Set.of(ClassFileTracker.readTrackingInformationFromClass(contents.readAllBytes()));
+        } else if (fileName.endsWith(".jar")) {
+            return ClassFileTracker.readTrackingDataFromJar(contents,
+                    fileName);
+        } else if (fileName.endsWith(".tgz") || fileName.endsWith(".tar.gaz")) {
+            try {
+                Set<TrackingData> ret = new HashSet<>();
+                GZIPInputStream inputStream = new GZIPInputStream(contents);
+                TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream);
+                for (TarArchiveEntry entry = tarArchiveInputStream
+                        .getNextTarEntry(); entry != null; entry = tarArchiveInputStream.getNextTarEntry()) {
+                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName()));
+                }
+                return ret;
+            } catch (Exception e) {
+                //we don't fail on archives
+                LOGGER.log(Level.SEVERE, "Failed to analyse archive " + fileName, e);
+            }
+        } else if (fileName.endsWith(".tar")) {
+            try {
+                Set<TrackingData> ret = new HashSet<>();
+                TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(contents);
+                for (TarArchiveEntry entry = tarArchiveInputStream
+                        .getNextTarEntry(); entry != null; entry = tarArchiveInputStream.getNextTarEntry()) {
+                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName()));
+                }
+                return ret;
+            } catch (Exception e) {
+                //we don't fail on archives
+                LOGGER.log(Level.SEVERE, "Failed to analyse archive " + fileName, e);
+            }
+        } else if (fileName.endsWith(".zip")) {
+            try {
+                Set<TrackingData> ret = new HashSet<>();
+                ZipInputStream tarArchiveInputStream = new ZipInputStream(contents);
+                for (var entry = tarArchiveInputStream
+                        .getNextEntry(); entry != null; entry = tarArchiveInputStream.getNextEntry()) {
+                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName()));
+                }
+                return ret;
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Failed to analyse archive " + fileName, e);
+            }
+        }
+        return Collections.emptySet();
+    }
 }
