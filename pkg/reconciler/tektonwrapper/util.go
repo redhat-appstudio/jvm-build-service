@@ -55,3 +55,11 @@ type ImmediateCreate struct {
 func (i *ImmediateCreate) CreateWrapperForPipelineRun(ctx context.Context, client client.Client, run *v1beta1.PipelineRun) error {
 	return client.Create(ctx, run)
 }
+
+type PendingCreate struct {
+}
+
+func (p *PendingCreate) CreateWrapperForPipelineRun(ctx context.Context, client client.Client, run *v1beta1.PipelineRun) error {
+	run.Spec.Status = v1beta1.PipelineRunSpecStatusPending
+	return client.Create(ctx, run)
+}

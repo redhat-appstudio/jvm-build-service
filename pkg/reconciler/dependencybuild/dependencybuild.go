@@ -74,7 +74,7 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
-		prCreator:     &tektonwrapper.BatchedCreate{},
+		prCreator:     &tektonwrapper.PendingCreate{},
 	}
 }
 

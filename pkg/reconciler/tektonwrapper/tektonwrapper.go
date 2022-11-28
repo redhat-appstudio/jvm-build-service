@@ -175,7 +175,7 @@ func (r *ReconcileTektonWrapper) Reconcile(ctx context.Context, request reconcil
 	// see if we have quota for this namespace/project
 
 	// process quota
-	hardPodCount, pcerr := r.getHardPodCount(ctx, tw.Namespace)
+	hardPodCount, pcerr := getHardPodCount(ctx, r.client, tw.Namespace)
 	if pcerr != nil {
 		return reconcile.Result{}, pcerr
 	}
@@ -306,9 +306,9 @@ func (r *ReconcileTektonWrapper) unthrottleNextOnQueuePlusCleanup(ctx context.Co
 	return nil
 }
 
-func (r *ReconcileTektonWrapper) getHardPodCount(ctx context.Context, namespace string) (int, error) {
+func getHardPodCount(ctx context.Context, cl client.Client, namespace string) (int, error) {
 	// this should be nil in kcp
-	if clusterresourcequota.QuotaClient != nil && !r.kcp {
+	if clusterresourcequota.QuotaClient != nil {
 		//TODO controller runtime seemed unable to deal with openshift API and its attempt at mapping to CRDs; we were using
 		// a non caching client; but now we've switched to a shared informer based controller and its caching client
 		quotaList, qerr := clusterresourcequota.QuotaClient.QuotaV1().ClusterResourceQuotas().List(ctx, metav1.ListOptions{})
@@ -347,7 +347,7 @@ func (r *ReconcileTektonWrapper) getHardPodCount(ctx context.Context, namespace 
 		return hardPodCount, nil
 	}
 	quotaList := corev1.ResourceQuotaList{}
-	err := r.client.List(ctx, &quotaList)
+	err := cl.List(ctx, &quotaList)
 	if err != nil {
 		return 0, err
 	}
