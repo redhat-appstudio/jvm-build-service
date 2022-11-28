@@ -101,7 +101,9 @@ public class MavenClient implements RepositoryClient {
             }
             if (response.getStatusLine().getStatusCode() != 200) {
                 response.close();
-                throw new RuntimeException("Unexpected status code: " + response.getStatusLine().getStatusCode());
+                Log.errorf("Unexpected status code: " + response.getStatusLine().getStatusCode() + " downloading %s from %s",
+                        target, targetUri);
+                return Optional.empty();
             }
             Map<String, String> headers = new HashMap<>();
             for (var i : response.getAllHeaders()) {
