@@ -67,10 +67,9 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         this.rebuiltArtifacts = rebuiltArtifacts;
 
         if (authToken.isPresent() && !authToken.get().isBlank()) {
-            var decoded = new String(Base64.getDecoder().decode(authToken.get()), StandardCharsets.UTF_8);
-            if (decoded.startsWith("{")) {
+            if (authToken.get().trim().startsWith("{")) {
                 //we assume this is a .dockerconfig file
-                try (var parser = MAPPER.createParser(decoded)) {
+                try (var parser = MAPPER.createParser(authToken.get())) {
                     DockerConfig config = parser.readValueAs(DockerConfig.class);
                     boolean found = false;
                     String tmpUser = null;
@@ -98,6 +97,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
                     throw new RuntimeException(e);
                 }
             } else {
+                var decoded = new String(Base64.getDecoder().decode(authToken.get()), StandardCharsets.UTF_8);
                 int pos = decoded.indexOf(":");
                 credential = Credential.from(decoded.substring(0, pos), decoded.substring(pos + 1));
                 Log.infof("Credential provided as base64 encoded token");

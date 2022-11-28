@@ -74,10 +74,9 @@ public class ContainerRegistryDeployer implements Deployer {
         this.prependTag = prependTag;
         this.imageNameCallback = imageNameCallback;
         if (!token.isBlank()) {
-            var decoded = new String(Base64.getDecoder().decode(token), StandardCharsets.UTF_8);
-            if (decoded.startsWith("{")) {
+            if (token.trim().startsWith("{")) {
                 //we assume this is a .dockerconfig file
-                try (var parser = MAPPER.createParser(decoded)) {
+                try (var parser = MAPPER.createParser(token)) {
                     DockerConfig config = parser.readValueAs(DockerConfig.class);
                     boolean found = false;
                     String tmpUser = null;
@@ -103,6 +102,7 @@ public class ContainerRegistryDeployer implements Deployer {
                     throw new RuntimeException(e);
                 }
             } else {
+                var decoded = new String(Base64.getDecoder().decode(token), StandardCharsets.UTF_8);
                 int pos = decoded.indexOf(":");
                 username = decoded.substring(0, pos);
                 password = decoded.substring(pos + 1);
