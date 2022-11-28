@@ -17,6 +17,9 @@ fi
 DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml
 kubectl config set-context --current --namespace=test-jvm-namespace
+kubectl delete secret jvm-build-secrets
+kubectl create secret generic jvm-build-secrets --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson
+
 JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller \
 JVM_BUILD_SERVICE_CACHE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-cache \
 JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-build-request-processor:dev \
