@@ -146,7 +146,10 @@ public class ClassFileTracker {
 
     public static Set<TrackingData> readTrackingDataFromFile(InputStream contents, String fileName) throws IOException {
         if (fileName.endsWith(".class")) {
-            return Set.of(ClassFileTracker.readTrackingInformationFromClass(contents.readAllBytes()));
+            TrackingData data = readTrackingInformationFromClass(contents.readAllBytes());
+            if (data != null) {
+                return Set.of(data);
+            }
         } else if (fileName.endsWith(".jar")) {
             return ClassFileTracker.readTrackingDataFromJar(contents,
                     fileName);
