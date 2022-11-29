@@ -26,6 +26,11 @@ var (
 	ctrlLog = ctrl.Log.WithName("tektonwrappercontroller")
 )
 
+func SetupPRReconcilerWithManager(mgr ctrl.Manager) error {
+	r := newPRReconciler(mgr)
+	return ctrl.NewControllerManagedBy(mgr).For(&v1beta1.PipelineRun{}).Complete(r)
+}
+
 func SetupNewReconcilerWithManager(mgr ctrl.Manager, kcp bool) error {
 	opts := client.Options{Scheme: runtime.NewScheme()}
 	err := quotav1.AddToScheme(opts.Scheme)

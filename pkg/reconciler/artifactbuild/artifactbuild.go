@@ -62,7 +62,7 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
-		prCreator:     &tektonwrapper.BatchedCreate{},
+		prCreator:     &tektonwrapper.PendingCreate{},
 	}
 }
 

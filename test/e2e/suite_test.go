@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"context"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"go/build"
 	"os"
 	"path/filepath"
@@ -41,7 +42,6 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	//+kubebuilder:scaffold:imports
@@ -137,7 +137,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
-	err = tektonwrapper.SetupNewReconcilerWithManager(k8sManager, false)
+	//err = tektonwrapper.SetupNewReconcilerWithManager(k8sManager, false)
+	err = tektonwrapper.SetupPRReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	err = clusterresourcequota.SetupNewReconciler(cfg)
 	Expect(err).ToNot(HaveOccurred())

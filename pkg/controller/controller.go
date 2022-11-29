@@ -145,7 +145,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		return nil, err
 	}
 
-	if err := tektonwrapper.SetupNewReconcilerWithManager(mgr, kcp); err != nil {
+	if err := tektonwrapper.SetupPRReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 
