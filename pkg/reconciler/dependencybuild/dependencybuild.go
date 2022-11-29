@@ -28,8 +28,8 @@ import (
 	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pendingpipelinerun"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
@@ -66,7 +66,7 @@ type ReconcileDependencyBuild struct {
 	client        client.Client
 	scheme        *runtime.Scheme
 	eventRecorder record.EventRecorder
-	prCreator     tektonwrapper.PipelineRunCreate
+	prCreator     pendingpipelinerun.PipelineRunCreate
 }
 
 func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
@@ -74,7 +74,7 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
-		prCreator:     &tektonwrapper.PendingCreate{},
+		prCreator:     &pendingpipelinerun.PendingCreate{},
 	}
 }
 

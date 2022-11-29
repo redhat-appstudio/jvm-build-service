@@ -31,8 +31,6 @@ type Interface interface {
 	RebuiltArtifacts() RebuiltArtifactInformer
 	// SystemConfigs returns a SystemConfigInformer.
 	SystemConfigs() SystemConfigInformer
-	// TektonWrappers returns a TektonWrapperInformer.
-	TektonWrappers() TektonWrapperInformer
 	// UserConfigs returns a UserConfigInformer.
 	UserConfigs() UserConfigInformer
 }
@@ -66,11 +64,6 @@ func (v *version) RebuiltArtifacts() RebuiltArtifactInformer {
 // SystemConfigs returns a SystemConfigInformer.
 func (v *version) SystemConfigs() SystemConfigInformer {
 	return &systemConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// TektonWrappers returns a TektonWrapperInformer.
-func (v *version) TektonWrappers() TektonWrapperInformer {
-	return &tektonWrapperInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // UserConfigs returns a UserConfigInformer.

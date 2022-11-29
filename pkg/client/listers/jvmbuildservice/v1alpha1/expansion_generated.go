@@ -49,14 +49,6 @@ type SystemConfigListerExpansion interface{}
 // SystemConfigNamespaceLister.
 type SystemConfigNamespaceListerExpansion interface{}
 
-// TektonWrapperListerExpansion allows custom methods to be added to
-// TektonWrapperLister.
-type TektonWrapperListerExpansion interface{}
-
-// TektonWrapperNamespaceListerExpansion allows custom methods to be added to
-// TektonWrapperNamespaceLister.
-type TektonWrapperNamespaceListerExpansion interface{}
-
 // UserConfigListerExpansion allows custom methods to be added to
 // UserConfigLister.
 type UserConfigListerExpansion interface{}

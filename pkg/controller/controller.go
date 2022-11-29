@@ -12,8 +12,8 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pendingpipelinerun"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/userconfig"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -145,7 +145,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, kcp bool) (ctrl.Manager,
 		return nil, err
 	}
 
-	if err := tektonwrapper.SetupPRReconcilerWithManager(mgr); err != nil {
+	if err := pendingpipelinerun.SetupPRReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 
