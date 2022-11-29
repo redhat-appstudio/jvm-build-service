@@ -10,8 +10,8 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pendingpipelinerun"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -41,7 +41,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		client:        client,
 		scheme:        scheme,
 		eventRecorder: &record.FakeRecorder{},
-		prCreator:     &tektonwrapper.ImmediateCreate{},
+		prCreator:     &pendingpipelinerun.ImmediateCreate{},
 	}
 
 	sysConfig := v1alpha1.SystemConfig{

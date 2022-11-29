@@ -51,7 +51,7 @@ type QuotoController struct {
 /*
 So for a "fully functional" shared informer based controller that processes events, we would also employ a Run method like this to
 ensure the cache is sync'ed, were we would wire a signal handler and launch a thread for this from main.go;
-This concept is a bit similar to controller-runtime's 'Runnable' interface that we use for the background tektonwrapper
+This concept is a bit similar to controller-runtime's 'Runnable' interface that we use for the background pendingpipelinerun
 pruner, but that uses a context as the golang channel blocker vs. the more generic struct{} channel that shared informers
 use.
 For an example of how to wire this up, see:

@@ -1,4 +1,4 @@
-package tektonwrapper
+package pendingpipelinerun
 
 import (
 	"context"
@@ -56,7 +56,7 @@ func (r *ReconcilePendingPipelineRun) Reconcile(ctx context.Context, request rec
 	}
 
 	if prerr != nil {
-		msg := fmt.Sprintf("Reconcile key %s received not found errors for both pipelineruns and tektonwrapper (probably deleted)\"", request.NamespacedName.String())
+		msg := fmt.Sprintf("Reconcile key %s received not found errors for both pipelineruns and pendingpipelinerun (probably deleted)\"", request.NamespacedName.String())
 		log.Info(msg)
 		return reconcile.Result{}, client.IgnoreNotFound(r.unthrottleNextOnQueuePlusCleanup(ctx, pr.Namespace))
 	}

@@ -1,4 +1,4 @@
-package tektonwrapper
+package pendingpipelinerun
 
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"

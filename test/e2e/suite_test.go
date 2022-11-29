@@ -18,7 +18,7 @@ package e2e
 
 import (
 	"context"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/tektonwrapper"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pendingpipelinerun"
 	"go/build"
 	"os"
 	"path/filepath"
@@ -137,7 +137,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
-	err = tektonwrapper.SetupPRReconcilerWithManager(k8sManager)
+	err = pendingpipelinerun.SetupPRReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	err = clusterresourcequota.SetupNewReconciler(cfg)
 	Expect(err).ToNot(HaveOccurred())

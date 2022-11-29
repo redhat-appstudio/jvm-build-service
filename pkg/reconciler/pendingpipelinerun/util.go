@@ -1,4 +1,4 @@
-package tektonwrapper
+package pendingpipelinerun
 
 import (
 	"context"
