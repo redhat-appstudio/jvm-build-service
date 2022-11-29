@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - jvmbuildservice.io_dependencybuilds.yaml
   - jvmbuildservice.io_artifactbuilds.yaml
-  - jvmbuildservice.io_tektonwrappers.yaml
   - jvmbuildservice.io_rebuiltartifacts.yaml
   - jvmbuildservice.io_systemconfigs.yaml
   - jvmbuildservice.io_userconfigs.yaml

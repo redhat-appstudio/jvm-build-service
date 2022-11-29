@@ -12,8 +12,6 @@ rules:
       - artifactbuilds/status
       - dependencybuilds
       - dependencybuilds/status
-      - tektonwrappers
-      - tektonwrappers/status
       - rebuiltartifacts
       - rebuiltartifacts/status
       - systemconfigs
@@ -185,8 +183,6 @@ rules:
       - artifactbuilds/status
       - dependencybuilds
       - dependencybuilds/status
-      - tektonwrappers
-      - tektonwrappers/status
       - systemconfigs
       - systemconfigs/status
       - userconfigs

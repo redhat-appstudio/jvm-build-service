@@ -17,8 +17,15 @@ import (
 )
 
 //TODO add fields for both constants to userconfig, systemconfig, or both
-const abandonAfter = 3 * time.Hour
-const requeueAfter = 1 * time.Minute
+const (
+	abandonAfter   = 3 * time.Hour
+	requeueAfter   = 1 * time.Minute
+	contextTimeout = 300 * time.Second
+)
+
+var (
+	log = ctrl.Log.WithName("pendingpipelinerunreconciler")
+)
 
 type ReconcilePendingPipelineRun struct {
 	client        client.Client

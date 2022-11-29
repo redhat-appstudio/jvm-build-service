@@ -137,7 +137,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
-	//err = tektonwrapper.SetupNewReconcilerWithManager(k8sManager, false)
 	err = tektonwrapper.SetupPRReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	err = clusterresourcequota.SetupNewReconciler(cfg)

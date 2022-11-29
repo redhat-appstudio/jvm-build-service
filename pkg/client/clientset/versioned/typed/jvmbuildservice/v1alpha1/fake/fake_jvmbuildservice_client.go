@@ -43,10 +43,6 @@ func (c *FakeJvmbuildserviceV1alpha1) SystemConfigs(namespace string) v1alpha1.S
 	return &FakeSystemConfigs{c, namespace}
 }
 
-func (c *FakeJvmbuildserviceV1alpha1) TektonWrappers(namespace string) v1alpha1.TektonWrapperInterface {
-	return &FakeTektonWrappers{c, namespace}
-}
-
 func (c *FakeJvmbuildserviceV1alpha1) UserConfigs(namespace string) v1alpha1.UserConfigInterface {
 	return &FakeUserConfigs{c, namespace}
 }
