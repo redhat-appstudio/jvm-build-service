@@ -467,18 +467,29 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	// we move the db out of building
 	pr.Name = currentDependencyBuildPipelineName(db)
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
-
+	systemConfig := v1alpha1.SystemConfig{}
+	getCtx := ctx
+	cluster, ok := logicalcluster.ClusterFromContext(ctx)
+	if ok {
+		if cluster.String() != util.SystemConfigCluster {
+			getCtx = logicalcluster.WithCluster(ctx, logicalcluster.New(util.SystemConfigCluster))
+		}
+	}
+	err := r.client.Get(getCtx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	if !db.Status.CurrentBuildRecipe.Maven && !db.Status.CurrentBuildRecipe.Gradle {
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "MissingRecipeType", "recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 		return reconcile.Result{}, fmt.Errorf("recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 	}
 	userConfig := &v1alpha1.UserConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig, db.Status.CurrentBuildRecipe)
+	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig, db.Status.CurrentBuildRecipe, &systemConfig)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

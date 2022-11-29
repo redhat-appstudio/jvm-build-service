@@ -18,6 +18,7 @@ type QuotaImpl string
 type SystemConfigSpec struct {
 	Builders map[string]JavaVersionInfo `json:"builders,omitempty"`
 	Quota    QuotaImpl                  `json:"quota,omitempty"`
+	Images   ImagesImpl                 `json:"images,omitempty"`
 }
 
 type JavaVersionInfo struct {
@@ -27,6 +28,9 @@ type JavaVersionInfo struct {
 }
 
 type SystemConfigStatus struct {
+}
+type ImagesImpl struct {
+	GitInit string `json:"gitInit,omitempty"`
 }
 
 // +genclient

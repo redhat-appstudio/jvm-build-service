@@ -46,6 +46,11 @@ spec:
                       type: string
                   type: object
                 type: object
+              images:
+                properties:
+                  gitInit:
+                    type: string
+                type: object
               quota:
                 type: string
             type: object

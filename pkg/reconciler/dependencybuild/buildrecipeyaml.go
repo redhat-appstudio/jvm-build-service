@@ -32,7 +32,8 @@ var gradleBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
-func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig, recipe *v1alpha12.BuildRecipe) (*pipelinev1beta1.PipelineSpec, error) {
+func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig, recipe *v1alpha12.BuildRecipe, systemConfig *v1alpha12.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
+
 	var settings string
 	var build string
 	trueBool := true
@@ -114,6 +115,9 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 	if recipe.DisableSubmodules {
 		gitArgs = append(gitArgs, "-submodules=false")
 	}
+
+	gitInitImage := settingOrDefault(systemConfig.Spec.Images.GitInit, "registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:af7dd5b3b1598a980f17d5f5d3d8a4b11ab4f5184677f7f17ad302baa36bd3c1")
+
 	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.TaskRequestMemory, "256Mi"))
 	if err != nil {
 		return nil, err
@@ -153,7 +157,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "git-clone",
-				Image:           "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.37.4", //TODO: should not be hard coded
+				Image:           gitInitImage,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Resources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
@@ -163,7 +167,7 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 			},
 			{
 				Name:            "settings",
-				Image:           "registry.access.redhat.com/ubi8/ubi:8.5", //TODO: should not be hard coded
+				Image:           "$(params." + PipelineImage + ")", //just use the builder image here, it has everything needed to generate the settings
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Resources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
