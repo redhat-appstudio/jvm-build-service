@@ -19,8 +19,6 @@ import java.util.zip.GZIPInputStream;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.ConfigProvider;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.Credential;
@@ -39,6 +37,7 @@ import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
+import com.redhat.hacbs.artifactcache.services.StorageManager;
 import com.redhat.hacbs.artifactcache.services.client.ShaUtil;
 
 import io.quarkus.logging.Log;
@@ -51,14 +50,15 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     private final Optional<String> prependHashedGav;
     private final String repository;
     private final boolean enableHttpAndInsecureFailover;
-    private final Path cacheRoot;
+    private final StorageManager storageManager;
     private final Credential credential;
 
     final RebuiltArtifacts rebuiltArtifacts;
 
     public OCIRegistryRepositoryClient(String registry, String owner, String repository, Optional<String> authToken,
             Optional<String> prependHashedGav,
-            boolean enableHttpAndInsecureFailover, RebuiltArtifacts rebuiltArtifacts) {
+            boolean enableHttpAndInsecureFailover, RebuiltArtifacts rebuiltArtifacts,
+            StorageManager storageManager) {
         this.prependHashedGav = prependHashedGav;
         this.registry = registry;
         this.owner = owner;
@@ -106,14 +106,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
             credential = null;
             Log.infof("No credential provided");
         }
-        Config config = ConfigProvider.getConfig();
-        Path cachePath = config.getValue("cache-path", Path.class);
-        try {
-            this.cacheRoot = Files.createDirectories(Paths.get(cachePath.toAbsolutePath().toString(), HACBS));
-            Log.debugf(" Using [%s] as local cache folder", cacheRoot);
-        } catch (IOException ex) {
-            throw new RuntimeException("could not create cache directory", ex);
-        }
+        this.storageManager = storageManager.resolve(HACBS);
     }
 
     @Override
@@ -208,7 +201,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
 
     private Optional<Path> getLocalCachePath(RegistryClient registryClient, ManifestTemplate manifest, String digestHash)
             throws IOException {
-        Path digestHashPath = cacheRoot.resolve(digestHash);
+        Path digestHashPath = storageManager.accessDirectory(digestHash);
         if (existInLocalCache(digestHashPath)) {
             return Optional.of(Paths.get(digestHashPath.toString(), ARTIFACTS));
         } else {
@@ -254,7 +247,8 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     }
 
     private boolean existInLocalCache(Path digestHashPath) {
-        return Files.exists(digestHashPath) && Files.isDirectory(digestHashPath);
+        return Files.exists(digestHashPath) && Files.isDirectory(digestHashPath)
+                && Files.exists(digestHashPath.resolve(ARTIFACTS));
     }
 
     private Optional<String> getSha1(Path file) throws IOException {

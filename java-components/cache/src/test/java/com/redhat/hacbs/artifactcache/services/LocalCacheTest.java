@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.jar.JarOutputStream;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
@@ -51,13 +51,13 @@ public class LocalCacheTest {
 
     @Test
     public void testHashHandling() throws Exception {
-        runTest((localCache -> {
+        runTest((localCache, path) -> {
             try {
                 current = new ArtifactResult(
                         new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4, Optional.of("wrong sha"),
                         Map.of());
                 localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", false);
-                Files.walkFileTree(localCache.path, new SimpleFileVisitor<>() {
+                Files.walkFileTree(path, new SimpleFileVisitor<>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                         if (file.getFileName().toString().equals("test.pom")) {
@@ -73,7 +73,7 @@ public class LocalCacheTest {
                         Optional.of(HashUtil.sha1("test")), Map.of());
                 localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", false);
                 AtomicReference<Path> cachedFile = new AtomicReference<>();
-                Files.walkFileTree(localCache.path, new SimpleFileVisitor<>() {
+                Files.walkFileTree(path, new SimpleFileVisitor<>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                         if (file.getFileName().toString().equals("test.pom")) {
@@ -90,12 +90,12 @@ public class LocalCacheTest {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }));
+        });
     }
 
     @Test
     public void testHashRequestedFirstTrackedArtifact() throws Exception {
-        runTest((localCache -> {
+        runTest((localCache, path) -> {
             try {
                 byte[] jarFile = createJarFile();
                 current = new ArtifactResult(
@@ -119,17 +119,17 @@ public class LocalCacheTest {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }));
+        });
     }
 
-    void runTest(Consumer<CacheFacade> consumer) throws Exception {
+    void runTest(BiConsumer<CacheFacade, Path> consumer) throws Exception {
         Path temp = Files.createTempDirectory("cache-test");
         try {
-            CacheFacade localCache = new CacheFacade(temp,
+            CacheFacade localCache = new CacheFacade(new RootStorageManager(temp, 1, 1),
                     Map.of("default", new BuildPolicy(
                             List.of(new Repository("test", "http://test.com", RepositoryType.MAVEN2, MOCK_CLIENT)))));
 
-            consumer.accept(localCache);
+            consumer.accept(localCache, temp);
 
         } finally {
             deleteRecursive(temp);
