@@ -198,7 +198,9 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 				"maven-repository-315-kotlin-bootstrap":           "https://maven.pkg.jetbrains.space/kotlin/p/kotlin/bootstrap/",
 				"maven-repository-315-kotlin-kotlin-dependencies": "https://maven.pkg.jetbrains.space/kotlin/p/kotlin/kotlin-dependencies"},
 
-			CacheSettings: v1alpha1.CacheSettings{},
+			CacheSettings: v1alpha1.CacheSettings{
+				Storage: "20Gi", //temporary setting until we have invalidation
+			},
 			ImageRegistry: v1alpha1.ImageRegistry{
 				Host:       "quay.io",
 				Owner:      owner,
