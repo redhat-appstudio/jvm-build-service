@@ -6,6 +6,7 @@ import org.objectweb.asm.ClassVisitor;
 class ClassTrackingReadDataVisitor extends ClassVisitor {
 
     private TrackingData contents;
+    private String className;
 
     public ClassTrackingReadDataVisitor(int api) {
         super(api);
@@ -15,8 +16,18 @@ class ClassTrackingReadDataVisitor extends ClassVisitor {
         super(api, classVisitor);
     }
 
+    @Override
+    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+        super.visit(version, access, name, signature, superName, interfaces);
+        this.className = name;
+    }
+
     public TrackingData getContents() {
         return contents;
+    }
+
+    public String getClassName() {
+        return className;
     }
 
     @Override

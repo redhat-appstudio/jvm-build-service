@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
@@ -42,9 +43,16 @@ public class ClassFileTracker {
     }
 
     public static TrackingData readTrackingInformationFromClass(byte[] classData) {
+        return readTrackingInformationFromClass(classData, null);
+    }
+
+    public static TrackingData readTrackingInformationFromClass(byte[] classData, Consumer<String> untrackedClassesListener) {
         ClassReader classReader = new ClassReader(classData);
         ClassTrackingReadDataVisitor classTrackingVisitor = new ClassTrackingReadDataVisitor(Opcodes.ASM9);
         classReader.accept(classTrackingVisitor, new Attribute[] { new ClassFileSourceAttribute(null) }, 0);
+        if (classTrackingVisitor.getContents() == null && untrackedClassesListener != null) {
+            untrackedClassesListener.accept(classTrackingVisitor.getClassName());
+        }
         return classTrackingVisitor.getContents();
     }
 
@@ -112,10 +120,20 @@ public class ClassFileTracker {
     }
 
     public static Set<TrackingData> readTrackingDataFromJar(byte[] input, String jarFile) throws IOException {
-        return readTrackingDataFromJar(new ByteArrayInputStream(input), jarFile);
+        return readTrackingDataFromJar(input, jarFile, null);
+    }
+
+    public static Set<TrackingData> readTrackingDataFromJar(byte[] input, String jarFile,
+            Consumer<String> untrackedClassesListener) throws IOException {
+        return readTrackingDataFromJar(new ByteArrayInputStream(input), jarFile, untrackedClassesListener);
     }
 
     public static Set<TrackingData> readTrackingDataFromJar(InputStream input, String jarFile) throws IOException {
+        return readTrackingDataFromJar(input, jarFile, null);
+    }
+
+    public static Set<TrackingData> readTrackingDataFromJar(InputStream input, String jarFile,
+            Consumer<String> untrackedClassesListener) throws IOException {
         Set<TrackingData> ret = new HashSet<>();
         try (ZipInputStream zipIn = new ZipInputStream(input)) {
             var entry = zipIn.getNextEntry();
@@ -126,7 +144,8 @@ public class ClassFileTracker {
                         //I don't think we need to rebuild everything that has inlined code, as it means we will
                         //needs to build lots of different version of the kotlin standard library
                         if (!entry.getName().contains("$inlined$")) {
-                            TrackingData data = readTrackingInformationFromClass(zipIn.readAllBytes());
+                            TrackingData data = readTrackingInformationFromClass(zipIn.readAllBytes(),
+                                    untrackedClassesListener);
                             if (data != null) {
                                 ret.add(data);
                             }
@@ -136,7 +155,8 @@ public class ClassFileTracker {
                                 "Failed to read class " + entry.getName() + " from " + jarFile, e);
                     }
                 } else if (entry.getName().endsWith(".jar")) {
-                    ret.addAll(readTrackingDataFromJar(new NoCloseInputStream(zipIn), entry.getName()));
+                    ret.addAll(
+                            readTrackingDataFromJar(new NoCloseInputStream(zipIn), entry.getName(), untrackedClassesListener));
                 }
                 entry = zipIn.getNextEntry();
             }
@@ -145,14 +165,19 @@ public class ClassFileTracker {
     }
 
     public static Set<TrackingData> readTrackingDataFromFile(InputStream contents, String fileName) throws IOException {
+        return readTrackingDataFromFile(contents, fileName, (s) -> {
+        });
+    }
+
+    public static Set<TrackingData> readTrackingDataFromFile(InputStream contents, String fileName,
+            Consumer<String> untrackedClassesListener) throws IOException {
         if (fileName.endsWith(".class")) {
-            TrackingData data = readTrackingInformationFromClass(contents.readAllBytes());
+            TrackingData data = readTrackingInformationFromClass(contents.readAllBytes(), untrackedClassesListener);
             if (data != null) {
                 return Set.of(data);
             }
         } else if (fileName.endsWith(".jar")) {
-            return ClassFileTracker.readTrackingDataFromJar(contents,
-                    fileName);
+            return ClassFileTracker.readTrackingDataFromJar(contents, fileName, untrackedClassesListener);
         } else if (fileName.endsWith(".tgz") || fileName.endsWith(".tar.gaz")) {
             try {
                 Set<TrackingData> ret = new HashSet<>();
@@ -160,7 +185,8 @@ public class ClassFileTracker {
                 TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream);
                 for (TarArchiveEntry entry = tarArchiveInputStream
                         .getNextTarEntry(); entry != null; entry = tarArchiveInputStream.getNextTarEntry()) {
-                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName()));
+                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName(),
+                            untrackedClassesListener));
                 }
                 return ret;
             } catch (Exception e) {
@@ -173,7 +199,8 @@ public class ClassFileTracker {
                 TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(contents);
                 for (TarArchiveEntry entry = tarArchiveInputStream
                         .getNextTarEntry(); entry != null; entry = tarArchiveInputStream.getNextTarEntry()) {
-                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName()));
+                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName(),
+                            untrackedClassesListener));
                 }
                 return ret;
             } catch (Exception e) {
@@ -186,7 +213,8 @@ public class ClassFileTracker {
                 ZipInputStream tarArchiveInputStream = new ZipInputStream(contents);
                 for (var entry = tarArchiveInputStream
                         .getNextEntry(); entry != null; entry = tarArchiveInputStream.getNextEntry()) {
-                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName()));
+                    ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName(),
+                            untrackedClassesListener));
                 }
                 return ret;
             } catch (Exception e) {
