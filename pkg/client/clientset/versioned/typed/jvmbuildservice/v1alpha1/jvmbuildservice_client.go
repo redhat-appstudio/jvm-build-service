@@ -29,9 +29,9 @@ type JvmbuildserviceV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ArtifactBuildsGetter
 	DependencyBuildsGetter
+	JBSConfigsGetter
 	RebuiltArtifactsGetter
 	SystemConfigsGetter
-	UserConfigsGetter
 }
 
 // JvmbuildserviceV1alpha1Client is used to interact with features provided by the jvmbuildservice.io group.
@@ -47,16 +47,16 @@ func (c *JvmbuildserviceV1alpha1Client) DependencyBuilds(namespace string) Depen
 	return newDependencyBuilds(c, namespace)
 }
 
+func (c *JvmbuildserviceV1alpha1Client) JBSConfigs(namespace string) JBSConfigInterface {
+	return newJBSConfigs(c, namespace)
+}
+
 func (c *JvmbuildserviceV1alpha1Client) RebuiltArtifacts(namespace string) RebuiltArtifactInterface {
 	return newRebuiltArtifacts(c, namespace)
 }
 
 func (c *JvmbuildserviceV1alpha1Client) SystemConfigs(namespace string) SystemConfigInterface {
 	return newSystemConfigs(c, namespace)
-}
-
-func (c *JvmbuildserviceV1alpha1Client) UserConfigs(namespace string) UserConfigInterface {
-	return newUserConfigs(c, namespace)
 }
 
 // NewForConfig creates a new JvmbuildserviceV1alpha1Client for the given config.

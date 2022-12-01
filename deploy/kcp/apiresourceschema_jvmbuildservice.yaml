@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202212010605.artifactbuilds.jvmbuildservice.io
+  name: v202212020031.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202212010605.dependencybuilds.jvmbuildservice.io
+  name: v202212020031.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -381,131 +381,19 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202212010605.rebuiltartifacts.jvmbuildservice.io
+  name: v202212020031.jbsconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
-    kind: RebuiltArtifact
-    listKind: RebuiltArtifactList
-    plural: rebuiltartifacts
-    singular: rebuiltartifact
-  scope: Namespaced
-  versions:
-  - additionalPrinterColumns:
-    - jsonPath: .spec.gav
-      name: GAV
-      type: string
-    name: v1alpha1
-    schema:
-      description: RebuiltArtifact An artifact that has been rebuilt and deployed
-        to S3 or a Container registry
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          properties:
-            gav:
-              description: The GAV of the rebuilt artifact
-              type: string
-            image:
-              type: string
-          type: object
-        status:
-          type: object
-      required:
-      - spec
-      type: object
-    served: true
-    storage: true
-    subresources: {}
-
----
-apiVersion: apis.kcp.dev/v1alpha1
-kind: APIResourceSchema
-metadata:
-  creationTimestamp: null
-  name: v202212010605.systemconfigs.jvmbuildservice.io
-spec:
-  group: jvmbuildservice.io
-  names:
-    kind: SystemConfig
-    listKind: SystemConfigList
-    plural: systemconfigs
-    singular: systemconfig
-  scope: Cluster
-  versions:
-  - name: v1alpha1
-    schema:
-      description: SystemConfig TODO provide godoc description
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          properties:
-            builders:
-              additionalProperties:
-                properties:
-                  image:
-                    type: string
-                  priority:
-                    type: integer
-                  tag:
-                    type: string
-                type: object
-              type: object
-            quota:
-              type: string
-            recipeDatabase:
-              type: string
-          type: object
-        status:
-          type: object
-      required:
-      - spec
-      type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
-
----
-apiVersion: apis.kcp.dev/v1alpha1
-kind: APIResourceSchema
-metadata:
-  creationTimestamp: null
-  name: v202212010605.userconfigs.jvmbuildservice.io
-spec:
-  group: jvmbuildservice.io
-  names:
-    kind: UserConfig
-    listKind: UserConfigList
-    plural: userconfigs
-    singular: userconfig
+    kind: JBSConfig
+    listKind: JBSConfigList
+    plural: jbsconfigs
+    singular: jbsconfig
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
-      description: UserConfig TODO provide godoc description
+      description: JBSConfig TODO provide godoc description
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -611,6 +499,118 @@ spec:
                 type: object
               type: array
             repository:
+              type: string
+          type: object
+        status:
+          type: object
+      required:
+      - spec
+      type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+---
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIResourceSchema
+metadata:
+  creationTimestamp: null
+  name: v202212020031.rebuiltartifacts.jvmbuildservice.io
+spec:
+  group: jvmbuildservice.io
+  names:
+    kind: RebuiltArtifact
+    listKind: RebuiltArtifactList
+    plural: rebuiltartifacts
+    singular: rebuiltartifact
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.gav
+      name: GAV
+      type: string
+    name: v1alpha1
+    schema:
+      description: RebuiltArtifact An artifact that has been rebuilt and deployed
+        to S3 or a Container registry
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            gav:
+              description: The GAV of the rebuilt artifact
+              type: string
+            image:
+              type: string
+          type: object
+        status:
+          type: object
+      required:
+      - spec
+      type: object
+    served: true
+    storage: true
+    subresources: {}
+
+---
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIResourceSchema
+metadata:
+  creationTimestamp: null
+  name: v202212020031.systemconfigs.jvmbuildservice.io
+spec:
+  group: jvmbuildservice.io
+  names:
+    kind: SystemConfig
+    listKind: SystemConfigList
+    plural: systemconfigs
+    singular: systemconfig
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      description: SystemConfig TODO provide godoc description
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            builders:
+              additionalProperties:
+                properties:
+                  image:
+                    type: string
+                  priority:
+                    type: integer
+                  tag:
+                    type: string
+                type: object
+              type: object
+            quota:
+              type: string
+            recipeDatabase:
               type: string
           type: object
         status:

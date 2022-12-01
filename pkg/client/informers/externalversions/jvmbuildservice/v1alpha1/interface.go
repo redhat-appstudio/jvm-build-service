@@ -27,12 +27,12 @@ type Interface interface {
 	ArtifactBuilds() ArtifactBuildInformer
 	// DependencyBuilds returns a DependencyBuildInformer.
 	DependencyBuilds() DependencyBuildInformer
+	// JBSConfigs returns a JBSConfigInformer.
+	JBSConfigs() JBSConfigInformer
 	// RebuiltArtifacts returns a RebuiltArtifactInformer.
 	RebuiltArtifacts() RebuiltArtifactInformer
 	// SystemConfigs returns a SystemConfigInformer.
 	SystemConfigs() SystemConfigInformer
-	// UserConfigs returns a UserConfigInformer.
-	UserConfigs() UserConfigInformer
 }
 
 type version struct {
@@ -56,6 +56,11 @@ func (v *version) DependencyBuilds() DependencyBuildInformer {
 	return &dependencyBuildInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
+// JBSConfigs returns a JBSConfigInformer.
+func (v *version) JBSConfigs() JBSConfigInformer {
+	return &jBSConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // RebuiltArtifacts returns a RebuiltArtifactInformer.
 func (v *version) RebuiltArtifacts() RebuiltArtifactInformer {
 	return &rebuiltArtifactInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
@@ -64,9 +69,4 @@ func (v *version) RebuiltArtifacts() RebuiltArtifactInformer {
 // SystemConfigs returns a SystemConfigInformer.
 func (v *version) SystemConfigs() SystemConfigInformer {
 	return &systemConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// UserConfigs returns a UserConfigInformer.
-func (v *version) UserConfigs() UserConfigInformer {
-	return &userConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

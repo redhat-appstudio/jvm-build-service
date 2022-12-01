@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	//TODO add fields for both constants to userconfig, systemconfig, or both
+	//TODO add fields for both constants to jbsconfig, systemconfig, or both
 	abandonAfter   = 3 * time.Hour
 	requeueAfter   = 1 * time.Minute
 	contextTimeout = 300 * time.Second

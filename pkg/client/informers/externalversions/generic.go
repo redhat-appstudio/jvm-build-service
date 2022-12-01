@@ -56,12 +56,12 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().ArtifactBuilds().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dependencybuilds"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().DependencyBuilds().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("jbsconfigs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().JBSConfigs().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("rebuiltartifacts"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().RebuiltArtifacts().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("systemconfigs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().SystemConfigs().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("userconfigs"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Jvmbuildservice().V1alpha1().UserConfigs().Informer()}, nil
 
 	}
 

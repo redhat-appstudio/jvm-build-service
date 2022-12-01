@@ -35,16 +35,16 @@ func (c *FakeJvmbuildserviceV1alpha1) DependencyBuilds(namespace string) v1alpha
 	return &FakeDependencyBuilds{c, namespace}
 }
 
+func (c *FakeJvmbuildserviceV1alpha1) JBSConfigs(namespace string) v1alpha1.JBSConfigInterface {
+	return &FakeJBSConfigs{c, namespace}
+}
+
 func (c *FakeJvmbuildserviceV1alpha1) RebuiltArtifacts(namespace string) v1alpha1.RebuiltArtifactInterface {
 	return &FakeRebuiltArtifacts{c, namespace}
 }
 
 func (c *FakeJvmbuildserviceV1alpha1) SystemConfigs(namespace string) v1alpha1.SystemConfigInterface {
 	return &FakeSystemConfigs{c, namespace}
-}
-
-func (c *FakeJvmbuildserviceV1alpha1) UserConfigs(namespace string) v1alpha1.UserConfigInterface {
-	return &FakeUserConfigs{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

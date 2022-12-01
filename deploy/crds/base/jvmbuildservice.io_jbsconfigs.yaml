@@ -6,20 +6,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
-  name: userconfigs.jvmbuildservice.io
+  name: jbsconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
-    kind: UserConfig
-    listKind: UserConfigList
-    plural: userconfigs
-    singular: userconfig
+    kind: JBSConfig
+    listKind: JBSConfigList
+    plural: jbsconfigs
+    singular: jbsconfig
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: UserConfig TODO provide godoc description
+        description: JBSConfig TODO provide godoc description
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation

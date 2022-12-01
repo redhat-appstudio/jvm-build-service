@@ -38,8 +38,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&DependencyBuildList{},
 		&SystemConfig{},
 		&SystemConfigList{},
-		&UserConfig{},
-		&UserConfigList{},
+		&JBSConfig{},
+		&JBSConfigList{},
 		&RebuiltArtifact{},
 		&RebuiltArtifactList{},
 	)

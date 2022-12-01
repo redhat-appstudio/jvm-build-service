@@ -3,7 +3,7 @@ package v1alpha1
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 const (
-	UserConfigName                          = "jvm-build-config"
+	JBSConfigName                           = "jvm-build-config"
 	UserSecretName                          = "jvm-build-secrets"
 	UserSecretTokenKey                      = ".dockerconfigjson" //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
@@ -16,7 +16,7 @@ const (
 	ConfigArtifactCacheStorageDefault       = "10Gi"
 )
 
-type UserConfigSpec struct {
+type JBSConfigSpec struct {
 	EnableRebuilds bool `json:"enableRebuilds,omitempty"`
 
 	AdditionalRecipes []string `json:"additionalRecipes,omitempty"`
@@ -29,7 +29,7 @@ type UserConfigSpec struct {
 	RelocationPatterns []RelocationPatternElement `json:"relocationPatterns,omitempty"`
 }
 
-type UserConfigStatus struct {
+type JBSConfigStatus struct {
 }
 
 type CacheSettings struct {
@@ -86,21 +86,21 @@ type Pattern struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=userconfigs,scope=Namespaced
-// UserConfig TODO provide godoc description
-type UserConfig struct {
+// +kubebuilder:resource:path=jbsconfigs,scope=Namespaced
+// JBSConfig TODO provide godoc description
+type JBSConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   UserConfigSpec   `json:"spec"`
-	Status UserConfigStatus `json:"status,omitempty"`
+	Spec   JBSConfigSpec   `json:"spec"`
+	Status JBSConfigStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// UserConfigList contains a list of SystemConfig
-type UserConfigList struct {
+// JBSConfigList contains a list of SystemConfig
+type JBSConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []UserConfig `json:"items"`
+	Items           []JBSConfig `json:"items"`
 }

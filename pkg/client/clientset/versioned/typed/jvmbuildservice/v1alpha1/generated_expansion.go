@@ -21,8 +21,8 @@ type ArtifactBuildExpansion interface{}
 
 type DependencyBuildExpansion interface{}
 
+type JBSConfigExpansion interface{}
+
 type RebuiltArtifactExpansion interface{}
 
 type SystemConfigExpansion interface{}
-
-type UserConfigExpansion interface{}

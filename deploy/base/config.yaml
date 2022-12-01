@@ -1,6 +1,6 @@
 ---
 apiVersion: jvmbuildservice.io/v1alpha1
-kind: UserConfig
+kind: JBSConfig
 metadata:
   name: jvm-build-config
 spec:

@@ -81,13 +81,13 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	//	log.Info("cluster is not set in context", request.String())
 	//}
 
-	userConfig := &v1alpha1.UserConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
+	jbsConfig := &v1alpha1.JBSConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
 	//if rebuilds are not enabled we don't do anything here
-	if !userConfig.Spec.EnableRebuilds {
+	if !jbsConfig.Spec.EnableRebuilds {
 		return reconcile.Result{}, nil
 	}
 
@@ -155,7 +155,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 		switch abr.Status.State {
 		case v1alpha1.ArtifactBuildStateNew, "":
-			return r.handleStateNew(ctx, log, &abr, userConfig)
+			return r.handleStateNew(ctx, log, &abr, jbsConfig)
 		case v1alpha1.ArtifactBuildStateDiscovering:
 			return r.handleStateDiscovering(ctx, log, &abr)
 		case v1alpha1.ArtifactBuildStateComplete:
@@ -296,7 +296,7 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild, userConfig *v1alpha1.UserConfig) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild, jbsConfig *v1alpha1.JBSConfig) (reconcile.Result, error) {
 
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
@@ -307,7 +307,7 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, userConfig, &systemConfig)
+	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, jbsConfig, &systemConfig)
 	if err2 != nil {
 		return reconcile.Result{}, err2
 	}
@@ -609,13 +609,13 @@ func CreateABRName(gav string) string {
 	return strings.ToLower(newName.String())
 }
 
-func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, userConfig *v1alpha1.UserConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.TaskSpec, error) {
+func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.TaskSpec, error) {
 	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	if err != nil {
 		return nil, err
 	}
 	recipes := ""
-	additional := userConfig.Spec.AdditionalRecipes
+	additional := jbsConfig.Spec.AdditionalRecipes
 	for _, recipe := range additional {
 		if len(strings.TrimSpace(recipe)) > 0 {
 			recipes = recipes + recipe + ","
@@ -654,7 +654,7 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					gav,
 					"--cache-url",
 					//TODO KCP compatibility with cache name
-					"http://jvm-build-workspace-artifact-cache." + userConfig.Namespace + ".svc.cluster.local/v1/cache/default/0",
+					"http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v1/cache/default/0",
 				},
 				SecurityContext: &corev1.SecurityContext{
 					RunAsUser: &zero,

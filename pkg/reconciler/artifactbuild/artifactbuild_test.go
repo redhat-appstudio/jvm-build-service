@@ -37,9 +37,9 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	_ = appsv1.AddToScheme(scheme)
-	sysConfig := &v1alpha1.UserConfig{
-		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.UserConfigName, Namespace: metav1.NamespaceDefault},
-		Spec: v1alpha1.UserConfigSpec{
+	sysConfig := &v1alpha1.JBSConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.JBSConfigName, Namespace: metav1.NamespaceDefault},
+		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds: true,
 		},
 	}
@@ -64,8 +64,8 @@ func TestArtifactBuildStateNew(t *testing.T) {
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&abr)
 	const customRepo = "https://myrepo.com/repo.git"
-	sysConfig := v1alpha1.UserConfig{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Name: v1alpha1.UserConfigName, Namespace: metav1.NamespaceDefault}, &sysConfig)).Should(Succeed())
+	sysConfig := v1alpha1.JBSConfig{}
+	g.Expect(client.Get(ctx, types.NamespacedName{Name: v1alpha1.JBSConfigName, Namespace: metav1.NamespaceDefault}, &sysConfig)).Should(Succeed())
 	sysConfig.Spec.AdditionalRecipes = []string{customRepo}
 
 	g.Expect(client.Update(context.TODO(), &sysConfig)).Should(Succeed())
