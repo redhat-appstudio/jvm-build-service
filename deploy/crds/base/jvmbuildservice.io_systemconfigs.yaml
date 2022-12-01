@@ -48,6 +48,8 @@ spec:
                 type: object
               quota:
                 type: string
+              recipeDatabase:
+                type: string
             type: object
           status:
             type: object

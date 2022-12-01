@@ -22,9 +22,6 @@ spec:
             - "--v=6"
             - "--zap-log-level=6"
             - "--zap-devel=true"
-          env:
-            - name: RECIPE_DATABASE
-              value: "https://github.com/redhat-appstudio/jvm-build-data"
           resources:
             requests:
               memory: "256Mi"

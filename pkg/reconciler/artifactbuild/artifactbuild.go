@@ -6,7 +6,7 @@ import (
 	"crypto/sha1" //#nosec G505
 	"encoding/hex"
 	"fmt"
-	"os"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"strings"
 	"time"
 	"unicode"
@@ -302,7 +302,12 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 	pr := pipelinev1beta1.PipelineRun{}
 	pr.GenerateName = abr.Name + "-scm-discovery-"
 	pr.Namespace = abr.Namespace
-	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, userConfig)
+	systemConfig := v1alpha1.SystemConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, userConfig, &systemConfig)
 	if err2 != nil {
 		return reconcile.Result{}, err2
 	}
@@ -604,7 +609,7 @@ func CreateABRName(gav string) string {
 	return strings.ToLower(newName.String())
 }
 
-func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, userConfig *v1alpha1.UserConfig) (*pipelinev1beta1.TaskSpec, error) {
+func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, userConfig *v1alpha1.UserConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.TaskSpec, error) {
 	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	if err != nil {
 		return nil, err
@@ -616,7 +621,7 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 			recipes = recipes + recipe + ","
 		}
 	}
-	recipes = recipes + os.Getenv("RECIPE_DATABASE")
+	recipes = recipes + settingOrDefault(systemConfig.Spec.RecipeDatabase, v1alpha1.DefaultRecipeDatabase)
 
 	zero := int64(0)
 	return &pipelinev1beta1.TaskSpec{
@@ -681,4 +686,11 @@ func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context
 		}
 	}
 	return nil
+}
+
+func settingOrDefault(setting, def string) string {
+	if len(strings.TrimSpace(setting)) == 0 {
+		return def
+	}
+	return setting
 }
