@@ -3,6 +3,7 @@ package pendingpipelinerun
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -14,13 +15,20 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"knative.dev/pkg/apis"
 )
 
-//TODO add fields for both constants to userconfig, systemconfig, or both
 const (
+	//TODO add fields for both constants to userconfig, systemconfig, or both
 	abandonAfter   = 3 * time.Hour
 	requeueAfter   = 1 * time.Minute
 	contextTimeout = 300 * time.Second
+
+	//TODO move to API folder, along with config obj changes
+	AbandonedAnnotation = "openshift-pipelines/cancelled-to-abandon"
+	AbandonedReason     = "Abandoned"
+	AbandonedMessage    = "PipelineRun %s:%s abandoned because of Pod Quota pressure"
 )
 
 var (
@@ -61,6 +69,18 @@ func (r *ReconcilePendingPipelineRun) Reconcile(ctx context.Context, request rec
 		return reconcile.Result{}, client.IgnoreNotFound(r.unthrottleNextOnQueuePlusCleanup(ctx, pr.Namespace))
 	}
 
+	if pr.Spec.Status == "" {
+		return reconcile.Result{}, nil
+	}
+
+	val, ok := pr.Annotations[AbandonedAnnotation]
+	condition := pr.Status.GetCondition(apis.ConditionSucceeded)
+	needToAddAbandonReasonMessage := condition == nil || condition.Reason != AbandonedReason
+	if pr.IsCancelled() && ok && strings.TrimSpace(val) == "true" && needToAddAbandonReasonMessage {
+		pr.Status.MarkFailed(AbandonedReason, AbandonedMessage, pr.Namespace, pr.Name)
+		return reconcile.Result{}, client.IgnoreNotFound(r.client.Status().Update(ctx, pr))
+	}
+
 	// active (not pending) or terminal state, pop a pending item off the queue
 	if pr.IsDone() || pr.IsCancelled() || pr.IsGracefullyCancelled() || pr.IsGracefullyStopped() || !pr.IsPending() {
 		return reconcile.Result{}, client.IgnoreNotFound(r.unthrottleNextOnQueuePlusCleanup(ctx, pr.Namespace))
@@ -93,6 +113,10 @@ func (r *ReconcilePendingPipelineRun) Reconcile(ctx context.Context, request rec
 			}
 			// pending item has waited too long, cancel with an event to explain
 			pr.Spec.Status = v1beta1.PipelineRunSpecStatusCancelled
+			if pr.Annotations == nil {
+				pr.Annotations = map[string]string{}
+			}
+			pr.Annotations[AbandonedAnnotation] = "true"
 			r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, "AbandonedPipelineRun", "after throttling, now past throttling timeout and have to abandon %s:%s", pr.Namespace, pr.Name)
 			return reconcile.Result{}, client.IgnoreNotFound(r.client.Update(ctx, pr))
 		}
