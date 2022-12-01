@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// test pr
 func setupClientAndPRReconciler(useOpenshift bool, objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcilePendingPipelineRun) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
