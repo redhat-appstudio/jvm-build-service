@@ -137,7 +137,7 @@ func TestExceedK8sQuota(t *testing.T) {
 
 	// now, with at least 1 non pending pr, finagle creation time to be timed out
 	key = runtimeclient.ObjectKey{Namespace: prs[1].Namespace, Name: prs[1].Name}
-	err = client.Get(ctx, key, &pr)
+	g.Expect(client.Get(ctx, key, &pr)).NotTo(HaveOccurred())
 	pr.ObjectMeta.CreationTimestamp = metav1.NewTime(time.Unix(0, 0))
 	err = client.Update(ctx, &pr)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -198,7 +198,7 @@ func TestExceedK8sQuotaNotTimedOut(t *testing.T) {
 	// with start time set, the PR should registered as timed out
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: prs[1].Namespace, Name: prs[1].Name}}))
 	key = runtimeclient.ObjectKey{Namespace: prs[1].Namespace, Name: prs[1].Name}
-	err = client.Get(ctx, key, &pr)
+	g.Expect(client.Get(ctx, key, &pr)).NotTo(HaveOccurred())
 	g.Expect(pr.Spec.Status).To(Equal(v1beta1.PipelineRunSpecStatus(v1beta1.PipelineRunSpecStatusPending)))
 
 }
