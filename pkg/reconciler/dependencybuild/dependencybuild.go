@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -175,7 +174,12 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	}
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
-	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, userConfig)
+	systemConfig := v1alpha1.SystemConfig{}
+	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, userConfig, &systemConfig)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -724,7 +728,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, userConfig *v1alpha1.UserConfig) (*pipelinev1beta1.PipelineSpec, error) {
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, userConfig *v1alpha1.UserConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
 	image, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return nil, err
@@ -736,7 +740,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 			recipes = recipes + recipe + ","
 		}
 	}
-	recipes = recipes + os.Getenv("RECIPE_DATABASE")
+	recipes = recipes + settingOrDefault(systemConfig.Spec.RecipeDatabase, v1alpha1.DefaultRecipeDatabase)
 	path := build.ScmInfo.Path
 	//TODO should the buidl request process require context to be set ?
 	if len(path) == 0 {

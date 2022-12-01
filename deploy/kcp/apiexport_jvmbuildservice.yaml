@@ -20,8 +20,8 @@ spec:
     # replace by pipeline-service identityHash
     identityHash: pipeline-service
   latestResourceSchemas:
-    - v202211291420.artifactbuilds.jvmbuildservice.io
-    - v202211291420.dependencybuilds.jvmbuildservice.io
-    - v202211291420.rebuiltartifacts.jvmbuildservice.io
-    - v202211291420.systemconfigs.jvmbuildservice.io
-    - v202211291420.userconfigs.jvmbuildservice.io
+    - v202212010605.artifactbuilds.jvmbuildservice.io
+    - v202212010605.dependencybuilds.jvmbuildservice.io
+    - v202212010605.rebuiltartifacts.jvmbuildservice.io
+    - v202212010605.systemconfigs.jvmbuildservice.io
+    - v202212010605.userconfigs.jvmbuildservice.io

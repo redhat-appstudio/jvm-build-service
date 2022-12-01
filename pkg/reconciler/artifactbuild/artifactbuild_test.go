@@ -2,6 +2,7 @@ package artifactbuild
 
 import (
 	"context"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -42,7 +43,11 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 			EnableRebuilds: true,
 		},
 	}
-	objs = append(objs, sysConfig)
+	systemConfig := &v1alpha1.SystemConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: systemconfig.SystemConfigKey},
+		Spec:       v1alpha1.SystemConfigSpec{},
+	}
+	objs = append(objs, sysConfig, systemConfig)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}, prCreator: &pendingpipelinerun.ImmediateCreate{}}
 	util.ImageTag = "foo"

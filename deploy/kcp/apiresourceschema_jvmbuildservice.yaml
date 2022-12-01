@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211291420.artifactbuilds.jvmbuildservice.io
+  name: v202212010605.artifactbuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -77,7 +77,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211291420.dependencybuilds.jvmbuildservice.io
+  name: v202212010605.dependencybuilds.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -381,7 +381,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211291420.rebuiltartifacts.jvmbuildservice.io
+  name: v202212010605.rebuiltartifacts.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -434,7 +434,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211291420.systemconfigs.jvmbuildservice.io
+  name: v202212010605.systemconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
@@ -475,6 +475,8 @@ spec:
               type: object
             quota:
               type: string
+            recipeDatabase:
+              type: string
           type: object
         status:
           type: object
@@ -491,7 +493,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202211291420.userconfigs.jvmbuildservice.io
+  name: v202212010605.userconfigs.jvmbuildservice.io
 spec:
   group: jvmbuildservice.io
   names:
