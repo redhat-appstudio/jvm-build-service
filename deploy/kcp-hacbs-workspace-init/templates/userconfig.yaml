@@ -1,7 +1,7 @@
 #TODO  long term, do we want to merge this with <repoHome>/deploy/base/config.yaml ??
 ---
 apiVersion: jvmbuildservice.io/v1alpha1
-kind: UserConfig
+kind: JBSConfig
 metadata:
   name: jvm-build-config
 spec:

@@ -68,9 +68,9 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		},
 	}
 	_ = client.Create(context.TODO(), &sysConfig)
-	usrConfig := v1alpha1.UserConfig{
-		ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName},
-		Spec: v1alpha1.UserConfigSpec{
+	usrConfig := v1alpha1.JBSConfig{
+		ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName},
+		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds: true,
 		},
 	}

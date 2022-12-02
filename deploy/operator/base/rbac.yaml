@@ -16,8 +16,8 @@ rules:
       - rebuiltartifacts/status
       - systemconfigs
       - systemconfigs/status
-      - userconfigs
-      - userconfigs/status
+      - jbsconfigs
+      - jbsconfigs/status
     verbs:
       - create
       - delete
@@ -185,8 +185,8 @@ rules:
       - dependencybuilds/status
       - systemconfigs
       - systemconfigs/status
-      - userconfigs
-      - userconfigs/status
+      - jbsconfigs
+      - jbsconfigs/status
     verbs:
       - get
       - list

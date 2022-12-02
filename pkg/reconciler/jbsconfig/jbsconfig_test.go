@@ -1,4 +1,4 @@
-package userconfig
+package jbsconfig
 
 import (
 	"context"
@@ -21,13 +21,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcilerUserConfig) {
+func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcilerJBSConfig) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = appsv1.AddToScheme(scheme)
 	_ = corev1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	reconciler := &ReconcilerUserConfig{
+	reconciler := &ReconcilerJBSConfig{
 		client:        client,
 		scheme:        scheme,
 		eventRecorder: &record.FakeRecorder{},
@@ -48,11 +48,11 @@ func setupSectet() *corev1.Secret {
 	}
 }
 
-func setupUserConfig() *v1alpha1.UserConfig {
-	userConfig := v1alpha1.UserConfig{}
-	userConfig.Namespace = metav1.NamespaceDefault
-	userConfig.Name = v1alpha1.UserConfigName
-	return &userConfig
+func setupJBSConfig() *v1alpha1.JBSConfig {
+	jbsConfig := v1alpha1.JBSConfig{}
+	jbsConfig.Namespace = metav1.NamespaceDefault
+	jbsConfig.Name = v1alpha1.JBSConfigName
+	return &jbsConfig
 }
 
 func readConfiguredRepositories(client runtimeclient.Client, g *WithT) *string {
@@ -73,20 +73,20 @@ func readConfiguredRepositories(client runtimeclient.Client, g *WithT) *string {
 func TestMissingRegistrySecret(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ctx := context.TODO()
-	userConfig := setupUserConfig()
-	userConfig.Spec.EnableRebuilds = true
-	objs := []runtimeclient.Object{userConfig}
+	jbsConfig := setupJBSConfig()
+	jbsConfig.Spec.EnableRebuilds = true
+	objs := []runtimeclient.Object{jbsConfig}
 	_, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).NotTo(BeNil())
 }
 
 func TestMissingRegistrySecretRebuildFalse(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ctx := context.TODO()
-	objs := []runtimeclient.Object{setupUserConfig()}
+	objs := []runtimeclient.Object{setupJBSConfig()}
 	_, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil())
 }
 
@@ -95,20 +95,20 @@ func TestMissingRegistrySecretKey(t *testing.T) {
 	ctx := context.TODO()
 	secret := setupSectet()
 	delete(secret.Data, v1alpha1.UserSecretTokenKey)
-	userConfig := setupUserConfig()
-	userConfig.Spec.EnableRebuilds = true
-	objs := []runtimeclient.Object{userConfig, secret}
+	jbsConfig := setupJBSConfig()
+	jbsConfig.Spec.EnableRebuilds = true
+	objs := []runtimeclient.Object{jbsConfig, secret}
 	_, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).NotTo(BeNil())
 }
 
 func TestSetupEmptyConfigWithSecret(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ctx := context.TODO()
-	objs := []runtimeclient.Object{setupUserConfig(), setupSectet()}
+	objs := []runtimeclient.Object{setupJBSConfig(), setupSectet()}
 	client, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil())
 	value := readConfiguredRepositories(client, g)
 	g.Expect(*value).Should(Equal("central"))
@@ -117,11 +117,11 @@ func TestSetupEmptyConfigWithSecret(t *testing.T) {
 func TestRebuildEnabled(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ctx := context.TODO()
-	userConfig := setupUserConfig()
-	userConfig.Spec.EnableRebuilds = true
-	objs := []runtimeclient.Object{userConfig, setupSectet()}
+	jbsConfig := setupJBSConfig()
+	jbsConfig.Spec.EnableRebuilds = true
+	objs := []runtimeclient.Object{jbsConfig, setupSectet()}
 	client, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil())
 	value := readConfiguredRepositories(client, g)
 	g.Expect(*value).Should(Equal("rebuilt,central"))
@@ -131,12 +131,12 @@ func TestRebuildEnabled(t *testing.T) {
 func TestRebuildEnabledCustomRepo(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ctx := context.TODO()
-	userConfig := setupUserConfig()
-	userConfig.Spec.EnableRebuilds = true
-	userConfig.Spec.MavenBaseLocations = map[string]string{"maven-repository-302-gradle": "https://repo.gradle.org/artifactory/libs-releases"}
-	objs := []runtimeclient.Object{userConfig, setupSectet()}
+	jbsConfig := setupJBSConfig()
+	jbsConfig.Spec.EnableRebuilds = true
+	jbsConfig.Spec.MavenBaseLocations = map[string]string{"maven-repository-302-gradle": "https://repo.gradle.org/artifactory/libs-releases"}
+	objs := []runtimeclient.Object{jbsConfig, setupSectet()}
 	client, reconciler := setupClientAndReconciler(objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}})
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil())
 	value := readConfiguredRepositories(client, g)
 	g.Expect(*value).Should(Equal("rebuilt,central,gradle"))

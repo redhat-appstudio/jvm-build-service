@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// UserConfigInformer provides access to a shared informer and lister for
-// UserConfigs.
-type UserConfigInformer interface {
+// JBSConfigInformer provides access to a shared informer and lister for
+// JBSConfigs.
+type JBSConfigInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.UserConfigLister
+	Lister() v1alpha1.JBSConfigLister
 }
 
-type userConfigInformer struct {
+type jBSConfigInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewUserConfigInformer constructs a new informer for UserConfig type.
+// NewJBSConfigInformer constructs a new informer for JBSConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewUserConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredUserConfigInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewJBSConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredJBSConfigInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredUserConfigInformer constructs a new informer for UserConfig type.
+// NewFilteredJBSConfigInformer constructs a new informer for JBSConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredUserConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredJBSConfigInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.JvmbuildserviceV1alpha1().UserConfigs(namespace).List(context.TODO(), options)
+				return client.JvmbuildserviceV1alpha1().JBSConfigs(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.JvmbuildserviceV1alpha1().UserConfigs(namespace).Watch(context.TODO(), options)
+				return client.JvmbuildserviceV1alpha1().JBSConfigs(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&jvmbuildservicev1alpha1.UserConfig{},
+		&jvmbuildservicev1alpha1.JBSConfig{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *userConfigInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredUserConfigInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *jBSConfigInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredJBSConfigInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *userConfigInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&jvmbuildservicev1alpha1.UserConfig{}, f.defaultInformer)
+func (f *jBSConfigInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&jvmbuildservicev1alpha1.JBSConfig{}, f.defaultInformer)
 }
 
-func (f *userConfigInformer) Lister() v1alpha1.UserConfigLister {
-	return v1alpha1.NewUserConfigLister(f.Informer().GetIndexer())
+func (f *jBSConfigInformer) Lister() v1alpha1.JBSConfigLister {
+	return v1alpha1.NewJBSConfigLister(f.Informer().GetIndexer())
 }

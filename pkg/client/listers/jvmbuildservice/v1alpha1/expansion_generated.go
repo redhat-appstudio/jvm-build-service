@@ -33,6 +33,14 @@ type DependencyBuildListerExpansion interface{}
 // DependencyBuildNamespaceLister.
 type DependencyBuildNamespaceListerExpansion interface{}
 
+// JBSConfigListerExpansion allows custom methods to be added to
+// JBSConfigLister.
+type JBSConfigListerExpansion interface{}
+
+// JBSConfigNamespaceListerExpansion allows custom methods to be added to
+// JBSConfigNamespaceLister.
+type JBSConfigNamespaceListerExpansion interface{}
+
 // RebuiltArtifactListerExpansion allows custom methods to be added to
 // RebuiltArtifactLister.
 type RebuiltArtifactListerExpansion interface{}
@@ -48,11 +56,3 @@ type SystemConfigListerExpansion interface{}
 // SystemConfigNamespaceListerExpansion allows custom methods to be added to
 // SystemConfigNamespaceLister.
 type SystemConfigNamespaceListerExpansion interface{}
-
-// UserConfigListerExpansion allows custom methods to be added to
-// UserConfigLister.
-type UserConfigListerExpansion interface{}
-
-// UserConfigNamespaceListerExpansion allows custom methods to be added to
-// UserConfigNamespaceLister.
-type UserConfigNamespaceListerExpansion interface{}

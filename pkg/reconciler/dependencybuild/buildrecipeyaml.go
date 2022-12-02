@@ -32,7 +32,7 @@ var gradleBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
-func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.UserConfig, recipe *v1alpha12.BuildRecipe) (*pipelinev1beta1.PipelineSpec, error) {
+func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe) (*pipelinev1beta1.PipelineSpec, error) {
 	var settings string
 	var build string
 	trueBool := true
@@ -51,23 +51,23 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 		"--source-path=$(workspaces.source.path)/source",
 		"--task-run=$(context.taskRun.name)",
 	}
-	if userConfig.Spec.ImageRegistry.Host != "" {
-		deployArgs = append(deployArgs, "--registry-host="+userConfig.Spec.ImageRegistry.Host)
+	if jbsConfig.Spec.ImageRegistry.Host != "" {
+		deployArgs = append(deployArgs, "--registry-host="+jbsConfig.Spec.ImageRegistry.Host)
 	}
-	if userConfig.Spec.ImageRegistry.Port != "" {
-		deployArgs = append(deployArgs, "--registry-port="+userConfig.Spec.ImageRegistry.Port)
+	if jbsConfig.Spec.ImageRegistry.Port != "" {
+		deployArgs = append(deployArgs, "--registry-port="+jbsConfig.Spec.ImageRegistry.Port)
 	}
-	if userConfig.Spec.ImageRegistry.Owner != "" {
-		deployArgs = append(deployArgs, "--registry-owner="+userConfig.Spec.ImageRegistry.Owner)
+	if jbsConfig.Spec.ImageRegistry.Owner != "" {
+		deployArgs = append(deployArgs, "--registry-owner="+jbsConfig.Spec.ImageRegistry.Owner)
 	}
-	if userConfig.Spec.ImageRegistry.Repository != "" {
-		deployArgs = append(deployArgs, "--registry-repository="+userConfig.Spec.ImageRegistry.Repository)
+	if jbsConfig.Spec.ImageRegistry.Repository != "" {
+		deployArgs = append(deployArgs, "--registry-repository="+jbsConfig.Spec.ImageRegistry.Repository)
 	}
-	if userConfig.Spec.ImageRegistry.Insecure {
+	if jbsConfig.Spec.ImageRegistry.Insecure {
 		deployArgs = append(deployArgs, "--registry-insecure=")
 	}
-	if userConfig.Spec.ImageRegistry.PrependTag != "" {
-		deployArgs = append(deployArgs, "--registry-prepend-tag="+userConfig.Spec.ImageRegistry.PrependTag)
+	if jbsConfig.Spec.ImageRegistry.PrependTag != "" {
+		deployArgs = append(deployArgs, "--registry-prepend-tag="+jbsConfig.Spec.ImageRegistry.PrependTag)
 	}
 
 	install := ""
@@ -114,23 +114,23 @@ func createPipelineSpec(maven bool, commitTime int64, userConfig *v1alpha12.User
 	if recipe.DisableSubmodules {
 		gitArgs = append(gitArgs, "-submodules=false")
 	}
-	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.TaskRequestMemory, "256Mi"))
+	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "256Mi"))
 	if err != nil {
 		return nil, err
 	}
-	buildContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.BuildRequestMemory, "512Mi"))
+	buildContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestMemory, "512Mi"))
 	if err != nil {
 		return nil, err
 	}
-	defaultContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
+	defaultContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
 	if err != nil {
 		return nil, err
 	}
-	defaultContainerLimitCPU, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.TaskLimitCPU, "300m"))
+	defaultContainerLimitCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskLimitCPU, "300m"))
 	if err != nil {
 		return nil, err
 	}
-	buildContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
+	buildContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
 	if err != nil {
 		return nil, err
 	}

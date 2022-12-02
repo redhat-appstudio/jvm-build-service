@@ -92,13 +92,13 @@ func setupSystemConfig() {
 
 		Expect(k8sClient.Create(context.TODO(), &sysConfig)).Should(Succeed())
 	}
-	userConfig := v1alpha1.UserConfig{}
-	err = k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.UserConfigName}, &userConfig)
+	jbsConfig := v1alpha1.JBSConfig{}
+	err = k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}, &jbsConfig)
 	if errors2.IsNotFound(err) {
-		userConfig.Namespace = metav1.NamespaceDefault
-		userConfig.Name = v1alpha1.UserConfigName
-		userConfig.Spec.EnableRebuilds = true
-		Expect(k8sClient.Create(context.TODO(), &userConfig)).Should(Succeed())
+		jbsConfig.Namespace = metav1.NamespaceDefault
+		jbsConfig.Name = v1alpha1.JBSConfigName
+		jbsConfig.Spec.EnableRebuilds = true
+		Expect(k8sClient.Create(context.TODO(), &jbsConfig)).Should(Succeed())
 	}
 }
 
@@ -299,21 +299,30 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 		})
 
 		It("db", func() {
-			btr := getTrBuildDiscovery()
-			btr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-			btr.Status.SetCondition(&apis.Condition{
-				Type:               apis.ConditionSucceeded,
-				Status:             "True",
-				LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
-			})
-			btr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
-				Name:  dependencybuild.BuildInfoPipelineMessage,
-				Value: "OK",
-			}, {
-				Name:  dependencybuild.BuildInfoPipelineBuildInfo,
-				Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"toolVersion":null,"javaHome":null}`,
-			}}
-			Expect(k8sClient.Status().Update(ctx, btr)).Should(Succeed())
+			for {
+				btr := getTrBuildDiscovery()
+				btr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+				btr.Status.SetCondition(&apis.Condition{
+					Type:               apis.ConditionSucceeded,
+					Status:             "True",
+					LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+				})
+				btr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
+					Name:  dependencybuild.BuildInfoPipelineMessage,
+					Value: "OK",
+				}, {
+					Name:  dependencybuild.BuildInfoPipelineBuildInfo,
+					Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"toolVersion":null,"javaHome":null}`,
+				}}
+				err := k8sClient.Status().Update(ctx, btr)
+				if err == nil {
+					break
+				} else if !errors2.IsConflict(err) {
+					//retry on conflict
+					Expect(err).ToNot(HaveOccurred())
+				}
+
+			}
 			db := v1alpha1.DependencyBuild{}
 			Eventually(func() error {
 				Expect(k8sClient.Get(ctx, dbName, &db)).Should(Succeed())

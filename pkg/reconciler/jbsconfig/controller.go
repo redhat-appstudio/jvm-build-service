@@ -1,4 +1,4 @@
-package userconfig
+package jbsconfig
 
 import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
@@ -7,5 +7,5 @@ import (
 
 func SetupNewReconcilerWithManager(mgr ctrl.Manager, kcp bool) error {
 	r := newReconciler(mgr, kcp)
-	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.UserConfig{}).Complete(r)
+	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.JBSConfig{}).Complete(r)
 }

@@ -172,12 +172,12 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 	if owner == "" {
 		owner = "redhat-appstudio-qe"
 	}
-	userConfig := v1alpha1.UserConfig{
+	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ta.ns,
-			Name:      v1alpha1.UserConfigName,
+			Name:      v1alpha1.JBSConfigName,
 		},
-		Spec: v1alpha1.UserConfigSpec{
+		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds: true,
 			MavenBaseLocations: map[string]string{
 				"maven-repository-300-jboss":                      "https://repository.jboss.org/nexus/content/groups/public/",
@@ -227,9 +227,9 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 				},
 			},
 		},
-		Status: v1alpha1.UserConfigStatus{},
+		Status: v1alpha1.JBSConfigStatus{},
 	}
-	_, err = jvmClient.JvmbuildserviceV1alpha1().UserConfigs(ta.ns).Create(context.TODO(), &userConfig, metav1.CreateOptions{})
+	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}

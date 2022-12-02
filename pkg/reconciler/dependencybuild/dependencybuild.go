@@ -167,8 +167,8 @@ func hashToString(unique string) string {
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	userConfig := &v1alpha1.UserConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
+	jbsConfig := &v1alpha1.JBSConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
@@ -179,7 +179,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, userConfig, &systemConfig)
+	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, jbsConfig, &systemConfig)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -205,7 +205,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	}
 	ownerRefs := pr.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
-		msg := "pipelinerun missing onwerrefs %s:%s"
+		msg := "pipelinerun missing ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
 		return reconcile.Result{}, nil
@@ -476,13 +476,13 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "MissingRecipeType", "recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 		return reconcile.Result{}, fmt.Errorf("recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
 	}
-	userConfig := &v1alpha1.UserConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.UserConfigName}, userConfig)
+	jbsConfig := &v1alpha1.JBSConfig{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, userConfig, db.Status.CurrentBuildRecipe)
+	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -728,13 +728,13 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, userConfig *v1alpha1.UserConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
 	image, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return nil, err
 	}
 	recipes := ""
-	additional := userConfig.Spec.AdditionalRecipes
+	additional := jbsConfig.Spec.AdditionalRecipes
 	for _, recipe := range additional {
 		if len(strings.TrimSpace(recipe)) > 0 {
 			recipes = recipes + recipe + ","

@@ -1,4 +1,4 @@
-package userconfig
+package jbsconfig
 
 import (
 	"context"
@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type ReconcilerUserConfig struct {
+type ReconcilerJBSConfig struct {
 	client               client.Client
 	scheme               *runtime.Scheme
 	eventRecorder        record.EventRecorder
@@ -39,16 +39,16 @@ type ReconcilerUserConfig struct {
 }
 
 func newReconciler(mgr ctrl.Manager, kcp bool) reconcile.Reconciler {
-	ret := &ReconcilerUserConfig{
+	ret := &ReconcilerJBSConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
-		eventRecorder: mgr.GetEventRecorderFor("UserConfig"),
+		eventRecorder: mgr.GetEventRecorderFor("JBSConfig"),
 		kcp:           kcp,
 	}
 	return ret
 }
 
-func (r *ReconcilerUserConfig) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	var cancel context.CancelFunc
 	if request.ClusterName != "" {
 		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
@@ -56,15 +56,15 @@ func (r *ReconcilerUserConfig) Reconcile(ctx context.Context, request reconcile.
 	}
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
-	log := ctrl.Log.WithName("userconfig").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
-	userConfig := v1alpha1.UserConfig{}
-	err := r.client.Get(ctx, request.NamespacedName, &userConfig)
+	log := ctrl.Log.WithName("jbsconfig").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
+	jbsConfig := v1alpha1.JBSConfig{}
+	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	//TODO do we eventually want to allow more than one UserConfig per namespace?
-	if userConfig.Name == v1alpha1.UserConfigName {
-		err = r.validations(ctx, log, request, &userConfig)
+	//TODO do we eventually want to allow more than one JBSConfig per namespace?
+	if jbsConfig.Name == v1alpha1.JBSConfigName {
+		err = r.validations(ctx, log, request, &jbsConfig)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -73,12 +73,12 @@ func (r *ReconcilerUserConfig) Reconcile(ctx context.Context, request reconcile.
 		if r.kcp {
 			return reconcile.Result{}, nil
 		}
-		err = r.deploymentSupportObjects(ctx, log, request, &userConfig)
+		err = r.deploymentSupportObjects(ctx, log, request, &jbsConfig)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
-		err = r.cacheDeployment(ctx, log, request, &userConfig)
+		err = r.cacheDeployment(ctx, log, request, &jbsConfig)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -103,8 +103,8 @@ func settingIfSet(field, envName string, cache *appsv1.Deployment) *appsv1.Deplo
 	return cache
 }
 
-func (r *ReconcilerUserConfig) validations(ctx context.Context, log logr.Logger, request reconcile.Request, userConfig *v1alpha1.UserConfig) error {
-	if !userConfig.Spec.EnableRebuilds {
+func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig) error {
+	if !jbsConfig.Spec.EnableRebuilds {
 		return nil
 	}
 	registrySecret := &corev1.Secret{}
@@ -122,7 +122,7 @@ func (r *ReconcilerUserConfig) validations(ctx context.Context, log logr.Logger,
 	return nil
 }
 
-func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log logr.Logger, request reconcile.Request, userConfig *v1alpha1.UserConfig) error {
+func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log logr.Logger, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig) error {
 	//TODO may have to switch to ephemeral storage for KCP until storage story there is sorted out
 	pvc := corev1.PersistentVolumeClaim{}
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
@@ -133,7 +133,7 @@ func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log
 			pvc.Name = v1alpha1.CacheDeploymentName
 			pvc.Namespace = request.Namespace
 			pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-			qty, err := resource.ParseQuantity(settingOrDefault(userConfig.Spec.CacheSettings.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
+			qty, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.CacheSettings.Storage, v1alpha1.ConfigArtifactCacheStorageDefault))
 			if err != nil {
 				return err
 			}
@@ -206,7 +206,7 @@ func (r *ReconcilerUserConfig) deploymentSupportObjects(ctx context.Context, log
 	return nil
 }
 
-func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Logger, request reconcile.Request, userConfig *v1alpha1.UserConfig) error {
+func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logger, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig) error {
 	cache := &appsv1.Deployment{}
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
 	err := r.client.Get(ctx, deploymentName, cache)
@@ -233,11 +233,11 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
-						"memory": resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.RequestMemory, v1alpha1.ConfigArtifactCacheRequestMemoryDefault)),
-						"cpu":    resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.RequestCPU, v1alpha1.ConfigArtifactCacheRequestCPUDefault))},
+						"memory": resource.MustParse(settingOrDefault(jbsConfig.Spec.CacheSettings.RequestMemory, v1alpha1.ConfigArtifactCacheRequestMemoryDefault)),
+						"cpu":    resource.MustParse(settingOrDefault(jbsConfig.Spec.CacheSettings.RequestCPU, v1alpha1.ConfigArtifactCacheRequestCPUDefault))},
 					Limits: map[corev1.ResourceName]resource.Quantity{
-						"memory": resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.LimitMemory, v1alpha1.ConfigArtifactCacheLimitMemoryDefault)),
-						"cpu":    resource.MustParse(settingOrDefault(userConfig.Spec.CacheSettings.LimitCPU, v1alpha1.ConfigArtifactCacheLimitCPUDefault))},
+						"memory": resource.MustParse(settingOrDefault(jbsConfig.Spec.CacheSettings.LimitMemory, v1alpha1.ConfigArtifactCacheLimitMemoryDefault)),
+						"cpu":    resource.MustParse(settingOrDefault(jbsConfig.Spec.CacheSettings.LimitCPU, v1alpha1.ConfigArtifactCacheLimitCPUDefault))},
 				},
 				LivenessProbe:  &corev1.Probe{ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/q/health/live", Port: intstr.FromInt(8080)}}},
 				ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/q/health/ready", Port: intstr.FromInt(8080)}}},
@@ -251,8 +251,8 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	cache.Spec.Template.Spec.ServiceAccountName = v1alpha1.CacheDeploymentName
 	cache.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
 		{Name: "CACHE_PATH", Value: "/cache"},
-		{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: settingOrDefault(userConfig.Spec.CacheSettings.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault)},
-		{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: settingOrDefault(userConfig.Spec.CacheSettings.WorkerThreads, v1alpha1.ConfigArtifactCacheWorkerThreadsDefault)},
+		{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: settingOrDefault(jbsConfig.Spec.CacheSettings.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault)},
+		{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: settingOrDefault(jbsConfig.Spec.CacheSettings.WorkerThreads, v1alpha1.ConfigArtifactCacheWorkerThreadsDefault)},
 	}
 	type Repo struct {
 		name     string
@@ -261,20 +261,20 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	//central is at the hard coded 200 position
 	repos := []Repo{{name: "central", position: 200}}
 	trueBool := true
-	if userConfig.Spec.EnableRebuilds {
+	if jbsConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
 
-		cache = settingIfSet(userConfig.Spec.Owner, "REGISTRY_OWNER", cache)
-		cache = settingIfSet(userConfig.Spec.Host, "REGISTRY_HOST", cache)
-		cache = settingIfSet(userConfig.Spec.Port, "REGISTRY_PORT", cache)
-		cache = settingIfSet(userConfig.Spec.Repository, "REGISTRY_REPOSITORY", cache)
-		cache = settingIfSet(strconv.FormatBool(userConfig.Spec.Insecure), "REGISTRY_INSECURE", cache)
-		cache = settingIfSet(userConfig.Spec.PrependTag, "REGISTRY_PREPEND_TAG", cache)
+		cache = settingIfSet(jbsConfig.Spec.Owner, "REGISTRY_OWNER", cache)
+		cache = settingIfSet(jbsConfig.Spec.Host, "REGISTRY_HOST", cache)
+		cache = settingIfSet(jbsConfig.Spec.Port, "REGISTRY_PORT", cache)
+		cache = settingIfSet(jbsConfig.Spec.Repository, "REGISTRY_REPOSITORY", cache)
+		cache = settingIfSet(strconv.FormatBool(jbsConfig.Spec.Insecure), "REGISTRY_INSECURE", cache)
+		cache = settingIfSet(jbsConfig.Spec.PrependTag, "REGISTRY_PREPEND_TAG", cache)
 		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:      "REGISTRY_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.UserSecretName}, Key: v1alpha1.UserSecretTokenKey, Optional: &trueBool}},
 		})
-		for _, relocationPatternElement := range userConfig.Spec.RelocationPatterns {
+		for _, relocationPatternElement := range jbsConfig.Spec.RelocationPatterns {
 			buildPolicy := relocationPatternElement.RelocationPattern.BuildPolicy
 			if buildPolicy == "" {
 				buildPolicy = "default"
@@ -294,7 +294,7 @@ func (r *ReconcilerUserConfig) cacheDeployment(ctx context.Context, log logr.Log
 	if err != nil {
 		return err
 	}
-	for k, v := range userConfig.Spec.MavenBaseLocations {
+	for k, v := range jbsConfig.Spec.MavenBaseLocations {
 		if regex.MatchString(k) {
 			results := regex.FindStringSubmatch(k)
 			atoi, err := strconv.Atoi(results[1])
