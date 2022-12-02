@@ -38,10 +38,10 @@ public class RepositoryCache {
     public static final String HEADERS = ".hacbs-http-headers";
     public static final String ORIGINAL = "original";
     public static final String TRANSFORMED = "transformed";
-    final Path path;
-    final Path downloaded;
-    final Path transformed;
-    final Path tempDownloads;
+    final StorageManager storageManager;
+    final StorageManager downloaded;
+    final StorageManager transformed;
+    final StorageManager tempDownloads;
     final Repository repository;
 
     /**
@@ -50,16 +50,13 @@ public class RepositoryCache {
     final ConcurrentMap<String, DownloadingFile> inProgressDownloads = new ConcurrentHashMap<>();
     final ConcurrentMap<String, CountDownLatch> inProgressTransformations = new ConcurrentHashMap<>();
 
-    public RepositoryCache(Path path, Repository repository) throws Exception {
-        this.path = path;
-        this.downloaded = path.resolve(ORIGINAL);
-        this.transformed = path.resolve(TRANSFORMED);
-        this.tempDownloads = path.resolve(DOWNLOADS);
+    public RepositoryCache(StorageManager storageManager, Repository repository) throws Exception {
+        this.storageManager = storageManager;
+        this.downloaded = storageManager.resolve(ORIGINAL);
+        this.transformed = storageManager.resolve(TRANSFORMED);
+        this.tempDownloads = storageManager.resolve(DOWNLOADS);
         this.repository = repository;
-        Files.createDirectories(downloaded);
-        Files.createDirectories(transformed);
-        Files.createDirectories(tempDownloads);
-        Log.infof("Creating cache with path %s", path.toAbsolutePath());
+        Log.infof("Creating cache with path %s", storageManager.toString());
     }
 
     public Optional<ArtifactResult> getArtifactFile(String group, String artifact, String version, String target,
@@ -107,8 +104,8 @@ public class RepositoryCache {
             if (check != null) {
                 check.awaitReady();
             }
-            Path actual = downloaded.resolve(targetFile);
-            Path trackedFile = transformed.resolve(targetFile);
+            Path actual = downloaded.accessFile(targetFile);
+            Path trackedFile = transformed.accessFile(targetFile);
             if (Files.exists(actual)) {
                 //we need to double check, there is a small window for a race here
                 //it should not matter as we do an atomic move, but better to be safe
@@ -264,14 +261,14 @@ public class RepositoryCache {
                 RepositoryClient repositoryClient,
                 Path downloadTarget,
                 Path trackedFile,
-                Path downloadTempDir,
+                StorageManager downloadTempDir,
                 boolean tracked,
                 String gav) {
             try {
                 Optional<ArtifactResult> result = clientInvocation.apply(repositoryClient);
                 if (result.isPresent()) {
                     MessageDigest md = MessageDigest.getInstance("SHA-1");
-                    Path tempFile = Files.createTempFile(downloadTempDir, "download", ".part");
+                    Path tempFile = Files.createTempFile(downloadTempDir.accessDirectory("downloads"), "download", ".part");
                     InputStream in = result.get().getData();
                     try (OutputStream out = Files.newOutputStream(tempFile)) {
                         byte[] buffer = new byte[1024];
@@ -300,7 +297,8 @@ public class RepositoryCache {
                                     + " calculated sha '" + hash
                                     + "' did not match expected '" + result.get().getExpectedSha().get() + "'");
                             if (tracked) {
-                                Path tempTransformedFile = Files.createTempFile(downloadTempDir, "transformed", ".part");
+                                Path tempTransformedFile = Files.createTempFile(downloadTempDir.accessDirectory("downloads"),
+                                        "transformed", ".part");
                                 try (var inFromFile = Files.newInputStream(tempFile);
                                         var transformedOut = Files.newOutputStream(tempTransformedFile)) {
                                     ClassFileTracker.addTrackingDataToJar(inFromFile,

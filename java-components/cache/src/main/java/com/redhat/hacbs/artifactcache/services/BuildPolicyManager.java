@@ -52,6 +52,9 @@ class BuildPolicyManager {
     @Inject
     RebuiltArtifacts rebuiltArtifacts;
 
+    @Inject
+    StorageManager storageManager;
+
     @Produces
     @Singleton
     Map<String, BuildPolicy> createBuildPolicies(@ConfigProperty(name = "build-policies") Set<String> buildPolicies,
@@ -77,7 +80,7 @@ class BuildPolicyManager {
                                     + repository,
                             RepositoryType.OCI_REGISTRY,
                             new OCIRegistryRepositoryClient(host, registryOwner.get(), repository, token, prependTag,
-                                    insecure, rebuiltArtifacts)));
+                                    insecure, rebuiltArtifacts, storageManager)));
         }
 
         for (String buildPolicy : buildPolicies) {
@@ -169,7 +172,7 @@ class BuildPolicyManager {
                 String u = owner.get();
 
                 RepositoryClient client = new OCIRegistryRepositoryClient(registry, u, repository, token, prependTag,
-                        enableHttpAndInsecureFailover, rebuiltArtifacts);
+                        enableHttpAndInsecureFailover, rebuiltArtifacts, storageManager);
                 Log.infof("OCI registry %s added with owner %s", registry, u);
                 return new Repository(repo, "oci://" + registry + "/" + u, RepositoryType.OCI_REGISTRY, client);
             } else {

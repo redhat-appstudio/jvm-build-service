@@ -1,6 +1,5 @@
 package com.redhat.hacbs.artifactcache.services;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,8 +7,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import javax.inject.Singleton;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;
@@ -21,15 +18,13 @@ import io.quarkus.runtime.Startup;
 @Startup
 public class CacheFacade {
 
-    final Path path;
     final Map<String, BuildPolicy> buildPolicies;
     final Map<String, List<RepositoryCache>> buildPolicyCaches;
     final Map<String, RepositoryCache> caches;
 
-    public CacheFacade(@ConfigProperty(name = "cache-path") Path path,
+    public CacheFacade(StorageManager storageManager,
             Map<String, BuildPolicy> buildPolicies) throws Exception {
-        this.path = path;
-        Log.infof("Creating cache with path %s", path.toAbsolutePath());
+        Log.infof("Creating cache with path %s", storageManager.path());
         //TODO: we don't actually use this at the moment
         this.buildPolicies = buildPolicies;
         this.caches = new HashMap<>();
@@ -39,7 +34,8 @@ public class CacheFacade {
             List<RepositoryCache> cacheList = new ArrayList<>();
             for (var repository : e.getValue().getRepositories()) {
                 if (!caches.containsKey(repository.getName())) {
-                    caches.put(repository.getName(), new RepositoryCache(path.resolve(repository.getName()), repository));
+                    caches.put(repository.getName(),
+                            new RepositoryCache(storageManager.resolve(repository.getName()), repository));
                 }
                 cacheList.add(caches.get(repository.getName()));
             }
