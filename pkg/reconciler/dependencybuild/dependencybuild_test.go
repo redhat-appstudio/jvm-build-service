@@ -328,6 +328,11 @@ func TestStateBuilding(t *testing.T) {
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
 		g.Expect(db.Status.DeployedArtifacts).Should(ContainElement(TestArtifact))
+		ra := v1alpha1.RebuiltArtifact{}
+		g.Expect(client.Get(ctx, types.NamespacedName{Name: artifactbuild.CreateABRName(TestArtifact), Namespace: metav1.NamespaceDefault}, &ra)).Should(Succeed())
+		g.Expect(ra.Spec.GAV).Should(Equal(TestArtifact))
+		g.Expect(ra.Spec.Image).ShouldNot(BeNil())
+
 	})
 	t.Run("Test reconcile building DependencyBuild with failed pipeline", func(t *testing.T) {
 		g := NewGomegaWithT(t)

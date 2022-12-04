@@ -605,8 +605,12 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					db.Status.DeployedArtifacts = deployed
 					for _, i := range deployed {
 						ra := v1alpha1.RebuiltArtifact{}
+
 						ra.Namespace = pr.Namespace
 						ra.Name = artifactbuild.CreateABRName(i)
+						if err := controllerutil.SetOwnerReference(&db, &ra, r.scheme); err != nil {
+							return reconcile.Result{}, err
+						}
 						ra.Spec.GAV = i
 						ra.Spec.Image = image
 						err := r.client.Create(ctx, &ra)
