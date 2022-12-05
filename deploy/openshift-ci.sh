@@ -6,8 +6,6 @@ echo "jvm build service golang operator image:"
 echo ${JVM_BUILD_SERVICE_IMAGE}
 echo "jvm build service jvm cache image:"
 echo ${JVM_BUILD_SERVICE_CACHE_IMAGE}
-echo "jvm build service jvm analyzer image:"
-echo ${JVM_BUILD_SERVICE_ANALYZER_IMAGE}
 echo "jvm build service jvm reqprocessor image:"
 echo ${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}
 
@@ -29,5 +27,4 @@ oc apply -k $DIR/operator/overlays/ci-final
 oc set env deployment/hacbs-jvm-operator -n jvm-build-service \
 JVM_BUILD_SERVICE_IMAGE=${JVM_BUILD_SERVICE_IMAGE} \
 JVM_BUILD_SERVICE_CACHE_IMAGE=${JVM_BUILD_SERVICE_CACHE_IMAGE} \
-JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE} \
-JVM_BUILD_SERVICE_ANALYZER_IMAGE=${JVM_BUILD_SERVICE_ANALYZER_IMAGE}
+JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}
