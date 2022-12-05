@@ -653,7 +653,6 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					"--gav",
 					gav,
 					"--cache-url",
-					//TODO KCP compatibility with cache name
 					"http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v1/cache/default/0",
 				},
 				SecurityContext: &corev1.SecurityContext{

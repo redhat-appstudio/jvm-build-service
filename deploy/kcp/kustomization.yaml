@@ -1,8 +1,0 @@
-bases:
-  - ../kcp-manager
-
-resources:
-  - apibinding_jvmbuildservice.yaml
-  - apiexport_jvmbuildservice.yaml
-  - apiresourceschema_jvmbuildservice.yaml
-
