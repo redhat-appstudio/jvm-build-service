@@ -39,3 +39,29 @@ Common steps regardless of using developer images you build yourself or official
 - run `./deploy/init-hacbs-user-workspace.sh` out of your clone of this repo to initialize you KCP test namespace with the artifact cache and `Tasks` needed to run our test `Pipelines` and `PipelineRuns`
 - then go to `./hack/examples` and pick which `Pipeline` and `PipelineRun` test to run.
 
+=== Testing
+
+==== Test JVM Build Service on an OpenShift cluster
+
+The OpenShift E2E test is programmed to run a test with following steps:
+
+. Create a new project in targeted OpenShift cluster and run the build pipeline which contains a link:./deploy/base/maven-v0.2.yaml[Maven] task from this repo to build the link:./hack/examples/run-e2e-shaded-app.yaml[simple java test project]
+. Make sure the pipeline succeeds and all related artifactbuilds and dependecybuilds (triggered after pipeline completion) finish successfully
+. Check that all "contaminated" builds are resolved
+. Verify that triggering a second build accesses dependencies that are cached from a previous build
+. Verify that the correct JDK version is identified in dependencybuilds
+. Check that maven/gradle logs/sources are found in rebuilt artifacts
+
+Before running the test, you need to export couple of env vars that reference container images for the operator, cache and reqprocessor. Some existing images can be found at link:https://quay.io/organization/redhat-appstudio[redhat-appstudio quay.io org] (search for keyword "jvm")
+
+Also you need to specify your quay.io username that will be used for pushing rebuilt dependencies in a format: `quay.io/$QUAY_USERNAME/test-images`. Make sure the repo "test-images" exists in your account and is publicly available.
+
+[source,bash]
+----
+export QUAY_USERNAME=<your-quay-io-account-username>
+export JVM_BUILD_SERVICE_IMAGE=
+export JVM_BUILD_SERVICE_CACHE_IMAGE=
+export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=
+./deploy/openshift-ci.sh
+make openshift-e2e
+----
