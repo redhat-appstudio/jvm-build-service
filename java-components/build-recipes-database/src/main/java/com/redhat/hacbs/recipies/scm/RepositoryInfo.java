@@ -3,11 +3,16 @@ package com.redhat.hacbs.recipies.scm;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class RepositoryInfo {
 
     String type;
     String uri;
     String path;
+
+    boolean privateRepo;
+
     private List<TagMapping> tagMapping = new ArrayList<>();
 
     public RepositoryInfo() {
@@ -54,5 +59,15 @@ public class RepositoryInfo {
 
     public void setTagMapping(List<TagMapping> tagMapping) {
         this.tagMapping = tagMapping;
+    }
+
+    @JsonProperty("private")
+    public boolean isPrivateRepo() {
+        return privateRepo;
+    }
+
+    public RepositoryInfo setPrivateRepo(boolean privateRepo) {
+        this.privateRepo = privateRepo;
+        return this;
     }
 }

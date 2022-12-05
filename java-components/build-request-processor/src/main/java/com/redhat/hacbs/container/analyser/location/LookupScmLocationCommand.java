@@ -37,6 +37,7 @@ import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipies.scm.RepositoryInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 import com.redhat.hacbs.recipies.scm.TagMapping;
+import com.redhat.hacbs.recipies.util.GitCredentials;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
@@ -59,6 +60,9 @@ public class LookupScmLocationCommand implements Runnable {
     Path scmType;
     @CommandLine.Option(names = "--scm-tag")
     Path scmTag;
+
+    @CommandLine.Option(names = "--private")
+    Path privateRepo;
 
     @CommandLine.Option(names = "--message")
     Path message;
@@ -125,7 +129,10 @@ public class LookupScmLocationCommand implements Runnable {
                     String selectedTag = null;
                     Set<String> versionExactContains = new HashSet<>();
                     Set<String> tagExactContains = new HashSet<>();
-                    var tags = Git.lsRemoteRepository().setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
+                    var tags = Git.lsRemoteRepository()
+                            .setCredentialsProvider(
+                                    new GitCredentials())
+                            .setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
                     Set<String> tagNames = tags.stream().map(s -> s.getName().replace("refs/tags/", ""))
                             .collect(Collectors.toSet());
 
@@ -218,6 +225,9 @@ public class LookupScmLocationCommand implements Runnable {
                     Log.infof("Path: %s", parsedInfo.getPath());
                     if (context != null && parsedInfo.getPath() != null) {
                         Files.writeString(context, parsedInfo.getPath());
+                    }
+                    if (privateRepo != null) {
+                        Files.writeString(privateRepo, Boolean.toString(parsedInfo.isPrivateRepo()));
                     }
                     firstFailure = null;
                     break;

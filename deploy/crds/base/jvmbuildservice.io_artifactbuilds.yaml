@@ -55,6 +55,8 @@ spec:
                 properties:
                   path:
                     type: string
+                  private:
+                    type: boolean
                   scmType:
                     type: string
                   scmURL:

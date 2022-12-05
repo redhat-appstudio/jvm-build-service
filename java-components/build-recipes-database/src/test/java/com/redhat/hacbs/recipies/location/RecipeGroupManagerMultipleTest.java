@@ -1,21 +1,18 @@
 package com.redhat.hacbs.recipies.location;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.yaml.snakeyaml.Yaml;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipies.scm.ScmInfo;
 
 public class RecipeGroupManagerMultipleTest {
     static RecipeGroupManager manager;
@@ -28,16 +25,21 @@ public class RecipeGroupManagerMultipleTest {
     }
 
     @Test
-    public void testGroupIdBasedRecipe() {
+    public void testGroupIdBasedRecipe() throws IOException {
         GAV req = new GAV("io.test", "test", "1.0");
         var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/test/test.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
 
+        Assertions.assertTrue(
+                BuildRecipe.SCM.getHandler().parse(result.getRecipes().get(req).get(BuildRecipe.SCM)).isPrivateRepo());
+
         req = new GAV("io.test.acme", "test-acme", "1.0");
         result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
         Assertions.assertEquals("https://github.com/test-override/test-acme.git",
                 readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+        Assertions.assertFalse(
+                BuildRecipe.SCM.getHandler().parse(result.getRecipes().get(req).get(BuildRecipe.SCM)).isPrivateRepo());
     }
 
     @Test
@@ -97,21 +99,18 @@ public class RecipeGroupManagerMultipleTest {
     }
 
     private String readScmUrl(Path scmPath) {
-
-        Yaml yaml = new Yaml();
-        String uri = null;
-        try (InputStream in = Files.newInputStream(scmPath)) {
-            Map<String, Object> contents = yaml.load(new InputStreamReader(in));
-            if (contents != null) {
-                uri = (String) contents.get("uri");
+        if (scmPath == null) {
+            return "";
+        }
+        try {
+            ScmInfo parse = BuildRecipe.SCM.getHandler().parse(scmPath);
+            if (parse == null) {
+                return "";
             }
-        } catch (Exception e) {
+            return parse.getUri();
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        if (uri == null) {
-            return ""; //use the empty string for this case
-        }
-        return uri;
     }
 
 }

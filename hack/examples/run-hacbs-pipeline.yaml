@@ -16,7 +16,7 @@ spec:
   workspaces:
     - name: registry-auth
       secret:
-        secretName: jvm-build-secrets
+        secretName: jvm-build-image-secrets
 
     - name: workspace
       volumeClaimTemplate:

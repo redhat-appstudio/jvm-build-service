@@ -7,6 +7,8 @@ import java.util.Optional;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
+import com.redhat.hacbs.recipies.util.GitCredentials;
+
 /**
  * A recipe database stored in git.
  */
@@ -36,6 +38,7 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         var clone = Git.cloneRepository()
                 .setBranch(branch)
                 .setDirectory(directory.toFile())
+                .setCredentialsProvider(new GitCredentials())
                 .setURI(remote);
         var result = clone.call();
 

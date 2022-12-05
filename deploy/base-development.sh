@@ -17,8 +17,12 @@ fi
 DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml
 kubectl config set-context --current --namespace=test-jvm-namespace
-kubectl delete secret jvm-build-secrets
-kubectl create secret generic jvm-build-secrets --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson
+kubectl delete secret jvm-build-image-secrets
+kubectl create secret generic jvm-build-image-secrets --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson
+kubectl create secret generic jvm-build-git-secrets --from-literal .git-credentials="
+https://$GITHUB_E2E_ORGANIZATION:$GITHUB_TOKEN@github.com
+https://test:test@gitlab.com
+"
 
 JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller \
 JVM_BUILD_SERVICE_CACHE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-cache \
