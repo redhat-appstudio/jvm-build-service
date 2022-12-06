@@ -1,9 +1,0 @@
-quayJvmBuildServiceRepo: redhat-appstudio
-
-quayJvmBuildServiceTag: XXXXXXXX
-
-quayTestRepoOwner: XXXXXXX
-
-quayToken: XXXXXXX
-
-prependTag: "1665346673212"

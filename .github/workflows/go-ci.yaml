@@ -25,11 +25,6 @@ jobs:
           go-version: 1.18.x #we need 1.18 for KCP
       - name: Check out code
         uses: actions/checkout@v3
-      - name: Install kcp tooling
-        run: |
-          git clone https://github.com/kcp-dev/kcp ~/kcp
-          cd ~/kcp
-          WHAT=./cmd/kubectl-kcp make install
       - name: Check go mod status
         run: |
           go mod tidy
@@ -54,15 +49,6 @@ jobs:
           if [[ ! -z $(git status -s) ]]
           then
             echo "generated sources are not up to date:"
-            git --no-pager diff
-            exit 1
-          fi
-      - name: Check kcp
-        run: |
-          CONTROL_PLANE=kcp make generate
-          if [[ ! -z $(git status -s) ]]
-          then
-            echo "generated kcp sources are not up to date:"
             git --no-pager diff
             exit 1
           fi

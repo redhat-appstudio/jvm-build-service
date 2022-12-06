@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: jvm-build-service-pod-count-quota
-spec:
-  hard:
-    pods: "50"

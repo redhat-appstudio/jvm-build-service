@@ -7,9 +7,6 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-# CONTROL_PLANE defines the type of cluster that will be used. Possible values are kubernetes (default) and kcp.
-CONTROL_PLANE ?= kubernetes
-
 # options for generating crds with controller-gen
 CONTROLLER_GEN="${GOBIN}/controller-gen"
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
@@ -49,9 +46,6 @@ generate-deepcopy-client:
 generate-crds:
 	hack/install-controller-gen.sh
 	"$(CONTROLLER_GEN)" "$(CRD_OPTIONS)" rbac:roleName=manager-role webhook paths=./pkg/apis/jvmbuildservice/v1alpha1 output:crd:artifacts:config=deploy/crds/base
-ifeq ($(CONTROL_PLANE), kcp)
-	hack/generate-kcp-api.sh
-endif
 
 generate: generate-crds generate-deepcopy-client
 
