@@ -40,10 +40,10 @@ func setupSectet() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: metav1.NamespaceDefault,
-			Name:      v1alpha1.UserSecretName,
+			Name:      v1alpha1.ImageSecretName,
 		},
 		Data: map[string][]byte{
-			v1alpha1.UserSecretTokenKey: []byte("foo"),
+			v1alpha1.ImageSecretTokenKey: []byte("foo"),
 		},
 	}
 }
@@ -94,7 +94,7 @@ func TestMissingRegistrySecretKey(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ctx := context.TODO()
 	secret := setupSectet()
-	delete(secret.Data, v1alpha1.UserSecretTokenKey)
+	delete(secret.Data, v1alpha1.ImageSecretTokenKey)
 	jbsConfig := setupJBSConfig()
 	jbsConfig.Spec.EnableRebuilds = true
 	objs := []runtimeclient.Object{jbsConfig, secret}

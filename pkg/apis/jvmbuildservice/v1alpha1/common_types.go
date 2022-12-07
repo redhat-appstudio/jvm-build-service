@@ -5,4 +5,5 @@ type SCMInfo struct {
 	SCMType string `json:"scmType,omitempty"`
 	Tag     string `json:"tag,omitempty"`
 	Path    string `json:"path,omitempty"`
+	Private bool   `json:"private,omitempty"`
 }

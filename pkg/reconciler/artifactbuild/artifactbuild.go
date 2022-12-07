@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
+	"k8s.io/apimachinery/pkg/labels"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -42,6 +44,7 @@ const (
 	PipelineResultScmType         = "scm-type"
 	PipelineResultContextPath     = "context"
 	PipelineResultMessage         = "message"
+	PipelineResultPrivate         = "private"
 	TaskName                      = "task"
 	JavaCommunityDependencies     = "JAVA_COMMUNITY_DEPENDENCIES"
 	Contaminants                  = "CONTAMINANTS"
@@ -229,6 +232,12 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 			abr.Status.Message = res.Value
 		case PipelineResultContextPath:
 			abr.Status.SCMInfo.Path = res.Value
+		case PipelineResultPrivate:
+			private, err := strconv.ParseBool(res.Value)
+			if err != nil {
+				private = false
+			}
+			abr.Status.SCMInfo.Private = private
 		}
 	}
 
@@ -332,6 +341,7 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 	if err := r.client.Status().Update(ctx, abr); err != nil {
 		return reconcile.Result{}, err
 	}
+
 	if err := r.prCreator.CreateWrapperForPipelineRun(ctx, r.client, &pr); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -410,6 +420,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 			SCMType: abr.Status.SCMInfo.SCMType,
 			Tag:     abr.Status.SCMInfo.Tag,
 			Path:    abr.Status.SCMInfo.Path,
+			Private: abr.Status.SCMInfo.Private,
 		}, Version: abr.Spec.GAV[strings.LastIndex(abr.Spec.GAV, ":")+1:]}
 		if err := r.client.Status().Update(ctx, abr); err != nil {
 			return reconcile.Result{}, err
@@ -580,6 +591,29 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 	abr.Status.SCMInfo = v1alpha1.SCMInfo{}
 	abr.Status.Message = ""
 	err := r.client.Status().Update(ctx, abr)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	//now delete old pipelines
+
+	pr := pipelinev1beta1.PipelineRunList{}
+	listOpts := &client.ListOptions{
+		Namespace:     abr.Namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV)}),
+	}
+	err = r.client.List(ctx, &pr, listOpts)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	for _, i := range pr.Items {
+		h := i
+		err = r.client.Delete(ctx, &h)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	return reconcile.Result{}, err
 
 }
@@ -611,6 +645,8 @@ func CreateABRName(gav string) string {
 
 func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.TaskSpec, error) {
 	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+
+	trueBool := true
 	if err != nil {
 		return nil, err
 	}
@@ -630,6 +666,7 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 			{Name: PipelineResultScmTag},
 			{Name: PipelineResultScmType},
 			{Name: PipelineResultContextPath},
+			{Name: PipelineResultPrivate},
 			{Name: PipelineResultMessage},
 		},
 		Steps: []pipelinev1beta1.Step{
@@ -650,6 +687,8 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					"$(results." + PipelineResultMessage + ".path)",
 					"--context",
 					"$(results." + PipelineResultContextPath + ".path)",
+					"--private",
+					"$(results." + PipelineResultPrivate + ".path)",
 					"--gav",
 					gav,
 					"--cache-url",
@@ -657,6 +696,9 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 				},
 				SecurityContext: &corev1.SecurityContext{
 					RunAsUser: &zero,
+				},
+				Env: []corev1.EnvVar{
+					{Name: "GIT_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 				},
 			},
 		},

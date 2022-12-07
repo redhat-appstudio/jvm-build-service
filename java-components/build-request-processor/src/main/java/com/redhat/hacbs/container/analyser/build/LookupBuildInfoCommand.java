@@ -36,6 +36,7 @@ import com.redhat.hacbs.recipies.location.BuildInfoRequest;
 import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
+import com.redhat.hacbs.recipies.util.GitCredentials;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
@@ -110,7 +111,11 @@ public class LookupBuildInfoCommand implements Runnable {
             throws Exception {
         //TODO: this is a basic hack to prove the concept
         var path = Files.createTempDirectory("checkout");
-        try (var clone = Git.cloneRepository().setURI(scmUrl).setDirectory(path.toFile()).call()) {
+        try (var clone = Git.cloneRepository()
+                .setCredentialsProvider(
+                        new GitCredentials())
+                .setURI(scmUrl)
+                .setDirectory(path.toFile()).call()) {
             clone.reset().setMode(HARD).setRef(scmTag).call();
             long time = clone.getRepository().parseCommit(clone.getRepository().resolve(scmTag)).getCommitTime() * 1000L;
             if (context != null) {

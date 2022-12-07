@@ -237,7 +237,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-	secret := corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jvm-build-secrets", Namespace: ta.ns},
+	secret := corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jvm-build-image-secrets", Namespace: ta.ns},
 		Data: map[string][]byte{".dockerconfigjson": decoded}}
 	_, err = kubeClient.CoreV1().Secrets(ta.ns).Create(context.TODO(), &secret, metav1.CreateOptions{})
 	if err != nil {

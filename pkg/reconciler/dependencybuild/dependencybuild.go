@@ -482,7 +482,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
-	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe)
+	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -750,6 +750,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if len(path) == 0 {
 		path = "."
 	}
+	trueBool := true
 	zero := int64(0)
 	return &pipelinev1beta1.PipelineSpec{
 		Results: []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}, {Name: BuildInfoPipelineBuildInfo, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}},
@@ -782,6 +783,9 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 								},
 								SecurityContext: &v1.SecurityContext{
 									RunAsUser: &zero,
+								},
+								Env: []v1.EnvVar{
+									{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 								},
 							},
 						},

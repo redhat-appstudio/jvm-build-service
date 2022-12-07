@@ -32,7 +32,7 @@ var gradleBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
-func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe) (*pipelinev1beta1.PipelineSpec, error) {
+func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild) (*pipelinev1beta1.PipelineSpec, error) {
 	var settings string
 	var build string
 	trueBool := true
@@ -109,10 +109,15 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 	if !maven {
 		preprocessorArgs[0] = "gradle-prepare"
 	}
-	gitArgs := []string{"-path=$(workspaces." + WorkspaceSource + ".path)/source", "-url=$(params." + PipelineScmUrl + ")", "-revision=$(params." + PipelineScmTag + ")"}
+	gitArgs := ""
+	if db.Spec.ScmInfo.Private {
+		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
+		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
+	}
+	gitArgs = gitArgs + "\ngit-init -path=$(workspaces." + WorkspaceSource + ".path)/source -url=$(params." + PipelineScmUrl + ") -revision=$(params." + PipelineScmTag + ")"
 
 	if recipe.DisableSubmodules {
-		gitArgs = append(gitArgs, "-submodules=false")
+		gitArgs = gitArgs + " -submodules=false"
 	}
 	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "256Mi"))
 	if err != nil {
@@ -134,6 +139,7 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 	if err != nil {
 		return nil, err
 	}
+
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
 		Params: []v1alpha1.ParamSpec{
@@ -159,7 +165,10 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
 					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 				},
-				Args: gitArgs,
+				Script: gitArgs,
+				Env: []v1.EnvVar{
+					{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitSecretName}, Key: v1alpha12.GitSecretTokenKey, Optional: &trueBool}}},
+				},
 			},
 			{
 				Name:            "settings",
@@ -204,7 +213,7 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 				Image:           "$(params." + PipelineRequestProcessorImage + ")",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
-					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.UserSecretName}, Key: v1alpha12.UserSecretTokenKey, Optional: &trueBool}}},
+					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.ImageSecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: make configurable

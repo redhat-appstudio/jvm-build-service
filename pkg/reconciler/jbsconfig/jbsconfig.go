@@ -109,16 +109,16 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	}
 	registrySecret := &corev1.Secret{}
 	// our client is wired to not cache secrets / establish informers for secrets
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.UserSecretName}, registrySecret)
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.ImageSecretName}, registrySecret)
 	if err != nil {
 		return err
 	}
-	_, keyPresent1 := registrySecret.Data[v1alpha1.UserSecretTokenKey]
-	_, keyPresent2 := registrySecret.StringData[v1alpha1.UserSecretTokenKey]
+	_, keyPresent1 := registrySecret.Data[v1alpha1.ImageSecretTokenKey]
+	_, keyPresent2 := registrySecret.StringData[v1alpha1.ImageSecretTokenKey]
 	if !keyPresent1 && !keyPresent2 {
-		return fmt.Errorf("need image registry token set at key %s in secret %s", v1alpha1.UserSecretTokenKey, v1alpha1.UserSecretName)
+		return fmt.Errorf("need image registry token set at key %s in secret %s", v1alpha1.ImageSecretTokenKey, v1alpha1.ImageSecretName)
 	}
-	log.Info(fmt.Sprintf("found %s secret with appropriate token keys in namespace %s, rebuilds are possible", v1alpha1.UserSecretTokenKey, request.Namespace))
+	log.Info(fmt.Sprintf("found %s secret with appropriate token keys in namespace %s, rebuilds are possible", v1alpha1.ImageSecretTokenKey, request.Namespace))
 	return nil
 }
 
@@ -272,7 +272,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		cache = settingIfSet(jbsConfig.Spec.PrependTag, "REGISTRY_PREPEND_TAG", cache)
 		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
 			Name:      "REGISTRY_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.UserSecretName}, Key: v1alpha1.UserSecretTokenKey, Optional: &trueBool}},
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &trueBool}},
 		})
 		for _, relocationPatternElement := range jbsConfig.Spec.RelocationPatterns {
 			buildPolicy := relocationPatternElement.RelocationPattern.BuildPolicy
