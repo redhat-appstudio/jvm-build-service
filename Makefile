@@ -27,9 +27,16 @@ test: fmt vet ## Run tests.
 e2etest: fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -count 1 -v ./test/...
 
-appstudio-installed-on-openshift-e2e:
+openshift-e2e:
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags normal -timeout 120m -v ./openshift-with-appstudio-test/...
 
+openshift-e2e-periodic:
+	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags periodic -timeout 180m -v ./openshift-with-appstudio-test/...
+
+# TODO: delete following "appstudio-installed-on-openshift-*" make targets after https://github.com/redhat-appstudio/jvm-build-service/pull/397 is merged
+# For now they allow tests in https://github.com/openshift/release/pull/34620 to pass
+appstudio-installed-on-openshift-e2e:
+	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags normal -timeout 120m -v ./openshift-with-appstudio-test/...
 appstudio-installed-on-openshift-periodic:
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags periodic -timeout 180m -v ./openshift-with-appstudio-test/...
 
