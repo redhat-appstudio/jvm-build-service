@@ -15,6 +15,12 @@ public class BuildRecipeInfo {
      */
     boolean enforceVersion;
     List<String> additionalArgs = new ArrayList<>();
+
+    /**
+     * Parameters that are used instead of the default build command line
+     */
+    List<String> alternativeArgs = new ArrayList<>();
+
     String toolVersion;
     String javaVersion;
 
@@ -87,11 +93,21 @@ public class BuildRecipeInfo {
         return this;
     }
 
+    public List<String> getAlternativeArgs() {
+        return alternativeArgs;
+    }
+
+    public BuildRecipeInfo setAlternativeArgs(List<String> alternativeArgs) {
+        this.alternativeArgs = alternativeArgs;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildRecipeInfo{" +
                 "enforceVersion=" + enforceVersion +
                 ", additionalArgs=" + additionalArgs +
+                ", alternativeArgs=" + alternativeArgs +
                 ", toolVersion='" + toolVersion + '\'' +
                 ", javaVersion='" + javaVersion + '\'' +
                 ", preBuildScript='" + preBuildScript + '\'' +

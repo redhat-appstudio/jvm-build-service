@@ -62,6 +62,8 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--message")
     Path message;
 
+    @CommandLine.Option(names = "--private-repo")
+    boolean privateRepo;
     /**
      * The build info, in JSON format as per BuildRecipe.
      * <p>
@@ -93,7 +95,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD));
             }
 
-            doBuildAnalysis(scmUrl, tag, context, buildRecipeInfo, version);
+            doBuildAnalysis(scmUrl, tag, context, buildRecipeInfo, privateRepo);
 
         } catch (Exception e) {
             Log.errorf(e, "Failed to process build info for " + scmUrl);
@@ -107,9 +109,9 @@ public class LookupBuildInfoCommand implements Runnable {
         }
     }
 
-    private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo, String versions)
+    private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo,
+            boolean privateRepo)
             throws Exception {
-        //TODO: this is a basic hack to prove the concept
         var path = Files.createTempDirectory("checkout");
         try (var clone = Git.cloneRepository()
                 .setCredentialsProvider(
@@ -172,10 +174,20 @@ public class LookupBuildInfoCommand implements Runnable {
                     for (var i : results) {
                         info.tools.putAll(i.toolVersions);
                     }
-                    info.invocations.add(
-                            new ArrayList<>(List.of("install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
-                                    "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
-                                    "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false")));
+                    if (privateRepo) {
+                        //we assume private repos are essentially fresh tags we have control of
+                        //so we should run the tests
+                        //this can be controller via additional args if you still want to skip them
+                        info.invocations.add(
+                                new ArrayList<>(List.of("install", "-Dcheckstyle.skip",
+                                        "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
+                                        "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false")));
+                    } else {
+                        info.invocations.add(
+                                new ArrayList<>(List.of("install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
+                                        "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
+                                        "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false")));
+                    }
                 }
             } else if (GradleUtils.isGradleBuild(path)) {
                 Log.infof("Detected Gradle build in %s", path);
@@ -210,6 +222,12 @@ public class LookupBuildInfoCommand implements Runnable {
             }
             if (buildRecipeInfo != null) {
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
+                if (buildRecipeInfo.getAlternativeArgs() != null && !buildRecipeInfo.getAlternativeArgs().isEmpty()) {
+                    for (var i : info.invocations) {
+                        i.clear();
+                        i.addAll(buildRecipeInfo.getAlternativeArgs());
+                    }
+                }
                 if (buildRecipeInfo.getAdditionalArgs() != null) {
                     for (var i : info.invocations) {
                         i.addAll(buildRecipeInfo.getAdditionalArgs());
