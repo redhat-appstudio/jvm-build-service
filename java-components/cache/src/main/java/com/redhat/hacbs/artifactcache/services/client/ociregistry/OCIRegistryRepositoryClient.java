@@ -137,6 +137,28 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         RegistryClient registryClient = getRegistryClient();
 
         try {
+            return doDownload(group, artifact, version, target, time, groupPath, hashedGav, gav, registryClient);
+        } catch (RegistryUnauthorizedException e) {
+            try {
+                //this is quay specific possibly?
+                //unfortunatly we can't get the actual header
+                String wwwAuthenticate = "Bearer realm=\"https://" + registry + "/v2/auth\",service=\"" + registry
+                        + "\",scope=\"repository:" + owner + "/" + repository + ":pull\"";
+                registryClient.authPullByWwwAuthenticate(wwwAuthenticate);
+                return doDownload(group, artifact, version, target, time, groupPath, hashedGav, gav, registryClient);
+            } catch (RegistryUnauthorizedException ex) {
+                Log.errorf("Failed to authenticate against registry %s/%s/%s", registry, owner, repository);
+                return Optional.empty();
+            } catch (RegistryException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
+
+    private Optional<ArtifactResult> doDownload(String group, String artifact, String version, String target, long time,
+            String groupPath, String hashedGav, String gav, RegistryClient registryClient)
+            throws RegistryUnauthorizedException {
+        try {
             ManifestAndDigest<ManifestTemplate> manifestAndDigest = registryClient.pullManifest(hashedGav,
                     ManifestTemplate.class);
 
@@ -159,8 +181,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
                 }
             }
         } catch (RegistryUnauthorizedException ioe) {
-            Log.errorf("Failed to authenticate against registry %s/%s/%s", registry, owner, repository);
-            return Optional.empty();
+            throw ioe;
         } catch (IOException | RegistryException ioe) {
             Throwable cause = ioe.getCause();
             while (cause != null) {
