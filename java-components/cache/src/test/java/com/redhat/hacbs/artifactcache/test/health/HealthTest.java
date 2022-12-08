@@ -17,14 +17,11 @@ public class HealthTest {
                 .then()
                 .statusCode(200)
                 .body("status", CoreMatchers.equalTo("UP"))
-                .body("checks.name", Matchers.hasItems("Basic health check", "Disk Space"))
+                .body("checks.name", Matchers.hasItems("Basic health check"))
                 .rootPath("checks.find { it.name == '%s' }")
                 // Basic health check
                 .body("status", RestAssured.withArgs("Basic health check"), CoreMatchers.equalTo("UP"))
                 .body("data.uptime", RestAssured.withArgs("Basic health check"), CoreMatchers.isA(Integer.class))
-                .body("data.startTime", RestAssured.withArgs("Basic health check"), CoreMatchers.isA(Long.class))
-                // Disk space
-                .body("status", RestAssured.withArgs("Disk Space"), CoreMatchers.equalTo("UP"))
-                .body("data.space", RestAssured.withArgs("Disk Space"), CoreMatchers.isA(Integer.class));
+                .body("data.startTime", RestAssured.withArgs("Basic health check"), CoreMatchers.isA(Long.class));
     }
 }
