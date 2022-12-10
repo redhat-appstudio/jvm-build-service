@@ -8,8 +8,6 @@ import (
 
 	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/k8sresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -98,18 +96,18 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 			return reconcile.Result{}, fmt.Errorf(logMsg)
 		}
 
-		switch {
-		case r.kcp || systemConfig.Spec.Quota == v1alpha1.K8SQuota:
-			err = k8sresourcequota.SetupNewReconcilerWithManager(r.mgr)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		case (len(systemConfig.Spec.Quota) == 0 || systemConfig.Spec.Quota == v1alpha1.OpenShiftQuota) && r.config != nil && !r.kcp:
-			err = clusterresourcequota.SetupNewReconciler(r.config)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		}
+		//switch {
+		//case r.kcp || systemConfig.Spec.Quota == v1alpha1.K8SQuota:
+		//	err = k8sresourcequota.SetupNewReconcilerWithManager(r.mgr)
+		//	if err != nil {
+		//		return reconcile.Result{}, err
+		//	}
+		//case (len(systemConfig.Spec.Quota) == 0 || systemConfig.Spec.Quota == v1alpha1.OpenShiftQuota) && r.config != nil && !r.kcp:
+		//	err = clusterresourcequota.SetupNewReconciler(r.config)
+		//	if err != nil {
+		//		return reconcile.Result{}, err
+		//	}
+		//}
 		log.Info(fmt.Sprintf("system config available and valid on cluster %s", request.ClusterName))
 		util.SystemConfigCluster = request.ClusterName
 	}
