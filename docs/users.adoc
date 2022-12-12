@@ -1,0 +1,29 @@
+= Users Guide
+
+WARNING: This is preliminary documentation
+
+
+== User Commands
+
+End users can interact with the JVM Build Service using annotations on various objects. These annotations are detailed below.
+
+=== ArtifactBuild Annotations
+
+`jvmbuildservice.io/rebuild`:: This annotation can be used to trigger a rebuild of an `ArtifactBuild`. It has two possible values, `true` and `failed`. If this is true a rebuild will always be triggered. For `failed` a rebuild is only triggered if the build was not successful.
+
+For example to rebuild all failed dependencies you can use:
+
+`kubectl annotate artifactbuilds.jvmbuildservice.io --all jvmbuildservice.io/rebuild=failed`
+
+To rebuild a single specific dependency you can use:
+
+`kubectl annotate artifactbuilds.jvmbuildservice.io agroal.api.1.15-401ad867 jvmbuildservice.io/rebuild=true`
+
+
+=== JBSConfig Annotations
+
+`jvmbuildservice.io/clear-cache`::
+
+The annotation can be used to clear the caches local filesystem. This can use useful if the cache has become corrupted somehow, or if you want to force it to re-fetch any dependencies.
+
+`kubectl annotate jbsconfig jvmbuildservice.io/clear-cache=true --all`

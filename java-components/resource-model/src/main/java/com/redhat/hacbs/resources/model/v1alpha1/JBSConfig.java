@@ -4,22 +4,23 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import io.fabric8.kubernetes.api.model.Namespaced;
-import io.fabric8.kubernetes.api.model.Status;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.model.annotation.Group;
 import io.fabric8.kubernetes.model.annotation.Version;
 
-@Group("hacbs.redhat.com")
-@Version("v1alpha1")
+@Group(ModelConstants.GROUP)
+@Version(ModelConstants.VERSION)
 @JsonInclude(Include.NON_NULL)
-public class Component extends CustomResource<ComponentSpec, Status> implements Namespaced {
+public class JBSConfig extends CustomResource<ArtifactBuildSpec, ArtifactBuildStatus>
+        implements Namespaced {
+
     @Override
-    protected ComponentSpec initSpec() {
-        return new ComponentSpec();
+    protected ArtifactBuildSpec initSpec() {
+        return new ArtifactBuildSpec();
     }
 
     @Override
-    protected Status initStatus() {
-        return new Status();
+    protected ArtifactBuildStatus initStatus() {
+        return new ArtifactBuildStatus();
     }
 }

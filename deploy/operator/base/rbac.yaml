@@ -208,3 +208,13 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - jvmbuildservice.io
+    resources:
+      - jbsconfigs
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update

@@ -35,4 +35,6 @@ public interface StorageManager {
 
     String path();
 
+    void clear();
+
 }

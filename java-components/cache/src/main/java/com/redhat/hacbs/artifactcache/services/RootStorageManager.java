@@ -148,6 +148,25 @@ public class RootStorageManager implements StorageManager {
         return path.toAbsolutePath().toString();
     }
 
+    @Override
+    public void clear() {
+        clear(path);
+    }
+
+    void clear(Path path) {
+
+        Log.infof("Clearing path %s", path);
+        lock.writeLock().lock();
+        try (var s = Files.list(path)) {
+            s.forEach(RootStorageManager::deleteRecursive);
+        } catch (IOException e) {
+            Log.errorf("Failed to clear path %s", e);
+        } finally {
+            lock.writeLock().unlock();
+            Log.infof("Cache Free Completed");
+        }
+    }
+
     void checkSpace() {
         try {
             if (fileStore.getUsableSpace() < highWaterFreeSpace) {
@@ -280,6 +299,11 @@ public class RootStorageManager implements StorageManager {
         @Override
         public String path() {
             return path.resolve(relativePath).toString();
+        }
+
+        @Override
+        public void clear() {
+            RootStorageManager.this.clear(path);
         }
 
     }
