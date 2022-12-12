@@ -752,6 +752,26 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	}
 	trueBool := true
 	zero := int64(0)
+	args := []string{
+		"lookup-build-info",
+		"--recipes",
+		recipes,
+		"--scm-url",
+		build.ScmInfo.SCMURL,
+		"--scm-tag",
+		build.ScmInfo.Tag,
+		"--context",
+		path,
+		"--version",
+		build.Version,
+		"--message",
+		"$(results." + BuildInfoPipelineMessage + ".path)",
+		"--build-info",
+		"$(results." + BuildInfoPipelineBuildInfo + ".path)",
+	}
+	if build.ScmInfo.Private {
+		args = append(args, "--private-repo")
+	}
 	return &pipelinev1beta1.PipelineSpec{
 		Results: []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}, {Name: BuildInfoPipelineBuildInfo, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}},
 		Tasks: []pipelinev1beta1.PipelineTask{
@@ -764,23 +784,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 							{
 								Name:  "process-build-requests",
 								Image: image,
-								Args: []string{
-									"lookup-build-info",
-									"--recipes",
-									recipes,
-									"--scm-url",
-									build.ScmInfo.SCMURL,
-									"--scm-tag",
-									build.ScmInfo.Tag,
-									"--context",
-									path,
-									"--version",
-									build.Version,
-									"--message",
-									"$(results." + BuildInfoPipelineMessage + ".path)",
-									"--build-info",
-									"$(results." + BuildInfoPipelineBuildInfo + ".path)",
-								},
+								Args:  args,
 								SecurityContext: &v1.SecurityContext{
 									RunAsUser: &zero,
 								},
