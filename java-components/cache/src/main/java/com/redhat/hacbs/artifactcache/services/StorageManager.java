@@ -33,6 +33,8 @@ public interface StorageManager {
      */
     StorageManager resolve(String relative);
 
+    void delete(String relative);
+
     String path();
 
     void clear();

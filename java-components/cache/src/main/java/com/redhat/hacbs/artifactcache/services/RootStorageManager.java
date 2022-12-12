@@ -144,6 +144,19 @@ public class RootStorageManager implements StorageManager {
     }
 
     @Override
+    public void delete(String relative) {
+        lock.readLock().lock();
+        try {
+            Path dir = path.resolve(relative);
+            if (Files.exists(dir)) {
+                deleteRecursive(dir);
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    @Override
     public String path() {
         return path.toAbsolutePath().toString();
     }
@@ -297,6 +310,12 @@ public class RootStorageManager implements StorageManager {
         }
 
         @Override
+        public void delete(String relative) {
+            RootStorageManager.this.delete(relativePath + relative);
+
+        }
+
+        @Override
         public String path() {
             return path.resolve(relativePath).toString();
         }
@@ -306,6 +325,12 @@ public class RootStorageManager implements StorageManager {
             RootStorageManager.this.clear(path);
         }
 
+        @Override
+        public String toString() {
+            return "RelativeStorageManager{" +
+                    "relativePath='" + relativePath + '\'' +
+                    '}';
+        }
     }
 
 }

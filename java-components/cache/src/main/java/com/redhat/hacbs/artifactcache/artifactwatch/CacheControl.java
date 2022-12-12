@@ -1,10 +1,13 @@
 package com.redhat.hacbs.artifactcache.artifactwatch;
 
+import java.util.Date;
 import java.util.function.UnaryOperator;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+
+import org.apache.http.client.utils.DateUtils;
 
 import com.redhat.hacbs.artifactcache.services.StorageManager;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
@@ -63,6 +66,8 @@ public class CacheControl {
                                                 GenericKubernetesResource genericKubernetesResource) {
                                             genericKubernetesResource.getMetadata().getAnnotations()
                                                     .remove(ModelConstants.CLEAR_CACHE);
+                                            genericKubernetesResource.getMetadata().getLabels()
+                                                    .put(ModelConstants.LAST_CLEAR_CACHE, DateUtils.formatDate(new Date()));
                                             return genericKubernetesResource;
                                         }
                                     });
