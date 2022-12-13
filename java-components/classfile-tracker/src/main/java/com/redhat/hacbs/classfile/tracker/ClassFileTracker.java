@@ -8,7 +8,7 @@ import java.io.OutputStream;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
@@ -46,12 +46,13 @@ public class ClassFileTracker {
         return readTrackingInformationFromClass(classData, null);
     }
 
-    public static TrackingData readTrackingInformationFromClass(byte[] classData, Consumer<String> untrackedClassesListener) {
+    public static TrackingData readTrackingInformationFromClass(byte[] classData,
+            BiConsumer<String, byte[]> untrackedClassesListener) {
         ClassReader classReader = new ClassReader(classData);
         ClassTrackingReadDataVisitor classTrackingVisitor = new ClassTrackingReadDataVisitor(Opcodes.ASM9);
         classReader.accept(classTrackingVisitor, new Attribute[] { new ClassFileSourceAttribute(null) }, 0);
         if (classTrackingVisitor.getContents() == null && untrackedClassesListener != null) {
-            untrackedClassesListener.accept(classTrackingVisitor.getClassName());
+            untrackedClassesListener.accept(classTrackingVisitor.getClassName(), classData);
         }
         return classTrackingVisitor.getContents();
     }
@@ -124,7 +125,7 @@ public class ClassFileTracker {
     }
 
     public static Set<TrackingData> readTrackingDataFromJar(byte[] input, String jarFile,
-            Consumer<String> untrackedClassesListener) throws IOException {
+            BiConsumer<String, byte[]> untrackedClassesListener) throws IOException {
         return readTrackingDataFromJar(new ByteArrayInputStream(input), jarFile, untrackedClassesListener);
     }
 
@@ -133,7 +134,7 @@ public class ClassFileTracker {
     }
 
     public static Set<TrackingData> readTrackingDataFromJar(InputStream input, String jarFile,
-            Consumer<String> untrackedClassesListener) throws IOException {
+            BiConsumer<String, byte[]> untrackedClassesListener) throws IOException {
         Set<TrackingData> ret = new HashSet<>();
         try (ZipInputStream zipIn = new ZipInputStream(input)) {
             var entry = zipIn.getNextEntry();
@@ -165,12 +166,12 @@ public class ClassFileTracker {
     }
 
     public static Set<TrackingData> readTrackingDataFromFile(InputStream contents, String fileName) throws IOException {
-        return readTrackingDataFromFile(contents, fileName, (s) -> {
+        return readTrackingDataFromFile(contents, fileName, (s, b) -> {
         });
     }
 
     public static Set<TrackingData> readTrackingDataFromFile(InputStream contents, String fileName,
-            Consumer<String> untrackedClassesListener) throws IOException {
+            BiConsumer<String, byte[]> untrackedClassesListener) throws IOException {
         if (fileName.endsWith(".class")) {
             TrackingData data = readTrackingInformationFromClass(contents.readAllBytes(), untrackedClassesListener);
             if (data != null) {
