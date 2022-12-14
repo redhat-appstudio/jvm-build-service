@@ -14,6 +14,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
@@ -107,6 +108,18 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
             Log.infof("No credential provided");
         }
         this.storageManager = storageManager.resolve(HACBS);
+        rebuiltArtifacts.addImageDeletionListener(new Consumer<String>() {
+            @Override
+            public void accept(String s) {
+                var hash = s.substring(s.lastIndexOf(":") + 1);
+                Log.infof("Deleting cached image %s", hash);
+                try {
+                    storageManager.delete(hash);
+                } catch (Exception e) {
+                    Log.errorf(e, "Failed to clear cache path for image %s", s);
+                }
+            }
+        });
     }
 
     @Override

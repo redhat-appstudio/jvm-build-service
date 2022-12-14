@@ -1,11 +1,15 @@
 package com.redhat.hacbs.resources.model.v1alpha1;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class ScmInfo {
     private String scmType;
     private String scmURL;
     private String tag;
 
     private String path;
+
+    boolean privateRepo;
 
     public String getPath() {
         return path;
@@ -40,6 +44,16 @@ public class ScmInfo {
 
     public ScmInfo setTag(String tag) {
         this.tag = tag;
+        return this;
+    }
+
+    @JsonProperty("private")
+    public boolean isPrivateRepo() {
+        return privateRepo;
+    }
+
+    public ScmInfo setPrivateRepo(boolean privateRepo) {
+        this.privateRepo = privateRepo;
         return this;
     }
 }

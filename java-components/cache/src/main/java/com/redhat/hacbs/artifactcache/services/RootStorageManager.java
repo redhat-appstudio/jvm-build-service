@@ -144,8 +144,40 @@ public class RootStorageManager implements StorageManager {
     }
 
     @Override
+    public void delete(String relative) {
+        lock.readLock().lock();
+        try {
+            Path dir = path.resolve(relative);
+            if (Files.exists(dir)) {
+                deleteRecursive(dir);
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    @Override
     public String path() {
         return path.toAbsolutePath().toString();
+    }
+
+    @Override
+    public void clear() {
+        clear(path);
+    }
+
+    void clear(Path path) {
+
+        Log.infof("Clearing path %s", path);
+        lock.writeLock().lock();
+        try (var s = Files.list(path)) {
+            s.forEach(RootStorageManager::deleteRecursive);
+        } catch (IOException e) {
+            Log.errorf("Failed to clear path %s", e);
+        } finally {
+            lock.writeLock().unlock();
+            Log.infof("Cache Free Completed");
+        }
     }
 
     void checkSpace() {
@@ -278,10 +310,27 @@ public class RootStorageManager implements StorageManager {
         }
 
         @Override
+        public void delete(String relative) {
+            RootStorageManager.this.delete(relativePath + relative);
+
+        }
+
+        @Override
         public String path() {
             return path.resolve(relativePath).toString();
         }
 
+        @Override
+        public void clear() {
+            RootStorageManager.this.clear(path);
+        }
+
+        @Override
+        public String toString() {
+            return "RelativeStorageManager{" +
+                    "relativePath='" + relativePath + '\'' +
+                    '}';
+        }
     }
 
 }
