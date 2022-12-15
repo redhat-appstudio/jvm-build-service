@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -429,7 +430,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		}
 		for _, pod := range podList.Items {
 			if strings.HasPrefix(pod.Name, ab.Name) {
-				logFile := dumpPod(pod, directory, localDir, podClient)
+				logFile := dumpPod(pod, directory, localDir, podClient, true)
 				instance.Logs = append(instance.Logs, logFile...)
 			}
 		}
@@ -465,7 +466,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		}
 		for _, pod := range podList.Items {
 			if strings.HasPrefix(pod.Name, db.Name) {
-				logFile := dumpPod(pod, directory, localDir, podClient)
+				logFile := dumpPod(pod, directory, localDir, podClient, true)
 				instance.Logs = append(instance.Logs, logFile...)
 			}
 		}
@@ -496,7 +497,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	print("Created report file://" + report + "\n")
 }
 
-func innerDumpPod(req *rest.Request, baseDirectory, localDirectory, podName, containerName string) error {
+func innerDumpPod(req *rest.Request, baseDirectory, localDirectory, podName, containerName string, skipSkipped bool) error {
 	var readCloser io.ReadCloser
 	var err error
 	readCloser, err = req.Stream(context.TODO())
@@ -507,6 +508,11 @@ func innerDumpPod(req *rest.Request, baseDirectory, localDirectory, podName, con
 	defer readCloser.Close()
 	var b []byte
 	b, err = io.ReadAll(readCloser)
+	if skipSkipped && len(b) < 1000 {
+		if strings.Contains(string(b), "Skipping step because a previous step failed") {
+			return errors.New("the step failed")
+		}
+	}
 	if err != nil {
 		print(fmt.Sprintf("error reading pod stream %s", err.Error()))
 		return err
@@ -527,7 +533,7 @@ func innerDumpPod(req *rest.Request, baseDirectory, localDirectory, podName, con
 	return nil
 }
 
-func dumpPod(pod corev1.Pod, baseDirectory string, localDirectory string, kubeClient v12.PodInterface) []string {
+func dumpPod(pod corev1.Pod, baseDirectory string, localDirectory string, kubeClient v12.PodInterface, skipSkipped bool) []string {
 	if !DUMP_LOGS {
 		return []string{}
 	}
@@ -537,7 +543,7 @@ func dumpPod(pod corev1.Pod, baseDirectory string, localDirectory string, kubeCl
 	ret := []string{}
 	for _, container := range containers {
 		req := kubeClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
-		err := innerDumpPod(req, baseDirectory, localDirectory, pod.Name, container.Name)
+		err := innerDumpPod(req, baseDirectory, localDirectory, pod.Name, container.Name, skipSkipped)
 		if err != nil {
 			continue
 		}
