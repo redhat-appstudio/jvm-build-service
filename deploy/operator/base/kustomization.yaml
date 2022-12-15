@@ -8,3 +8,6 @@ resources:
   - sa.yaml
   - namespace.yaml
   - rbac.yaml
+  - metricservice.yaml
+  - servicemonitor.yaml
+  - servicemonitor_rbac.yaml

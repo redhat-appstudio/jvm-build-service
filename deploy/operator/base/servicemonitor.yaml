@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: hacbs-jvm-operator
+  name: hacbs-jvm-operator-monitor
+  namespace: jvm-build-service
+spec:
+  endpoints:
+    - honorLabels: true
+      interval: 10s
+      port: http-metrics
+  jobLabel: app
+  namespaceSelector:
+    matchNames:
+      - jvm-build-service
+  selector:
+    matchLabels:
+      app: hacbs-jvm-operator
