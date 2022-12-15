@@ -7,6 +7,7 @@ import com.redhat.hacbs.container.analyser.deploy.S3DeployCommand;
 import com.redhat.hacbs.container.analyser.location.LookupScmLocationCommand;
 import com.redhat.hacbs.container.build.preprocessor.gradle.GradlePrepareCommand;
 import com.redhat.hacbs.container.build.preprocessor.maven.MavenPrepareCommand;
+import com.redhat.hacbs.container.verifier.VerifyBuiltArtifactsCommand;
 
 import io.quarkus.picocli.runtime.annotations.TopCommand;
 import picocli.CommandLine;
@@ -19,7 +20,8 @@ import picocli.CommandLine;
         S3DeployCommand.class,
         ContainerDeployCommand.class,
         GradlePrepareCommand.class,
-        MavenPrepareCommand.class
+        MavenPrepareCommand.class,
+        VerifyBuiltArtifactsCommand.class
 })
 public class EntryPoint {
 }

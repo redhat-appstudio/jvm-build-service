@@ -126,6 +126,8 @@ spec:
                 type: array
               repository:
                 type: string
+              verifyBuiltArtifacts:
+                type: boolean
             type: object
           status:
             type: object

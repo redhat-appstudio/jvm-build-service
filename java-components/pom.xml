@@ -33,6 +33,9 @@
         <gradle-tooling-api.version>7.5</gradle-tooling-api.version>
         <quarkus-github-api.version>1.302.0</quarkus-github-api.version>
         <cyclonedx-core-java.version>7.1.4</cyclonedx-core-java.version>
+        <asm.version>9.4</asm.version>
+        <maven-indexer.version>7.0.0</maven-indexer.version>
+        <maven-resolver.version>1.9.2</maven-resolver.version>
     </properties>
 
     <modules>
@@ -124,6 +127,58 @@
                 <groupId>org.cyclonedx</groupId>
                 <artifactId>cyclonedx-core-java</artifactId>
                 <version>${cyclonedx-core-java.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.indexer</groupId>
+                <artifactId>indexer-core</artifactId>
+                <version>${maven-indexer.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-api</artifactId>
+                <version>${maven-resolver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-connector-basic</artifactId>
+                <version>${maven-resolver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-impl</artifactId>
+                <version>${maven-resolver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-spi</artifactId>
+                <version>${maven-resolver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-transport-file</artifactId>
+                <version>${maven-resolver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-transport-http</artifactId>
+                <version>${maven-resolver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-transport-wagon</artifactId>
+                <version>${maven-resolver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.resolver</groupId>
+                <artifactId>maven-resolver-util</artifactId>
+                <version>${maven-resolver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.ow2.asm</groupId>
+                <artifactId>asm-bom</artifactId>
+                <version>${asm.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.assertj</groupId>
