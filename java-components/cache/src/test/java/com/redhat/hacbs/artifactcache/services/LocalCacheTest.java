@@ -125,7 +125,7 @@ public class LocalCacheTest {
     void runTest(BiConsumer<CacheFacade, Path> consumer) throws Exception {
         Path temp = Files.createTempDirectory("cache-test");
         try {
-            CacheFacade localCache = new CacheFacade(new RootStorageManager(temp, 1, 1),
+            CacheFacade localCache = new CacheFacade(new RootStorageManager(temp, 1, 1, 1),
                     Map.of("default", new BuildPolicy(
                             List.of(new Repository("test", "http://test.com", RepositoryType.MAVEN2, MOCK_CLIENT)))));
 
