@@ -3,17 +3,21 @@ package com.redhat.hacbs.artifactcache.services;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import javax.annotation.PostConstruct;
@@ -24,6 +28,7 @@ import javax.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.ExecutorRecorder;
 
 /**
  * Manager class that deals with freeing up disk space if the disk usage gets too high.
@@ -36,9 +41,19 @@ import io.quarkus.logging.Log;
 public class RootStorageManager implements StorageManager {
 
     private static final String MARKER = "cache.directory.marker";
+    public static final int DELETE_TIMEOUT = 10000;
 
     final Path path;
-    final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    private static final long DELETE_IN_PROGRESS = -1;
+    private final int deleteBatchSize;
+
+    /**
+     * Lock map used to manage timestamps.
+     */
+    final ConcurrentMap<String, AtomicLong> inUseMap = new ConcurrentHashMap<>();
+
+    private static final Function<String, AtomicLong> FACTORY = (s) -> new AtomicLong(System.currentTimeMillis());
     private final FileStore fileStore;
     private final long highWaterFreeSpace;
     private final long lowWaterFreeSpace;
@@ -49,12 +64,14 @@ public class RootStorageManager implements StorageManager {
     public RootStorageManager(
             @ConfigProperty(name = "cache-path") Path path,
             @ConfigProperty(name = "cache-disk-percentage-high-water") double highWater,
-            @ConfigProperty(name = "cache-disk-percentage-low-water") double lowWater) throws IOException {
+            @ConfigProperty(name = "cache-disk-percentage-low-water") double lowWater,
+            @ConfigProperty(name = "cache-delete-batch-size", defaultValue = "30") int deleteBatchSize) throws IOException {
         this.path = path;
         Files.createDirectories(path);
         this.fileStore = Files.getFileStore(path);
         highWaterFreeSpace = (long) (fileStore.getTotalSpace() * (1 - highWater));
         lowWaterFreeSpace = (long) (fileStore.getTotalSpace() * (1 - lowWater));
+        this.deleteBatchSize = deleteBatchSize;
         Log.infof("Cache requires at least %s space free, and will delete to the low water mark of %s", highWaterFreeSpace,
                 lowWaterFreeSpace);
     }
@@ -62,12 +79,14 @@ public class RootStorageManager implements StorageManager {
     RootStorageManager(FileStore fileStore,
             Path path,
             double highWater,
-            double lowWater) throws IOException {
+            double lowWater,
+            int deleteBatchSize) throws IOException {
         this.fileStore = fileStore;
         this.path = path;
         Files.createDirectories(path);
         highWaterFreeSpace = (long) (fileStore.getTotalSpace() * (1 - highWater));
         lowWaterFreeSpace = (long) (fileStore.getTotalSpace() * (1 - lowWater));
+        this.deleteBatchSize = deleteBatchSize;
         Log.infof("Cache requires at least %s space free, and will delete to the low water mark of %s", highWaterFreeSpace,
                 lowWaterFreeSpace);
     }
@@ -81,11 +100,40 @@ public class RootStorageManager implements StorageManager {
                 checkSpace();
             }
         }, 60000, 60000);
+        ExecutorRecorder.getCurrent().execute(this::initialLoad);
     }
 
     @PreDestroy
     void destroy() {
         timer.cancel();
+    }
+
+    void initialLoad() {
+        //there map be initial data in the cache dir, we load it into the in-memory map to allow it to be deleted
+        //if the cache needs to be cleared
+        AtomicInteger count = new AtomicInteger();
+        try {
+
+            Files.walkFileTree(path, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    Path marker = dir.resolve(MARKER);
+                    if (Files.exists(marker)) {
+                        count.incrementAndGet();
+                        inUseMap.putIfAbsent(path.relativize(dir).toString(),
+                                new AtomicLong(Files.getLastModifiedTime(dir).toMillis()));
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+            });
+
+        } catch (IOException e) {
+            Log.errorf("Failed to scan existing files", e);
+        } finally {
+            Log.infof("Initial load of existing entries completed, found %s", count.get());
+        }
+
     }
 
     /**
@@ -97,19 +145,48 @@ public class RootStorageManager implements StorageManager {
      */
     @Override
     public Path accessDirectory(String relative) throws IOException {
-        lock.readLock().lock();
-        try {
-            Path dir = path.resolve(relative);
-            if (!Files.exists(dir)) {
-                Files.createDirectories(dir);
-            } else if (!Files.isDirectory(dir)) {
-                throw new RuntimeException("Not a directory");
-            }
-            Files.writeString(dir.resolve(MARKER), Long.toString(System.currentTimeMillis()));
-            return dir;
-        } finally {
-            lock.readLock().unlock();
+        if (relative.startsWith("/")) {
+            throw new IllegalArgumentException("Path must not start with / :" + relative);
         }
+        if (relative.endsWith("/")) {
+            throw new IllegalArgumentException("Path must not end with / :" + relative);
+        }
+
+        //deletion locks, if this is being deleted it is set to -1
+        //otherwise we just use CAS to update it
+        //deletion will notifyAll on the AtomicLong before it is removed
+        long timeOut = System.currentTimeMillis() + DELETE_TIMEOUT;
+        for (;;) {
+            if (System.currentTimeMillis() > timeOut) {
+                throw new IOException("Timed out waiting for entry deletion: " + relative);
+            }
+            AtomicLong current = inUseMap.computeIfAbsent(relative, FACTORY);
+            long val = current.get();
+            if (val == -1) {
+                try {
+                    current.wait(DELETE_TIMEOUT);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                if (current.compareAndSet(val, System.currentTimeMillis())) {
+                    break;
+                }
+            }
+        }
+
+        Path dir = path.resolve(relative);
+        if (!Files.exists(dir)) {
+            Files.createDirectories(dir);
+        } else if (!Files.isDirectory(dir)) {
+            throw new RuntimeException("Not a directory");
+        }
+        Path marker = dir.resolve(MARKER);
+        if (!Files.exists(marker)) {
+            Files.writeString(marker, Long.toString(System.currentTimeMillis()));
+        }
+        return dir;
+
     }
 
     @Override
@@ -117,20 +194,10 @@ public class RootStorageManager implements StorageManager {
         if (!relative.contains("/")) {
             throw new IllegalArgumentException("Cannot access files in the root of the storage manager: " + relative);
         }
-        lock.readLock().lock();
-        try {
-            Path filePath = path.resolve(relative);
-            Path dir = filePath.getParent();
-            if (!Files.exists(dir)) {
-                Files.createDirectories(dir);
-            } else if (!Files.isDirectory(dir)) {
-                throw new RuntimeException("Not a directory");
-            }
-            Files.writeString(dir.resolve(MARKER), Long.toString(System.currentTimeMillis()));
-            return filePath;
-        } finally {
-            lock.readLock().unlock();
-        }
+        Path filePath = path.resolve(relative);
+        Path dir = filePath.getParent();
+        accessDirectory(path.relativize(dir).toString());
+        return filePath;
     }
 
     @Override
@@ -145,14 +212,20 @@ public class RootStorageManager implements StorageManager {
 
     @Override
     public void delete(String relative) {
-        lock.readLock().lock();
-        try {
-            Path dir = path.resolve(relative);
-            if (Files.exists(dir)) {
-                deleteRecursive(dir);
+        //note that this is not lock safe
+        //this is only for explicit deletes
+        //if this is called while the file
+        //is being downloaded the result is undefined
+        Path dir = path.resolve(relative);
+        if (Files.exists(dir)) {
+            deleteRecursive(dir);
+        }
+        var existing = inUseMap.remove(relative);
+        if (existing != null) {
+            existing.set(System.currentTimeMillis());
+            synchronized (existing) {
+                existing.notifyAll();
             }
-        } finally {
-            lock.readLock().unlock();
         }
     }
 
@@ -169,14 +242,20 @@ public class RootStorageManager implements StorageManager {
     void clear(Path path) {
 
         Log.infof("Clearing path %s", path);
-        lock.writeLock().lock();
         try (var s = Files.list(path)) {
             s.forEach(RootStorageManager::deleteRecursive);
         } catch (IOException e) {
             Log.errorf("Failed to clear path %s", e);
         } finally {
-            lock.writeLock().unlock();
             Log.infof("Cache Free Completed");
+            HashMap<String, AtomicLong> vals = new HashMap<>(inUseMap);
+            inUseMap.clear();
+            for (var i : vals.entrySet()) {
+                i.getValue().set(1);
+                synchronized (i.getValue()) {
+                    i.getValue().notifyAll();
+                }
+            }
         }
     }
 
@@ -192,82 +271,45 @@ public class RootStorageManager implements StorageManager {
 
     private void freeSpace() throws IOException {
         Log.infof("Disk usage is too high, freeing cache entries");
-        lock.writeLock().lock();
         try {
-            Deque<FreeEntry> stack = new ArrayDeque<>();
-            TreeSet<FreeEntry> lastUsed = new TreeSet<>();
-            Files.walkFileTree(path, new FileVisitor<>() {
-                @Override
-                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    Path marker = dir.resolve(MARKER);
-                    if (Files.exists(marker)) {
-                        String contents = Files.readString(marker);
-                        long time = 0;
-                        try {
-                            time = Long.parseLong(contents);
-                        } catch (Exception e) {
-                            Log.errorf(e, "Failed to parse marker file %s", marker);
+            TreeMap<Long, List<String>> entries = new TreeMap<>();
+            for (var e : inUseMap.entrySet()) {
+                entries.computeIfAbsent(e.getValue().get(), (s) -> new ArrayList<>()).add(e.getKey());
+            }
+            int batchCount = 0;
+            var it = entries.entrySet().iterator();
+            //free till we hit low water
+            while (it.hasNext() && fileStore.getUsableSpace() < lowWaterFreeSpace) {
+                Log.infof("Deleting batch %s of %s entries", batchCount++, deleteBatchSize);
+                int count = 0;
+                //delete in chunks of batch size
+                while (count++ < deleteBatchSize && it.hasNext()) {
+                    var toDel = it.next();
+                    long expect = toDel.getKey();
+                    for (var file : toDel.getValue()) {
+                        AtomicLong lock = inUseMap.get(file);
+                        if (lock == null) {
+                            continue;
                         }
-                        FreeEntry entry = new FreeEntry(time, dir);
-                        lastUsed.add(entry);
-                        stack.push(entry);
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
+                        if (lock.compareAndSet(expect, DELETE_IN_PROGRESS)) {
+                            inUseMap.remove(file);
+                            try {
+                                deleteRecursive(path.resolve(file));
+                            } catch (Exception e) {
+                                Log.errorf(e, "Failed to clear %s", file);
+                            } finally {
+                                synchronized (lock) {
+                                    lock.notifyAll();
+                                }
+                            }
 
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    FreeEntry current = stack.peek();
-                    if (current != null) {
-                        current.size += Files.size(file);
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
+                        }
 
-                @Override
-                public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    if (Files.exists(dir.resolve(MARKER))) {
-                        stack.pop();
                     }
-                    return FileVisitResult.CONTINUE;
                 }
-            });
-            var it = lastUsed.iterator();
-            while (fileStore.getUsableSpace() < lowWaterFreeSpace && it.hasNext()) {
-                var entry = it.next();
-                Log.infof("Removing %s", entry.path);
-                deleteRecursive(entry.path);
             }
-
         } finally {
-            lock.writeLock().unlock();
             Log.infof("Cache Free Completed");
-        }
-    }
-
-    static class FreeEntry implements Comparable<FreeEntry> {
-        final long lastUsed;
-        long size;
-        final Path path;
-
-        FreeEntry(long lastUsed, Path path) {
-            this.lastUsed = lastUsed;
-            this.path = path;
-        }
-
-        @Override
-        public int compareTo(RootStorageManager.FreeEntry o) {
-            //compare the last used, otherwise use the path, so they are never equal
-            int val = Long.compare(lastUsed, o.lastUsed);
-            if (val == 0) {
-                return path.compareTo(o.path);
-            }
-            return val;
         }
     }
 

@@ -20,18 +20,22 @@ import io.quarkus.test.junit.QuarkusTest;
 public class StorageManagerTestCase {
 
     @Test
-    public void testDeletion() throws IOException {
+    public void testDeletion() throws IOException, InterruptedException {
 
         StringBuilder hundredAndOneBytes = new StringBuilder();
         for (var i = 0; i < 101; ++i) {
             hundredAndOneBytes.append("a");
         }
         Path path = Files.createTempDirectory("test");
-        RootStorageManager manager = new RootStorageManager(new MockFileSystem(path, 1000L), path, 0.5, 0.4);
+        RootStorageManager manager = new RootStorageManager(new MockFileSystem(path, 1000L), path, 0.5, 0.4, 1);
         Path f1 = manager.accessDirectory("t1").resolve("f1");
+        Thread.sleep(2);
         Path f2 = manager.accessDirectory("t2").resolve("f2");
+        Thread.sleep(2);
         Path f3 = manager.accessDirectory("t3").resolve("f3");
+        Thread.sleep(2);
         Path f4 = manager.accessFile("t4/a");
+        Thread.sleep(2);
         Files.writeString(f1, hundredAndOneBytes.toString());
         Files.writeString(f2, hundredAndOneBytes.toString());
         Files.writeString(f3, hundredAndOneBytes.toString());
@@ -42,6 +46,7 @@ public class StorageManagerTestCase {
         Assertions.assertTrue(Files.exists(f3));
         Assertions.assertTrue(Files.exists(f4));
         Path f5 = manager.accessFile("t5/a");
+        Thread.sleep(2);
         Files.writeString(f5, hundredAndOneBytes.toString());
         manager.checkSpace();
         Assertions.assertFalse(Files.exists(f1));
@@ -50,10 +55,13 @@ public class StorageManagerTestCase {
         Assertions.assertTrue(Files.exists(f4));
         Assertions.assertTrue(Files.exists(f5));
         f1 = manager.accessDirectory("t1").resolve("f1");
+        Thread.sleep(2);
         f2 = manager.accessDirectory("t2").resolve("f2");
+        Thread.sleep(2);
         Files.writeString(f1, hundredAndOneBytes.toString());
         Files.writeString(f2, hundredAndOneBytes.toString());
         manager.accessDirectory("t3"); //access it will mark it recently used
+        Thread.sleep(2);
         manager.checkSpace();
         Assertions.assertTrue(Files.exists(f1));
         Assertions.assertTrue(Files.exists(f2));
