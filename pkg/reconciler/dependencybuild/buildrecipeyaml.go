@@ -29,20 +29,14 @@ var mavenBuild string
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
 
+//go:embed scripts/sbt-build.sh
+var sbtBuild string
+
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
-func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild) (*pipelinev1beta1.PipelineSpec, error) {
-	var settings string
-	var build string
-	trueBool := true
-	if maven {
-		settings = mavenSettings
-		build = mavenBuild
-	} else {
-		settings = gradleSettings
-		build = gradleBuild
-	}
+func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild) (*pipelinev1beta1.PipelineSpec, error) {
+
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
@@ -118,8 +112,23 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 		"$(params.CACHE_URL)",
 		"$(workspaces." + WorkspaceSource + ".path)/source",
 	}
-	if !maven {
+	var settings string
+	var build string
+	trueBool := true
+	if tool == "maven" {
+		settings = mavenSettings
+		build = mavenBuild
+	} else if tool == "gradle" {
+		settings = gradleSettings
+		build = gradleBuild
 		preprocessorArgs[0] = "gradle-prepare"
+	} else if tool == "sbt" {
+		settings = "" //TODO: look at removing the setttings step altogether
+		build = sbtBuild
+		preprocessorArgs[0] = "sbt-prepare"
+	} else {
+		settings = "echo unknown build tool " + tool + " && exit 1"
+		build = ""
 	}
 	gitArgs := ""
 	if db.Spec.ScmInfo.Private {
@@ -246,9 +255,6 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 				Args: deployArgs,
 			},
 		},
-	}
-	if !maven {
-		buildSetup.Params = append(buildSetup.Params, v1alpha1.ParamSpec{Name: PipelineGradleManipulatorArgs, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "-DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false"}})
 	}
 
 	ps := &pipelinev1beta1.PipelineSpec{

@@ -446,8 +446,8 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		localDir := db.Status.State + "/" + db.Name
 		tmp := db
 		tool := "maven"
-		if db.Status.CurrentBuildRecipe != nil && db.Status.CurrentBuildRecipe.Gradle {
-			tool = "gradle"
+		if db.Status.CurrentBuildRecipe != nil {
+			tool = db.Status.CurrentBuildRecipe.Tool
 		}
 		if db.Status.FailedVerification {
 			tool += " (FAILED VERIFICATION)"
