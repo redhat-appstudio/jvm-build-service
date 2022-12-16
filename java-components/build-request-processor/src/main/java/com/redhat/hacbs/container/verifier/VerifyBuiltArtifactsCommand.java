@@ -49,6 +49,13 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
     @Option(names = { "-s", "--settings" })
     Path settingsFile;
 
+    @Option(names = { "--report-only" })
+    boolean reportOnly;
+    /**
+     * The results file, will have 'true' written to it if verification passed, false otherwise.
+     */
+    @Option(names = { "--results-file" })
+    Path resultsFile;
     private List<RemoteRepository> remoteRepositories;
 
     private RepositorySystem system;
@@ -107,9 +114,26 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 Log.infof("Failed: %s", failedCoords);
             }
 
-            return (failed ? 1 : 0);
+            if (resultsFile != null) {
+                try {
+                    Files.writeString(resultsFile, Boolean.toString(!failed));
+                } catch (IOException ex) {
+                    Log.errorf(ex, "Failed to write results");
+                }
+            }
+            return (failed && !reportOnly ? 1 : 0);
         } catch (IOException e) {
             Log.errorf("%s", e.getMessage(), e);
+            if (resultsFile != null) {
+                try {
+                    Files.writeString(resultsFile, "false");
+                } catch (IOException ex) {
+                    Log.errorf(ex, "Failed to write results");
+                }
+            }
+            if (reportOnly) {
+                return 0;
+            }
             return 1;
         }
     }

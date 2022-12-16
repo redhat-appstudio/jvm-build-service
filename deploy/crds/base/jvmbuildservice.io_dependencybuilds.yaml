@@ -247,6 +247,8 @@ spec:
                       type: string
                   type: object
                 type: array
+              failedVerification:
+                type: boolean
               lastCompletedBuildPipelineRun:
                 type: string
               message:

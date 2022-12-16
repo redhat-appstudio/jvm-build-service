@@ -632,6 +632,9 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 							}
 						}
 					}
+				} else if i.Name == artifactbuild.PassedVerification {
+					parseBool, _ := strconv.ParseBool(i.Value)
+					db.Status.FailedVerification = !parseBool
 				}
 			}
 

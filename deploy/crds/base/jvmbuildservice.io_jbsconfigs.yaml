@@ -126,7 +126,10 @@ spec:
                 type: array
               repository:
                 type: string
-              verifyBuiltArtifacts:
+              requireArtifactVerification:
+                description: If this is true then the build will fail if artifact
+                  verification fails otherwise deploy will happen as normal, but a
+                  field will be set on the DependencyBuild
                 type: boolean
             type: object
           status:

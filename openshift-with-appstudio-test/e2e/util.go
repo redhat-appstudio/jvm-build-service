@@ -449,6 +449,9 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		if db.Status.CurrentBuildRecipe != nil && db.Status.CurrentBuildRecipe.Gradle {
 			tool = "gradle"
 		}
+		if db.Status.FailedVerification {
+			tool += " (FAILED VERIFICATION)"
+		}
 		instance := &ReportInstanceData{State: db.Status.State, Yaml: encodeToYaml(&tmp), Name: fmt.Sprintf("%s @{%s} (%s) %s", db.Spec.ScmInfo.SCMURL, db.Spec.ScmInfo.Tag, db.Name, tool)}
 		dependency.Instances = append(dependency.Instances, instance)
 		print(db.Status.State + "\n")

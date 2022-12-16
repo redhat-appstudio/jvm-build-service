@@ -49,6 +49,7 @@ const (
 	JavaCommunityDependencies     = "JAVA_COMMUNITY_DEPENDENCIES"
 	Contaminants                  = "CONTAMINANTS"
 	DeployedResources             = "DEPLOYED_RESOURCES"
+	PassedVerification            = "PASSED_VERIFICATION" //#nosec
 	Image                         = "IMAGE"
 	Rebuild                       = "jvmbuildservice.io/rebuild"
 	Verify                        = "jvmbuildservice.io/verify"
