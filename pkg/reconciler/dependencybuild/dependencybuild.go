@@ -482,6 +482,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
+	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
 	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -631,6 +632,9 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 							}
 						}
 					}
+				} else if i.Name == artifactbuild.PassedVerification {
+					parseBool, _ := strconv.ParseBool(i.Value)
+					db.Status.FailedVerification = !parseBool
 				}
 			}
 

@@ -44,6 +44,18 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 		build = gradleBuild
 	}
 	zero := int64(0)
+	verifyBuiltArtifactsArgs := []string{
+		"verify-built-artifacts",
+		"--repository-url=$(params.CACHE_URL)",
+		"--global-settings=/usr/share/maven/conf/settings.xml",
+		"--settings=$(workspaces.build-settings.path)/settings.xml",
+		"--deploy-path=$(workspaces.source.path)/hacbs-jvm-deployment-repo",
+		"--results-file=$(results." + artifactbuild.PassedVerification + ".path)",
+	}
+
+	if !jbsConfig.Spec.RequireArtifactVerification {
+		verifyBuiltArtifactsArgs = append(verifyBuiltArtifactsArgs, "--report-only")
+	}
 	deployArgs := []string{
 		"deploy-container",
 		"--tar-path=$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz",
@@ -155,7 +167,7 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 			{Name: PipelineRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache.$(context.pipelineRun.namespace).svc.cluster.local/v1/cache/default/" + strconv.FormatInt(commitTime, 10)}},
 		},
-		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}, {Name: artifactbuild.Image}},
+		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}, {Name: artifactbuild.Image}, {Name: artifactbuild.PassedVerification}},
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "git-clone",
@@ -207,6 +219,17 @@ func createPipelineSpec(maven bool, commitTime int64, jbsConfig *v1alpha12.JBSCo
 				Args: []string{"$(params.GOALS[*])"},
 
 				Script: strings.ReplaceAll(strings.ReplaceAll(build, "{{INSTALL_PACKAGE_SCRIPT}}", install), "{{PRE_BUILD_SCRIPT}}", recipe.PreBuildScript),
+			},
+			{
+				Name:            "verify-built-artifacts",
+				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Resources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
+				},
+				Args: verifyBuiltArtifactsArgs,
 			},
 			{
 				Name:            "deploy-and-check-for-contaminates",

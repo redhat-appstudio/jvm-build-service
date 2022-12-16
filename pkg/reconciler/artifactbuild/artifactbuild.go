@@ -49,8 +49,10 @@ const (
 	JavaCommunityDependencies     = "JAVA_COMMUNITY_DEPENDENCIES"
 	Contaminants                  = "CONTAMINANTS"
 	DeployedResources             = "DEPLOYED_RESOURCES"
+	PassedVerification            = "PASSED_VERIFICATION" //#nosec
 	Image                         = "IMAGE"
 	Rebuild                       = "jvmbuildservice.io/rebuild"
+	Verify                        = "jvmbuildservice.io/verify"
 )
 
 type ReconcileArtifactBuild struct {
@@ -138,6 +140,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		return r.handlePipelineRunReceived(ctx, log, &pr)
 
 	case abrerr == nil:
+		// TODO: if verify = true, then find dependency build and add veify = false to dep build, add ourself to the owner references, if new dep created, also add it to that
 		//log.Info("cluster set on obj ", r.clusterSetOnObj(&abr))
 		//first check for a rebuild annotation
 		if abr.Annotations[Rebuild] == "true" {

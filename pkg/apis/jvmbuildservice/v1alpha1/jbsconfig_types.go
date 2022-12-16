@@ -21,6 +21,10 @@ const (
 type JBSConfigSpec struct {
 	EnableRebuilds bool `json:"enableRebuilds,omitempty"`
 
+	// If this is true then the build will fail if artifact verification fails
+	// otherwise deploy will happen as normal, but a field will be set on the DependencyBuild
+	RequireArtifactVerification bool `json:"requireArtifactVerification,omitempty"`
+
 	AdditionalRecipes []string `json:"additionalRecipes,omitempty"`
 
 	MavenBaseLocations map[string]string `json:"mavenBaseLocations,omitempty"`
