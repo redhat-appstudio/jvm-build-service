@@ -70,8 +70,7 @@ type DependencyBuildList struct {
 
 type BuildRecipe struct {
 	Pipeline            string               `json:"pipeline,omitempty"`
-	Maven               bool                 `json:"maven,omitempty"`
-	Gradle              bool                 `json:"gradle,omitempty"`
+	Tool                string               `json:"tool,omitempty"`
 	Image               string               `json:"image,omitempty"`
 	CommandLine         []string             `json:"commandLine,omitempty"`
 	EnforceVersion      string               `json:"enforceVersion,omitempty"`

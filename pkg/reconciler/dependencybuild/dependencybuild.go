@@ -46,7 +46,6 @@ const (
 	PipelineJavaVersion           = "JAVA_VERSION"
 	PipelineToolVersion           = "TOOL_VERSION"
 	PipelineEnforceVersion        = "ENFORCE_VERSION"
-	PipelineGradleManipulatorArgs = "GRADLE_MANIPULATOR_ARGS"
 	PipelineCacheUrl              = "CACHE_URL"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
@@ -272,6 +271,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		buildRecipes := []*v1alpha1.BuildRecipe{}
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
+		_, sbt := unmarshalled.Tools["sbt"]
 		java := unmarshalled.Tools["jdk"]
 		db.Status.CommitTime = unmarshalled.CommitTime
 
@@ -308,10 +308,12 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 
 		for _, image := range selectedImages {
 			var tooVersions []string
+			var tool string
 			if maven {
 				//TODO: maven version selection
 				//for now we just fake it
 				tooVersions = []string{"3.8.1"}
+				tool = "maven"
 			} else if gradle {
 				//gradle has an explicit tool version, but we need to map it to what is in the image
 				gradleVersionsInImage := image.Tools["gradle"]
@@ -320,6 +322,16 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 						tooVersions = append(tooVersions, i)
 					}
 				}
+				tool = "gradle"
+			} else if sbt {
+				//sbt has an explicit tool version, but we need to map it to what is in the image
+				sbtVersionsInImage := image.Tools["sbt"]
+				for _, i := range sbtVersionsInImage {
+					if sameMajorVersion(i, unmarshalled.ToolVersion) {
+						tooVersions = append(tooVersions, i)
+					}
+				}
+				tool = "sbt"
 			} else {
 				log.Error(nil, "Neither maven nor gradle was found in the tools map", "json", buildInfo)
 				db.Status.State = v1alpha1.DependencyBuildStateFailed
@@ -327,7 +339,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			}
 			for _, command := range unmarshalled.Invocations {
 				for _, tv := range tooVersions {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Maven: maven, Gradle: gradle, PreBuildScript: unmarshalled.PreBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules})
 				}
 			}
 		}
@@ -472,10 +484,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	pr.Name = currentDependencyBuildPipelineName(db)
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
 
-	if !db.Status.CurrentBuildRecipe.Maven && !db.Status.CurrentBuildRecipe.Gradle {
-		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "MissingRecipeType", "recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
-		return reconcile.Result{}, fmt.Errorf("recipe for DependencyBuild %s:%s neither maven or gradle", db.Namespace, db.Name)
-	}
 	jbsConfig := &v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 	if err != nil && !errors.IsNotFound(err) {
@@ -483,7 +491,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 	pr.Spec.PipelineRef = nil
 	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
-	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Maven, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db)
+	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Tool, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

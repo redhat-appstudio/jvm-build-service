@@ -182,17 +182,15 @@ spec:
                     type: boolean
                   enforceVersion:
                     type: string
-                  gradle:
-                    type: boolean
                   image:
                     type: string
                   javaVersion:
                     type: string
-                  maven:
-                    type: boolean
                   pipeline:
                     type: string
                   preBuildScript:
+                    type: string
+                  tool:
                     type: string
                   toolVersion:
                     type: string
@@ -231,17 +229,15 @@ spec:
                       type: boolean
                     enforceVersion:
                       type: string
-                    gradle:
-                      type: boolean
                     image:
                       type: string
                     javaVersion:
                       type: string
-                    maven:
-                      type: boolean
                     pipeline:
                       type: string
                     preBuildScript:
+                      type: string
+                    tool:
                       type: string
                     toolVersion:
                       type: string
@@ -283,17 +279,15 @@ spec:
                       type: boolean
                     enforceVersion:
                       type: string
-                    gradle:
-                      type: boolean
                     image:
                       type: string
                     javaVersion:
                       type: string
-                    maven:
-                      type: boolean
                     pipeline:
                       type: string
                     preBuildScript:
+                      type: string
+                    tool:
                       type: string
                     toolVersion:
                       type: string

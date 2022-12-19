@@ -3,6 +3,7 @@ package com.redhat.hacbs.container.analyser.build;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
+import static com.redhat.hacbs.container.analyser.build.BuildInfo.SBT;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.GOOGLE_JAVA_FORMAT_PLUGIN;
 import static org.eclipse.jgit.api.ResetCommand.ResetType.HARD;
 
@@ -219,6 +220,17 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.invocations.add(new ArrayList<>(GradleUtils.getGradleArgs(path)));
                 info.toolVersion = detectedGradleVersion;
                 info.javaVersion = javaVersion;
+            } else if (Files.exists(path.resolve("build.sbt"))) {
+                //TODO: initial SBT support, needs more work
+                Log.infof("Detected SBT build in %s", path);
+
+                var specifiedJavaVersion = "11"; //hard coded for now
+
+                info.tools.put(JDK, new VersionRange("11", "11", "11"));
+                info.tools.put(SBT, new VersionRange("1.8.0", "1.8.0", "1.8.0"));
+                info.toolVersion = "1.8.0";
+                info.invocations.add(new ArrayList<>(
+                        List.of("publish")));
             }
             if (buildRecipeInfo != null) {
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
