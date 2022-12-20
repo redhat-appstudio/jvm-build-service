@@ -226,7 +226,7 @@ public class LookupBuildInfoCommand implements Runnable {
 
                 var specifiedJavaVersion = "11"; //hard coded for now
 
-                info.tools.put(JDK, new VersionRange("11", "11", "11"));
+                info.tools.put(JDK, new VersionRange("8", "17", "8"));
                 info.tools.put(SBT, new VersionRange("1.8.0", "1.8.0", "1.8.0"));
                 info.toolVersion = "1.8.0";
                 info.invocations.add(new ArrayList<>(
