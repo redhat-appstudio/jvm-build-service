@@ -2,6 +2,9 @@ package com.redhat.hacbs.resources.model.v1alpha1;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DependencyBuildStatus {
 
     private String state;
