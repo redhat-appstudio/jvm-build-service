@@ -135,10 +135,10 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
 		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
 	}
-	gitArgs = gitArgs + "\ngit-init -path=$(workspaces." + WorkspaceSource + ".path)/source -url=$(params." + PipelineScmUrl + ") -revision=$(params." + PipelineScmTag + ")"
+	gitArgs = gitArgs + "\ngit clone --branch=$(params." + PipelineScmTag + ") $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/source"
 
-	if recipe.DisableSubmodules {
-		gitArgs = gitArgs + " -submodules=false"
+	if !recipe.DisableSubmodules {
+		gitArgs = gitArgs + " --recurse-submodules"
 	}
 	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "256Mi"))
 	if err != nil {
@@ -180,7 +180,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "git-clone",
-				Image:           "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.37.4", //TODO: should not be hard coded
+				Image:           "$(params." + PipelineImage + ")",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Resources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
