@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	NamespaceLabel      string = "namespace"
-	StateLabel          string = "state"
-	ArtifactBuildMetric string = "stonesoup_jvmbuildservice_artifactbuilds_total"
+	NamespaceLabel           string = "namespace"
+	StateLabel               string = "state"
+	ArtifactBuildTotalMetric string = "stonesoup_jvmbuildservice_artifactbuilds_total"
 )
 
 var (
@@ -35,7 +35,7 @@ func InitPrometheus(client client.Client) {
 	registered = true
 
 	labels := []string{NamespaceLabel, StateLabel}
-	artifactbuildDesc = prometheus.NewDesc(ArtifactBuildMetric,
+	artifactbuildDesc = prometheus.NewDesc(ArtifactBuildTotalMetric,
 		"Number of total ArtifactBuilds by namespace and state.",
 		labels,
 		nil)
@@ -65,12 +65,25 @@ func (sc *statsCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (sc *statsCollector) Collect(ch chan<- prometheus.Metric) {
 	abs := &v1alpha1.ArtifactBuildList{}
+
 	err := sc.client.List(context.Background(), abs)
 	if err != nil {
 		//TODO add log / event
 		return
 	}
-	for _, ab := range abs.Items {
-		ch <- prometheus.MustNewConstMetric(artifactbuildDesc, prometheus.GaugeValue, float64(1), ab.Namespace, ab.Status.State)
+	byNamespaceAndState := map[string]map[string]int{}
+
+	for _, i := range abs.Items {
+		if byNamespaceAndState[i.Namespace] == nil {
+			byNamespaceAndState[i.Namespace] = map[string]int{}
+		}
+		byNamespaceAndState[i.Namespace][i.Status.State]++
+	}
+	for ns, m := range byNamespaceAndState {
+		for k, v := range m {
+			ch <- prometheus.MustNewConstMetric(artifactbuildDesc, prometheus.GaugeValue, float64(v), ns, k)
+
+		}
+
 	}
 }

@@ -1,6 +1,9 @@
 package metrics
 
 import (
+	"context"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -22,13 +25,9 @@ func gatherMetrics(g *WithT) []*pmodel.Metric {
 	g.Expect(err).NotTo(HaveOccurred())
 	for _, metricFamily := range metrics {
 		switch metricFamily.GetName() {
-		case ArtifactBuildMetric:
+		case ArtifactBuildTotalMetric:
 			// call
 			return metricFamily.GetMetric()
-			//for _, m := range metricFamily.GetMetric() {
-			//	m.GetGauge().GetValue()
-			//	m.GetLabel()
-			//}
 		}
 	}
 	return nil
@@ -37,10 +36,31 @@ func gatherMetrics(g *WithT) []*pmodel.Metric {
 func TestMetrics(t *testing.T) {
 	g := NewGomegaWithT(t)
 	scheme := runtime.NewScheme()
+	_ = v1alpha1.AddToScheme(scheme)
 	//TODO fill starting objects as needed
 	objs := []runtimeclient.Object{}
-	InitPrometheus(fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build())
+	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	InitPrometheus(client)
 
 	//TODO add various tests where you then call
-	gatherMetrics(g)
+	metric := gatherMetrics(g)
+	g.Expect(metric).To(BeEmpty())
+	ab := v1alpha1.ArtifactBuild{
+		Spec: v1alpha1.ArtifactBuildSpec{
+			GAV: "com.test:test:1.0",
+		},
+		ObjectMeta: controllerruntime.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+		Status: v1alpha1.ArtifactBuildStatus{State: v1alpha1.ArtifactBuildStateComplete},
+	}
+	g.Expect(client.Create(context.TODO(), &ab)).Should(Succeed())
+	metric = gatherMetrics(g)
+	g.Expect(len(metric)).Should(Equal(1))
+	for _, m := range metric {
+		g.Expect(m.GetGauge().GetValue()).Should(Equal(1.0))
+		g.Expect(*m.GetLabel()[0].Value).Should(Equal("test"))
+		g.Expect(*m.GetLabel()[1].Value).Should(Equal(v1alpha1.ArtifactBuildStateComplete))
+	}
 }
