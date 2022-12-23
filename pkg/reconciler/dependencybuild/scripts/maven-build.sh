@@ -3,7 +3,6 @@ set -eu
 set -o pipefail
 
 mkdir $(workspaces.source.path)/logs
-
 mkdir $(workspaces.source.path)/packages
 {{INSTALL_PACKAGE_SCRIPT}}
 
@@ -21,6 +20,7 @@ Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
 
+cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 #we can't use array parameters directly here
 #we pass them in as goals
 mvn -B -e -s "$(workspaces.build-settings.path)/settings.xml" $@ "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/hacbs-jvm-deployment-repo" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" | tee $(workspaces.source.path)/logs/maven.log

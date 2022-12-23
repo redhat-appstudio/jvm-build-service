@@ -3,8 +3,6 @@ set -eu
 set -o pipefail
 #fix this when we no longer need to run as root
 export HOME=/root
-# fix-permissions-for-builder
-chown 1001:1001 -R "$(workspaces.source.path)/source"
 
 TOOL_VERSION="$(params.TOOL_VERSION)"
 export SBT_DIST="/opt/sbt/${TOOL_VERSION}"
@@ -37,6 +35,8 @@ cat <<EOF
 Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
+
+cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 
 echo "Command is:"
 echo "sbt $@ "

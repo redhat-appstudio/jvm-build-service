@@ -58,6 +58,3 @@ settingsEvaluated { settings ->
     }
 }
 EOF
-
-# fix-permissions-for-builder
-chown 1001:1001 -R "$(workspaces.source.path)"
