@@ -110,7 +110,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"maven-prepare",
 		"-r",
 		"$(params.CACHE_URL)",
-		"$(workspaces." + WorkspaceSource + ".path)/source",
+		"$(workspaces." + WorkspaceSource + ".path)/workspace",
 	}
 	var settings string
 	var build string
@@ -135,7 +135,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
 		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
 	}
-	gitArgs = gitArgs + "\ngit clone --branch=$(params." + PipelineScmTag + ") $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/source"
+	gitArgs = gitArgs + "\ngit clone --branch=$(params." + PipelineScmTag + ") $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace"
 
 	if !recipe.DisableSubmodules {
 		gitArgs = gitArgs + " --recurse-submodules"
@@ -215,7 +215,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{
 				Name:            "build",
 				Image:           "$(params." + PipelineImage + ")",
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/source/$(params." + PipelinePath + ")",
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace/$(params." + PipelinePath + ")",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
 					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},

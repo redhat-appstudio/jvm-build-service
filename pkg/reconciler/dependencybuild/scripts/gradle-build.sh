@@ -73,6 +73,8 @@ rm -f gradle/verification-metadata.xml
 
 gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" -DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false "${ADDITIONAL_ARGS}" generateAlignmentMetadata  | tee $(workspaces.source.path)/logs/gme.log
 
+cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+
 gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --info --stacktrace -x test -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle.log
 
 tar -czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .
