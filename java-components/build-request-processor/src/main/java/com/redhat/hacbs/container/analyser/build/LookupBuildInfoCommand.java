@@ -230,7 +230,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.tools.put(SBT, new VersionRange("1.8.0", "1.8.0", "1.8.0"));
                 info.toolVersion = "1.8.0";
                 info.invocations.add(new ArrayList<>(
-                        List.of("publish")));
+                        List.of("+", "publish"))); //the plus tells it to deploy for every scala version
             }
             if (buildRecipeInfo != null) {
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
