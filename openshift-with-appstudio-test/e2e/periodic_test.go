@@ -51,6 +51,30 @@ func TestServiceRegistry(t *testing.T) {
 		debugAndFailTest(ta, err.Error())
 	}
 
+	//replicate sandbox use of limit ranges to cap mem/cpu
+	limitRange := &corev1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "resource-limits",
+			Namespace: ta.ns,
+		},
+		Spec: corev1.LimitRangeSpec{
+			Limits: []corev1.LimitRangeItem{
+				{
+					Type: corev1.LimitTypeContainer,
+					Default: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("2000m"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
+					DefaultRequest: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+				},
+			},
+		},
+	}
+	_, err = kubeClient.CoreV1().LimitRanges(ta.ns).Create(context.TODO(), limitRange, metav1.CreateOptions{})
+
 	//TODO start of more common logic to split into commonly used logic between
 	// TestExampleRun and TestServiceRegistry.  Not doing that yet because of
 	// active PRs by other team members, including the component based test which
