@@ -28,7 +28,6 @@ import (
 func TestServiceRegistry(t *testing.T) {
 	ta := setup(t, nil)
 
-	// set up quota to enable throttling
 	//quota := &quotav1.ClusterResourceQuota{
 	//	ObjectMeta: metav1.ObjectMeta{
 	//		Name: fmt.Sprintf("for-%s-deployments", ta.ns),
@@ -65,54 +64,54 @@ func TestServiceRegistry(t *testing.T) {
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-	//computeQuota := &corev1.ResourceQuota{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      "compute-build",
-	//		Namespace: ta.ns,
-	//	},
-	//	Spec: corev1.ResourceQuotaSpec{
-	//		Scopes: []corev1.ResourceQuotaScope{
-	//			corev1.ResourceQuotaScopeTerminating,
-	//		},
-	//		Hard: corev1.ResourceList{
-	//			corev1.ResourceLimitsCPU:      resource.MustParse("72000m"), // sandbox default is 20 or 20,000m - my cluster has 3 8000m core nodes
-	//			corev1.ResourceLimitsMemory:   resource.MustParse("100Gi"),  // sandbox default is 64Gi, my cluster has 3 32 Gi nodes
-	//			corev1.ResourceRequestsCPU:    resource.MustParse("2"),
-	//			corev1.ResourceRequestsMemory: resource.MustParse("32Gi"), // sandbox default is 32Gi
-	//		},
-	//	},
-	//}
-	//_, err = kubeClient.CoreV1().ResourceQuotas(ta.ns).Create(context.TODO(), computeQuota, metav1.CreateOptions{})
-	//if err != nil {
-	//	debugAndFailTest(ta, err.Error())
-	//}
-	//
-	////replicate sandbox use of limit ranges to cap mem/cpu
-	//limitRange := &corev1.LimitRange{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      "resource-limits",
-	//		Namespace: ta.ns,
-	//	},
-	//	Spec: corev1.LimitRangeSpec{
-	//		Limits: []corev1.LimitRangeItem{
-	//			{
-	//				Type: corev1.LimitTypeContainer,
-	//				Default: corev1.ResourceList{
-	//					corev1.ResourceCPU:    resource.MustParse("4000m"),
-	//					corev1.ResourceMemory: resource.MustParse("3Gi"), // got some OOMKilled with 2Gi
-	//				},
-	//				DefaultRequest: corev1.ResourceList{
-	//					corev1.ResourceCPU:    resource.MustParse("10m"),
-	//					corev1.ResourceMemory: resource.MustParse("256Mi"),
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//_, err = kubeClient.CoreV1().LimitRanges(ta.ns).Create(context.TODO(), limitRange, metav1.CreateOptions{})
-	//if err != nil {
-	//	debugAndFailTest(ta, err.Error())
-	//}
+	computeQuota := &corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "compute-build",
+			Namespace: ta.ns,
+		},
+		Spec: corev1.ResourceQuotaSpec{
+			Scopes: []corev1.ResourceQuotaScope{
+				corev1.ResourceQuotaScopeTerminating,
+			},
+			Hard: corev1.ResourceList{
+				corev1.ResourceLimitsCPU:      resource.MustParse("72000m"), // sandbox default is 20 or 20,000m - my cluster has 3 8000m core nodes
+				corev1.ResourceLimitsMemory:   resource.MustParse("100Gi"),  // sandbox default is 64Gi, my cluster has 3 32 Gi nodes
+				corev1.ResourceRequestsCPU:    resource.MustParse("2"),
+				corev1.ResourceRequestsMemory: resource.MustParse("32Gi"), // sandbox default is 32Gi
+			},
+		},
+	}
+	_, err = kubeClient.CoreV1().ResourceQuotas(ta.ns).Create(context.TODO(), computeQuota, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+
+	//replicate sandbox use of limit ranges to cap mem/cpu
+	limitRange := &corev1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "resource-limits",
+			Namespace: ta.ns,
+		},
+		Spec: corev1.LimitRangeSpec{
+			Limits: []corev1.LimitRangeItem{
+				{
+					Type: corev1.LimitTypeContainer,
+					Default: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("4000m"),
+						corev1.ResourceMemory: resource.MustParse("3Gi"), // got some OOMKilled with 2Gi
+					},
+					DefaultRequest: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+				},
+			},
+		},
+	}
+	_, err = kubeClient.CoreV1().LimitRanges(ta.ns).Create(context.TODO(), limitRange, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
 
 	//TODO start of more common logic to split into commonly used logic between
 	// TestExampleRun and TestServiceRegistry.  Not doing that yet because of
