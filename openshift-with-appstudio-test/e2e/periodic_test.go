@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -29,24 +28,39 @@ func TestServiceRegistry(t *testing.T) {
 	ta := setup(t, nil)
 
 	// set up quota to enable throttling
-	quota := &quotav1.ClusterResourceQuota{
+	//quota := &quotav1.ClusterResourceQuota{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name: fmt.Sprintf("for-%s-deployments", ta.ns),
+	//	},
+	//	Spec: quotav1.ClusterResourceQuotaSpec{
+	//		Quota: corev1.ResourceQuotaSpec{
+	//			Hard: corev1.ResourceList{
+	//				corev1.ResourceName("count/pods"): resource.MustParse("50"),
+	//			},
+	//		},
+	//		Selector: quotav1.ClusterResourceQuotaSelector{
+	//			AnnotationSelector: map[string]string{
+	//				"openshift.io/requester": ta.ns,
+	//			},
+	//		},
+	//	},
+	//}
+	//_, err := qutoaClient.QuotaV1().ClusterResourceQuotas().Create(context.TODO(), quota, metav1.CreateOptions{})
+	//if err != nil {
+	//	debugAndFailTest(ta, err.Error())
+	//}
+	countQuota := &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("for-%s-deployments", ta.ns),
+			Name:      "object-counts",
+			Namespace: ta.ns,
 		},
-		Spec: quotav1.ClusterResourceQuotaSpec{
-			Quota: corev1.ResourceQuotaSpec{
-				Hard: corev1.ResourceList{
-					corev1.ResourceName("count/pods"): resource.MustParse("50"),
-				},
-			},
-			Selector: quotav1.ClusterResourceQuotaSelector{
-				AnnotationSelector: map[string]string{
-					"openshift.io/requester": ta.ns,
-				},
+		Spec: corev1.ResourceQuotaSpec{
+			Hard: corev1.ResourceList{
+				corev1.ResourcePods: resource.MustParse("50"),
 			},
 		},
 	}
-	_, err := qutoaClient.QuotaV1().ClusterResourceQuotas().Create(context.TODO(), quota, metav1.CreateOptions{})
+	_, err := kubeClient.CoreV1().ResourceQuotas(ta.ns).Create(context.TODO(), countQuota, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}

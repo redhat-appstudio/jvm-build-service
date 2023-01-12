@@ -27,7 +27,7 @@ type PendingCreate struct {
 }
 
 func (p *PendingCreate) CreateWrapperForPipelineRun(ctx context.Context, client client.Client, run *v1beta1.PipelineRun) error {
-	run.Spec.Status = v1beta1.PipelineRunSpecStatusPending
+	//run.Spec.Status = v1beta1.PipelineRunSpecStatusPending
 	return client.Create(ctx, run)
 }
 
@@ -69,7 +69,9 @@ func getHardPodCount(ctx context.Context, cl client.Client, namespace string) (i
 				break
 			}
 		}
-		return hardPodCount, nil
+		if hardPodCount > 0 {
+			return hardPodCount, nil
+		}
 	}
 	quotaList := corev1.ResourceQuotaList{}
 	err := cl.List(ctx, &quotaList)
