@@ -2,5 +2,3 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: jvm-build-service
-  labels:
-    openshift.io/cluster-monitoring: "true"
