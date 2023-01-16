@@ -3,7 +3,6 @@ package jbsconfig
 import (
 	"context"
 	"fmt"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"regexp"
 	"sort"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,6 +60,46 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	jbsConfig := v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
+		// Deleted JBSConfig - delete cache resources
+		if errors.IsNotFound(err) && request.Name == v1alpha1.JBSConfigName {
+			service := &corev1.Service{}
+			service.Name = v1alpha1.CacheDeploymentName
+			service.Namespace = request.Namespace
+			err = r.client.Delete(ctx, service)
+			if err != nil && !errors.IsNotFound(err) {
+				msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
+				log.Error(err, msg)
+				r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
+			}
+			serviceAccount := &corev1.ServiceAccount{}
+			serviceAccount.Name = v1alpha1.CacheDeploymentName
+			serviceAccount.Namespace = request.Namespace
+			err = r.client.Delete(ctx, serviceAccount)
+			if err != nil && !errors.IsNotFound(err) {
+				msg := fmt.Sprintf("Unable to delete serviceAccount - %s", err.Error())
+				log.Error(err, msg)
+				r.eventRecorder.Event(serviceAccount, corev1.EventTypeWarning, msg, "")
+			}
+			roleBinding := &rbacv1.RoleBinding{}
+			roleBinding.Name = v1alpha1.CacheDeploymentName
+			roleBinding.Namespace = request.Namespace
+			err = r.client.Delete(ctx, roleBinding)
+			if err != nil && !errors.IsNotFound(err) {
+				msg := fmt.Sprintf("Unable to delete roleBinding - %s", err.Error())
+				log.Error(err, msg)
+				r.eventRecorder.Event(roleBinding, corev1.EventTypeWarning, msg, "")
+			}
+			deployment := &appsv1.Deployment{}
+			deployment.Name = v1alpha1.CacheDeploymentName
+			deployment.Namespace = request.Namespace
+			err = r.client.Delete(ctx, deployment)
+			if err != nil && !errors.IsNotFound(err) {
+				msg := fmt.Sprintf("Unable to delete deployment - %s", err.Error())
+				log.Error(err, msg)
+				r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
+			}
+			return reconcile.Result{}, nil
+		}
 		return reconcile.Result{}, err
 	}
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
