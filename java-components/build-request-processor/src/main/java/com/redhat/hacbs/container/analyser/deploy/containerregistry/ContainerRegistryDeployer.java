@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
@@ -42,6 +43,14 @@ import com.redhat.hacbs.container.analyser.util.FileUtil;
 import io.quarkus.logging.Log;
 
 public class ContainerRegistryDeployer implements Deployer {
+
+    static {
+        if (System.getProperty("jib.httpTimeout") == null) {
+            //long timout, but not infinite
+            long fiveMinutes = TimeUnit.MINUTES.toMillis(5);
+            System.setProperty("jib.httpTimeout", "" + fiveMinutes);
+        }
+    }
 
     private final String host;
     private final int port;
