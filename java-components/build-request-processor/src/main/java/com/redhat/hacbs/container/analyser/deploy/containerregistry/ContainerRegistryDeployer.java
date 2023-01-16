@@ -1,5 +1,25 @@
 package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
+import com.google.cloud.tools.jib.api.Containerizer;
+import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
+import com.google.cloud.tools.jib.api.Jib;
+import com.google.cloud.tools.jib.api.JibContainerBuilder;
+import com.google.cloud.tools.jib.api.RegistryException;
+import com.google.cloud.tools.jib.api.RegistryImage;
+import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
+import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
+import com.redhat.hacbs.container.analyser.deploy.DeployData;
+import com.redhat.hacbs.container.analyser.deploy.Deployer;
+import com.redhat.hacbs.container.analyser.deploy.DeployerUtil;
+import com.redhat.hacbs.container.analyser.deploy.Gav;
+import com.redhat.hacbs.container.analyser.util.FileUtil;
+import io.quarkus.logging.Log;
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -19,29 +39,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
-import com.google.cloud.tools.jib.api.Containerizer;
-import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
-import com.google.cloud.tools.jib.api.Jib;
-import com.google.cloud.tools.jib.api.JibContainerBuilder;
-import com.google.cloud.tools.jib.api.RegistryException;
-import com.google.cloud.tools.jib.api.RegistryImage;
-import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
-import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
-import com.redhat.hacbs.container.analyser.deploy.DeployData;
-import com.redhat.hacbs.container.analyser.deploy.Deployer;
-import com.redhat.hacbs.container.analyser.deploy.DeployerUtil;
-import com.redhat.hacbs.container.analyser.deploy.Gav;
-import com.redhat.hacbs.container.analyser.util.FileUtil;
-
-import io.quarkus.logging.Log;
-
 public class ContainerRegistryDeployer implements Deployer {
+
+    static {
+        if (System.getProperty("jib.httpTimeout") == null) {
+            System.setProperty("jib.httpTimeout", "0");
+        }
+    }
 
     private final String host;
     private final int port;
@@ -58,13 +62,13 @@ public class ContainerRegistryDeployer implements Deployer {
     static final ObjectMapper MAPPER = new ObjectMapper();
 
     public ContainerRegistryDeployer(
-            String host,
-            int port,
-            String owner,
-            String token,
-            String repository,
-            boolean insecure,
-            String prependTag, Consumer<String> imageNameCallback) {
+        String host,
+        int port,
+        String owner,
+        String token,
+        String repository,
+        boolean insecure,
+        String prependTag, Consumer<String> imageNameCallback) {
 
         this.host = host;
         this.port = port;
@@ -85,7 +89,7 @@ public class ContainerRegistryDeployer implements Deployer {
                         if (host.contains(i.getKey())) { //TODO: is contains enough?
                             found = true;
                             var decodedAuth = new String(Base64.getDecoder().decode(i.getValue().getAuth()),
-                                    StandardCharsets.UTF_8);
+                                StandardCharsets.UTF_8);
                             int pos = decodedAuth.indexOf(":");
                             tmpUser = decodedAuth.substring(0, pos);
                             tmpPw = decodedAuth.substring(pos + 1);
@@ -94,7 +98,7 @@ public class ContainerRegistryDeployer implements Deployer {
                     }
                     if (!found) {
                         throw new RuntimeException("Unable to find a host matching " + host
-                                + " in provided dockerconfig, hosts provided: " + config.getAuths().keySet());
+                            + " in provided dockerconfig, hosts provided: " + config.getAuths().keySet());
                     }
                     username = tmpUser;
                     password = tmpPw;
@@ -134,8 +138,8 @@ public class ContainerRegistryDeployer implements Deployer {
     }
 
     private void createImages(DeployData imageData, Path sourcePath, Path logsPath)
-            throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
-            CacheDirectoryCreationException, ExecutionException {
+        throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
+        CacheDirectoryCreationException, ExecutionException {
 
         String imageName = createImageName();
         if (imageNameCallback != null) {
@@ -146,8 +150,8 @@ public class ContainerRegistryDeployer implements Deployer {
             registryImage = registryImage.addCredential(username, password);
         }
         Containerizer containerizer = Containerizer
-                .to(registryImage)
-                .setAllowInsecureRegistries(insecure);
+            .to(registryImage)
+            .setAllowInsecureRegistries(insecure);
         Log.infof("Deploying base image %s", imageName);
 
         Set<Gav> gavs = imageData.getGavs();
@@ -159,10 +163,10 @@ public class ContainerRegistryDeployer implements Deployer {
 
         AbsoluteUnixPath imageRoot = AbsoluteUnixPath.get(SLASH);
         JibContainerBuilder containerBuilder = Jib.fromScratch()
-                .setFormat(ImageFormat.OCI)
-                .addLabel("groupId", imageData.getGroupIds())
-                .addLabel("version", imageData.getVersions())
-                .addLabel("artifactId", imageData.getArtifactIds());
+            .setFormat(ImageFormat.OCI)
+            .addLabel("groupId", imageData.getGroupIds())
+            .addLabel("version", imageData.getVersions())
+            .addLabel("artifactId", imageData.getArtifactIds());
 
         List<Path> layers = getLayers(imageData.getArtifactsPath(), sourcePath, logsPath);
         for (Path layer : layers) {
@@ -177,18 +181,18 @@ public class ContainerRegistryDeployer implements Deployer {
     private String createImageName() {
         String imageName = UUID.randomUUID().toString();
         return host + DOUBLE_POINT + port + SLASH + owner + SLASH + repository
-                + DOUBLE_POINT + imageName;
+            + DOUBLE_POINT + imageName;
     }
 
     private List<Path> getLayers(Path artifacts, Path source, Path logs)
-            throws IOException {
+        throws IOException {
 
         // TODO: For now we create dummy source and logs
 
         Log.debug("\n Container details:\n"
-                + "\t layer 1 (source) " + source.toString() + "\n"
-                + "\t layer 2 (logs) " + logs.toString() + "\n"
-                + "\t layer 3 (artifacts) " + artifacts.toString());
+            + "\t layer 1 (source) " + source.toString() + "\n"
+            + "\t layer 2 (logs) " + logs.toString() + "\n"
+            + "\t layer 3 (artifacts) " + artifacts.toString());
 
         return List.of(source, logs, artifacts);
     }
@@ -208,10 +212,10 @@ public class ContainerRegistryDeployer implements Deployer {
         Set<Gav> gavs = new HashSet<>();
 
         try (GZIPInputStream inputStream = new GZIPInputStream(tarInput);
-                TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream)) {
+             TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream)) {
 
             for (TarArchiveEntry entry = tarArchiveInputStream.getNextTarEntry(); entry != null; entry = tarArchiveInputStream
-                    .getNextTarEntry()) {
+                .getNextTarEntry()) {
                 Optional<Gav> maybeGav = extractEntry(entry, tarArchiveInputStream, folder);
                 if (maybeGav.isPresent()) {
                     gavs.add(maybeGav.get());
@@ -231,7 +235,7 @@ public class ContainerRegistryDeployer implements Deployer {
             int count;
             byte[] data = new byte[BUFFER_SIZE];
             try (FileOutputStream os = new FileOutputStream(path);
-                    BufferedOutputStream dest = new BufferedOutputStream(os, BUFFER_SIZE)) {
+                 BufferedOutputStream dest = new BufferedOutputStream(os, BUFFER_SIZE)) {
                 while ((count = tar.read(data, 0, BUFFER_SIZE)) != -1) {
                     dest.write(data, 0, count);
                 }
