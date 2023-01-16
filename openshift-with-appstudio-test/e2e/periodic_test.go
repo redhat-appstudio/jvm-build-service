@@ -74,10 +74,10 @@ func TestServiceRegistry(t *testing.T) {
 				corev1.ResourceQuotaScopeTerminating,
 			},
 			Hard: corev1.ResourceList{
-				corev1.ResourceLimitsCPU:      resource.MustParse("72000m"), // sandbox default is 20 or 20,000m - my cluster has 3 8000m core nodes
-				corev1.ResourceLimitsMemory:   resource.MustParse("100Gi"),  // sandbox default is 64Gi, my cluster has 3 32 Gi nodes
-				corev1.ResourceRequestsCPU:    resource.MustParse("2"),
-				corev1.ResourceRequestsMemory: resource.MustParse("32Gi"), // sandbox default is 32Gi
+				corev1.ResourceLimitsCPU:      resource.MustParse("250000m"), // sandbox default is 20 or 20,000m - my cluster has 3 8000m core nodes
+				corev1.ResourceLimitsMemory:   resource.MustParse("200Gi"),   // sandbox default is 64Gi, my cluster has 3 32 Gi nodes
+				corev1.ResourceRequestsCPU:    resource.MustParse("12"),
+				corev1.ResourceRequestsMemory: resource.MustParse("64Gi"), // sandbox default is 32Gi
 			},
 		},
 	}
