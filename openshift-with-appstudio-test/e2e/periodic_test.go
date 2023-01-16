@@ -75,9 +75,9 @@ func TestServiceRegistry(t *testing.T) {
 			},
 			Hard: corev1.ResourceList{
 				corev1.ResourceLimitsCPU:      resource.MustParse("144000m"), // sandbox default is 20 or 20,000m - my cluster has 3 8000m core nodes
-				corev1.ResourceLimitsMemory:   resource.MustParse("100Gi"),   // sandbox default is 64Gi, my cluster has 3 32 Gi nodes
+				corev1.ResourceLimitsMemory:   resource.MustParse("150Gi"),   // sandbox default is 64Gi, my cluster has 3 32 Gi nodes
 				corev1.ResourceRequestsCPU:    resource.MustParse("8"),
-				corev1.ResourceRequestsMemory: resource.MustParse("32Gi"), // sandbox default is 32Gi
+				corev1.ResourceRequestsMemory: resource.MustParse("48Gi"), // sandbox default is 32Gi
 			},
 		},
 	}
