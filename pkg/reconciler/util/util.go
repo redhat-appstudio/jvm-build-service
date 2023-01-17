@@ -75,5 +75,5 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 		log.Info(fmt.Sprintf("GetImageName using %s for hacbs-jvm-%s", retImg, substr))
 		return retImg, nil
 	}
-	return retImg, fmt.Errorf("could not determine image for %s where image var is %s IMAGE_TAG env is %s and deployment get error is %s", substr, depImg, imgTag, err.Error())
+	return retImg, fmt.Errorf("could not determine image for %s where image var is %s IMAGE_TAG env is %s and deployment get error is %+v", substr, depImg, imgTag, err)
 }
