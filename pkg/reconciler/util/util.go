@@ -42,6 +42,14 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 			return "", err
 		}
 	}
+
+	// Get the image name using a controller's env var (if the env var value is specified)
+	ciImageName := os.Getenv(envvar)
+	if len(ciImageName) != 0 {
+		log.Info(fmt.Sprintf("GetImageName using %s for hacbs-jvm-%s", ciImageName, substr))
+		return ciImageName, nil
+	}
+
 	// not found errors are either fake/unit test path, or that we are on KCP and don't have access to the namespace
 	// name the controller is running under, and hence cannot inspect its image ref; we distinguish between the two
 	// via an env var that is set from infra-deployments as part of KCP+workload cluster bootstrap, or the test setup
@@ -62,19 +70,10 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 	}
 
 	retImg := ""
-	switch {
-	case strings.Contains(depImg, "controller"):
+	if strings.Contains(depImg, "controller") {
 		retImg = strings.Replace(depImg, "controller", substr, 1)
-	default:
-		ciImageName := os.Getenv(envvar)
-		if len(ciImageName) == 0 {
-			return "", fmt.Errorf("none of our image name patterns exist; controller image %s, %s not set", depImg, envvar)
-		}
-		retImg = ciImageName
-	}
-	if len(retImg) > 0 {
 		log.Info(fmt.Sprintf("GetImageName using %s for hacbs-jvm-%s", retImg, substr))
 		return retImg, nil
 	}
-	return retImg, fmt.Errorf("could not determine image for %s where image var is %s IMAGE_TAG env is %s and deployment get error is %s", substr, depImg, imgTag, err.Error())
+	return retImg, fmt.Errorf("could not determine image for %s where image var is %s IMAGE_TAG env is %s and deployment get error is %+v", substr, depImg, imgTag, err)
 }
