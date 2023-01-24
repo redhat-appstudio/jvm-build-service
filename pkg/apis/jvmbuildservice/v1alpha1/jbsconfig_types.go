@@ -36,6 +36,7 @@ type JBSConfigSpec struct {
 }
 
 type JBSConfigStatus struct {
+	Message string `json:"message,omitempty"`
 }
 
 type CacheSettings struct {
@@ -93,6 +94,7 @@ type Pattern struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=jbsconfigs,scope=Namespaced
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
 // JBSConfig TODO provide godoc description
 type JBSConfig struct {
 	metav1.TypeMeta   `json:",inline"`
