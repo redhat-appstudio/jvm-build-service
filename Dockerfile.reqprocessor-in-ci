@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/openjdk-17:1.13 AS builder
+FROM registry.access.redhat.com/ubi8/openjdk-17:1.14 AS builder
 WORKDIR /work
 COPY . .
 USER 0
@@ -6,7 +6,7 @@ USER 0
 # connecting the dependencies, but stopping at java-components and building all the components does work
 RUN cd java-components && mvn clean package -DskipTests
 
-FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.13
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.14
 WORKDIR /work/
 
 COPY --from=builder /work/java-components/build-request-processor/target/quarkus-app/lib/ /deployments/lib/
@@ -15,7 +15,7 @@ COPY --from=builder /work/java-components/build-request-processor/target/quarkus
 COPY --from=builder /work/java-components/build-request-processor/target/quarkus-app/quarkus/ /deployments/quarkus/
 
 EXPOSE 8080
-USER 1001
+USER 185
 
 ENV AB_JOLOKIA_OFF=""
 ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"

@@ -662,7 +662,6 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 	}
 	recipes = recipes + settingOrDefault(systemConfig.Spec.RecipeDatabase, v1alpha1.DefaultRecipeDatabase)
 
-	zero := int64(0)
 	return &pipelinev1beta1.TaskSpec{
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: PipelineResultScmUrl},
@@ -696,9 +695,6 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					gav,
 					"--cache-url",
 					"http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v1/cache/default/0",
-				},
-				SecurityContext: &corev1.SecurityContext{
-					RunAsUser: &zero,
 				},
 				Env: []corev1.EnvVar{
 					{Name: "GIT_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},

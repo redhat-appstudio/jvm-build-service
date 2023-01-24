@@ -763,7 +763,6 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		path = "."
 	}
 	trueBool := true
-	zero := int64(0)
 	args := []string{
 		"lookup-build-info",
 		"--recipes",
@@ -797,9 +796,6 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 								Name:  "process-build-requests",
 								Image: image,
 								Args:  args,
-								SecurityContext: &v1.SecurityContext{
-									RunAsUser: &zero,
-								},
 								Env: []v1.EnvVar{
 									{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 								},

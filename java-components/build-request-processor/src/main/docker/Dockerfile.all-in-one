@@ -1,11 +1,11 @@
-FROM registry.access.redhat.com/ubi8/openjdk-17:1.13 AS builder
+FROM registry.access.redhat.com/ubi8/openjdk-17:1.14 AS builder
 
 WORKDIR /work
 COPY ./ .
 
 RUN mvn -B package -pl build-request-processor -am -Dmaven.test.skip
 
-FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.13
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.14
 WORKDIR /work/
 
 COPY --from=builder /work/build-request-processor/target/quarkus-app/lib/ /deployments/lib/
@@ -14,7 +14,7 @@ COPY --from=builder /work/build-request-processor/target/quarkus-app/app/ /deplo
 COPY --from=builder /work/build-request-processor/target/quarkus-app/quarkus/ /deployments/quarkus/
 
 EXPOSE 8080
-USER 1001
+USER 185
 
 ENV AB_JOLOKIA_OFF=""
 ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
