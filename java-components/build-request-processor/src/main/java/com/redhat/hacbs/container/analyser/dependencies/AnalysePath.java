@@ -29,7 +29,17 @@ public class AnalysePath extends AnalyserBase implements Runnable {
             Files.walkFileTree(path, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    return handleFile(file.getFileName().toString(), Files.newInputStream(file), trackingData, gavs);
+                    if (!Files.exists(file)) {
+                        //if we have a symlink that points to nothing
+                        //just ignore it
+                        return FileVisitResult.CONTINUE;
+                    }
+                    try {
+                        return handleFile(file.getFileName().toString(), Files.newInputStream(file), trackingData, gavs);
+                    } catch (Exception e) {
+                        Log.errorf(e, "Failed to analyse %s", file);
+                        return FileVisitResult.CONTINUE;
+                    }
                 }
             });
         }
