@@ -16,7 +16,11 @@ spec:
     singular: jbsconfig
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.message
+      name: Message
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: JBSConfig TODO provide godoc description
@@ -133,6 +137,9 @@ spec:
                 type: boolean
             type: object
           status:
+            properties:
+              message:
+                type: string
             type: object
         required:
         - spec

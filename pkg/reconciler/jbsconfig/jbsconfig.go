@@ -156,9 +156,26 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	_, keyPresent1 := registrySecret.Data[v1alpha1.ImageSecretTokenKey]
 	_, keyPresent2 := registrySecret.StringData[v1alpha1.ImageSecretTokenKey]
 	if !keyPresent1 && !keyPresent2 {
-		return fmt.Errorf("need image registry token set at key %s in secret %s", v1alpha1.ImageSecretTokenKey, v1alpha1.ImageSecretName)
+		err := fmt.Errorf("need image registry token set at key %s in secret %s to enable rebuilds", v1alpha1.ImageSecretTokenKey, v1alpha1.ImageSecretName)
+		errorMessage := err.Error()
+		if jbsConfig.Status.Message != errorMessage {
+			jbsConfig.Status.Message = errorMessage
+			err2 := r.client.Status().Update(ctx, jbsConfig)
+			if err2 != nil {
+				return err2
+			}
+		}
+		return err
 	}
-	log.Info(fmt.Sprintf("found %s secret with appropriate token keys in namespace %s, rebuilds are possible", v1alpha1.ImageSecretTokenKey, request.Namespace))
+	message := fmt.Sprintf("found %s secret with appropriate token keys in namespace %s, rebuilds are possible", v1alpha1.ImageSecretTokenKey, request.Namespace)
+	log.Info(message)
+	if jbsConfig.Status.Message != message {
+		jbsConfig.Status.Message = message
+		err2 := r.client.Status().Update(ctx, jbsConfig)
+		if err2 != nil {
+			return err2
+		}
+	}
 	return nil
 }
 
