@@ -2,6 +2,7 @@ package jbsconfig
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -140,5 +141,26 @@ func TestRebuildEnabledCustomRepo(t *testing.T) {
 	g.Expect(err).To(BeNil())
 	value := readConfiguredRepositories(client, g)
 	g.Expect(*value).Should(Equal("rebuilt,central,gradle"))
+
+}
+
+func TestCacheCreatedAndDeleted(t *testing.T) {
+	g := NewGomegaWithT(t)
+	ctx := context.TODO()
+	jbsConfig := setupJBSConfig()
+	jbsConfig.Spec.EnableRebuilds = true
+	objs := []runtimeclient.Object{jbsConfig, setupSectet()}
+	client, reconciler := setupClientAndReconciler(objs...)
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
+	g.Expect(err).To(BeNil())
+	dep := appsv1.Deployment{}
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &dep)
+	g.Expect(err).To(BeNil())
+	err = client.Delete(ctx, jbsConfig)
+	g.Expect(err).To(BeNil())
+	_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
+	g.Expect(err).To(BeNil())
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &dep)
+	g.Expect(errors.IsNotFound(err)).To(BeTrue())
 
 }
