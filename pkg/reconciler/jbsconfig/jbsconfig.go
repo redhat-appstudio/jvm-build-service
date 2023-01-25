@@ -21,7 +21,6 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	"github.com/go-logr/logr"
-	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 
@@ -35,28 +34,22 @@ type ReconcilerJBSConfig struct {
 	scheme               *runtime.Scheme
 	eventRecorder        record.EventRecorder
 	configuredCacheImage string
-	kcp                  bool
 }
 
-func newReconciler(mgr ctrl.Manager, kcp bool) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 	ret := &ReconcilerJBSConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("JBSConfig"),
-		kcp:           kcp,
 	}
 	return ret
 }
 
 func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	var cancel context.CancelFunc
-	if request.ClusterName != "" {
-		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
-		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
-	}
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
-	log := ctrl.Log.WithName("jbsconfig").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
+	log := ctrl.Log.WithName("jbsconfig").WithValues("request", request.NamespacedName)
 	jbsConfig := v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
@@ -109,10 +102,6 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 			return reconcile.Result{}, err
 		}
 
-		// we cannot manipulate deployments in kcp right now
-		if r.kcp {
-			return reconcile.Result{}, nil
-		}
 		err = r.deploymentSupportObjects(ctx, log, request, &jbsConfig)
 		if err != nil {
 			return reconcile.Result{}, err

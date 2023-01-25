@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
-	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pendingpipelinerun"
@@ -79,13 +78,9 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	var cancel context.CancelFunc
-	if request.ClusterName != "" {
-		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
-		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
-	}
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
-	log := ctrl.Log.WithName("dependencybuild").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
+	log := ctrl.Log.WithName("dependencybuild").WithValues("request", request.NamespacedName)
 
 	db := v1alpha1.DependencyBuild{}
 	dberr := r.client.Get(ctx, request.NamespacedName, &db)
@@ -413,12 +408,6 @@ func sameMajorVersion(v1 string, v2 string) bool {
 func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log logr.Logger) ([]BuilderImage, error) {
 	systemConfig := v1alpha1.SystemConfig{}
 	getCtx := ctx
-	cluster, ok := logicalcluster.ClusterFromContext(ctx)
-	if ok {
-		if cluster.String() != util.SystemConfigCluster {
-			getCtx = logicalcluster.WithCluster(ctx, logicalcluster.New(util.SystemConfigCluster))
-		}
-	}
 	err := r.client.Get(getCtx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
 		return nil, err

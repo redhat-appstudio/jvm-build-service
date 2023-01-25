@@ -21,7 +21,6 @@ package apiutil
 
 import (
 	"fmt"
-	"net/http"
 	"reflect"
 	"sync"
 
@@ -121,13 +120,6 @@ func GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersi
 // baseConfig, if set, otherwise a default serializer will be set.
 func RESTClientForGVK(gvk schema.GroupVersionKind, isUnstructured bool, baseConfig *rest.Config, codecs serializer.CodecFactory) (rest.Interface, error) {
 	return rest.RESTClientFor(createRestConfig(gvk, isUnstructured, baseConfig, codecs))
-}
-
-// RESTClientForGVKAndClient constructs a new rest.Interface capable of accessing the resource associated
-// wwith the give GroupVersionKind. The REST client will be configured to use provided http.Client, and the
-// negotiated serializer from baseConfig, if set.
-func RESTClientForGVKAndClient(gvk schema.GroupVersionKind, client *http.Client, isUnstructured bool, baseConfig *rest.Config, codecs serializer.CodecFactory) (rest.Interface, error) {
-	return rest.RESTClientForConfigAndClient(createRestConfig(gvk, isUnstructured, baseConfig, codecs), client)
 }
 
 // serializerWithDecodedGVK is a CodecFactory that overrides the DecoderToVersion of a WithoutConversionCodecFactory

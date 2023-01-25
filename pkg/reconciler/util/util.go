@@ -25,10 +25,9 @@ var (
 		Name:      ControllerDeploymentName,
 	}
 
-	SystemConfigCluster string
-	ImageTag            string
-	ImageRepo           string
-	KCP                 bool
+	ImageTag  string
+	ImageRepo string
+	KCP       bool
 )
 
 func GetImageName(ctx context.Context, client client.Client, log logr.Logger, substr, envvar string) (string, error) {
