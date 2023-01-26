@@ -6,12 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kcp-dev/logicalcluster/v2"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/k8sresourcequota"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
@@ -29,29 +26,23 @@ type ReconcilerSystemConfig struct {
 	eventRecorder record.EventRecorder
 	config        *rest.Config
 	mgr           ctrl.Manager
-	kcp           bool
 }
 
-func newReconciler(mgr ctrl.Manager, kcp bool) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 	return &ReconcilerSystemConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
 		config:        mgr.GetConfig(),
 		mgr:           mgr,
-		kcp:           kcp,
 	}
 }
 
 func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	var cancel context.CancelFunc
-	if request.ClusterName != "" {
-		// use logicalcluster.ClusterFromContxt(ctx) to retrieve this value later on
-		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(request.ClusterName))
-	}
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
-	log := ctrl.Log.WithName("systemconfig").WithValues("request", request.NamespacedName).WithValues("cluster", request.ClusterName)
+	log := ctrl.Log.WithName("systemconfig").WithValues("request", request.NamespacedName)
 	systemConfig := v1alpha1.SystemConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &systemConfig)
 	if err != nil {
@@ -99,19 +90,18 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 		}
 
 		switch {
-		case r.kcp || systemConfig.Spec.Quota == v1alpha1.K8SQuota:
+		case systemConfig.Spec.Quota == v1alpha1.K8SQuota:
 			err = k8sresourcequota.SetupNewReconcilerWithManager(r.mgr)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-		case (len(systemConfig.Spec.Quota) == 0 || systemConfig.Spec.Quota == v1alpha1.OpenShiftQuota) && r.config != nil && !r.kcp:
+		case (len(systemConfig.Spec.Quota) == 0 || systemConfig.Spec.Quota == v1alpha1.OpenShiftQuota) && r.config != nil:
 			err = clusterresourcequota.SetupNewReconciler(r.config)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 		}
-		log.Info(fmt.Sprintf("system config available and valid on cluster %s", request.ClusterName))
-		util.SystemConfigCluster = request.ClusterName
+		log.Info("system config available and valid")
 	}
 	return reconcile.Result{}, nil
 }

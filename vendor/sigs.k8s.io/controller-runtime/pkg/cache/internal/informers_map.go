@@ -35,7 +35,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
@@ -57,25 +56,21 @@ func newSpecificInformersMap(config *rest.Config,
 	disableDeepCopy DisableDeepCopyByGVK,
 	transformers TransformFuncByObject,
 	createListWatcher createListWatcherFunc,
-	newInformerFunc client.NewInformerFunc,
-	indexers cache.Indexers,
 ) *specificInformersMap {
 	ip := &specificInformersMap{
-		config:             config,
-		Scheme:             scheme,
-		mapper:             mapper,
-		informersByGVK:     make(map[schema.GroupVersionKind]*MapEntry),
-		codecs:             serializer.NewCodecFactory(scheme),
-		paramCodec:         runtime.NewParameterCodec(scheme),
-		resync:             resync,
-		startWait:          make(chan struct{}),
-		createListWatcher:  createListWatcher,
-		namespace:          namespace,
-		selectors:          selectors.forGVK,
-		disableDeepCopy:    disableDeepCopy,
-		transformers:       transformers,
-		newInformerFunc:    newInformerFunc,
-		additionalIndexers: indexers,
+		config:            config,
+		Scheme:            scheme,
+		mapper:            mapper,
+		informersByGVK:    make(map[schema.GroupVersionKind]*MapEntry),
+		codecs:            serializer.NewCodecFactory(scheme),
+		paramCodec:        runtime.NewParameterCodec(scheme),
+		resync:            resync,
+		startWait:         make(chan struct{}),
+		createListWatcher: createListWatcher,
+		namespace:         namespace,
+		selectors:         selectors.forGVK,
+		disableDeepCopy:   disableDeepCopy,
+		transformers:      transformers,
 	}
 	return ip
 }
@@ -146,12 +141,6 @@ type specificInformersMap struct {
 
 	// transform funcs are applied to objects before they are committed to the cache
 	transformers TransformFuncByObject
-
-	// additionalIndexers is the indexers that the informers will be configured to use.
-	// Will not allow overwriting the standard NamespaceIndex.
-	additionalIndexers cache.Indexers
-
-	newInformerFunc client.NewInformerFunc
 }
 
 // Start calls Run on each of the informers and sets started to true.  Blocks on the context.
@@ -241,13 +230,9 @@ func (ip *specificInformersMap) addInformerToMap(gvk schema.GroupVersionKind, ob
 	if err != nil {
 		return nil, false, err
 	}
-	indexers := cache.Indexers{}
-	for indexName, indexer := range ip.additionalIndexers {
-		indexers[indexName] = indexer
-	}
-	indexers[cache.NamespaceIndex] = cache.MetaNamespaceIndexFunc
-
-	ni := ip.newInformerFunc(lw, obj, resyncPeriod(ip.resync)(), indexers)
+	ni := cache.NewSharedIndexInformer(lw, obj, resyncPeriod(ip.resync)(), cache.Indexers{
+		cache.NamespaceIndex: cache.MetaNamespaceIndexFunc,
+	})
 
 	// Check to see if there is a transformer for this gvk
 	if err := ni.SetTransform(ip.transformers.Get(gvk)); err != nil {

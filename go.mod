@@ -4,9 +4,6 @@ go 1.17
 
 require (
 	github.com/go-logr/logr v1.2.2
-	github.com/kcp-dev/apimachinery v0.0.0-20220803185518-868856d14e8a
-	github.com/kcp-dev/kcp/pkg/apis v0.8.2
-	github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/openshift/api v0.0.0-20211203173402-b8f149d82307
@@ -117,5 +114,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de

@@ -5,8 +5,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func SetupNewReconcilerWithManager(mgr ctrl.Manager, kcp bool) error {
-	r := newReconciler(mgr, kcp)
+func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
+	r := newReconciler(mgr)
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.SystemConfig{}).
 		Complete(r)
 }
