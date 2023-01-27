@@ -135,12 +135,12 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
 		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
 	}
-	gitArgs = gitArgs + "\ngit clone --branch=$(params." + PipelineScmTag + ") $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace"
+	gitArgs = gitArgs + "git clone $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineScmTag + ")"
 
 	if !recipe.DisableSubmodules {
 		gitArgs = gitArgs + " --recurse-submodules"
 	}
-	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "256Mi"))
+	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "512Mi"))
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{
 				Name:            "build",
 				Image:           "$(params." + PipelineImage + ")",
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace/$(params." + PipelinePath + ")",
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
 					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},

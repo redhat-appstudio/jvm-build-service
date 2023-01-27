@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -eu
 set -o pipefail
+if [ -n "$(params.CONTEXT_DIR)" ]
+then
+    cd $(params.CONTEXT_DIR)
+fi
 
 export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
 echo "@=$@"

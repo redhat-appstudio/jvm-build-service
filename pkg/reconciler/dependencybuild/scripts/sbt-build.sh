@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -eu
 set -o pipefail
+if [ -n "$(params.CONTEXT_DIR)" ]
+then
+    cd $(params.CONTEXT_DIR)
+fi
 #fix this when we no longer need to run as root
 export HOME=/root
 
