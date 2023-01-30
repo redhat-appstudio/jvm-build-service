@@ -36,7 +36,7 @@ func TestServiceRegistry(t *testing.T) {
 		Spec: quotav1.ClusterResourceQuotaSpec{
 			Quota: corev1.ResourceQuotaSpec{
 				Hard: corev1.ResourceList{
-					corev1.ResourceName("count/pods"): resource.MustParse("50"),
+					corev1.ResourceName("count/pods"): resource.MustParse("150"),
 				},
 			},
 			Selector: quotav1.ClusterResourceQuotaSelector{
