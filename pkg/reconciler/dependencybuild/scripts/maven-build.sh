@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -eu
 set -o pipefail
-
+if [ -n "$(params.CONTEXT_DIR)" ]
+then
+    cd $(params.CONTEXT_DIR)
+fi
 mkdir $(workspaces.source.path)/logs
 mkdir $(workspaces.source.path)/packages
 {{INSTALL_PACKAGE_SCRIPT}}
