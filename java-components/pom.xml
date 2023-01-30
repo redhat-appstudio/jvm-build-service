@@ -18,7 +18,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>2.12.0.Final</quarkus.platform.version>
+        <quarkus.platform.version>2.15.3.Final</quarkus.platform.version>
 
         <!-- Plugin Versions-->
         <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
@@ -29,7 +29,6 @@
         <aws-url-connection-client.version>2.17.95</aws-url-connection-client.version>
         <aws-java-sdk-s3.version>1.12.169</aws-java-sdk-s3.version>
         <quarkus-jgit.version>1.2.0</quarkus-jgit.version>
-        <quarkus-operator-sdk.version>3.0.7</quarkus-operator-sdk.version>
         <gradle-tooling-api.version>7.5</gradle-tooling-api.version>
         <quarkus-github-api.version>1.302.0</quarkus-github-api.version>
         <cyclonedx-core-java.version>7.1.4</cyclonedx-core-java.version>
@@ -59,6 +58,13 @@
             <dependency>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>quarkus-amazon-services-bom</artifactId>
+                <version>${quarkus.platform.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>quarkus-operator-sdk-bom</artifactId>
                 <version>${quarkus.platform.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -105,13 +111,6 @@
                 <groupId>io.quarkiverse.jgit</groupId>
                 <artifactId>quarkus-jgit</artifactId>
                 <version>${quarkus-jgit.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.quarkiverse.operatorsdk</groupId>
-                <artifactId>quarkus-operator-sdk-bom</artifactId>
-                <version>${quarkus-operator-sdk.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.gradle</groupId>

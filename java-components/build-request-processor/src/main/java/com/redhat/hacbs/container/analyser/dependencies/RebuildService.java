@@ -29,6 +29,7 @@ public class RebuildService {
                 if (taskRun.getStatus().getTaskResults() != null) {
                     results.addAll(taskRun.getStatus().getTaskResults());
                 }
+                Log.infof("Found community dependencies %s", gavs);
                 results.add(new TaskRunResult("JAVA_COMMUNITY_DEPENDENCIES", String.join(",", gavs)));
                 taskRun.getStatus().setTaskResults(results);
                 return taskRun;
