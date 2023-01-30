@@ -163,19 +163,28 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
     }
 
     private boolean handleJar(Path file, String coords) {
-        var optionalRemoteFile = resolveArtifact(coords, remoteRepositories, session, system);
+        try {
+            var optionalRemoteFile = resolveArtifact(coords, remoteRepositories, session, system);
 
-        if (optionalRemoteFile.isEmpty()) {
-            Log.warnf("Ignoring missing artifact %s", coords);
+            if (optionalRemoteFile.isEmpty()) {
+                Log.warnf("Ignoring missing artifact %s", coords);
+                return false;
+            }
+
+            var remoteFile = optionalRemoteFile.get();
+            var left = new JarInfo(remoteFile);
+            var right = new JarInfo(file);
+            Log.infof("Verifying %s (%s, %s)", coords, remoteFile.toAbsolutePath(), file.toAbsolutePath());
+            var failed = left.diffJar(right);
+            Log.debugf("Verification of %s %s", coords, failed ? "failed" : "passed");
+            return failed;
+        } catch (OutOfMemoryError e) {
+            //HUGE hack, but some things are just too large to diff in memory
+            //but we would need a complete re-rewrite to handle this
+            //these are usually tools that have heaps of classes shaded in
+            //we just ignore this case for now
+            Log.errorf(e, "Failed to analyse %s as it is too big", file);
             return false;
         }
-
-        var remoteFile = optionalRemoteFile.get();
-        var left = new JarInfo(remoteFile);
-        var right = new JarInfo(file);
-        Log.infof("Verifying %s (%s, %s)", coords, remoteFile.toAbsolutePath(), file.toAbsolutePath());
-        var failed = left.diffJar(right);
-        Log.debugf("Verification of %s %s", coords, failed ? "failed" : "passed");
-        return failed;
     }
 }
