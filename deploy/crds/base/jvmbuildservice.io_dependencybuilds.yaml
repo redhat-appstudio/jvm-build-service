@@ -174,6 +174,8 @@ spec:
                       - type
                       type: object
                     type: array
+                  additionalMemory:
+                    type: integer
                   commandLine:
                     items:
                       type: string
@@ -221,6 +223,8 @@ spec:
                         - type
                         type: object
                       type: array
+                    additionalMemory:
+                      type: integer
                     commandLine:
                       items:
                         type: string
@@ -271,6 +275,8 @@ spec:
                         - type
                         type: object
                       type: array
+                    additionalMemory:
+                      type: integer
                     commandLine:
                       items:
                         type: string

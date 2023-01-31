@@ -46,6 +46,7 @@ public class BuildInfo {
 
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
     boolean disableSubmodules;
+    int additionalMemory;
 
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
@@ -121,6 +122,15 @@ public class BuildInfo {
 
     public BuildInfo setDisableSubmodules(boolean disableSubmodules) {
         this.disableSubmodules = disableSubmodules;
+        return this;
+    }
+
+    public int getAdditionalMemory() {
+        return additionalMemory;
+    }
+
+    public BuildInfo setAdditionalMemory(int additionalMemory) {
+        this.additionalMemory = additionalMemory;
         return this;
     }
 }

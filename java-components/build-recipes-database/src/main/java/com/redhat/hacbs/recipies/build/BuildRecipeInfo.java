@@ -28,6 +28,8 @@ public class BuildRecipeInfo {
 
     boolean disableSubmodules;
 
+    int additionalMemory;
+
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
 
     public List<String> getAdditionalArgs() {
@@ -99,6 +101,15 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setAlternativeArgs(List<String> alternativeArgs) {
         this.alternativeArgs = alternativeArgs;
+        return this;
+    }
+
+    public int getAdditionalMemory() {
+        return additionalMemory;
+    }
+
+    public BuildRecipeInfo setAdditionalMemory(int additionalMemory) {
+        this.additionalMemory = additionalMemory;
         return this;
     }
 
