@@ -251,6 +251,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.disableSubmodules = buildRecipeInfo.isDisableSubmodules();
                 info.preBuildScript = buildRecipeInfo.getPreBuildScript();
                 info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
+                info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
             }
             ObjectMapper mapper = new ObjectMapper();
             mapper.writeValue(buildInfo.toFile(), info);

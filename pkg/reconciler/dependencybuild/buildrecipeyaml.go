@@ -2,6 +2,7 @@ package dependencybuild
 
 import (
 	_ "embed"
+	"fmt"
 	v1alpha12 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -159,6 +160,12 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	buildContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
 	if err != nil {
 		return nil, err
+	}
+
+	if recipe.AdditionalMemory > 0 {
+		additional := resource.MustParse(fmt.Sprintf("%dMi", recipe.AdditionalMemory))
+		buildContainerRequestMemory.Add(additional)
+		defaultContainerRequestMemory.Add(additional)
 	}
 
 	buildSetup := pipelinev1beta1.TaskSpec{
