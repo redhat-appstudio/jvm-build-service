@@ -1,0 +1,14 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Component
+metadata:
+  name: service-registry-1
+spec:
+  componentName: service-registry-1
+  application: test-application
+  source:
+    git:
+      url: https://github.com/stuartwdouglas/apicurio-registry
+      revision: devfile
+      devfileUrl: https://raw.githubusercontent.com/stuartwdouglas/apicurio-registry/devfile/devfile.yaml
+      dockerfileUrl: https://raw.githubusercontent.com/stuartwdouglas/apicurio-registry/devfile/Dockerfile.jvm.staged
+
