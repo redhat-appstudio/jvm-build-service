@@ -7,13 +7,13 @@
     <parent>
         <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
         <artifactId>hacbs-repository-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>999-SNAPSHOT</version>
     </parent>
 
 
     <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
     <artifactId>hacbs-classfile-tracker</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>999-SNAPSHOT</version>
     <description>Utilities that allow the provenance of a class file to be embedded into the bytecode</description>
 
     <dependencies>
