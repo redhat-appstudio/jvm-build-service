@@ -7,13 +7,13 @@
     <parent>
         <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
         <artifactId>hacbs-repository-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>999-SNAPSHOT</version>
     </parent>
 
 
     <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
     <artifactId>hacbs-build-recipies-database</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>999-SNAPSHOT</version>
 
 
     <dependencies>
