@@ -83,6 +83,7 @@ public class LookupScmLocationCommand implements Runnable {
 
             //checkout the git recipe database and load the recipes
             for (var i : recipeRepos) {
+                Log.infof("Checking out recipe repo %s", i);
                 List<RecipeDirectory> managers = new ArrayList<>();
                 Path tempDir = Files.createTempDirectory("recipe");
                 managers.add(RecipeRepositoryManager.create(i, "main", Optional.empty(), tempDir));
@@ -109,6 +110,7 @@ public class LookupScmLocationCommand implements Runnable {
                 }
             }
             if (repos.isEmpty()) {
+                Log.infof("No information found, attempting to use the pom to determine the location");
                 //TODO: do we want to rely on pom discovery long term? Should we just use this to update the database instead?
                 ScmInfo discovered = attemptPomDiscovery(toBuild);
                 if (discovered != null) {
@@ -121,6 +123,7 @@ public class LookupScmLocationCommand implements Runnable {
 
             Throwable firstFailure = null;
             for (var parsedInfo : repos) {
+                Log.infof("Looking for a tag in %s", parsedInfo.getUri());
 
                 String repoName = null;
                 //now look for a tag
@@ -239,7 +242,6 @@ public class LookupScmLocationCommand implements Runnable {
                     } else {
                         firstFailure.addSuppressed(ex);
                     }
-                    throw new RuntimeException(firstFailure);
                 }
             }
             if (firstFailure != null) {
