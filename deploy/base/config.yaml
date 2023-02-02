@@ -23,3 +23,4 @@ spec:
     maven-repository-314-jcs: "https://packages.jetbrains.team/maven/p/jcs/maven"
     maven-repository-315-kotlin-bootstrap: "https://maven.pkg.jetbrains.space/kotlin/p/kotlin/bootstrap/"
     maven-repository-316-kotlin-kotlin-dependencies: "https://maven.pkg.jetbrains.space/kotlin/p/kotlin/kotlin-dependencies"
+    maven-repository-317-jetbrains: "https://www.jetbrains.com/intellij-repository/releases"
