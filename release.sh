@@ -17,8 +17,9 @@ if [ -z "$(git status --untracked-files=no --porcelain)" ]; then
     find java-components -name pom.xml -exec sed -i s/999-SNAPSHOT/$VER/ {} \;
     git commit -a -m $VER
     git tag -a $VER -m $VER
-    cd java-components && mvn clean install deploy -DskipTests
+    cd java-components && mvn clean install deploy -DskipTests -Prelease
     git push origin $VER
+    git checkout origin/main
     echo "Released"
 else
     echo "Modified files, please release from a clean directory"
