@@ -15,6 +15,7 @@ import com.redhat.hacbs.recipies.util.GitCredentials;
 public class RecipeRepositoryManager implements RecipeDirectory {
     public static final String SCM_INFO = "scm-info";
     public static final String BUILD_INFO = "build-info";
+    public static final String REPOSITORY_INFO = "repository-info";
     private final Git git;
     private final String remote;
     private final Path local;
@@ -64,6 +65,12 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         return recipeLayoutManager.getBuildPaths(scmUri, version);
     }
 
+    @Override
+    public Optional<Path> getRepositoryPaths(String name) {
+        doUpdate();
+        return recipeLayoutManager.getRepositoryPaths(name);
+    }
+
     private void doUpdate() {
         if (updateInterval.isEmpty()) {
             return;
@@ -82,4 +89,15 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         }
     }
 
+    @Override
+    public String toString() {
+        return "RecipeRepositoryManager{" +
+            ", remote='" + remote + '\'' +
+            ", local=" + local +
+            ", branch='" + branch + '\'' +
+            ", updateInterval=" + updateInterval +
+            ", recipeLayoutManager=" + recipeLayoutManager +
+            ", lastUpdate=" + lastUpdate +
+            '}';
+    }
 }

@@ -17,6 +17,8 @@ public interface RecipeDirectory {
 
     Optional<Path> getBuildPaths(String scmUri, String version);
 
+    Optional<Path> getRepositoryPaths(String name);
+
     default <T> void writeArtifactData(AddRecipeRequest<T> data) {
         throw new IllegalStateException("Not implemented");
     }

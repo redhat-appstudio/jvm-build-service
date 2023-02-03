@@ -1,33 +1,40 @@
 package com.redhat.hacbs.artifactcache.services;
 
+import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
+import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
+import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
+import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
+import com.redhat.hacbs.recipies.location.RecipeDirectory;
+import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
+import com.redhat.hacbs.recipies.mavenrepo.MavenRepositoryInfoManager;
+import io.quarkus.logging.Log;
+import io.quarkus.runtime.Startup;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-
-import org.eclipse.microprofile.config.Config;
-
-import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
-import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
-import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
-import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
-
-import io.quarkus.logging.Log;
-import io.quarkus.runtime.Startup;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
-
 @Startup
 @Singleton
 public class RemoteRepositoryManager {
 
-    private static final String SYSTEM = "system-";
+    private static final String SYSTEM = "system.";
     private static final String STORE = "store.";
     private static final String URL = ".url";
     private static final String TYPE = ".type";
@@ -57,8 +64,10 @@ public class RemoteRepositoryManager {
     @ConfigProperty(name = "build-info.repositories", defaultValue = "https://github.com/redhat-appstudio/jvm-build-data")
     List<String> buildInfoRepos;
 
+    final List<RecipeDirectory> recipeDirs = new ArrayList<>();
+
     @PostConstruct
-    void setup() {
+    void setup() throws IOException, GitAPIException {
         var registryOwner = config.getOptionalValue("registry.owner", String.class);
         if (registryOwner.isPresent()) {
             var host = config.getOptionalValue("registry.host", String.class).orElse("quay.io");
@@ -69,12 +78,16 @@ public class RemoteRepositoryManager {
             var prependTag = config.getOptionalValue("registry" + PREPEND_TAG, String.class);
 
             Repository rebuiltRepo = new Repository("rebuilt",
-                    "http" + (insecure ? "" : "s") + "://" + host + ":" + port + "/" + registryOwner.get() + "/"
-                            + repository,
-                    RepositoryType.OCI_REGISTRY,
-                    new OCIRegistryRepositoryClient(host, registryOwner.get(), repository, token, prependTag,
-                            insecure, rebuiltArtifacts, storageManager));
+                "http" + (insecure ? "" : "s") + "://" + host + ":" + port + "/" + registryOwner.get() + "/"
+                    + repository,
+                RepositoryType.OCI_REGISTRY,
+                new OCIRegistryRepositoryClient(host, registryOwner.get(), repository, token, prependTag,
+                    insecure, rebuiltArtifacts, storageManager));
             remoteStores.put("rebuilt", new RepositoryCache(storageManager, rebuiltRepo));
+        }
+        for (var i : buildInfoRepos) {
+            Path tempDir = Files.createTempDirectory("recipe");
+            recipeDirs.add(RecipeRepositoryManager.create(i, "main", Optional.of(Duration.of(10, ChronoUnit.MINUTES)), tempDir));
         }
     }
 
@@ -93,11 +106,22 @@ public class RemoteRepositoryManager {
     }
 
     private Repository createRepository(String repo) {
+        Repository existingSystemRepo = null;
+        if (repo.startsWith(SYSTEM)) {
+            return createSystemRepository(repo.substring(SYSTEM.length()));
+        } else {
+            existingSystemRepo = createSystemRepository(repo);
+        }
+
 
         Optional<URI> uri = config.getOptionalValue(STORE + repo + URL, URI.class);
         Optional<RepositoryType> optType = config.getOptionalValue(STORE + repo + TYPE, RepositoryType.class);
 
         if (uri.isPresent() && optType.orElse(RepositoryType.MAVEN2) == RepositoryType.MAVEN2) {
+            if (existingSystemRepo != null && existingSystemRepo.getUri().equals(uri.get().toASCIIString())) {
+                Log.infof("Maven repository %s added with URI %s, matching system repo of same name", repo, uri.get());
+                return existingSystemRepo;
+            }
             Log.infof("Maven repository %s added with URI %s", repo, uri.get());
             RepositoryClient client = MavenClient.of(repo, uri.get());
             return new Repository(repo, uri.get().toASCIIString(), RepositoryType.MAVEN2, client);
@@ -112,7 +136,7 @@ public class RemoteRepositoryManager {
                 String[] prefixes = config.getOptionalValue(STORE + repo + PREFIXES, String.class).orElse("default").split(",");
                 RepositoryClient client = new S3RepositoryClient(s3Client, Arrays.asList(prefixes), bucket.get());
                 Log.infof("S3 repository %s added with bucket %s and prefixes %s", repo, bucket.get(),
-                        Arrays.toString(prefixes));
+                    Arrays.toString(prefixes));
                 return new Repository(repo, "s3://" + bucket + Arrays.toString(prefixes), RepositoryType.S3, client);
             } else {
                 Log.warnf("S3 Repository %s was listed but has no bucket configured and will be ignored", repo);
@@ -125,11 +149,11 @@ public class RemoteRepositoryManager {
             String repository = config.getOptionalValue(STORE + repo + REPOSITORY, String.class).orElse(ARTIFACT_DEPLOYMENTS);
             if (owner.isPresent()) {
                 boolean enableHttpAndInsecureFailover = config.getOptionalValue(STORE + repo + INSECURE, Boolean.class)
-                        .orElse(Boolean.FALSE);
+                    .orElse(Boolean.FALSE);
                 String u = owner.get();
 
                 RepositoryClient client = new OCIRegistryRepositoryClient(registry, u, repository, token, prependTag,
-                        enableHttpAndInsecureFailover, rebuiltArtifacts, storageManager);
+                    enableHttpAndInsecureFailover, rebuiltArtifacts, storageManager);
                 Log.infof("OCI registry %s added with owner %s", registry, u);
                 return new Repository(repo, "oci://" + registry + "/" + u, RepositoryType.OCI_REGISTRY, client);
             } else {
@@ -137,6 +161,25 @@ public class RemoteRepositoryManager {
             }
         }
         Log.warnf("Repository %s was listed but has no config and will be ignored", repo);
+        return null;
+    }
+
+    private Repository createSystemRepository(String repo) {
+        for (var manager : recipeDirs) {
+            var file = manager.getRepositoryPaths(repo);
+            if (file.isPresent()) {
+                try {
+                    var info = MavenRepositoryInfoManager.INSTANCE.parse(file.get());
+
+                    Log.infof("System Maven repository %s added with URI %s", repo, info.getUri());
+                    RepositoryClient client = MavenClient.of(repo, new URI(info.getUri()));
+                    return new Repository(repo, info.getUri(), RepositoryType.MAVEN2, client);
+                } catch (Exception e) {
+                    Log.errorf("Failed to load system repository " + repo + " from " + manager);
+                }
+            }
+        }
+        Log.warnf("No system repository %s found.", repo);
         return null;
     }
 

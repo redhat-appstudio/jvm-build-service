@@ -1,13 +1,13 @@
 package com.redhat.hacbs.recipies.location;
 
+import org.apache.maven.artifact.versioning.ComparableVersion;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.logging.Logger;
-
-import org.apache.maven.artifact.versioning.ComparableVersion;
 
 /**
  * Manages an individual recipe database of build recipes.
@@ -37,11 +37,13 @@ public class RecipeLayoutManager implements RecipeDirectory {
     private final Path checkoutDirectory;
     private final Path scmInfoDirectory;
     private final Path buildInfoDirectory;
+    private final Path repositoryInfoDirectory;
 
     public RecipeLayoutManager(Path baseDirectory) {
         this.checkoutDirectory = baseDirectory;
         this.scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
         this.buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
+        this.repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
     }
 
     /**
@@ -68,7 +70,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
         }
 
         return Optional
-                .of(new RecipePathMatch(groupPath, artifactPath, versionPath, artifactAndVersionPath, groupAuthoritative));
+            .of(new RecipePathMatch(groupPath, artifactPath, versionPath, artifactAndVersionPath, groupAuthoritative));
     }
 
     @Override
@@ -78,6 +80,15 @@ public class RecipeLayoutManager implements RecipeDirectory {
             return Optional.empty();
         }
         return Optional.of(resolveVersion(target, version).orElse(target));
+    }
+
+    @Override
+    public Optional<Path> getRepositoryPaths(String name) {
+        Path target = repositoryInfoDirectory.resolve(name + ".yaml");
+        if (Files.exists(target)) {
+            return Optional.of(target);
+        }
+        return Optional.empty();
     }
 
     private Optional<Path> resolveVersion(Path target, String version) {

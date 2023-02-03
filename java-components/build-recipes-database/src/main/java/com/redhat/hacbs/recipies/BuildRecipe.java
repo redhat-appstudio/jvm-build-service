@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfoManager;
+import com.redhat.hacbs.recipies.mavenrepo.MavenRepositoryInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfoManager;
 
