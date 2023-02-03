@@ -20,25 +20,16 @@ public class CacheFacade {
 
     final Map<String, BuildPolicy> buildPolicies;
     final Map<String, List<RepositoryCache>> buildPolicyCaches;
-    final Map<String, RepositoryCache> caches;
 
     public CacheFacade(StorageManager storageManager,
             Map<String, BuildPolicy> buildPolicies) throws Exception {
         Log.infof("Creating cache with path %s", storageManager.path());
         //TODO: we don't actually use this at the moment
         this.buildPolicies = buildPolicies;
-        this.caches = new HashMap<>();
         this.buildPolicyCaches = new HashMap<>();
 
         for (var e : buildPolicies.entrySet()) {
-            List<RepositoryCache> cacheList = new ArrayList<>();
-            for (var repository : e.getValue().getRepositories()) {
-                if (!caches.containsKey(repository.getName())) {
-                    caches.put(repository.getName(),
-                            new RepositoryCache(storageManager.resolve(repository.getName()), repository));
-                }
-                cacheList.add(caches.get(repository.getName()));
-            }
+            List<RepositoryCache> cacheList = new ArrayList<>(e.getValue().getRepositories());
             buildPolicyCaches.put(e.getKey(), cacheList);
         }
     }

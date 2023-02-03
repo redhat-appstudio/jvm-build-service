@@ -35,7 +35,7 @@ public class BuildPolicyManagerConfigTest {
         var policies = manager.createBuildPolicies(Set.of("default", "central-only"), config);
         var result = policies.get("default").getRepositories();
         Assertions.assertEquals(1, result.size());
-        Repository central = result.get(0);
+        Repository central = result.get(0).getRepository();
         Assertions.assertEquals("https://repo.maven.apache.org/maven2", central.getUri());
     }
 
@@ -49,9 +49,9 @@ public class BuildPolicyManagerConfigTest {
         BuildPolicyManager manager = new BuildPolicyManager();
         var policies = manager.createBuildPolicies(Set.of("default", "central-only"), config);
         var result = policies.get("default").getRepositories();
-        Repository central = result.get(0);
+        Repository central = result.get(0).getRepository();
         Assertions.assertEquals("https://repo.maven.apache.org/maven2", central.getUri());
-        Repository rht = result.get(1);
+        Repository rht = result.get(1).getRepository();
         Assertions.assertEquals("https://maven.repository.redhat.com/ga", rht.getUri());
     }
 }
