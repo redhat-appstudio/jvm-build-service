@@ -92,12 +92,12 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     @Override
     public String toString() {
         return "RecipeRepositoryManager{" +
-            ", remote='" + remote + '\'' +
-            ", local=" + local +
-            ", branch='" + branch + '\'' +
-            ", updateInterval=" + updateInterval +
-            ", recipeLayoutManager=" + recipeLayoutManager +
-            ", lastUpdate=" + lastUpdate +
-            '}';
+                ", remote='" + remote + '\'' +
+                ", local=" + local +
+                ", branch='" + branch + '\'' +
+                ", updateInterval=" + updateInterval +
+                ", recipeLayoutManager=" + recipeLayoutManager +
+                ", lastUpdate=" + lastUpdate +
+                '}';
     }
 }

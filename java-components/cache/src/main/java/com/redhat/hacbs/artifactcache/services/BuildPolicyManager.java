@@ -8,7 +8,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import javax.enterprise.inject.Produces;
-import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import org.eclipse.microprofile.config.Config;
@@ -26,11 +25,14 @@ class BuildPolicyManager {
     public static final String STORE_LIST = ".store-list";
     public static final String BUILD_POLICY = "build-policy.";
 
-    @Inject
-    StorageManager storageManager;
+    final StorageManager storageManager;
 
-    @Inject
-    RemoteRepositoryManager remoteRepositoryManager;
+    final RemoteRepositoryManager remoteRepositoryManager;
+
+    BuildPolicyManager(StorageManager storageManager, RemoteRepositoryManager remoteRepositoryManager) {
+        this.storageManager = storageManager;
+        this.remoteRepositoryManager = remoteRepositoryManager;
+    }
 
     @Produces
     @Singleton
@@ -67,13 +69,14 @@ class BuildPolicyManager {
             List<RepositoryCache> repositories = new ArrayList<>();
             var policyRelocations = relocations.get(policy);
             if (policyRelocations != null) {
-                repositories.add(new RepositoryCache(storageManager,
-                        new Repository("hacbs-artifact-relocations-" + policy, "hacbs-internal://relocations",
+                String name = "hacbs-artifact-relocations-" + policy;
+                repositories.add(new RepositoryCache(storageManager.resolve(name),
+                        new Repository(name, "hacbs-internal://relocations",
                                 RepositoryType.RELOCATIONS, new RelocationRepositoryClient(policyRelocations))));
             }
             for (var store : stores.get().split(",")) {
-                var cache = remoteRepositoryManager.getRemoteRepository(store);
-                repositories.add(cache);
+                var cache = remoteRepositoryManager.getRemoteRepositories(store);
+                repositories.addAll(cache);
             }
             if (!repositories.isEmpty()) {
                 ret.put(policy, new BuildPolicy(repositories));

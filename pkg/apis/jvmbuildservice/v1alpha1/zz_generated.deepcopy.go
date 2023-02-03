@@ -148,6 +148,11 @@ func (in *BuildRecipe) DeepCopyInto(out *BuildRecipe) {
 		*out = make([]AdditionalDownload, len(*in))
 		copy(*out, *in)
 	}
+	if in.Repositories != nil {
+		in, out := &in.Repositories, &out.Repositories
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

@@ -21,9 +21,7 @@ public class CacheFacade {
     final Map<String, BuildPolicy> buildPolicies;
     final Map<String, List<RepositoryCache>> buildPolicyCaches;
 
-    public CacheFacade(StorageManager storageManager,
-            Map<String, BuildPolicy> buildPolicies) throws Exception {
-        Log.infof("Creating cache with path %s", storageManager.path());
+    public CacheFacade(Map<String, BuildPolicy> buildPolicies) throws Exception {
         //TODO: we don't actually use this at the moment
         this.buildPolicies = buildPolicies;
         this.buildPolicyCaches = new HashMap<>();

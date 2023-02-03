@@ -126,7 +126,7 @@ public class LocalCacheTest {
         Path temp = Files.createTempDirectory("cache-test");
         try {
             RootStorageManager storageManager = new RootStorageManager(temp, 1, 1, 1);
-            CacheFacade localCache = new CacheFacade(storageManager,
+            CacheFacade localCache = new CacheFacade(
                     Map.of("default", new BuildPolicy(
                             List.of(new RepositoryCache(storageManager,
                                     new Repository("test", "http://test.com", RepositoryType.MAVEN2, MOCK_CLIENT))))));

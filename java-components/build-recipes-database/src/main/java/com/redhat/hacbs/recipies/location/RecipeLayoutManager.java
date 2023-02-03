@@ -1,13 +1,13 @@
 package com.redhat.hacbs.recipies.location;
 
-import org.apache.maven.artifact.versioning.ComparableVersion;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.logging.Logger;
+
+import org.apache.maven.artifact.versioning.ComparableVersion;
 
 /**
  * Manages an individual recipe database of build recipes.
@@ -70,7 +70,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
         }
 
         return Optional
-            .of(new RecipePathMatch(groupPath, artifactPath, versionPath, artifactAndVersionPath, groupAuthoritative));
+                .of(new RecipePathMatch(groupPath, artifactPath, versionPath, artifactAndVersionPath, groupAuthoritative));
     }
 
     @Override

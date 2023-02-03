@@ -118,6 +118,7 @@ func TestStateNew(t *testing.T) {
 		}, &db))
 		g.Expect(db.Status.CurrentBuildRecipe).ShouldNot(BeNil())
 		g.Expect(db.Status.CurrentBuildRecipe.Image).Should(HavePrefix("quay.io/redhat-appstudio/hacbs-jdk"))
+		g.Expect(db.Status.CurrentBuildRecipe.Repositories).Should(Equal([]string{"jboss", "gradle"}))
 
 	})
 }
@@ -135,7 +136,7 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(pr).ShouldNot(BeNil())
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null}`}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null, "repositories": ["jboss","gradle"]}`}}
 	} else {
 		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineMessage, Value: "build info missing"}}
 	}
