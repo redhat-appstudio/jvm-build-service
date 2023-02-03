@@ -282,7 +282,8 @@ func setupConfig(t *testing.T, namespace string, hermetic bool) *testArgs {
 			Name:      v1alpha1.JBSConfigName,
 		},
 		Spec: v1alpha1.JBSConfigSpec{
-			EnableRebuilds: true,
+			EnableRebuilds:              true,
+			RequireArtifactVerification: true,
 			MavenBaseLocations: map[string]string{
 				"maven-repository-300-jboss":     "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-confluent": "https://packages.confluent.io/maven",
