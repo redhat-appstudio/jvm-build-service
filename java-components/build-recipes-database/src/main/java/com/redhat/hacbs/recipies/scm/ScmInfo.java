@@ -3,6 +3,9 @@ package com.redhat.hacbs.recipies.scm;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ScmInfo extends RepositoryInfo {
     public ScmInfo() {
     }
