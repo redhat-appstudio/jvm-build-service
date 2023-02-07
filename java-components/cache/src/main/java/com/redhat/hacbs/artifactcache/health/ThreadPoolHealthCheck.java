@@ -30,11 +30,11 @@ public class ThreadPoolHealthCheck implements HealthCheck {
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             Log.errorf(e, "Thread pool health check failed, dumping all threads");
             for (Map.Entry<Thread, StackTraceElement[]> i : Thread.getAllStackTraces().entrySet()) {
-                System.err.println("\n");
-                System.err.println(i.toString());
-                System.err.println("\n");
+                System.out.println("\n");
+                System.out.println(i.toString());
+                System.out.println("\n");
                 for (StackTraceElement j : i.getValue()) {
-                    System.err.println(j);
+                    System.out.println(j);
                 }
             }
             return HealthCheckResponse.down("Thread Pool");
