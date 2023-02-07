@@ -1,0 +1,428 @@
+{
+    "bomFormat": "CycloneDX",
+    "specVersion": "1.4",
+    "serialNumber": "urn:uuid:53e96a2e-0366-4c8e-9ad8-c6bac143881e",
+    "version": 1,
+    "metadata": {
+        "timestamp": "2023-02-06T05:24:42Z",
+        "tools": [
+            {
+                "vendor": "anchore",
+                "name": "syft",
+                "version": "0.47.0"
+            }
+        ],
+        "component": {
+            "bom-ref": "18aef86526e979ba",
+            "type": "file",
+            "name": "/var/lib/containers/storage/vfs/dir/4963c7058db2a179464dc15b8d3a4607ac3c4abcc1eb0e8a83e18cd3be7ab120"
+        }
+    },
+    "components": [
+        {
+            "bom-ref": "pkg:rpm/rhel/alsa-lib@1.2.6.1-3.el8?arch=x86_64&upstream=alsa-lib-1.2.6.1-3.el8.src.rpm&distro=rhel-8.6&package-id=87fdaeb94570a4e8",
+            "type": "library",
+            "publisher": "Red Hat, Inc.",
+            "name": "alsa-lib",
+            "version": "1.2.6.1-3.el8",
+            "cpe": "cpe:2.3:a:alsa-lib:alsa-lib:1.2.6.1-3.el8:*:*:*:*:*:*:*",
+            "purl": "pkg:rpm/rhel/alsa-lib@1.2.6.1-3.el8?arch=x86_64&upstream=alsa-lib-1.2.6.1-3.el8.src.rpm&distro=rhel-8.6",
+            "properties": [
+                {
+                    "name": "syft:package:foundBy",
+                    "value": "rpmdb-cataloger"
+                },
+                {
+                    "name": "syft:package:metadataType",
+                    "value": "RpmdbMetadata"
+                },
+                {
+                    "name": "syft:package:type",
+                    "value": "rpm"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:alsa-lib:alsa_lib:1.2.6.1-3.el8:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:alsa_lib:alsa-lib:1.2.6.1-3.el8:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:alsa_lib:alsa_lib:1.2.6.1-3.el8:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:redhat:alsa-lib:1.2.6.1-3.el8:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:redhat:alsa_lib:1.2.6.1-3.el8:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:alsa:alsa-lib:1.2.6.1-3.el8:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:alsa:alsa_lib:1.2.6.1-3.el8:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:location:0:path",
+                    "value": "var/lib/rpm/Packages"
+                },
+                {
+                    "name": "syft:metadata:release",
+                    "value": "3.el8"
+                },
+                {
+                    "name": "syft:metadata:size",
+                    "value": "1474366"
+                },
+                {
+                    "name": "syft:metadata:sourceRpm",
+                    "value": "alsa-lib-1.2.6.1-3.el8.src.rpm"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:maven/org.jetbrains/annotations@13.0?package-id=777e67dc91a3830",
+            "type": "library",
+            "group": "org.jetbrains",
+            "name": "annotations",
+            "version": "13.0",
+            "cpe": "cpe:2.3:a:annotations:annotations:13.0:*:*:*:*:*:*:*",
+            "purl": "pkg:maven/org.jetbrains/annotations@13.0",
+            "properties": [
+                {
+                    "name": "syft:package:foundBy",
+                    "value": "java-cataloger"
+                },
+                {
+                    "name": "syft:package:language",
+                    "value": "java"
+                },
+                {
+                    "name": "syft:package:metadataType",
+                    "value": "JavaMetadata"
+                },
+                {
+                    "name": "syft:package:type",
+                    "value": "java-archive"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:jetbrains:annotations:13.0:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:location:0:path",
+                    "value": "deployments/lib/org.jetbrains.annotations-13.0.jar"
+                },
+                {
+                    "name": "syft:metadata:-:artifactID",
+                    "value": "annotations"
+                },
+                {
+                    "name": "syft:metadata:-:groupID",
+                    "value": "org.jetbrains"
+                },
+                {
+                    "name": "syft:metadata:virtualPath",
+                    "value": "deployments/lib/org.jetbrains.annotations-13.0.jar:annotations"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:maven/org.apache.commons.digester/commons-digester.commons-digester@2.1?package-id=590537f88209686a",
+            "type": "library",
+            "name": "commons-digester.commons-digester",
+            "version": "2.1",
+            "cpe": "cpe:2.3:a:commons-digester.commons-digester:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*",
+            "purl": "pkg:maven/org.apache.commons.digester/commons-digester.commons-digester@2.1",
+            "externalReferences": [
+                {
+                    "url": "",
+                    "hashes": [
+                        {
+                            "alg": "SHA-1",
+                            "content": "882cb48edef7af99e4ca1c5137b5d523d1d1bcec"
+                        }
+                    ],
+                    "type": "build-meta"
+                }
+            ],
+            "properties": [
+                {
+                    "name": "syft:package:foundBy",
+                    "value": "java-cataloger"
+                },
+                {
+                    "name": "syft:package:language",
+                    "value": "java"
+                },
+                {
+                    "name": "syft:package:metadataType",
+                    "value": "JavaMetadata"
+                },
+                {
+                    "name": "syft:package:type",
+                    "value": "java-archive"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester.commons-digester:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester.commons_digester:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester.commons_digester:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache-software-foundation:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache-software-foundation:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache_software_foundation:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache_software_foundation:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester.commons:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester.commons:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester.commons:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester.commons:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester.commons-digester:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester.commons_digester:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:digester:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:digester:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester.commons-digester:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester.commons_digester:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache:commons-digester.commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache:commons_digester.commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache-software-foundation:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache_software_foundation:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache-software-foundation:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache_software_foundation:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester.commons:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester.commons:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester.commons:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester.commons:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:digester:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:digester:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache:digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:location:0:path",
+                    "value": "deployments/lib/commons-digester.commons-digester-2.1.jar"
+                },
+                {
+                    "name": "syft:metadata:virtualPath",
+                    "value": "deployments/lib/commons-digester.commons-digester-2.1.jar"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:maven/commons-digester/commons-digester@2.1?package-id=9f502cac5ecd2695",
+            "type": "library",
+            "group": "commons-digester",
+            "name": "commons-digester",
+            "version": "2.1",
+            "cpe": "cpe:2.3:a:commons-digester:commons-digester:2.1:*:*:*:*:*:*:*",
+            "purl": "pkg:maven/commons-digester/commons-digester@2.1",
+            "properties": [
+                {
+                    "name": "syft:package:foundBy",
+                    "value": "java-cataloger"
+                },
+                {
+                    "name": "syft:package:language",
+                    "value": "java"
+                },
+                {
+                    "name": "syft:package:metadataType",
+                    "value": "JavaMetadata"
+                },
+                {
+                    "name": "syft:package:type",
+                    "value": "java-archive"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester:commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester:commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester:commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons-digester:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons:commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons:commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons_digester:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache:commons-digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache:commons_digester:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:commons:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:cpe23",
+                    "value": "cpe:2.3:a:apache:commons:2.1:*:*:*:*:*:*:*"
+                },
+                {
+                    "name": "syft:location:0:path",
+                    "value": "deployments/lib/commons-digester.commons-digester-2.1.jar"
+                },
+                {
+                    "name": "syft:metadata:-:artifactID",
+                    "value": "commons-digester"
+                },
+                {
+                    "name": "syft:metadata:-:groupID",
+                    "value": "commons-digester"
+                },
+                {
+                    "name": "syft:metadata:virtualPath",
+                    "value": "deployments/lib/commons-digester.commons-digester-2.1.jar:commons-digester"
+                }
+            ]
+        },
+        {
+            "publisher": "central",
+            "group": "com.github.luben",
+            "name": "zstd-jni",
+            "version": "1.4.9-1",
+            "purl": "pkg:maven/com.github.luben/zstd-jni@1.4.9-1",
+            "properties": [
+                {
+                    "name": "package:type",
+                    "value": "maven"
+                },
+                {
+                    "name": "package:language",
+                    "value": "java"
+                }
+            ],
+            "type": "library"
+        }
+    ]
+}

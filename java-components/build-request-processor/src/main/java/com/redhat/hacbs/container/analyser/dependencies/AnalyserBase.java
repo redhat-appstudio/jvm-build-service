@@ -6,9 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.inject.Inject;
@@ -17,9 +17,8 @@ import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.model.Bom;
-import org.cyclonedx.model.Component;
-import org.cyclonedx.model.Property;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 
@@ -27,6 +26,8 @@ import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 public abstract class AnalyserBase implements Runnable {
+
+    static final ObjectMapper MAPPER = new ObjectMapper();
 
     @CommandLine.Option(names = "--task-run-name")
     String taskRunName;
@@ -46,6 +47,9 @@ public abstract class AnalyserBase implements Runnable {
     @CommandLine.Option(names = "-u")
     Path untrustedDependenciesCount;
 
+    @CommandLine.Option(names = "--publishers")
+    Path publishers;
+
     @Override
     public void run() {
         try {
@@ -63,35 +67,19 @@ public abstract class AnalyserBase implements Runnable {
     abstract void doAnalysis(Set<String> gavs, Set<TrackingData> trackingData) throws Exception;
 
     void writeSbom(Set<TrackingData> trackingData) throws IOException {
-        //now build a cyclone DX bom file
-        final Bom bom = new Bom();
-        bom.setComponents(new ArrayList<>());
-        for (var i : trackingData) {
-            var split = i.gav.split(":");
-            String group = split[0];
-            String name = split[1];
-            String version = split[2];
-
-            Component component = new Component();
-            component.setType(Component.Type.LIBRARY);
-            component.setGroup(group);
-            component.setName(name);
-            component.setVersion(version);
-            component.setPublisher(i.source);
-            component.setPurl(String.format("pkg:maven/%s/%s@%s", group, name, version));
-
-            Property packageTypeProperty = new Property();
-            packageTypeProperty.setName("package:type");
-            packageTypeProperty.setValue("maven");
-
-            Property packageLanguageProperty = new Property();
-            packageLanguageProperty.setName("package:language");
-            packageLanguageProperty.setValue("java");
-
-            component.setProperties(List.of(packageTypeProperty, packageLanguageProperty));
-
-            bom.getComponents().add(component);
+        Bom bom;
+        InputStream existing = null;
+        try {
+            if (Files.exists(sbom)) {
+                existing = Files.newInputStream(sbom);
+            }
+            bom = SBomGenerator.generateSBom(trackingData, existing);
+        } finally {
+            if (existing != null) {
+                existing.close();
+            }
         }
+
         BomJsonGenerator generator = BomGeneratorFactory.createJson(CycloneDxSchema.Version.VERSION_14, bom);
         String sbom = generator.toJsonString();
         Log.infof("Generated SBOM:\n%s", sbom);
@@ -106,6 +94,18 @@ public abstract class AnalyserBase implements Runnable {
         }
         if (untrustedDependenciesCount != null) {
             Files.writeString(untrustedDependenciesCount, gavs.size() + "");
+        }
+        if (publishers != null) {
+            Map<String, Integer> pm = new HashMap<>();
+            for (var i : trackingData) {
+                Integer existing = pm.get(i.source);
+                if (existing == null) {
+                    pm.put(i.source, 1);
+                } else {
+                    pm.put(i.source, existing + 1);
+                }
+            }
+            MAPPER.writer().writeValue(publishers.toFile(), pm);
         }
     }
 
@@ -124,4 +124,5 @@ public abstract class AnalyserBase implements Runnable {
         }
         return FileVisitResult.CONTINUE;
     }
+
 }
