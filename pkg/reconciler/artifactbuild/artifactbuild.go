@@ -40,6 +40,7 @@ const (
 	ArtifactBuildIdLabel          = "jvmbuildservice.io/abr-id"
 	PipelineResultScmUrl          = "scm-url"
 	PipelineResultScmTag          = "scm-tag"
+	PipelineResultScmHash         = "scm-hash"
 	PipelineResultScmType         = "scm-type"
 	PipelineResultContextPath     = "context"
 	PipelineResultMessage         = "message"
@@ -224,6 +225,8 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 			abr.Status.SCMInfo.SCMURL = res.Value
 		case PipelineResultScmTag:
 			abr.Status.SCMInfo.Tag = res.Value
+		case PipelineResultScmHash:
+			abr.Status.SCMInfo.CommitHash = res.Value
 		case PipelineResultScmType:
 			abr.Status.SCMInfo.SCMType = res.Value
 		case PipelineResultMessage:
@@ -414,11 +417,12 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 			return reconcile.Result{}, err
 		}
 		db.Spec = v1alpha1.DependencyBuildSpec{ScmInfo: v1alpha1.SCMInfo{
-			SCMURL:  abr.Status.SCMInfo.SCMURL,
-			SCMType: abr.Status.SCMInfo.SCMType,
-			Tag:     abr.Status.SCMInfo.Tag,
-			Path:    abr.Status.SCMInfo.Path,
-			Private: abr.Status.SCMInfo.Private,
+			SCMURL:     abr.Status.SCMInfo.SCMURL,
+			SCMType:    abr.Status.SCMInfo.SCMType,
+			Tag:        abr.Status.SCMInfo.Tag,
+			CommitHash: abr.Status.SCMInfo.CommitHash,
+			Path:       abr.Status.SCMInfo.Path,
+			Private:    abr.Status.SCMInfo.Private,
 		}, Version: abr.Spec.GAV[strings.LastIndex(abr.Spec.GAV, ":")+1:]}
 		if err := r.client.Status().Update(ctx, abr); err != nil {
 			return reconcile.Result{}, err
@@ -661,6 +665,7 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: PipelineResultScmUrl},
 			{Name: PipelineResultScmTag},
+			{Name: PipelineResultScmHash},
 			{Name: PipelineResultScmType},
 			{Name: PipelineResultContextPath},
 			{Name: PipelineResultPrivate},
@@ -678,6 +683,8 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					"$(results." + PipelineResultScmUrl + ".path)",
 					"--scm-tag",
 					"$(results." + PipelineResultScmTag + ".path)",
+					"--scm-hash",
+					"$(results." + PipelineResultScmHash + ".path)",
 					"--scm-type",
 					"$(results." + PipelineResultScmType + ".path)",
 					"--message",

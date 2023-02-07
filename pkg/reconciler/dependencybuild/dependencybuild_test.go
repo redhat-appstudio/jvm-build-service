@@ -159,6 +159,7 @@ func TestStateDetect(t *testing.T) {
 		db.Status.State = v1alpha1.DependencyBuildStateNew
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
+		db.Spec.ScmInfo.CommitHash = "some-hash"
 		db.Spec.ScmInfo.Path = "some-path"
 		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 
@@ -209,7 +210,7 @@ func TestStateDetect(t *testing.T) {
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineScmTag:
-					g.Expect(param.Value.StringVal).Should(Equal("some-tag"))
+					g.Expect(param.Value.StringVal).Should(Equal("some-hash"))
 				case PipelinePath:
 					g.Expect(param.Value.StringVal).Should(Equal("some-path"))
 				case PipelineScmUrl:
