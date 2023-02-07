@@ -8,4 +8,4 @@ resources:
 
 patchesStrategicMerge:
   #note that when updating the ref here you must also update system-config.yaml
-  - https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/a0495dac30396027babf6bc4090e88ba44b12a17/image-config.yaml
+  - https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/99f406015228f9f77f2a0cfb687b95c04951c368/image-config.yaml
