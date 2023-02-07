@@ -508,7 +508,12 @@ func innerDumpPod(req *rest.Request, baseDirectory, localDirectory, podName, con
 		print(fmt.Sprintf("error getting pod logs for container %s: %s", containerName, err.Error()))
 		return err
 	}
-	defer readCloser.Close()
+	defer func(readCloser io.ReadCloser) {
+		err := readCloser.Close()
+		if err != nil {
+			print(fmt.Sprintf("Failed to close ReadCloser reading pod logs for container %s: %s", containerName, err.Error()))
+		}
+	}(readCloser)
 	var b []byte
 	b, err = io.ReadAll(readCloser)
 	if skipSkipped && len(b) < 1000 {
