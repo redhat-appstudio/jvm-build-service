@@ -80,6 +80,7 @@ type BuildRecipe struct {
 	AdditionalDownloads []AdditionalDownload `json:"additionalDownloads,omitempty"`
 	DisableSubmodules   bool                 `json:"disableSubmodules,omitempty"`
 	AdditionalMemory    int                  `json:"additionalMemory,omitempty"`
+	Repositories        []string             `json:"repositories,omitempty"`
 }
 type Contaminant struct {
 	GAV                   string   `json:"gav,omitempty"`

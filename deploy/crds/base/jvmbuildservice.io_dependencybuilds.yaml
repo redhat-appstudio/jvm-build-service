@@ -192,6 +192,10 @@ spec:
                     type: string
                   preBuildScript:
                     type: string
+                  repositories:
+                    items:
+                      type: string
+                    type: array
                   tool:
                     type: string
                   toolVersion:
@@ -241,6 +245,10 @@ spec:
                       type: string
                     preBuildScript:
                       type: string
+                    repositories:
+                      items:
+                        type: string
+                      type: array
                     tool:
                       type: string
                     toolVersion:
@@ -293,6 +301,10 @@ spec:
                       type: string
                     preBuildScript:
                       type: string
+                    repositories:
+                      items:
+                        type: string
+                      type: array
                     tool:
                       type: string
                     toolVersion:

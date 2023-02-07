@@ -151,7 +151,7 @@ spec:
         if [ -n "$(params.MAVEN_MIRROR_URL)" ]; then
           xml="    <mirror>\
             <id>mirror.default</id>\
-            <url>$(params.MAVEN_MIRROR_URL)/v1/cache/default/0/</url>\
+            <url>$(params.MAVEN_MIRROR_URL)/v2/cache/user/default</url>\
             <mirrorOf>*</mirrorOf>\
           </mirror>"
           sed -i "s|<!-- ### mirrors from ENV ### -->|$xml|" $(workspaces.maven-settings.path)/settings.xml

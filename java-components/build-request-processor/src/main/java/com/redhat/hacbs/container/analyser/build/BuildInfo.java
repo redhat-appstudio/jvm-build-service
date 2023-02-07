@@ -24,6 +24,11 @@ public class BuildInfo {
      */
     List<List<String>> invocations = new ArrayList<>();
 
+    /**
+     * Additional repositories to use in the rebuild.
+     */
+    List<String> repositories = new ArrayList<>();
+
     String enforceVersion;
 
     public Map<String, VersionRange> getTools() {
@@ -131,6 +136,15 @@ public class BuildInfo {
 
     public BuildInfo setAdditionalMemory(int additionalMemory) {
         this.additionalMemory = additionalMemory;
+        return this;
+    }
+
+    public List<String> getRepositories() {
+        return repositories;
+    }
+
+    public BuildInfo setRepositories(List<String> repositories) {
+        this.repositories = repositories;
         return this;
     }
 }

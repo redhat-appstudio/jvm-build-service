@@ -167,6 +167,16 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		buildContainerRequestMemory.Add(additional)
 		defaultContainerRequestMemory.Add(additional)
 	}
+	buildRepos := ""
+	if len(recipe.Repositories) > 0 {
+		for c, i := range recipe.Repositories {
+			if c == 0 {
+				buildRepos = "-" + i
+			} else {
+				buildRepos = buildRepos + "," + i
+			}
+		}
+	}
 
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
@@ -181,7 +191,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelinePath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache.$(context.pipelineRun.namespace).svc.cluster.local/v1/cache/default/" + strconv.FormatInt(commitTime, 10)}},
+			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: "http://jvm-build-workspace-artifact-cache.$(context.pipelineRun.namespace).svc.cluster.local/v2/cache/rebuild" + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 		},
 		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}, {Name: artifactbuild.Image}, {Name: artifactbuild.PassedVerification}},
 		Steps: []pipelinev1beta1.Step{

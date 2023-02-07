@@ -24,6 +24,10 @@ public class BuildRecipeInfo {
      */
     List<String> alternativeArgs = new ArrayList<>();
 
+    /**
+     * Additional repositories to use in the rebuild.
+     */
+    List<String> repositories = new ArrayList<>();
     String toolVersion;
     String javaVersion;
 
@@ -50,6 +54,15 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setEnforceVersion(boolean enforceVersion) {
         this.enforceVersion = enforceVersion;
+        return this;
+    }
+
+    public List<String> getRepositories() {
+        return repositories;
+    }
+
+    public BuildRecipeInfo setRepositories(List<String> repositories) {
+        this.repositories = repositories;
         return this;
     }
 

@@ -37,11 +37,13 @@ public class RecipeLayoutManager implements RecipeDirectory {
     private final Path checkoutDirectory;
     private final Path scmInfoDirectory;
     private final Path buildInfoDirectory;
+    private final Path repositoryInfoDirectory;
 
     public RecipeLayoutManager(Path baseDirectory) {
         this.checkoutDirectory = baseDirectory;
         this.scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
         this.buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
+        this.repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
     }
 
     /**
@@ -78,6 +80,15 @@ public class RecipeLayoutManager implements RecipeDirectory {
             return Optional.empty();
         }
         return Optional.of(resolveVersion(target, version).orElse(target));
+    }
+
+    @Override
+    public Optional<Path> getRepositoryPaths(String name) {
+        Path target = repositoryInfoDirectory.resolve(name + ".yaml");
+        if (Files.exists(target)) {
+            return Optional.of(target);
+        }
+        return Optional.empty();
     }
 
     private Optional<Path> resolveVersion(Path target, String version) {

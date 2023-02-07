@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -26,24 +27,110 @@ import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Writer;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
+import com.redhat.hacbs.artifactcache.services.BuildPolicy;
 import com.redhat.hacbs.artifactcache.services.CacheFacade;
+import com.redhat.hacbs.artifactcache.services.RemoteRepositoryManager;
+import com.redhat.hacbs.artifactcache.services.RepositoryCache;
 import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
 
-@Path("/v1/cache/")
+@Path("/v2/cache/")
 @Blocking
-public class CacheMavenResource {
+public class V2CacheMavenResource {
 
     final CacheFacade cache;
+    final RemoteRepositoryManager remoteRepositoryManager;
 
-    public CacheMavenResource(CacheFacade cache) {
+    public V2CacheMavenResource(CacheFacade cache, RemoteRepositoryManager remoteRepositoryManager) {
         this.cache = cache;
+        this.remoteRepositoryManager = remoteRepositoryManager;
     }
 
     @GET
-    @Path("{build-policy}/{commit-time}/{group:.*?}/{artifact}/{version}/{target}")
+    @Path("rebuild{stores:(-[\\w-,]+)?}/{commit-time}/{group:.*?}/{artifact}/{version}/{target}")
+    public Response getRebuild(@PathParam("stores") String stores,
+            @PathParam("group") String group,
+            @PathParam("artifact") String artifact,
+            @PathParam("version") String version, @PathParam("target") String target) throws Exception {
+
+        CacheFacade facade = rebuildCache(stores);
+        Log.debugf("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
+        var result = facade.getArtifactFile("", group, artifact, version, target, true);
+        if (result.isPresent()) {
+            var builder = Response.ok(result.get().getData());
+            if (result.get().getMetadata().containsKey("maven-repo")) {
+                builder.header("X-maven-repo", result.get().getMetadata().get("maven-repo"))
+                        .build();
+            }
+            if (result.get().getSize() > 0) {
+                builder.header(HttpHeaders.CONTENT_LENGTH, result.get().getSize());
+            }
+            return builder.build();
+        }
+        Log.infof("Failed to get artifact %s/%s/%s/%s", group, artifact, version, target);
+        throw new NotFoundException();
+    }
+
+    private CacheFacade rebuildCache(String stores) throws Exception {
+        List<RepositoryCache> caches = new ArrayList<>();
+        caches.addAll(remoteRepositoryManager.getRemoteRepositories("rebuilt"));
+        if (stores.length() > 1) {
+            stores = stores.substring(1);
+            for (var i : stores.split(",")) {
+                var store = remoteRepositoryManager.getRemoteRepositories(RemoteRepositoryManager.SYSTEM + i);
+                if (store != null) {
+                    caches.addAll(store);
+                } else {
+                    Log.infof("Could not find system store %s", i);
+                }
+            }
+        } else {
+            //TODO: once we have added repository info the the main recipe database we should change this to 'default'
+            caches.addAll(remoteRepositoryManager.getRemoteRepositories(RemoteRepositoryManager.SYSTEM + "all"));
+        }
+        BuildPolicy bp = new BuildPolicy(caches);
+        return new CacheFacade(Map.of("", bp));
+    }
+
+    @GET
+    @Path("rebuild{stores:-[\\w-,]+}/{commit-time}/{group:.*?}/maven-metadata.xml{hash:.*?}")
+    public InputStream getRebuild(@PathParam("stores") String stores,
+            @PathParam("commit-time") long commitTime,
+            @PathParam("group") String group,
+            @PathParam("hash") String hash) throws Exception {
+        Log.debugf("Retrieving file %s/%s", group, "maven-metadata.xml");
+        CacheFacade cache = rebuildCache(stores);
+        var result = cache.getMetadataFiles("", group, "maven-metadata.xml" + hash);
+        if (!result.isEmpty()) {
+            boolean sha = hash.equals(".sha1");
+            if ((commitTime > 0 || result.size() > 1) && (hash.equals("") || sha)) {
+                if (sha) {
+                    return filterNewerVersions(cache, "",
+                            this.cache.getMetadataFiles("", group, "maven-metadata.xml"),
+                            new Date(commitTime), group, sha);
+                } else {
+                    return filterNewerVersions(cache, "", result, new Date(commitTime), group, sha);
+                }
+            }
+            //just return the first one, and close the others
+            ArtifactResult first = result.get(0);
+            for (var i = 1; i < result.size(); ++i) {
+                try {
+                    result.get(i).close();
+                } catch (Throwable t) {
+                    Log.error("Failed to close resource", t);
+                }
+            }
+            return first.getData();
+        }
+        Log.infof("Failed retrieving file %s/%s", group, "maven-metadata.xml");
+        throw new NotFoundException();
+    }
+
+    @GET
+    @Path("user/{build-policy}/{group:.*?}/{artifact}/{version}/{target}")
     public Response get(@PathParam("build-policy") String buildPolicy,
             @PathParam("group") String group,
             @PathParam("artifact") String artifact,
@@ -66,22 +153,21 @@ public class CacheMavenResource {
     }
 
     @GET
-    @Path("{build-policy}/{commit-time}/{group:.*?}/maven-metadata.xml{hash:.*?}")
+    @Path("user/{build-policy}/{group:.*?}/maven-metadata.xml{hash:.*?}")
     public InputStream get(@PathParam("build-policy") String buildPolicy,
-            @PathParam("commit-time") long commitTime,
             @PathParam("group") String group,
             @PathParam("hash") String hash) throws Exception {
         Log.debugf("Retrieving file %s/%s", group, "maven-metadata.xml");
         var result = cache.getMetadataFiles(buildPolicy, group, "maven-metadata.xml" + hash);
         if (!result.isEmpty()) {
             boolean sha = hash.equals(".sha1");
-            if ((commitTime > 0 || result.size() > 1) && (hash.equals("") || sha)) {
+            if ((result.size() > 1) && (hash.equals("") || sha)) {
                 if (sha) {
-                    return filterNewerVersions(buildPolicy,
+                    return filterNewerVersions(cache, buildPolicy,
                             cache.getMetadataFiles(buildPolicy, group, "maven-metadata.xml"),
-                            new Date(commitTime), group, sha);
+                            new Date(0), group, sha);
                 } else {
-                    return filterNewerVersions(buildPolicy, result, new Date(commitTime), group, sha);
+                    return filterNewerVersions(cache, buildPolicy, result, new Date(0), group, sha);
                 }
             }
             //just return the first one, and close the others
@@ -99,7 +185,8 @@ public class CacheMavenResource {
         throw new NotFoundException();
     }
 
-    private InputStream filterNewerVersions(String buildPolicy, List<ArtifactResult> data, Date commitTime, String group,
+    private InputStream filterNewerVersions(CacheFacade cache, String buildPolicy, List<ArtifactResult> data, Date commitTime,
+            String group,
             boolean sha1)
             throws Exception {
         try {

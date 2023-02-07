@@ -50,13 +50,17 @@ public class RepositoryCache {
     final ConcurrentMap<String, DownloadingFile> inProgressDownloads = new ConcurrentHashMap<>();
     final ConcurrentMap<String, CountDownLatch> inProgressTransformations = new ConcurrentHashMap<>();
 
-    public RepositoryCache(StorageManager storageManager, Repository repository) throws Exception {
+    public RepositoryCache(StorageManager storageManager, Repository repository) {
         this.storageManager = storageManager;
         this.downloaded = storageManager.resolve(ORIGINAL);
         this.transformed = storageManager.resolve(TRANSFORMED);
         this.tempDownloads = storageManager.resolve(DOWNLOADS);
         this.repository = repository;
         Log.infof("Creating cache with path %s", storageManager.toString());
+    }
+
+    public Repository getRepository() {
+        return repository;
     }
 
     public Optional<ArtifactResult> getArtifactFile(String group, String artifact, String version, String target,

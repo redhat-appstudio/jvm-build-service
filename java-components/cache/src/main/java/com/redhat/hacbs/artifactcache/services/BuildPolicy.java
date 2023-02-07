@@ -5,13 +5,13 @@ import java.util.List;
 
 public class BuildPolicy {
 
-    final List<Repository> repositories;
+    final List<RepositoryCache> repositories;
 
-    public BuildPolicy(List<Repository> repositories) {
+    public BuildPolicy(List<RepositoryCache> repositories) {
         this.repositories = Collections.unmodifiableList(repositories);
     }
 
-    public List<Repository> getRepositories() {
+    public List<RepositoryCache> getRepositories() {
         return repositories;
     }
 }
