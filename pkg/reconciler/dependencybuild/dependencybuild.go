@@ -125,7 +125,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			// TODO possibly abort instead, possibly allow but file event, or metric alert later on
 			return reconcile.Result{}, r.client.Update(ctx, &db)
 		}
-
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
 			return r.handleStateNew(ctx, log, &db)

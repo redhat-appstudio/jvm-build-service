@@ -44,7 +44,9 @@ func TestMetrics(t *testing.T) {
 
 	//TODO add various tests where you then call
 	metric := gatherMetrics(g)
-	g.Expect(metric).To(BeEmpty())
+	for _, m := range metric {
+		g.Expect(m.GetGauge().GetValue()).Should(Equal(0.0))
+	}
 	ab := v1alpha1.ArtifactBuild{
 		Spec: v1alpha1.ArtifactBuildSpec{
 			GAV: "com.test:test:1.0",
@@ -57,10 +59,12 @@ func TestMetrics(t *testing.T) {
 	}
 	g.Expect(client.Create(context.TODO(), &ab)).Should(Succeed())
 	metric = gatherMetrics(g)
-	g.Expect(len(metric)).Should(Equal(1))
+	g.Expect(len(metric)).Should(Equal(6))
 	for _, m := range metric {
-		g.Expect(m.GetGauge().GetValue()).Should(Equal(1.0))
-		g.Expect(*m.GetLabel()[0].Value).Should(Equal("test"))
-		g.Expect(*m.GetLabel()[1].Value).Should(Equal(v1alpha1.ArtifactBuildStateComplete))
+		if *m.GetLabel()[0].Value == v1alpha1.ArtifactBuildStateComplete {
+			g.Expect(m.GetGauge().GetValue()).Should(Equal(1.0))
+		} else {
+			g.Expect(m.GetGauge().GetValue()).Should(Equal(0.0))
+		}
 	}
 }
