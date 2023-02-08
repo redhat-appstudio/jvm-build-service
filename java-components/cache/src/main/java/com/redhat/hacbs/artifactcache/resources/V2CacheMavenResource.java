@@ -95,7 +95,7 @@ public class V2CacheMavenResource {
     }
 
     @GET
-    @Path("rebuild{stores:-[\\w-,]+}/{commit-time}/{group:.*?}/maven-metadata.xml{hash:.*?}")
+    @Path("rebuild{stores:(-[\\w-,]+)?}/{commit-time}/{group:.*?}/maven-metadata.xml{hash:.*?}")
     public InputStream getRebuild(@PathParam("stores") String stores,
             @PathParam("commit-time") long commitTime,
             @PathParam("group") String group,
