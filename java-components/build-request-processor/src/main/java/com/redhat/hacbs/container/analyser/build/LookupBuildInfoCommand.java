@@ -233,6 +233,10 @@ public class LookupBuildInfoCommand implements Runnable {
                         List.of("+", "publish"))); //the plus tells it to deploy for every scala version
             }
             if (buildRecipeInfo != null) {
+                if (buildRecipeInfo.getJavaVersion() != null) {
+                    info.tools.put(JDK, new VersionRange(buildRecipeInfo.getJavaVersion(), buildRecipeInfo.getJavaVersion(),
+                            buildRecipeInfo.getJavaVersion()));
+                }
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
                 if (buildRecipeInfo.getAlternativeArgs() != null && !buildRecipeInfo.getAlternativeArgs().isEmpty()) {
                     for (var i : info.invocations) {
