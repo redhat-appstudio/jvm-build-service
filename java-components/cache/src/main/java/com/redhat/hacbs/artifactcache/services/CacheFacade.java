@@ -22,7 +22,6 @@ public class CacheFacade {
     final Map<String, List<RepositoryCache>> buildPolicyCaches;
 
     public CacheFacade(Map<String, BuildPolicy> buildPolicies) throws Exception {
-        //TODO: we don't actually use this at the moment
         this.buildPolicies = buildPolicies;
         this.buildPolicyCaches = new HashMap<>();
 
@@ -70,16 +69,6 @@ public class CacheFacade {
                 }
             } catch (Throwable t) {
                 Log.errorf(t, "Unable to download %s:%s:%s", group, artifact, target);
-            }
-        }
-        return Optional.empty();
-    }
-
-    public Optional<ArtifactResult> getMetadataFile(String buildPolicy, String group, String target) {
-        for (var i : buildPolicyCaches.get(buildPolicy)) {
-            var res = i.getMetadataFile(group, target);
-            if (res.isPresent()) {
-                return res;
             }
         }
         return Optional.empty();

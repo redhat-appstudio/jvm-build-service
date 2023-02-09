@@ -108,7 +108,7 @@ public class V2CacheMavenResource {
             if ((commitTime > 0 || result.size() > 1) && (hash.equals("") || sha)) {
                 if (sha) {
                     return filterNewerVersions(cache, "",
-                            this.cache.getMetadataFiles("", group, "maven-metadata.xml"),
+                            cache.getMetadataFiles("", group, "maven-metadata.xml"),
                             new Date(commitTime), group, sha);
                 } else {
                     return filterNewerVersions(cache, "", result, new Date(commitTime), group, sha);
