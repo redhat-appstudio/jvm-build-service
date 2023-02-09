@@ -263,10 +263,6 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		// for now we are ignoring the tool versions
 		// and just using the supplied invocations
 		buildRecipes := []*v1alpha1.BuildRecipe{}
-		_, maven := unmarshalled.Tools["maven"]
-		_, gradle := unmarshalled.Tools["gradle"]
-		_, sbt := unmarshalled.Tools["sbt"]
-		_, ant := unmarshalled.Tools["ant"]
 		java := unmarshalled.Tools["jdk"]
 		db.Status.CommitTime = unmarshalled.CommitTime
 
@@ -301,48 +297,57 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			selectedImages = append(selectedImages, image)
 		}
 
+		if len(unmarshalled.Invocations) == 0 {
+			log.Error(nil, "Unable to determine build tool", "info", unmarshalled)
+			db.Status.State = v1alpha1.DependencyBuildStateFailed
+			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+		}
 		for _, image := range selectedImages {
-			var toolVersions []string
-			var tool string
-			if maven {
-				//TODO: maven version selection
-				//for now we just fake it
-				toolVersions = []string{"3.8.1"}
-				tool = "maven"
-			} else if gradle {
-				//gradle has an explicit tool version, but we need to map it to what is in the image
-				gradleVersionsInImage := image.Tools["gradle"]
-				for _, i := range gradleVersionsInImage {
-					if sameMajorVersion(i, unmarshalled.ToolVersion) {
-						toolVersions = append(toolVersions, i)
-					}
-				}
-				tool = "gradle"
-			} else if sbt {
-				//sbt has an explicit tool version, but we need to map it to what is in the image
-				sbtVersionsInImage := image.Tools["sbt"]
-				for _, i := range sbtVersionsInImage {
-					if sameMajorVersion(i, unmarshalled.ToolVersion) {
-						toolVersions = append(toolVersions, i)
-					}
-				}
-				tool = "sbt"
-			} else if ant {
-				antVersionsInImage := image.Tools["ant"]
-				for _, i := range antVersionsInImage {
-					if i == unmarshalled.ToolVersion {
-						toolVersions = append(toolVersions, i)
-					}
-				}
-				tool = "ant"
-			} else {
-				log.Error(nil, "No valid tool was found in the tools map", "json", buildInfo)
-				db.Status.State = v1alpha1.DependencyBuildStateFailed
-				return reconcile.Result{}, r.client.Status().Update(ctx, &db)
-			}
 			for _, command := range unmarshalled.Invocations {
-				for _, tv := range toolVersions {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories})
+				//invocations list the relevant tool at the start
+				//if the image has this tool then we
+				tool := command[0]
+				command = command[1:]
+				var toolVersions []string
+				if tool == "maven" {
+					//TODO: maven version selection
+					//for now we just fake it
+					toolVersions = []string{"3.8.1"}
+				} else if tool == "gradle" {
+					//gradle has an explicit tool version, but we need to map it to what is in the image
+					gradleVersionsInImage := image.Tools["gradle"]
+					for _, i := range gradleVersionsInImage {
+						if sameMajorVersion(i, unmarshalled.ToolVersion) {
+							toolVersions = append(toolVersions, i)
+						}
+					}
+				} else if tool == "sbt" {
+					//sbt has an explicit tool version, but we need to map it to what is in the image
+					sbtVersionsInImage := image.Tools["sbt"]
+					for _, i := range sbtVersionsInImage {
+						if sameMajorVersion(i, unmarshalled.ToolVersion) {
+							toolVersions = append(toolVersions, i)
+						}
+					}
+
+				} else if tool == "ant" {
+					antVersionsInImage := image.Tools["ant"]
+					for _, i := range antVersionsInImage {
+						if sameMajorVersion(i, unmarshalled.ToolVersion) {
+							toolVersions = append(toolVersions, i)
+						}
+					}
+					tool = "ant"
+				} else {
+					log.Error(nil, "Unknown tool ", "tool", tool)
+					db.Status.State = v1alpha1.DependencyBuildStateFailed
+					return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+				}
+				_, hasTool := image.Tools[tool]
+				if hasTool {
+					for _, tv := range toolVersions {
+						buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories})
+					}
 				}
 			}
 		}

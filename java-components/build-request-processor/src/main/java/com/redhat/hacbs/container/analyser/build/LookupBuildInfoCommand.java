@@ -182,17 +182,18 @@ public class LookupBuildInfoCommand implements Runnable {
                         //so we should run the tests
                         //this can be controller via additional args if you still want to skip them
                         info.invocations.add(
-                                new ArrayList<>(List.of("install", "-Dcheckstyle.skip",
+                                new ArrayList<>(List.of(MAVEN, "install", "-Dcheckstyle.skip",
                                         "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
                                         "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false")));
                     } else {
                         info.invocations.add(
-                                new ArrayList<>(List.of("install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
+                                new ArrayList<>(List.of(MAVEN, "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
                                         "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
                                         "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false")));
                     }
                 }
-            } else if (GradleUtils.isGradleBuild(path)) {
+            }
+            if (GradleUtils.isGradleBuild(path)) {
                 Log.infof("Detected Gradle build in %s", path);
                 var optionalGradleVersion = GradleUtils
                         .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(path));
@@ -219,10 +220,14 @@ public class LookupBuildInfoCommand implements Runnable {
 
                 info.tools.put(JDK, new VersionRange("8", "17", javaVersion));
                 info.tools.put(GRADLE, new VersionRange(detectedGradleVersion, detectedGradleVersion, detectedGradleVersion));
-                info.invocations.add(new ArrayList<>(GradleUtils.getGradleArgs(path)));
+                ArrayList<String> inv = new ArrayList<>();
+                inv.add(GRADLE);
+                inv.addAll(GradleUtils.getGradleArgs(path));
+                info.invocations.add(inv);
                 info.toolVersion = detectedGradleVersion;
                 info.javaVersion = javaVersion;
-            } else if (Files.exists(path.resolve("build.sbt"))) {
+            }
+            if (Files.exists(path.resolve("build.sbt"))) {
                 //TODO: initial SBT support, needs more work
                 Log.infof("Detected SBT build in %s", path);
 
@@ -232,8 +237,9 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.tools.put(SBT, new VersionRange("1.8.0", "1.8.0", "1.8.0"));
                 info.toolVersion = "1.8.0";
                 info.invocations.add(new ArrayList<>(
-                        List.of("+", "publish"))); //the plus tells it to deploy for every scala version
-            } else if (AntUtils.isAntBuild(path)) {
+                        List.of(SBT, "+", "publish"))); //the plus tells it to deploy for every scala version
+            }
+            if (AntUtils.isAntBuild(path)) {
                 // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
                 Log.infof("Detected Ant build in %s", path);
                 var javaVersion = AntUtils.getJavaVersion(path);
@@ -242,7 +248,10 @@ public class LookupBuildInfoCommand implements Runnable {
                 Log.infof("Chose Ant version %s", antVersion);
                 info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
                 info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
-                info.invocations.add(new ArrayList<>(AntUtils.getAntArgs()));
+                ArrayList<String> inv = new ArrayList<>();
+                inv.add(ANT);
+                inv.addAll(AntUtils.getAntArgs());
+                info.invocations.add(inv);
                 info.toolVersion = antVersion;
                 info.javaVersion = javaVersion;
             }
@@ -254,7 +263,9 @@ public class LookupBuildInfoCommand implements Runnable {
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
                 if (buildRecipeInfo.getAlternativeArgs() != null && !buildRecipeInfo.getAlternativeArgs().isEmpty()) {
                     for (var i : info.invocations) {
+                        var tool = i.get(0);
                         i.clear();
+                        i.add(tool);
                         i.addAll(buildRecipeInfo.getAlternativeArgs());
                     }
                 }
