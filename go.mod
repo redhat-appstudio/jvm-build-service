@@ -22,7 +22,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.12.2
 )
 
-require github.com/google/go-containerregistry v0.8.1-0.20220216220642-00c59d91847c
+require (
+	github.com/google/go-containerregistry v0.8.1-0.20220216220642-00c59d91847c
+	go.uber.org/zap v1.19.1
+)
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
@@ -84,7 +87,6 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
-	go.uber.org/zap v1.19.1 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
