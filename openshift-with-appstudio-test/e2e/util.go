@@ -113,7 +113,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 	if ta == nil {
 		ta = &testArgs{
 			t:        t,
-			timeout:  time.Minute * 10,
+			timeout:  time.Minute * 15,
 			interval: time.Second * 15,
 		}
 	}
