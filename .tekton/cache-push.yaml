@@ -20,7 +20,7 @@ spec:
       value: cache/src/main/docker/Dockerfile.all-in-one
   pipelineRef:
     name: docker-build
-    bundle: quay.io/redhat-appstudio/build-templates-bundle:devel
+    bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-docker-build:devel
   workspaces:
     - name: registry-auth
       secret:
