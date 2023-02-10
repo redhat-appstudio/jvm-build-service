@@ -24,6 +24,9 @@ var mavenSettings string
 //go:embed scripts/gradle-settings.sh
 var gradleSettings string
 
+//go:embed scripts/ant-settings.sh
+var antSettings string
+
 //go:embed scripts/maven-build.sh
 var mavenBuild string
 
@@ -32,6 +35,9 @@ var gradleBuild string
 
 //go:embed scripts/sbt-build.sh
 var sbtBuild string
+
+//go:embed scripts/ant-build.sh
+var antBuild string
 
 //go:embed scripts/install-package.sh
 var packageTemplate string
@@ -127,6 +133,10 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		settings = "" //TODO: look at removing the setttings step altogether
 		build = sbtBuild
 		preprocessorArgs[0] = "sbt-prepare"
+	} else if tool == "ant" {
+		settings = antSettings
+		build = antBuild
+		preprocessorArgs[0] = "ant-prepare"
 	} else {
 		settings = "echo unknown build tool " + tool + " && exit 1"
 		build = ""

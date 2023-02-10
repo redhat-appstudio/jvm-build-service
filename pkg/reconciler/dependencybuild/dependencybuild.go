@@ -266,6 +266,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		_, maven := unmarshalled.Tools["maven"]
 		_, gradle := unmarshalled.Tools["gradle"]
 		_, sbt := unmarshalled.Tools["sbt"]
+		_, ant := unmarshalled.Tools["ant"]
 		java := unmarshalled.Tools["jdk"]
 		db.Status.CommitTime = unmarshalled.CommitTime
 
@@ -301,19 +302,19 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 
 		for _, image := range selectedImages {
-			var tooVersions []string
+			var toolVersions []string
 			var tool string
 			if maven {
 				//TODO: maven version selection
 				//for now we just fake it
-				tooVersions = []string{"3.8.1"}
+				toolVersions = []string{"3.8.1"}
 				tool = "maven"
 			} else if gradle {
 				//gradle has an explicit tool version, but we need to map it to what is in the image
 				gradleVersionsInImage := image.Tools["gradle"]
 				for _, i := range gradleVersionsInImage {
 					if sameMajorVersion(i, unmarshalled.ToolVersion) {
-						tooVersions = append(tooVersions, i)
+						toolVersions = append(toolVersions, i)
 					}
 				}
 				tool = "gradle"
@@ -322,17 +323,25 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 				sbtVersionsInImage := image.Tools["sbt"]
 				for _, i := range sbtVersionsInImage {
 					if sameMajorVersion(i, unmarshalled.ToolVersion) {
-						tooVersions = append(tooVersions, i)
+						toolVersions = append(toolVersions, i)
 					}
 				}
 				tool = "sbt"
+			} else if ant {
+				antVersionsInImage := image.Tools["ant"]
+				for _, i := range antVersionsInImage {
+					if i == unmarshalled.ToolVersion {
+						toolVersions = append(toolVersions, i)
+					}
+				}
+				tool = "ant"
 			} else {
-				log.Error(nil, "Neither maven nor gradle was found in the tools map", "json", buildInfo)
+				log.Error(nil, "No valid tool was found in the tools map", "json", buildInfo)
 				db.Status.State = v1alpha1.DependencyBuildStateFailed
 				return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 			}
 			for _, command := range unmarshalled.Invocations {
-				for _, tv := range tooVersions {
+				for _, tv := range toolVersions {
 					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories})
 				}
 			}

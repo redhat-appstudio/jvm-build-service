@@ -14,6 +14,7 @@ public class BuildInfo {
     public static final String MAVEN = "maven";
     public static final String GRADLE = "gradle";
     public static final String SBT = "sbt";
+    public static final String ANT = "ant";
     /**
      * Possible build tools, including the JDK. This is represented
      */

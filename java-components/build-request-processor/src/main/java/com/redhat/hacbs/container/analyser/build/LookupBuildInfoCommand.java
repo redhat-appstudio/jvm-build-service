@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.analyser.build;
 
+import static com.redhat.hacbs.container.analyser.build.BuildInfo.ANT;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
@@ -28,6 +29,7 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.eclipse.jgit.api.Git;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.redhat.hacbs.container.analyser.build.ant.AntUtils;
 import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.build.maven.MavenDiscoveryTask;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
@@ -231,6 +233,18 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.toolVersion = "1.8.0";
                 info.invocations.add(new ArrayList<>(
                         List.of("+", "publish"))); //the plus tells it to deploy for every scala version
+            } else if (AntUtils.isAntBuild(path)) {
+                // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
+                Log.infof("Detected Ant build in %s", path);
+                var javaVersion = AntUtils.getJavaVersion(path);
+                Log.infof("Detected Java version %s", !javaVersion.isEmpty() ? javaVersion : "none");
+                var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
+                Log.infof("Chose Ant version %s", antVersion);
+                info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
+                info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
+                info.invocations.add(new ArrayList<>(AntUtils.getAntArgs()));
+                info.toolVersion = antVersion;
+                info.javaVersion = javaVersion;
             }
             if (buildRecipeInfo != null) {
                 if (buildRecipeInfo.getJavaVersion() != null) {
