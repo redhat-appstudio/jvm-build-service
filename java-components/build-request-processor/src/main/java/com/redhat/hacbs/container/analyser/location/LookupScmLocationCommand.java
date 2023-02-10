@@ -16,7 +16,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.apache.commons.text.StringSubstitutor;
 import org.apache.http.client.methods.HttpGet;
@@ -60,6 +59,8 @@ public class LookupScmLocationCommand implements Runnable {
     Path scmType;
     @CommandLine.Option(names = "--scm-tag")
     Path scmTag;
+    @CommandLine.Option(names = "--scm-hash")
+    Path scmHash;
 
     @CommandLine.Option(names = "--private")
     Path privateRepo;
@@ -132,12 +133,17 @@ public class LookupScmLocationCommand implements Runnable {
                     String selectedTag = null;
                     Set<String> versionExactContains = new HashSet<>();
                     Set<String> tagExactContains = new HashSet<>();
+                    Map<String, String> tagsToHash = new HashMap<>();
                     var tags = Git.lsRemoteRepository()
                             .setCredentialsProvider(
                                     new GitCredentials())
                             .setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
-                    Set<String> tagNames = tags.stream().map(s -> s.getName().replace("refs/tags/", ""))
-                            .collect(Collectors.toSet());
+                    Set<String> tagNames = new HashSet<>();
+                    for (var tag : tags) {
+                        var name = tag.getName().replace("refs/tags/", "");
+                        tagNames.add(name);
+                        tagsToHash.put(name, tag.getObjectId().name());
+                    }
 
                     //first try tag mappings
                     for (var mapping : allMappings) {
@@ -217,7 +223,15 @@ public class LookupScmLocationCommand implements Runnable {
                     Log.infof("Found tag %s", selectedTag);
                     if (scmTag != null) {
                         Files.writeString(scmTag, selectedTag);
-                    } //write the info we have
+                    }
+                    if (scmHash != null) {
+                        String gitHash = tagsToHash.get(selectedTag);
+                        if (gitHash == null) {
+                            //should only happen if the tag is already a ref
+                            gitHash = selectedTag;
+                        }
+                        Files.writeString(scmHash, gitHash);
+                    }
                     Log.infof("SCM URL: %s", parsedInfo.getUri());
                     if (scmUrl != null) {
                         Files.writeString(scmUrl, parsedInfo.getUri());
