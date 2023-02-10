@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"go.uber.org/zap/zapcore"
 	"os"
 	// needed for hack/update-codegen.sh
 	_ "k8s.io/code-generator"
@@ -35,12 +36,15 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
 		Development: true,
+		TimeEncoder: zapcore.RFC3339TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
 	klog.InitFlags(flag.CommandLine)
+
 	flag.Parse()
 
 	logger := zap.New(zap.UseFlagOptions(&opts))
+
 	ctrl.SetLogger(logger)
 	mainLog = ctrl.Log.WithName("main")
 	ctx := ctrl.SetupSignalHandler()
