@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="test" default="compile" basedir=".">
+    <property name="ant.build.javac.source" value="1.8"/>
+    <property name="ant.build.javac.target" value="1.8"/>
+    <property name="build.src.dir" value="src"/>
+    <property name="build.classes.dir" value="classes"/>
+    <target name="compile" description="Compile the project">
+        <javac srcdir="${build.src.dir}" destdir="${build.classes.dir}">
+        </javac>
+    </target>
+</project>
