@@ -26,6 +26,27 @@ mkdir $(workspaces.source.path)/logs
 mkdir $(workspaces.source.path)/packages
 {{INSTALL_PACKAGE_SCRIPT}}
 
+# XXX: It's possible that build.xml is not in the root directory
+cat > ivysettings.xml << EOF
+<ivysettings>
+    <property name="cache-url" value="$(params.CACHE_URL)"/>
+    <property name="default-pattern" value="[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
+    <property name="local-pattern" value="\${user.home}/.m2/repository/[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
+    <settings defaultResolver="default"/>
+    <resolvers>
+        <ibiblio name="default" root="\${cache-url}" pattern="\${default-pattern}" m2compatible="true"/>
+        <filesystem name="local" m2compatible="true">
+            <artifact pattern="\${local-pattern}"/>
+            <ivy pattern="\${local-pattern}"/>
+        </filesystem>
+        <chain name="default">
+            <resolver ref="local"/>
+            <resolver ref="default"/>
+        </chain>
+    </resolvers>
+</ivysettings>
+EOF
+
 # This is replaced when the task is created by the golang code
 cat <<EOF
 Pre build script: {{PRE_BUILD_SCRIPT}}
@@ -37,12 +58,6 @@ cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 echo -n "Command: "
 echo "$(which ant) $@"
 
-# XXX: It's possible that build.xml is not in the root directory
-if [ -r "ivysettings.xml" ]; then
-    eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
-else
-    echo "Required file ivysettings.xml was not found" >&2
-    exit 1
-fi
+eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
 tar czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .

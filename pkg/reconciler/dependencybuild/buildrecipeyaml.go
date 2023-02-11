@@ -24,9 +24,6 @@ var mavenSettings string
 //go:embed scripts/gradle-settings.sh
 var gradleSettings string
 
-//go:embed scripts/ant-settings.sh
-var antSettings string
-
 //go:embed scripts/maven-build.sh
 var mavenBuild string
 
@@ -134,7 +131,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		build = sbtBuild
 		preprocessorArgs[0] = "sbt-prepare"
 	} else if tool == "ant" {
-		settings = antSettings
+		settings = ""
 		build = antBuild
 		preprocessorArgs[0] = "ant-prepare"
 	} else {

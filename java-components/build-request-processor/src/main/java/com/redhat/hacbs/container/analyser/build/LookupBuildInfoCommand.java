@@ -242,8 +242,9 @@ public class LookupBuildInfoCommand implements Runnable {
             if (AntUtils.isAntBuild(path)) {
                 // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
                 Log.infof("Detected Ant build in %s", path);
-                var javaVersion = AntUtils.getJavaVersion(path);
-                Log.infof("Detected Java version %s", !javaVersion.isEmpty() ? javaVersion : "none");
+                var specifiedJavaVersion = AntUtils.getJavaVersion(path);
+                Log.infof("Detected Java version %s", !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "none");
+                var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
                 var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
                 Log.infof("Chose Ant version %s", antVersion);
                 info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
