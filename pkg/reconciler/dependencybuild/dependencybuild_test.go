@@ -136,7 +136,7 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(pr).ShouldNot(BeNil())
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null, "repositories": ["jboss","gradle"]}`}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null, "repositories": ["jboss","gradle"]}`}}
 	} else {
 		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineMessage, Value: "build info missing"}}
 	}
@@ -413,7 +413,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 	t.Run("Test build info discovery for gradle build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "4.9", JavaVersion: "11", Tools: map[string]toolInfo{"gradle": {Min: "4.9", Max: "4.9", Preferred: "4.9"}, "jdk": {Min: "8", Max: "17", Preferred: "11"}}, Invocations: [][]string{{""}}})
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "4.9", JavaVersion: "11", Tools: map[string]toolInfo{"gradle": {Min: "4.9", Max: "4.9", Preferred: "4.9"}, "jdk": {Min: "8", Max: "17", Preferred: "11"}}, Invocations: [][]string{{"gradle"}}})
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
@@ -446,7 +446,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 	t.Run("Test build info discovery for gradle build 2", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "5.8.7", Tools: map[string]toolInfo{"gradle": {}}, Invocations: [][]string{{""}}})
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "5.8.7", Tools: map[string]toolInfo{"gradle": {}}, Invocations: [][]string{{"gradle"}}})
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}

@@ -462,7 +462,7 @@ func ABRLabelForGAV(hashInput string) string {
 func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 	for key, value := range abr.Annotations {
 		if strings.HasPrefix(key, DependencyBuildContaminatedBy) {
-			log.Info("Attempting to resolve contamination", "artifactbuild", abr.Name)
+			log.Info("Attempting to resolve contamination for items that depend on this ArtifactBuild", "completed-artifact-build", abr.Name)
 			db := v1alpha1.DependencyBuild{}
 			if err := r.client.Get(ctx, types.NamespacedName{Name: value, Namespace: abr.Namespace}, &db); err != nil {
 				r.eventRecorder.Eventf(abr, corev1.EventTypeNormal, "CannotGetDependencyBuild", "Could not find the contaminated DependencyBuild for ArtifactBuild %s/%s: %s", abr.Namespace, abr.Name, err.Error())
@@ -478,11 +478,12 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log lo
 					newContaminates = append(newContaminates, contaminant)
 				}
 			}
-			log.Info("Attempting to resolve contamination for dependencybuild", "dependencybuild", db.Name, "old", db.Status.Contaminants, "new", newContaminates)
+			log.Info("Attempting to resolve contamination for dependencybuild", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag, "old", db.Status.Contaminants, "new", newContaminates)
 			db.Status.Contaminants = newContaminates
 			if len(db.Status.Contaminants) == 0 {
 				//TODO: we could have a situation where there are still some contamination, but not for artifacts that we care about
 				//kick off the build again
+				log.Info("Contamination resolved, moving to state new", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag)
 				db.Status.State = v1alpha1.DependencyBuildStateNew
 			}
 			if err := r.client.Status().Update(ctx, &db); err != nil {

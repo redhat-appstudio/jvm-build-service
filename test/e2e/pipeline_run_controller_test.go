@@ -312,7 +312,7 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 					Value: "OK",
 				}, {
 					Name:  dependencybuild.BuildInfoPipelineBuildInfo,
-					Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"toolVersion":null,"javaHome":null}`,
+					Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"toolVersion":null,"javaHome":null}`,
 				}}
 				err := k8sClient.Status().Update(ctx, btr)
 				if err == nil {
