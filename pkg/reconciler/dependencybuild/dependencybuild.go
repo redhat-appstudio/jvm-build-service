@@ -612,7 +612,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					if err != nil {
 						return reconcile.Result{}, err
 					}
-				} else if i.Name == artifactbuild.DeployedResources {
+				} else if i.Name == artifactbuild.DeployedResources && len(i.Value) > 0 {
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed := strings.Split(i.Value, ",")
 					db.Status.DeployedArtifacts = deployed

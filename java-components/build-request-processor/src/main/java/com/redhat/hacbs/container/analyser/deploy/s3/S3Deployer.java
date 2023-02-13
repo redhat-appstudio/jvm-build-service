@@ -1,11 +1,12 @@
 package com.redhat.hacbs.container.analyser.deploy.s3;
 
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Set;
 
 import com.redhat.hacbs.container.analyser.deploy.Deployer;
 
@@ -31,14 +32,13 @@ public class S3Deployer implements Deployer {
     }
 
     @Override
-    public void deployArchive(Path tarGzFile, Path sourcePath, Path logsPath) throws Exception {
-        try (TarArchiveInputStream in = new TarArchiveInputStream(
-                new GzipCompressorInputStream(Files.newInputStream(tarGzFile)))) {
-            TarArchiveEntry e;
-            while ((e = in.getNextTarEntry()) != null) {
-                Log.infof("Received %s", e.getName());
-                byte[] fileData = in.readAllBytes();
-                String name = e.getName();
+    public void deployArchive(Path tarGzFile, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+        Files.walkFileTree(tarGzFile, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Log.infof("Received %s", file);
+                byte[] fileData = Files.readAllBytes(file);
+                String name = tarGzFile.relativize(file).toString();
                 if (name.startsWith("./")) {
                     name = name.substring(2);
                 }
@@ -60,7 +60,8 @@ public class S3Deployer implements Deployer {
                             .build(), RequestBody.fromBytes(fileData));
                     Log.infof("Deployed to: %s", targetPath);
                 }
+                return FileVisitResult.CONTINUE;
             }
-        }
+        });
     }
 }

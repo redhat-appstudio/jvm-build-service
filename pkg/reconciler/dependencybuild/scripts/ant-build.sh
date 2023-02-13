@@ -60,4 +60,3 @@ echo "$(which ant) $@"
 
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
-tar czf "$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz" -C "$(workspaces.source.path)/hacbs-jvm-deployment-repo" .

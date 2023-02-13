@@ -17,17 +17,11 @@ import java.util.function.UnaryOperator;
 
 import javax.enterprise.inject.spi.BeanManager;
 
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
-import com.redhat.hacbs.classfile.tracker.NoCloseInputStream;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRun;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRunResult;
+import com.redhat.hacbs.container.analyser.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.Contaminant;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -48,8 +42,8 @@ public abstract class DeployCommand implements Runnable {
     @CommandLine.Option(required = false, names = "--allowed-sources", defaultValue = "redhat,rebuilt", split = ",")
     Set<String> allowedSources;
 
-    @CommandLine.Option(required = true, names = "--tar-path")
-    Path tarPath;
+    @CommandLine.Option(required = true, names = "--path")
+    Path deploymentPath;
 
     @CommandLine.Option(required = false, names = "--task-run")
     String taskRun;
@@ -78,105 +72,72 @@ public abstract class DeployCommand implements Runnable {
                 Set<String> contaminants = new HashSet<>();
                 Map<String, Set<String>> contaminatedPaths = new HashMap<>();
                 Map<String, Set<String>> contaminatedGavs = new HashMap<>();
-                try (TarArchiveInputStream in = new TarArchiveInputStream(
-                        new GzipCompressorInputStream(Files.newInputStream(tarPath)))) {
-                    TarArchiveEntry e;
-                    while ((e = in.getNextTarEntry()) != null) {
-                        Optional<Gav> gav = getGav(e.getName());
+                Set<Path> toRemove = new HashSet<>();
+                Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        String name = deploymentPath.relativize(file).toString();
+                        Optional<Gav> gav = getGav(name);
                         gav.ifPresent(
                                 gav1 -> gavs.add(gav1.getGroupId() + ":" + gav1.getArtifactId() + ":" + gav1.getVersion()));
-                        Log.debugf("Checking %s for contaminants", e.getName());
+                        Log.debugf("Checking %s for contaminants", name);
                         //we check every file as we also want to catch .tar.gz etc
-                        var info = ClassFileTracker.readTrackingDataFromFile(new NoCloseInputStream(in), e.getName());
+                        var info = ClassFileTracker.readTrackingDataFromFile(Files.newInputStream(file), name);
                         for (var i : info) {
                             if (!allowedSources.contains(i.source)) {
                                 //Set<String> result = new HashSet<>(info.stream().map(a -> a.gav).toList());
-                                Log.errorf("%s was contaminated by %s from %s", e.getName(), i.gav, i.source);
+                                Log.errorf("%s was contaminated by %s from %s", name, i.gav, i.source);
                                 gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav,
                                         s -> new HashSet<>())
                                         .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
                                 contaminants.add(i.gav);
-                                int index = e.getName().lastIndexOf("/");
+                                int index = name.lastIndexOf("/");
                                 if (index != -1) {
                                     contaminatedPaths
-                                            .computeIfAbsent(e.getName().substring(0, index), s -> new HashSet<>())
+                                            .computeIfAbsent(name.substring(0, index), s -> new HashSet<>())
                                             .add(i.gav);
                                 } else {
                                     contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
                                 }
+                                toRemove.add(file.getParent());
                             }
 
                         }
+                        return FileVisitResult.CONTINUE;
                     }
+                });
+                for (var i : toRemove) {
+                    Log.errorf("Removing %s as it is contaminated", i);
+                    FileUtil.deleteRecursive(i);
                 }
+
+                Log.infof("GAVs to deploy: %s", gavs);
                 if (gavs.isEmpty()) {
-                    Log.errorf("No content to deploy found in deploy tarball");
-                    try (TarArchiveInputStream in = new TarArchiveInputStream(
-                            new GzipCompressorInputStream(Files.newInputStream(tarPath)))) {
-                        TarArchiveEntry e;
-                        while ((e = in.getNextTarEntry()) != null) {
-                            Log.errorf("Contents: %s", e.getName());
+                    Log.errorf("No content to deploy found in deploy directory");
+
+                    Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                            Log.errorf("Contents: %s", file);
+                            return FileVisitResult.CONTINUE;
                         }
-                    }
+                    });
                     throw new RuntimeException("deploy failed");
                 }
                 //we still deploy, but without the contaminates
-                java.nio.file.Path deployFile = tarPath;
+                java.nio.file.Path deployFile = deploymentPath;
                 boolean allSkipped = false;
-                if (!contaminants.isEmpty()) {
-                    allSkipped = true;
-                    deployFile = modified;
-                    try (var out = Files.newOutputStream(modified)) {
-                        try (var archive = new TarArchiveOutputStream(new GzipCompressorOutputStream(out))) {
-                            archive.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
-                            archive.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_POSIX);
-                            archive.setAddPaxHeadersForNonAsciiNames(true);
-                            try (TarArchiveInputStream in = new TarArchiveInputStream(
-                                    new GzipCompressorInputStream(Files.newInputStream(tarPath)))) {
-                                TarArchiveEntry e;
-                                while ((e = in.getNextTarEntry()) != null) {
-                                    boolean skip = false;
-                                    for (var i : contaminatedPaths.keySet()) {
-                                        if (e.getName().startsWith(i)) {
-                                            skip = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!skip) {
-                                        if (e.getName().endsWith(".jar")) {
-                                            allSkipped = false;
-                                        }
-                                        Log.infof("Adding resource %s", e.getName());
-                                        TarArchiveEntry archiveEntry = new TarArchiveEntry(e.getName());
-                                        archiveEntry.setSize(e.getSize());
-                                        archiveEntry.setModTime(e.getModTime());
-                                        archiveEntry.setGroupId(e.getLongGroupId());
-                                        archiveEntry.setUserId(e.getLongUserId());
-                                        archiveEntry.setMode(e.getMode());
-                                        archive.putArchiveEntry(archiveEntry);
-                                        try {
-                                            byte[] buf = new byte[1024];
-                                            int r;
-                                            while ((r = in.read(buf)) > 0) {
-                                                archive.write(buf, 0, r);
-                                            }
-                                        } finally {
-                                            archive.closeArchiveEntry();
-                                        }
-                                    }
-
-                                }
-                            }
-                        }
-                    }
-                }
                 Log.infof("Contaminants: %s", contaminatedPaths);
+                Log.infof("Contaminated GAVS: %s", contaminatedGavs);
                 //update the DB with contaminant information
 
-                if (!allSkipped) {
+                for (var i : contaminatedGavs.entrySet()) {
+                    gavs.removeAll(i.getValue());
+                }
+                if (!gavs.isEmpty()) {
                     try {
                         cleanBrokenSymlinks(sourcePath);
-                        doDeployment(deployFile, sourcePath, logsPath);
+                        doDeployment(deployFile, sourcePath, logsPath, gavs);
                     } catch (Throwable t) {
                         Log.error("Deployment failed", t);
                         flushLogs();
@@ -243,7 +204,7 @@ public abstract class DeployCommand implements Runnable {
 
     }
 
-    protected abstract void doDeployment(Path deployFile, Path sourcePath, Path logsPath) throws Exception;
+    protected abstract void doDeployment(Path deployFile, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception;
 
     private void flushLogs() {
         System.err.flush();

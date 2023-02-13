@@ -148,7 +148,7 @@ spec:
         systemProp.http.nonProxyHosts=$(params.PROXY_NON_PROXY_HOSTS)
 
         # Settings for <https://github.com/vanniktech/gradle-maven-publish-plugin>
-        RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo
+        RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/artifacts
         RELEASE_SIGNING_ENABLED=false
         EOF
         cat > ${GRADLE_USER_HOME}/init.gradle << EOF
@@ -281,12 +281,12 @@ spec:
         export LC_ALL="en_US.UTF-8"
 
         if [ -n "$(params.ENFORCE_VERSION)" ]; then
-            gradle-manipulator -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) generateAlignmentMetadata || exit 1
+            gradle-manipulator -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) -DversionOverride=$(params.ENFORCE_VERSION) generateAlignmentMetadata || exit 1
         else
-            gradle-manipulator -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) generateAlignmentMetadata || exit 1
+            gradle-manipulator -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --no-colour --info --stacktrace -l "${GRADLE_HOME}" $(params.GRADLE_MANIPULATOR_ARGS) generateAlignmentMetadata || exit 1
         fi
 
-        gradle -DAProxDeployUrl=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo $@ || exit 1
+        gradle -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts $@ || exit 1
 
         # fix-permissions-for-builder
         chown 1001:1001 -R $(workspaces.source.path)
