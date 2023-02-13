@@ -128,7 +128,7 @@ public final class AntUtils {
             return new VersionRange(javaVersionStr, javaVersionStr, javaVersionStr);
         }
 
-        return new VersionRange("8", "17", "8");
+        return new VersionRange("7", "17", "8");
     }
 
     /**

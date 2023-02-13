@@ -233,7 +233,7 @@ public class LookupBuildInfoCommand implements Runnable {
 
                 var specifiedJavaVersion = "11"; //hard coded for now
 
-                info.tools.put(JDK, new VersionRange("8", "17", "8"));
+                info.tools.put(JDK, new VersionRange("7", "17", "8"));
                 info.tools.put(SBT, new VersionRange("1.8.0", "1.8.0", "1.8.0"));
                 info.toolVersion = "1.8.0";
                 info.invocations.add(new ArrayList<>(
@@ -247,8 +247,11 @@ public class LookupBuildInfoCommand implements Runnable {
                 var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
                 var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
                 Log.infof("Chose Ant version %s", antVersion);
+                //this should really be specific to the invocation
                 info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
-                info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
+                if (!info.tools.containsKey(JDK)) {
+                    info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
+                }
                 ArrayList<String> inv = new ArrayList<>();
                 inv.add(ANT);
                 inv.addAll(AntUtils.getAntArgs());
