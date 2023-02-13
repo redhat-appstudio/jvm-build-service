@@ -76,6 +76,6 @@ class AntUtilsTest {
     @Test
     void testGetAntArgs() {
         var antArgs = AntUtils.getAntArgs();
-        assertThat(antArgs).isEmpty();
+        assertThat(antArgs).contains("-v");
     }
 }

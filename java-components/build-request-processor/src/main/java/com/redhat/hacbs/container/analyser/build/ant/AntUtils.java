@@ -26,7 +26,7 @@ public final class AntUtils {
 
     private static final String ANT_BUILD_JAVAC_TARGET = "ant.build.javac.target";
 
-    private static final List<String> DEFAULT_ANT_ARGS = List.of();
+    private static final List<String> DEFAULT_ANT_ARGS = List.of("-v");
 
     private AntUtils() {
 
