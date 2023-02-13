@@ -26,7 +26,7 @@ public final class AntUtils {
 
     private static final String ANT_BUILD_JAVAC_TARGET = "ant.build.javac.target";
 
-    private static final List<String> DEFAULT_ANT_ARGS = List.of();
+    private static final List<String> DEFAULT_ANT_ARGS = List.of("-v");
 
     private AntUtils() {
 
@@ -35,11 +35,11 @@ public final class AntUtils {
     /**
      * Returns true if and only if the directory contains a readable file named {@code build.xml}.
      *
-     * @param basedir the base directory
+     * @param path the base directory or build file
      * @return whether the current directory contains an Ant build
      */
-    public static boolean isAntBuild(Path basedir) {
-        var buildFile = basedir.resolve(BUILD_XML);
+    public static boolean isAntBuild(Path path) {
+        var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
         return (Files.isRegularFile(buildFile) && Files.isReadable(buildFile));
     }
 
@@ -84,10 +84,11 @@ public final class AntUtils {
      * Gets the Java version from the Ant build file, if any, and matches it with a supported Java version, if
      * possible.
      *
-     * @param buildFile the path to check
+     * @param path the base directory or build file
      * @return the specified Java version, or empty if none
      */
-    public static String getJavaVersion(Path buildFile) {
+    public static String getJavaVersion(Path path) {
+        var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
         var project = loadProject(buildFile);
         var javaVersion = getJavaVersion(project);
         return javaVersion != -1 ? Integer.toString(javaVersion) : "";
@@ -96,10 +97,11 @@ public final class AntUtils {
     /**
      * Gets the JDK version range for the given Ant build file.
      *
-     * @param basedir the base directory
+     * @param path the base directory or build file
      * @return the JDK version range if possible, or {@code null} otherwise
      */
-    public static VersionRange getJavaVersionRange(Path buildFile) {
+    public static VersionRange getJavaVersionRange(Path path) {
+        var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
         var project = loadProject(buildFile);
         return getJavaVersionRange(project);
     }
@@ -126,7 +128,7 @@ public final class AntUtils {
             return new VersionRange(javaVersionStr, javaVersionStr, javaVersionStr);
         }
 
-        return new VersionRange("8", "17", "8");
+        return new VersionRange("7", "17", "8");
     }
 
     /**
@@ -136,7 +138,7 @@ public final class AntUtils {
      * @return the Ant version
      */
     public static String getAntVersionForJavaVersion(String javaVersion) {
-        return Integer.parseInt(javaVersion) >= 8 ? ANT_VERSION_JAVA8 : ANT_VERSION_JAVA5;
+        return javaVersion.isEmpty() || Integer.parseInt(javaVersion) >= 8 ? ANT_VERSION_JAVA8 : ANT_VERSION_JAVA5;
     }
 
     /**

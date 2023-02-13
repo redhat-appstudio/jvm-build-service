@@ -144,7 +144,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         }
                     }
                 } catch (ParseException e) {
-                    Log.errorf(e, "Failed to parse command line %s", buildRecipeInfo.getAdditionalArgs());
+                    Log.warnf("Failed to parse maven command line %s", buildRecipeInfo.getAdditionalArgs());
                 }
             }
             if (pomFile == null) {
@@ -233,7 +233,7 @@ public class LookupBuildInfoCommand implements Runnable {
 
                 var specifiedJavaVersion = "11"; //hard coded for now
 
-                info.tools.put(JDK, new VersionRange("8", "17", "8"));
+                info.tools.put(JDK, new VersionRange("7", "17", "8"));
                 info.tools.put(SBT, new VersionRange("1.8.0", "1.8.0", "1.8.0"));
                 info.toolVersion = "1.8.0";
                 info.invocations.add(new ArrayList<>(
@@ -242,12 +242,16 @@ public class LookupBuildInfoCommand implements Runnable {
             if (AntUtils.isAntBuild(path)) {
                 // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
                 Log.infof("Detected Ant build in %s", path);
-                var javaVersion = AntUtils.getJavaVersion(path);
-                Log.infof("Detected Java version %s", !javaVersion.isEmpty() ? javaVersion : "none");
+                var specifiedJavaVersion = AntUtils.getJavaVersion(path);
+                Log.infof("Detected Java version %s", !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "none");
+                var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
                 var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
                 Log.infof("Chose Ant version %s", antVersion);
+                //this should really be specific to the invocation
                 info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
-                info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
+                if (!info.tools.containsKey(JDK)) {
+                    info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
+                }
                 ArrayList<String> inv = new ArrayList<>();
                 inv.add(ANT);
                 inv.addAll(AntUtils.getAntArgs());
@@ -260,7 +264,6 @@ public class LookupBuildInfoCommand implements Runnable {
                     info.tools.put(JDK, new VersionRange(buildRecipeInfo.getJavaVersion(), buildRecipeInfo.getJavaVersion(),
                             buildRecipeInfo.getJavaVersion()));
                 }
-                Log.infof("Got build recipe info %s", buildRecipeInfo);
                 if (buildRecipeInfo.getAlternativeArgs() != null && !buildRecipeInfo.getAlternativeArgs().isEmpty()) {
                     for (var i : info.invocations) {
                         var tool = i.get(0);
@@ -282,6 +285,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.preBuildScript = buildRecipeInfo.getPreBuildScript();
                 info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
                 info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
+                Log.infof("Got build recipe info %s", buildRecipeInfo);
             }
             ObjectMapper mapper = new ObjectMapper();
             mapper.writeValue(buildInfo.toFile(), info);

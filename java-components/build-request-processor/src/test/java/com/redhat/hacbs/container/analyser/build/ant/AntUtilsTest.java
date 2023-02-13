@@ -18,25 +18,26 @@ class AntUtilsTest {
 
     private static final int JAVA_VERSION = 8;
 
-    private static Path buildFile;
+    private static Path basedir;
 
     @BeforeAll
     static void loadProject() throws URISyntaxException {
         var url = AntUtilsTest.class.getResource(BUILD_XML);
         assertThat(url).isNotNull();
         var uri = url.toURI();
-        buildFile = Path.of(uri);
+        var buildFile = Path.of(uri);
+        basedir = buildFile.getParent();
     }
 
     @Test
     void testIsAntBuild() {
-        var basedir = buildFile.getParent();
         var isAntBuild = AntUtils.isAntBuild(basedir);
         assertThat(isAntBuild).isTrue();
     }
 
     @Test
     void testLoadProject() {
+        var buildFile = basedir.resolve(BUILD_XML);
         var project = AntUtils.loadProject(buildFile);
         var projectName = project.getName();
         assertThat(projectName).isEqualTo(PROJECT_NAME);
@@ -44,13 +45,13 @@ class AntUtilsTest {
 
     @Test
     void testGetJavaVersion() {
-        var javaVersion = AntUtils.getJavaVersion(buildFile);
+        var javaVersion = AntUtils.getJavaVersion(basedir);
         assertThat(javaVersion).isEqualTo(Integer.toString(JAVA_VERSION));
     }
 
     @Test
     void testGetJavaVersionRange() {
-        var javaVersionRange = AntUtils.getJavaVersionRange(buildFile);
+        var javaVersionRange = AntUtils.getJavaVersionRange(basedir);
         assertThat(javaVersionRange).extracting("min", "max", "preferred").containsExactly("8", "8", "8");
     }
 
@@ -68,11 +69,13 @@ class AntUtilsTest {
         assertThat(antVersionForJava11).isEqualTo(AntUtils.ANT_VERSION_JAVA8);
         var antVersionForJava17 = AntUtils.getAntVersionForJavaVersion("17");
         assertThat(antVersionForJava17).isEqualTo(AntUtils.ANT_VERSION_JAVA8);
+        var antVersionForJavaEmpty = AntUtils.getAntVersionForJavaVersion("");
+        assertThat(antVersionForJavaEmpty).isEqualTo(AntUtils.ANT_VERSION_JAVA8);
     }
 
     @Test
     void testGetAntArgs() {
         var antArgs = AntUtils.getAntArgs();
-        assertThat(antArgs).isEmpty();
+        assertThat(antArgs).contains("-v");
     }
 }
