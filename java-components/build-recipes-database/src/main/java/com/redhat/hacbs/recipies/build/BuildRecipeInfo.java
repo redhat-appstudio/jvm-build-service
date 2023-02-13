@@ -135,10 +135,12 @@ public class BuildRecipeInfo {
                 "enforceVersion=" + enforceVersion +
                 ", additionalArgs=" + additionalArgs +
                 ", alternativeArgs=" + alternativeArgs +
+                ", repositories=" + repositories +
                 ", toolVersion='" + toolVersion + '\'' +
                 ", javaVersion='" + javaVersion + '\'' +
                 ", preBuildScript='" + preBuildScript + '\'' +
                 ", disableSubmodules=" + disableSubmodules +
+                ", additionalMemory=" + additionalMemory +
                 ", additionalDownloads=" + additionalDownloads +
                 '}';
     }

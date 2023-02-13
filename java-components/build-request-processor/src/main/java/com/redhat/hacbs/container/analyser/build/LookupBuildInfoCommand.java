@@ -144,7 +144,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         }
                     }
                 } catch (ParseException e) {
-                    Log.errorf(e, "Failed to parse command line %s", buildRecipeInfo.getAdditionalArgs());
+                    Log.warnf("Failed to parse maven command line %s", buildRecipeInfo.getAdditionalArgs());
                 }
             }
             if (pomFile == null) {
@@ -261,7 +261,6 @@ public class LookupBuildInfoCommand implements Runnable {
                     info.tools.put(JDK, new VersionRange(buildRecipeInfo.getJavaVersion(), buildRecipeInfo.getJavaVersion(),
                             buildRecipeInfo.getJavaVersion()));
                 }
-                Log.infof("Got build recipe info %s", buildRecipeInfo);
                 if (buildRecipeInfo.getAlternativeArgs() != null && !buildRecipeInfo.getAlternativeArgs().isEmpty()) {
                     for (var i : info.invocations) {
                         var tool = i.get(0);
@@ -283,6 +282,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.preBuildScript = buildRecipeInfo.getPreBuildScript();
                 info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
                 info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
+                Log.infof("Got build recipe info %s", buildRecipeInfo);
             }
             ObjectMapper mapper = new ObjectMapper();
             mapper.writeValue(buildInfo.toFile(), info);
