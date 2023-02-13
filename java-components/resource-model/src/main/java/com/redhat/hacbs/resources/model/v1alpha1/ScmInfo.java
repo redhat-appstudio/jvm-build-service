@@ -6,6 +6,7 @@ public class ScmInfo {
     private String scmType;
     private String scmURL;
     private String tag;
+    private String commitHash;
 
     private String path;
 
@@ -54,6 +55,15 @@ public class ScmInfo {
 
     public ScmInfo setPrivateRepo(boolean privateRepo) {
         this.privateRepo = privateRepo;
+        return this;
+    }
+
+    public String getCommitHash() {
+        return commitHash;
+    }
+
+    public ScmInfo setCommitHash(String commitHash) {
+        this.commitHash = commitHash;
         return this;
     }
 }
