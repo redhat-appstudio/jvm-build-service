@@ -187,7 +187,11 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 				"maven-repository-302-redhat":    "https://maven.repository.redhat.com/ga",
 				"maven-repository-303-jitpack":   "https://jitpack.io"},
 
-			CacheSettings: v1alpha1.CacheSettings{},
+			CacheSettings: v1alpha1.CacheSettings{ //up the cache size, this is a lot of builds all at once, we could limit the number of pods instead but this gets the test done faster
+				RequestMemory: "1024Mi",
+				LimitMemory:   "1024Mi",
+				WorkerThreads: "100",
+			},
 			ImageRegistry: v1alpha1.ImageRegistry{
 				Host:       "quay.io",
 				Owner:      owner,
