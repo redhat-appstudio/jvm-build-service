@@ -6,11 +6,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Base64;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -18,11 +15,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
@@ -44,6 +38,15 @@ import io.quarkus.logging.Log;
 
 public class ContainerRegistryDeployer implements Deployer {
 
+    private static final String DOUBLE_POINT = ":";
+    private static final String SLASH = "/";
+    private static final String UNDERSCORE = "_";
+    private static final String DOT_JAR = ".jar";
+    private static final String DOT_POM = ".pom";
+    private static final String DOT = ".";
+    private static final String HACBS = "hacbs";
+    private static final String ARTIFACTS = "artifacts";
+    private static final int BUFFER_SIZE = 4096;
     static {
         if (System.getProperty("jib.httpTimeout") == null) {
             //long timout, but not infinite
@@ -127,11 +130,11 @@ public class ContainerRegistryDeployer implements Deployer {
     }
 
     @Override
-    public void deployArchive(Path tarGzFile, Path sourcePath, Path logsPath) throws Exception {
+    public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
         // Read the tar to get the gavs and files
-        DeployData imageData = getImageData(tarGzFile);
+        DeployData imageData = new DeployData(deployDir, gavs, prependTag);
 
         try {
             // Create the image layers
@@ -202,35 +205,6 @@ public class ContainerRegistryDeployer implements Deployer {
         return List.of(source, logs, artifacts);
     }
 
-    private DeployData getImageData(Path tarGzFile) throws IOException {
-        Path outputPath = Paths.get(Files.createTempDirectory(HACBS).toString(), ARTIFACTS);
-        Files.createDirectories(outputPath);
-
-        try (InputStream tarInput = Files.newInputStream(tarGzFile)) {
-            DeployData imageData = new DeployData(outputPath, extractTarArchive(tarInput, outputPath.toString()));
-            return imageData;
-        }
-    }
-
-    private Set<Gav> extractTarArchive(InputStream tarInput, String folder) throws IOException {
-
-        Set<Gav> gavs = new HashSet<>();
-
-        try (GZIPInputStream inputStream = new GZIPInputStream(tarInput);
-                TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream)) {
-
-            for (TarArchiveEntry entry = tarArchiveInputStream.getNextTarEntry(); entry != null; entry = tarArchiveInputStream
-                    .getNextTarEntry()) {
-                Optional<Gav> maybeGav = extractEntry(entry, tarArchiveInputStream, folder);
-                if (maybeGav.isPresent()) {
-                    gavs.add(maybeGav.get());
-
-                }
-            }
-        }
-        return gavs;
-    }
-
     private Optional<Gav> extractEntry(ArchiveEntry entry, InputStream tar, String folder) throws IOException {
         final String path = folder + File.separator + entry.getName();
         if (entry.isDirectory()) {
@@ -276,15 +250,5 @@ public class ContainerRegistryDeployer implements Deployer {
         }
         return Optional.empty();
     }
-
-    private static final String DOUBLE_POINT = ":";
-    private static final String SLASH = "/";
-    private static final String UNDERSCORE = "_";
-    private static final String DOT_JAR = ".jar";
-    private static final String DOT_POM = ".pom";
-    private static final String DOT = ".";
-    private static final String HACBS = "hacbs";
-    private static final String ARTIFACTS = "artifacts";
-    private static final int BUFFER_SIZE = 4096;
 
 }

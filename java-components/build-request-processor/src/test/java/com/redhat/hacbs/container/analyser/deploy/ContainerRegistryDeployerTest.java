@@ -1,28 +1,20 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -79,12 +71,12 @@ public class ContainerRegistryDeployerTest {
     public void testDeployArchive(QuarkusMainLauncher launcher) throws IOException {
 
         // Here we just make sure we can create images.
-        Path createTestTarGz = createTestTarGz();
+        Path onDiskRepo = createDeploymentRepo();
         Path source = Files.createTempDirectory("hacbs");
         Files.writeString(source.resolve("pom.xml"), "");
         Path logs = Files.createTempDirectory("hacbs");
         Files.writeString(logs.resolve("maven.log"), "");
-        var result = launcher.launch("deploy-container", "--tar-path=" + createTestTarGz.toAbsolutePath().toString(),
+        var result = launcher.launch("deploy-container", "--path=" + onDiskRepo.toAbsolutePath(),
                 "--registry-host=" + container.getHost(),
                 "--registry-port=" + port,
                 "--registry-owner=" + OWNER,
@@ -102,7 +94,7 @@ public class ContainerRegistryDeployerTest {
         Assertions.assertTrue(containerRegistryDetails.tags.contains(EXPECTED_TAG_2));
     }
 
-    private Path createTestTarGz() throws IOException {
+    private Path createDeploymentRepo() throws IOException {
         Path artifacts = Paths.get("target/test-data/artifacts").toAbsolutePath();
         Files.createDirectories(artifacts);
 
@@ -129,44 +121,7 @@ public class ContainerRegistryDeployerTest {
             Files.writeString(shaFile, sha1);
         }
 
-        // Now tar.gz the folder
-        String tarFileName = "target/" + artifacts.getFileName().toString() + ".tar.gz";
-
-        try (OutputStream fOut = Files.newOutputStream(Paths.get(tarFileName));
-                BufferedOutputStream buffOut = new BufferedOutputStream(fOut);
-                GzipCompressorOutputStream gzOut = new GzipCompressorOutputStream(buffOut);
-                TarArchiveOutputStream tOut = new TarArchiveOutputStream(gzOut)) {
-
-            Files.walkFileTree(artifacts, new SimpleFileVisitor<>() {
-
-                @Override
-                public FileVisitResult visitFile(Path file,
-                        BasicFileAttributes attributes) throws IOException {
-
-                    if (!attributes.isSymbolicLink()) {
-                        Path targetFile = artifacts.relativize(file);
-
-                        TarArchiveEntry tarEntry = new TarArchiveEntry(
-                                file.toFile(), targetFile.toString());
-
-                        tOut.putArchiveEntry(tarEntry);
-                        Files.copy(file, tOut);
-                        tOut.closeArchiveEntry();
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                    return FileVisitResult.CONTINUE;
-                }
-
-            });
-
-            tOut.finish();
-            fOut.flush();
-        }
-        return Paths.get(tarFileName);
+        return artifacts;
     }
 
     private ContainerRegistryDetails getContainerRegistryDetails() throws IOException {

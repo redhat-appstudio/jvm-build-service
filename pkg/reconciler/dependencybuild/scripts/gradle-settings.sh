@@ -20,7 +20,7 @@ systemProp.http.socketTimeout=600000
 systemProp.http.connectionTimeout=600000
 
 # Settings for <https://github.com/vanniktech/gradle-maven-publish-plugin>
-RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/hacbs-jvm-deployment-repo
+RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/artifacts
 RELEASE_SIGNING_ENABLED=false
 EOF
 cat > "${GRADLE_USER_HOME}"/init.gradle << EOF

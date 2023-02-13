@@ -47,7 +47,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"--repository-url=$(params.CACHE_URL)",
 		"--global-settings=/usr/share/maven/conf/settings.xml",
 		"--settings=$(workspaces.build-settings.path)/settings.xml",
-		"--deploy-path=$(workspaces.source.path)/hacbs-jvm-deployment-repo",
+		"--deploy-path=$(workspaces.source.path)/artifacts",
 		"--results-file=$(results." + artifactbuild.PassedVerification + ".path)",
 	}
 
@@ -56,7 +56,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	deployArgs := []string{
 		"deploy-container",
-		"--tar-path=$(workspaces.source.path)/hacbs-jvm-deployment-repo.tar.gz",
+		"--path=$(workspaces.source.path)/artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--source-path=$(workspaces.source.path)/source",
 		"--task-run=$(context.taskRun.name)",
