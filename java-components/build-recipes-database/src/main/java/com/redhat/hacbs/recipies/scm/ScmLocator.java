@@ -26,6 +26,9 @@ import org.apache.maven.model.Parent;
 import org.apache.maven.model.Scm;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.InvalidRemoteException;
+import org.eclipse.jgit.api.errors.TransportException;
 import org.jboss.logging.Logger;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
@@ -53,9 +56,11 @@ public class ScmLocator {
 
     private final ScmLocatorConfig config;
     private RecipeGroupManager recipeGroupManager;
+    private final Map<String, Map<String, String>> repoTagsToHash;
 
     private ScmLocator(ScmLocatorConfig config) {
         this.config = config;
+        this.repoTagsToHash = config.isCacheRepoTags() ? new HashMap<>() : Map.of();
     }
 
     private RecipeGroupManager getRecipeGroupManager() {
@@ -133,17 +138,7 @@ public class ScmLocator {
                 String selectedTag = null;
                 Set<String> versionExactContains = new HashSet<>();
                 Set<String> tagExactContains = new HashSet<>();
-                Map<String, String> tagsToHash = new HashMap<>();
-                var tags = Git.lsRemoteRepository()
-                        .setCredentialsProvider(
-                                new GitCredentials())
-                        .setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
-                Set<String> tagNames = new HashSet<>();
-                for (var tag : tags) {
-                    var name = tag.getName().replace("refs/tags/", "");
-                    tagNames.add(name);
-                    tagsToHash.put(name, tag.getObjectId().name());
-                }
+                final Map<String, String> tagsToHash = getTagToHashMap(parsedInfo);
 
                 //first try tag mappings
                 for (var mapping : allMappings) {
@@ -158,7 +153,7 @@ public class ScmLocator {
                         log.debugf("Trying to find tag %s", match);
                         //if the tag was a constant we don't require it to be in the tag set
                         //this allows for explicit refs to be used
-                        if (tagNames.contains(match) || match.equals(mapping.getTag())) {
+                        if (tagsToHash.containsKey(match) || match.equals(mapping.getTag())) {
                             selectedTag = match;
                             break;
                         }
@@ -166,7 +161,7 @@ public class ScmLocator {
                 }
 
                 if (selectedTag == null) {
-                    for (var name : tagNames) {
+                    for (var name : tagsToHash.keySet()) {
                         if (name.equals(version)) {
                             //exact match is always good
                             selectedTag = version;
@@ -237,6 +232,33 @@ public class ScmLocator {
         }
 
         return null;
+    }
+
+    private Map<String, String> getTagToHashMap(RepositoryInfo repo)
+            throws GitAPIException, InvalidRemoteException, TransportException {
+        Map<String, String> tagsToHash = repoTagsToHash.get(repo.getUri());
+        if (tagsToHash == null) {
+            tagsToHash = getTagToHashMapFromGit(repo);
+            if (config.isCacheRepoTags()) {
+                repoTagsToHash.put(repo.getUri(), tagsToHash);
+            }
+        }
+        return tagsToHash;
+    }
+
+    private static Map<String, String> getTagToHashMapFromGit(RepositoryInfo parsedInfo)
+            throws GitAPIException, InvalidRemoteException, TransportException {
+        Map<String, String> tagsToHash;
+        var tags = Git.lsRemoteRepository()
+                .setCredentialsProvider(
+                        new GitCredentials())
+                .setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
+        tagsToHash = new HashMap<>(tags.size());
+        for (var tag : tags) {
+            var name = tag.getName().replace("refs/tags/", "");
+            tagsToHash.put(name, tag.getObjectId().name());
+        }
+        return tagsToHash;
     }
 
     private ScmInfo attemptPomDiscovery(GAV toBuild) {
