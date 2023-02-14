@@ -19,8 +19,8 @@ fi
 
 export PATH="${SBT_DIST}/bin:${PATH}"
 
-mkdir $(workspaces.source.path)/logs
-mkdir $(workspaces.source.path)/packages
+mkdir -p $(workspaces.source.path)/logs
+mkdir -p $(workspaces.source.path)/packages
 {{INSTALL_PACKAGE_SCRIPT}}
 
 mkdir "$HOME/.sbt"

@@ -22,8 +22,8 @@ fi
 
 export PATH="${ANT_HOME}/bin:${PATH}"
 
-mkdir $(workspaces.source.path)/logs
-mkdir $(workspaces.source.path)/packages
+mkdir -p $(workspaces.source.path)/logs
+mkdir -p $(workspaces.source.path)/packages
 {{INSTALL_PACKAGE_SCRIPT}}
 
 # XXX: It's possible that build.xml is not in the root directory

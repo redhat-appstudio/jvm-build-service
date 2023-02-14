@@ -2,6 +2,7 @@ package dependencybuild
 
 import (
 	_ "embed"
+	"encoding/base64"
 	"fmt"
 	v1alpha12 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
@@ -39,7 +40,7 @@ var antBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
-func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild) (*pipelinev1beta1.PipelineSpec, error) {
+func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param) (*pipelinev1beta1.PipelineSpec, string, error) {
 
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := []string{
@@ -150,23 +151,23 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "512Mi"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	buildContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestMemory, "512Mi"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defaultContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defaultContainerLimitCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskLimitCPU, "300m"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	buildContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if recipe.AdditionalMemory > 0 {
@@ -184,6 +185,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			}
 		}
 	}
+	build = strings.ReplaceAll(strings.ReplaceAll(build, "{{INSTALL_PACKAGE_SCRIPT}}", install), "{{PRE_BUILD_SCRIPT}}", recipe.PreBuildScript)
 
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},
@@ -219,6 +221,9 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Name:            "settings",
 				Image:           "registry.access.redhat.com/ubi8/ubi:8.5", //TODO: should not be hard coded
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env: []v1.EnvVar{
+					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
+				},
 				Resources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
 					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
@@ -229,6 +234,9 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Name:            "preprocessor",
 				Image:           "$(params." + PipelineRequestProcessorImage + ")",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env: []v1.EnvVar{
+					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
+				},
 				Resources: v1.ResourceRequirements{
 					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
@@ -251,7 +259,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				},
 				Args: []string{"$(params.GOALS[*])"},
 
-				Script: strings.ReplaceAll(strings.ReplaceAll(build, "{{INSTALL_PACKAGE_SCRIPT}}", install), "{{PRE_BUILD_SCRIPT}}", recipe.PreBuildScript),
+				Script: build,
 			},
 			{
 				Name:            "verify-built-artifacts",
@@ -312,7 +320,55 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			Name:  i.Name,
 			Value: value})
 	}
-	return ps, nil
+
+	//we generate a docker file that can be used to reproduce this build
+	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
+	df := "FROM " + extractParam(PipelineRequestProcessorImage, paramValues) + " AS build-request-processor" +
+		"\nFROM " + strings.ReplaceAll(extractParam(PipelineRequestProcessorImage, paramValues), "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
+		"\nFROM " + extractParam(PipelineImage, paramValues) +
+		"\nUSER 0 " +
+		"\nCOPY --from=build-request-processor /deployments/ /root/build-request-processor" +
+		"\nCOPY --from=build-request-processor /lib/jvm/java-17 /root/system-java" +
+		"\nCOPY --from=cache /deployments/ /root/cache" +
+		"\nRUN mkdir -p /root/workspace && mkdir -p /root/settings && microdnf install vim" +
+		"\nRUN " + doSubstitution(gitArgs, paramValues, commitTime) +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/system-java/bin/java -jar /root/cache/quarkus-run.jar >/root/cache.log &")) + " | base64 -d >/root/start-cache.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(settings, paramValues, commitTime))) + " | base64 -d >/root/settings.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/system-java/bin/java -jar /root/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime))) + " | base64 -d >/root/preprocessor.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime))) + " | base64 -d >/root/build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/workspace/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineGoals, paramValues), " "))) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN chmod +x /root/*.sh"
+
+	return ps, df, nil
+}
+
+func extractParam(key string, paramValues []pipelinev1beta1.Param) string {
+	for _, i := range paramValues {
+		if i.Name == key {
+			return i.Value.StringVal
+		}
+	}
+	return ""
+}
+func extractArrayParam(key string, paramValues []pipelinev1beta1.Param) []string {
+	for _, i := range paramValues {
+		if i.Name == key {
+			return i.Value.ArrayVal
+		}
+	}
+	return []string{}
+}
+
+func doSubstitution(script string, paramValues []pipelinev1beta1.Param, commitTime int64) string {
+	for _, i := range paramValues {
+		if i.Value.Type == pipelinev1beta1.ParamTypeString {
+			script = strings.ReplaceAll(script, "$(params."+i.Name+")", i.Value.StringVal)
+		}
+	}
+	script = strings.ReplaceAll(script, "$(params.CACHE_URL)", "http://localhost:8080/v2/cache/rebuild/"+strconv.FormatInt(commitTime, 10)+"/")
+	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/root/settings/")
+	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/root/workspace/")
+	return script
 }
 
 func settingOrDefault(setting, def string) string {

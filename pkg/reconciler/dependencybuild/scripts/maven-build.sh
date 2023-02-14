@@ -5,8 +5,8 @@ if [ -n "$(params.CONTEXT_DIR)" ]
 then
     cd $(params.CONTEXT_DIR)
 fi
-mkdir $(workspaces.source.path)/logs
-mkdir $(workspaces.source.path)/packages
+mkdir -p $(workspaces.source.path)/logs
+mkdir -p $(workspaces.source.path)/packages
 {{INSTALL_PACKAGE_SCRIPT}}
 
 if [ -z "$(params.ENFORCE_VERSION)" ]

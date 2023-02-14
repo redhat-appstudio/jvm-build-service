@@ -494,17 +494,12 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
-	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
-	pr.Spec.PipelineSpec, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Tool, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
+
 	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	pr.Spec.ServiceAccountName = "pipeline"
-	pr.Spec.Params = []pipelinev1beta1.Param{
+	paramValues := []pipelinev1beta1.Param{
 		{Name: PipelineBuildId, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
 		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
@@ -516,6 +511,15 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
 		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
+	diagnostic := ""
+	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
+	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Tool, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db, paramValues)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	db.Status.DiagnosticDockerFiles = append(db.Status.DiagnosticDockerFiles, diagnostic)
+	pr.Spec.ServiceAccountName = "pipeline"
+	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
@@ -533,8 +537,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "PipelineRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
 		return reconcile.Result{}, err
 	}
-
-	return reconcile.Result{}, nil
+	return reconcile.Result{}, r.client.Status().Update(ctx, db)
 }
 
 func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
