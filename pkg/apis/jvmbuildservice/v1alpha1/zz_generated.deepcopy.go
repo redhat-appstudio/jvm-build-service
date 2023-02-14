@@ -346,6 +346,11 @@ func (in *DependencyBuildStatus) DeepCopyInto(out *DependencyBuildStatus) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.DiagnosticDockerFiles != nil {
+		in, out := &in.DiagnosticDockerFiles, &out.DiagnosticDockerFiles
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

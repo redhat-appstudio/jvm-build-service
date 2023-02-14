@@ -15,6 +15,7 @@ public class DependencyBuildStatus {
     private List<BuildRecipe> potentialBuildRecipes;
 
     private String lastCompletedBuildPipelineRun;
+    private List<String> diagnosticDockerFiles;
 
     private long commitTime;
 
@@ -78,6 +79,15 @@ public class DependencyBuildStatus {
 
     public DependencyBuildStatus setCommitTime(long commitTime) {
         this.commitTime = commitTime;
+        return this;
+    }
+
+    public List<String> getDiagnosticDockerFiles() {
+        return diagnosticDockerFiles;
+    }
+
+    public DependencyBuildStatus setDiagnosticDockerFiles(List<String> diagnosticDockerFiles) {
+        this.diagnosticDockerFiles = diagnosticDockerFiles;
         return this;
     }
 }

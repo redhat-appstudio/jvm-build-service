@@ -90,6 +90,7 @@ public class RemoteRepositoryManager {
         }
         for (var i : buildInfoRepos) {
             Path tempDir = Files.createTempDirectory("recipe");
+            Log.infof("Reading repos from %s at %s", i, tempDir);
             recipeDirs
                     .add(RecipeRepositoryManager.create(i, "main", Optional.of(Duration.of(10, ChronoUnit.MINUTES)), tempDir));
         }

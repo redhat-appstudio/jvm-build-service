@@ -39,6 +39,7 @@ type DependencyBuildStatus struct {
 	CommitTime                    int64          `json:"commitTime,omitempty"`
 	DeployedArtifacts             []string       `json:"deployedArtifacts,omitempty"`
 	FailedVerification            bool           `json:"failedVerification,omitempty"`
+	DiagnosticDockerFiles         []string       `json:"diagnosticDockerFiles,omitempty"`
 }
 
 // +genclient
