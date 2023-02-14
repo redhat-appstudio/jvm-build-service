@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -o verbose
 set -eu
 set -o pipefail
 if [ -n "$(params.CONTEXT_DIR)" ]

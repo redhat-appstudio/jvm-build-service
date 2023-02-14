@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+set -o verbose
 export PATH="$(workspaces.source.path)/packages:${PATH}"
 
 
