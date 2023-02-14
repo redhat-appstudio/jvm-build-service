@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+set -o verbose
 set -eu
 set -o pipefail
 
