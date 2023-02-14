@@ -327,6 +327,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nFROM " + strings.ReplaceAll(extractParam(PipelineRequestProcessorImage, paramValues), "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
 		"\nFROM " + extractParam(PipelineImage, paramValues) +
 		"\nUSER 0 " +
+		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineCacheUrl+")", paramValues, commitTime) +
 		"\nCOPY --from=build-request-processor /deployments/ /root/build-request-processor" +
 		"\nCOPY --from=build-request-processor /lib/jvm/java-17 /root/system-java" +
 		"\nCOPY --from=cache /deployments/ /root/cache" +
