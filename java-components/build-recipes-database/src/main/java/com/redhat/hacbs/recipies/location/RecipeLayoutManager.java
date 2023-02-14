@@ -100,7 +100,9 @@ public class RecipeLayoutManager implements RecipeDirectory {
         ComparableVersion currentVersion = null;
         Path currentPath = null;
         try (var s = Files.list(versions)) {
-            for (var path : s.toList()) {
+            var i = s.iterator();
+            while (i.hasNext()) {
+                var path = i.next();
                 ComparableVersion pv = new ComparableVersion(path.getFileName().toString());
                 if (requestedVersion.compareTo(pv) <= 0) {
                     if (currentVersion == null || pv.compareTo(currentVersion) > 0) {
