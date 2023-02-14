@@ -66,7 +66,7 @@ public class CacheControl {
                                                 GenericKubernetesResource genericKubernetesResource) {
                                             genericKubernetesResource.getMetadata().getAnnotations()
                                                     .remove(ModelConstants.CLEAR_CACHE);
-                                            genericKubernetesResource.getMetadata().getLabels()
+                                            genericKubernetesResource.getMetadata().getAnnotations()
                                                     .put(ModelConstants.LAST_CLEAR_CACHE, DateUtils.formatDate(new Date()));
                                             return genericKubernetesResource;
                                         }
