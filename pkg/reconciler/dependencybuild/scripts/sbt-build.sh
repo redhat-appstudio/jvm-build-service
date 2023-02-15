@@ -47,3 +47,9 @@ echo "Command is:"
 echo "sbt $@ "
 
 eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
+
+# This is replaced when the task is created by the golang code
+cat <<EOF
+Post build script: {{POST_BUILD_SCRIPT}}
+EOF
+{{POST_BUILD_SCRIPT}}

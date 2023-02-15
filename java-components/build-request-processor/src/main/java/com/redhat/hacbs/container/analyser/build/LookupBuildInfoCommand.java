@@ -283,6 +283,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.setRepositories(buildRecipeInfo.getRepositories());
                 info.disableSubmodules = buildRecipeInfo.isDisableSubmodules();
                 info.preBuildScript = buildRecipeInfo.getPreBuildScript();
+                info.postBuildScript = buildRecipeInfo.getPostBuildScript();
                 info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
                 info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
                 Log.infof("Got build recipe info %s", buildRecipeInfo);

@@ -192,6 +192,8 @@ spec:
                     type: string
                   pipeline:
                     type: string
+                  postBuildScript:
+                    type: string
                   preBuildScript:
                     type: string
                   repositories:
@@ -249,6 +251,8 @@ spec:
                       type: string
                     pipeline:
                       type: string
+                    postBuildScript:
+                      type: string
                     preBuildScript:
                       type: string
                     repositories:
@@ -304,6 +308,8 @@ spec:
                     javaVersion:
                       type: string
                     pipeline:
+                      type: string
+                    postBuildScript:
                       type: string
                     preBuildScript:
                       type: string

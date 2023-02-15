@@ -78,6 +78,7 @@ type BuildRecipe struct {
 	ToolVersion         string               `json:"toolVersion,omitempty"`
 	JavaVersion         string               `json:"javaVersion,omitempty"`
 	PreBuildScript      string               `json:"preBuildScript,omitempty"`
+	PostBuildScript     string               `json:"postBuildScript,omitempty"`
 	AdditionalDownloads []AdditionalDownload `json:"additionalDownloads,omitempty"`
 	DisableSubmodules   bool                 `json:"disableSubmodules,omitempty"`
 	AdditionalMemory    int                  `json:"additionalMemory,omitempty"`

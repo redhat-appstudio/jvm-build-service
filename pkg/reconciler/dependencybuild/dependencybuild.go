@@ -346,7 +346,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 				_, hasTool := image.Tools[tool]
 				if hasTool {
 					for _, tv := range toolVersions {
-						buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories})
+						buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories})
 					}
 				}
 			}
@@ -371,6 +371,7 @@ type marshalledBuildInfo struct {
 	JavaVersion         string
 	CommitTime          int64
 	PreBuildScript      string
+	PostBuildScript     string
 	DisableSubmodules   bool
 	AdditionalMemory    int
 	Repositories        []string
