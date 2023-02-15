@@ -553,7 +553,7 @@ func dumpPod(pod corev1.Pod, baseDirectory string, localDirectory string, kubeCl
 		if err != nil {
 			continue
 		}
-		ret = append(ret, localDirectory+pod.Name+container.Name)
+		ret = append(ret, localDirectory+pod.Name+"-"+container.Name)
 	}
 	return ret
 }
