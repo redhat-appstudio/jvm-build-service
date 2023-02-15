@@ -454,6 +454,17 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		default:
 			dependency.Other++
 		}
+		for index, docker := range db.Status.DiagnosticDockerFiles {
+
+			localPart := localDir + "-docker-" + strconv.Itoa(index) + ".txt"
+			fileName := directory + "/" + localPart
+			err = os.WriteFile(fileName, []byte(docker), 0644) //#nosec G306
+			if err != nil {
+				print(fmt.Sprintf("Failed to write docker filer %s: %s", directory, err))
+			} else {
+				instance.Logs = append(instance.Logs, localPart)
+			}
+		}
 		for _, pod := range podList.Items {
 			if strings.HasPrefix(pod.Name, db.Name) {
 				logFile := dumpPod(pod, directory, localDir, podClient, true)
@@ -518,7 +529,7 @@ func innerDumpPod(req *rest.Request, baseDirectory, localDirectory, podName, con
 		print(fmt.Sprintf("Failed to create artifact dir %s: %s", directory, err))
 		return err
 	}
-	localPart := localDirectory + podName + containerName
+	localPart := localDirectory + podName + "-" + containerName
 	fileName := baseDirectory + "/" + localPart
 	err = os.WriteFile(fileName, b, 0644) //#nosec G306
 	if err != nil {
