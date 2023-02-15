@@ -23,6 +23,8 @@ systemProp.http.connectionTimeout=600000
 # Settings for <https://github.com/vanniktech/gradle-maven-publish-plugin>
 RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/artifacts
 RELEASE_SIGNING_ENABLED=false
+mavenCentralUsername=
+mavenCentralPassword=
 EOF
 cat > "${GRADLE_USER_HOME}"/init.gradle << EOF
 allprojects {
