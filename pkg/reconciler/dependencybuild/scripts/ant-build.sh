@@ -60,3 +60,8 @@ echo "$(which ant) $@"
 
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
+# This is replaced when the task is created by the golang code
+cat <<EOF
+Post build script: {{POST_BUILD_SCRIPT}}
+EOF
+{{POST_BUILD_SCRIPT}}

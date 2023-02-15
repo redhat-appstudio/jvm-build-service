@@ -33,6 +33,8 @@ public class BuildRecipeInfo {
 
     String preBuildScript;
 
+    String postBuildScript;
+
     boolean disableSubmodules;
 
     int additionalMemory;
@@ -93,6 +95,15 @@ public class BuildRecipeInfo {
         return this;
     }
 
+    public String getPostBuildScript() {
+        return postBuildScript;
+    }
+
+    public BuildRecipeInfo setPostBuildScript(String postBuildScript) {
+        this.postBuildScript = postBuildScript;
+        return this;
+    }
+
     public List<AdditionalDownload> getAdditionalDownloads() {
         return additionalDownloads;
     }
@@ -139,6 +150,7 @@ public class BuildRecipeInfo {
                 ", toolVersion='" + toolVersion + '\'' +
                 ", javaVersion='" + javaVersion + '\'' +
                 ", preBuildScript='" + preBuildScript + '\'' +
+                ", postBuildScript='" + postBuildScript + '\'' +
                 ", disableSubmodules=" + disableSubmodules +
                 ", additionalMemory=" + additionalMemory +
                 ", additionalDownloads=" + additionalDownloads +

@@ -23,6 +23,8 @@ public class BuildRecipe {
 
     String preBuildScript;
 
+    String postBuildScript;
+
     public String getImage() {
         return image;
     }
@@ -38,6 +40,15 @@ public class BuildRecipe {
 
     public BuildRecipe setPreBuildScript(String preBuildScript) {
         this.preBuildScript = preBuildScript;
+        return this;
+    }
+
+    public String getPostBuildScript() {
+        return postBuildScript;
+    }
+
+    public BuildRecipe setPostBuildScript(String postBuildScript) {
+        this.postBuildScript = postBuildScript;
         return this;
     }
 

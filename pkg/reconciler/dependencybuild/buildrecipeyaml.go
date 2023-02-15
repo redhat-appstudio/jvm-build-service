@@ -185,7 +185,9 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			}
 		}
 	}
-	build = strings.ReplaceAll(strings.ReplaceAll(build, "{{INSTALL_PACKAGE_SCRIPT}}", install), "{{PRE_BUILD_SCRIPT}}", recipe.PreBuildScript)
+	build = strings.ReplaceAll(build, "{{INSTALL_PACKAGE_SCRIPT}}", install)
+	build = strings.ReplaceAll(build, "{{PRE_BUILD_SCRIPT}}", recipe.PreBuildScript)
+	build = strings.ReplaceAll(build, "{{POST_BUILD_SCRIPT}}", recipe.PostBuildScript)
 
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}},

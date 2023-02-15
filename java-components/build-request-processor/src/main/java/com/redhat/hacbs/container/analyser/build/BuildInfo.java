@@ -50,6 +50,8 @@ public class BuildInfo {
 
     String preBuildScript;
 
+    String postBuildScript;
+
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
     boolean disableSubmodules;
     int additionalMemory;
@@ -74,6 +76,15 @@ public class BuildInfo {
 
     public BuildInfo setPreBuildScript(String preBuildScript) {
         this.preBuildScript = preBuildScript;
+        return this;
+    }
+
+    public String getPostBuildScript() {
+        return postBuildScript;
+    }
+
+    public BuildInfo setPostBuildScript(String postBuildScript) {
+        this.postBuildScript = postBuildScript;
         return this;
     }
 
