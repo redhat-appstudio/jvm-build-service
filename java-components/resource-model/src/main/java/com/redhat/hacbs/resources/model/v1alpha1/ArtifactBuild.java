@@ -14,6 +14,13 @@ import io.fabric8.kubernetes.model.annotation.Version;
 public class ArtifactBuild extends CustomResource<ArtifactBuildSpec, ArtifactBuildStatus>
         implements Namespaced {
 
+    public static final String COMPLETE = "ArtifactBuildComplete";
+    public static final String NEW = "ArtifactBuildNew";
+    public static final String DISCOVERING = "ArtifactBuildDiscovering";
+    public static final String MISSING = "ArtifactBuildMissing";
+    public static final String BUILDING = "ArtifactBuildBuilding";
+    public static final String FAILED = "ArtifactBuildFailed";
+
     @Override
     protected ArtifactBuildSpec initSpec() {
         return new ArtifactBuildSpec();

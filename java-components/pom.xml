@@ -67,6 +67,7 @@
         <module>classfile-tracker</module>
         <module>resource-model</module>
         <module>build-request-processor</module>
+        <module>cli</module>
     </modules>
 
     <dependencyManagement>
@@ -222,6 +223,11 @@
                 <groupId>org.apache.ivy</groupId>
                 <artifactId>ivy</artifactId>
                 <version>2.5.1</version>
+            </dependency>
+            <dependency>
+                <groupId>info.picocli</groupId>
+                <artifactId>picocli-shell-jline2</artifactId>
+                <version>4.7.1</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
