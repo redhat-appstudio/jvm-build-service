@@ -147,7 +147,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	gitArgs = gitArgs + "git clone $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineScmTag + ")"
 
 	if !recipe.DisableSubmodules {
-		gitArgs = gitArgs + " --recurse-submodules"
+		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
 	}
 	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "512Mi"))
 	if err != nil {
