@@ -111,11 +111,11 @@ public class MavenClient implements RepositoryClient {
                     continue;
                 }
                 if (response.getStatusLine().getStatusCode() == 404) {
-                    response.close();
+                    closeResponse(response);
                     return Optional.empty();
                 }
                 if (response.getStatusLine().getStatusCode() != 200) {
-                    response.close();
+                    closeResponse(response);
                     Log.errorf(
                             "Unexpected status code: " + response.getStatusLine().getStatusCode() + " downloading %s from %s",
                             target, targetUri);
@@ -141,6 +141,14 @@ public class MavenClient implements RepositoryClient {
             }
         }
         throw new RuntimeException(networkException);
+    }
+
+    private void closeResponse(CloseableHttpResponse response) throws IOException {
+        byte[] buff = new byte[1024];
+        while (response.getEntity().getContent().read(buff) > 0) {
+
+        }
+        response.close();
     }
 
     @Override
