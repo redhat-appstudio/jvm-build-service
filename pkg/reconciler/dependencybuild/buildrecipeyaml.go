@@ -132,7 +132,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		build = sbtBuild
 		preprocessorArgs[0] = "sbt-prepare"
 	} else if tool == "ant" {
-		settings = ""
+		settings = mavenSettings
 		build = antBuild
 		preprocessorArgs[0] = "ant-prepare"
 	} else {
