@@ -55,7 +55,7 @@ export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 
 # FIXME: additionalArgs is added to args, but we need additionalArgs only; assume that we know the original tasks so that we can remove them
-ADDITIONAL_ARGS=$(echo "$@" | sed -e 's/build \(publish\|uploadArchives\)\($\| \)//')
+ADDITIONAL_ARGS=$(echo "$@" | perl -p -e 's/([\w-]+:)?(build|publish|uploadArchives)\s?//g')
 echo ADDITIONAL_ARGS="${ADDITIONAL_ARGS}"
 
 INIT_SCRIPTS=""
