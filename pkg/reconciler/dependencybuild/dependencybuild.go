@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
 	"sort"
 	"strconv"
 	"strings"
@@ -57,6 +58,7 @@ const (
 	PipelineType          = "jvmbuildservice.io/pipeline-type"
 	PipelineTypeBuildInfo = "build-info"
 	PipelineTypeBuild     = "build"
+	MaxRetries            = 3
 )
 
 type ReconcileDependencyBuild struct {
@@ -594,12 +596,47 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			//already handled
 			return reconcile.Result{}, nil
 		}
+		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+
+		if !success {
+			//if there was a cache issue we want to rety the build
+			//we check and see if there is a cache pod newer than the build
+			//if so we just delete the pipelinerun
+			p := v1.PodList{}
+			listOpts := &client.ListOptions{
+				Namespace:     pr.Namespace,
+				LabelSelector: labels.SelectorFromSet(map[string]string{"app": v1alpha1.CacheDeploymentName}),
+			}
+			err := r.client.List(ctx, &p, listOpts)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			if db.Status.PipelineRetries < MaxRetries {
+
+				for _, pod := range p.Items {
+					if pod.ObjectMeta.CreationTimestamp.After(pr.ObjectMeta.CreationTimestamp.Time) {
+						db.Status.PipelineRetries++
+						err := r.client.Status().Update(ctx, &db)
+						if err != nil {
+							return reconcile.Result{}, err
+						}
+						msg := fmt.Sprintf("Cache problems detected, retrying the build for DependencyBuild %s", db.Name)
+						log.Info(msg)
+						//this delete will cause the operator to re-try the pipelinerun
+						err = r.client.Delete(ctx, pr)
+						return reconcile.Result{}, err
+					}
+
+				}
+			}
+
+		}
+
 		db.Status.LastCompletedBuildPipelineRun = pr.Name
 		//the pr is done, lets potentially update the dependency build
 		//we just set the state here, the ABR logic is in the ABR controller
 		//this keeps as much of the logic in one place as possible
 
-		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
 			var image string
 			for _, i := range pr.Status.PipelineResults {

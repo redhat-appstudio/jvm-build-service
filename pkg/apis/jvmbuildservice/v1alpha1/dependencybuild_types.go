@@ -40,6 +40,7 @@ type DependencyBuildStatus struct {
 	DeployedArtifacts             []string       `json:"deployedArtifacts,omitempty"`
 	FailedVerification            bool           `json:"failedVerification,omitempty"`
 	DiagnosticDockerFiles         []string       `json:"diagnosticDockerFiles,omitempty"`
+	PipelineRetries               int            `json:"pipelineRetries,omitempty"`
 }
 
 // +genclient
