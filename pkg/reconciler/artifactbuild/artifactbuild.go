@@ -469,7 +469,9 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log lo
 				//this was not found
 				continue
 			}
-			if db.Status.State != v1alpha1.DependencyBuildStateContaminated {
+			if db.Status.State == v1alpha1.DependencyBuildStateComplete {
+				//it's already done, it did not need this artifact anyway
+				//don't rebuild until something asks for it
 				continue
 			}
 			var newContaminates []v1alpha1.Contaminant
