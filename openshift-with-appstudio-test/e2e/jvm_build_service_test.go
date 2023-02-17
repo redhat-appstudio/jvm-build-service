@@ -347,6 +347,12 @@ func TestExampleRun(t *testing.T) {
 						if !strings.Contains(cLog, "\"publisher\" : \"rebuilt\"") {
 							debugAndFailTest(ta, fmt.Sprintf("pipelinerun %s has container %s with dep analysis that does not access rebuilt %s", pr.Name, container.Name, cLog))
 						}
+						if !strings.Contains(cLog, "\"java:scm-uri\" : \"https://github.com/stuartwdouglas/hacbs-test-simple-jdk8.git\"") {
+							debugAndFailTest(ta, fmt.Sprintf("pipelinerun %s has container %s with dep analysis did not include java:scm-uri %s", pr.Name, container.Name, cLog))
+						}
+						if !strings.Contains(cLog, "\"java:scm-commit\" : \"") {
+							debugAndFailTest(ta, fmt.Sprintf("pipelinerun %s has container %s with dep analysis did not include java:scm-commit %s", pr.Name, container.Name, cLog))
+						}
 						break
 					}
 					ta.Logf(fmt.Sprintf("pr %s is done and has correct analyse-dependencies output, exiting", pr.Name))

@@ -82,6 +82,12 @@ public class SBomGenerator {
                 properties.addAll(component.getProperties());
             }
             component.setPublisher(i.source);
+            for (var e : i.getAttributes().entrySet()) {
+                Property property = new Property();
+                property.setName("java:" + e.getKey());
+                property.setValue(e.getValue());
+                properties.add(property);
+            }
 
             Property packageTypeProperty = new Property();
             packageTypeProperty.setName("package:type");

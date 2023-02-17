@@ -41,6 +41,8 @@ public class ContainerRegistryDeployerTest {
 
     private static final String EXPECTED_TAG_1 = "ddb962f47b1e1b33a3c59ce0e5a4a403c4e01373eca7fc6e992281f0c6324cc2";
     private static final String EXPECTED_TAG_2 = "f697132e6cc3e55c91e070ac80eabe7ff4a79ac336323fdadfaa191876d2b0d0";
+    public static final String COMMIT = "3cf2d99b47f0a05466d1d0a2e09d8740faeda149";
+    public static final String REPO = "https://github.com/foo/bar";
 
     static GenericContainer container;
     static int port;
@@ -83,6 +85,8 @@ public class ContainerRegistryDeployerTest {
                 "--registry-repository=" + REPOSITORY,
                 "--source-path=" + source.toAbsolutePath().toString(),
                 "--logs-path=" + logs.toAbsolutePath().toString(),
+                "--scm-uri=" + REPO,
+                "--scm-commit=" + COMMIT,
                 "--registry-insecure");
 
         Assertions.assertEquals(0, result.exitCode());
