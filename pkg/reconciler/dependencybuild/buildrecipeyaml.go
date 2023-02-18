@@ -61,6 +61,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--source-path=$(workspaces.source.path)/source",
 		"--task-run=$(context.taskRun.name)",
+		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
+		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
 	if jbsConfig.Spec.ImageRegistry.Host != "" {
 		deployArgs = append(deployArgs, "--registry-host="+jbsConfig.Spec.ImageRegistry.Host)
