@@ -20,11 +20,8 @@ spec:
       value: build-request-processor/src/main/docker/Dockerfile.all-in-one
   pipelineRef:
     name: docker-build
-    bundle: quay.io/redhat-appstudio/build-templates-bundle:devel
+    bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
   workspaces:
-    - name: registry-auth
-      secret:
-        secretName: redhat-appstudio-staginguser-pull-secret
     - name: workspace
       volumeClaimTemplate:
         spec:

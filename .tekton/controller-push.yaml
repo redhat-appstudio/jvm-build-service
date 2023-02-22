@@ -24,7 +24,7 @@ spec:
         sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/jvm-build-service/operator_env_patch.yaml
   pipelineRef:
     name: docker-build
-    bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
+    bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
   workspaces:
     - name: workspace
       volumeClaimTemplate:
