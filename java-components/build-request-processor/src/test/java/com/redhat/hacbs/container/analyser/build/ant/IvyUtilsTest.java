@@ -28,9 +28,11 @@ class IvyUtilsTest {
     private static final String LOCAL_PATTERN_VALUE = System.getProperty("user.home")
             + "/.m2/repository/[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]";
 
-    private static final String DEFAULT_RESOLVER_NAME = "default";
+    private static final String DEFAULT_RESOLVER = "default";
 
-    private static final String LOCAL_RESOLVER_NAME = "local";
+    private static final String DEFAULT_CHAIN = "defaultChain";
+
+    private static final String LOCAL_RESOLVER = "local";
 
     private static Ivy ivy;
 
@@ -55,9 +57,9 @@ class IvyUtilsTest {
         assertThat(localPattern).isEqualTo(LOCAL_PATTERN_VALUE);
         var defaultResolver = settings.getDefaultResolver();
         var name = defaultResolver.getName();
-        assertThat(name).isEqualTo(DEFAULT_RESOLVER_NAME);
+        assertThat(name).isEqualTo(DEFAULT_CHAIN);
         var resolvers = settings.getResolvers();
-        assertThat(resolvers).hasSize(2).extracting("name")
-                .containsExactlyInAnyOrder(DEFAULT_RESOLVER_NAME, LOCAL_RESOLVER_NAME);
+        assertThat(resolvers).hasSize(3).extracting("name")
+                .containsExactlyInAnyOrder(DEFAULT_RESOLVER, DEFAULT_CHAIN, LOCAL_RESOLVER);
     }
 }

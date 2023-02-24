@@ -32,14 +32,14 @@ cat > ivysettings.xml << EOF
     <property name="cache-url" value="$(params.CACHE_URL)"/>
     <property name="default-pattern" value="[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
     <property name="local-pattern" value="\${user.home}/.m2/repository/[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
-    <settings defaultResolver="default"/>
+    <settings defaultResolver="defaultChain"/>
     <resolvers>
         <ibiblio name="default" root="\${cache-url}" pattern="\${default-pattern}" m2compatible="true"/>
         <filesystem name="local" m2compatible="true">
             <artifact pattern="\${local-pattern}"/>
             <ivy pattern="\${local-pattern}"/>
         </filesystem>
-        <chain name="default">
+        <chain name="defaultChain">
             <resolver ref="local"/>
             <resolver ref="default"/>
         </chain>
