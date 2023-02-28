@@ -33,7 +33,7 @@ EOF
 
 mkdir "$HOME/.sbt/1.0/"
 cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
-publishTo := Some(("MavenRepo" at s"file://$(workspaces.source.path)/artifacts").withAllowInsecureProtocol(true)),
+publishTo := Some(("MavenRepo" at s"file:$(workspaces.source.path)/artifacts").withAllowInsecureProtocol(true)),
 EOF
 #This is replaced when the task is created by the golang code
 cat <<EOF
