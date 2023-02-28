@@ -22,6 +22,7 @@ spec:
       value: |
         sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/jvm-build-service/kustomization.yaml
         sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/jvm-build-service/operator_env_patch.yaml
+        sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/monitoring/grafana/base/jvm-build-service/kustomization.yaml
   pipelineRef:
     name: docker-build
     bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
