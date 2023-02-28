@@ -1,0 +1,15 @@
+
+apply plugin: KotlinJsPlugin
+
+class KotlinJsPlugin implements Plugin<Gradle> {
+
+    void apply(Gradle gradle) {
+        gradle.allprojects {
+            tasks.whenTaskAdded({
+                if (it.class.getName().contains("kotlin.gradle.targets.js")) {
+                    it.setEnabled(false)
+                }
+            })
+        }
+    }
+}

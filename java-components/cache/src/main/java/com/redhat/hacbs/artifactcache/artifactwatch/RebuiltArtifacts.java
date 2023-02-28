@@ -44,6 +44,17 @@ public class RebuiltArtifacts {
 
             @Override
             public void onUpdate(RebuiltArtifact old, RebuiltArtifact newObj) {
+                List<Consumer<String>> listeners = new ArrayList<>(imageDeletionListeners.size());
+                synchronized (imageDeletionListeners) {
+                    listeners.addAll(imageDeletionListeners);
+                }
+                for (var i : listeners) {
+                    try {
+                        i.accept(old.getSpec().getImage());
+                    } catch (Throwable t) {
+                        Log.errorf(t, "Failed to notify deletion listener");
+                    }
+                }
                 Log.infof("Adding updated RebuiltArtifact %s", newObj.getSpec().getGav());
                 gavs.add(newObj.getSpec().getGav());
             }
@@ -52,7 +63,7 @@ public class RebuiltArtifacts {
             public void onDelete(RebuiltArtifact artifactBuild, boolean deletedFinalStateUnknown) {
                 gavs.remove(artifactBuild.getSpec().getGav());
                 if (!deletedFinalStateUnknown) {
-                    List<Consumer<String>> listeners = new ArrayList<>();
+                    List<Consumer<String>> listeners = new ArrayList<>(imageDeletionListeners.size());
                     synchronized (imageDeletionListeners) {
                         listeners.addAll(imageDeletionListeners);
                     }

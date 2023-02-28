@@ -5,11 +5,6 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-/**
- * TODO: this should be stored per repo/tag/path, not per artifact
- * otherwise in theory artifacts could have different settings which would result in a non-deterministic outcome
- * This is not a now problem, but something we should address in the mid term.
- */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BuildRecipeInfo {
 
@@ -40,6 +35,8 @@ public class BuildRecipeInfo {
     int additionalMemory;
 
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
+
+    boolean runTests;
 
     public List<String> getAdditionalArgs() {
         return additionalArgs;
@@ -137,6 +134,15 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setAdditionalMemory(int additionalMemory) {
         this.additionalMemory = additionalMemory;
+        return this;
+    }
+
+    public boolean isRunTests() {
+        return runTests;
+    }
+
+    public BuildRecipeInfo setRunTests(boolean runTests) {
+        this.runTests = runTests;
         return this;
     }
 

@@ -178,6 +178,7 @@ spec:
       securityContext:
         runAsUser: 0
       image: quay.io/replaced-image:bogus
+      imagePullPolicy: Always
       args:
         - analyse-dependencies
         - path

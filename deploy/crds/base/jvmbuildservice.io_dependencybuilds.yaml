@@ -271,6 +271,8 @@ spec:
                 type: string
               message:
                 type: string
+              pipelineRetries:
+                type: integer
               potentialBuildRecipes:
                 description: PotentialBuildRecipes additional recipes to try if the
                   current recipe fails

@@ -6,8 +6,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.scm.ScmLocator;
-import com.redhat.hacbs.recipies.scm.ScmLocatorConfig;
+import com.redhat.hacbs.recipies.scm.GitScmLocator;
+import com.redhat.hacbs.recipies.scm.PomScmLocator;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
@@ -49,11 +49,7 @@ public class LookupScmLocationCommand implements Runnable {
         try {
             GAV toBuild = GAV.parse(gav);
             Log.infof("Looking up %s", gav);
-            var scmLocatorConfig = ScmLocatorConfig.builder()
-                    .setCacheUrl(cacheUrl)
-                    .setRecipeRepos(recipeRepos)
-                    .build();
-            var scmLocator = ScmLocator.getInstance(scmLocatorConfig);
+            var scmLocator = getScmLocator();
             var tagInfo = scmLocator.resolveTagInfo(toBuild);
             if (tagInfo != null) {
                 Log.infof("Found tag %s", tagInfo.getTag());
@@ -93,5 +89,13 @@ public class LookupScmLocationCommand implements Runnable {
                 }
             }
         }
+    }
+
+    private GitScmLocator getScmLocator() {
+        var builder = GitScmLocator.builder().setRecipeRepos(recipeRepos);
+        if (cacheUrl != null) {
+            builder.setFallback(new PomScmLocator(cacheUrl));
+        }
+        return builder.build();
     }
 }

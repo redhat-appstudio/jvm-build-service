@@ -14,15 +14,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 import javax.enterprise.inject.spi.BeanManager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
+import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRun;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRunResult;
 import com.redhat.hacbs.container.analyser.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.Contaminant;
+import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -54,6 +57,11 @@ public abstract class DeployCommand implements Runnable {
     @CommandLine.Option(required = false, names = "--logs-path")
     Path logsPath;
 
+    @CommandLine.Option(required = false, names = "--scm-uri")
+    String scmUri;
+
+    @CommandLine.Option(required = false, names = "--scm-commit")
+    String commit;
     protected String imageName;
 
     public DeployCommand(BeanManager beanManager,
@@ -73,6 +81,7 @@ public abstract class DeployCommand implements Runnable {
                 Map<String, Set<String>> contaminatedPaths = new HashMap<>();
                 Map<String, Set<String>> contaminatedGavs = new HashMap<>();
                 Set<Path> toRemove = new HashSet<>();
+                Map<Path, Gav> jarFiles = new HashMap<>();
                 Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -103,9 +112,48 @@ public abstract class DeployCommand implements Runnable {
                             }
 
                         }
+                        if (gav.isPresent()) {
+                            //now add our own tracking data
+                            if (name.endsWith(".jar") && !name.endsWith("-sources.jar") && !name.endsWith("-javadoc.jar")) {
+                                jarFiles.put(file, gav.get());
+                            }
+                        }
                         return FileVisitResult.CONTINUE;
                     }
                 });
+                for (var e : jarFiles.entrySet()) {
+                    Path file = e.getKey();
+                    Gav gav = e.getValue();
+                    try {
+                        String fileName = file.getFileName().toString();
+                        Path temp = file.getParent().resolve(fileName + ".temp");
+                        ClassFileTracker.addTrackingDataToJar(Files.newInputStream(file),
+                                new TrackingData(
+                                        gav.getGroupId() + ":" + gav.getArtifactId() + ":"
+                                                + gav.getVersion(),
+                                        "rebuilt", Map.of("scm-uri", scmUri, "scm-commit", commit)),
+                                Files.newOutputStream(temp));
+                        Files.delete(file);
+                        Files.move(temp, file);
+                        try (Stream<Path> pathStream = Files.list(file.getParent())) {
+                            pathStream.filter(s -> s.getFileName().toString().startsWith(fileName + "."))
+                                    .forEach(f -> {
+                                        try {
+                                            Files.delete(f);
+                                        } catch (IOException ex) {
+                                            throw new RuntimeException(ex);
+                                        }
+                                    });
+                        }
+
+                        Files.writeString(file.getParent().resolve(fileName + ".md5"),
+                                HashUtil.md5(Files.newInputStream(file)));
+                        Files.writeString(file.getParent().resolve(fileName + ".sha1"),
+                                HashUtil.sha1(Files.newInputStream(file)));
+                    } catch (Exception ex) {
+                        Log.errorf(ex, "Failed to instrument %s", file);
+                    }
+                }
                 for (var i : toRemove) {
                     Log.errorf("Removing %s as it is contaminated", i);
                     FileUtil.deleteRecursive(i);
@@ -126,7 +174,6 @@ public abstract class DeployCommand implements Runnable {
                 }
                 //we still deploy, but without the contaminates
                 java.nio.file.Path deployFile = deploymentPath;
-                boolean allSkipped = false;
                 Log.infof("Contaminants: %s", contaminatedPaths);
                 Log.infof("Contaminated GAVS: %s", contaminatedGavs);
                 //update the DB with contaminant information
@@ -134,6 +181,7 @@ public abstract class DeployCommand implements Runnable {
                 for (var i : contaminatedGavs.entrySet()) {
                     gavs.removeAll(i.getValue());
                 }
+
                 if (!gavs.isEmpty()) {
                     try {
                         cleanBrokenSymlinks(sourcePath);

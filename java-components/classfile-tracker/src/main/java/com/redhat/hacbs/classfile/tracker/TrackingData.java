@@ -34,12 +34,13 @@ public class TrackingData {
         if (o == null || getClass() != o.getClass())
             return false;
         TrackingData that = (TrackingData) o;
-        return Objects.equals(gav, that.gav) && Objects.equals(source, that.source);
+        return Objects.equals(gav, that.gav) && Objects.equals(source, that.source)
+                && Objects.equals(attributes, that.attributes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(gav, source);
+        return Objects.hash(gav, source, attributes);
     }
 
     @Override
@@ -47,6 +48,7 @@ public class TrackingData {
         return "TrackingData{" +
                 "gav='" + gav + '\'' +
                 ", source='" + source + '\'' +
+                ", attributes=" + attributes +
                 '}';
     }
 }
