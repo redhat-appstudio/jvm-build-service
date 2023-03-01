@@ -47,6 +47,7 @@ spec:
                   type: object
                 type: object
               quota:
+                description: DEPRECATED
                 type: string
               recipeDatabase:
                 type: string
