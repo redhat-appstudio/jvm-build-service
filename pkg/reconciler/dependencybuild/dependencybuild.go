@@ -526,6 +526,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
+		{Name: WorkspaceTls, ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}},
 	}
 	pr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
