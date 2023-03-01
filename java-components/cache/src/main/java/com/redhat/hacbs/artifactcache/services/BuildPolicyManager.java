@@ -72,7 +72,8 @@ class BuildPolicyManager {
                 String name = "hacbs-artifact-relocations-" + policy;
                 repositories.add(new RepositoryCache(storageManager.resolve(name),
                         new Repository(name, "hacbs-internal://relocations",
-                                RepositoryType.RELOCATIONS, new RelocationRepositoryClient(policyRelocations))));
+                                RepositoryType.RELOCATIONS, new RelocationRepositoryClient(policyRelocations)),
+                        true));
             }
             for (var store : stores.get().split(",")) {
                 var cache = remoteRepositoryManager.getRemoteRepositories(store);

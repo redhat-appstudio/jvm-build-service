@@ -44,18 +44,21 @@ public class RepositoryCache {
     final StorageManager tempDownloads;
     final Repository repository;
 
+    final boolean overwriteExistingBytecodeMarkers;
+
     /**
      * Tracks in progress downloads to prevent concurrency issues
      */
     final ConcurrentMap<String, DownloadingFile> inProgressDownloads = new ConcurrentHashMap<>();
     final ConcurrentMap<String, CountDownLatch> inProgressTransformations = new ConcurrentHashMap<>();
 
-    public RepositoryCache(StorageManager storageManager, Repository repository) {
+    public RepositoryCache(StorageManager storageManager, Repository repository, boolean overwriteExistingBytecodeMarkers) {
         this.storageManager = storageManager;
         this.downloaded = storageManager.resolve(ORIGINAL);
         this.transformed = storageManager.resolve(TRANSFORMED);
         this.tempDownloads = storageManager.resolve(DOWNLOADS);
         this.repository = repository;
+        this.overwriteExistingBytecodeMarkers = overwriteExistingBytecodeMarkers;
         Log.infof("Creating cache with path %s", storageManager.toString());
     }
 
@@ -194,7 +197,8 @@ public class RepositoryCache {
                 try (OutputStream out = Files.newOutputStream(trackedJarFile); var in = Files.newInputStream(downloaded)) {
                     HashingOutputStream hashingOutputStream = new HashingOutputStream(out);
                     ClassFileTracker.addTrackingDataToJar(in,
-                            new TrackingData(gav, repository.getName(), Collections.emptyMap()), hashingOutputStream);
+                            new TrackingData(gav, repository.getName(), Collections.emptyMap()), hashingOutputStream,
+                            overwriteExistingBytecodeMarkers);
                     hashingOutputStream.close();
 
                     Files.writeString(instrumentedSha, hashingOutputStream.getHash());
@@ -307,7 +311,7 @@ public class RepositoryCache {
                                         var transformedOut = Files.newOutputStream(tempTransformedFile)) {
                                     ClassFileTracker.addTrackingDataToJar(inFromFile,
                                             new TrackingData(gav, repository.getName(), Collections.emptyMap()),
-                                            transformedOut);
+                                            transformedOut, overwriteExistingBytecodeMarkers);
                                 }
                                 Files.delete(tempFile);
                                 return Optional.of(new ArtifactResult(Files.newInputStream(tempTransformedFile),

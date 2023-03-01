@@ -86,7 +86,7 @@ public class RemoteRepositoryManager {
                     RepositoryType.OCI_REGISTRY,
                     new OCIRegistryRepositoryClient(host, registryOwner.get(), repository, token, prependTag,
                             insecure, rebuiltArtifacts, storageManager));
-            remoteStores.put("rebuilt", List.of(new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo)));
+            remoteStores.put("rebuilt", List.of(new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false)));
         }
         for (var i : buildInfoRepos) {
             Path tempDir = Files.createTempDirectory("recipe");
@@ -106,7 +106,7 @@ public class RemoteRepositoryManager {
                     store = new ArrayList<>();
                     if (repo != null) {
                         for (var i : repo) {
-                            store.add(new RepositoryCache(storageManager.resolve(i.getName()), i));
+                            store.add(new RepositoryCache(storageManager.resolve(i.getName()), i, true));
                         }
                     }
                     remoteStores.put(name, store);

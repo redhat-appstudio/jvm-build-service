@@ -28,11 +28,12 @@ public class ClassFileTracker {
 
     public static final Logger LOGGER = Logger.getLogger("dependency-analyser");
 
-    public static byte[] addTrackingDataToClass(byte[] classData, TrackingData data, String name) {
+    public static byte[] addTrackingDataToClass(byte[] classData, TrackingData data, String name, boolean overwrite) {
         try {
             ClassReader classReader = new ClassReader(classData);
             ClassWriter writer = new ClassWriter(classReader, 0);
-            ClassTrackingWriteDataVisitor classTrackingVisitor = new ClassTrackingWriteDataVisitor(Opcodes.ASM9, writer, data);
+            ClassTrackingWriteDataVisitor classTrackingVisitor = new ClassTrackingWriteDataVisitor(Opcodes.ASM9, writer, data,
+                    overwrite);
             classReader.accept(classTrackingVisitor, 0);
             return writer.toByteArray();
         } catch (Exception e) {
@@ -57,13 +58,13 @@ public class ClassFileTracker {
         return classTrackingVisitor.getContents();
     }
 
-    public static byte[] addTrackingDataToJar(byte[] input, TrackingData data) throws IOException {
+    public static byte[] addTrackingDataToJar(byte[] input, TrackingData data, boolean overwrite) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        addTrackingDataToJar(new ByteArrayInputStream(input), data, out);
+        addTrackingDataToJar(new ByteArrayInputStream(input), data, out, overwrite);
         return out.toByteArray();
     }
 
-    public static void addTrackingDataToJar(InputStream input, TrackingData data, OutputStream out)
+    public static void addTrackingDataToJar(InputStream input, TrackingData data, OutputStream out, boolean overwrite)
             throws IOException, ZipException {
         Set<String> seen = new HashSet<>();
         try (ZipInputStream zipIn = new ZipInputStream(input)) {
@@ -80,7 +81,7 @@ public class ClassFileTracker {
                             if (entry.getLastModifiedTime() != null) {
                                 newEntry.setLastModifiedTime(entry.getLastModifiedTime());
                             }
-                            byte[] modified = addTrackingDataToClass(zipIn.readAllBytes(), data, entry.getName());
+                            byte[] modified = addTrackingDataToClass(zipIn.readAllBytes(), data, entry.getName(), overwrite);
                             newEntry.setSize(modified.length);
                             zipOut.putNextEntry(newEntry);
                             zipOut.write(modified);
@@ -93,7 +94,7 @@ public class ClassFileTracker {
                                 newEntry.setLastModifiedTime(entry.getLastModifiedTime());
                             }
                             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                            addTrackingDataToJar(new NoCloseInputStream(zipIn), data, baos);
+                            addTrackingDataToJar(new NoCloseInputStream(zipIn), data, baos, overwrite);
                             byte[] modified = baos.toByteArray();
                             newEntry.setSize(modified.length);
                             zipOut.putNextEntry(newEntry);
