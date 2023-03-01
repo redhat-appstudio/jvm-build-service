@@ -11,7 +11,6 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pendingpipelinerun"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -113,10 +112,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	}
 
 	if err := jbsconfig.SetupNewReconcilerWithManager(mgr); err != nil {
-		return nil, err
-	}
-
-	if err := pendingpipelinerun.SetupPRReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

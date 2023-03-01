@@ -27,7 +27,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pendingpipelinerun"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -65,7 +64,6 @@ type ReconcileDependencyBuild struct {
 	client        client.Client
 	scheme        *runtime.Scheme
 	eventRecorder record.EventRecorder
-	prCreator     pendingpipelinerun.PipelineRunCreate
 }
 
 func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
@@ -73,7 +71,6 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
-		prCreator:     &pendingpipelinerun.PendingCreate{},
 	}
 }
 
@@ -188,8 +185,8 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	if err := r.client.Status().Update(ctx, db); err != nil {
 		return reconcile.Result{}, err
 	}
-	if err := r.prCreator.CreateWrapperForPipelineRun(ctx, r.client, &pr); err != nil {
-		return reconcile.Result{}, err
+	if err := r.client.Create(ctx, &pr); err != nil {
+		return reconcile.Result{}, nil
 	}
 	return reconcile.Result{}, nil
 }
@@ -532,7 +529,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	//now we submit the build
-	if err := r.prCreator.CreateWrapperForPipelineRun(ctx, r.client, &pr); err != nil {
+	if err := r.client.Create(ctx, &pr); err != nil {
 		if errors.IsAlreadyExists(err) {
 			log.V(4).Info("handleStateBuilding: pipelinerun %s:%s already exists, not retrying", pr.Namespace, pr.Name)
 			return reconcile.Result{}, nil
