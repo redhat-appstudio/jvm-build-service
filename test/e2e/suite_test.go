@@ -18,7 +18,6 @@ package e2e
 
 import (
 	"context"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/pendingpipelinerun"
 	"go/build"
 	"os"
 	"path/filepath"
@@ -40,7 +39,6 @@ import (
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -136,10 +134,6 @@ var _ = BeforeSuite(func() {
 	err = artifactbuild.SetupNewReconcilerWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 	err = dependencybuild.SetupNewReconcilerWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	err = pendingpipelinerun.SetupPRReconcilerWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-	err = clusterresourcequota.SetupNewReconciler(cfg)
 	Expect(err).ToNot(HaveOccurred())
 	util.ImageTag = "foo"
 	go func() {
