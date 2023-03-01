@@ -17,10 +17,12 @@ public class ClassTrackingModificationTestCase {
     @Test
     public void testBytecodeClassLevelTracking() throws Exception {
         byte[] thisClass = getClass().getResourceAsStream(getClass().getSimpleName() + ".class").readAllBytes();
-        var results = ClassFileTracker.addTrackingDataToClass(thisClass, DATA, "test");
+        var results = ClassFileTracker.addTrackingDataToClass(thisClass, DATA, "test", true);
         Assertions.assertEquals(DATA, ClassFileTracker.readTrackingInformationFromClass(results));
-        results = ClassFileTracker.addTrackingDataToClass(results, CHANGED_DATA, "changed-name");
+        results = ClassFileTracker.addTrackingDataToClass(results, CHANGED_DATA, "changed-name", false);
         Assertions.assertEquals(DATA, ClassFileTracker.readTrackingInformationFromClass(results));
+        results = ClassFileTracker.addTrackingDataToClass(results, CHANGED_DATA, "changed-name", true);
+        Assertions.assertEquals(CHANGED_DATA, ClassFileTracker.readTrackingInformationFromClass(results));
     }
 
     @Test
@@ -32,7 +34,7 @@ public class ClassTrackingModificationTestCase {
         zip.write(thisClass);
         zip.close();
 
-        var results = ClassFileTracker.addTrackingDataToJar(out.toByteArray(), DATA);
+        var results = ClassFileTracker.addTrackingDataToJar(out.toByteArray(), DATA, true);
         Assertions.assertEquals(Collections.singleton(DATA), ClassFileTracker.readTrackingDataFromJar(results, "test.jar"));
     }
 }

@@ -129,7 +129,7 @@ public class LocalCacheTest {
             CacheFacade localCache = new CacheFacade(
                     Map.of("default", new BuildPolicy(
                             List.of(new RepositoryCache(storageManager,
-                                    new Repository("test", "http://test.com", RepositoryType.MAVEN2, MOCK_CLIENT))))));
+                                    new Repository("test", "http://test.com", RepositoryType.MAVEN2, MOCK_CLIENT), true)))));
 
             consumer.accept(localCache, temp);
 

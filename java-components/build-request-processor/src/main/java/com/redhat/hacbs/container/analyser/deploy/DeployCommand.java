@@ -132,7 +132,7 @@ public abstract class DeployCommand implements Runnable {
                                         gav.getGroupId() + ":" + gav.getArtifactId() + ":"
                                                 + gav.getVersion(),
                                         "rebuilt", Map.of("scm-uri", scmUri, "scm-commit", commit)),
-                                Files.newOutputStream(temp));
+                                Files.newOutputStream(temp), false);
                         Files.delete(file);
                         Files.move(temp, file);
                         try (Stream<Path> pathStream = Files.list(file.getParent())) {
