@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/redhat-appstudio/jvm-build-service/openshift-with-appstudio-test/e2e"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
+	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -36,5 +37,9 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	e2e.GenerateStatusReport("test-jvm-namespace", jvmClient, clientset)
+	tektonClient, err := pipelineclientset.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+	e2e.GenerateStatusReport("test-jvm-namespace", jvmClient, clientset, tektonClient)
 }
