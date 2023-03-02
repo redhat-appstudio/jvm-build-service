@@ -11,7 +11,7 @@ class RepositoryPlugin implements Plugin<Gradle> {
             all { ArtifactRepository repo ->
                 if (!(repo instanceof MavenArtifactRepository) ||
                         (repo.url.toString() != ENTERPRISE_REPOSITORY_URL && repo.url.toString() != BINTRAY_URL )) {
-                    if (repo.toString().contains("PluginArtifactRepository")) {
+                    if (repo.toString().contains("PluginArtifactRepository") || (Boolean.getBoolean("ALLOW_IVY_REPO") && repo.toString().contains("DefaultIvyArtifactRepository"))) {
                         return
                     }
                     if (repo instanceof MavenArtifactRepository) {
