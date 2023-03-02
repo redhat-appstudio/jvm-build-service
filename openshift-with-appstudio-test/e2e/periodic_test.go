@@ -164,7 +164,6 @@ func TestServiceRegistry(t *testing.T) {
 		var dbBuildingCount uint32
 		var createdDB int32
 		state := sync.Map{}
-		var changed uint32
 		exitForLoop := false
 		timeoutChannel := time.After(2 * time.Hour)
 
@@ -214,8 +213,9 @@ func TestServiceRegistry(t *testing.T) {
 					}
 				}
 				//if the state has changed, or there is a new DB we need to check the current state
+				changed := false
 				if s != db.Status.State || !k {
-					atomic.StoreUint32(&changed, 1) //mark as changed to it will be reported on, as this was a change
+					changed = true //mark as changed to it will be reported on, as this was a change
 
 					//if it entered a stable state we increment the counter for that state
 					switch db.Status.State {
@@ -238,7 +238,7 @@ func TestServiceRegistry(t *testing.T) {
 				}
 
 				dbg := false
-				if atomic.CompareAndSwapUint32(&changed, 1, 0) {
+				if changed {
 					ta.Logf(fmt.Sprintf("dependencybuild created count: %d complete count: %d, failed count: %d, contaminated count: %d building count %d", createdDB, dbCompleteCount, dbFailedCount, dbContaminatedCount, dbBuildingCount))
 					dbg = true
 
