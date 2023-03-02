@@ -23,6 +23,7 @@ import (
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,7 +104,7 @@ func dumpNodes(ta *testArgs) {
 }
 
 func debugAndFailTest(ta *testArgs, failMsg string) {
-	GenerateStatusReport(ta.ns, jvmClient, kubeClient)
+	GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 	dumpBadEvents(ta)
 	ta.t.Fatalf(failMsg)
 
@@ -362,7 +363,7 @@ var reportTemplate string
 // this should always be true in the committed code though
 const DUMP_LOGS = true
 
-func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, kubeClient *kubeset.Clientset) {
+func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, kubeClient *kubeset.Clientset, pipelineClient *pipelineclientset.Clientset) {
 
 	directory := os.Getenv("ARTIFACT_DIR")
 	if directory == "" {
@@ -376,6 +377,10 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	}
 	podClient := kubeClient.CoreV1().Pods(namespace)
 	podList, err := podClient.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	pipelineList, err := pipelineClient.TektonV1beta1().PipelineRuns(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
@@ -415,10 +420,24 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		default:
 			artifact.Other++
 		}
+
+		_ = os.MkdirAll(directory+"/"+localDir, 0755) //#nosec G306 G301
 		for _, pod := range podList.Items {
 			if strings.HasPrefix(pod.Name, ab.Name) {
 				logFile := dumpPod(pod, directory, localDir, podClient, true)
 				instance.Logs = append(instance.Logs, logFile...)
+			}
+		}
+		for _, pipelineRun := range pipelineList.Items {
+			if strings.HasPrefix(pipelineRun.Name, ab.Name) {
+				t := pipelineRun
+				yaml := encodeToYaml(&t)
+				target := directory + "/" + localDir + "-" + "pipeline-" + t.Name
+				err := os.WriteFile(target, []byte(yaml), 0644) //#nosec G306)
+				if err != nil {
+					print(fmt.Sprintf("Failed to write pipleine file %s: %s", target, err))
+				}
+				instance.Logs = append(instance.Logs, localDir+"-"+"pipeline-"+t.Name)
 			}
 		}
 	}
@@ -454,13 +473,14 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		default:
 			dependency.Other++
 		}
+		_ = os.MkdirAll(directory+"/"+localDir, 0755) //#nosec G306 G301
 		for index, docker := range db.Status.DiagnosticDockerFiles {
 
 			localPart := localDir + "-docker-" + strconv.Itoa(index) + ".txt"
 			fileName := directory + "/" + localPart
 			err = os.WriteFile(fileName, []byte(docker), 0644) //#nosec G306
 			if err != nil {
-				print(fmt.Sprintf("Failed to write docker filer %s: %s", directory, err))
+				print(fmt.Sprintf("Failed to write docker filer %s: %s", fileName, err))
 			} else {
 				instance.Logs = append(instance.Logs, localPart)
 			}
@@ -469,6 +489,18 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 			if strings.HasPrefix(pod.Name, db.Name) {
 				logFile := dumpPod(pod, directory, localDir, podClient, true)
 				instance.Logs = append(instance.Logs, logFile...)
+			}
+		}
+		for _, pipelineRun := range pipelineList.Items {
+			if strings.HasPrefix(pipelineRun.Name, db.Name) {
+				t := pipelineRun
+				yaml := encodeToYaml(&t)
+				target := directory + "/" + localDir + "-" + "pipeline-" + t.Name
+				err := os.WriteFile(target, []byte(yaml), 0644) //#nosec G306)
+				if err != nil {
+					print(fmt.Sprintf("Failed to write pipleine file %s: %s", target, err))
+				}
+				instance.Logs = append(instance.Logs, localDir+"-"+"pipeline-"+t.Name)
 			}
 		}
 	}

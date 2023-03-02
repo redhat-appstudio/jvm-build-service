@@ -143,7 +143,7 @@ func TestServiceRegistry(t *testing.T) {
 
 	didNotCompleteInTime := false
 	ta.t.Run("current target of artifactbuilds/dependencybuilds complete", func(t *testing.T) {
-		defer GenerateStatusReport(ta.ns, jvmClient, kubeClient)
+		defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 		ctx := context.TODO()
 		//abWatch, awerr := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Watch(ctx, metav1.ListOptions{})
 		//if awerr != nil {

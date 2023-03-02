@@ -31,7 +31,7 @@ import (
 
 func TestExampleRun(t *testing.T) {
 	ta := setup(t, nil)
-	defer GenerateStatusReport(ta.ns, jvmClient, kubeClient)
+	defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 	//TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
 	// and successful runs (in case a run succeeds, but we find something amiss if we look at passing runs; our in repo
 	// tests do now run in conjunction with say the full suite of e2e's in the e2e-tests runs, so no contention there.
