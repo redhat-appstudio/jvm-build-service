@@ -331,16 +331,16 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nFROM " + strings.ReplaceAll(extractParam(PipelineRequestProcessorImage, paramValues), "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
 		"\nFROM " + extractParam(PipelineImage, paramValues) +
 		"\nUSER 0 " +
-		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineCacheUrl+")", paramValues, commitTime) +
+		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineCacheUrl+")", paramValues, commitTime, buildRepos) +
 		"\nCOPY --from=build-request-processor /deployments/ /root/build-request-processor" +
 		"\nCOPY --from=build-request-processor /lib/jvm/java-17 /root/system-java" +
 		"\nCOPY --from=cache /deployments/ /root/cache" +
 		"\nRUN mkdir -p /root/workspace && mkdir -p /root/settings && microdnf install vim" +
-		"\nRUN " + doSubstitution(gitArgs, paramValues, commitTime) +
+		"\nRUN " + doSubstitution(gitArgs, paramValues, commitTime, buildRepos) +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/system-java/bin/java -jar /root/cache/quarkus-run.jar >/root/cache.log &")) + " | base64 -d >/root/start-cache.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(settings, paramValues, commitTime))) + " | base64 -d >/root/settings.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/system-java/bin/java -jar /root/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime))) + " | base64 -d >/root/preprocessor.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime))) + " | base64 -d >/root/build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(settings, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/settings.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/system-java/bin/java -jar /root/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos))) + " | base64 -d >/root/preprocessor.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/build.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/workspace/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineGoals, paramValues), " "))) + " | base64 -d >/root/run-full-build.sh" +
 		"\nRUN chmod +x /root/*.sh"
 
@@ -364,13 +364,13 @@ func extractArrayParam(key string, paramValues []pipelinev1beta1.Param) []string
 	return []string{}
 }
 
-func doSubstitution(script string, paramValues []pipelinev1beta1.Param, commitTime int64) string {
+func doSubstitution(script string, paramValues []pipelinev1beta1.Param, commitTime int64, buildRepos string) string {
 	for _, i := range paramValues {
 		if i.Value.Type == pipelinev1beta1.ParamTypeString {
 			script = strings.ReplaceAll(script, "$(params."+i.Name+")", i.Value.StringVal)
 		}
 	}
-	script = strings.ReplaceAll(script, "$(params.CACHE_URL)", "http://localhost:8080/v2/cache/rebuild/"+strconv.FormatInt(commitTime, 10)+"/")
+	script = strings.ReplaceAll(script, "$(params.CACHE_URL)", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
 	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/root/settings/")
 	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/root/workspace/")
 	return script
