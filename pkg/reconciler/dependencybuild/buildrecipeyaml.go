@@ -333,7 +333,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nUSER 0 " +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineCacheUrl+")", paramValues, commitTime, buildRepos) +
 		"\nCOPY --from=build-request-processor /deployments/ /root/build-request-processor" +
-		"\nCOPY --from=build-request-processor /lib/jvm/java-17 /root/system-java" +
+		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/system-java" +
 		"\nCOPY --from=cache /deployments/ /root/cache" +
 		"\nRUN mkdir -p /root/workspace && mkdir -p /root/settings && microdnf install vim" +
 		"\nRUN " + doSubstitution(gitArgs, paramValues, commitTime, buildRepos) +
