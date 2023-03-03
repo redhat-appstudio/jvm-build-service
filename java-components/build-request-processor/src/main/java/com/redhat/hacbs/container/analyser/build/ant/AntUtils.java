@@ -12,6 +12,8 @@ import org.apache.tools.ant.ProjectHelper;
 import com.redhat.hacbs.container.analyser.build.JavaVersion;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
 
+import io.quarkus.logging.Log;
+
 /**
  * Utility class for Ant.
  */
@@ -88,10 +90,15 @@ public final class AntUtils {
      * @return the specified Java version, or empty if none
      */
     public static String getJavaVersion(Path path) {
-        var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
-        var project = loadProject(buildFile);
-        var javaVersion = getJavaVersion(project);
-        return javaVersion != -1 ? Integer.toString(javaVersion) : "";
+        try {
+            var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
+            var project = loadProject(buildFile);
+            var javaVersion = getJavaVersion(project);
+            return javaVersion != -1 ? Integer.toString(javaVersion) : "";
+        } catch (Throwable t) {
+            Log.errorf(t, "Failed to determine Java version for ant project");
+        }
+        return "";
     }
 
     /**
@@ -101,9 +108,14 @@ public final class AntUtils {
      * @return the JDK version range if possible, or {@code null} otherwise
      */
     public static VersionRange getJavaVersionRange(Path path) {
-        var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
-        var project = loadProject(buildFile);
-        return getJavaVersionRange(project);
+        try {
+            var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
+            var project = loadProject(buildFile);
+            return getJavaVersionRange(project);
+        } catch (Throwable t) {
+            Log.errorf(t, "Failed to determine Java version for ant project");
+        }
+        return new VersionRange("7", "17", "8");
     }
 
     /**

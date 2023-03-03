@@ -98,6 +98,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD));
             }
 
+            Log.infof("Checking out %f at tag %s", scmUrl, tag);
             doBuildAnalysis(scmUrl, tag, context, buildRecipeInfo, privateRepo);
 
         } catch (Exception e) {
