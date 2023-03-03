@@ -17,6 +17,10 @@
             <artifactId>picocli-shell-jline2</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkiverse.githubapi</groupId>
+            <artifactId>quarkus-github-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>tekton-client</artifactId>
         </dependency>
