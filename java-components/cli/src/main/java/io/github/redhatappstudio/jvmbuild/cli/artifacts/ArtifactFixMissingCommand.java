@@ -6,8 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.jgit.api.CreateBranchCommand;
+import com.redhat.hacbs.recipies.util.FileUtil;
+import io.github.redhatappstudio.jvmbuild.cli.repo.PullRequestCreator;
+import io.github.redhatappstudio.jvmbuild.cli.repo.RepositoryChange;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.transport.URIish;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 
@@ -85,38 +88,19 @@ public class ArtifactFixMissingCommand implements Runnable {
         } else {
             throw new RuntimeException("Must specify one of -a or -g");
         }
+        String finalGav = gav;
+        RepositoryChange.createPullRequest(new PullRequestCreator() {
+            @Override
+            public String branchName() {
+                return finalGav.replace(":", "-");
+            }
 
-        //TODO: should not be hard coded
-        try {
-            var gh = GitHub.connect();
-            var me = gh.getMyself().getLogin();
-            System.out.println(me);
-            GHRepository mainRepo = gh.getRepository("redhat-appstudio/jvm-build-data");
-            var forks = mainRepo.listForks();
-            GHRepository myfork = null;
-            for (GHRepository i : forks.toList()) {
-                if (i.getOwnerName().equals(me)) {
-                    myfork = i;
-                    break;
-                }
-            }
-            if (myfork == null) {
-                throw new RuntimeException("Could not find fork of the redhat-appstudio/jvm-build-data repo owned by" + me
-                        + ", please fork the repo");
-            }
-            Path checkoutPath = Files.createTempDirectory("fix-missing-recipe");
-            try (Git checkout = Git.cloneRepository().setDirectory(checkoutPath.toFile())
-                    .setURI(myfork.getHttpTransportUrl()).call()) {
-                System.out.println(checkoutPath);
-                String branchName = gav.replace(":", "-");
-                checkout.checkout().setCreateBranch(true).setName(branchName)
-                        .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM).setForceRefUpdate(true).call();
-                RecipeLayoutManager recipeLayoutManager = new RecipeLayoutManager(checkoutPath);
-                RecipeGroupManager groupManager = new RecipeGroupManager(List.of(recipeLayoutManager));
-                GAV parsed = GAV.parse(gav);
+            @Override
+            public void makeModifications(Path repositoryRoot, RecipeGroupManager groupManager, RecipeLayoutManager recipeLayoutManager) throws Exception{
+                GAV parsed = GAV.parse(finalGav);
                 Set<GAV> locationRequests = Set.of(parsed);
                 var existing = groupManager
-                        .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
+                    .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
                 if (!legacy) {
                     var existingModule = existing.getRecipes().get(parsed);
                     ScmInfo scmInfo = null;
@@ -144,8 +128,8 @@ public class ArtifactFixMissingCommand implements Runnable {
                         BuildRecipe.SCM.getHandler().write(scmInfo, existingFile);
                     } else {
                         recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, scmInfo,
-                                parsed.getGroupId(), group ? null : parsed.getArtifactId(),
-                                version ? parsed.getVersion() : null));
+                            parsed.getGroupId(), group ? null : parsed.getArtifactId(),
+                            version ? parsed.getVersion() : null));
                     }
 
                 } else {
@@ -172,24 +156,13 @@ public class ArtifactFixMissingCommand implements Runnable {
                     handleTagMapping(tagMapping, repo);
                     BuildRecipe.SCM.getHandler().write(existingInfo, existingFile);
                 }
-                //commit the changes
-                checkout.add().addFilepattern("scm-info").call();
-                checkout.commit().setMessage("Add scm-info for " + gav)
-                        .setAll(true)
-                        .call();
-
-                //push the changes to our fork
-                checkout.push().setForce(true).setCredentialsProvider(new GithubCredentials(me)).setRemote("origin").call();
-
-                String head = me + ":" + branchName;
-                System.out.println("head:" + head);
-                mainRepo.createPullRequest("Add scm-info for " + gav, head, "main", "");
-
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
 
+            @Override
+            public String commitMessage() {
+                return "Add scm-info for " + finalGav;
+            }
+        });
     }
 
     private void handleTagMapping(String tagMapping, RepositoryInfo repo) {
