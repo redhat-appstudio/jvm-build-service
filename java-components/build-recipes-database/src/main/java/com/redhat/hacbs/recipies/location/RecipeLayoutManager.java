@@ -9,6 +9,8 @@ import java.util.logging.Logger;
 
 import org.apache.maven.artifact.versioning.ComparableVersion;
 
+import com.redhat.hacbs.recipies.build.AddBuildRecipeRequest;
+
 /**
  * Manages an individual recipe database of build recipes.
  * <p>
@@ -75,7 +77,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
     @Override
     public Optional<Path> getBuildPaths(String scmUri, String version) {
-        Path target = buildInfoDirectory.resolve(scmUri);
+        Path target = buildInfoDirectory.resolve(RecipeGroupManager.normalizeScmUri(scmUri));
         if (!Files.exists(target)) {
             return Optional.empty();
         }
@@ -115,6 +117,21 @@ public class RecipeLayoutManager implements RecipeDirectory {
             throw new RuntimeException(e);
         }
         return Optional.ofNullable(currentPath);
+    }
+
+    @Override
+    public <T> void writeBuildData(AddBuildRecipeRequest<T> data) {
+        Path target = buildInfoDirectory.resolve(RecipeGroupManager.normalizeScmUri(data.getScmUri()));
+        if (data.getVersion() != null) {
+            target = target.resolve(VERSION).resolve(data.getVersion());
+        }
+        try {
+            Files.createDirectories(target);
+            data.getRecipe().getHandler().write(data.getData(), target.resolve(data.getRecipe().getName()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     @Override

@@ -3,6 +3,8 @@ package com.redhat.hacbs.recipies.location;
 import java.nio.file.Path;
 import java.util.Optional;
 
+import com.redhat.hacbs.recipies.build.AddBuildRecipeRequest;
+
 public interface RecipeDirectory {
 
     /**
@@ -20,6 +22,10 @@ public interface RecipeDirectory {
     Optional<Path> getRepositoryPaths(String name);
 
     default <T> void writeArtifactData(AddRecipeRequest<T> data) {
+        throw new IllegalStateException("Not implemented");
+    }
+
+    default <T> void writeBuildData(AddBuildRecipeRequest<T> data) {
         throw new IllegalStateException("Not implemented");
     }
 }

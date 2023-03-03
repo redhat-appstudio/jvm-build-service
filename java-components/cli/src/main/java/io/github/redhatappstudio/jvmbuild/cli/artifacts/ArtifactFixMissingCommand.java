@@ -1,32 +1,20 @@
 package io.github.redhatappstudio.jvmbuild.cli.artifacts;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
-
-import com.redhat.hacbs.recipies.util.FileUtil;
-import io.github.redhatappstudio.jvmbuild.cli.repo.PullRequestCreator;
-import io.github.redhatappstudio.jvmbuild.cli.repo.RepositoryChange;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.transport.URIish;
-import org.kohsuke.github.GHRepository;
-import org.kohsuke.github.GitHub;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.location.AddRecipeRequest;
 import com.redhat.hacbs.recipies.location.ArtifactInfoRequest;
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
 import com.redhat.hacbs.recipies.scm.RepositoryInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 import com.redhat.hacbs.recipies.scm.TagMapping;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.github.redhatappstudio.jvmbuild.cli.util.GithubCredentials;
+import io.github.redhatappstudio.jvmbuild.cli.repo.RepositoryChange;
 import io.quarkus.arc.Arc;
 import io.quarkus.runtime.Quarkus;
 import picocli.CommandLine;
@@ -89,80 +77,68 @@ public class ArtifactFixMissingCommand implements Runnable {
             throw new RuntimeException("Must specify one of -a or -g");
         }
         String finalGav = gav;
-        RepositoryChange.createPullRequest(new PullRequestCreator() {
-            @Override
-            public String branchName() {
-                return finalGav.replace(":", "-");
-            }
+        RepositoryChange.createPullRequest(finalGav.replace(":", "-"), "Add scm-info for " + finalGav,
+                (repositoryRoot, groupManager, recipeLayoutManager) -> {
+                    GAV parsed = GAV.parse(finalGav);
+                    Set<GAV> locationRequests = Set.of(parsed);
+                    var existing = groupManager
+                            .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
+                    if (!legacy) {
+                        var existingModule = existing.getRecipes().get(parsed);
+                        ScmInfo scmInfo = null;
+                        Path existingFile = null;
+                        if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
+                            existingFile = existingModule.get(BuildRecipe.SCM);
+                            scmInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
+                            if (scmInfo.getUri().equals(uri)) {
+                                System.err.println("Provided URI matches existing URI");
+                            }
+                            if (uri != null) {
+                                scmInfo.setUri(uri);
+                            }
+                            if (path != null) {
+                                scmInfo.setPath(path.equals("/") ? null : path);
+                            }
+                        } else {
+                            if (uri == null) {
+                                throw new RuntimeException("URI not specified, and no existing information");
+                            }
+                            scmInfo = new ScmInfo("git", uri, path);
+                        }
+                        handleTagMapping(tagMapping, scmInfo);
+                        if (existingFile != null && uri == null) {
+                            BuildRecipe.SCM.getHandler().write(scmInfo, existingFile);
+                        } else {
+                            recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, scmInfo,
+                                    parsed.getGroupId(), group ? null : parsed.getArtifactId(),
+                                    version ? parsed.getVersion() : null));
+                        }
 
-            @Override
-            public void makeModifications(Path repositoryRoot, RecipeGroupManager groupManager, RecipeLayoutManager recipeLayoutManager) throws Exception{
-                GAV parsed = GAV.parse(finalGav);
-                Set<GAV> locationRequests = Set.of(parsed);
-                var existing = groupManager
-                    .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
-                if (!legacy) {
-                    var existingModule = existing.getRecipes().get(parsed);
-                    ScmInfo scmInfo = null;
-                    Path existingFile = null;
-                    if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
-                        existingFile = existingModule.get(BuildRecipe.SCM);
-                        scmInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
-                        if (scmInfo.getUri().equals(uri)) {
-                            System.err.println("Provided URI matches existing URI");
-                        }
-                        if (uri != null) {
-                            scmInfo.setUri(uri);
-                        }
-                        if (path != null) {
-                            scmInfo.setPath(path.equals("/") ? null : path);
-                        }
                     } else {
-                        if (uri == null) {
-                            throw new RuntimeException("URI not specified, and no existing information");
+                        //legacy mode, we just want to add legacy info to an existing file
+                        var existingModule = existing.getRecipes().get(parsed);
+                        if (existingModule == null || !existingModule.containsKey(BuildRecipe.SCM)) {
+                            System.err.println("Cannot use --legacy when there is no existing data");
+                            Quarkus.asyncExit(1);
+                            return;
                         }
-                        scmInfo = new ScmInfo("git", uri, path);
-                    }
-                    handleTagMapping(tagMapping, scmInfo);
-                    if (existingFile != null && uri == null) {
-                        BuildRecipe.SCM.getHandler().write(scmInfo, existingFile);
-                    } else {
-                        recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, scmInfo,
-                            parsed.getGroupId(), group ? null : parsed.getArtifactId(),
-                            version ? parsed.getVersion() : null));
-                    }
-
-                } else {
-                    //legacy mode, we just want to add legacy info to an existing file
-                    var existingModule = existing.getRecipes().get(parsed);
-                    if (existingModule == null || !existingModule.containsKey(BuildRecipe.SCM)) {
-                        System.err.println("Cannot use --legacy when there is no existing data");
-                        Quarkus.asyncExit(1);
-                        return;
-                    }
-                    Path existingFile = existingModule.get(BuildRecipe.SCM);
-                    ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
-                    RepositoryInfo repo = null;
-                    for (var existingLegacy : existingInfo.getLegacyRepos()) {
-                        if (existingLegacy.getUri().equals(uri)) {
-                            repo = existingInfo;
-                            System.err.println("Legacy repo already exists");
-                            break;
+                        Path existingFile = existingModule.get(BuildRecipe.SCM);
+                        ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
+                        RepositoryInfo repo = null;
+                        for (var existingLegacy : existingInfo.getLegacyRepos()) {
+                            if (existingLegacy.getUri().equals(uri)) {
+                                repo = existingInfo;
+                                System.err.println("Legacy repo already exists");
+                                break;
+                            }
                         }
+                        if (repo == null) {
+                            existingInfo.getLegacyRepos().add(repo = new RepositoryInfo("git", uri, path));
+                        }
+                        handleTagMapping(tagMapping, repo);
+                        BuildRecipe.SCM.getHandler().write(existingInfo, existingFile);
                     }
-                    if (repo == null) {
-                        existingInfo.getLegacyRepos().add(repo = new RepositoryInfo("git", uri, path));
-                    }
-                    handleTagMapping(tagMapping, repo);
-                    BuildRecipe.SCM.getHandler().write(existingInfo, existingFile);
-                }
-            }
-
-            @Override
-            public String commitMessage() {
-                return "Add scm-info for " + finalGav;
-            }
-        });
+                });
     }
 
     private void handleTagMapping(String tagMapping, RepositoryInfo repo) {

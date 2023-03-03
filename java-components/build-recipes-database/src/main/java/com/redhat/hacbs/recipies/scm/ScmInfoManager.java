@@ -15,7 +15,11 @@ public class ScmInfoManager implements RecipeManager<ScmInfo> {
 
     @Override
     public ScmInfo parse(Path file) throws IOException {
-        return MAPPER.readValue(file.toFile(), ScmInfo.class);
+        ScmInfo info = MAPPER.readValue(file.toFile(), ScmInfo.class);
+        if (info == null) {
+            return new ScmInfo(); //can happen on empty file
+        }
+        return info;
     }
 
     @Override

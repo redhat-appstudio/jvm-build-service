@@ -1,22 +1,27 @@
 package io.github.redhatappstudio.jvmbuild.cli.repo;
 
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
-import com.redhat.hacbs.recipies.util.FileUtil;
-import io.github.redhatappstudio.jvmbuild.cli.util.GithubCredentials;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.URIish;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
+import com.redhat.hacbs.recipies.location.RecipeGroupManager;
+import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipies.util.FileUtil;
 
+import io.github.redhatappstudio.jvmbuild.cli.util.GithubCredentials;
+
+/**
+ * Utility class that can create a pull request against the build recipe repository
+ */
 public class RepositoryChange {
 
-    public static void createPullRequest(PullRequestCreator creator) {
+    public static void createPullRequest(String branchName, String commitMessage, PullRequestCreator creator) {
 
         //TODO: should not be hard coded
         try {
@@ -34,41 +39,39 @@ public class RepositoryChange {
             }
             if (myfork == null) {
                 throw new RuntimeException("Could not find fork of the redhat-appstudio/jvm-build-data repo owned by" + me
-                    + ", please fork the repo");
+                        + ", please fork the repo");
             }
             Path checkoutPath = Files.createTempDirectory("open-pr");
             try (Git checkout = Git.cloneRepository().setDirectory(checkoutPath.toFile())
-                .setURI(myfork.getHttpTransportUrl()).call()) {
+                    .setURI(myfork.getHttpTransportUrl()).call()) {
                 System.out.println("Checked out " + myfork.getHttpTransportUrl());
                 checkout.remoteAdd().setName("upstream").setUri(new URIish(mainRepo.getHttpTransportUrl())).call();
                 checkout.fetch().setRemote("upstream").call();
-                String branchName = creator.branchName();
                 checkout.checkout().setName("upstream/main").call();
                 checkout.checkout().setCreateBranch(true).setName(branchName)
-                    .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM).setForceRefUpdate(true).call();
+                        .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM).setForceRefUpdate(true).call();
                 RecipeLayoutManager recipeLayoutManager = new RecipeLayoutManager(checkoutPath);
                 RecipeGroupManager groupManager = new RecipeGroupManager(List.of(recipeLayoutManager));
                 creator.makeModifications(checkoutPath, groupManager, recipeLayoutManager);
                 //commit the changes
                 checkout.add().addFilepattern("scm-info").addFilepattern("build-info").call();
-                String message = creator.commitMessage();
-                checkout.commit().setMessage(message)
-                    .setAll(true)
-                    .call();
+                checkout.commit().setMessage(commitMessage)
+                        .setAll(true)
+                        .call();
 
                 //push the changes to our fork
                 checkout.push().setForce(true).setCredentialsProvider(new GithubCredentials(me)).setRemote("origin").call();
 
                 String head = me + ":" + branchName;
                 System.out.println("head:" + head);
-                var pr = mainRepo.createPullRequest(message, head, "main", "");
-                System.out.println("Created Pull Request: " + pr.getIssueUrl().toExternalForm().replace("https://api.github.com/repos", "https://github.com"));
+                var pr = mainRepo.createPullRequest(commitMessage, head, "main", "");
+                System.out.println("Created Pull Request: "
+                        + pr.getIssueUrl().toExternalForm().replace("https://api.github.com/repos", "https://github.com"));
                 FileUtil.deleteRecursive(checkoutPath);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
-
 
 }
