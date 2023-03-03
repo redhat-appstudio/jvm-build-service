@@ -30,7 +30,7 @@ public class ArtifactSummaryCommand implements Runnable {
         System.out.println("Missing:\t" + counts.remove(MISSING).get());
         System.out.println("Failed:\t\t" + counts.remove(FAILED).get());
         for (var e : counts.entrySet()) {
-            System.out.println(e.getKey().substring("ArtifactBuildState".length()) + ":\t" + e.getValue().get());
+            System.out.println(e.getKey().substring("ArtifactBuild".length()) + ":\t" + e.getValue().get());
         }
 
     }
