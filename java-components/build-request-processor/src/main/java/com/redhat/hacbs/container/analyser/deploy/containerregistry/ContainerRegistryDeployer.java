@@ -32,7 +32,7 @@ import com.redhat.hacbs.container.analyser.deploy.DeployData;
 import com.redhat.hacbs.container.analyser.deploy.Deployer;
 import com.redhat.hacbs.container.analyser.deploy.DeployerUtil;
 import com.redhat.hacbs.container.analyser.deploy.Gav;
-import com.redhat.hacbs.container.analyser.util.FileUtil;
+import com.redhat.hacbs.recipies.util.FileUtil;
 
 import io.quarkus.logging.Log;
 

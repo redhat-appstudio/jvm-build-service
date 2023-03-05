@@ -23,7 +23,7 @@ import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRun;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRunResult;
-import com.redhat.hacbs.container.analyser.util.FileUtil;
+import com.redhat.hacbs.recipies.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.Contaminant;
 import com.redhat.hacbs.resources.util.HashUtil;
 

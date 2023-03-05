@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.util;
+package com.redhat.hacbs.recipies.util;
 
 import java.io.IOException;
 import java.nio.file.Files;

@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import com.redhat.hacbs.container.analyser.util.FileUtil;
+import com.redhat.hacbs.recipies.util.FileUtil;
 
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
 

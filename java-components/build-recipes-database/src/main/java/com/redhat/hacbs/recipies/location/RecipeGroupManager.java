@@ -116,14 +116,7 @@ public class RecipeGroupManager {
 
     public BuildInfoResponse requestBuildInformation(BuildInfoRequest buildInfoRequest) {
 
-        String scmUri = buildInfoRequest.getScmUri();
-        if (scmUri.endsWith(".git")) {
-            scmUri = scmUri.substring(0, scmUri.length() - 4);
-        }
-        int pos = scmUri.indexOf("://");
-        if (pos != -1) {
-            scmUri = scmUri.substring(pos + 3);
-        }
+        String scmUri = normalizeScmUri(buildInfoRequest.getScmUri());
 
         List<Path> paths = new ArrayList<>();
         for (var r : repositories) {
@@ -145,5 +138,16 @@ public class RecipeGroupManager {
 
         }
         return new BuildInfoResponse(buildResults);
+    }
+
+    public static String normalizeScmUri(String scmUri) {
+        if (scmUri.endsWith(".git")) {
+            scmUri = scmUri.substring(0, scmUri.length() - 4);
+        }
+        int pos = scmUri.indexOf("://");
+        if (pos != -1) {
+            scmUri = scmUri.substring(pos + 3);
+        }
+        return scmUri;
     }
 }

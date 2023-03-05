@@ -17,7 +17,11 @@ public class BuildRecipeInfoManager implements RecipeManager<BuildRecipeInfo> {
 
     @Override
     public BuildRecipeInfo parse(Path file) throws IOException {
-        return MAPPER.readValue(file.toFile(), BuildRecipeInfo.class);
+        BuildRecipeInfo buildRecipeInfo = MAPPER.readValue(file.toFile(), BuildRecipeInfo.class);
+        if (buildRecipeInfo == null) {
+            return new BuildRecipeInfo(); //can happen with empty files
+        }
+        return buildRecipeInfo;
     }
 
     @Override
