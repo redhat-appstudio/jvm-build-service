@@ -56,7 +56,7 @@ public abstract class AnalyserBase implements Runnable {
             Set<String> gavs = new HashSet<>();
             Set<TrackingData> trackingData = new HashSet<>();
             doAnalysis(gavs, trackingData);
-            rebuild.rebuild(taskRunName, gavs);
+            rebuild.rebuild(taskRunName, trackingData);
             writeResults(gavs, trackingData);
             writeSbom(trackingData);
         } catch (Exception e) {

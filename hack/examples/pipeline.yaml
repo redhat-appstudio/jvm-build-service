@@ -15,6 +15,8 @@ spec:
   results:
     - name: JAVA_COMMUNITY_DEPENDENCIES
       value: $(tasks.maven-run.results.JAVA_COMMUNITY_DEPENDENCIES)
+    - name: JAVA_DEPENDENCIES
+      value: $(tasks.maven-run.results.JAVA_DEPENDENCIES)
   workspaces:
     - name: shared-workspace
     - name: maven-settings

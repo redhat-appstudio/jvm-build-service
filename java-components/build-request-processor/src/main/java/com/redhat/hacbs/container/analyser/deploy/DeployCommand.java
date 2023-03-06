@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -130,6 +131,7 @@ public abstract class DeployCommand implements Runnable {
                         return FileVisitResult.CONTINUE;
                     }
                 });
+                String buildId = UUID.randomUUID().toString();
                 for (var e : jarFiles.entrySet()) {
                     Path file = e.getKey();
                     Gav gav = e.getValue();
@@ -140,7 +142,8 @@ public abstract class DeployCommand implements Runnable {
                                 new TrackingData(
                                         gav.getGroupId() + ":" + gav.getArtifactId() + ":"
                                                 + gav.getVersion(),
-                                        "rebuilt", Map.of("scm-uri", scmUri, "scm-commit", commit)),
+                                        "rebuilt",
+                                        Map.of("scm-uri", scmUri, "scm-commit", commit, TrackingData.BUILD_ID, buildId)),
                                 Files.newOutputStream(temp), false);
                         Files.delete(file);
                         Files.move(temp, file);
@@ -195,7 +198,7 @@ public abstract class DeployCommand implements Runnable {
                 if (!gavs.isEmpty()) {
                     try {
                         cleanBrokenSymlinks(sourcePath);
-                        doDeployment(deployFile, sourcePath, logsPath, gavs);
+                        doDeployment(deployFile, sourcePath, logsPath, gavs, buildId);
                     } catch (Throwable t) {
                         Log.error("Deployment failed", t);
                         flushLogs();
@@ -292,7 +295,8 @@ public abstract class DeployCommand implements Runnable {
 
     }
 
-    protected abstract void doDeployment(Path deployFile, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception;
+    protected abstract void doDeployment(Path deployFile, Path sourcePath, Path logsPath, Set<String> gavs,
+            String deploymentUid) throws Exception;
 
     private void flushLogs() {
         System.err.flush();

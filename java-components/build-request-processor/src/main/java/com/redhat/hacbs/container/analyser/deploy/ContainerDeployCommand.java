@@ -39,7 +39,8 @@ public class ContainerDeployCommand extends DeployCommand {
     }
 
     @Override
-    protected void doDeployment(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+    protected void doDeployment(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs, String buildId)
+            throws Exception {
         ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                 insecure,
                 prependTag, new Consumer<String>() {
@@ -48,7 +49,7 @@ public class ContainerDeployCommand extends DeployCommand {
                         imageName = s;
                     }
                 });
-        deployer.deployArchive(deployDir, sourcePath, logsPath, gavs);
+        deployer.deployArchive(deployDir, sourcePath, logsPath, gavs, buildId);
 
     }
 }

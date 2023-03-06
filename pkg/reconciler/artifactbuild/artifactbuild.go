@@ -47,7 +47,7 @@ const (
 	PipelineResultMessage         = "message"
 	PipelineResultPrivate         = "private"
 	TaskName                      = "task"
-	JavaCommunityDependencies     = "JAVA_COMMUNITY_DEPENDENCIES"
+	JavaDependencies              = "JAVA_DEPENDENCIES"
 	Contaminants                  = "CONTAMINANTS"
 	DeployedResources             = "DEPLOYED_RESOURCES"
 	PassedVerification            = "PASSED_VERIFICATION" //#nosec
@@ -177,14 +177,6 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 //}
 
 func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
-
-	if pr.Status.PipelineResults != nil {
-		for _, prRes := range pr.Status.PipelineResults {
-			if prRes.Name == JavaCommunityDependencies {
-				return reconcile.Result{}, r.handleCommunityDependencies(ctx, strings.Split(prRes.Value.StringVal, ","), pr.Namespace, log)
-			}
-		}
-	}
 
 	if pr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
@@ -721,33 +713,6 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 			},
 		},
 	}, nil
-}
-
-func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context, split []string, namespace string, log logr.Logger) error {
-	log.Info("Found pipeline run with community dependencies")
-	for _, gav := range split {
-		if len(gav) == 0 {
-			continue
-		}
-		name := CreateABRName(gav)
-		log.Info("Found community dependency: ", "gav", gav)
-		abr := v1alpha1.ArtifactBuild{}
-		err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &abr)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				abr.Spec.GAV = gav
-				abr.Name = name
-				abr.Namespace = namespace
-				err := r.client.Create(ctx, &abr)
-				if err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func InstallKeystoreIntoBuildRequestProcessor(args []string) string {

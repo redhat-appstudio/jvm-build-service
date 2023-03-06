@@ -122,6 +122,14 @@ func TestExampleRun(t *testing.T) {
 		}
 	})
 
+	ta.t.Run("jvmbuildstatus generated", func(t *testing.T) {
+		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+			return jvmBuildStatusGenerated(ta)
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for generation of jvmbuildstatus")
+		}
+	})
 	ta.t.Run("artifactbuilds and dependencybuilds generated", func(t *testing.T) {
 		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
 			return bothABsAndDBsGenerated(ta)
@@ -165,6 +173,18 @@ func TestExampleRun(t *testing.T) {
 					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
 				}
 			}
+
+			jbsList, err := jvmClient.JvmbuildserviceV1alpha1().JvmBuildStatuses(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list JvmBuildStatuses: %s", err.Error()))
+				return false, nil
+			}
+			for _, db := range jbsList.Items {
+				if db.Status.State != v1alpha1.JvmBuildStateComplete {
+					return false, nil
+				}
+			}
+
 			if abComplete && dbComplete {
 				return true, nil
 			}

@@ -32,7 +32,8 @@ public class S3Deployer implements Deployer {
     }
 
     @Override
-    public void deployArchive(Path tarGzFile, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+    public void deployArchive(Path tarGzFile, Path sourcePath, Path logsPath, Set<String> gavs, String deploymentUid)
+            throws Exception {
         Files.walkFileTree(tarGzFile, new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {

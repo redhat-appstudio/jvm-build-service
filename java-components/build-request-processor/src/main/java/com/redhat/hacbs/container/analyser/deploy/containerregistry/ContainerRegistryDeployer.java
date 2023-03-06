@@ -11,7 +11,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -133,7 +132,8 @@ public class ContainerRegistryDeployer implements Deployer {
     }
 
     @Override
-    public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+    public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs, String buildId)
+            throws Exception {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
         // Read the tar to get the gavs and files
@@ -141,18 +141,18 @@ public class ContainerRegistryDeployer implements Deployer {
 
         try {
             // Create the image layers
-            createImages(imageData, sourcePath, logsPath);
+            createImages(imageData, sourcePath, logsPath, buildId);
 
         } finally {
             FileUtil.deleteRecursive(imageData.getArtifactsPath());
         }
     }
 
-    private void createImages(DeployData imageData, Path sourcePath, Path logsPath)
+    private void createImages(DeployData imageData, Path sourcePath, Path logsPath, String buildId)
             throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
             CacheDirectoryCreationException, ExecutionException {
 
-        String imageName = createImageName();
+        String imageName = createImageName(buildId);
         if (imageNameCallback != null) {
             imageNameCallback.accept(imageName);
         }
@@ -189,10 +189,9 @@ public class ContainerRegistryDeployer implements Deployer {
         containerBuilder.containerize(containerizer);
     }
 
-    private String createImageName() {
-        String imageName = UUID.randomUUID().toString();
+    private String createImageName(String deploymentUid) {
         return host + DOUBLE_POINT + port + SLASH + owner + SLASH + repository
-                + DOUBLE_POINT + imageName;
+                + DOUBLE_POINT + deploymentUid;
     }
 
     private List<Path> getLayers(Path artifacts, Path source, Path logs)

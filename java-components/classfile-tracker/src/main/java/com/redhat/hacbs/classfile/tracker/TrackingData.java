@@ -5,6 +5,8 @@ import java.util.Objects;
 
 public class TrackingData {
 
+    public static final String BUILD_ID = "build-id";
+
     public final String gav;
     public final String source;
     private final Map<String, String> attributes;
@@ -12,7 +14,7 @@ public class TrackingData {
     public TrackingData(String gav, String source, Map<String, String> attributes) {
         this.gav = gav;
         this.source = source;
-        this.attributes = attributes;
+        this.attributes = attributes == null ? Map.of() : attributes;
     }
 
     public String getGav() {

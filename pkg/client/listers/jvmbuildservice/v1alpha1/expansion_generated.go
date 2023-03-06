@@ -41,6 +41,14 @@ type JBSConfigListerExpansion interface{}
 // JBSConfigNamespaceLister.
 type JBSConfigNamespaceListerExpansion interface{}
 
+// JvmBuildStatusListerExpansion allows custom methods to be added to
+// JvmBuildStatusLister.
+type JvmBuildStatusListerExpansion interface{}
+
+// JvmBuildStatusNamespaceListerExpansion allows custom methods to be added to
+// JvmBuildStatusNamespaceLister.
+type JvmBuildStatusNamespaceListerExpansion interface{}
+
 // RebuiltArtifactListerExpansion allows custom methods to be added to
 // RebuiltArtifactLister.
 type RebuiltArtifactListerExpansion interface{}

@@ -29,6 +29,8 @@ type Interface interface {
 	DependencyBuilds() DependencyBuildInformer
 	// JBSConfigs returns a JBSConfigInformer.
 	JBSConfigs() JBSConfigInformer
+	// JvmBuildStatuses returns a JvmBuildStatusInformer.
+	JvmBuildStatuses() JvmBuildStatusInformer
 	// RebuiltArtifacts returns a RebuiltArtifactInformer.
 	RebuiltArtifacts() RebuiltArtifactInformer
 	// SystemConfigs returns a SystemConfigInformer.
@@ -59,6 +61,11 @@ func (v *version) DependencyBuilds() DependencyBuildInformer {
 // JBSConfigs returns a JBSConfigInformer.
 func (v *version) JBSConfigs() JBSConfigInformer {
 	return &jBSConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// JvmBuildStatuses returns a JvmBuildStatusInformer.
+func (v *version) JvmBuildStatuses() JvmBuildStatusInformer {
+	return &jvmBuildStatusInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // RebuiltArtifacts returns a RebuiltArtifactInformer.

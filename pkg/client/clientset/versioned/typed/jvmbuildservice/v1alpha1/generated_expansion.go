@@ -23,6 +23,8 @@ type DependencyBuildExpansion interface{}
 
 type JBSConfigExpansion interface{}
 
+type JvmBuildStatusExpansion interface{}
+
 type RebuiltArtifactExpansion interface{}
 
 type SystemConfigExpansion interface{}

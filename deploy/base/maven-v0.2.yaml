@@ -84,6 +84,8 @@ spec:
       description: The total number of dependencies that came from an untrusted source, such as Maven central
     - name: JAVA_COMMUNITY_DEPENDENCIES
       description: The list of community dependencies
+    - name: JAVA_DEPENDENCIES
+      description: The list of dependencies > source
   steps:
     - name: mvn-settings
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2

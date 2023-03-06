@@ -1,0 +1,108 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.6.2
+  creationTimestamp: null
+  name: jvmbuildstatus.jvmbuildservice.io
+spec:
+  group: jvmbuildservice.io
+  names:
+    kind: JvmBuildStatus
+    listKind: JvmBuildStatusList
+    plural: jvmbuildstatus
+    singular: jvmbuildstatus
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.scmURL
+      name: URL
+      type: string
+    - jsonPath: .spec.tag
+      name: Tag
+      type: string
+    - jsonPath: .status.outstanding
+      name: Outstanding
+      type: integer
+    - jsonPath: .status.state
+      name: State
+      type: string
+    - jsonPath: .status.message
+      name: Message
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: JvmBuildStatus A build of an upstream component
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              artifacts:
+                items:
+                  properties:
+                    buildId:
+                      type: string
+                    gav:
+                      type: string
+                    source:
+                      type: string
+                  type: object
+                type: array
+              prURL:
+                type: string
+              scmURL:
+                type: string
+              tag:
+                type: string
+            type: object
+          status:
+            properties:
+              artifactState:
+                additionalProperties:
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    artifactBuild:
+                      type: string
+                    built:
+                      type: boolean
+                    failed:
+                      type: boolean
+                  type: object
+                type: object
+              message:
+                type: string
+              outstanding:
+                type: integer
+              state:
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

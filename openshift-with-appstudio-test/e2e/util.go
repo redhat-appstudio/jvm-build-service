@@ -250,6 +250,26 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 	return ta
 }
 
+func jvmBuildStatusGenerated(ta *testArgs) (bool, error) {
+	abList, err := jvmClient.JvmbuildserviceV1alpha1().JvmBuildStatuses(ta.ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		ta.Logf(fmt.Sprintf("error listing jvmbuildstatues: %s", err.Error()))
+		return false, nil
+	}
+	if len(abList.Items) == 0 {
+		return false, nil
+	}
+	if len(abList.Items[0].Spec.Artifacts) == 0 {
+		return false, errors.New("No artifacts in jvmbuildstatus")
+	}
+	for _, i := range abList.Items[0].Spec.Artifacts {
+		if i.Source != "central" {
+			return false, errors.New("Source should have been central")
+		}
+	}
+	return true, nil
+}
+
 func bothABsAndDBsGenerated(ta *testArgs) (bool, error) {
 	abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
