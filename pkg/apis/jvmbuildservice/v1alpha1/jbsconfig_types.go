@@ -6,6 +6,8 @@ const (
 	JBSConfigName                           = "jvm-build-config"
 	ImageSecretName                         = "jvm-build-image-secrets" //#nosec
 	GitSecretName                           = "jvm-build-git-secrets"   //#nosec
+	TlsSecretName                           = "jvm-build-tls-secrets"   //#nosec
+	TlsConfigMapName                        = "jvm-build-tls-ca"        //#nosec
 	ImageSecretTokenKey                     = ".dockerconfigjson"       //#nosec
 	GitSecretTokenKey                       = ".git-credentials"        //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"

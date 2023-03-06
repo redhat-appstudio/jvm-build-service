@@ -29,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const TlsServiceName = v1alpha1.CacheDeploymentName + "-tls"
+
 type ReconcilerJBSConfig struct {
 	client               client.Client
 	scheme               *runtime.Scheme
@@ -61,6 +63,24 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 			err = r.client.Delete(ctx, service)
 			if err != nil && !errors.IsNotFound(err) {
 				msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
+				log.Error(err, msg)
+				r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
+			}
+			service = &corev1.Service{}
+			service.Name = TlsServiceName
+			service.Namespace = request.Namespace
+			err = r.client.Delete(ctx, service)
+			if err != nil && !errors.IsNotFound(err) {
+				msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
+				log.Error(err, msg)
+				r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
+			}
+			tlsConfigMap := &corev1.ConfigMap{}
+			tlsConfigMap.Name = v1alpha1.TlsConfigMapName
+			tlsConfigMap.Namespace = request.Namespace
+			err = r.client.Delete(ctx, tlsConfigMap)
+			if err != nil && !errors.IsNotFound(err) {
+				msg := fmt.Sprintf("Unable to delete configmap - %s", err.Error())
 				log.Error(err, msg)
 				r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
 			}
@@ -217,7 +237,51 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 			}
 		}
 	}
-
+	//and setup the TLS service
+	err = r.client.Get(ctx, types.NamespacedName{Name: TlsServiceName, Namespace: request.Namespace}, &corev1.Service{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			service := corev1.Service{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:        TlsServiceName,
+					Namespace:   request.Namespace,
+					Annotations: map[string]string{"service.beta.openshift.io/serving-cert-secret-name": v1alpha1.TlsSecretName},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "https",
+							Port:       443,
+							TargetPort: intstr.IntOrString{IntVal: 8443},
+						},
+					},
+					Type:     corev1.ServiceTypeClusterIP,
+					Selector: map[string]string{"app": v1alpha1.CacheDeploymentName},
+				},
+			}
+			err := r.client.Create(ctx, &service)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	//and setup the CA for the secured service
+	err = r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.TlsConfigMapName, Namespace: request.Namespace}, &corev1.ConfigMap{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			service := corev1.ConfigMap{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:        v1alpha1.TlsConfigMapName,
+					Namespace:   request.Namespace,
+					Annotations: map[string]string{"service.beta.openshift.io/inject-cabundle": "true"},
+				},
+			}
+			err := r.client.Create(ctx, &service)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	//setup the service account
 	sa := corev1.ServiceAccount{}
 	saName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
@@ -270,12 +334,18 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			cache.Spec.Template.Spec.Containers = []corev1.Container{{
 				Name:            v1alpha1.CacheDeploymentName,
 				ImagePullPolicy: corev1.PullIfNotPresent,
-				Ports: []corev1.ContainerPort{{
-					Name:          "http",
-					ContainerPort: 8080,
-					Protocol:      "TCP",
-				}},
-				VolumeMounts: []corev1.VolumeMount{{Name: v1alpha1.CacheDeploymentName, MountPath: "/cache"}},
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "http",
+						ContainerPort: 8080,
+						Protocol:      "TCP",
+					},
+					{
+						Name:          "https",
+						ContainerPort: 8443,
+						Protocol:      "TCP",
+					}},
+				VolumeMounts: []corev1.VolumeMount{{Name: v1alpha1.CacheDeploymentName, MountPath: "/cache"}, {Name: "tls", MountPath: "/tls"}},
 
 				Resources: corev1.ResourceRequirements{
 					Requests: map[corev1.ResourceName]resource.Quantity{
@@ -288,7 +358,10 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 				LivenessProbe:  &corev1.Probe{TimeoutSeconds: 15, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/q/health/live", Port: intstr.FromInt(8080)}}},
 				ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/q/health/ready", Port: intstr.FromInt(8080)}}},
 			}}
-			cache.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: v1alpha1.CacheDeploymentName, VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: v1alpha1.CacheDeploymentName}}}}
+			cache.Spec.Template.Spec.Volumes = []corev1.Volume{
+				{Name: v1alpha1.CacheDeploymentName, VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: v1alpha1.CacheDeploymentName}}},
+				{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: v1alpha1.TlsSecretName}}},
+			}
 
 		} else {
 			return err
@@ -299,6 +372,8 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		{Name: "CACHE_PATH", Value: "/cache"},
 		{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: settingOrDefault(jbsConfig.Spec.CacheSettings.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault)},
 		{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: settingOrDefault(jbsConfig.Spec.CacheSettings.WorkerThreads, v1alpha1.ConfigArtifactCacheWorkerThreadsDefault)},
+		{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_FILES", Value: "/tls/tls.crt"},
+		{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES", Value: "/tls/tls.key"},
 	}
 	type Repo struct {
 		name     string

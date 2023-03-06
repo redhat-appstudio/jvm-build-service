@@ -53,7 +53,7 @@ spec:
         - fetch-repository
       params:
         - name: MAVEN_MIRROR_URL
-          value: http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local
+          value: https://jvm-build-workspace-artifact-cache-tls.$(context.taskRun.namespace).svc.cluster.local
         - name: CONTEXT_DIR
           value: "$(params.context)"
         - name: ENFORCE_VERSION

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"  //#nosec G501
 	"crypto/sha1" //#nosec G505
+	_ "embed"
 	"encoding/hex"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
@@ -67,6 +68,9 @@ func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
 		eventRecorder: mgr.GetEventRecorderFor("ArtifactBuild"),
 	}
 }
+
+//go:embed scripts/keystore.sh
+var keystore string
 
 func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
@@ -324,9 +328,12 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 			TaskSpec: &pipelinev1beta1.EmbeddedTask{
 				TaskSpec: *task,
 			},
+			Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{{Name: "tls", Workspace: "tls"}},
 		}},
-		Results: []pipelinev1beta1.PipelineResult{},
+		Results:    []pipelinev1beta1.PipelineResult{},
+		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
 	}
+	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}}}
 	for _, i := range task.Results {
 		pr.Spec.PipelineSpec.Results = append(pr.Spec.PipelineSpec.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: "$(tasks." + TaskName + ".results." + i.Name + ")"})
 	}
@@ -659,7 +666,9 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 	}
 	recipes = recipes + settingOrDefault(systemConfig.Spec.RecipeDatabase, v1alpha1.DefaultRecipeDatabase)
 
+	zero := int64(0)
 	return &pipelinev1beta1.TaskSpec{
+		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: "tls"}},
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: PipelineResultScmUrl},
 			{Name: PipelineResultScmTag},
@@ -671,9 +680,10 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 		},
 		Steps: []pipelinev1beta1.Step{
 			{
-				Name:  "lookup-artifact-location",
-				Image: image,
-				Args: []string{
+				Name:            "lookup-artifact-location",
+				Image:           image,
+				SecurityContext: &corev1.SecurityContext{RunAsUser: &zero},
+				Script: InstallKeystoreIntoBuildRequestProcessor([]string{
 					"lookup-scm",
 					"--recipes",
 					recipes,
@@ -694,8 +704,8 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					"--gav",
 					gav,
 					"--cache-url",
-					"http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/user/default",
-				},
+					"https://jvm-build-workspace-artifact-cache-tls." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/user/default",
+				}),
 				Env: []corev1.EnvVar{
 					{Name: "GIT_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 				},
@@ -733,4 +743,16 @@ func settingOrDefault(setting, def string) string {
 		return def
 	}
 	return setting
+}
+
+func InstallKeystoreIntoBuildRequestProcessor(args []string) string {
+	ret := keystore + "\n/opt/jboss/container/java/run/run-java.sh"
+	for _, i := range args {
+		ret += " \"" + i + "\""
+	}
+	return ret
+}
+
+func InstallKeystoreScript() string {
+	return keystore
 }

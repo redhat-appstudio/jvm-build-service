@@ -86,7 +86,7 @@ func TestArtifactBuildStateNew(t *testing.T) {
 			g.Expect(or.Kind).Should(Equal(abr.Kind))
 			g.Expect(or.Name).Should(Equal(abr.Name))
 		}
-		g.Expect(tr.Spec.PipelineSpec.Tasks[0].TaskSpec.Steps[0].Args[2]).Should(ContainSubstring(customRepo))
+		g.Expect(tr.Spec.PipelineSpec.Tasks[0].TaskSpec.Steps[0].Script).Should(ContainSubstring(customRepo))
 	}
 }
 
