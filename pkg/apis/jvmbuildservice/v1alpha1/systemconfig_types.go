@@ -17,9 +17,10 @@ const (
 type QuotaImpl string
 
 type SystemConfigSpec struct {
-	Builders       map[string]JavaVersionInfo `json:"builders,omitempty"`
-	Quota          QuotaImpl                  `json:"quota,omitempty"`
-	RecipeDatabase string                     `json:"recipeDatabase,omitempty"`
+	Builders map[string]JavaVersionInfo `json:"builders,omitempty"`
+	//DEPRECATED
+	Quota          QuotaImpl `json:"quota,omitempty"`
+	RecipeDatabase string    `json:"recipeDatabase,omitempty"`
 }
 
 type JavaVersionInfo struct {

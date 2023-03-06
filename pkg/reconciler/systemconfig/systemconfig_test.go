@@ -5,10 +5,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	quotav1 "github.com/openshift/api/quota/v1"
-	fakequotaclientset "github.com/openshift/client-go/quota/clientset/versioned/fake"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/clusterresourcequota"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	v1 "k8s.io/api/core/v1"
@@ -26,9 +23,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = v1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
-	_ = quotav1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	clusterresourcequota.QuotaClient = fakequotaclientset.NewSimpleClientset()
 	reconciler := &ReconcilerSystemConfig{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
 	return client, reconciler
 }

@@ -263,15 +263,8 @@ github.com/openshift/client-go/project/clientset/versioned
 github.com/openshift/client-go/project/clientset/versioned/scheme
 github.com/openshift/client-go/project/clientset/versioned/typed/project/v1
 github.com/openshift/client-go/quota/clientset/versioned
-github.com/openshift/client-go/quota/clientset/versioned/fake
 github.com/openshift/client-go/quota/clientset/versioned/scheme
 github.com/openshift/client-go/quota/clientset/versioned/typed/quota/v1
-github.com/openshift/client-go/quota/clientset/versioned/typed/quota/v1/fake
-github.com/openshift/client-go/quota/informers/externalversions
-github.com/openshift/client-go/quota/informers/externalversions/internalinterfaces
-github.com/openshift/client-go/quota/informers/externalversions/quota
-github.com/openshift/client-go/quota/informers/externalversions/quota/v1
-github.com/openshift/client-go/quota/listers/quota/v1
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
