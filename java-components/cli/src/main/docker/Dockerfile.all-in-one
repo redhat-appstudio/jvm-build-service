@@ -14,7 +14,7 @@ COPY --from=builder /work/cli/target/quarkus-app/app/ /deployments/app/
 COPY --from=builder /work/cli/target/quarkus-app/quarkus/ /deployments/quarkus/
 
 EXPOSE 8080
-USER 185
+USER 0
 
 ENV AB_JOLOKIA_OFF=""
 ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
