@@ -72,11 +72,18 @@ public class LookupScmLocationCommand implements Runnable {
                     Files.writeString(scmType, "git");
                 }
                 Log.infof("Path: %s", tagInfo.getRepoInfo().getPath());
-                if (context != null && tagInfo.getRepoInfo().getPath() != null) {
-                    Files.writeString(context, tagInfo.getRepoInfo().getPath());
+                if (context != null) {
+                    if (tagInfo.getRepoInfo().getPath() != null) {
+                        Files.writeString(context, tagInfo.getRepoInfo().getPath());
+                    } else {
+                        Files.createFile(context);
+                    }
                 }
                 if (privateRepo != null) {
                     Files.writeString(privateRepo, Boolean.toString(tagInfo.getRepoInfo().isPrivateRepo()));
+                }
+                if (message != null) {
+                    Files.createFile(message);
                 }
             }
         } catch (Exception e) {
