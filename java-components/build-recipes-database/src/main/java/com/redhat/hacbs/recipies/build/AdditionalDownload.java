@@ -3,6 +3,7 @@ package com.redhat.hacbs.recipies.build;
 public class AdditionalDownload {
 
     private String uri;
+
     private String sha256;
 
     /**
@@ -13,11 +14,16 @@ public class AdditionalDownload {
     private String binaryPath;
 
     /**
+     * Only applies to rpm type; the name of the package to install
+     */
+    private String packageName;
+
+    /**
      * Possible values:
      *
      * executable
      * tar
-     *
+     * rpm
      */
     private String type;
 
@@ -39,6 +45,15 @@ public class AdditionalDownload {
         return this;
     }
 
+    public String getFileName() {
+        return fileName;
+    }
+
+    public AdditionalDownload setFileName(String fileName) {
+        this.fileName = fileName;
+        return this;
+    }
+
     public String getBinaryPath() {
         return binaryPath;
     }
@@ -48,12 +63,12 @@ public class AdditionalDownload {
         return this;
     }
 
-    public String getFileName() {
-        return fileName;
+    public String getPackageName() {
+        return packageName;
     }
 
-    public AdditionalDownload setFileName(String fileName) {
-        this.fileName = fileName;
+    public AdditionalDownload setPackageName(String packageName) {
+        this.packageName = packageName;
         return this;
     }
 
@@ -73,6 +88,7 @@ public class AdditionalDownload {
                 ", sha256='" + sha256 + '\'' +
                 ", fileName='" + fileName + '\'' +
                 ", binaryPath='" + binaryPath + '\'' +
+                ", packageName='" + packageName + '\'' +
                 ", type='" + type + '\'' +
                 '}';
     }

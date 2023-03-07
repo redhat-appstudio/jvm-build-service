@@ -166,6 +166,8 @@ spec:
                           type: string
                         fileName:
                           type: string
+                        packageName:
+                          type: string
                         sha256:
                           type: string
                         type:
@@ -224,6 +226,8 @@ spec:
                           binaryPath:
                             type: string
                           fileName:
+                            type: string
+                          packageName:
                             type: string
                           sha256:
                             type: string
@@ -284,6 +288,8 @@ spec:
                           binaryPath:
                             type: string
                           fileName:
+                            type: string
+                          packageName:
                             type: string
                           sha256:
                             type: string

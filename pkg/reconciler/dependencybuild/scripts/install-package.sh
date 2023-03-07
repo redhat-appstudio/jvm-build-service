@@ -1,7 +1,12 @@
 #!/usr/bin/env sh
 set -o verbose
-export PATH="$(workspaces.source.path)/packages:${PATH}"
 
+if [ "rpm" = "{TYPE}" ]; then
+    microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y {PACKAGE_NAME}
+    exit
+fi
+
+export PATH="$(workspaces.source.path)/packages:${PATH}"
 
 wget --no-verbose --output-document=$(workspaces.source.path)/packages/{FILENAME} {URL} \
 && echo "${SHA256} $(workspaces.source.path)/packages/{FILENAME}" | sha256sum --check -
