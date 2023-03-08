@@ -134,9 +134,9 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(pr).ShouldNot(BeNil())
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null, "repositories": ["jboss","gradle"]}`}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null, "repositories": ["jboss","gradle"]}`}}}
 	} else {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineMessage, Value: "build info missing"}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "build info missing"}}}
 	}
 	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	pr.Status.SetCondition(&apis.Condition{
@@ -322,7 +322,7 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "True",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: artifactbuild.DeployedResources, Value: TestArtifact}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: artifactbuild.DeployedResources, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: TestArtifact}}}
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
@@ -368,7 +368,7 @@ func TestStateBuilding(t *testing.T) {
 		ab.Namespace = pr.Namespace
 		ab.Spec.GAV = TestArtifact
 		g.Expect(client.Create(ctx, &ab)).Should(BeNil())
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: "[{\"gav\": \"com.acme:foo:1.0\", \"contaminatedArtifacts\": [\"" + TestArtifact + "\"]}]"}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "[{\"gav\": \"com.acme:foo:1.0\", \"contaminatedArtifacts\": [\"" + TestArtifact + "\"]}]"}}}
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		db := getBuild(client, g)
 		g.Expect(controllerutil.SetOwnerReference(&ab, db, reconciler.scheme)).Should(BeNil())
@@ -415,7 +415,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: string(buildInfoJson)}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "True",
@@ -448,7 +448,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: string(buildInfoJson)}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "True",

@@ -180,7 +180,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 	if pr.Status.PipelineResults != nil {
 		for _, prRes := range pr.Status.PipelineResults {
 			if prRes.Name == JavaCommunityDependencies {
-				return reconcile.Result{}, r.handleCommunityDependencies(ctx, strings.Split(prRes.Value, ","), pr.Namespace, log)
+				return reconcile.Result{}, r.handleCommunityDependencies(ctx, strings.Split(prRes.Value.StringVal, ","), pr.Namespace, log)
 			}
 		}
 	}
@@ -223,19 +223,19 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 	for _, res := range pr.Status.PipelineResults {
 		switch res.Name {
 		case PipelineResultScmUrl:
-			abr.Status.SCMInfo.SCMURL = res.Value
+			abr.Status.SCMInfo.SCMURL = res.Value.StringVal
 		case PipelineResultScmTag:
-			abr.Status.SCMInfo.Tag = res.Value
+			abr.Status.SCMInfo.Tag = res.Value.StringVal
 		case PipelineResultScmHash:
-			abr.Status.SCMInfo.CommitHash = res.Value
+			abr.Status.SCMInfo.CommitHash = res.Value.StringVal
 		case PipelineResultScmType:
-			abr.Status.SCMInfo.SCMType = res.Value
+			abr.Status.SCMInfo.SCMType = res.Value.StringVal
 		case PipelineResultMessage:
-			abr.Status.Message = res.Value
+			abr.Status.Message = res.Value.StringVal
 		case PipelineResultContextPath:
-			abr.Status.SCMInfo.Path = res.Value
+			abr.Status.SCMInfo.Path = res.Value.StringVal
 		case PipelineResultPrivate:
-			private, err := strconv.ParseBool(res.Value)
+			private, err := strconv.ParseBool(res.Value.StringVal)
 			if err != nil {
 				private = false
 			}
@@ -335,7 +335,7 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 	}
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}}}
 	for _, i := range task.Results {
-		pr.Spec.PipelineSpec.Results = append(pr.Spec.PipelineSpec.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: "$(tasks." + TaskName + ".results." + i.Name + ")"})
+		pr.Spec.PipelineSpec.Results = append(pr.Spec.PipelineSpec.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Type: pipelinev1beta1.ResultsTypeString, Description: i.Description, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + TaskName + ".results." + i.Name + ")"}})
 	}
 
 	pr.Labels = map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV), PipelineRunLabel: ""}

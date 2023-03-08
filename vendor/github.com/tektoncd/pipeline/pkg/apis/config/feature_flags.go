@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -30,6 +31,8 @@ const (
 	StableAPIFields = "stable"
 	// AlphaAPIFields is the value used for "enable-api-fields" when alpha APIs should be usable as well.
 	AlphaAPIFields = "alpha"
+	// BetaAPIFields is the value used for "enable-api-fields" when beta APIs should be usable as well.
+	BetaAPIFields = "beta"
 	// FullEmbeddedStatus is the value used for "embedded-status" when the full statuses of TaskRuns and Runs should be
 	// embedded in PipelineRunStatusFields, but ChildReferences should not be used.
 	FullEmbeddedStatus = "full"
@@ -45,6 +48,8 @@ const (
 	DefaultDisableCredsInit = false
 	// DefaultRunningInEnvWithInjectedSidecars is the default value for "running-in-environment-with-injected-sidecars".
 	DefaultRunningInEnvWithInjectedSidecars = true
+	// DefaultAwaitSidecarReadiness is the default value for "await-sidecar-readiness".
+	DefaultAwaitSidecarReadiness = true
 	// DefaultRequireGitSSHSecretKnownHosts is the default value for "require-git-ssh-secret-known-hosts".
 	DefaultRequireGitSSHSecretKnownHosts = false
 	// DefaultEnableTektonOciBundles is the default value for "enable-tekton-oci-bundles".
@@ -57,16 +62,20 @@ const (
 	DefaultSendCloudEventsForRuns = false
 	// DefaultEmbeddedStatus is the default value for "embedded-status".
 	DefaultEmbeddedStatus = FullEmbeddedStatus
+	// DefaultEnableSpire is the default value for "enable-spire".
+	DefaultEnableSpire = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
 	runningInEnvWithInjectedSidecarsKey = "running-in-environment-with-injected-sidecars"
+	awaitSidecarReadinessKey            = "await-sidecar-readiness"
 	requireGitSSHSecretKnownHostsKey    = "require-git-ssh-secret-known-hosts" // nolint: gosec
 	enableTektonOCIBundles              = "enable-tekton-oci-bundles"
 	enableCustomTasks                   = "enable-custom-tasks"
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
 	embeddedStatus                      = "embedded-status"
+	enableSpire                         = "enable-spire"
 )
 
 // FeatureFlags holds the features configurations
@@ -81,7 +90,9 @@ type FeatureFlags struct {
 	ScopeWhenExpressionsToTask       bool
 	EnableAPIFields                  string
 	SendCloudEventsForRuns           bool
+	AwaitSidecarReadiness            bool
 	EmbeddedStatus                   string
+	EnableSpire                      bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -118,6 +129,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(runningInEnvWithInjectedSidecarsKey, DefaultRunningInEnvWithInjectedSidecars, &tc.RunningInEnvWithInjectedSidecars); err != nil {
 		return nil, err
 	}
+	if err := setFeature(awaitSidecarReadinessKey, DefaultAwaitSidecarReadiness, &tc.AwaitSidecarReadiness); err != nil {
+		return nil, err
+	}
 	if err := setFeature(requireGitSSHSecretKnownHostsKey, DefaultRequireGitSSHSecretKnownHosts, &tc.RequireGitSSHSecretKnownHosts); err != nil {
 		return nil, err
 	}
@@ -140,11 +154,15 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if tc.EnableAPIFields == AlphaAPIFields {
 		tc.EnableTektonOCIBundles = true
 		tc.EnableCustomTasks = true
+		tc.EnableSpire = true
 	} else {
 		if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {
 			return nil, err
 		}
 		if err := setFeature(enableCustomTasks, DefaultEnableCustomTasks, &tc.EnableCustomTasks); err != nil {
+			return nil, err
+		}
+		if err := setFeature(enableSpire, DefaultEnableSpire, &tc.EnableSpire); err != nil {
 			return nil, err
 		}
 	}
@@ -159,7 +177,7 @@ func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature 
 		value = strings.ToLower(cfg)
 	}
 	switch value {
-	case AlphaAPIFields, StableAPIFields:
+	case AlphaAPIFields, BetaAPIFields, StableAPIFields:
 		*feature = value
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enableAPIFields, value)
@@ -186,4 +204,27 @@ func setEmbeddedStatus(cfgMap map[string]string, defaultValue string, feature *s
 // NewFeatureFlagsFromConfigMap returns a Config for the given configmap
 func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, error) {
 	return NewFeatureFlagsFromMap(config.Data)
+}
+
+// EnableAlphaAPIFields enables alpha features in an existing context (for use in testing)
+func EnableAlphaAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, "alpha")
+}
+
+// EnableBetaAPIFields enables beta features in an existing context (for use in testing)
+func EnableBetaAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, "beta")
+}
+
+func setEnableAPIFields(ctx context.Context, want string) context.Context {
+	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields": want,
+	})
+	cfg := &Config{
+		Defaults: &Defaults{
+			DefaultTimeoutMinutes: 60,
+		},
+		FeatureFlags: featureFlags,
+	}
+	return ToContext(ctx, cfg)
 }

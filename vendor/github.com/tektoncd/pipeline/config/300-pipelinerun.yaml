@@ -25,9 +25,9 @@ spec:
   group: tekton.dev
   preserveUnknownFields: false
   versions:
-  - name: v1alpha1
+  - name: v1beta1
     served: true
-    storage: false
+    storage: true
     schema:
       openAPIV3Schema:
         type: object
@@ -56,9 +56,9 @@ spec:
     # starts to increment
     subresources:
       status: {}
-  - name: v1beta1
-    served: true
-    storage: true
+  - name: v1
+    served: false
+    storage: false
     schema:
       openAPIV3Schema:
         type: object
@@ -101,7 +101,7 @@ spec:
   conversion:
     strategy: Webhook
     webhook:
-      conversionReviewVersions: ["v1beta1"]
+      conversionReviewVersions: ["v1beta1", "v1"]
       clientConfig:
         service:
           name: tekton-pipelines-webhook
