@@ -14,7 +14,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "summary")
+@CommandLine.Command(name = "summary", mixinStandardHelpOptions = true, description = "Shows a summary of the state of the ArtifactBuild objects")
 public class ArtifactSummaryCommand implements Runnable {
 
     @Override

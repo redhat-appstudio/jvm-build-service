@@ -19,7 +19,7 @@ import io.quarkus.arc.Arc;
 import io.quarkus.runtime.Quarkus;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "fix-missing")
+@CommandLine.Command(name = "fix-missing", mixinStandardHelpOptions = true, description = "Creates a pull request against the recipe database that adds SCM information for an artifact.")
 public class ArtifactFixMissingCommand implements Runnable {
 
     @CommandLine.Option(names = "-g", description = "The artifact to rebuild, specified by GAV", completionCandidates = MissingGavCompleter.class)

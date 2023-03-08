@@ -23,7 +23,7 @@ import picocli.CommandLine;
 /**
  * A command that can be used to create a PR against the build recipe database
  */
-@CommandLine.Command(name = "fix")
+@CommandLine.Command(name = "fix", mixinStandardHelpOptions = true, description = "Creates a pull request against the recipe information to fix a specific build.")
 public class BuildFixCommand implements Runnable {
 
     @CommandLine.Option(names = "-g", description = "The build to view, specified by GAV", completionCandidates = GavCompleter.class)
@@ -38,7 +38,7 @@ public class BuildFixCommand implements Runnable {
     @CommandLine.Option(names = "--enforce-version", description = "Sets enforce-version on the build recipe")
     boolean enforceVersion;
 
-    @CommandLine.Option(names = "--version-level", description = "If this should only be applied to this specific version (and earlier)")
+    @CommandLine.Option(names = "--version-level", description = "If this should only be applied to this specific version (and earlier).")
     boolean versionSpecific;
 
     @Override

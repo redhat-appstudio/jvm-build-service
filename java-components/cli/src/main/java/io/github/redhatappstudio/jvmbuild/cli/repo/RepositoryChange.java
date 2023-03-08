@@ -1,5 +1,6 @@
 package io.github.redhatappstudio.jvmbuild.cli.repo;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -22,7 +23,13 @@ import io.github.redhatappstudio.jvmbuild.cli.util.GithubCredentials;
 public class RepositoryChange {
 
     public static void createPullRequest(String branchName, String commitMessage, PullRequestCreator creator) {
-
+        File homeDir = new File(System.getProperty("user.home"));
+        File propertyFile = new File(homeDir, ".github");
+        if (!propertyFile.exists()) {
+            System.err.println(
+                    "You must create a .github file as specified at https://github-api.kohsuke.org/ to be able to modify the build recipes.");
+            return;
+        }
         //TODO: should not be hard coded
         try {
             var gh = GitHub.connect();

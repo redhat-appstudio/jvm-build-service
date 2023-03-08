@@ -4,7 +4,7 @@ import javax.inject.Inject;
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "quit", aliases = "q")
+@CommandLine.Command(name = "quit", aliases = { "q", "exit" })
 public class QuitCommand implements Runnable {
 
     @Inject

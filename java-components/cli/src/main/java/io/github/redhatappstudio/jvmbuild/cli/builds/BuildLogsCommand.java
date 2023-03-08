@@ -14,7 +14,7 @@ import io.github.redhatappstudio.jvmbuild.cli.artifacts.GavCompleter;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "logs")
+@CommandLine.Command(name = "logs", mixinStandardHelpOptions = true, description = "Displays the logs for the build")
 public class BuildLogsCommand implements Runnable {
 
     @CommandLine.Option(names = "-g", description = "The build to view, specified by GAV", completionCandidates = GavCompleter.class)

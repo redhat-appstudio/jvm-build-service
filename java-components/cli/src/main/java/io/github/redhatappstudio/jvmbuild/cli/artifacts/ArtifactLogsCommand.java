@@ -11,7 +11,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "logs")
+@CommandLine.Command(name = "logs", mixinStandardHelpOptions = true, description = "Displays the logs for artifact discovery pipelines")
 public class ArtifactLogsCommand implements Runnable {
 
     @CommandLine.Option(names = "-g", description = "The build to view, specified by GAV", completionCandidates = GavCompleter.class)

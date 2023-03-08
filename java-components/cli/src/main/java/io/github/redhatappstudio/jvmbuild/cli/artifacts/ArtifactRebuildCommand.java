@@ -9,7 +9,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "rebuild")
+@CommandLine.Command(name = "rebuild", mixinStandardHelpOptions = true, description = "Triggers a rebuild of an artifact")
 public class ArtifactRebuildCommand implements Runnable {
 
     @CommandLine.Option(names = "-g", description = "The artifact to rebuild, specified by GAV", completionCandidates = GavCompleter.class)
