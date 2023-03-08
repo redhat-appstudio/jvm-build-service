@@ -214,9 +214,7 @@ public abstract class DeployCommand implements Runnable {
                                     taskRun.getMetadata().getName(), serialisedContaminants, gavs);
                             results.add(new TaskRunResult("CONTAMINANTS", serialisedContaminants));
                             results.add(new TaskRunResult("DEPLOYED_RESOURCES", String.join(",", gavs)));
-                            if (imageName != null) {
-                                results.add(new TaskRunResult("IMAGE", imageName));
-                            }
+                            results.add(new TaskRunResult("IMAGE", imageName == null ? "" : imageName));
                             taskRun.getStatus().setTaskResults(results);
                             return taskRun;
                         }
