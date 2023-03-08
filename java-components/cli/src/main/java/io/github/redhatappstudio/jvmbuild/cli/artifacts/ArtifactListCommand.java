@@ -6,7 +6,7 @@ import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "list")
+@CommandLine.Command(name = "list", mixinStandardHelpOptions = true, description = "Lists ArtifactBuild objects")
 public class ArtifactListCommand implements Runnable {
 
     @CommandLine.Option(names = "--failed")

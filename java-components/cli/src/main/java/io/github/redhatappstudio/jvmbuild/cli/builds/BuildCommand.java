@@ -6,6 +6,6 @@ import picocli.CommandLine;
         BuildLogsCommand.class,
         BuildSummaryCommand.class,
         BuildFixCommand.class,
-        BuildListCommand.class })
+        BuildListCommand.class }, mixinStandardHelpOptions = true)
 public class BuildCommand {
 }

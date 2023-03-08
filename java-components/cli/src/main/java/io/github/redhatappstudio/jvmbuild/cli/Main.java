@@ -47,7 +47,7 @@ public class Main implements QuarkusApplication {
 
             // start the shell and process input until the user quits with Ctrl-D
             String line;
-            while ((line = reader.readLine("prompt> ")) != null && !shutdown) {
+            while (!shutdown && (line = reader.readLine("jbs> ")) != null) {
                 ArgumentCompleter.ArgumentList list = new ArgumentCompleter.WhitespaceArgumentDelimiter()
                         .delimit(line, line.length());
                 new CommandLine(commands, factory)

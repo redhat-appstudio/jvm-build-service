@@ -10,7 +10,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "summary")
+@CommandLine.Command(name = "summary", mixinStandardHelpOptions = true, description = "Displays a summary of the build status.")
 public class BuildSummaryCommand implements Runnable {
 
     @Override

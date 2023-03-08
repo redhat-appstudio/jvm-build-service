@@ -4,7 +4,7 @@ import java.util.TreeMap;
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "list")
+@CommandLine.Command(name = "list", mixinStandardHelpOptions = true, description = "Lists the builds")
 public class BuildListCommand implements Runnable {
 
     @CommandLine.Option(names = "--failed")
