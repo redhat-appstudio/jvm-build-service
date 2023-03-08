@@ -101,6 +101,9 @@ public class LookupBuildInfoCommand implements Runnable {
             Log.infof("Checking out %s at tag %s", scmUrl, tag);
             doBuildAnalysis(scmUrl, tag, context, buildRecipeInfo, privateRepo);
 
+            if (message != null) {
+                Files.createFile(message);
+            }
         } catch (Exception e) {
             Log.errorf(e, "Failed to process build info for " + scmUrl);
             if (message != null) {
