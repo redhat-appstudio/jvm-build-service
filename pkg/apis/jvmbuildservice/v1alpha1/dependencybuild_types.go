@@ -90,9 +90,10 @@ type Contaminant struct {
 	ContaminatedArtifacts []string `json:"contaminatedArtifacts,omitempty"`
 }
 type AdditionalDownload struct {
-	Uri        string `json:"uri,omitempty"`
-	Sha256     string `json:"sha256,omitempty"`
-	FileName   string `json:"fileName,omitempty"`
-	BinaryPath string `json:"binaryPath,omitempty"`
-	FileType   string `json:"type"`
+	Uri         string `json:"uri,omitempty"`
+	Sha256      string `json:"sha256,omitempty"`
+	FileName    string `json:"fileName,omitempty"`
+	BinaryPath  string `json:"binaryPath,omitempty"`
+	PackageName string `json:"packageName,omitempty"`
+	FileType    string `json:"type"`
 }

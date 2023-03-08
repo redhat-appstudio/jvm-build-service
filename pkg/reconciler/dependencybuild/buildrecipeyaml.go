@@ -95,6 +95,10 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			if i.FileName == "" {
 				install = "echo 'File name not specified for package " + i.Uri + "'; exit 1"
 			}
+		} else if i.FileType == "rpm" {
+			if i.PackageName == "" {
+				install = "echo 'Package name not specified for rpm type'; exit 1"
+			}
 		} else {
 			//unknown
 			//we still run the pipeline so there is logs
@@ -111,6 +115,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		template = strings.ReplaceAll(template, "{SHA256}", i.Sha256)
 		template = strings.ReplaceAll(template, "{TYPE}", i.FileType)
 		template = strings.ReplaceAll(template, "{BINARY_PATH}", i.BinaryPath)
+		template = strings.ReplaceAll(template, "{PACKAGE_NAME}", i.PackageName)
 		install = install + template
 	}
 
