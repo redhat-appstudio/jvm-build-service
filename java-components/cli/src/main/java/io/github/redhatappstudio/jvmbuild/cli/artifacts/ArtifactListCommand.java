@@ -47,9 +47,11 @@ public class ArtifactListCommand implements Runnable {
                 System.out.print(" ");
             }
             System.out.print("   ");
-            System.out.println(i.getValue().getMetadata().getName());
-            System.out.print(" ");
-            System.out.println(i.getValue().getStatus().getMessage());
+            System.out.print(i.getValue().getMetadata().getName());
+            if (i.getValue().getStatus().getMessage() != null) {
+                System.out.print(" ");
+                System.out.println(i.getValue().getStatus().getMessage());
+            }
 
         }
 

@@ -44,6 +44,7 @@ public class ArtifactRebuildCommand implements Runnable {
                             });
                 }
             }
+            return;
         }
         var client = Arc.container().instance(KubernetesClient.class).get();
         ArtifactBuild theBuild = null;
