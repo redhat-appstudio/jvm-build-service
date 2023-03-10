@@ -236,9 +236,9 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	for _, res := range pr.Status.PipelineResults {
 		switch res.Name {
 		case BuildInfoPipelineBuildInfo:
-			buildInfo = res.Value
+			buildInfo = res.Value.StringVal
 		case BuildInfoPipelineMessage:
-			message = res.Value
+			message = res.Value.StringVal
 		}
 	}
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
@@ -639,7 +639,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			var image string
 			for _, i := range pr.Status.PipelineResults {
 				if i.Name == artifactbuild.Image {
-					image = i.Value
+					image = i.Value.StringVal
 				}
 			}
 			for _, i := range pr.Status.PipelineResults {
@@ -647,13 +647,13 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 					db.Status.Contaminants = []v1alpha1.Contaminant{}
 					//unmarshal directly into the contaminants field
-					err := json.Unmarshal([]byte(i.Value), &db.Status.Contaminants)
+					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
 					if err != nil {
 						return reconcile.Result{}, err
 					}
-				} else if i.Name == artifactbuild.DeployedResources && len(i.Value) > 0 {
+				} else if i.Name == artifactbuild.DeployedResources && len(i.Value.StringVal) > 0 {
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
-					deployed := strings.Split(i.Value, ",")
+					deployed := strings.Split(i.Value.StringVal, ",")
 					db.Status.DeployedArtifacts = deployed
 					for _, i := range deployed {
 						ra := v1alpha1.RebuiltArtifact{}
@@ -684,7 +684,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 						}
 					}
 				} else if i.Name == artifactbuild.PassedVerification {
-					parseBool, _ := strconv.ParseBool(i.Value)
+					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
 					db.Status.FailedVerification = !parseBool
 				}
 			}
@@ -827,7 +827,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		args = append(args, "--private-repo")
 	}
 	return &pipelinev1beta1.PipelineSpec{
-		Results: []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}, {Name: BuildInfoPipelineBuildInfo, Value: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}},
+		Results: []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}}, {Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}}},
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
 				Name: artifactbuild.TaskName,

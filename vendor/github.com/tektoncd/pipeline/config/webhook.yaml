@@ -31,7 +31,6 @@ metadata:
     # labels below are related to istio and should not be used for resource lookup
     version: "devel"
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: webhook
@@ -112,10 +111,13 @@ spec:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
-            - all
+            - "ALL"
           # User 65532 is the distroless nonroot user ID
           runAsUser: 65532
           runAsGroup: 65532
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
         ports:
         - name: metrics
           containerPort: 9090

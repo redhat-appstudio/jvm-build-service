@@ -262,19 +262,19 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 			tr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
 				Name:  artifactbuild.PipelineResultScmTag,
-				Value: "tag1",
+				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "tag1"},
 			}, {
 				Name:  artifactbuild.PipelineResultScmUrl,
-				Value: "url1",
+				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "url1"},
 			}, {
 				Name:  artifactbuild.PipelineResultScmType,
-				Value: "git",
+				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "git"},
 			}, {
 				Name:  artifactbuild.PipelineResultContextPath,
-				Value: "/path1",
+				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "/path1"},
 			}, {
 				Name:  artifactbuild.PipelineResultMessage,
-				Value: "OK",
+				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "OK"},
 			}}
 			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
 			print(tr.Name)
@@ -309,10 +309,10 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 				})
 				btr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
 					Name:  dependencybuild.BuildInfoPipelineMessage,
-					Value: "OK",
+					Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "OK"},
 				}, {
 					Name:  dependencybuild.BuildInfoPipelineBuildInfo,
-					Value: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"toolVersion":null,"javaHome":null}`,
+					Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"toolVersion":null,"javaHome":null}`},
 				}}
 				err := k8sClient.Status().Update(ctx, btr)
 				if err == nil {

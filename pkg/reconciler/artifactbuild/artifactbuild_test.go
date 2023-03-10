@@ -186,10 +186,10 @@ func TestStateDiscovering(t *testing.T) {
 			Status: pipelinev1beta1.PipelineRunStatus{
 				Status: v1beta1.Status{},
 				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now, PipelineResults: []pipelinev1beta1.PipelineRunResult{
-					{Name: PipelineResultScmTag, Value: "foo"},
-					{Name: PipelineResultScmUrl, Value: "goo"},
-					{Name: PipelineResultScmType, Value: "hoo"},
-					{Name: PipelineResultContextPath, Value: "ioo"}}},
+					{Name: PipelineResultScmTag, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "foo"}},
+					{Name: PipelineResultScmUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "goo"}},
+					{Name: PipelineResultScmType, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "hoo"}},
+					{Name: PipelineResultContextPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "ioo"}}}},
 			},
 		}
 		abr := getABR(client, g)
@@ -215,10 +215,11 @@ func TestStateDiscovering(t *testing.T) {
 			Status: pipelinev1beta1.PipelineRunStatus{
 				Status: v1beta1.Status{},
 				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now, PipelineResults: []pipelinev1beta1.PipelineRunResult{
-					{Name: PipelineResultScmTag, Value: "foo"},
-					{Name: PipelineResultScmUrl, Value: "goo"},
-					{Name: PipelineResultScmType, Value: "hoo"},
-					{Name: PipelineResultContextPath, Value: "ioo"}}},
+					{Name: PipelineResultScmTag, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "foo"}},
+					{Name: PipelineResultScmUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "goo"}},
+					{Name: PipelineResultScmType, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "hoo"}},
+					{Name: PipelineResultContextPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "ioo"}}},
+				},
 			},
 		}))
 		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
