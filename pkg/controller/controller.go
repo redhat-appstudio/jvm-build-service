@@ -74,6 +74,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		&v1.Secret{},
 		&v1.Service{},
 		&v1.ServiceAccount{},
+		&v1.PersistentVolumeClaim{},
 		&rbacv1.RoleBinding{},
 		&appsv1.Deployment{},
 	}

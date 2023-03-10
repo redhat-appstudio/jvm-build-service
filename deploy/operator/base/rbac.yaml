@@ -76,7 +76,6 @@ rules:
       - get
       - list
       - watch
-      - delete
   - apiGroups:
       - ""
     resources:
@@ -84,40 +83,61 @@ rules:
     verbs:
       - get
       - create
-      - patch
       - list
       - watch
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    resourceNames:
+      - jvm-build-workspace-artifact-cache
+    verbs:
+      - patch
+      - delete
   - apiGroups:
       - ""
     # note - tekton gives its controller read access to secrets, so any pods there can access secrets in the pods namespace
     resources:
       - secrets
+    resourceNames:
+      - jvm-build-image-secrets
+      - jvm-build-git-secrets
     verbs:
       - get
   - apiGroups:
-    - "apps"
+      - "apps"
     resources:
       - deployments
     verbs:
       - get
+      - list
+      - watch
       - create
+  - apiGroups:
+    - "apps"
+    resources:
+      - deployments
+    resourceNames:
+      - jvm-build-workspace-artifact-cache
+    verbs:
       - delete
       - patch
       - update
-      - list
-      - watch
   - apiGroups:
-    - ""
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - jvm-build-tls-ca
+    verbs:
+      - delete
+  - apiGroups:
+      - ""
     resources:
       - configmaps
     verbs:
       - get
       - create
-      - patch
-      - list
-      - watch
-      - delete
-      - update
   - apiGroups:
       - ""
     resources:
@@ -125,9 +145,16 @@ rules:
     verbs:
       - get
       - create
-      - patch
       - list
       - watch
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    resourceNames:
+      - jvm-build-workspace-artifact-cache
+    verbs:
+      - patch
       - delete
   - apiGroups:
       - ""
@@ -136,9 +163,16 @@ rules:
     verbs:
       - get
       - create
-      - patch
       - list
       - watch
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    resourceNames:
+      - jvm-build-workspace-artifact-cache
+    verbs:
+      - patch
       - delete
   - apiGroups:
       - ""
@@ -155,9 +189,16 @@ rules:
     verbs:
       - get
       - create
-      - patch
       - list
       - watch
+  - apiGroups:
+      - "rbac.authorization.k8s.io"
+    resources:
+      - rolebindings
+    resourceNames:
+      - jvm-build-workspace-artifact-cache
+    verbs:
+      - patch
       - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1

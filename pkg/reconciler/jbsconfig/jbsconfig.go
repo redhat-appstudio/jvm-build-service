@@ -111,6 +111,15 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 				log.Error(err, msg)
 				r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
 			}
+			pvc := &corev1.PersistentVolumeClaim{}
+			pvc.Name = v1alpha1.CacheDeploymentName
+			pvc.Namespace = request.Namespace
+			err = r.client.Delete(ctx, pvc)
+			if err != nil && !errors.IsNotFound(err) {
+				msg := fmt.Sprintf("Unable to delete PersistentVolumeClaim - %s", err.Error())
+				log.Error(err, msg)
+				r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
+			}
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
