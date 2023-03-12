@@ -112,7 +112,7 @@ func TestSetupEmptyConfigWithSecret(t *testing.T) {
 	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil())
 	value := readConfiguredRepositories(client, g)
-	g.Expect(*value).Should(Equal("central"))
+	g.Expect(*value).Should(Equal("central,redhat"))
 }
 
 func TestRebuildEnabled(t *testing.T) {
@@ -125,7 +125,7 @@ func TestRebuildEnabled(t *testing.T) {
 	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil())
 	value := readConfiguredRepositories(client, g)
-	g.Expect(*value).Should(Equal("rebuilt,central"))
+	g.Expect(*value).Should(Equal("rebuilt,central,redhat"))
 
 }
 
@@ -140,7 +140,7 @@ func TestRebuildEnabledCustomRepo(t *testing.T) {
 	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil())
 	value := readConfiguredRepositories(client, g)
-	g.Expect(*value).Should(Equal("rebuilt,central,gradle"))
+	g.Expect(*value).Should(Equal("rebuilt,central,redhat,gradle"))
 
 }
 
