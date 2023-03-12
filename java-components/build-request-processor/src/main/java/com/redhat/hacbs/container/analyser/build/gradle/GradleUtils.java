@@ -46,7 +46,7 @@ public final class GradleUtils {
 
     private static final String DISTRIBUTION_URL_KEY = "distributionUrl";
 
-    private static final Pattern GRADLE_7_3_PLUS = Pattern.compile("^7\\.[3456789].*$");
+    private static final Pattern GRADLE_7_3_PLUS = Pattern.compile("^8\\.[0-9].*$|^7\\.[3456789].*$");
 
     private static final Pattern GRADLE_5_THROUGH_7 = Pattern.compile("^[567]\\..*$");
 

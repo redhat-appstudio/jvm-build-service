@@ -98,6 +98,7 @@ class GradleUtilsTest {
         assertThat(GradleUtils.getSupportedJavaVersion("6.0")).isEqualTo("11");
         assertThat(GradleUtils.getSupportedJavaVersion("7.0")).isEqualTo("11");
         assertThat(GradleUtils.getSupportedJavaVersion("7.3")).isEqualTo("17");
+        assertThat(GradleUtils.getSupportedJavaVersion("8.0")).isEqualTo("17");
     }
 
     @Test
