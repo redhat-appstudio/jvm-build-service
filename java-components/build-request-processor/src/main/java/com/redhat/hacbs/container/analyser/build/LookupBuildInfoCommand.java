@@ -126,10 +126,6 @@ public class LookupBuildInfoCommand implements Runnable {
                 .setURI(scmUrl)
                 .setDirectory(path.toFile()).call()) {
             clone.reset().setMode(HARD).setRef(scmTag).call();
-            boolean skipTests = !privateRepo;
-            if (buildRecipeInfo != null && buildRecipeInfo.isRunTests()) {
-                skipTests = false;
-            }
             long time = clone.getRepository().parseCommit(clone.getRepository().resolve(scmTag)).getCommitTime() * 1000L;
             if (context != null) {
                 path = path.resolve(context);
@@ -185,17 +181,20 @@ public class LookupBuildInfoCommand implements Runnable {
                     for (var i : results) {
                         info.tools.putAll(i.toolVersions);
                     }
-                    var invocations = new ArrayList<>(
-                            List.of(MAVEN, "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
-                                    "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
-                                    "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false"));
-                    if (skipTests) {
+                    if (privateRepo) {
                         //we assume private repos are essentially fresh tags we have control of
                         //so we should run the tests
                         //this can be controller via additional args if you still want to skip them
-                        invocations.add("-DskipTests");
+                        info.invocations.add(
+                                new ArrayList<>(List.of(MAVEN, "install", "-Dcheckstyle.skip",
+                                        "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
+                                        "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false")));
+                    } else {
+                        info.invocations.add(
+                                new ArrayList<>(List.of(MAVEN, "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
+                                        "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
+                                        "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false")));
                     }
-                    info.invocations.add(invocations);
                 }
             }
             if (GradleUtils.isGradleBuild(path)) {
@@ -228,10 +227,6 @@ public class LookupBuildInfoCommand implements Runnable {
                 ArrayList<String> inv = new ArrayList<>();
                 inv.add(GRADLE);
                 inv.addAll(GradleUtils.getGradleArgs(path));
-                if (skipTests) {
-                    inv.add("-x");
-                    inv.add("test");
-                }
                 info.invocations.add(inv);
                 info.toolVersion = detectedGradleVersion;
                 info.javaVersion = javaVersion;
