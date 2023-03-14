@@ -180,7 +180,7 @@ public class ClassFileTracker {
             }
         } else if (fileName.endsWith(".jar")) {
             return ClassFileTracker.readTrackingDataFromJar(contents, fileName, untrackedClassesListener);
-        } else if (fileName.endsWith(".tgz") || fileName.endsWith(".tar.gaz")) {
+        } else if (fileName.endsWith(".tgz") || fileName.endsWith(".tar.gz")) {
             try {
                 Set<TrackingData> ret = new HashSet<>();
                 GZIPInputStream inputStream = new GZIPInputStream(contents);
