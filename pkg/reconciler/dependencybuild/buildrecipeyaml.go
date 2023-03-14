@@ -224,6 +224,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineToolVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelinePath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineRequiresInternet, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 		},
@@ -262,10 +263,11 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Name:            "build",
 				Image:           "$(params." + PipelineImage + ")",
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
 				Env: []v1.EnvVar{
 					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
 					{Name: PipelineEnforceVersion, Value: "$(params." + PipelineEnforceVersion + ")"},
+					{Name: PipelineRequiresInternet, Value: "$(params." + PipelineRequiresInternet + ")"},
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: limits management and configuration

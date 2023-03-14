@@ -46,6 +46,7 @@ const (
 	PipelineJavaVersion           = "JAVA_VERSION"
 	PipelineToolVersion           = "TOOL_VERSION"
 	PipelineEnforceVersion        = "ENFORCE_VERSION"
+	PipelineRequiresInternet      = "REQUIRES_INTERNET"
 	PipelineCacheUrl              = "CACHE_URL"
 
 	BuildInfoPipelineScmUrlParam  = "SCM_URL"
@@ -416,6 +417,7 @@ type marshalledBuildInfo struct {
 	DisableSubmodules   bool
 	AdditionalMemory    int
 	Repositories        []string
+	RequiresInternet    bool
 }
 
 type toolInfo struct {
@@ -554,6 +556,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineRequestProcessorImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: buildRequestProcessorImage}},
 		{Name: PipelineGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
 		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
+		{Name: PipelineRequiresInternet, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: strconv.FormatBool(db.Status.CurrentBuildRecipe.RequiresInternet)}},
 		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
 		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}

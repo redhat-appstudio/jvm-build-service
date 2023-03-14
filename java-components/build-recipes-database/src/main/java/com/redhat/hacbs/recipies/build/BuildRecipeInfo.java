@@ -38,6 +38,8 @@ public class BuildRecipeInfo {
 
     boolean runTests;
 
+    boolean requiresInternet;
+
     public List<String> getAdditionalArgs() {
         return additionalArgs;
     }
@@ -143,6 +145,15 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setRunTests(boolean runTests) {
         this.runTests = runTests;
+        return this;
+    }
+
+    public boolean isRequiresInternet() {
+        return requiresInternet;
+    }
+
+    public BuildRecipeInfo setRequiresInternet(boolean requiresInternet) {
+        this.requiresInternet = requiresInternet;
         return this;
     }
 

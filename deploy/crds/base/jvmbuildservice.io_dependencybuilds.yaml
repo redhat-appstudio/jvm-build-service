@@ -203,6 +203,8 @@ spec:
                     items:
                       type: string
                     type: array
+                  requiresInternet:
+                    type: boolean
                   tool:
                     type: string
                   toolVersion:
@@ -264,6 +266,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    requiresInternet:
+                      type: boolean
                     tool:
                       type: string
                     toolVersion:
@@ -326,6 +330,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    requiresInternet:
+                      type: boolean
                     tool:
                       type: string
                     toolVersion:

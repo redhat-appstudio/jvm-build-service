@@ -82,8 +82,15 @@ gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)
 echo "Running Gradle command with arguments: $@"
 cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 
-gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --info --stacktrace -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle.log
+gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --info --stacktrace -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle-online.log
 
+if [ "$(params.REQUIRES_INTERNET)" == "false" ]
+then
+rm -r $(workspaces.source.path)/artifacts
+    microdnf install iproute
+    TASK="ip link set dev lo up && gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --info --stacktrace -Prelease.version=$(params.ENFORCE_VERSION) $@  | tee $(workspaces.source.path)/logs/gradle.log"
+    unshare -n -Ufp -r --  sh -c "$TASK"
+fi
 mkdir $(workspaces.source.path)/build-info
 cp -r /root/.[^.]* $(workspaces.source.path)/build-info
 

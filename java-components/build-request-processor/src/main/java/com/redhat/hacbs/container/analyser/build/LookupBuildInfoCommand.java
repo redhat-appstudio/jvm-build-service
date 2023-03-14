@@ -267,6 +267,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 if (buildRecipeInfo.isEnforceVersion()) {
                     info.enforceVersion = version;
                 }
+                info.setRequiresInternet(buildRecipeInfo.isRequiresInternet());
                 info.setRepositories(buildRecipeInfo.getRepositories());
                 info.disableSubmodules = buildRecipeInfo.isDisableSubmodules();
                 info.preBuildScript = buildRecipeInfo.getPreBuildScript();

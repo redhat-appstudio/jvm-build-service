@@ -51,6 +51,8 @@ public class BuildInfo {
     boolean disableSubmodules;
     int additionalMemory;
 
+    boolean requiresInternet;
+
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
         return this;
@@ -143,6 +145,15 @@ public class BuildInfo {
 
     public BuildInfo setRepositories(List<String> repositories) {
         this.repositories = repositories;
+        return this;
+    }
+
+    public boolean isRequiresInternet() {
+        return requiresInternet;
+    }
+
+    public BuildInfo setRequiresInternet(boolean requiresInternet) {
+        this.requiresInternet = requiresInternet;
         return this;
     }
 }

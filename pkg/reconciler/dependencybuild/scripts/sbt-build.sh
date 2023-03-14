@@ -62,11 +62,17 @@ cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 
 echo "Running SBT command with arguments: $@"
 
-eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
+eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt-online.log
 
 mkdir $(workspaces.source.path)/build-info
 cp -r /root/.[^.]* $(workspaces.source.path)/build-info
 
+if [ "$(params.REQUIRES_INTERNET)" == "false" ]
+then
+    rm -r $(workspaces.source.path)/artifacts
+    microdnf install iproute
+    unshare -n -Ufp -r -- sh -c 'ip link set dev lo up && eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log'
+fi
 # This is replaced when the task is created by the golang code
 cat <<EOF
 Post build script: {{POST_BUILD_SCRIPT}}

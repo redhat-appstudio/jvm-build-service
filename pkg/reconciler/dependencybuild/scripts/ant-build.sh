@@ -58,8 +58,16 @@ cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
+
 mkdir $(workspaces.source.path)/build-info
 cp -r /root/.[^.]* $(workspaces.source.path)/build-info
+
+eval "ant $@" | tee $(workspaces.source.path)/logs/ant-online.log
+if [ "$(params.REQUIRES_INTERNET)" == "false" ]
+then
+    microdnf install iproute
+    unshare -n -Ufp -r -- sh -c 'ip link set dev lo up && eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log'
+fi
 
 # This is replaced when the task is created by the golang code
 cat <<EOF
