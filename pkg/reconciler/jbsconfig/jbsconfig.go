@@ -389,7 +389,8 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		position int
 	}
 	//central is at the hard coded 200 position
-	repos := []Repo{{name: "central", position: 200}}
+	//redhat is configured at 250
+	repos := []Repo{{name: "central", position: 200}, {name: "redhat", position: 250}}
 	trueBool := true
 	if jbsConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
@@ -431,6 +432,17 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			name := results[2]
 			if err != nil {
 				return err
+			}
+			existing := false
+			for _, i := range repos {
+				if i.name == name {
+					existing = true
+					break
+				}
+			}
+			if existing {
+				jbsConfig.Status.Message = jbsConfig.Status.Message + " Repository " + name + " defined twice, ignoring " + v
+				continue
 			}
 			cache = settingIfSet(v, "STORE_"+strings.ToUpper(strings.Replace(name, "-", "_", -1))+"_URL", cache)
 			cache = settingIfSet("maven2", "STORE_"+strings.ToUpper(strings.Replace(name, "-", "_", -1))+"_TYPE", cache)
