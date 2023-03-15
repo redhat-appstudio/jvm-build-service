@@ -237,7 +237,7 @@ spec:
 
         if [ -d "${GRADLE_HOME}" ]; then
             case "${TOOL_VERSION}" in
-                7.[3456789]*)
+                8.*|7.[3456789]*)
                     SUPPORTED_JAVA_VERSION="17"
                     sed -i -e 's|//allowInsecureProtocol|allowInsecureProtocol|g' ${GRADLE_USER_HOME}/init.gradle
                     ;;
