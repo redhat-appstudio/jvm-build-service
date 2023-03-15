@@ -46,7 +46,7 @@ fi
 
 export PATH="${GRADLE_HOME}/bin:${PATH}"
 case "${TOOL_VERSION}" in
-    7.*)
+    [78].*)
         sed -i -e 's|//allowInsecureProtocol|allowInsecureProtocol|g' ${GRADLE_USER_HOME}/init.gradle
         ;;
 esac
