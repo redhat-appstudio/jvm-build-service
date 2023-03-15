@@ -79,9 +79,9 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		&appsv1.Deployment{},
 	}
 
-	//if we are running this locally on the same cluster as the ckcp we want to ignore any synced pipeline runs
+	//we only want to watch the runs we create
 	noKcp := labels.NewSelector()
-	requirement, lerr := labels.NewRequirement("internal.workload.kcp.dev/cluster", selection.DoesNotExist, []string{})
+	requirement, lerr := labels.NewRequirement(artifactbuild.PipelineRunLabel, selection.Exists, []string{})
 	if lerr != nil {
 		return nil, lerr
 	}
