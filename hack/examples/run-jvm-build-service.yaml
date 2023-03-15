@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: service-registry-build-
+spec:
+  pipelineRef:
+    name: sample-component-build
+  params:
+    - name: url
+      value: https://github.com/redhat-appstudio/jvm-build-service
+    - name: context
+      value: java-components
+    - name: app-path
+      value: ""
+    - name: revision
+      value: main
+  workspaces:
+    - name: maven-settings
+      emptyDir: {}
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
+          resources:
+            requests:
+              storage: 5Gi
+  taskRunSpecs:
+    - pipelineTaskName: maven-run
+      taskServiceAccountName: pipeline
+
