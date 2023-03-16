@@ -597,6 +597,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 
 		if !success {
+
 			//if there was a cache issue we want to rety the build
 			//we check and see if there is a cache pod newer than the build
 			//if so we just delete the pipelinerun
@@ -612,14 +613,38 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			if db.Status.PipelineRetries < MaxRetries {
 
 				for _, pod := range p.Items {
+					doRetry := false
 					if pod.ObjectMeta.CreationTimestamp.After(pr.ObjectMeta.CreationTimestamp.Time) {
+						doRetry = true
+						msg := fmt.Sprintf("Cache problems detected, retrying the build for DependencyBuild %s", db.Name)
+						log.Info(msg)
+					} else {
+						for _, cont := range pod.Status.ContainerStatuses {
+							//check for oomkilled pods
+							if cont.State.Terminated != nil && cont.State.Terminated.ExitCode == 137 {
+								msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s", db.Name)
+								log.Info(msg)
+								doRetry = true
+								//increase the memory limit
+								if db.Status.CurrentBuildRecipe.AdditionalMemory == 0 {
+									db.Status.CurrentBuildRecipe.AdditionalMemory = 256
+								} else {
+									db.Status.CurrentBuildRecipe.AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory * 2
+								}
+								for i := range db.Status.PotentialBuildRecipes {
+									db.Status.PotentialBuildRecipes[i].AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory
+								}
+							}
+						}
+					}
+
+					if doRetry {
+
 						db.Status.PipelineRetries++
 						err := r.client.Status().Update(ctx, &db)
 						if err != nil {
 							return reconcile.Result{}, err
 						}
-						msg := fmt.Sprintf("Cache problems detected, retrying the build for DependencyBuild %s", db.Name)
-						log.Info(msg)
 						//this delete will cause the operator to re-try the pipelinerun
 						err = r.client.Delete(ctx, pr)
 						return reconcile.Result{}, err
