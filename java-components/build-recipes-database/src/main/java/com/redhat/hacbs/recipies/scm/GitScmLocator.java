@@ -55,6 +55,7 @@ public class GitScmLocator implements ScmLocator {
         private boolean cacheRepoTags;
         private String cacheUrl;
         private ScmLocator fallbackScmLocator;
+        private boolean cloneLocalRecipeRepos = true;
 
         private Builder() {
         }
@@ -83,8 +84,29 @@ public class GitScmLocator implements ScmLocator {
             return this;
         }
 
+        /**
+         * An SCM locator that should be used in case no information was found in the configured recipe repositories.
+         *
+         * @param fallbackScmLocator SCM locator that should be used in case no information was found in the configured recipe
+         *        repositories
+         * @return this builder instance
+         */
         public Builder setFallback(ScmLocator fallbackScmLocator) {
             this.fallbackScmLocator = fallbackScmLocator;
+            return this;
+        }
+
+        /**
+         * By default all the configured recipe repositories are cloned into a temporary
+         * directory whether they are remote or or available locally.
+         * If a local repository is cloned before it is opened then the uncommitted changes present
+         * in the original local repository won't be visible to the recipe repository manager.
+         *
+         * @param cloneLocalRecipeRepos whether to clone local recipe repositories when initializing recipe repository managers
+         * @return this builder instance
+         */
+        public Builder setCloneLocalRecipeRepos(boolean cloneLocalRecipeRepos) {
+            this.cloneLocalRecipeRepos = cloneLocalRecipeRepos;
             return this;
         }
 
@@ -95,32 +117,50 @@ public class GitScmLocator implements ScmLocator {
 
     private final List<String> recipeRepos;
     private final boolean cacheRepoTags;
-    private final String cacheUrl;
     private final ScmLocator fallbackScmLocator;
     private final Map<String, Map<String, String>> repoTagsToHash;
+    private final boolean cloneLocalRecipeRepos;
 
     private RecipeGroupManager recipeGroupManager;
 
     private GitScmLocator(Builder builder) {
         this.recipeRepos = builder.recipeRepos;
         this.cacheRepoTags = builder.cacheRepoTags;
-        this.cacheUrl = builder.cacheUrl;
         this.fallbackScmLocator = builder.fallbackScmLocator;
         this.repoTagsToHash = cacheRepoTags ? new HashMap<>() : Map.of();
+        this.cloneLocalRecipeRepos = builder.cloneLocalRecipeRepos;
     }
 
     private RecipeGroupManager getRecipeGroupManager() {
         if (recipeGroupManager == null) {
+            final Pattern remotePattern = cloneLocalRecipeRepos ? null : Pattern.compile("(?!file\\b)\\w+?:\\/\\/.*");
             //checkout the git recipe database and load the recipes
             final List<RecipeDirectory> managers = new ArrayList<>(recipeRepos.size());
             for (var i : recipeRepos) {
-                log.infof("Checking out recipe repo %s", i);
-                try {
-                    final Path tempDir = Files.createTempDirectory("recipe");
-                    managers.add(RecipeRepositoryManager.create(i, "main", Optional.empty(), tempDir));
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed to checkout " + i, e);
+                final RecipeRepositoryManager repoManager;
+                if (remotePattern == null || remotePattern.matcher(i).matches()) {
+                    log.infof("Cloning recipe repo %s", i);
+                    try {
+                        repoManager = RecipeRepositoryManager.create(i, "main", Optional.empty(),
+                                Files.createTempDirectory("recipe"));
+                    } catch (Exception e) {
+                        throw new RuntimeException("Failed to checkout " + i, e);
+                    }
+                } else {
+                    log.debugf("Opening local recipe repo %s", i);
+                    final Path p;
+                    if (i.startsWith("file:")) {
+                        p = Path.of(i.substring("file:".length()));
+                    } else {
+                        p = Path.of(i);
+                    }
+                    try {
+                        repoManager = RecipeRepositoryManager.createLocal(p);
+                    } catch (GitAPIException e) {
+                        throw new RuntimeException("Failed to initialize recipe manager from local repository " + i, e);
+                    }
                 }
+                managers.add(repoManager);
             }
             recipeGroupManager = new RecipeGroupManager(managers);
         }
@@ -136,7 +176,7 @@ public class GitScmLocator implements ScmLocator {
         //look for SCM info
         var recipes = recipeGroupManager
                 .requestArtifactInformation(
-                        new ArtifactInfoRequest(Set.of(toBuild), Set.of(BuildRecipe.SCM, BuildRecipe.BUILD)))
+                        new ArtifactInfoRequest(Set.of(toBuild), Set.of(BuildRecipe.SCM)))
                 .getRecipes()
                 .get(toBuild);
         var deserialized = recipes == null ? null : recipes.get(BuildRecipe.SCM);
