@@ -24,7 +24,7 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
             "repositories.gradle",
             "uploadArchives.gradle",
             "javadoc.gradle",
-            "kotlinjs.gradle",
+            "disable-plugins.gradle",
             "version.gradle"
     };
 

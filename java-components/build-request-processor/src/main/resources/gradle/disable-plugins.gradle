@@ -1,0 +1,20 @@
+
+apply plugin: DisablePluginsPlugin
+
+class DisablePluginsPlugin implements Plugin<Gradle> {
+
+    def PLUGINS = ["kotlin.gradle.targets.js", "org.jetbrains.dokka"]
+
+    void apply(Gradle gradle) {
+        gradle.allprojects {
+            tasks.configureEach({
+                for (i in PLUGINS) {
+                    if (it.class.getName().contains(i)) {
+                        it.setEnabled(false)
+                        return
+                    }
+                }
+            })
+        }
+    }
+}
