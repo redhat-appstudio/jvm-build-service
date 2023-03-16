@@ -25,9 +25,9 @@ spec:
             - "--zap-log-level=info"
           resources:
             requests:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "500m"
             limits:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "500m"
       serviceAccountName: hacbs-jvm-operator
