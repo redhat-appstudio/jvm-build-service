@@ -1,5 +1,8 @@
 package com.redhat.hacbs.recipies.location;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
@@ -44,6 +47,18 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         var result = clone.call();
 
         return new RecipeRepositoryManager(result, remote, directory, branch, updateInterval);
+    }
+
+    public static RecipeRepositoryManager createLocal(Path directory) throws GitAPIException {
+        if (!Files.isDirectory(directory)) {
+            throw new IllegalArgumentException(directory + " is not a valid directory");
+        }
+        try {
+            var result = Git.open(directory.toFile());
+            return new RecipeRepositoryManager(result, null, directory, result.getRepository().getBranch(), Optional.empty());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to open repository " + directory, e);
+        }
     }
 
     /**
