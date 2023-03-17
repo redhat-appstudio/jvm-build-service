@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
         <artifactId>jvm-build-service-parent</artifactId>
-        <version>999-SNAPSHOT</version>
+        <version>0.5</version>
     </parent>
 
     <artifactId>hacbs-build-recipies-database</artifactId>
