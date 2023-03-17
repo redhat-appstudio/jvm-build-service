@@ -11,7 +11,7 @@ spec:
     - name: app-path
       value: app/target
     - name: revision
-      value: 2.2.4.Final
+      value: 2.4.1.Final
   workspaces:
     - name: maven-settings
       emptyDir: {}
