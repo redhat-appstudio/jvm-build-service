@@ -7,6 +7,9 @@ then
     cd $(params.CONTEXT_DIR)
 fi
 
+#if we run out of memory we want the JVM to die with error code 134
+export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
+
 export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
 export PATH="${JAVA_HOME}/bin:${PATH}"
 
