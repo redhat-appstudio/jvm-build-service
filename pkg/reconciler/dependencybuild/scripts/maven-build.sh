@@ -24,10 +24,11 @@ Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
 
+echo "Running Maven command with arguments: ${*@Q}"
 cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 #we can't use array parameters directly here
 #we pass them in as goals
-mvn -B -e -s "$(workspaces.build-settings.path)/settings.xml" $@ "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/artifacts" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" | tee $(workspaces.source.path)/logs/maven.log
+mvn -V -B -e -s "$(workspaces.build-settings.path)/settings.xml" "$@" "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/artifacts" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" | tee $(workspaces.source.path)/logs/maven.log
 
 # This is replaced when the task is created by the golang code
 cat <<EOF
