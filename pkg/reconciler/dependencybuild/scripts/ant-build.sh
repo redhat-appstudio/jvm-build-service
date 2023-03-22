@@ -58,6 +58,9 @@ cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
+mkdir $(workspaces.source.path)/build-info
+cp -r /root/.[^.]* $(workspaces.source.path)/build-info
+
 # This is replaced when the task is created by the golang code
 cat <<EOF
 Post build script: {{POST_BUILD_SCRIPT}}

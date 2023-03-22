@@ -30,6 +30,9 @@ cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 #we pass them in as goals
 mvn -V -B -e -s "$(workspaces.build-settings.path)/settings.xml" "$@" "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/artifacts" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" | tee $(workspaces.source.path)/logs/maven.log
 
+mkdir $(workspaces.source.path)/build-info
+cp -r /root/.[^.]* $(workspaces.source.path)/build-info
+
 # This is replaced when the task is created by the golang code
 cat <<EOF
 Post build script: {{POST_BUILD_SCRIPT}}

@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
 
+	cdx "github.com/CycloneDX/cyclonedx-go"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -434,6 +435,7 @@ func TestExampleRun(t *testing.T) {
 		for _, artifact := range rebuiltList.Items {
 			sourceFound := false
 			logsFound := false
+			sbomFound := false
 			imageName := artifact.Spec.Image
 
 			println(imageName)
@@ -493,6 +495,19 @@ func TestExampleRun(t *testing.T) {
 							logsFound = true
 						} else if cur.Name == "source/.git/HEAD" {
 							sourceFound = true
+						} else if cur.Name == "logs/build-sbom.json" {
+							sbomFound = true
+							bom := &cdx.BOM{}
+							decoder := cdx.NewBOMDecoder(innerTar, cdx.BOMFileFormatJSON)
+							if err = decoder.Decode(bom); err != nil {
+								panic(err)
+							}
+							if bom.Dependencies != nil && len(*bom.Dependencies) < 30 {
+								_ = cdx.NewBOMEncoder(os.Stdout, cdx.BOMFileFormatXML).
+									SetPretty(true).
+									Encode(bom)
+								panic("Not enough dependencies in build SBom")
+							}
 						}
 					}
 				}
@@ -502,6 +517,9 @@ func TestExampleRun(t *testing.T) {
 			}
 			if !logsFound {
 				panic("Logs were not found in image " + imageName)
+			}
+			if !sbomFound {
+				panic("Build SBOM were not found in image " + imageName)
 			}
 		}
 	})
