@@ -24,7 +24,7 @@ Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
 
-echo "Running Maven command with arguments: ${*@Q}"
+echo "Running Maven command with arguments: $@"
 cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 #we can't use array parameters directly here
 #we pass them in as goals
