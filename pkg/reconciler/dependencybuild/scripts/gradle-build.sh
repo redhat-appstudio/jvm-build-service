@@ -8,8 +8,6 @@ then
 fi
 
 export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
-echo "@=$@"
-
 export PATH="${JAVA_HOME}/bin:${PATH}"
 
 mkdir -p $(workspaces.source.path)/logs
@@ -78,6 +76,7 @@ rm -f gradle/verification-metadata.xml
 
 gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --no-colour --info --stacktrace -l "${GRADLE_HOME}" -DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false "${ADDITIONAL_ARGS}" generateAlignmentMetadata  | tee $(workspaces.source.path)/logs/gme.log
 
+echo "Running Gradle command with arguments: ${*@Q}"
 cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 
 gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --info --stacktrace -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle.log

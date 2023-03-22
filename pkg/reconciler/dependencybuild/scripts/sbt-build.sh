@@ -43,8 +43,7 @@ EOF
 
 cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 
-echo "Command is:"
-echo "sbt $@ "
+echo "Running SBT command with arguments: ${*@Q}"
 
 eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
 
