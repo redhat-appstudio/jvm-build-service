@@ -55,7 +55,7 @@ EOF
 
 cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 
-echo "Running $(which ant) with arguments: ${*@Q}"
+echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
 # This is replaced when the task is created by the golang code
