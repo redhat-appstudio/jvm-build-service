@@ -381,8 +381,9 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		{Name: "CACHE_PATH", Value: "/cache"},
 		{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: settingOrDefault(jbsConfig.Spec.CacheSettings.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault)},
 		{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: settingOrDefault(jbsConfig.Spec.CacheSettings.WorkerThreads, v1alpha1.ConfigArtifactCacheWorkerThreadsDefault)},
-		{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_FILES", Value: "/tls/tls.crt"},
-		{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES", Value: "/tls/tls.key"},
+	}
+	if !jbsConfig.Spec.CacheSettings.DisableTLS {
+		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_FILES", Value: "/tls/tls.crt"}, corev1.EnvVar{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES", Value: "/tls/tls.key"})
 	}
 	type Repo struct {
 		name     string
