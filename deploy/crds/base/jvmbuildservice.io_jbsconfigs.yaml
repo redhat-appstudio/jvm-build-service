@@ -68,6 +68,8 @@ spec:
                 type: object
               cacheSettings:
                 properties:
+                  disableTLS:
+                    type: boolean
                   ioThreads:
                     type: string
                   limitCPU:

@@ -49,6 +49,7 @@ type CacheSettings struct {
 	IOThreads     string `json:"ioThreads,omitempty"`
 	WorkerThreads string `json:"workerThreads,omitempty"`
 	Storage       string `json:"storage,omitempty"`
+	DisableTLS    bool   `json:"disableTLS,omitempty"`
 }
 
 type BuildSettings struct {
