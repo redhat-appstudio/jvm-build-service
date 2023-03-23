@@ -31,10 +31,15 @@ cat > "$HOME/.sbt/repositories" <<EOF
   my-maven-proxy-releases: $(params.CACHE_URL), allowInsecureProtocol
 EOF
 
-mkdir "$HOME/.sbt/1.0/"
-cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
+# withAllowInsecureProtocol is only after 1.3.0
+# https://github.com/sbt/librarymanagement/pull/318
+if [ $(sbt sbtVersion | tail -1 | sed 's/.* //' | tr -d '.') -ge 130 ]; then
+    mkdir "$HOME/.sbt/1.0/"
+    cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
 publishTo := Some(("MavenRepo" at s"file:$(workspaces.source.path)/artifacts").withAllowInsecureProtocol(true)),
 EOF
+fi
+
 #This is replaced when the task is created by the golang code
 cat <<EOF
 Pre build script: {{PRE_BUILD_SCRIPT}}
