@@ -59,6 +59,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"deploy-container",
 		"--path=$(workspaces.source.path)/artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
+		"--build-info-path=$(workspaces.source.path)/build-info",
 		"--source-path=$(workspaces.source.path)/source",
 		"--task-run=$(context.taskRun.name)",
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
@@ -291,6 +292,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{
 				Name:            "deploy-and-check-for-contaminates",
 				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				ImagePullPolicy: v1.PullAlways,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
 					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.ImageSecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},

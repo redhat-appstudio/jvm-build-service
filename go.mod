@@ -23,6 +23,7 @@ require (
 )
 
 require (
+	github.com/CycloneDX/cyclonedx-go v0.7.0
 	github.com/google/go-containerregistry v0.12.0
 	go.uber.org/zap v1.23.0
 )

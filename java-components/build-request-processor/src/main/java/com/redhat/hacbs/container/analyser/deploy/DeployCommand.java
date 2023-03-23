@@ -1,6 +1,8 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,9 +20,13 @@ import java.util.stream.Stream;
 
 import javax.enterprise.inject.spi.BeanManager;
 
+import org.cyclonedx.BomGeneratorFactory;
+import org.cyclonedx.CycloneDxSchema;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
+import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRun;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRunResult;
 import com.redhat.hacbs.recipies.util.FileUtil;
@@ -56,6 +62,9 @@ public abstract class DeployCommand implements Runnable {
 
     @CommandLine.Option(required = false, names = "--logs-path")
     Path logsPath;
+
+    @CommandLine.Option(required = false, names = "--build-info-path")
+    Path buildInfoPath;
 
     @CommandLine.Option(required = false, names = "--scm-uri")
     String scmUri;
@@ -181,6 +190,7 @@ public abstract class DeployCommand implements Runnable {
                 for (var i : contaminatedGavs.entrySet()) {
                     gavs.removeAll(i.getValue());
                 }
+                generateBuildSbom();
 
                 if (!gavs.isEmpty()) {
                     try {
@@ -228,6 +238,38 @@ public abstract class DeployCommand implements Runnable {
         } catch (Exception e) {
             Log.error("Deployment failed", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    private void generateBuildSbom() {
+        if (buildInfoPath == null) {
+            Log.infof("Not generating build sbom, path not set");
+            return;
+        }
+        Log.infof("Generating build sbom from %s", buildInfoPath);
+        Set<TrackingData> data = new HashSet<>();
+        try {
+            Files.walkFileTree(buildInfoPath, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    try (InputStream inputStream = Files.newInputStream(file)) {
+                        Set<TrackingData> ret = ClassFileTracker.readTrackingDataFromFile(inputStream,
+                                file.getFileName().toString());
+                        if (!ret.isEmpty()) {
+                            Log.infof("Found file at %s", file);
+                            data.addAll(ret);
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                }
+            });
+            var sbom = SBomGenerator.generateSBom(data, null);
+            var json = BomGeneratorFactory.createJson(CycloneDxSchema.Version.VERSION_12, sbom);
+            String sbomStr = json.toJsonString();
+            Log.infof("Build Sbom \n%s", sbomStr);
+            Files.writeString(logsPath.resolve("build-sbom.json"), sbomStr, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            Log.errorf(e, "Failed to generate build sbom");
         }
     }
 

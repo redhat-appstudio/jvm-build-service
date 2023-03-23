@@ -52,6 +52,9 @@ echo "Running SBT command with arguments: $@"
 
 eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
 
+mkdir $(workspaces.source.path)/build-info
+cp -r /root/.[^.]* $(workspaces.source.path)/build-info
+
 # This is replaced when the task is created by the golang code
 cat <<EOF
 Post build script: {{POST_BUILD_SCRIPT}}

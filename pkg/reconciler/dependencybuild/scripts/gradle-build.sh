@@ -81,6 +81,9 @@ cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 
 gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --info --stacktrace -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle.log
 
+mkdir $(workspaces.source.path)/build-info
+cp -r /root/.[^.]* $(workspaces.source.path)/build-info
+
 # This is replaced when the task is created by the golang code
 cat <<EOF
 Post build script: {{POST_BUILD_SCRIPT}}
