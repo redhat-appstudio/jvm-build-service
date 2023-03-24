@@ -274,20 +274,22 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 			}
 		}
 	}
-	//and setup the CA for the secured service
-	err = r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.TlsConfigMapName, Namespace: request.Namespace}, &corev1.ConfigMap{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			service := corev1.ConfigMap{
-				ObjectMeta: ctrl.ObjectMeta{
-					Name:        v1alpha1.TlsConfigMapName,
-					Namespace:   request.Namespace,
-					Annotations: map[string]string{"service.beta.openshift.io/inject-cabundle": "true"},
-				},
-			}
-			err := r.client.Create(ctx, &service)
-			if err != nil {
-				return err
+	if !jbsConfig.Spec.CacheSettings.DisableTLS {
+		//and setup the CA for the secured service
+		err = r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.TlsConfigMapName, Namespace: request.Namespace}, &corev1.ConfigMap{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				service := corev1.ConfigMap{
+					ObjectMeta: ctrl.ObjectMeta{
+						Name:        v1alpha1.TlsConfigMapName,
+						Namespace:   request.Namespace,
+						Annotations: map[string]string{"service.beta.openshift.io/inject-cabundle": "true"},
+					},
+				}
+				err := r.client.Create(ctx, &service)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
