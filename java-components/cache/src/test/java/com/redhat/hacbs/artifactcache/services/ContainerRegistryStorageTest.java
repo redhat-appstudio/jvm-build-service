@@ -24,7 +24,7 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectMock;
 
-@QuarkusTestResource(value = ContainerRegistryTestResourceManager.class)
+@QuarkusTestResource(value = ContainerRegistryTestResourceManager.class, restrictToAnnotatedClass = true)
 @QuarkusTest
 public class ContainerRegistryStorageTest {
     public static final String GROUP = "com.company.foo";
