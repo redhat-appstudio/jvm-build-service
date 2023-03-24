@@ -11,11 +11,9 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import com.redhat.hacbs.artifactcache.S3TestResourceManager;
 import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
 import com.redhat.hacbs.artifactcache.test.util.HashUtil;
 
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -23,7 +21,6 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-@QuarkusTestResource(value = S3TestResourceManager.class, restrictToAnnotatedClass = true)
 @QuarkusTest
 public class S3ArtifactStorageTest {
 
