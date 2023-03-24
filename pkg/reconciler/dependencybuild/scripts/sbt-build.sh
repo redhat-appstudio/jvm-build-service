@@ -24,7 +24,7 @@ mkdir -p $(workspaces.source.path)/logs
 mkdir -p $(workspaces.source.path)/packages
 {{INSTALL_PACKAGE_SCRIPT}}
 
-mkdir "$HOME/.sbt"
+mkdir -p "$HOME/.sbt/1.0/"
 cat > "$HOME/.sbt/repositories" <<EOF
 [repositories]
   local
@@ -34,7 +34,6 @@ EOF
 # withAllowInsecureProtocol is only after 1.3.0
 # https://github.com/sbt/librarymanagement/pull/318
 if [ $(sbt sbtVersion | tail -1 | sed 's/.* //' | tr -d '.') -ge 130 ]; then
-    mkdir "$HOME/.sbt/1.0/"
     cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
 publishTo := Some(("MavenRepo" at s"file:$(workspaces.source.path)/artifacts").withAllowInsecureProtocol(true)),
 EOF
