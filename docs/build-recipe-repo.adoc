@@ -54,3 +54,15 @@ tagMapping: <3>
 <3> Tag mappings let you map tags to versions if HACBS cannot do it automatically. Mappings are tried in order until one is successful. If none are successful the default automatic approach is used.
 <4> This is an explicit mapping between version `1.1.1` and the tag `commons-logging-1.1.1`. This is useful if you have a small number of tags that don't follow the normal convention.
 <5> This maps versions in the form of `x.y` to `LOGGING_x_y`
+
+
+=== Tag Mapping Rules
+
+In most cases the `tagMapping` element is not needed. The system will attempt to figure out the tag mapping using the following heuristic. The tag mapping is only required if this heuristic fails to match:
+
+. Iterate over any provided tag mappings in order. If the version matches the pattern, and the resulting tag exists in the repo, then this tag is used.
+. Map exact matches to the tag (i.e. version `1.2.3.Final` will match tag `1.2.3.Final`).
+. If only one tag exists that contains the version then this tag is used (e.g. version `1.2.3` would match tag `1.2.3-RELEASE`, as long as there is no other tag that contains the version. If a 1.2.3-PRERELEASE was present as well then this would not match).
+. If multiple tags contain the version, but only one ends with the version, we map the tar that ends with the version (e.g. for version `1.2.3` if we have tags `acme-1.2.3` and `acme-1.2.3-rc` we will map `acme-1.2.3`).
+. Finally, if there is exactly one tag that completely matches the numeric part of the version, then we will map this tag (e.g.
+the version `1.2.3.Final` will map to the tag `1.2.3`, it will not map to `1.2` or `2.3`, as it must match the full numeric part)
