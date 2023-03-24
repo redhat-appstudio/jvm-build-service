@@ -24,7 +24,11 @@ Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
 
+#if we run out of memory we want the JVM to die with error code 134
+export MAVEN_OPTS="-XX:+CrashOnOutOfMemoryError"
+
 echo "Running Maven command with arguments: $@"
+
 cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 #we can't use array parameters directly here
 #we pass them in as goals

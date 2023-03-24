@@ -58,6 +58,7 @@ const (
 	PipelineTypeBuildInfo = "build-info"
 	PipelineTypeBuild     = "build"
 	MaxRetries            = 3
+	MemoryIncrement       = 512
 )
 
 type ReconcileDependencyBuild struct {
@@ -612,44 +613,48 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			}
 			if db.Status.PipelineRetries < MaxRetries {
 
+				doRetry := false
 				for _, pod := range p.Items {
-					doRetry := false
 					if pod.ObjectMeta.CreationTimestamp.After(pr.ObjectMeta.CreationTimestamp.Time) {
 						doRetry = true
 						msg := fmt.Sprintf("Cache problems detected, retrying the build for DependencyBuild %s", db.Name)
 						log.Info(msg)
-					} else {
-						for _, cont := range pod.Status.ContainerStatuses {
+					}
+
+				}
+				if !doRetry && db.Status.CurrentBuildRecipe.AdditionalMemory < 2048 {
+					for _, trs := range pr.Status.TaskRuns {
+						for _, cont := range trs.Status.Steps {
 							//check for oomkilled pods
-							if cont.State.Terminated != nil && cont.State.Terminated.ExitCode == 137 {
-								msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s", db.Name)
+							if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.Reason == "OOMKilled") {
+								msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s, PR UID: %s, Current additional memory: %d", db.Name, pr.UID, db.Status.CurrentBuildRecipe.AdditionalMemory)
 								log.Info(msg)
 								doRetry = true
 								//increase the memory limit
 								if db.Status.CurrentBuildRecipe.AdditionalMemory == 0 {
-									db.Status.CurrentBuildRecipe.AdditionalMemory = 256
+									db.Status.CurrentBuildRecipe.AdditionalMemory = MemoryIncrement
 								} else {
 									db.Status.CurrentBuildRecipe.AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory * 2
 								}
 								for i := range db.Status.PotentialBuildRecipes {
 									db.Status.PotentialBuildRecipes[i].AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory
 								}
+								break
 							}
 						}
 					}
+				}
 
-					if doRetry {
+				if doRetry {
 
-						db.Status.PipelineRetries++
-						err := r.client.Status().Update(ctx, &db)
-						if err != nil {
-							return reconcile.Result{}, err
-						}
-						//this delete will cause the operator to re-try the pipelinerun
-						err = r.client.Delete(ctx, pr)
+					existing := db.Status.PotentialBuildRecipes
+					db.Status.PotentialBuildRecipes = []*v1alpha1.BuildRecipe{db.Status.CurrentBuildRecipe}
+					db.Status.PotentialBuildRecipes = append(db.Status.PotentialBuildRecipes, existing...)
+					db.Status.PipelineRetries++
+					err := r.client.Status().Update(ctx, &db)
+					if err != nil {
 						return reconcile.Result{}, err
 					}
-
 				}
 			}
 

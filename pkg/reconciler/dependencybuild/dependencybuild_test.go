@@ -352,6 +352,25 @@ func TestStateBuilding(t *testing.T) {
 		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
 	})
+	t.Run("Test reconcile building DependencyBuild with OOMKilled Pipeline", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup(g)
+		pr := getBuildPipeline(client, g)
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "False",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
+		ts := &pipelinev1beta1.PipelineRunTaskRunStatus{Status: &pipelinev1beta1.TaskRunStatus{TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{Steps: []pipelinev1beta1.StepState{{ContainerState: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "OOMKilled"}}}}}}}
+		pr.Status.TaskRuns = map[string]*pipelinev1beta1.PipelineRunTaskRunStatus{"task": ts}
+
+		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+		db := getBuild(client, g)
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
+		g.Expect(db.Status.CurrentBuildRecipe.AdditionalMemory).Should(Equal(MemoryIncrement))
+	})
 	t.Run("Test reconcile building DependencyBuild with contaminants", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
