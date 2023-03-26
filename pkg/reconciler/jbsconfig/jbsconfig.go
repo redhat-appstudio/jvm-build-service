@@ -336,6 +336,8 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			cache.Name = deploymentName.Name
 			cache.Namespace = deploymentName.Namespace
 			var replicas int32 = 1
+			var zero int32 = 0
+			cache.Spec.RevisionHistoryLimit = &zero
 			cache.Spec.Replicas = &replicas
 			cache.Spec.Strategy = appsv1.DeploymentStrategy{Type: appsv1.RecreateDeploymentStrategyType}
 			cache.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"app": v1alpha1.CacheDeploymentName}}
