@@ -329,6 +329,7 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 
 func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logger, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig) error {
 	cache := &appsv1.Deployment{}
+	trueBool := true
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
 	err := r.client.Get(ctx, deploymentName, cache)
 	create := false
@@ -373,7 +374,11 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			}}
 			cache.Spec.Template.Spec.Volumes = []corev1.Volume{
 				{Name: v1alpha1.CacheDeploymentName, VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: v1alpha1.CacheDeploymentName}}},
-				{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: v1alpha1.TlsSecretName}}},
+			}
+			if !jbsConfig.Spec.CacheSettings.DisableTLS {
+				cache.Spec.Template.Spec.Volumes = append(cache.Spec.Template.Spec.Volumes, corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: v1alpha1.TlsSecretName, Optional: &trueBool}}})
+			} else {
+				cache.Spec.Template.Spec.Volumes = append(cache.Spec.Template.Spec.Volumes, corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}})
 			}
 
 		} else {
@@ -396,7 +401,6 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	//central is at the hard coded 200 position
 	//redhat is configured at 250
 	repos := []Repo{{name: "central", position: 200}, {name: "redhat", position: 250}}
-	trueBool := true
 	if jbsConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
 

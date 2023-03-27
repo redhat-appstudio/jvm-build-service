@@ -528,6 +528,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, pipelinev1beta1.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
+	} else {
+		pr.Spec.Workspaces = append(pr.Spec.Workspaces, pipelinev1beta1.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
 	}
 	pr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
