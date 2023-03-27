@@ -78,7 +78,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		deployArgs = append(deployArgs, "--registry-repository="+jbsConfig.Spec.ImageRegistry.Repository)
 	}
 	if jbsConfig.Spec.ImageRegistry.Insecure {
-		deployArgs = append(deployArgs, "--registry-insecure=")
+		deployArgs = append(deployArgs, "--registry-insecure")
 	}
 	if jbsConfig.Spec.ImageRegistry.PrependTag != "" {
 		deployArgs = append(deployArgs, "--registry-prepend-tag="+jbsConfig.Spec.ImageRegistry.PrependTag)

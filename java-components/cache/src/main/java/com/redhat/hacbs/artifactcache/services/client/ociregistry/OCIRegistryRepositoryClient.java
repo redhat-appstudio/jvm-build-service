@@ -66,6 +66,9 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         this.repository = repository;
         this.enableHttpAndInsecureFailover = enableHttpAndInsecureFailover;
         this.rebuiltArtifacts = rebuiltArtifacts;
+        if (enableHttpAndInsecureFailover) {
+            System.setProperty("sendCredentialsOverHttp", "true");
+        }
 
         if (authToken.isPresent() && !authToken.get().isBlank()) {
             if (authToken.get().trim().startsWith("{")) {
@@ -224,7 +227,8 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     private RegistryClient getRegistryClient() {
         RegistryClient.Factory factory = RegistryClient.factory(new EventHandlers.Builder().build(), registry,
                 owner + "/" + repository,
-                new FailoverHttpClient(enableHttpAndInsecureFailover, false, s -> Log.info(s.getMessage())));
+                new FailoverHttpClient(enableHttpAndInsecureFailover, enableHttpAndInsecureFailover,
+                        s -> Log.info(s.getMessage())));
 
         if (credential != null) {
             factory.setCredential(credential);

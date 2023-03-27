@@ -77,6 +77,9 @@ public class ContainerRegistryDeployer implements Deployer {
             String repository,
             boolean insecure,
             String prependTag, Consumer<String> imageNameCallback) {
+        if (insecure) {
+            System.setProperty("sendCredentialsOverHttp", "true");
+        }
 
         this.host = host;
         this.port = port;
