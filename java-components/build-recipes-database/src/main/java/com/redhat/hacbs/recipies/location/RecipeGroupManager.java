@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jboss.logging.Logger;
+
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 
@@ -14,6 +16,8 @@ import com.redhat.hacbs.recipies.GAV;
  * Entry point for requesting build information
  */
 public class RecipeGroupManager {
+
+    private static final Logger log = Logger.getLogger(RecipeGroupManager.class.getName());
 
     /**
      * The repositories, the highest priority first
@@ -31,6 +35,8 @@ public class RecipeGroupManager {
         for (var buildLocationRequest : request.getRequests()) {
             var group = buildLocationRequest.getGroupId();
             var authoritative = groupAuthoritativeResults.get(group);
+            log.warnf("Looking up %s", group);
+
             if (authoritative != null) {
                 results.put(buildLocationRequest, authoritative);
             } else {
@@ -57,6 +63,7 @@ public class RecipeGroupManager {
                         if (path.getArtifactAndVersion() != null) {
                             //if there is a file specific to this group, artifact and version it takes priority
                             Path resolvedPath = path.getArtifactAndVersion().resolve(recipe.getName());
+                            log.warnf("Searching for recipe in %s for specific path for GAV", resolvedPath);
                             if (Files.exists(resolvedPath)) {
                                 authPossible = false;
                                 buildResults.put(recipe, resolvedPath);
@@ -69,6 +76,7 @@ public class RecipeGroupManager {
                             //then version specific
                             if (path.getVersion() != null) {
                                 Path resolvedPath = path.getVersion().resolve(recipe.getName());
+                                log.warnf("Searching for recipe in %s for version", resolvedPath);
                                 if (Files.exists(resolvedPath)) {
                                     authPossible = false;
                                     buildResults.put(recipe, resolvedPath);
@@ -81,6 +89,7 @@ public class RecipeGroupManager {
                             for (var path : nonGroupAuthPaths) {
                                 if (path.getArtifact() != null) {
                                     Path resolvedPath = path.getArtifact().resolve(recipe.getName());
+                                    log.warnf("Searching for recipe in %s for artifactId", resolvedPath);
                                     if (Files.exists(resolvedPath)) {
                                         authPossible = false;
                                         buildResults.put(recipe, resolvedPath);
@@ -92,6 +101,7 @@ public class RecipeGroupManager {
                                 //then group id specific, which should be the most common
                                 for (var path : paths) {
                                     Path resolvedPath = path.getGroup().resolve(recipe.getName());
+                                    log.warnf("Searching for recipe in %s for groupId", resolvedPath);
                                     if (Files.exists(resolvedPath)) {
                                         buildResults.put(recipe, resolvedPath);
                                         if (path.isGroupAuthoritative()) {

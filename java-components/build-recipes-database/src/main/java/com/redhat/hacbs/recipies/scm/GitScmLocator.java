@@ -74,7 +74,7 @@ public class GitScmLocator implements ScmLocator {
         }
 
         /**
-         * Whether to cache code repository tags between {@link ScmLocator.resolveTagInfo(GAV)} calls
+         * Whether to cache code repository tags between {@link ScmLocator#resolveTagInfo(GAV)} calls
          *
          * @param cacheRepoTags whether to cache code repository tags
          * @return this builder instance
@@ -141,7 +141,14 @@ public class GitScmLocator implements ScmLocator {
                 if (remotePattern == null || remotePattern.matcher(i).matches()) {
                     log.infof("Cloning recipe repo %s", i);
                     try {
-                        repoManager = RecipeRepositoryManager.create(i, "main", Optional.empty(),
+                        // Allow cloning of another branch via <url>#<branch> format.
+                        String branch = "main";
+                        int b = i.indexOf('#');
+                        if (b > 0) {
+                            branch = i.substring(b + 1);
+                            i = i.substring(0, b);
+                        }
+                        repoManager = RecipeRepositoryManager.create(i, branch, Optional.empty(),
                                 Files.createTempDirectory("recipe"));
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to checkout " + i, e);
