@@ -725,6 +725,9 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context, split []string, namespace string, log logr.Logger) error {
 	log.Info("Found pipeline run with community dependencies")
 	for _, gav := range split {
+		if len(gav) == 0 {
+			continue
+		}
 		name := CreateABRName(gav)
 		log.Info("Found community dependency: ", "gav", gav)
 		abr := v1alpha1.ArtifactBuild{}
