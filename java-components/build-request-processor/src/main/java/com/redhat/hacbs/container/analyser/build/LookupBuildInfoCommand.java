@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import javax.enterprise.inject.Instance;
@@ -85,8 +84,7 @@ public class LookupBuildInfoCommand implements Runnable {
             //checkout the git recipe database
             List<RecipeDirectory> managers = new ArrayList<>();
             for (var i : recipeRepos) {
-                Path tempDir = Files.createTempDirectory("recipe");
-                managers.add(RecipeRepositoryManager.create(i, "main", Optional.empty(), tempDir));
+                managers.add(RecipeRepositoryManager.create(i));
             }
             RecipeGroupManager recipeGroupManager = new RecipeGroupManager(managers);
 

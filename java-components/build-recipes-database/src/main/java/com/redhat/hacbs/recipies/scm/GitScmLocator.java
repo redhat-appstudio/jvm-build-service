@@ -2,7 +2,6 @@ package com.redhat.hacbs.recipies.scm;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -141,15 +139,7 @@ public class GitScmLocator implements ScmLocator {
                 if (remotePattern == null || remotePattern.matcher(i).matches()) {
                     log.infof("Cloning recipe repo %s", i);
                     try {
-                        // Allow cloning of another branch via <url>#<branch> format.
-                        String branch = "main";
-                        int b = i.indexOf('#');
-                        if (b > 0) {
-                            branch = i.substring(b + 1);
-                            i = i.substring(0, b);
-                        }
-                        repoManager = RecipeRepositoryManager.create(i, branch, Optional.empty(),
-                                Files.createTempDirectory("recipe"));
+                        repoManager = RecipeRepositoryManager.create(i);
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to checkout " + i, e);
                     }
