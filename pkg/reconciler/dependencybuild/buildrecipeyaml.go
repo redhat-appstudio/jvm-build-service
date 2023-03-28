@@ -166,7 +166,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	if err != nil {
 		return nil, "", err
 	}
-	buildContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestMemory, "1024Mi"))
+	defaultBuildContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestMemory, "1024Mi"))
 	if err != nil {
 		return nil, "", err
 	}
@@ -183,6 +183,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		return nil, "", err
 	}
 
+	buildContainerRequestMemory := defaultBuildContainerRequestMemory
 	if additionalMemory > 0 {
 		additional := resource.MustParse(fmt.Sprintf("%dMi", additionalMemory))
 		buildContainerRequestMemory.Add(additional)
@@ -300,8 +301,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: make configurable
-					Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-					Limits:   v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": defaultContainerLimitCPU},
+					Requests: v1.ResourceList{"memory": defaultBuildContainerRequestMemory, "cpu": defaultContainerRequestCPU},
+					Limits:   v1.ResourceList{"memory": defaultBuildContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 				},
 				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(deployArgs),
 			},
