@@ -186,7 +186,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         info.tools.putAll(i.toolVersions);
                     }
                     var invocations = new ArrayList<>(
-                            List.of(MAVEN, "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
+                            List.of(MAVEN, "install", "-Denforcer.skip", "-Dcheckstyle.skip",
                                     "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
                                     "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false", "-Dcobertura.skip=true"));
                     if (skipTests) {
