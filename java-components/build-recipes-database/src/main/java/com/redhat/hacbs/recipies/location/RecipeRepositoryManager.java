@@ -43,14 +43,20 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     }
 
     public static RecipeRepositoryManager create(String remote, Optional<Duration> updateInterval,
-            Path directory) throws GitAPIException {
-        // Allow cloning of another branch via <url>#<branch> format.
+            Path directory) throws GitAPIException, IOException {
+        //Allow cloning of another branch via <url>#<branch> format.
         String branch = "main";
         int b = remote.indexOf('#');
         if (b > 0) {
             branch = remote.substring(b + 1);
             remote = remote.substring(0, b);
         }
+        return create(remote, branch, updateInterval, directory);
+
+    }
+
+    public static RecipeRepositoryManager create(String remote, String branch, Optional<Duration> updateInterval,
+            Path directory) throws GitAPIException {
 
         var clone = Git.cloneRepository()
                 .setBranch(branch)
