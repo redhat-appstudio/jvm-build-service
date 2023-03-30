@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import com.redhat.hacbs.artifactcache.test.util.HashUtil;
 
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
@@ -125,7 +126,7 @@ public class LocalCacheTest {
     void runTest(BiConsumer<CacheFacade, Path> consumer) throws Exception {
         Path temp = Files.createTempDirectory("cache-test");
         try {
-            RootStorageManager storageManager = new RootStorageManager(temp, 1, 1, 1);
+            RootStorageManager storageManager = new RootStorageManager(temp, 1, 1, 1, new CompositeMeterRegistry());
             CacheFacade localCache = new CacheFacade(
                     Map.of("default", new BuildPolicy(
                             List.of(new RepositoryCache(storageManager,

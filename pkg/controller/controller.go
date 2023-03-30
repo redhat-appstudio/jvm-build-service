@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/metrics"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"time"
@@ -124,5 +125,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
+	metrics.InitPrometheus(mgr.GetClient())
 	return mgr, nil
 }

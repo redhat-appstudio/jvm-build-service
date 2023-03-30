@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Stream;
 
 import javax.annotation.PostConstruct;
@@ -27,6 +28,11 @@ import javax.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.noop.NoopCounter;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.ExecutorRecorder;
 
@@ -60,12 +66,16 @@ public class RootStorageManager implements StorageManager {
 
     private Timer timer;
 
+    private final Counter cacheFreeCount;
+    private final Counter deletedEntries;
+
     @Inject
     public RootStorageManager(
             @ConfigProperty(name = "cache-path") Path path,
             @ConfigProperty(name = "cache-disk-percentage-high-water") double highWater,
             @ConfigProperty(name = "cache-disk-percentage-low-water") double lowWater,
-            @ConfigProperty(name = "cache-delete-batch-size", defaultValue = "30") int deleteBatchSize) throws IOException {
+            @ConfigProperty(name = "cache-delete-batch-size", defaultValue = "30") int deleteBatchSize,
+            MeterRegistry registry) throws IOException {
         this.path = path;
         Files.createDirectories(path);
         this.fileStore = Files.getFileStore(path);
@@ -74,6 +84,18 @@ public class RootStorageManager implements StorageManager {
         this.deleteBatchSize = deleteBatchSize;
         Log.infof("Cache requires at least %s space free, and will delete to the low water mark of %s", highWaterFreeSpace,
                 lowWaterFreeSpace);
+        registry.gauge("free_disk_space", fileStore, new ToDoubleFunction<FileStore>() {
+            @Override
+            public double applyAsDouble(FileStore value) {
+                try {
+                    return value.getUnallocatedSpace();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        cacheFreeCount = registry.counter("cache_free_count");
+        deletedEntries = registry.counter("cache_deleted_entries");
     }
 
     RootStorageManager(FileStore fileStore,
@@ -89,6 +111,8 @@ public class RootStorageManager implements StorageManager {
         this.deleteBatchSize = deleteBatchSize;
         Log.infof("Cache requires at least %s space free, and will delete to the low water mark of %s", highWaterFreeSpace,
                 lowWaterFreeSpace);
+        cacheFreeCount = new NoopCounter(new Meter.Id("cache_free_count", Tags.empty(), null, null, Meter.Type.COUNTER));
+        deletedEntries = new NoopCounter(new Meter.Id("cache_deleted_entries", Tags.empty(), null, null, Meter.Type.COUNTER));
     }
 
     @PostConstruct
@@ -271,6 +295,7 @@ public class RootStorageManager implements StorageManager {
 
     private void freeSpace() throws IOException {
         Log.infof("Disk usage is too high, freeing cache entries");
+        cacheFreeCount.increment();
         try {
             TreeMap<Long, List<String>> entries = new TreeMap<>();
             for (var e : inUseMap.entrySet()) {
