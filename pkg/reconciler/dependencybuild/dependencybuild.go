@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"sort"
 	"strconv"
@@ -874,6 +875,11 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 								Name:  "process-build-requests",
 								Image: image,
 								Args:  args,
+								Resources: v1.ResourceRequirements{
+									//TODO: make configurable
+									Requests: v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
+									Limits:   v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
+								},
 								Env: []v1.EnvVar{
 									{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 								},

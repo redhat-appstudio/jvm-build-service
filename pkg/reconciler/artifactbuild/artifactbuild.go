@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"strconv"
 	"strings"
@@ -714,6 +715,11 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					"--cache-url",
 					cacheUrl,
 				}),
+				Resources: corev1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: corev1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
+					Limits:   corev1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
+				},
 				Env: []corev1.EnvVar{
 					{Name: "GIT_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 				},
