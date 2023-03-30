@@ -1,11 +1,11 @@
-FROM registry.access.redhat.com/ubi8/openjdk-17:1.14 AS builder
+FROM registry.access.redhat.com/ubi8/openjdk-17 AS builder
 
 WORKDIR /work
 COPY ./ .
 
 RUN mvn -B package -pl build-request-processor -am -Dmaven.test.skip
 
-FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.14
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime
 WORKDIR /work/
 
 COPY --from=builder /work/build-request-processor/target/quarkus-app/lib/ /deployments/lib/
