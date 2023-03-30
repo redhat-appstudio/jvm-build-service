@@ -28,6 +28,7 @@ mkdir -p "$HOME/.sbt/1.0/"
 cat > "$HOME/.sbt/repositories" <<EOF
 [repositories]
   local
+  ivy:  https://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
   my-maven-proxy-releases: $(params.CACHE_URL)
 EOF
 
