@@ -29,6 +29,7 @@ import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.CacheFacade;
 import com.redhat.hacbs.resources.util.HashUtil;
 
+import io.micrometer.core.annotation.Counted;
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
 
@@ -44,6 +45,7 @@ public class V1CacheMavenResource {
 
     @GET
     @Path("{build-policy}/{commit-time}/{group:.*?}/{artifact}/{version}/{target}")
+    @Counted(value = "download_artifact_for_user_build")
     public Response get(@PathParam("build-policy") String buildPolicy,
             @PathParam("group") String group,
             @PathParam("artifact") String artifact,
@@ -67,6 +69,7 @@ public class V1CacheMavenResource {
 
     @GET
     @Path("{build-policy}/{commit-time}/{group:.*?}/maven-metadata.xml{hash:.*?}")
+    @Counted(value = "download_maven_metadata_for_user_build")
     public InputStream get(@PathParam("build-policy") String buildPolicy,
             @PathParam("commit-time") long commitTime,
             @PathParam("group") String group,

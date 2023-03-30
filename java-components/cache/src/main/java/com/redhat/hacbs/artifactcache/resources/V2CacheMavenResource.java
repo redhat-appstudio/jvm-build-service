@@ -33,6 +33,7 @@ import com.redhat.hacbs.artifactcache.services.RemoteRepositoryManager;
 import com.redhat.hacbs.artifactcache.services.RepositoryCache;
 import com.redhat.hacbs.resources.util.HashUtil;
 
+import io.micrometer.core.annotation.Counted;
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
 
@@ -50,6 +51,7 @@ public class V2CacheMavenResource {
 
     @GET
     @Path("rebuild{stores:(-[\\w-,]+)?}/{commit-time}/{group:.*?}/{artifact}/{version}/{target}")
+    @Counted(value = "download_artifact_for_rebuild")
     public Response getRebuild(@PathParam("stores") String stores,
             @PathParam("group") String group,
             @PathParam("artifact") String artifact,
@@ -96,6 +98,7 @@ public class V2CacheMavenResource {
 
     @GET
     @Path("rebuild{stores:(-[\\w-,]+)?}/{commit-time}/{group:.*?}/maven-metadata.xml{hash:.*?}")
+    @Counted(value = "download_maven_metadata_for_rebuild")
     public InputStream getRebuild(@PathParam("stores") String stores,
             @PathParam("commit-time") long commitTime,
             @PathParam("group") String group,
@@ -131,6 +134,7 @@ public class V2CacheMavenResource {
 
     @GET
     @Path("user/{build-policy}/{group:.*?}/{artifact}/{version}/{target}")
+    @Counted(value = "download_artifact_for_user_build")
     public Response get(@PathParam("build-policy") String buildPolicy,
             @PathParam("group") String group,
             @PathParam("artifact") String artifact,
@@ -154,6 +158,7 @@ public class V2CacheMavenResource {
 
     @GET
     @Path("user/{build-policy}/{group:.*?}/maven-metadata.xml{hash:.*?}")
+    @Counted(value = "download_maven_metadata_for_user_build")
     public InputStream get(@PathParam("build-policy") String buildPolicy,
             @PathParam("group") String group,
             @PathParam("hash") String hash) throws Exception {
