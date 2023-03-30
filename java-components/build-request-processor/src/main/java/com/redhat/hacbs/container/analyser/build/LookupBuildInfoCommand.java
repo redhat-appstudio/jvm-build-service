@@ -237,14 +237,11 @@ public class LookupBuildInfoCommand implements Runnable {
             if (Files.exists(path.resolve("build.sbt"))) {
                 //TODO: initial SBT support, needs more work
                 Log.infof("Detected SBT build in %s", path);
-
-                var specifiedJavaVersion = "11"; //hard coded for now
-
                 info.tools.put(JDK, new VersionRange("7", "17", "8"));
                 info.tools.put(SBT, new VersionRange("1.8.0", "1.8.0", "1.8.0"));
                 info.toolVersion = "1.8.0";
                 info.invocations.add(new ArrayList<>(
-                        List.of(SBT, "+", "publish"))); //the plus tells it to deploy for every scala version
+                        List.of(SBT, "--no-colors", "+publish"))); //the plus tells it to deploy for every scala version
             }
             if (AntUtils.isAntBuild(path)) {
                 // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
