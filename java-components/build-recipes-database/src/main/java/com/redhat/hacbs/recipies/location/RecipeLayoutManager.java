@@ -35,14 +35,11 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
     public static final String ARTIFACT = "_artifact";
     public static final String VERSION = "_version";
-
-    private final Path checkoutDirectory;
     private final Path scmInfoDirectory;
     private final Path buildInfoDirectory;
     private final Path repositoryInfoDirectory;
 
     public RecipeLayoutManager(Path baseDirectory) {
-        this.checkoutDirectory = baseDirectory;
         this.scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
         this.buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
         this.repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
@@ -56,6 +53,8 @@ public class RecipeLayoutManager implements RecipeDirectory {
         Path artifactFolder = groupPath.resolve(ARTIFACT);
         Path artifactPath = artifactFolder.resolve(artifactId);
         Path artifactAndVersionPath = null;
+        log.warning("Searching for recipe in " + groupPath);
+
         if (!Files.exists(groupPath)) {
             return Optional.empty();
         }

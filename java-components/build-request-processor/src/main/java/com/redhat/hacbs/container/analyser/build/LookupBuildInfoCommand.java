@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import javax.enterprise.inject.Instance;
@@ -85,8 +84,7 @@ public class LookupBuildInfoCommand implements Runnable {
             //checkout the git recipe database
             List<RecipeDirectory> managers = new ArrayList<>();
             for (var i : recipeRepos) {
-                Path tempDir = Files.createTempDirectory("recipe");
-                managers.add(RecipeRepositoryManager.create(i, "main", Optional.empty(), tempDir));
+                managers.add(RecipeRepositoryManager.create(i));
             }
             RecipeGroupManager recipeGroupManager = new RecipeGroupManager(managers);
 
@@ -186,7 +184,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         info.tools.putAll(i.toolVersions);
                     }
                     var invocations = new ArrayList<>(
-                            List.of(MAVEN, "install", "-DskipTests", "-Denforcer.skip", "-Dcheckstyle.skip",
+                            List.of(MAVEN, "install", "-Denforcer.skip", "-Dcheckstyle.skip",
                                     "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
                                     "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false", "-Dcobertura.skip=true"));
                     if (skipTests) {
