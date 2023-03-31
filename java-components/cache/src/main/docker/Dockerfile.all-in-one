@@ -1,5 +1,5 @@
 FROM registry.access.redhat.com/ubi8/openjdk-17 AS builder
-
+USER 0
 WORKDIR /work
 COPY ./ .
 
@@ -8,6 +8,7 @@ RUN mkdir -p /work/cache/target/classes
 RUN mvn -B package -pl cache -am -Dmaven.test.skip
 
 FROM registry.access.redhat.com/ubi8/openjdk-17-runtime
+USER 0
 WORKDIR /work/
 
 COPY --from=builder /work/cache/target/quarkus-app/lib/ /deployments/lib/
