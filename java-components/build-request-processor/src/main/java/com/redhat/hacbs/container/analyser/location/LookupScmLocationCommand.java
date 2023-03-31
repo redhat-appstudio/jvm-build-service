@@ -1,13 +1,17 @@
 package com.redhat.hacbs.container.analyser.location;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
 import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.scm.GitScmLocator;
+import com.redhat.hacbs.recipies.scm.CompoundScmLocator;
 import com.redhat.hacbs.recipies.scm.PomScmLocator;
+import com.redhat.hacbs.recipies.scm.ScmLocator;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
@@ -15,9 +19,7 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "lookup-scm")
 public class LookupScmLocationCommand implements Runnable {
 
-    @CommandLine.Option(names = "--recipes", required = true, split = ",")
-    List<String> recipeRepos;
-
+    public static final String CACHE_PATH = "/v2/cache/user/default";
     @CommandLine.Option(names = "--gav", required = true)
     String gav;
 
@@ -41,7 +43,7 @@ public class LookupScmLocationCommand implements Runnable {
     @CommandLine.Option(names = "--context")
     Path context;
 
-    @CommandLine.Option(names = "--cache-url")
+    @CommandLine.Option(names = "--cache-url", required = true)
     String cacheUrl;
 
     @Override
@@ -98,11 +100,12 @@ public class LookupScmLocationCommand implements Runnable {
         }
     }
 
-    private GitScmLocator getScmLocator() {
-        var builder = GitScmLocator.builder().setRecipeRepos(recipeRepos);
-        if (cacheUrl != null) {
-            builder.setFallback(new PomScmLocator(cacheUrl));
+    private ScmLocator getScmLocator() {
+        try {
+            var locator = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl)).build(CacheScmLocator.class);
+            return new CompoundScmLocator(locator, new PomScmLocator(cacheUrl + CACHE_PATH));
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
         }
-        return builder.build();
     }
 }

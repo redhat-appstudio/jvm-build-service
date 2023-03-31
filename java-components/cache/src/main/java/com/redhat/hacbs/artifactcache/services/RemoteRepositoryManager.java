@@ -2,10 +2,6 @@ package com.redhat.hacbs.artifactcache.services;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,15 +14,11 @@ import javax.inject.Singleton;
 
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
 import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
 import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
-import com.redhat.hacbs.recipies.location.RecipeDirectory;
-import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
-import com.redhat.hacbs.recipies.mavenrepo.MavenRepositoryInfoManager;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;
@@ -64,10 +56,8 @@ public class RemoteRepositoryManager {
     @Inject
     RebuiltArtifacts rebuiltArtifacts;
 
-    @ConfigProperty(name = "build-info.repositories", defaultValue = "https://github.com/redhat-appstudio/jvm-build-data")
-    List<String> buildInfoRepos;
-
-    final List<RecipeDirectory> recipeDirs = new ArrayList<>();
+    @Inject
+    RecipeManager recipeManager;
 
     @PostConstruct
     void setup() throws IOException, GitAPIException {
@@ -87,12 +77,6 @@ public class RemoteRepositoryManager {
                     new OCIRegistryRepositoryClient(host, registryOwner.get(), repository, token, prependTag,
                             insecure, rebuiltArtifacts, storageManager));
             remoteStores.put("rebuilt", List.of(new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false)));
-        }
-        for (var i : buildInfoRepos) {
-            Path tempDir = Files.createTempDirectory("recipe");
-            Log.infof("Reading repos from %s at %s", i, tempDir);
-            recipeDirs
-                    .add(RecipeRepositoryManager.create(i, Optional.of(Duration.of(10, ChronoUnit.MINUTES)), tempDir));
         }
     }
 
@@ -179,24 +163,20 @@ public class RemoteRepositoryManager {
 
     private List<Repository> createSystemRepository(String repo) {
         List<Repository> ret = new ArrayList<>();
-        for (var manager : recipeDirs) {
-            var file = manager.getRepositoryPaths(repo);
-            if (file.isPresent()) {
-                try {
-                    var info = MavenRepositoryInfoManager.INSTANCE.parse(file.get());
-                    if (info.getUri() != null && !info.getUri().isBlank()) {
-                        Log.infof("System Maven repository %s added with URI %s", repo, info.getUri());
-                        RepositoryClient client = MavenClient.of(repo, new URI(info.getUri()));
-                        ret.add(new Repository(repo, info.getUri(), RepositoryType.MAVEN2, client));
-                    }
-                    if (info.getRepositories() != null) {
-                        for (var i : info.getRepositories()) {
-                            ret.addAll(createSystemRepository(i));
-                        }
-                    }
-                } catch (Exception e) {
-                    Log.errorf("Failed to load system repository " + repo + " from " + manager);
+        for (var info : recipeManager.getRepositoryInfo(repo)) {
+            try {
+                if (info.getUri() != null && !info.getUri().isBlank()) {
+                    Log.infof("System Maven repository %s added with URI %s", repo, info.getUri());
+                    RepositoryClient client = MavenClient.of(repo, new URI(info.getUri()));
+                    ret.add(new Repository(repo, info.getUri(), RepositoryType.MAVEN2, client));
                 }
+                if (info.getRepositories() != null) {
+                    for (var i : info.getRepositories()) {
+                        ret.addAll(createSystemRepository(i));
+                    }
+                }
+            } catch (Exception e) {
+                Log.errorf("Failed to load system repository " + repo + " from " + info);
             }
         }
         if (ret.isEmpty()) {

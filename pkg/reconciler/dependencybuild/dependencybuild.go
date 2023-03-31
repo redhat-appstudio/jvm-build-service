@@ -177,6 +177,11 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	if !jbsConfig.Spec.CacheSettings.DisableTLS {
+		pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}}}
+	} else {
+		pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}}}
+	}
 	pr.Namespace = db.Namespace
 	pr.GenerateName = db.Name + "-build-discovery-"
 	pr.Labels = map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineType: PipelineTypeBuildInfo}
@@ -828,24 +833,21 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if err != nil {
 		return nil, err
 	}
-	recipes := ""
-	additional := jbsConfig.Spec.AdditionalRecipes
-	for _, recipe := range additional {
-		if len(strings.TrimSpace(recipe)) > 0 {
-			recipes = recipes + recipe + ","
-		}
-	}
-	recipes = recipes + settingOrDefault(systemConfig.Spec.RecipeDatabase, v1alpha1.DefaultRecipeDatabase)
 	path := build.ScmInfo.Path
 	//TODO should the buidl request process require context to be set ?
 	if len(path) == 0 {
 		path = "."
 	}
+	zero := int64(0)
+	cacheUrl := "https://jvm-build-workspace-artifact-cache-tls." + jbsConfig.Namespace + ".svc.cluster.local"
+	if jbsConfig.Spec.CacheSettings.DisableTLS {
+		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
+	}
 	trueBool := true
 	args := []string{
 		"lookup-build-info",
-		"--recipes",
-		recipes,
+		"--cache-url",
+		cacheUrl,
 		"--scm-url",
 		build.ScmInfo.SCMURL,
 		"--scm-tag",
@@ -862,23 +864,32 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if build.ScmInfo.Private {
 		args = append(args, "--private-repo")
 	}
+	pullPolicy := v1.PullIfNotPresent
+	if strings.HasSuffix(image, "dev") {
+		pullPolicy = v1.PullAlways
+	}
 	return &pipelinev1beta1.PipelineSpec{
-		Results: []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}}, {Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}}},
+		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
+		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}}, {Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}}},
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
-				Name: artifactbuild.TaskName,
+				Name:       artifactbuild.TaskName,
+				Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{{Name: "tls", Workspace: "tls"}},
 				TaskSpec: &pipelinev1beta1.EmbeddedTask{
 					TaskSpec: pipelinev1beta1.TaskSpec{
-						Results: []pipelinev1beta1.TaskResult{{Name: BuildInfoPipelineMessage}, {Name: BuildInfoPipelineBuildInfo}},
+						Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: "tls"}},
+						Results:    []pipelinev1beta1.TaskResult{{Name: BuildInfoPipelineMessage}, {Name: BuildInfoPipelineBuildInfo}},
 						Steps: []pipelinev1beta1.Step{
 							{
-								Name:  "process-build-requests",
-								Image: image,
-								Args:  args,
+								Name:            "process-build-requests",
+								Image:           image,
+								ImagePullPolicy: pullPolicy,
+								SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+								Script:          artifactbuild.InstallKeystoreIntoBuildRequestProcessor(args),
 								Resources: v1.ResourceRequirements{
 									//TODO: make configurable
-									Requests: v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
-									Limits:   v1.ResourceList{"memory": resource.MustParse("256Mi"), "cpu": resource.MustParse("10m")},
+									Requests: v1.ResourceList{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("10m")},
+									Limits:   v1.ResourceList{"memory": resource.MustParse("512Mi")},
 								},
 								Env: []v1.EnvVar{
 									{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},

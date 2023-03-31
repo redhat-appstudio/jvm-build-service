@@ -10,13 +10,13 @@ import static org.eclipse.jgit.api.ResetCommand.ResetType.HARD;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
@@ -26,18 +26,14 @@ import org.apache.maven.cli.CLIManager;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.container.analyser.build.ant.AntUtils;
 import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.build.maven.MavenDiscoveryTask;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
-import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipies.location.BuildInfoRequest;
-import com.redhat.hacbs.recipies.location.RecipeDirectory;
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipies.util.GitCredentials;
 
 import io.quarkus.logging.Log;
@@ -46,8 +42,8 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "lookup-build-info")
 public class LookupBuildInfoCommand implements Runnable {
 
-    @CommandLine.Option(names = "--recipes", required = true, split = ",")
-    List<String> recipeRepos;
+    @CommandLine.Option(names = "--cache-url", required = true)
+    String cacheUrl;
 
     @CommandLine.Option(names = "--scm-url", required = true)
     String scmUrl;
@@ -81,20 +77,9 @@ public class LookupBuildInfoCommand implements Runnable {
     @Override
     public void run() {
         try {
-            //checkout the git recipe database
-            List<RecipeDirectory> managers = new ArrayList<>();
-            for (var i : recipeRepos) {
-                managers.add(RecipeRepositoryManager.create(i));
-            }
-            RecipeGroupManager recipeGroupManager = new RecipeGroupManager(managers);
 
-            var result = recipeGroupManager
-                    .requestBuildInformation(new BuildInfoRequest(scmUrl, version, Set.of(BuildRecipe.BUILD)));
-
-            BuildRecipeInfo buildRecipeInfo = null;
-            if (result.getData().containsKey(BuildRecipe.BUILD)) {
-                buildRecipeInfo = BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD));
-            }
+            BuildRecipeInfo buildRecipeInfo = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl))
+                    .build(CacheBuildInfoLocator.class).resolveBuildInfo(scmUrl, version);
 
             Log.infof("Checking out %s at tag %s", scmUrl, tag);
             doBuildAnalysis(scmUrl, tag, context, buildRecipeInfo, privateRepo);
