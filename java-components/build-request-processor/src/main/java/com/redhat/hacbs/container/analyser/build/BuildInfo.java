@@ -41,11 +41,6 @@ public class BuildInfo {
      */
     String toolVersion;
 
-    /**
-     * Java version.
-     */
-    String javaVersion;
-
     long commitTime;
 
     String preBuildScript;
@@ -103,15 +98,6 @@ public class BuildInfo {
 
     public BuildInfo setToolVersion(String toolVersion) {
         this.toolVersion = toolVersion;
-        return this;
-    }
-
-    public String getJavaVersion() {
-        return javaVersion;
-    }
-
-    public BuildInfo setJavaVersion(String javaVersion) {
-        this.javaVersion = javaVersion;
         return this;
     }
 
