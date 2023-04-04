@@ -49,6 +49,7 @@ public class GitScmLocator implements ScmLocator {
 
     public static class Builder {
 
+        public RecipeGroupManager recipeGroupManager;
         private List<String> recipeRepos = List.of(DEFAULT_RECIPE_REPO_URL);
         private boolean cacheRepoTags;
         private String cacheUrl;
@@ -108,6 +109,18 @@ public class GitScmLocator implements ScmLocator {
             return this;
         }
 
+        /**
+         * Explicitly use an existing {@link RecipeRepositoryManager}. If this is set then other repository settings will have
+         * no effect.
+         *
+         * @param recipeGroupManager The manager
+         * @return this builder instance
+         */
+        public Builder setRecipeGroupManager(RecipeGroupManager recipeGroupManager) {
+            this.recipeGroupManager = recipeGroupManager;
+            return this;
+        }
+
         public GitScmLocator build() {
             return new GitScmLocator(this);
         }
@@ -127,6 +140,7 @@ public class GitScmLocator implements ScmLocator {
         this.fallbackScmLocator = builder.fallbackScmLocator;
         this.repoTagsToHash = cacheRepoTags ? new HashMap<>() : Map.of();
         this.cloneLocalRecipeRepos = builder.cloneLocalRecipeRepos;
+        this.recipeGroupManager = builder.recipeGroupManager;
     }
 
     private RecipeGroupManager getRecipeGroupManager() {

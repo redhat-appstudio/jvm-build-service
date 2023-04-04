@@ -63,10 +63,8 @@ func TestArtifactBuildStateNew(t *testing.T) {
 
 	ctx := context.TODO()
 	client, reconciler := setupClientAndReconciler(&abr)
-	const customRepo = "https://myrepo.com/repo.git"
 	sysConfig := v1alpha1.JBSConfig{}
 	g.Expect(client.Get(ctx, types.NamespacedName{Name: v1alpha1.JBSConfigName, Namespace: metav1.NamespaceDefault}, &sysConfig)).Should(Succeed())
-	sysConfig.Spec.AdditionalRecipes = []string{customRepo}
 
 	g.Expect(client.Update(context.TODO(), &sysConfig)).Should(Succeed())
 
@@ -86,7 +84,6 @@ func TestArtifactBuildStateNew(t *testing.T) {
 			g.Expect(or.Kind).Should(Equal(abr.Kind))
 			g.Expect(or.Name).Should(Equal(abr.Name))
 		}
-		g.Expect(tr.Spec.PipelineSpec.Tasks[0].TaskSpec.Steps[0].Script).Should(ContainSubstring(customRepo))
 	}
 }
 

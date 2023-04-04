@@ -2,6 +2,9 @@ package com.redhat.hacbs.recipies;
 
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * An artifact GAV
  */
@@ -11,7 +14,9 @@ public class GAV {
     final String artifactId;
     final String version;
 
-    public GAV(String groupId, String artifactId, String version) {
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    public GAV(@JsonProperty("groupId") String groupId, @JsonProperty("artifactId") String artifactId,
+            @JsonProperty("version") String version) {
         this.groupId = groupId;
         this.artifactId = artifactId;
         this.version = version;

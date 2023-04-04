@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"strconv"
 	"strings"
@@ -661,19 +662,15 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 	if err != nil {
 		return nil, err
 	}
-	recipes := ""
-	additional := jbsConfig.Spec.AdditionalRecipes
-	for _, recipe := range additional {
-		if len(strings.TrimSpace(recipe)) > 0 {
-			recipes = recipes + recipe + ","
-		}
-	}
-	recipes = recipes + settingOrDefault(systemConfig.Spec.RecipeDatabase, v1alpha1.DefaultRecipeDatabase)
 
 	zero := int64(0)
-	cacheUrl := "https://jvm-build-workspace-artifact-cache-tls." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/user/default"
+	cacheUrl := "https://jvm-build-workspace-artifact-cache-tls." + jbsConfig.Namespace + ".svc.cluster.local"
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
-		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/user/default"
+		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
+	}
+	pullPolicy := corev1.PullIfNotPresent
+	if strings.HasSuffix(image, "dev") {
+		pullPolicy = corev1.PullAlways
 	}
 	return &pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: "tls"}},
@@ -690,11 +687,10 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 			{
 				Name:            "lookup-artifact-location",
 				Image:           image,
+				ImagePullPolicy: pullPolicy,
 				SecurityContext: &corev1.SecurityContext{RunAsUser: &zero},
 				Script: InstallKeystoreIntoBuildRequestProcessor([]string{
 					"lookup-scm",
-					"--recipes",
-					recipes,
 					"--scm-url",
 					"$(results." + PipelineResultScmUrl + ".path)",
 					"--scm-tag",
@@ -714,6 +710,11 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 					"--cache-url",
 					cacheUrl,
 				}),
+				Resources: corev1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: corev1.ResourceList{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("10m")},
+					Limits:   corev1.ResourceList{"memory": resource.MustParse("128Mi")},
+				},
 				Env: []corev1.EnvVar{
 					{Name: "GIT_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 				},
@@ -747,13 +748,6 @@ func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context
 		}
 	}
 	return nil
-}
-
-func settingOrDefault(setting, def string) string {
-	if len(strings.TrimSpace(setting)) == 0 {
-		return def
-	}
-	return setting
 }
 
 func InstallKeystoreIntoBuildRequestProcessor(args []string) string {
