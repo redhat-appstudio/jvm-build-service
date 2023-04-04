@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Set;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,75 +26,83 @@ public class RecipeGroupManagerMultipleTest {
     @Test
     public void testGroupIdBasedRecipe() throws IOException {
         GAV req = new GAV("io.test", "test", "1.0");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.lookupScmInformation(req);
+        Assertions.assertEquals("https://github.com/test-override/test.git",
+                readScmUrl(result.get(0)));
         Assertions.assertEquals("https://github.com/test/test.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(1)));
 
         Assertions.assertTrue(
-                BuildRecipe.SCM.getHandler().parse(result.getRecipes().get(req).get(BuildRecipe.SCM)).isPrivateRepo());
+                BuildRecipe.SCM.getHandler().parse(result.get(0)).isPrivateRepo());
 
         req = new GAV("io.test.acme", "test-acme", "1.0");
-        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/test-override/test-acme.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
         Assertions.assertFalse(
-                BuildRecipe.SCM.getHandler().parse(result.getRecipes().get(req).get(BuildRecipe.SCM)).isPrivateRepo());
+                BuildRecipe.SCM.getHandler().parse(result.get(0)).isPrivateRepo());
+
+        req = new GAV("io.foo", "test-foo", "1.0");
+        result = manager.lookupScmInformation(req);
+        Assertions.assertEquals("https://github.com/foo/foo.git",
+                readScmUrl(result.get(0)));
+        Assertions.assertFalse(
+                BuildRecipe.SCM.getHandler().parse(result.get(0)).isPrivateRepo());
     }
 
     @Test
     public void testVersionOverride() {
         //the original override should still work
         GAV req = new GAV("io.quarkus", "quarkus-core", "1.0-alpha1");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
 
         //but now we have added a new one as well
         req = new GAV("io.quarkus", "quarkus-core", "1.0-alpha2");
-        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/quarkus.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
     }
 
     @Test
     public void testArtifactOverride() {
         //this should still work as normal, it is not overriden
         GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/quarkusio/gizmo.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
 
         req = new GAV("io.test", "test-gizmo", "1.0");
-        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/test/gizmo.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
     }
 
     @Test
     public void testArtifactAndVersionOverride() {
         //same here
         GAV req = new GAV("io.quarkus", "quarkus-gizmo", "1.0-alpha1");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
 
         req = new GAV("io.test", "test-gizmo", "1.0-alpha1");
-        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
 
         req = new GAV("io.test", "test-gizmo", "0.9");
-        result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = manager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/stuartwdouglas/gizmo.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
     }
 
     @Test
     public void testNoGroupLevelBuild() {
         GAV req = new GAV("io.vertx", "not-real", "1.0");
-        var result = manager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
-        Assertions.assertEquals("",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+        var result = manager.lookupScmInformation(req);
+        Assertions.assertTrue(result.isEmpty());
     }
 
     private String readScmUrl(Path scmPath) {

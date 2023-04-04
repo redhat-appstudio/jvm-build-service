@@ -2,12 +2,10 @@ package io.github.redhatappstudio.jvmbuild.cli.artifacts;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Set;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.location.AddRecipeRequest;
-import com.redhat.hacbs.recipies.location.ArtifactInfoRequest;
 import com.redhat.hacbs.recipies.scm.RepositoryInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 import com.redhat.hacbs.recipies.scm.TagMapping;
@@ -80,15 +78,12 @@ public class ArtifactFixMissingCommand implements Runnable {
         RepositoryChange.createPullRequest(finalGav.replace(":", "-"), "Add scm-info for " + finalGav,
                 (repositoryRoot, groupManager, recipeLayoutManager) -> {
                     GAV parsed = GAV.parse(finalGav);
-                    Set<GAV> locationRequests = Set.of(parsed);
-                    var existing = groupManager
-                            .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
+                    var existing = groupManager.lookupScmInformation(parsed);
                     if (!legacy) {
-                        var existingModule = existing.getRecipes().get(parsed);
                         ScmInfo scmInfo = null;
                         Path existingFile = null;
-                        if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
-                            existingFile = existingModule.get(BuildRecipe.SCM);
+                        if (!existing.isEmpty()) {
+                            existingFile = existing.get(0);
                             scmInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
                             if (scmInfo.getUri().equals(uri)) {
                                 System.err.println("Provided URI matches existing URI");
@@ -116,13 +111,12 @@ public class ArtifactFixMissingCommand implements Runnable {
 
                     } else {
                         //legacy mode, we just want to add legacy info to an existing file
-                        var existingModule = existing.getRecipes().get(parsed);
-                        if (existingModule == null || !existingModule.containsKey(BuildRecipe.SCM)) {
+                        if (existing.isEmpty()) {
                             System.err.println("Cannot use --legacy when there is no existing data");
                             Quarkus.asyncExit(1);
                             return;
                         }
-                        Path existingFile = existingModule.get(BuildRecipe.SCM);
+                        Path existingFile = existing.get(0);
                         ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
                         RepositoryInfo repo = null;
                         for (var existingLegacy : existingInfo.getLegacyRepos()) {
