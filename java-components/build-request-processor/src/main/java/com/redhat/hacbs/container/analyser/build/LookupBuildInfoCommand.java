@@ -217,7 +217,6 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
                 info.invocations.add(inv);
                 info.toolVersion = detectedGradleVersion;
-                info.javaVersion = javaVersion;
             }
             if (Files.exists(path.resolve("build.sbt"))) {
                 //TODO: initial SBT support, needs more work
@@ -246,7 +245,6 @@ public class LookupBuildInfoCommand implements Runnable {
                 inv.addAll(AntUtils.getAntArgs());
                 info.invocations.add(inv);
                 info.toolVersion = antVersion;
-                info.javaVersion = javaVersion;
             }
             if (buildRecipeInfo != null) {
                 if (buildRecipeInfo.getJavaVersion() != null) {

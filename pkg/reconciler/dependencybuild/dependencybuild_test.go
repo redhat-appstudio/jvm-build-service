@@ -221,8 +221,6 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				case PipelineToolVersion:
 					g.Expect(param.Value.StringVal).Should(Equal("3.8.1"))
-				case PipelineJavaVersion:
-					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				}
 			}
 		}
@@ -430,7 +428,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 	t.Run("Test build info discovery for gradle build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "4.9", JavaVersion: "11", Tools: map[string]toolInfo{"gradle": {Min: "4.9", Max: "4.9", Preferred: "4.9"}, "jdk": {Min: "8", Max: "17", Preferred: "11"}}, Invocations: [][]string{{"gradle"}}})
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "4.9", Tools: map[string]toolInfo{"gradle": {Min: "4.9", Max: "4.9", Preferred: "4.9"}, "jdk": {Min: "8", Max: "17", Preferred: "11"}}, Invocations: [][]string{{"gradle"}}})
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}

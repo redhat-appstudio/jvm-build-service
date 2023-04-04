@@ -309,6 +309,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 		}
 		for _, image := range selectedImages {
+			imageJava := image.Tools["jdk"][0]
 			for _, command := range unmarshalled.Invocations {
 				//invocations list the relevant tool at the start
 				//if the image has this tool then we
@@ -352,7 +353,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 				_, hasTool := image.Tools[tool]
 				if hasTool {
 					for _, tv := range toolVersions {
-						buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: unmarshalled.JavaVersion, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories})
+						buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: imageJava, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories})
 					}
 				}
 			}
@@ -374,7 +375,6 @@ type marshalledBuildInfo struct {
 	EnforceVersion      string
 	AdditionalDownloads []v1alpha1.AdditionalDownload
 	ToolVersion         string
-	JavaVersion         string
 	CommitTime          int64
 	PreBuildScript      string
 	PostBuildScript     string
