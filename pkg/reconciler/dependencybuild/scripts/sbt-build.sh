@@ -31,6 +31,11 @@ cat > "$HOME/.sbt/repositories" <<EOF
   my-maven-proxy-releases: $(params.CACHE_URL)
 EOF
 
+# TODO: we may need .allowInsecureProtocols here for minikube based tests that don't have access to SSL
+cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
+publishTo := Some(("MavenRepo" at s"file:$(workspaces.source.path)/artifacts")),
+EOF
+
 # Only add the Ivy Typesafe repo for SBT versions less than 1.0 which aren't found in Central. This
 # is only for SBT build infrastructure.
 if [ -f project/build.properties ]; then
@@ -39,13 +44,12 @@ if [ -f project/build.properties ]; then
         cat >> "$HOME/.sbt/repositories" <<EOF
   ivy:  https://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
 EOF
+        mkdir "$HOME/.sbt/0.13/"
+        cat >"$HOME/.sbt/0.13/global.sbt" <<EOF
+publishTo := Some(Resolver.file("file", new File("$(workspaces.source.path)/artifacts")))
+EOF
     fi
 fi
-
-# TODO: we may need .allowInsecureProtocols here for minikube based tests that don't have access to SSL
-cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
-publishTo := Some(("MavenRepo" at s"file:$(workspaces.source.path)/artifacts")),
-EOF
 
 
 #This is replaced when the task is created by the golang code

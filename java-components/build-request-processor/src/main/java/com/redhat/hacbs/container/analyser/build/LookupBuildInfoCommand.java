@@ -293,6 +293,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
             }
             ObjectMapper mapper = new ObjectMapper();
+            Log.infof("Writing %s to %s", info.getInvocations(), buildInfo.toFile());
             mapper.writeValue(buildInfo.toFile(), info);
         }
     }
