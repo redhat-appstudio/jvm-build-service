@@ -21,7 +21,6 @@ import org.jboss.logging.Logger;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.location.ArtifactInfoRequest;
 import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
@@ -186,33 +185,23 @@ public class GitScmLocator implements ScmLocator {
 
         //look for SCM info
         var recipes = recipeGroupManager
-                .requestArtifactInformation(
-                        new ArtifactInfoRequest(Set.of(toBuild), Set.of(BuildRecipe.SCM)))
-                .getRecipes()
-                .get(toBuild);
-        var deserialized = recipes == null ? null : recipes.get(BuildRecipe.SCM);
-        List<RepositoryInfo> repos = List.of();
-        List<TagMapping> allMappings = List.of();
-        if (recipes != null && deserialized != null) {
-            log.debugf("Found %s %s", recipes, deserialized);
+                .lookupScmInformation(toBuild);
+
+        List<RepositoryInfo> repos = new ArrayList<>();
+        List<TagMapping> allMappings = new ArrayList<>();
+        for (var recipe : recipes) {
+            log.debugf("Found %s", recipes);
             ScmInfo main;
             try {
-                main = BuildRecipe.SCM.getHandler().parse(deserialized);
+                main = BuildRecipe.SCM.getHandler().parse(recipe);
             } catch (IOException e) {
-                throw new UncheckedIOException("Failed to parse " + deserialized, e);
+                throw new UncheckedIOException("Failed to parse " + recipe, e);
             }
-            if (main.getLegacyRepos() != null) {
-                repos = new ArrayList<>(main.getLegacyRepos().size() + 1);
-                allMappings = new ArrayList<>();
-                repos.add(main);
-                allMappings.addAll(main.getTagMapping());
-                for (var j : main.getLegacyRepos()) {
-                    repos.add(j);
-                    allMappings.addAll(j.getTagMapping());
-                }
-            } else {
-                repos = List.of(main);
-                allMappings = main.getTagMapping();
+            repos.add(main);
+            allMappings.addAll(main.getTagMapping());
+            for (var j : main.getLegacyRepos()) {
+                repos.add(j);
+                allMappings.addAll(j.getTagMapping());
             }
         }
 

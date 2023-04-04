@@ -1,7 +1,6 @@
 package com.redhat.hacbs.analyser;
 
 import com.redhat.hacbs.analyser.artifactanalysis.ConsolidateScmInfoCommand;
-import com.redhat.hacbs.analyser.artifactanalysis.LegacyAnalyseRepositoriesCommand;
 import com.redhat.hacbs.analyser.artifactanalysis.LegacyCheckoutRepositoriesCommand;
 import com.redhat.hacbs.analyser.github.GithubCommand;
 import com.redhat.hacbs.analyser.kube.ListBuildRequestsCommand;
@@ -15,7 +14,7 @@ import io.quarkus.picocli.runtime.annotations.TopCommand;
 import picocli.CommandLine;
 
 @TopCommand
-@CommandLine.Command(mixinStandardHelpOptions = true, subcommands = { PncCommand.class, LegacyAnalyseRepositoriesCommand.class,
+@CommandLine.Command(mixinStandardHelpOptions = true, subcommands = { PncCommand.class,
         ConsolidateScmInfoCommand.class, GithubCommand.class, LegacyCheckoutRepositoriesCommand.class,
         ListBuildRequestsCommand.class,
         ResetDependencyBuildsCommand.class, ResetArtifactBuildsCommand.class, AnalyseRepositoryCommand.class,

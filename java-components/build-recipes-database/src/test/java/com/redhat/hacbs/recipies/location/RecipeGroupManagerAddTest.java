@@ -5,7 +5,6 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -29,14 +28,14 @@ public class RecipeGroupManagerAddTest {
 
         RecipeGroupManager groupManager = new RecipeGroupManager(List.of(manager));
         GAV req = new GAV("io.quarkus", "quarkus-core", "1.0");
-        var result = groupManager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        var result = groupManager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/quarkusio/quarkus.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
 
         req = new GAV("io.quarkus.security", "quarkus-security", "1.0");
-        result = groupManager.requestArtifactInformation(new ArtifactInfoRequest(Set.of(req), Set.of(BuildRecipe.SCM)));
+        result = groupManager.lookupScmInformation(req);
         Assertions.assertEquals("https://github.com/quarkusio/quarkus-security.git",
-                readScmUrl(result.getRecipes().get(req).get(BuildRecipe.SCM)));
+                readScmUrl(result.get(0)));
     }
 
     private String readScmUrl(Path scmPath) {

@@ -15,9 +15,7 @@ import com.redhat.hacbs.analyser.maven.GradleAnalyser;
 import com.redhat.hacbs.analyser.maven.MavenAnalyser;
 import com.redhat.hacbs.analyser.maven.MavenProject;
 import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.location.AddRecipeRequest;
-import com.redhat.hacbs.recipies.location.ArtifactInfoRequest;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
 import com.redhat.hacbs.recipies.scm.RepositoryInfo;
@@ -56,37 +54,28 @@ public class RepositoryAnalysis {
         MavenProject result = analyseProject(checkoutPath);
         if (result == null)
             return true;
-        Set<GAV> locationRequests = new HashSet<>();
         for (var module : result.getProjects().values()) {
-            locationRequests.add(new GAV(module.getGav().getGroupId(), module.getGav().getArtifactId(),
-                    module.getGav().getVersion()));
-        }
-        var existing = groupManager
-                .requestArtifactInformation(new ArtifactInfoRequest(locationRequests, Set.of(BuildRecipe.SCM)));
-        if (!legacy) {
-            for (var module : result.getProjects().values()) {
-                var existingModule = existing.getRecipes().get(module.getGav());
-                if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
-                    ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingModule.get(BuildRecipe.SCM));
+            var existing = groupManager
+                    .lookupScmInformation(module.getGav());
+            if (!legacy) {
+                if (!existing.isEmpty()) {
+                    ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existing.get(0));
                     if (existingInfo.getUri().equals(repository)) {
                         continue;
                     }
-                    if (existingModule.get(BuildRecipe.SCM).toString().contains("_artifact")) {
+                    if (existing.get(0).toString().contains("_artifact")) {
                         doubleUps.put(existingInfo.getUri(), repository + "  " + module.getGav());
-                        doubleUpFiles.add(existingModule.get(BuildRecipe.SCM));
+                        doubleUpFiles.add(existing.get(0));
                     }
                 }
                 ScmInfo info = new ScmInfo("git", repository, result.getPath());
                 recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, info,
                         module.getGav().getGroupId(), module.getGav().getArtifactId(), null));
-            }
-        } else {
-            //legacy mode, we just want to add legacy info to an existing file
-            for (var module : result.getProjects().values()) {
-                var existingModule = existing.getRecipes().get(module.getGav());
-                if (existingModule != null && existingModule.containsKey(BuildRecipe.SCM)) {
-                    Path existingFile = existingModule.get(BuildRecipe.SCM);
-                    ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
+
+            } else {
+                //legacy mode, we just want to add legacy info to an existing file
+                if (!existing.isEmpty()) {
+                    ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existing.get(0));
                     boolean found = false;
                     for (var existingLegacy : existingInfo.getLegacyRepos()) {
                         if (existingLegacy.getUri().equals(repository)) {
@@ -97,8 +86,9 @@ public class RepositoryAnalysis {
                     if (!found) {
                         existingInfo.getLegacyRepos().add(new RepositoryInfo("git", repository, result.getPath()));
                     }
-                    BuildRecipe.SCM.getHandler().write(existingInfo, existingFile);
+                    BuildRecipe.SCM.getHandler().write(existingInfo, existing.get(0));
                 }
+
             }
         }
 
