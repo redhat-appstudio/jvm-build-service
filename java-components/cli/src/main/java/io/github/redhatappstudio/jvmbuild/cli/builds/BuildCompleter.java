@@ -48,8 +48,6 @@ public class BuildCompleter extends RequestScopedCompleter {
                 //can't parse, use full name
                 names.put(full, i);
             }
-            String tag = scm.getTag();
-
         }
         for (var i : doubleUps) {
             names.remove(i);
