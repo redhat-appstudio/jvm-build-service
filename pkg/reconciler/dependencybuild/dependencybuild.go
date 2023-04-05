@@ -488,6 +488,10 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
 	pr := pipelinev1beta1.PipelineRun{}
+	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	pr.Namespace = db.Namespace
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
@@ -496,13 +500,12 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
 
 	jbsConfig := &v1alpha1.JBSConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
 	pr.Spec.PipelineRef = nil
 
-	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -520,7 +523,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 	diagnostic := ""
 	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
-	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Tool, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db, paramValues)
+	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Tool, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db, paramValues, buildRequestProcessorImage)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -865,7 +868,9 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		args = append(args, "--private-repo")
 	}
 	pullPolicy := v1.PullIfNotPresent
-	if strings.HasSuffix(image, "dev") {
+	if strings.HasPrefix(image, "quay.io/minikube") {
+		pullPolicy = v1.PullNever
+	} else if strings.HasSuffix(image, "dev") {
 		pullPolicy = v1.PullAlways
 	}
 	return &pipelinev1beta1.PipelineSpec{

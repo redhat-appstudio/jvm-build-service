@@ -30,6 +30,7 @@ import (
 )
 
 const TlsServiceName = v1alpha1.CacheDeploymentName + "-tls"
+const TestRegistry = "jvmbuildservice.io/test-registry"
 
 type ReconcilerJBSConfig struct {
 	client               client.Client
@@ -162,6 +163,12 @@ func settingIfSet(field, envName string, cache *appsv1.Deployment) *appsv1.Deplo
 }
 
 func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig) error {
+	if jbsConfig.Annotations != nil {
+		val := jbsConfig.Annotations[TestRegistry]
+		if val == "true" {
+			return nil
+		}
+	}
 	if !jbsConfig.Spec.EnableRebuilds {
 		return nil
 	}
@@ -394,6 +401,13 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
 		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_FILES", Value: "/tls/tls.crt"}, corev1.EnvVar{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES", Value: "/tls/tls.key"})
 	}
+	if jbsConfig.Annotations != nil {
+		val := jbsConfig.Annotations[TestRegistry]
+		if val == "true" {
+			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "INSECURE_TEST_REGISTRY", Value: "true"})
+
+		}
+	}
 	type Repo struct {
 		name     string
 		position int
@@ -480,7 +494,9 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		}
 	}
 	cache.Spec.Template.Spec.Containers[0].Image = r.configuredCacheImage
-	if !strings.HasPrefix(r.configuredCacheImage, "quay.io/redhat-appstudio") {
+	if strings.HasPrefix(r.configuredCacheImage, "quay.io/minikube") {
+		cache.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
+	} else if !strings.HasPrefix(r.configuredCacheImage, "quay.io/redhat-appstudio") {
 		// work around for developer mode while we are hard coding the spec in the controller
 		cache.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
 	}

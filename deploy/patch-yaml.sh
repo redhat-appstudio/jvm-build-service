@@ -13,7 +13,7 @@ echo "jvm build service jvm reqprocessor image:"
 echo ${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}
 
 SED=sed
-if [ "$(uname)" == "Darwin" ]; then
+if [ "$(uname)" = "Darwin" ]; then
     SED=gsed
 fi
 

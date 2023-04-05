@@ -186,6 +186,7 @@ public class GitScmLocator implements ScmLocator {
         //look for SCM info
         var recipes = recipeGroupManager
                 .lookupScmInformation(toBuild);
+        log.infof("Found the following build info files for %s: %s", toBuild, recipes);
 
         List<RepositoryInfo> repos = new ArrayList<>();
         List<TagMapping> allMappings = new ArrayList<>();
@@ -207,7 +208,7 @@ public class GitScmLocator implements ScmLocator {
 
         TagInfo fallbackTagInfo = null;
         if (repos.isEmpty()) {
-            log.debugf("No information found, attempting to use the pom to determine the location");
+            log.infof("No SCM information found for %s, attempting to use the pom to determine the location", toBuild);
             //TODO: do we want to rely on pom discovery long term? Should we just use this to update the database instead?
             if (fallbackScmLocator != null) {
                 fallbackTagInfo = fallbackScmLocator.resolveTagInfo(toBuild);

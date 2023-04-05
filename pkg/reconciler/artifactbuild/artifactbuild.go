@@ -669,7 +669,9 @@ func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, lo
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
 	}
 	pullPolicy := corev1.PullIfNotPresent
-	if strings.HasSuffix(image, "dev") {
+	if strings.HasPrefix(image, "quay.io/minikube") {
+		pullPolicy = corev1.PullNever
+	} else if strings.HasSuffix(image, "dev") {
 		pullPolicy = corev1.PullAlways
 	}
 	return &pipelinev1beta1.TaskSpec{

@@ -40,7 +40,7 @@ var antBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
-func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param) (*pipelinev1beta1.PipelineSpec, string, error) {
+func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := []string{
@@ -206,6 +206,12 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild"
 	}
+	pullPolicy := v1.PullIfNotPresent
+	if strings.HasPrefix(buildRequestProcessorImage, "quay.io/minikube") {
+		pullPolicy = v1.PullNever
+	} else if strings.HasSuffix(buildRequestProcessorImage, ":dev") {
+		pullPolicy = v1.PullAlways
+	}
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params: []pipelinev1beta1.ParamSpec{
@@ -240,6 +246,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{
 				Name:            "preprocessor",
 				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
 					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
@@ -271,6 +278,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{
 				Name:            "verify-built-artifacts",
 				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Resources: v1.ResourceRequirements{
 					//TODO: make configurable
@@ -282,7 +290,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{
 				Name:            "deploy-and-check-for-contaminates",
 				Image:           "$(params." + PipelineRequestProcessorImage + ")",
-				ImagePullPolicy: v1.PullAlways,
+				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
 					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.ImageSecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
