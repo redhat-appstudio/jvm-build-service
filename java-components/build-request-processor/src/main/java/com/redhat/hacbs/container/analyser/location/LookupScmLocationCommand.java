@@ -9,8 +9,6 @@ import java.nio.file.Path;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
 import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.scm.CompoundScmLocator;
-import com.redhat.hacbs.recipies.scm.PomScmLocator;
 import com.redhat.hacbs.recipies.scm.ScmLocator;
 
 import io.quarkus.logging.Log;
@@ -102,8 +100,7 @@ public class LookupScmLocationCommand implements Runnable {
 
     private ScmLocator getScmLocator() {
         try {
-            var locator = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl)).build(CacheScmLocator.class);
-            return new CompoundScmLocator(locator, new PomScmLocator(cacheUrl + CACHE_PATH));
+            return RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl)).build(CacheScmLocator.class);
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
