@@ -1,72 +1,52 @@
 package com.redhat.hacbs.recipies.scm;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 
 import org.apache.commons.text.StringSubstitutor;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.Parent;
 import org.apache.maven.model.Scm;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.jboss.logging.Logger;
 
-public class PomScmLocator extends AbstractPomScmLocator {
+import com.redhat.hacbs.recipies.GAV;
 
-    private static final Logger log = Logger.getLogger(PomScmLocator.class);
+public abstract class AbstractPomScmLocator implements ScmLocator {
+
+    private static final Logger log = Logger.getLogger(AbstractPomScmLocator.class);
 
     private static final String HTTPS_GITHUB_COM = "https://github.com/";
 
-    private final String cacheUrl;
-
-    public PomScmLocator(String cacheUrl) {
-        this.cacheUrl = cacheUrl;
-    }
-
     @Override
-    protected PomClient createPomClient() {
-        CloseableHttpClient client = HttpClientBuilder.create().build();
-        return new PomClient() {
-            @Override
-            public Optional<Model> getPom(String group, String artifact, String version) {
-                HttpGet get = new HttpGet(
-                        cacheUrl + "/" + group.replace(".", "/") + "/" + artifact + "/" + version + "/" + artifact
-                                + "-" + version + ".pom");
-                try (var response = client.execute(get)) {
-                    if (response.getStatusLine().getStatusCode() != 200) {
-                        log.errorf("Unexpected status %s for %s:%s:%s", response.getStatusLine().getStatusCode(), group,
-                                artifact,
-                                version);
-                        return Optional.empty();
-                    }
-                    try (Reader pomReader = new InputStreamReader(response.getEntity().getContent())) {
-                        MavenXpp3Reader reader = new MavenXpp3Reader();
-                        Model model = reader.read(pomReader);
-                        return Optional.of(model);
-                    }
-
-                } catch (Exception e) {
-                    log.errorf(e, "Failed to get pom for %s:%s:%s", group, artifact, version);
-                    return Optional.empty();
+    public TagInfo resolveTagInfo(GAV toBuild) {
+        try (PomClient client = createPomClient()) {
+            Optional<Model> currentPom = client.getPom(toBuild.getGroupId(), toBuild.getArtifactId(), toBuild.getVersion());
+            while (currentPom.isPresent()) {
+                var origin = getScmOrigin(currentPom.get(), toBuild.getVersion());
+                if (origin != null) {
+                    return origin;
                 }
-            }
-
-            @Override
-            public void close() {
-                try {
-                    client.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                Parent p = currentPom.get().getParent();
+                if (p == null) {
+                    return null;
                 }
+                if (!Objects.equals(p.getGroupId(), toBuild.getGroupId())) {
+                    return null;
+                }
+                currentPom = client.getPom(p.getGroupId(), p.getArtifactId(), p.getVersion());
             }
-        };
+        } catch (Exception e) {
+            log.errorf(e, "Failed to get pom for %s:%s:%s", toBuild.getGroupId(), toBuild.getArtifactId(),
+                    toBuild.getVersion());
+            return null;
+        }
+        return null;
     }
+
+    protected abstract PomClient createPomClient();
 
     public static TagInfo getScmOrigin(Model model, String version) {
         final Scm scm = model.getScm();
@@ -134,5 +114,12 @@ public class PomScmLocator extends AbstractPomScmLocator {
         }
         map.put("project.version", version);
         return new StringSubstitutor(map).replace(str);
+    }
+
+    public interface PomClient extends AutoCloseable {
+
+        Optional<Model> getPom(String group, String artifact, String version);
+
+        void close();
     }
 }

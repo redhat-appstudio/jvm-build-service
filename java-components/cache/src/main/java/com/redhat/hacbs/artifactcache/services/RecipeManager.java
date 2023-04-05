@@ -40,6 +40,9 @@ public class RecipeManager {
     @Inject
     Config config;
 
+    @Inject
+    CachePomScmLocator cachePomScmLocator;
+
     @ConfigProperty(name = "build-info.repositories", defaultValue = "https://github.com/redhat-appstudio/jvm-build-data")
     List<String> buildInfoRepos;
 
@@ -69,7 +72,10 @@ public class RecipeManager {
     }
 
     public GitScmLocator locator() {
-        return GitScmLocator.builder().setRecipeGroupManager(recipeGroupManager).build();
+        return GitScmLocator.builder()
+                .setRecipeGroupManager(recipeGroupManager)
+                .setFallback(cachePomScmLocator)
+                .build();
     }
 
     public List<MavenRepositoryInfo> getRepositoryInfo(String repo) {
