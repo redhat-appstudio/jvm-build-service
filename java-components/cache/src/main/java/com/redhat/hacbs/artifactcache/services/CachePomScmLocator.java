@@ -25,7 +25,7 @@ public class CachePomScmLocator extends AbstractPomScmLocator {
         return new PomClient() {
             @Override
             public Optional<Model> getPom(String group, String artifact, String version) {
-                var response = cache.getArtifactFile("default", group, artifact, version, artifact
+                var response = cache.getArtifactFile("default", group.replace(".", "/"), artifact, version, artifact
                         + "-" + version + ".pom", false);
                 if (!response.isPresent()) {
                     return Optional.empty();
