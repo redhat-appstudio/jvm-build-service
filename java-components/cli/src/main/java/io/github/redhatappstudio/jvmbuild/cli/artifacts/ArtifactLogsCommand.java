@@ -47,7 +47,7 @@ public class ArtifactLogsCommand implements Runnable {
                     System.out.println("Pod: " + pod.getMetadata().getName() + " Container: " + i);
                     System.out.println("--------------------------------------");
                     var p = client.pods().withName(pod.getMetadata().getName()).inContainer(i.getName());
-                    try (var in = p.watchLog().getOutput()) {
+                    try (var w = p.watchLog(); var in = w.getOutput()) {
                         int r;
                         byte[] buff = new byte[1024];
                         while ((r = in.read(buff)) > 0) {

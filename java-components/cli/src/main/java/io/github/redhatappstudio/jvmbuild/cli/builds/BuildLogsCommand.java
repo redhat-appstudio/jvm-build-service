@@ -66,13 +66,13 @@ public class BuildLogsCommand implements Runnable {
         System.out.println("Selected build: " + theBuild.getMetadata().getName());
 
         var pod = client.pods().withName(theBuild.getMetadata().getName() + "-build-" + buildNo + "-task-pod");
-        if (pod == null) {
-            System.out.println("Pod not found");
+        if (pod == null || pod.get() == null) {
+            System.out.println("Pod not found so unable to extract logs.");
             return;
         }
         for (var i : pod.get().getSpec().getContainers()) {
             var p = pod.inContainer(i.getName());
-            try (var in = p.watchLog().getOutput()) {
+            try (var w = p.watchLog(); var in = w.getOutput()) {
                 int r;
                 byte[] buff = new byte[1024];
                 while ((r = in.read(buff)) > 0) {
