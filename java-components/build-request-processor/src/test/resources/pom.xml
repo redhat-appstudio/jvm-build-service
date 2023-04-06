@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-parent</artifactId>
+    <version>1.7.36</version>
+
+    <packaging>pom</packaging>
+    <name>SLF4J</name>
+    <description>Top SLF4J project pom.xml file</description>
+    <url>http://www.slf4j.org</url>
+
+    <organization>
+        <name>QOS.ch</name>
+        <url>http://www.qos.ch</url>
+    </organization>
+    <inceptionYear>2005</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>http://www.opensource.org/licenses/mit-license.php</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/qos-ch/slf4j</url>
+        <connection>git@github.com:qos-ch/slf4j.git</connection>
+    </scm>
+
+    <properties>
+        <!-- yyyy-MM-dd'T'HH:mm:ss'Z' -->
+        <project.build.outputTimestamp>2022-02-08T13:31:00Z</project.build.outputTimestamp>
+
+        <required.jdk.version>1.5</required.jdk.version>
+        <maven.compiler.source>${required.jdk.version}</maven.compiler.source>
+        <maven.compiler.target>${required.jdk.version}</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- used in integration testing -->
+        <slf4j.api.minimum.compatible.version>1.6.0</slf4j.api.minimum.compatible.version>
+        <cal10n.version>0.8.1</cal10n.version>
+        <reload4j.version>1.2.19</reload4j.version>
+        <logback.version>1.2.10</logback.version>
+        <junit.version>4.13</junit.version>
+        <maven-site-plugin.version>3.3</maven-site-plugin.version>
+        <maven-source-plugin.version>3.2.0</maven-source-plugin.version>
+        <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
+        <javadoc.plugin.version>3.1.0</javadoc.plugin.version>
+        <doclint>none</doclint>
+    </properties>
+</project>
