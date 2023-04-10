@@ -33,7 +33,7 @@ public class DiffUtils {
                 deleted.add(key);
             }
         });
-        var added = right.keySet().stream().filter(key -> !right.containsKey(key))
+        var added = right.keySet().stream().filter(key -> !left.containsKey(key))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         if (!added.isEmpty()) {
