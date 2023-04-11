@@ -49,46 +49,10 @@ func TestServiceRegistry(t *testing.T) {
 	}
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
-	mavenYamlPath := filepath.Join(path, "..", "..", "deploy", "base", "maven-v0.2.yaml")
-	ta.maven = &v1beta1.Task{}
-	obj := streamFileYamlToTektonObj(mavenYamlPath, ta.maven, ta)
-	var ok bool
-	ta.maven, ok = obj.(*v1beta1.Task)
-	if !ok {
-		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a task: %#v", mavenYamlPath, obj))
-	}
-	// override images if need be
-	analyserImage := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
-	if len(analyserImage) > 0 {
-		ta.Logf(fmt.Sprintf("PR analyzer image: %s", analyserImage))
-		for i, step := range ta.maven.Spec.Steps {
-			if step.Name != "analyse-dependencies" {
-				continue
-			}
-			ta.Logf(fmt.Sprintf("Updating analyse-dependencies step with image %s", analyserImage))
-			ta.maven.Spec.Steps[i].Image = analyserImage
-		}
-	}
-	ta.maven, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.maven, metav1.CreateOptions{})
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
-
-	pipelineYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "pipeline.yaml")
-	ta.pipeline = &v1beta1.Pipeline{}
-	obj = streamFileYamlToTektonObj(pipelineYamlPath, ta.pipeline, ta)
-	ta.pipeline, ok = obj.(*v1beta1.Pipeline)
-	if !ok {
-		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipeline: %#v", pipelineYamlPath, obj))
-	}
-	ta.pipeline, err = tektonClient.TektonV1beta1().Pipelines(ta.ns).Create(context.TODO(), ta.pipeline, metav1.CreateOptions{})
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
-
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-service-registry.yaml")
 	ta.run = &v1beta1.PipelineRun{}
-	obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
+	obj := streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
+	var ok bool
 	ta.run, ok = obj.(*v1beta1.PipelineRun)
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))

@@ -59,10 +59,10 @@ jobs:
         with:
           name: build-request-processor
           path: /tmp/build-request-processor.tar
-  run-tests:
+  run-sample-project-tests:
     needs: [build-build-request-processor, build-cache, build-controller]
     runs-on: ubuntu-latest
-    name: Minikube based CI
+    name: Minikube Test Sample Project
     steps:
       - uses: actions/checkout@v2
       - name: Download Cache
@@ -95,7 +95,52 @@ jobs:
           docker load --input /tmp/controller.tar
           docker load --input /tmp/cache.tar
           docker load --input /tmp/build-request-processor.tar
-          docker image ls -a
+
+          ./deploy/minikube-ci.sh
+          make minikube-test
+  run-gav-based-tests:
+    strategy:
+      matrix:
+        gavs:
+          - "commons-collections:commons-collections:3.2.2,org.apache.commons:commons-lang3:3.12.0"
+          - "org.xerial.snappy:snappy-java:1.1.8.4,org.lz4:lz4-java:1.8.0"
+    needs: [build-build-request-processor, build-cache, build-controller]
+    runs-on: ubuntu-latest
+    name: Minikube GAV Matrix
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download Cache
+        uses: actions/download-artifact@v3
+        with:
+          name: cache
+          path: /tmp
+      - name: Download Build Request Proessor
+        uses: actions/download-artifact@v3
+        with:
+          name: build-request-processor
+          path: /tmp
+      - name: Download Controller
+        uses: actions/download-artifact@v3
+        with:
+          name: controller
+          path: /tmp
+      - name: Start minikube
+        uses: medyagh/setup-minikube@master
+        with:
+          cpus: max
+          memory: max
+      - name: Run Tests
+        run: |
+          export SHELL=/bin/bash
+          export QUAY_USERNAME=minikube
+
+          eval $(minikube -p minikube docker-env)
+
+          docker load --input /tmp/controller.tar
+          docker load --input /tmp/cache.tar
+          docker load --input /tmp/build-request-processor.tar
+
+          export GAVS=${{ matrix.gavs }}
 
           ./deploy/minikube-ci.sh
           make minikube-test

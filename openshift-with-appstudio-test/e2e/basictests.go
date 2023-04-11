@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"io"
 	corev1 "k8s.io/api/core/v1"
@@ -49,40 +50,59 @@ func runBasicTests(t *testing.T, doSetup func(t *testing.T, ta *testArgs) *testA
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 	}
-	ta.run, err = tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
 
-	ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
-		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
-			pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
+	gavs := os.Getenv("GAVS")
+	//if the GAVS env var is set then we just create pre-defined GAVS
+	//otherwise we do a full build of a sample project
+	if len(gavs) > 0 {
+
+		parts := strings.Split(gavs, ",")
+		for _, s := range parts {
+			ab := v1alpha1.ArtifactBuild{}
+			ab.Name = artifactbuild.CreateABRName(s)
+			ab.Namespace = ta.ns
+			ab.Spec.GAV = s
+			_, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Create(context.TODO(), &ab, metav1.CreateOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
-				return false, nil
+				return
 			}
-			if !pr.IsDone() {
-				if err != nil {
-					ta.Logf(fmt.Sprintf("problem marshalling in progress pipelinerun to bytes: %s", err.Error()))
-					return false, nil
-				}
-				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", pr.Name))
-				return false, nil
-			}
-			if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
-				prBytes, err := json.MarshalIndent(pr, "", "  ")
-				if err != nil {
-					ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
-					return false, nil
-				}
-				debugAndFailTest(ta, fmt.Sprintf("unsuccessful pipeline run: %s", string(prBytes)))
-			}
-			return true, nil
-		})
-		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("failure occured when waiting for the pipeline run to complete: %v", err))
 		}
-	})
+	} else {
+
+		ta.run, err = tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+		}
+		ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
+			err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+				pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
+				if err != nil {
+					ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
+					return false, nil
+				}
+				if !pr.IsDone() {
+					if err != nil {
+						ta.Logf(fmt.Sprintf("problem marshalling in progress pipelinerun to bytes: %s", err.Error()))
+						return false, nil
+					}
+					ta.Logf(fmt.Sprintf("in flight pipeline run: %s", pr.Name))
+					return false, nil
+				}
+				if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
+					prBytes, err := json.MarshalIndent(pr, "", "  ")
+					if err != nil {
+						ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
+						return false, nil
+					}
+					debugAndFailTest(ta, fmt.Sprintf("unsuccessful pipeline run: %s", string(prBytes)))
+				}
+				return true, nil
+			})
+			if err != nil {
+				debugAndFailTest(ta, fmt.Sprintf("failure occured when waiting for the pipeline run to complete: %v", err))
+			}
+		})
+	}
 
 	ta.t.Run("artifactbuilds and dependencybuilds generated", func(t *testing.T) {
 		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
@@ -142,6 +162,12 @@ func runBasicTests(t *testing.T, doSetup func(t *testing.T, ta *testArgs) *testA
 			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
 		}
 	})
+
+	if len(gavs) > 0 {
+		//no futher checks required here
+		//we are just checking that the GAVs in question actually build
+		return
+	}
 
 	ta.t.Run("contaminated build is resolved", func(t *testing.T) {
 		//our sample repo has shaded-jdk11 which is contaminated by simple-jdk8
