@@ -3,12 +3,10 @@ kind: Component
 metadata:
   name: service-registry-1
 spec:
-  componentName: service-registry-1
-  application: test-application
+  componentName: testblach
+  application: my-app-12
   source:
     git:
-      url: https://github.com/stuartwdouglas/apicurio-registry
-      revision: devfile
-      devfileUrl: https://raw.githubusercontent.com/stuartwdouglas/apicurio-registry/devfile/devfile.yaml
-      dockerfileUrl: https://raw.githubusercontent.com/stuartwdouglas/apicurio-registry/devfile/Dockerfile.jvm.staged
+      url: https://github.com/stuartwdouglas/rhtap-test1.git
+  language: java
 

@@ -43,10 +43,6 @@ func TestServiceRegistry(t *testing.T) {
 		debugAndFailTest(ta, err.Error())
 	}
 
-	//TODO start of more common logic to split into commonly used logic between
-	// TestExampleRun and TestServiceRegistry.  Not doing that yet because of
-	// active PRs by other team members, including the component based test which
-	// will probably greatly rework this anyway.
 	path, err := os.Getwd()
 	if err != nil {
 		debugAndFailTest(ta, err.Error())

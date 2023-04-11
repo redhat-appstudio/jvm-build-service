@@ -36,10 +36,11 @@ openshift-e2e-periodic:
 # TODO: delete following "appstudio-installed-on-openshift-*" make targets after https://github.com/redhat-appstudio/jvm-build-service/pull/397 is merged
 # For now they allow tests in https://github.com/openshift/release/pull/34620 to pass
 appstudio-installed-on-openshift-e2e:
-	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags normal -timeout 120m -v ./openshift-with-appstudio-test/...
+	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags normal -timeout 120m -v ./openshift-with-appstudio-test/e2e
 appstudio-installed-on-openshift-periodic:
-	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags periodic -timeout 180m -v ./openshift-with-appstudio-test/...
-
+	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags periodic -timeout 180m -v ./openshift-with-appstudio-test/e2e
+minikube-test:
+	go test -count 1 -tags minikube -timeout 180m -v ./openshift-with-appstudio-test/e2e
 build:
 	go build -o out/jvmbuildservice cmd/controller/main.go
 	env GOOS=linux GOARCH=amd64 go build -mod=vendor -o out/jvmbuildservice ./cmd/controller

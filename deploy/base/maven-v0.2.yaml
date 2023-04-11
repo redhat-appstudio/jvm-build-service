@@ -179,15 +179,9 @@ spec:
         runAsUser: 0
       image: quay.io/replaced-image:bogus
       imagePullPolicy: Always
-      args:
-        - analyse-dependencies
-        - path
-        - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)
-        - -s
-        - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)/java-sbom.json
-        - -c
-        - "$(results.dependencies.path)"
-        - -u
-        - "$(results.untrusted-dependencies.path)"
-        - --task-run-name
-        - $(context.taskRun.name)
+      script: |
+        /opt/jboss/container/java/run/run-java.sh analyse-dependencies path $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH) \
+          -s $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)/java-sbom.json \
+          -c "$(results.dependencies.path)" \
+          -u "$(results.untrusted-dependencies.path)" \
+          --task-run-name $(context.taskRun.name) \

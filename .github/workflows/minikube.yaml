@@ -1,0 +1,30 @@
+name: Validate PR - Minikube Tests
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    name: Minikube based CI
+    steps:
+      - uses: actions/checkout@v2
+      - name: Start minikube
+        uses: medyagh/setup-minikube@master
+        with:
+          cpus: max
+          memory: max
+      - name: Build Images
+        run: |
+          export SHELL=/bin/bash
+          export QUAY_USERNAME=minikube
+          eval $(minikube -p minikube docker-env)
+          docker build -f ./Dockerfile -t quay.io/$QUAY_USERNAME/hacbs-jvm-controller:dev .
+          docker build -f java-components/build-request-processor/src/main/docker/Dockerfile.all-in-one -t quay.io/$QUAY_USERNAME/hacbs-jvm-build-request-processor:dev java-components
+          docker build -f java-components/cache/src/main/docker/Dockerfile.all-in-one -t quay.io/$QUAY_USERNAME/hacbs-jvm-cache:dev java-components
+      - name: Run Tests
+        run: |
+          export SHELL=/bin/bash
+          export QUAY_USERNAME=minikube
+          eval $(minikube -p minikube docker-env)
+          ./deploy/minikube-ci.sh
+          make minikube-test

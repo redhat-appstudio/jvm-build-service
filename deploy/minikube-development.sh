@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DIR=`dirname $0`
-kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.37.5/release.yaml
+kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.41.1/release.yaml
 while ! oc get pods -n tekton-pipelines | grep tekton-pipelines-controller | grep Running; do
     sleep 1
 done
@@ -10,55 +10,7 @@ $DIR/base-development.sh  $1
 
 # base-development.sh switches to the test-jvm-namespace namespace
 kubectl create sa pipeline
-cat <<EOF | kubectl apply -f -
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: pipeline
-  labels:
-    rbac.authorization.k8s.io/aggregate-to-edit: "true"
-rules:
-  - apiGroups:
-      - jvmbuildservice.io
-    resources:
-      - artifactbuilds
-    verbs:
-      - create
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-    resourceNames:
-      - jvm-build-config
-    verbs:
-      - get
-  - apiGroups:
-      - tekton.dev
-    resources:
-      - taskruns
-      - taskruns/status
-    verbs:
-      - get
-      - list
-      - create
-      - update
-      - delete
-      - patch
-      - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: pipeline
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: pipeline
-subjects:
-  - kind: ServiceAccount
-    name: pipeline
-    namespace: test-jvm-namespace
-EOF
+kubectl apply -f $DIR/minikube-rbac.yaml
 
 #minikube cannot access registry.redhat.io by default
 #you need to have these credentials in your docker config
