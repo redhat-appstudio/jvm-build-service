@@ -3,28 +3,99 @@ on:
   pull_request:
     branches: [ main ]
 jobs:
-  job1:
+  build-controller:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build and export
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          tags: quay.io/minikube/hacbs-jvm-controller:dev
+          outputs: type=docker,dest=/tmp/controller.tar
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: controller
+          path: /tmp/controller.tar
+  build-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build and export
+        uses: docker/build-push-action@v4
+        with:
+          context: java-components
+          file: java-components/cache/src/main/docker/Dockerfile.all-in-one
+          tags: quay.io/minikube/hacbs-jvm-cache:dev
+          outputs: type=docker,dest=/tmp/cache.tar
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: cache
+          path: /tmp/cache.tar
+  build-build-request-processor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build and export
+        uses: docker/build-push-action@v4
+        with:
+          context: java-components
+          file: java-components/build-request-processor/src/main/docker/Dockerfile.all-in-one
+          tags: quay.io/minikube/hacbs-jvm-build-request-processor:dev
+          outputs: type=docker,dest=/tmp/build-request-processor.tar
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-request-processor
+          path: /tmp/build-request-processor.tar
+  run-tests:
+    needs: [build-build-request-processor, build-cache, build-controller]
     runs-on: ubuntu-latest
     name: Minikube based CI
     steps:
       - uses: actions/checkout@v2
+      - name: Download Cache
+        uses: actions/download-artifact@v3
+        with:
+          name: cache
+          path: /tmp
+      - name: Download Build Request Proessor
+        uses: actions/download-artifact@v3
+        with:
+          name: build-request-processor
+          path: /tmp
+      - name: Download Controller
+        uses: actions/download-artifact@v3
+        with:
+          name: controller
+          path: /tmp
       - name: Start minikube
         uses: medyagh/setup-minikube@master
         with:
           cpus: max
           memory: max
-      - name: Build Images
-        run: |
-          export SHELL=/bin/bash
-          export QUAY_USERNAME=minikube
-          eval $(minikube -p minikube docker-env)
-          docker build -f ./Dockerfile -t quay.io/$QUAY_USERNAME/hacbs-jvm-controller:dev .
-          docker build -f java-components/build-request-processor/src/main/docker/Dockerfile.all-in-one -t quay.io/$QUAY_USERNAME/hacbs-jvm-build-request-processor:dev java-components
-          docker build -f java-components/cache/src/main/docker/Dockerfile.all-in-one -t quay.io/$QUAY_USERNAME/hacbs-jvm-cache:dev java-components
       - name: Run Tests
         run: |
           export SHELL=/bin/bash
           export QUAY_USERNAME=minikube
+
           eval $(minikube -p minikube docker-env)
+
+          docker load --input /tmp/controller.tar
+          docker load --input /tmp/cache.tar
+          docker load --input /tmp/build-request-processor.tar
+          docker image ls -a
+
           ./deploy/minikube-ci.sh
           make minikube-test
