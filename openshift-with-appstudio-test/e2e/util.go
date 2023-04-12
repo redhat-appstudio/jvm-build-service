@@ -316,7 +316,7 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 }
 
 func waitForCache(ta *testArgs) error {
-	err := wait.PollImmediate(1*time.Second, 1*time.Minute, func() (done bool, err error) {
+	err := wait.PollImmediate(10*time.Second, 5*time.Minute, func() (done bool, err error) {
 		cache, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.CacheDeploymentName, metav1.GetOptions{})
 		if err != nil {
 			ta.Logf(fmt.Sprintf("get of cache: %s", err.Error()))
