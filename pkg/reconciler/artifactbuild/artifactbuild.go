@@ -752,10 +752,14 @@ func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context
 	return nil
 }
 
-func InstallKeystoreIntoBuildRequestProcessor(args []string) string {
-	ret := keystore + "\n/opt/jboss/container/java/run/run-java.sh"
-	for _, i := range args {
-		ret += " \"" + i + "\""
+func InstallKeystoreIntoBuildRequestProcessor(args ...[]string) string {
+	ret := keystore
+	for _, cmd := range args {
+		ret = ret + "\n/opt/jboss/container/java/run/run-java.sh"
+		for _, i := range cmd {
+			ret += " \"" + i + "\""
+		}
+		ret += "\n"
 	}
 	return ret
 }
