@@ -276,19 +276,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Script: build,
 			},
 			{
-				Name:            "verify-built-artifacts",
-				Image:           "$(params." + PipelineRequestProcessorImage + ")",
-				ImagePullPolicy: pullPolicy,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Resources: v1.ResourceRequirements{
-					//TODO: make configurable
-					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
-				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs),
-			},
-			{
-				Name:            "deploy-and-check-for-contaminates",
+				Name:            "verify-deploy-and-check-for-contaminates",
 				Image:           "$(params." + PipelineRequestProcessorImage + ")",
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
@@ -300,7 +288,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 					Requests: v1.ResourceList{"memory": defaultBuildContainerRequestMemory, "cpu": defaultContainerRequestCPU},
 					Limits:   v1.ResourceList{"memory": defaultBuildContainerRequestMemory, "cpu": defaultContainerLimitCPU},
 				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(deployArgs),
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs),
 			},
 		},
 	}
