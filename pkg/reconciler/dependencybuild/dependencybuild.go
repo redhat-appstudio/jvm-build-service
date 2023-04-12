@@ -56,6 +56,7 @@ const (
 	BuildInfoPipelineBuildInfo    = "build-info"
 
 	PipelineType          = "jvmbuildservice.io/pipeline-type"
+	RetryDueToMemory      = "jvmbuildservice.io/retry-build-lookup-due-to-memory"
 	PipelineTypeBuildInfo = "build-info"
 	PipelineTypeBuild     = "build"
 	MaxRetries            = 3
@@ -175,7 +176,13 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, jbsConfig, &systemConfig)
+	additionalMemory := 0
+	if db.Annotations != nil && db.Annotations[RetryDueToMemory] == "true" {
+		//TODO: hard coded for now
+		//should be enough for the build lookup task
+		additionalMemory = 1024
+	}
+	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, jbsConfig, additionalMemory)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -252,8 +259,22 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	}
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 	if !success || len(buildInfo) == 0 {
-		db.Status.State = v1alpha1.DependencyBuildStateFailed
-		db.Status.Message = message
+
+		if (db.Annotations == nil || db.Annotations[RetryDueToMemory] != "true") && failedDueToMemory(pr) {
+			err := r.client.Delete(ctx, pr)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			if db.Annotations == nil {
+				db.Annotations = map[string]string{}
+			}
+			db.Annotations[RetryDueToMemory] = "true"
+			return r.handleStateNew(ctx, log, &db)
+		} else {
+			db.Status.State = v1alpha1.DependencyBuildStateFailed
+			db.Status.Message = message
+		}
+
 	} else {
 		unmarshalled := marshalledBuildInfo{}
 
@@ -832,7 +853,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, jbsConfig *v1alpha1.JBSConfig, additionalMemory int) (*pipelinev1beta1.PipelineSpec, error) {
 	image, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return nil, err
@@ -874,6 +895,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	} else if strings.HasSuffix(image, "dev") {
 		pullPolicy = v1.PullAlways
 	}
+	memory := fmt.Sprintf("%dMi", 512+additionalMemory)
 	return &pipelinev1beta1.PipelineSpec{
 		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
 		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}}, {Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}}},
@@ -894,10 +916,11 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 								Script:          artifactbuild.InstallKeystoreIntoBuildRequestProcessor(args),
 								Resources: v1.ResourceRequirements{
 									//TODO: make configurable
-									Requests: v1.ResourceList{"memory": resource.MustParse("512Mi"), "cpu": resource.MustParse("10m")},
-									Limits:   v1.ResourceList{"memory": resource.MustParse("512Mi")},
+									Requests: v1.ResourceList{"memory": resource.MustParse(memory), "cpu": resource.MustParse("10m")},
+									Limits:   v1.ResourceList{"memory": resource.MustParse(memory)},
 								},
 								Env: []v1.EnvVar{
+									{Name: "JAVA_OPTS", Value: "-XX:+CrashOnOutOfMemoryError"},
 									{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 								},
 							},
@@ -907,6 +930,18 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 			},
 		},
 	}, nil
+}
+
+func failedDueToMemory(pr *pipelinev1beta1.PipelineRun) bool {
+	for _, trs := range pr.Status.TaskRuns {
+		for _, cont := range trs.Status.Steps {
+			//check for oomkilled pods
+			if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.Reason == "OOMKilled") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r *ReconcileDependencyBuild) buildRequestProcessorImage(ctx context.Context, log logr.Logger) (string, error) {
