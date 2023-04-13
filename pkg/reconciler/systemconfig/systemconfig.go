@@ -40,7 +40,7 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
-	log := ctrl.Log.WithName("systemconfig").WithValues("request", request.NamespacedName)
+	log := ctrl.Log.WithName("systemconfig").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name, "kind", "SystemConfig")
 	systemConfig := v1alpha1.SystemConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &systemConfig)
 	if err != nil {

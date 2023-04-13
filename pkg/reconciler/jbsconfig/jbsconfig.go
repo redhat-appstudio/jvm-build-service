@@ -52,7 +52,7 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
-	log := ctrl.Log.WithName("jbsconfig").WithValues("request", request.NamespacedName)
+	log := ctrl.Log.WithName("jbsconfig").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name, "kind", "SystemConfig")
 	jbsConfig := v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
