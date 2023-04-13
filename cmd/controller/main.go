@@ -50,6 +50,7 @@ func main() {
 	mainLog = ctrl.Log.WithName("main")
 	ctx := ctrl.SetupSignalHandler()
 	restConfig := ctrl.GetConfigOrDie()
+	klog.SetLogger(mainLog)
 
 	var mgr ctrl.Manager
 	var err error
