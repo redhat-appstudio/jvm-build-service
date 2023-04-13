@@ -81,7 +81,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
-	log := ctrl.Log.WithName("dependencybuild").WithValues("request", request.NamespacedName)
+	log := ctrl.Log.WithName("dependencybuild").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name)
 
 	db := v1alpha1.DependencyBuild{}
 	dberr := r.client.Get(ctx, request.NamespacedName, &db)
@@ -111,6 +111,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 
 	switch {
 	case dberr == nil:
+		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
 		//we validate that our dep id hash is still valid
 		//if a field has been modified we need to update the label
 		//which may result in a new build
@@ -142,6 +143,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
+		log = log.WithValues("kind", "PipelineRun")
 		pipelineType := pr.Labels[PipelineType]
 		switch pipelineType {
 		case PipelineTypeBuildInfo:
@@ -781,11 +783,9 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 			ownerGavs[ab.Spec.GAV] = true
 		}
 	}
-	l.Info("Found owner gavs", "gavs", ownerGavs)
 	for _, contaminant := range db.Status.Contaminants {
 		for _, artifact := range contaminant.ContaminatedArtifacts {
 			if ownerGavs[artifact] {
-				l.Info("Found contaminant affecting owner", "contaminate", contaminant, "owner", artifact)
 				db.Status.State = v1alpha1.DependencyBuildStateContaminated
 				abrName := artifactbuild.CreateABRName(contaminant.GAV)
 				abr := v1alpha1.ArtifactBuild{}
@@ -793,6 +793,7 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 				err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
 				suffix := hashToString(contaminant.GAV)[0:20]
 				if err != nil {
+					l.Info(fmt.Sprintf("Creating ArtifactBuild %s for GAV %s to resolve contamination of %s", abrName, contaminant.GAV, artifact), "contaminate", contaminant, "owner", artifact)
 					//we just assume this is because it does not exist
 					//TODO: how to check the type of the error?
 					abr.Spec = v1alpha1.ArtifactBuildSpec{GAV: contaminant.GAV}

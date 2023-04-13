@@ -78,11 +78,10 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
-	log := ctrl.Log.WithName("artifactbuild").WithValues("request", request.NamespacedName)
+	log := ctrl.Log.WithName("artifactbuild").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name)
 	//_, clusterSet := logicalcluster.ClusterFromContext(ctx)
 	//if !clusterSet {
 	//	log.Info("cluster is not set in context", request.String())
-	//}
 
 	jbsConfig := &v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
@@ -131,13 +130,16 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 	switch {
 	case dberr == nil:
+		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
 		//log.Info("cluster set on obj ", r.clusterSetOnObj(&db))
 		return r.handleDependencyBuildReceived(ctx, log, &db)
 
 	case prerr == nil:
+		log = log.WithValues("kind", "PipelineRun")
 		return r.handlePipelineRunReceived(ctx, log, &pr)
 
 	case abrerr == nil:
+		log = log.WithValues("kind", "ArtifactBuild", "ab-gav", abr.Spec.GAV)
 		// TODO: if verify = true, then find dependency build and add veify = false to dep build, add ourself to the owner references, if new dep created, also add it to that
 		//log.Info("cluster set on obj ", r.clusterSetOnObj(&abr))
 		//first check for a rebuild annotation
@@ -487,7 +489,7 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log lo
 					newContaminates = append(newContaminates, contaminant)
 				}
 			}
-			log.Info("Attempting to resolve contamination for dependencybuild", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag, "old", db.Status.Contaminants, "new", newContaminates)
+			log.V(4).Info("Attempting to resolve contamination for dependencybuild", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag, "old", db.Status.Contaminants, "new", newContaminates)
 			db.Status.Contaminants = newContaminates
 			if len(db.Status.Contaminants) == 0 {
 				//TODO: we could have a situation where there are still some contamination, but not for artifacts that we care about

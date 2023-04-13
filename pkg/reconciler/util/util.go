@@ -45,7 +45,7 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 	// Get the image name using a controller's env var (if the env var value is specified)
 	ciImageName := os.Getenv(envvar)
 	if len(ciImageName) != 0 {
-		log.Info(fmt.Sprintf("GetImageName using %s for hacbs-jvm-%s", ciImageName, substr))
+		log.V(4).Info(fmt.Sprintf("GetImageName using %s for hacbs-jvm-%s", ciImageName, substr))
 		return ciImageName, nil
 	}
 
