@@ -722,6 +722,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 									return reconcile.Result{}, err
 								}
 								ra.Spec.Image = image
+								log.Info(fmt.Sprintf("Updating existing RebuiltArtifact %s to reference image %s", ra.Name, ra.Spec.Image), "action", "UPDATE")
 								err = r.client.Update(ctx, &ra)
 								if err != nil {
 									return reconcile.Result{}, err
@@ -793,7 +794,7 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 				err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
 				suffix := hashToString(contaminant.GAV)[0:20]
 				if err != nil {
-					l.Info(fmt.Sprintf("Creating ArtifactBuild %s for GAV %s to resolve contamination of %s", abrName, contaminant.GAV, artifact), "contaminate", contaminant, "owner", artifact)
+					l.Info(fmt.Sprintf("Creating ArtifactBuild %s for GAV %s to resolve contamination of %s", abrName, contaminant.GAV, artifact), "contaminate", contaminant, "owner", artifact, "action", "ADD")
 					//we just assume this is because it does not exist
 					//TODO: how to check the type of the error?
 					abr.Spec = v1alpha1.ArtifactBuildSpec{GAV: contaminant.GAV}
@@ -809,6 +810,7 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 				} else {
 					abr.Annotations = map[string]string{}
 					abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
+					l.Info("Marking ArtifactBuild %s as a contaminant of %s", abr.Name, db.Name, "action", "ADD")
 					err := r.client.Update(ctx, &abr)
 					if err != nil {
 						return reconcile.Result{}, err
