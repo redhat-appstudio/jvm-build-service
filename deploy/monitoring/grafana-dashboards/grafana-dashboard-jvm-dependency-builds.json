@@ -20,10 +20,6 @@
   "links": [],
   "panels": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PF224BEF3374A25F8"
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -79,10 +75,6 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PF224BEF3374A25F8"
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -159,10 +151,6 @@
       "type": "piechart"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PF224BEF3374A25F8"
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -239,10 +227,6 @@
       "type": "piechart"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PF224BEF3374A25F8"
-      },
       "description": "",
       "fieldConfig": {
         "defaults": {
