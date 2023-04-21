@@ -84,6 +84,7 @@ func TestArtifactBuildStateNew(t *testing.T) {
 			g.Expect(or.Kind).Should(Equal(abr.Kind))
 			g.Expect(or.Name).Should(Equal(abr.Name))
 		}
+		g.Expect(len(tr.Finalizers)).Should(Equal(1))
 	}
 }
 
@@ -149,9 +150,10 @@ func TestStateDiscovering(t *testing.T) {
 		tr := &pipelinev1beta1.PipelineRun{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-tr",
-				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
+				Name:       "test-tr",
+				Namespace:  metav1.NamespaceDefault,
+				Labels:     map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
+				Finalizers: []string{PipelineRunFinalizer},
 			},
 			Spec: pipelinev1beta1.PipelineRunSpec{},
 			Status: pipelinev1beta1.PipelineRunStatus{
@@ -159,15 +161,17 @@ func TestStateDiscovering(t *testing.T) {
 				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now},
 			},
 		}
-		g.Expect(client.Create(ctx, tr))
+		g.Expect(client.Create(ctx, tr)).Should(Succeed())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr := getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateDiscovering))
-		g.Expect(controllerutil.SetOwnerReference(abr, tr, reconciler.scheme))
-		g.Expect(client.Update(ctx, tr))
+		g.Expect(controllerutil.SetOwnerReference(abr, tr, reconciler.scheme)).Should(Succeed())
+		g.Expect(client.Update(ctx, tr)).To(Succeed())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-tr"}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateMissing))
+		g.Expect(client.Get(ctx, types.NamespacedName{Name: tr.Name, Namespace: tr.Namespace}, tr)).Should(Succeed())
+		g.Expect(len(tr.Finalizers)).Should(Equal(0))
 	})
 	t.Run("First ABR creates DependencyBuild", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -191,13 +195,15 @@ func TestStateDiscovering(t *testing.T) {
 		}
 		abr := getABR(client, g)
 		g.Expect(controllerutil.SetOwnerReference(abr, tr, reconciler.scheme))
-		g.Expect(client.Create(ctx, tr))
+		g.Expect(client.Create(ctx, tr)).Should(Succeed())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-tr"}}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
 		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: depId}}))
 		fullValidation(client, g)
+		g.Expect(client.Get(ctx, types.NamespacedName{Name: tr.Name, Namespace: tr.Namespace}, tr)).Should(Succeed())
+		g.Expect(len(tr.Finalizers)).Should(Equal(0))
 	})
 	t.Run("DependencyBuild already exists for ABR", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -285,7 +291,7 @@ func TestStateBuilding(t *testing.T) {
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
 		}
 		g.Expect(controllerutil.SetOwnerReference(abr, db, reconciler.scheme))
-		g.Expect(client.Create(ctx, db))
+		g.Expect(client.Create(ctx, db)).Should(Succeed())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateFailed))
@@ -306,7 +312,7 @@ func TestStateBuilding(t *testing.T) {
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete, DeployedArtifacts: []string{abr.Spec.GAV}},
 		}
 		g.Expect(controllerutil.SetOwnerReference(abr, db, reconciler.scheme))
-		g.Expect(client.Create(ctx, db))
+		g.Expect(client.Create(ctx, db)).Should(Succeed())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateComplete))
@@ -317,12 +323,12 @@ func TestStateBuilding(t *testing.T) {
 		abr := getABR(client, g)
 		abr.Status.SCMInfo.SCMURL = repo
 		abr.Status.SCMInfo.Tag = version
-		g.Expect(client.Update(ctx, abr))
+		g.Expect(client.Update(ctx, abr)).Should(Succeed())
 
 		other := getNamedABR(client, g, otherName)
 		other.Status.SCMInfo.SCMURL = repo
 		other.Status.SCMInfo.Tag = version
-		g.Expect(client.Update(ctx, other))
+		g.Expect(client.Update(ctx, other)).Should(Succeed())
 		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		db := v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
@@ -336,7 +342,7 @@ func TestStateBuilding(t *testing.T) {
 		}
 		g.Expect(controllerutil.SetOwnerReference(abr, &db, reconciler.scheme))
 		g.Expect(controllerutil.SetOwnerReference(other, &db, reconciler.scheme))
-		g.Expect(client.Create(ctx, &db))
+		g.Expect(client.Create(ctx, &db)).Should(Succeed())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)

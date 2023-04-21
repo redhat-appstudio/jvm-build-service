@@ -33,8 +33,9 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout   = 300 * time.Second
-	PipelineRunLabel = "jvmbuildservice.io/pipelinerun"
+	contextTimeout       = 300 * time.Second
+	PipelineRunLabel     = "jvmbuildservice.io/pipelinerun"
+	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	// DependencyBuildContaminatedBy label prefix that indicates that a dependency build was contaminated by this artifact
 	DependencyBuildContaminatedBy = "jvmbuildservice.io/contaminated-"
 	DependencyBuildIdLabel        = "jvmbuildservice.io/dependencybuild-id"
@@ -196,7 +197,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		msg := "pipelinerun missing onwerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
-		return reconcile.Result{}, nil
+		return RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 	ownerName := ""
 	for _, ownerRef := range ownerRefs {
@@ -209,7 +210,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		msg := "pipelinerun missing artifactbuilds ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
-		return reconcile.Result{}, nil
+		return RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 
 	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
@@ -257,7 +258,35 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	result, err2 := RemovePipelineFinalizer(ctx, pr, r.client)
+	if err2 != nil {
+		return result, err2
+	}
 
+	return reconcile.Result{}, nil
+}
+
+func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun, client client.Client) (reconcile.Result, error) {
+	//remove the finalizer
+	if pr.Finalizers != nil {
+		mod := false
+		for i, fz := range pr.Finalizers {
+			if fz == PipelineRunFinalizer {
+				newLength := len(pr.Finalizers) - 1
+				pr.Finalizers[i] = pr.Finalizers[newLength] // Copy last element to index i.
+				pr.Finalizers[newLength] = ""               // Erase last element (write zero value).
+				pr.Finalizers = pr.Finalizers[:newLength]   // Truncate slice.
+				mod = true
+				break
+			}
+		}
+		if mod {
+			err := client.Update(ctx, pr)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	}
 	return reconcile.Result{}, nil
 }
 
@@ -314,6 +343,7 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
+	pr.Finalizers = []string{PipelineRunFinalizer}
 	pr.GenerateName = abr.Name + "-scm-discovery-"
 	pr.Namespace = abr.Namespace
 	systemConfig := v1alpha1.SystemConfig{}

@@ -170,6 +170,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	}
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
+	pr.Finalizers = []string{artifactbuild.PipelineRunFinalizer}
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
@@ -209,7 +210,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		msg := "pipelinerun missing ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
-		return reconcile.Result{}, nil
+		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 	ownerName := ""
 	for _, ownerRef := range ownerRefs {
@@ -223,7 +224,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
 
-		return reconcile.Result{}, nil
+		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 
 	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
@@ -236,7 +237,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		return reconcile.Result{}, err
 	}
 	if db.Status.State != v1alpha1.DependencyBuildStateAnalyzeBuild {
-		return reconcile.Result{}, nil
+		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 
 	var buildInfo string
@@ -368,7 +369,8 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	return reconcile.Result{}, nil
+
+	return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 }
 
 type marshalledBuildInfo struct {
@@ -490,6 +492,7 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
 	pr := pipelinev1beta1.PipelineRun{}
+	pr.Finalizers = []string{artifactbuild.PipelineRunFinalizer}
 	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -571,7 +574,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)
 
-			return reconcile.Result{}, nil
+			return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 		}
 		if len(ownerRefs) > 1 {
 			// workaround for event/logging methods that can only take string args
@@ -594,7 +597,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)
 
-			return reconcile.Result{}, nil
+			return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 		}
 
 		key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerRef.Name}
@@ -609,7 +612,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 		if pr.Name == db.Status.LastCompletedBuildPipelineRun || pr.Name != currentDependencyBuildPipelineName(&db) {
 			//already handled
-			return reconcile.Result{}, nil
+			return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 		}
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 
@@ -744,7 +747,11 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				//most likely shaded in
 				//we don't need to update the status here, it will be handled by the handleStateComplete method
 				//even though there are contaminates they may not be in artifacts we care about
-				return r.handleStateCompleted(ctx, &db, log)
+				_, err := r.handleStateCompleted(ctx, &db, log)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 			}
 		} else {
 			//try again, if there are no more recipes this gets handled in the submit build logic
@@ -756,7 +763,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		}
 
 	}
-	return reconcile.Result{}, nil
+	return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 }
 
 // This checks that the build is still considered uncontaminated

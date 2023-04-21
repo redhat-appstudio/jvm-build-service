@@ -132,6 +132,7 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 		}
 	}
 	g.Expect(pr).ShouldNot(BeNil())
+	g.Expect(len(pr.Finalizers)).Should(Equal(1))
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
 		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null, "repositories": ["jboss","gradle"]}`}}}
@@ -146,6 +147,8 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	})
 	g.Expect(client.Update(ctx, pr))
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
+	g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).Should(Succeed())
+	g.Expect(len(pr.Finalizers)).Should(Equal(0))
 }
 
 func TestStateDetect(t *testing.T) {
@@ -281,6 +284,7 @@ func TestStateBuilding(t *testing.T) {
 
 		pr := pipelinev1beta1.PipelineRun{}
 		pr.Namespace = metav1.NamespaceDefault
+		pr.Finalizers = []string{artifactbuild.PipelineRunFinalizer}
 		pr.Name = "test-build-0"
 		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineType: PipelineTypeBuild}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme)).Should(BeNil())
@@ -330,7 +334,8 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(client.Get(ctx, types.NamespacedName{Name: artifactbuild.CreateABRName(TestArtifact), Namespace: metav1.NamespaceDefault}, &ra)).Should(Succeed())
 		g.Expect(ra.Spec.GAV).Should(Equal(TestArtifact))
 		g.Expect(ra.Spec.Image).ShouldNot(BeNil())
-
+		pr = getBuildPipeline(client, g)
+		g.Expect(len(pr.Finalizers)).Should(Equal(0))
 	})
 	t.Run("Test reconcile building DependencyBuild with failed pipeline", func(t *testing.T) {
 		g := NewGomegaWithT(t)
