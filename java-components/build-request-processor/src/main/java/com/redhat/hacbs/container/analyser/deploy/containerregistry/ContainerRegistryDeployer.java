@@ -1,22 +1,15 @@
 package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-
-import org.apache.commons.compress.archivers.ArchiveEntry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
@@ -30,7 +23,6 @@ import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
 import com.redhat.hacbs.container.analyser.deploy.DeployData;
 import com.redhat.hacbs.container.analyser.deploy.Deployer;
-import com.redhat.hacbs.container.analyser.deploy.DeployerUtil;
 import com.redhat.hacbs.container.analyser.deploy.Gav;
 import com.redhat.hacbs.recipies.util.FileUtil;
 
@@ -40,13 +32,7 @@ public class ContainerRegistryDeployer implements Deployer {
 
     private static final String DOUBLE_POINT = ":";
     private static final String SLASH = "/";
-    private static final String UNDERSCORE = "_";
-    private static final String DOT_JAR = ".jar";
-    private static final String DOT_POM = ".pom";
-    private static final String DOT = ".";
-    private static final String HACBS = "hacbs";
-    private static final String ARTIFACTS = "artifacts";
-    private static final int BUFFER_SIZE = 4096;
+
     static {
         if (System.getProperty("jib.httpTimeout") == null) {
             //long timout, but not infinite
@@ -195,11 +181,7 @@ public class ContainerRegistryDeployer implements Deployer {
                 + DOUBLE_POINT + imageName;
     }
 
-    private List<Path> getLayers(Path artifacts, Path source, Path logs)
-            throws IOException {
-
-        // TODO: For now we create dummy source and logs
-
+    private List<Path> getLayers(Path artifacts, Path source, Path logs) {
         Log.debug("\n Container details:\n"
                 + "\t layer 1 (source) " + source.toString() + "\n"
                 + "\t layer 2 (logs) " + logs.toString() + "\n"
@@ -207,51 +189,4 @@ public class ContainerRegistryDeployer implements Deployer {
 
         return List.of(source, logs, artifacts);
     }
-
-    private Optional<Gav> extractEntry(ArchiveEntry entry, InputStream tar, String folder) throws IOException {
-        final String path = folder + File.separator + entry.getName();
-        if (entry.isDirectory()) {
-            new File(path).mkdirs();
-        } else {
-            new File(path).getParentFile().mkdirs();
-            int count;
-            byte[] data = new byte[BUFFER_SIZE];
-            try (FileOutputStream os = new FileOutputStream(path);
-                    BufferedOutputStream dest = new BufferedOutputStream(os, BUFFER_SIZE)) {
-                while ((count = tar.read(data, 0, BUFFER_SIZE)) != -1) {
-                    dest.write(data, 0, count);
-                }
-            }
-            return getGav(entry.getName());
-        }
-        return Optional.empty();
-    }
-
-    private Optional<Gav> getGav(String entryName) {
-        if (entryName.startsWith("./")) {
-            entryName = entryName.substring(2);
-        }
-        if (entryName.endsWith(DOT_JAR) || entryName.endsWith(DOT_POM)) {
-
-            List<String> pathParts = List.of(entryName.split(SLASH));
-            int numberOfParts = pathParts.size();
-
-            String version = pathParts.get(numberOfParts - 2);
-            String artifactId = pathParts.get(numberOfParts - 3);
-            List<String> groupIdList = pathParts.subList(0, numberOfParts - 3);
-            String groupId = String.join(DOT, groupIdList);
-
-            String tag = DeployerUtil.sha256sum(groupId, artifactId, version);
-            if (!prependTag.isBlank()) {
-                tag = prependTag + UNDERSCORE + tag;
-            }
-            if (tag.length() > 128) {
-                tag = tag.substring(0, 128);
-            }
-
-            return Optional.of(new Gav(groupId, artifactId, version, tag));
-        }
-        return Optional.empty();
-    }
-
 }
