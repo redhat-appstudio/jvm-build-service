@@ -15,6 +15,9 @@ import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
+import org.cyclonedx.exception.ParseException;
+import org.cyclonedx.parsers.JsonParser;
+import org.cyclonedx.parsers.Parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.DockerClient;
@@ -31,68 +34,85 @@ import picocli.CommandLine;
 public class RebuiltDownloadCommand
         implements Runnable {
 
-    @CommandLine.Option(names = "-g", description = "The build to view, specified by GAV", completionCandidates = GavCompleter.class)
-    String gav;
-
-    @CommandLine.Option(names = "-a", description = "The build to view, specified by RebuiltArtifact name", completionCandidates = RebuildCompleter.class)
-    String artifact;
-
-    @CommandLine.Option(names = "-d", description = "Download directory to use. Defaults to current directory")
-    File targetDirectory = new File(System.getProperty("user.dir"));
-
     enum DownloadSelection {
         ALL,
         SOURCE,
         LOGS
     }
 
-    @CommandLine.Option(names = { "-t", "--download-type" }, description = "What to download (ALL, SOURCE or LOGS)")
+    @CommandLine.Option(names = "-g", description = "The build to view, specified by GAV", completionCandidates = GavCompleter.class)
+    String gav;
+
+    @CommandLine.Option(names = "-a", description = "The build to view, specified by RebuiltArtifact name", completionCandidates = RebuildCompleter.class)
+    String artifact;
+
+    @CommandLine.Option(names = "-s", description = "Path to an sbom to download all referenced artifacts", completionCandidates = RebuildCompleter.class)
+    File sBom;
+
+    @CommandLine.Option(names = "-d", description = "Download directory to use. Defaults to current directory")
+    File targetDirectory = new File(System.getProperty("user.dir"));
+
+    @CommandLine.Option(names = { "-t",
+            "--download-type" }, description = "What to download (ALL, SOURCE or LOGS). Default: ${DEFAULT-VALUE}", defaultValue = "ALL")
     DownloadSelection selection = DownloadSelection.ALL;
 
     @Override
     public void run() {
         TreeMap<String, RebuiltArtifact> builds = RebuildCompleter.createNames();
 
-        System.out.println("### directory is " + targetDirectory + " , downloadSelection " + selection + " gav " + gav
-                + " build " + artifact);
-
-        if (gav != null) {
-            Optional<RebuiltArtifact> rebuilt = builds.values().stream().filter(b -> b.getSpec().getGav().equals(gav))
-                    .findFirst();
-
-            if (rebuilt.isPresent()) {
-                System.out.println("About to download " + gav + " (for " + rebuilt.get().getMetadata().getName() +
-                        ") from image " + rebuilt.get().getSpec().getImage());
-
-                try {
+        try {
+            if (gav != null) {
+                Optional<RebuiltArtifact> rebuilt = builds.values().stream().filter(b -> b.getSpec().getGav().equals(gav))
+                        .findFirst();
+                if (rebuilt.isPresent()) {
+                    System.out.println("About to download " + gav + " (for " + rebuilt.get().getMetadata().getName() +
+                            ") from image " + rebuilt.get().getSpec().getImage());
                     downloadImage(rebuilt.get().getSpec());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } else {
+                    System.out.println("Unable to find " + gav + " in list of artifacts");
                 }
-
-            } else {
-                System.out.println("Unable to find " + gav + " in list of artifacts");
-            }
-        } else if (artifact != null) {
-            Optional<RebuiltArtifact> rebuilt = Optional.ofNullable(builds.get(artifact));
-            if (rebuilt.isPresent()) {
-                System.out.println("About to download " + artifact + " (for " + rebuilt.get().getSpec().getGav() +
-                        ") from image " + rebuilt.get().getSpec().getImage());
-
-                try {
+            } else if (artifact != null) {
+                Optional<RebuiltArtifact> rebuilt = Optional.ofNullable(builds.get(artifact));
+                if (rebuilt.isPresent()) {
+                    System.out.println("About to download " + artifact + " (for " + rebuilt.get().getMetadata().getName() +
+                            ") from image " + rebuilt.get().getSpec().getImage());
                     downloadImage(rebuilt.get().getSpec());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } else {
+                    System.out.println("Unable to find " + artifact + " in list of artifacts");
                 }
-
-            } else {
-                System.out.println("Unable to find " + artifact + " in list of artifacts");
+            } else if (sBom != null) {
+                if (!sBom.exists()) {
+                    System.out.println("Unable to find sbom " + sBom);
+                } else {
+                    try {
+                        Parser parser = new JsonParser();
+                        parser.parse(sBom).getComponents().forEach(c -> {
+                            String gav = c.getGroup() + ":" + c.getName() + ":" + c.getVersion();
+                            Optional<RebuiltArtifact> rebuilt = builds.values().stream()
+                                    .filter(b -> b.getSpec().getGav().equals(gav)).findFirst();
+                            if (rebuilt.isPresent()) {
+                                try {
+                                    downloadImage(rebuilt.get().getSpec());
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            } else {
+                                System.out.println("Unable to find " + gav + " in list of artifacts");
+                            }
+                        });
+                    } catch (ParseException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
             }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public void downloadImage(RebuiltArtifactSpec spec)
+    private void downloadImage(RebuiltArtifactSpec spec)
             throws IOException {
+
         try (DockerClient dockerClient = DockerClientBuilder.getInstance().build()) {
 
             String image = spec.getImage();
@@ -100,7 +120,7 @@ public class RebuiltDownloadCommand
             String repository = image.substring(0, lastColon);
             String tag = image.substring(lastColon + 1);
 
-            System.out.println("### repository is " + repository + " tag " + tag);
+            System.out.println("Downloading image from " + repository + " with tag " + tag);
 
             // Pull the image from the remote registry
             dockerClient.pullImageCmd(repository).withAuthConfig(dockerClient.authConfig()).withTag(tag).start()
@@ -122,7 +142,12 @@ public class RebuiltDownloadCommand
 
     void extractTars(RebuiltArtifactSpec spec, File savedImage, File tempDir)
             throws IOException {
-        unpackArchive(tempDir, savedImage);
+        try (ArchiveInputStream i = new ArchiveStreamFactory()
+                .createArchiveInputStream(new BufferedInputStream(new FileInputStream(savedImage)))) {
+            extract(i, tempDir);
+        } catch (ArchiveException | IOException e) {
+            throw new RuntimeException("Caught exception unpacking archive", e);
+        }
 
         ObjectMapper objectMapper = new ObjectMapper();
         DockerManifest[] manifest = objectMapper.readValue(new File(tempDir, "manifest.json"),
@@ -132,28 +157,19 @@ public class RebuiltDownloadCommand
             throw new RuntimeException("Unexpected manifest size");
         }
 
-        System.out.println("### Found layers " + manifest[0].layers);
-
         // According to the contract layers 0 is the source and layers 1 is the logs. Therefore copy them out to
         // target depending upon selection configuration.
         targetDirectory.mkdirs();
         String gav = spec.getGav().replaceAll(":", "--");
         if (selection == DownloadSelection.ALL || selection == DownloadSelection.SOURCE) {
+            System.out.println("Located layer " + manifest[0].layers.get(0) + " to download sources");
             Files.copy(Paths.get(tempDir.toString(), manifest[0].layers.get(0)),
                     new File(targetDirectory, gav + "-source.tar").toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
         if (selection == DownloadSelection.ALL || selection == DownloadSelection.LOGS) {
+            System.out.println("Located layer " + manifest[0].layers.get(1) + " to download logs");
             Files.copy(Paths.get(tempDir.toString(), manifest[0].layers.get(1)),
                     new File(targetDirectory, gav + "-logs.tar").toPath(), StandardCopyOption.REPLACE_EXISTING);
-        }
-    }
-
-    private void unpackArchive(File targetDirectory, File target) {
-        try (ArchiveInputStream i = new ArchiveStreamFactory()
-                .createArchiveInputStream(new BufferedInputStream(new FileInputStream(target)))) {
-            extract(i, targetDirectory);
-        } catch (ArchiveException | IOException e) {
-            throw new RuntimeException("Caught exception unpacking archive", e);
         }
     }
 

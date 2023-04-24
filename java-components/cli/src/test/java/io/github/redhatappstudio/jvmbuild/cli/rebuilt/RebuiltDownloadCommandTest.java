@@ -22,12 +22,12 @@ class RebuiltDownloadCommandTest {
     public void testImage(@TempDir Path dir)
             throws URISyntaxException, IOException {
         Path path = Paths.get(RebuiltDownloadCommand.class.getClassLoader().getResource("testImage.tar").toURI());
-        RebuiltArtifactSpec spec = new RebuiltArtifactSpec();
-        spec.setGav("org.foo:foobar:1.0");
 
         File targetDirectory = new File(dir.toString(), "target");
         File temp = new File(dir.toString(), "temp");
 
+        RebuiltArtifactSpec spec = new RebuiltArtifactSpec();
+        spec.setGav("org.foo:foobar:1.0");
         RebuiltDownloadCommand rb = new RebuiltDownloadCommand();
         rb.selection = RebuiltDownloadCommand.DownloadSelection.ALL;
         rb.targetDirectory = targetDirectory;
@@ -35,6 +35,7 @@ class RebuiltDownloadCommandTest {
 
         Path logs = Paths.get(targetDirectory.toString(), "org.foo--foobar--1.0-logs.tar");
         Path source = Paths.get(targetDirectory.toString(), "org.foo--foobar--1.0-source.tar");
+
         assertTrue(Files.exists(logs));
         assertTrue(Files.exists(source));
 
@@ -44,6 +45,5 @@ class RebuiltDownloadCommandTest {
         try (InputStream is = Files.newInputStream(source)) {
             assertEquals("f5892601dd69d6ddc4ede0ef9484a9c9", DigestUtils.md5Hex(is));
         }
-
     }
 }
