@@ -1,7 +1,5 @@
 package io.github.redhatappstudio.jvmbuild.cli.artifacts;
 
-import java.util.TreeMap;
-
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 
 import picocli.CommandLine;
@@ -16,7 +14,7 @@ public class ArtifactListCommand implements Runnable {
 
     @Override
     public void run() {
-        var builds = new TreeMap<>(GavCompleter.createNames());
+        var builds = GavCompleter.createNames();
         var it = builds.entrySet().iterator();
         int nameLongest = 0;
         int stateLongest = 0;

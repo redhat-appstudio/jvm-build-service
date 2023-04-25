@@ -15,7 +15,7 @@ public class RebuiltListCommand
 
     @Override
     public void run() {
-        TreeMap<String, RebuiltArtifact> builds = RebuildCompleter.createNames();
+        Map<String, RebuiltArtifact> builds = RebuildCompleter.createNames();
 
         if (builds.size() > 0) {
             int longest = builds.values()

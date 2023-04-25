@@ -1,5 +1,6 @@
 package io.github.redhatappstudio.jvmbuild.cli.rebuilt;
 
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -17,7 +18,7 @@ import io.quarkus.arc.InstanceHandle;
 public class RebuildCompleter
         extends RequestScopedCompleter {
 
-    public static TreeMap<String, RebuiltArtifact> createNames() {
+    public static Map<String, RebuiltArtifact> createNames() {
         try (InstanceHandle<KubernetesClient> instanceHandle = Arc.container().instance(KubernetesClient.class)) {
             KubernetesClient client = instanceHandle.get();
             return client.resources(RebuiltArtifact.class)

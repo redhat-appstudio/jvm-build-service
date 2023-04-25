@@ -35,7 +35,7 @@ public class ContainerRegistryDeployer implements Deployer {
 
     static {
         if (System.getProperty("jib.httpTimeout") == null) {
-            //long timout, but not infinite
+            //long timeout, but not infinite
             long fiveMinutes = TimeUnit.MINUTES.toMillis(5);
             System.setProperty("jib.httpTimeout", "" + fiveMinutes);
         }

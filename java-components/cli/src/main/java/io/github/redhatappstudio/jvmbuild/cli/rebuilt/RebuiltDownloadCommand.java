@@ -8,8 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Map;
 import java.util.Optional;
-import java.util.TreeMap;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveException;
@@ -58,7 +58,7 @@ public class RebuiltDownloadCommand
 
     @Override
     public void run() {
-        TreeMap<String, RebuiltArtifact> builds = RebuildCompleter.createNames();
+        Map<String, RebuiltArtifact> builds = RebuildCompleter.createNames();
 
         try {
             if (gav != null) {
