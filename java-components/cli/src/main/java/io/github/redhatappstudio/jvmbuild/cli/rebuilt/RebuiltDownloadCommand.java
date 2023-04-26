@@ -1,32 +1,35 @@
 package io.github.redhatappstudio.jvmbuild.cli.rebuilt;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveException;
-import org.apache.commons.compress.archivers.ArchiveInputStream;
-import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.core.DockerClientBuilder;
+import com.google.cloud.tools.jib.api.ImageReference;
+import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
+import com.google.cloud.tools.jib.api.RegistryException;
+import com.google.cloud.tools.jib.blob.Blob;
+import com.google.cloud.tools.jib.event.EventHandlers;
+import com.google.cloud.tools.jib.http.FailoverHttpClient;
+import com.google.cloud.tools.jib.image.json.BuildableManifestTemplate;
+import com.google.cloud.tools.jib.image.json.ManifestTemplate;
+import com.google.cloud.tools.jib.image.json.OciManifestTemplate;
+import com.google.cloud.tools.jib.registry.ManifestAndDigest;
+import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.redhat.hacbs.resources.model.v1alpha1.RebuiltArtifact;
 import com.redhat.hacbs.resources.model.v1alpha1.RebuiltArtifactSpec;
 
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.GavCompleter;
-import io.github.redhatappstudio.jvmbuild.cli.util.DockerManifest;
+import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "download", mixinStandardHelpOptions = true, description = "Download log/source from a "
@@ -110,82 +113,54 @@ public class RebuiltDownloadCommand
         }
     }
 
-    private void downloadImage(RebuiltArtifactSpec spec)
+    void downloadImage(RebuiltArtifactSpec spec)
             throws IOException {
 
-        try (DockerClient dockerClient = DockerClientBuilder.getInstance().build()) {
+        try {
+            ImageReference reference = ImageReference.parse(spec.getImage());
+            RegistryClient.Factory factory = RegistryClient.factory(new EventHandlers.Builder().build(),
+                    reference.getRegistry(), reference.getRepository(),
+                    new FailoverHttpClient(true,
+                            true,
+                            s -> Log.info(s.getMessage())));
+            RegistryClient registryClient = factory.newRegistryClient();
 
-            String image = spec.getImage();
-            int lastColon = image.lastIndexOf(':');
-            String repository = image.substring(0, lastColon);
-            String tag = image.substring(lastColon + 1);
+            ManifestAndDigest<ManifestTemplate> manifestAndDigest = registryClient.pullManifest(reference.getTag().get(),
+                    ManifestTemplate.class);
+            List<BuildableManifestTemplate.ContentDescriptorTemplate> layers = ((OciManifestTemplate) manifestAndDigest
+                    .getManifest()).getLayers();
 
-            System.out.println("Downloading image from " + repository + " with tag " + tag);
-
-            // Pull the image from the remote registry
-            dockerClient.pullImageCmd(repository).withAuthConfig(dockerClient.authConfig()).withTag(tag).start()
-                    .awaitCompletion();
-
-            // Create a temporary directory and pull down the image tar - then need to extract the layers from that.
-            Path tempPath = Files.createTempDirectory("image-extraction");
-            Path savedImage = Paths.get(tempPath.toString(), "/image.tar");
-            Files.copy(dockerClient.saveImageCmd(repository).withTag(tag).exec(),
-                    savedImage,
-                    StandardCopyOption.REPLACE_EXISTING);
-            File tempDir = tempPath.toFile();
-
-            extractTars(spec, savedImage.toFile(), tempDir);
-        } catch (InterruptedException e) {
+            if (layers.size() == 3) {
+                // According to the contract layers 0 is the source and layers 1 is the logs. Therefore copy them out to
+                // target depending upon selection configuration.
+                String gav = spec.getGav().replaceAll(":", "--");
+                if (selection == DownloadSelection.ALL || selection == DownloadSelection.SOURCE) {
+                    System.out.println("Located layer " + layers.get(0).getDigest().getHash() + " to download sources");
+                    writeLayer(registryClient, layers.get(0), Paths.get(targetDirectory.toString(), gav +
+                            "-source.tar.gz"));
+                }
+                if (selection == DownloadSelection.ALL || selection == DownloadSelection.LOGS) {
+                    System.out.println("Located layer " + layers.get(1).getDigest().getHash() + " to download logs");
+                    writeLayer(registryClient, layers.get(1), Paths.get(targetDirectory.toString(), gav +
+                            "-logs.tar.gz"));
+                }
+            } else {
+                throw new RuntimeException("Unexpected manifest size");
+            }
+        } catch (InvalidImageReferenceException | RegistryException e) {
             throw new RuntimeException(e);
         }
     }
 
-    void extractTars(RebuiltArtifactSpec spec, File savedImage, File tempDir)
+    private void writeLayer(RegistryClient registryClient,
+            BuildableManifestTemplate.ContentDescriptorTemplate layer, Path targetPath)
             throws IOException {
-        try (ArchiveInputStream i = new ArchiveStreamFactory()
-                .createArchiveInputStream(new BufferedInputStream(new FileInputStream(savedImage)))) {
-            extract(i, tempDir);
-        } catch (ArchiveException | IOException e) {
-            throw new RuntimeException("Caught exception unpacking archive", e);
-        }
+        Blob blob = registryClient.pullBlob(layer.getDigest(), s -> {
+        }, s -> {
+        });
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        DockerManifest[] manifest = objectMapper.readValue(new File(tempDir, "manifest.json"),
-                DockerManifest[].class);
-
-        if (manifest.length != 1) {
-            throw new RuntimeException("Unexpected manifest size");
-        }
-
-        // According to the contract layers 0 is the source and layers 1 is the logs. Therefore copy them out to
-        // target depending upon selection configuration.
-        targetDirectory.mkdirs();
-        String gav = spec.getGav().replaceAll(":", "--");
-        if (selection == DownloadSelection.ALL || selection == DownloadSelection.SOURCE) {
-            System.out.println("Located layer " + manifest[0].layers.get(0) + " to download sources");
-            Files.copy(Paths.get(tempDir.toString(), manifest[0].layers.get(0)),
-                    new File(targetDirectory, gav + "-source.tar").toPath(), StandardCopyOption.REPLACE_EXISTING);
-        }
-        if (selection == DownloadSelection.ALL || selection == DownloadSelection.LOGS) {
-            System.out.println("Located layer " + manifest[0].layers.get(1) + " to download logs");
-            Files.copy(Paths.get(tempDir.toString(), manifest[0].layers.get(1)),
-                    new File(targetDirectory, gav + "-logs.tar").toPath(), StandardCopyOption.REPLACE_EXISTING);
-        }
-    }
-
-    private void extract(ArchiveInputStream input, File destination) throws IOException {
-        ArchiveEntry entry;
-        while ((entry = input.getNextEntry()) != null) {
-            if (!input.canReadEntryData(entry)) {
-                throw new RuntimeException("Unable to read data entry for " + entry);
-            }
-            File file = new File(destination, entry.getName());
-            if (entry.isDirectory()) {
-                file.mkdirs();
-            } else {
-                file.getParentFile().mkdirs();
-                Files.copy(input, file.toPath());
-            }
+        try (OutputStream tarOutputStream = Files.newOutputStream(targetPath)) {
+            blob.writeTo(tarOutputStream);
         }
     }
 }

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
-import com.redhat.hacbs.artifactcache.test.util.HashUtil;
+import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.quarkus.test.junit.QuarkusTest;
 import software.amazon.awssdk.core.sync.RequestBody;

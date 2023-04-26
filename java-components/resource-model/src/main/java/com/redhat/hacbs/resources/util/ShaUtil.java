@@ -1,4 +1,4 @@
-package com.redhat.hacbs.artifactcache.services.client;
+package com.redhat.hacbs.resources.util;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

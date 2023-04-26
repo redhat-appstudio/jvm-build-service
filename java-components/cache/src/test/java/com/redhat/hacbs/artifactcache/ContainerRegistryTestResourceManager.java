@@ -7,11 +7,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -28,10 +28,9 @@ import com.google.cloud.tools.jib.api.RegistryImage;
 import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
 import com.redhat.hacbs.artifactcache.services.ContainerRegistryStorageTest;
-import com.redhat.hacbs.artifactcache.services.client.ShaUtil;
-import com.redhat.hacbs.artifactcache.test.util.HashUtil;
+import com.redhat.hacbs.resources.util.HashUtil;
+import com.redhat.hacbs.resources.util.ShaUtil;
 
-import io.quarkus.logging.Log;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import io.vertx.core.json.JsonObject;
 
@@ -66,11 +65,11 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
 
         Integer port = this.container.getMappedPort(5000);
 
-        Log.debug("\n Test registry details:\n"
+        System.out.println("\n Test registry details:\n"
                 + "\t container name: " + this.container.getContainerName() + "\n"
                 + "\t host: " + this.container.getHost() + "\n"
                 + "\t port: " + port + "\n"
-                + "\t image: " + this.container.getDockerImageName() + "\n");
+                + "\t image: " + this.container.getDockerImageName());
 
         return port;
     }
@@ -117,10 +116,19 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         Path layer3Path = Paths.get(testDataRoot.toString(), "artifacts");
         Files.createDirectories(layer3Path);
 
-        Log.debug("\n Test container details:\n"
-                + "\t layer 1 (source) " + layer1Path.toString() + "\n"
-                + "\t layer 2 (logs) " + layer2Path.toString() + "\n"
-                + "\t layer 3 (artifacts) " + layer3Path.toString());
+        // Place a known file as a 'log' to make testing easier
+        Files.copy(Paths.get(testDataRoot.toString(), "..", "..", "pom.xml"),
+                Paths.get(layer2Path.toString(), "pom.xml"),
+                StandardCopyOption.REPLACE_EXISTING);
+        // Place a known file as 'source' to make testing easier
+        Files.copy(Paths.get(testDataRoot.toString(), "..", "..", "..", "..", "readme.adoc"),
+                Paths.get(layer1Path.toString(), "readme.adoc"),
+                StandardCopyOption.REPLACE_EXISTING);
+
+        System.out.println("\n Test container details:\n"
+                + "\t layer 1 (source) " + layer1Path + "\n"
+                + "\t layer 2 (logs) " + layer2Path + "\n"
+                + "\t layer 3 (artifacts) " + layer3Path);
 
         // Add data to artifacts
         for (Map.Entry<String, String> artifactFile : ContainerRegistryStorageTest.ARTIFACT_FILE_MAP.entrySet()) {
@@ -136,7 +144,7 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
             String testContent = "Just some data for " + artifactFile.getKey();
             Files.writeString(testFile, testContent);
 
-            Path shaFile = Paths.get(testFile.toString() + ContainerRegistryStorageTest.DOT + SHA_1);
+            Path shaFile = Paths.get(testFile + ContainerRegistryStorageTest.DOT + SHA_1);
             if (!Files.exists(shaFile)) {
                 Files.createFile(shaFile);
             }
@@ -148,7 +156,7 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         return List.of(layer1Path, layer2Path, layer3Path);
     }
 
-    private void printTestRegistry(String host, int port) throws MalformedURLException, IOException {
+    private void printTestRegistry(String host, int port) throws IOException {
 
         // Print all the known registries
         StringBuilder resultCatalog = new StringBuilder();
@@ -163,7 +171,7 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         }
 
         JsonObject catalogs = new JsonObject(resultCatalog.toString());
-        Log.debug("\n\n Test registry catalog:\n" + catalogs.encodePrettily() + "\n");
+        System.out.println("\n Test registry catalog:\n" + catalogs.encodePrettily());
 
         connCatalog.disconnect();
 
@@ -181,7 +189,8 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
         }
 
         JsonObject tags = new JsonObject(resultTags.toString());
-        Log.debug("\n\n Test registry " + ContainerRegistryStorageTest.GROUP + " tags:\n" + tags.encodePrettily() + "\n");
+        System.out.println(
+                "\n Test registry " + ContainerRegistryStorageTest.GROUP + " tags:\n" + tags.encodePrettily() + "\n");
 
         conn.disconnect();
     }
