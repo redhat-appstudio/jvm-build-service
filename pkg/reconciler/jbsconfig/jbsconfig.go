@@ -2,8 +2,11 @@ package jbsconfig
 
 import (
 	"context"
+	errors2 "errors"
 	"fmt"
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"regexp"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,7 +26,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -37,18 +39,21 @@ type ReconcilerJBSConfig struct {
 	scheme               *runtime.Scheme
 	eventRecorder        record.EventRecorder
 	configuredCacheImage string
+	spiPresent           bool
 }
 
-func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, spiPresent bool) reconcile.Reconciler {
 	ret := &ReconcilerJBSConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("JBSConfig"),
+		spiPresent:    spiPresent,
 	}
 	return ret
 }
 
 func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
@@ -176,6 +181,9 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	// our client is wired to not cache secrets / establish informers for secrets
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.ImageSecretName}, registrySecret)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return r.processSpiImageSecret(ctx, jbsConfig)
+		}
 		return err
 	}
 	_, keyPresent1 := registrySecret.Data[v1alpha1.ImageSecretTokenKey]
@@ -189,6 +197,9 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 			if err2 != nil {
 				return err2
 			}
+		}
+		if r.spiPresent {
+			return nil
 		}
 		return err
 	}
@@ -506,4 +517,55 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	} else {
 		return r.client.Update(ctx, cache)
 	}
+}
+
+func (r *ReconcilerJBSConfig) processSpiImageSecret(ctx context.Context, config *v1alpha1.JBSConfig) error {
+	//no secret exists, lets try and grab one from the SPI
+	binding := v1beta1.SPIAccessTokenBinding{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.ImageSecretName, Namespace: config.Namespace}, &binding)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			binding.Name = v1alpha1.ImageSecretName
+			binding.Namespace = config.Namespace
+			url := "https://"
+			if config.Spec.Host == "" {
+				url += "quay.io"
+			} else {
+				url += config.Spec.Host
+			}
+			url += "/" + config.Spec.Owner + "/"
+			if config.Spec.Repository == "" {
+				url += "artifact-deployments"
+			} else {
+				url += config.Spec.Repository
+			}
+
+			binding.Spec.RepoUrl = url
+			binding.Spec.Lifetime = "-1"
+			binding.Spec.Permissions = v1beta1.Permissions{Required: []v1beta1.Permission{{Type: v1beta1.PermissionTypeReadWrite, Area: v1beta1.PermissionAreaRegistry}}}
+			binding.Spec.Secret = v1beta1.SecretSpec{
+				Name: v1alpha1.ImageSecretName,
+				Type: corev1.SecretTypeDockerConfigJson,
+			}
+			err = controllerutil.SetOwnerReference(config, &binding, r.scheme)
+			if err != nil {
+				return err
+			}
+			//we just return
+			err := r.client.Create(ctx, &binding)
+			if err != nil {
+				return err
+			}
+			return errors2.New("created SPIAccessTokenBinding, waiting for secret to be injected")
+		} else {
+			return err
+		}
+	}
+	switch binding.Status.Phase {
+	case v1beta1.SPIAccessTokenBindingPhaseError:
+		return errors2.New(binding.Status.ErrorMessage)
+	case v1beta1.SPIAccessTokenBindingPhaseInjected:
+		return errors2.New("unexpected error, SPIAccessTokenBinding claims to be injected but secret was not found")
+	}
+	return errors2.New("created SPIAccessTokenBinding, waiting for secret to be injected")
 }
