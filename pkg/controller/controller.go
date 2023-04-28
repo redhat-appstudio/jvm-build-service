@@ -13,6 +13,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
+	spi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -52,6 +53,13 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
+	//check for the SPI to be present
+	spiPresent := true
+	_, err := apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "spiaccesstokenbindings.appstudio.redhat.com", metav1.GetOptions{})
+	if err != nil {
+		spiPresent = false
+	}
+
 	options.Scheme = runtime.NewScheme()
 
 	// pretty sure this is there by default but we will be explicit like build-service
@@ -67,8 +75,13 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
+	if spiPresent {
+		if err := spi.AddToScheme(options.Scheme); err != nil {
+			return nil, err
+		}
+	}
+
 	var mgr ctrl.Manager
-	var err error
 	// this replaces the need for creating a non-caching client to access these various types
 	options.ClientDisableCacheFor = []client.Object{
 		&v1.ConfigMap{},
@@ -121,7 +134,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
-	if err := jbsconfig.SetupNewReconcilerWithManager(mgr); err != nil {
+	if err := jbsconfig.SetupNewReconcilerWithManager(mgr, spiPresent); err != nil {
 		return nil, err
 	}
 
