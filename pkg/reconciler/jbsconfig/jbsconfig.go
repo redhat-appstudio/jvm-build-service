@@ -126,6 +126,15 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 				log.Error(err, msg)
 				r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
 			}
+			binding := &v1beta1.SPIAccessTokenBinding{}
+			binding.Name = v1alpha1.ImageSecretName
+			binding.Namespace = request.Namespace
+			err = r.client.Delete(ctx, binding)
+			if err != nil && !errors.IsNotFound(err) {
+				msg := fmt.Sprintf("Unable to delete SPIAccessTokenBinding - %s", err.Error())
+				log.Error(err, msg)
+				r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
+			}
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
