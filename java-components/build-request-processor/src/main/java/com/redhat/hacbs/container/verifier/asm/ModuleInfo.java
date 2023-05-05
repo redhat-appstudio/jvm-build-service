@@ -28,4 +28,9 @@ public record ModuleInfo(String name, Set<ModuleAccess> access, String version, 
                         .collect(Collectors.toMap(n -> n.service, ModuleProvideInfo::new, (x, y) -> x, LinkedHashMap::new))
                         : null);
     }
+
+    @Override
+    public String getName() {
+        return name;
+    }
 }

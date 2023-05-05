@@ -91,4 +91,9 @@ public record MethodInfo(Set<MethodAccess> access, String name, String desc, Str
          * : null
          */);
     }
+
+    @Override
+    public String getName() {
+        return name;
+    }
 }

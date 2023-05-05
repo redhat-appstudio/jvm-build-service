@@ -59,4 +59,9 @@ public record ClassInfo(ClassVersion version, Set<ClassAccess> access, String na
                 node.methods.stream().filter(field -> isPublic(field.access))
                         .collect(Collectors.toMap(n -> n.desc, MethodInfo::new, (x, y) -> x, LinkedHashMap::new)));
     }
+
+    @Override
+    public String getName() {
+        return name;
+    }
 }

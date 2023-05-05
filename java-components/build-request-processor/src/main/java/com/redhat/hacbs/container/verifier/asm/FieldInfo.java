@@ -43,4 +43,9 @@ public record FieldInfo(
                                * null
                                */);
     }
+
+    @Override
+    public String getName() {
+        return name;
+    }
 }

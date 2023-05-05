@@ -16,7 +16,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import picocli.CommandLine;
 
-// FIXME: @QuarkusTest
+//@QuarkusTest
 public class VerifyBuiltArtifactsCommandTest {
     private Properties properties;
 
@@ -39,8 +39,29 @@ public class VerifyBuiltArtifactsCommandTest {
         var uri = url.toURI();
         var file = Path.of(uri);
         System.setProperty(ALT_USER_SETTINGS_XML_LOCATION, file.toAbsolutePath().toString());
-        var args = new String[] { "-r", "https://repo1.maven.org/maven2", "--deploy-path", file.getParent().toString() };
+        var file2 = file.getParent().resolve("repo");
+        var args = new String[] { "-r", "https://repo1.maven.org/maven2", "--deploy-path", file2.toString() };
         var exitCode = new CommandLine(new VerifyBuiltArtifactsCommand()).execute(args);
         assertThat(exitCode).isZero();
+    }
+
+    @Test
+    void testExcludes() throws URISyntaxException {
+        var url = VerifyBuiltArtifactsCommandTest.class.getResource("/verifier/excludes/1/bar-1.0.jar");
+        assertThat(url).isNotNull();
+        var uri = url.toURI();
+        var origFile = Path.of(uri);
+        var url2 = VerifyBuiltArtifactsCommandTest.class.getResource("/verifier/excludes/2/bar-1.0.jar");
+        assertThat(url2).isNotNull();
+        var uri2 = url2.toURI();
+        var newFile = Path.of(uri2);
+        var url3 = VerifyBuiltArtifactsCommandTest.class.getResource("/verifier/excludes/excludes.txt");
+        assertThat(url3).isNotNull();
+        var uri3 = url3.toURI();
+        var excludesFile = Path.of(uri3);
+        var args = new String[] { "-of", origFile.toString(), "-nf", newFile.toString(),
+                "--excludes", "+:.*[^:]:class:.*", "--excludes-file", excludesFile.toString() };
+        var exitCode = new CommandLine(new VerifyBuiltArtifactsCommand()).execute(args);
+        assertThat(exitCode).isEqualTo(5);
     }
 }

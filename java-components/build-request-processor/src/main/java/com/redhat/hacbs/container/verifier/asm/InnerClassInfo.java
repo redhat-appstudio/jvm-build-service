@@ -11,4 +11,9 @@ public record InnerClassInfo(String name, String outerName, String innerName,
     public InnerClassInfo(InnerClassNode node) {
         this(node.name, node.outerName, node.innerName, accessToSet(node.access, ClassAccess.class));
     }
+
+    @Override
+    public String getName() {
+        return name;
+    }
 }

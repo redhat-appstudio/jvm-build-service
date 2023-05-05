@@ -71,4 +71,9 @@ public record RecordComponentInfo(String name, String descriptor, String signatu
                                * null
                                */);
     }
+
+    @Override
+    public String getName() {
+        return name;
+    }
 }
