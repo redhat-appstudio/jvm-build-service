@@ -18,7 +18,7 @@ import org.mockito.Mockito;
 
 import com.redhat.hacbs.artifactcache.ContainerRegistryTestResourceManager;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
-import com.redhat.hacbs.artifactcache.test.util.HashUtil;
+import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;

@@ -39,7 +39,7 @@ import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
 import com.redhat.hacbs.artifactcache.services.StorageManager;
-import com.redhat.hacbs.artifactcache.services.client.ShaUtil;
+import com.redhat.hacbs.resources.util.ShaUtil;
 
 import io.quarkus.logging.Log;
 
@@ -157,7 +157,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         } catch (RegistryUnauthorizedException e) {
             try {
                 //this is quay specific possibly?
-                //unfortunatly we can't get the actual header
+                //unfortunately we can't get the actual header
                 String wwwAuthenticate = "Bearer realm=\"https://" + registry + "/v2/auth\",service=\"" + registry
                         + "\",scope=\"repository:" + owner + "/" + repository + ":pull\"";
                 registryClient.authPullByWwwAuthenticate(wwwAuthenticate);
@@ -273,7 +273,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
                     return Optional.of(Paths.get(outputPath.toString(), ARTIFACTS));
                 }
             } else {
-                Log.warnf("Unexpexted layer size %d. We expext 3", layers.size());
+                Log.warnf("Unexpected layer size %d. We expect 3", layers.size());
                 return Optional.empty();
             }
         } else {
