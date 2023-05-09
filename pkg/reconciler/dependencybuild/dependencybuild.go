@@ -554,7 +554,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	db.Status.DiagnosticDockerFiles = append(db.Status.DiagnosticDockerFiles, diagnostic)
-	pr.Spec.ServiceAccountName = "pipeline"
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
