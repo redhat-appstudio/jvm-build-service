@@ -3,7 +3,11 @@ package com.redhat.hacbs.container.verifier.asm;
 import static com.redhat.hacbs.container.verifier.asm.AsmUtils.accessToSet;
 import static com.redhat.hacbs.container.verifier.asm.AsmUtils.isPublic;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.objectweb.asm.tree.ClassNode;

@@ -5,7 +5,11 @@ import static com.redhat.hacbs.container.verifier.JarVerifierUtils.runTests;
 import java.lang.reflect.Modifier;
 
 import org.junit.jupiter.api.Test;
-import org.objectweb.asm.*;
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 
 public class JarVerificationTestCase {
 
@@ -81,6 +85,6 @@ public class JarVerificationTestCase {
                 }
                 return super.visitAnnotation(descriptor, visible);
             }
-        }, 0, "-:.*:com.redhat.hacbs.container.verifier.SimpleClass:annotation:Ljava.lang.Deprecated;");
+        }, 0, "-:.*:com.redhat.hacbs.container.verifier.SimpleClass:annotation:java.lang.Deprecated");
     }
 }
