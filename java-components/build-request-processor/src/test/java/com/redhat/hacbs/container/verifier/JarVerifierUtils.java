@@ -1,23 +1,24 @@
 package com.redhat.hacbs.container.verifier;
 
-import com.redhat.hacbs.container.verifier.asm.JarInfo;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.function.Function;
+import java.util.jar.JarOutputStream;
+import java.util.zip.ZipEntry;
+
 import org.junit.jupiter.api.Assertions;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Function;
-import java.util.jar.JarOutputStream;
-import java.util.zip.ZipEntry;
+import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
 public class JarVerifierUtils {
 
-    public static void runTests(Class<?> baseClass, Function<ClassVisitor, ClassVisitor> visitorFunction, int expected, String ... exclusions) {
+    public static void runTests(Class<?> baseClass, Function<ClassVisitor, ClassVisitor> visitorFunction, int expected,
+            String... exclusions) {
         try (InputStream in = baseClass.getResourceAsStream(baseClass.getSimpleName() + ".class")) {
             var dir = Files.createTempDirectory("tests");
             var jar1Path = dir.resolve("tmp1.jar");

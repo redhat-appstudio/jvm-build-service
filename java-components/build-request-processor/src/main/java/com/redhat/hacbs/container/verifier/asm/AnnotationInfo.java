@@ -6,4 +6,9 @@ public record AnnotationInfo(String desc/* , List<Object> values */) implements 
     public AnnotationInfo(AnnotationNode node) {
         this(node.desc/* , node.values != null ? List.copyOf(node.values) : null */);
     }
+
+    @Override
+    public String getName() {
+        return desc;
+    }
 }
