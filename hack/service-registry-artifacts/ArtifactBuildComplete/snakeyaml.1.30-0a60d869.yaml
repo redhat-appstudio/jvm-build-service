@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: snakeyaml.1.30-0a60d869
-  namespace: test-jvm-namespace
-spec:
-  gav: org.yaml:snakeyaml:1.30

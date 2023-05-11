@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: handy.uri.templates.2.1.8-5e13a894
-  namespace: test-jvm-namespace
-spec:
-  gav: com.damnhandy:handy-uri-templates:2.1.8

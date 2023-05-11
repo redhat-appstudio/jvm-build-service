@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: smallrye.config.core.2.9.2-b6e855bc
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye.config:smallrye-config-core:2.9.2

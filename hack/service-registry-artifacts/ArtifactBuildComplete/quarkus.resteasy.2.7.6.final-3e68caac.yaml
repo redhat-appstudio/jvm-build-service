@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.resteasy.2.7.6.final-3e68caac
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus:quarkus-resteasy:2.7.6.Final

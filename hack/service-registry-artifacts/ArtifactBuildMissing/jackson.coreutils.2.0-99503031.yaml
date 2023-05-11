@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jackson.coreutils.2.0-99503031
-  namespace: test-jvm-namespace
-spec:
-  gav: com.github.java-json-tools:jackson-coreutils:2.0

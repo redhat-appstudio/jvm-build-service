@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: microprofile.fault.tolerance.api.3.0-8aa745ae
-  namespace: test-jvm-namespace
-spec:
-  gav: org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api:3.0

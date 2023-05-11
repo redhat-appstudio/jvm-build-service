@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jboss.connector.api.1.7.spec.1.0.0.final-c2214343
-  namespace: test-jvm-namespace
-spec:
-  gav: org.jboss.spec.javax.resource:jboss-connector-api_1.7_spec:1.0.0.Final

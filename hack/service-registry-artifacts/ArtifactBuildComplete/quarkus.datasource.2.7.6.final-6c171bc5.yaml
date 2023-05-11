@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.datasource.2.7.6.final-6c171bc5
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus:quarkus-datasource:2.7.6.Final

@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: microprofile.health.api.3.1-1ea02145
-  namespace: test-jvm-namespace
-spec:
-  gav: org.eclipse.microprofile.health:microprofile-health-api:3.1

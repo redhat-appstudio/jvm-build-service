@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jakarta.inject.api.1.0-e12bfe6b
-  namespace: test-jvm-namespace
-spec:
-  gav: jakarta.inject:jakarta.inject-api:1.0

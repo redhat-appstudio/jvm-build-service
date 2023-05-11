@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: wire.kotlin.generator.3.7.1-d0357606
-  namespace: test-jvm-namespace
-spec:
-  gav: com.squareup.wire:wire-kotlin-generator:3.7.1

@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-41aa1d19a12d310f3071: bda2be2b23d206868f57e9238d1f4c32
-  name: java.diff.utils.4.0-abdc468a
-  namespace: test-jvm-namespace
-spec:
-  gav: io.github.java-diff-utils:java-diff-utils:4.0

@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-689addfbba569e0a96e4: 1ba645360e9136d45fe15e3d63a721de
-  name: isorelax.20090621-05e0ec30
-  namespace: test-jvm-namespace
-spec:
-  gav: com.sun.xml.bind.jaxb:isorelax:20090621

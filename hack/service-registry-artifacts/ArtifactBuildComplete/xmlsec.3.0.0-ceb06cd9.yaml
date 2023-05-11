@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: xmlsec.3.0.0-ceb06cd9
-  namespace: test-jvm-namespace
-spec:
-  gav: org.apache.santuario:xmlsec:3.0.0

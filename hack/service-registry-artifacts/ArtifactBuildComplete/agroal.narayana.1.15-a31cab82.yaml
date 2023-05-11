@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: agroal.narayana.1.15-a31cab82
-  namespace: test-jvm-namespace
-spec:
-  gav: io.agroal:agroal-narayana:1.15

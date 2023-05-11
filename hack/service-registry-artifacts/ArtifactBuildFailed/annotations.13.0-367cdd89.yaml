@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: annotations.13.0-367cdd89
-  namespace: test-jvm-namespace
-spec:
-  gav: org.jetbrains:annotations:13.0

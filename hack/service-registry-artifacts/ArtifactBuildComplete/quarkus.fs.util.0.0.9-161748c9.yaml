@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.fs.util.0.0.9-161748c9
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus:quarkus-fs-util:0.0.9

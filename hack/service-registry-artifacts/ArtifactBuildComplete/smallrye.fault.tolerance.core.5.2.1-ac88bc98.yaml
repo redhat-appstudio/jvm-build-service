@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: smallrye.fault.tolerance.core.5.2.1-ac88bc98
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye:smallrye-fault-tolerance-core:5.2.1

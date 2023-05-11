@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: smallrye.jwt.3.3.3-65d65630
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye:smallrye-jwt:3.3.3

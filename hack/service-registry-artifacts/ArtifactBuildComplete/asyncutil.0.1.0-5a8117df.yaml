@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: asyncutil.0.1.0-5a8117df
-  namespace: test-jvm-namespace
-spec:
-  gav: com.ibm.async:asyncutil:0.1.0

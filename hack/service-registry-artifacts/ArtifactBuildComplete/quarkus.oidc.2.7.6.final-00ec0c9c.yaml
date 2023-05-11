@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.oidc.2.7.6.final-00ec0c9c
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus:quarkus-oidc:2.7.6.Final

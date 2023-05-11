@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-7b1fc87d0165b65a2df5: bda2be2b23d206868f57e9238d1f4c32
-  name: guava.30.1.jre-cb6f8ca6
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.guava:guava:30.1-jre

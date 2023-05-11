@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: smallrye.common.function.1.10.0-619f793d
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye.common:smallrye-common-function:1.10.0

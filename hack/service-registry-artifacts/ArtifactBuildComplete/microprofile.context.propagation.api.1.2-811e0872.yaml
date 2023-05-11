@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: microprofile.context.propagation.api.1.2-811e0872
-  namespace: test-jvm-namespace
-spec:
-  gav: org.eclipse.microprofile.context-propagation:microprofile-context-propagation-api:1.2

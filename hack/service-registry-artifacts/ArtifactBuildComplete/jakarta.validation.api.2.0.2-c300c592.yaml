@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jakarta.validation.api.2.0.2-c300c592
-  namespace: test-jvm-namespace
-spec:
-  gav: jakarta.validation:jakarta.validation-api:2.0.2

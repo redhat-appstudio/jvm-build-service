@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: lz4.java.1.8.0-ce136a71
-  namespace: test-jvm-namespace
-spec:
-  gav: org.lz4:lz4-java:1.8.0

@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: wire.profiles.3.7.1-a3cde84b
-  namespace: test-jvm-namespace
-spec:
-  gav: com.squareup.wire:wire-profiles:3.7.1

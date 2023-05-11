@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jakarta.interceptor.api.1.2.5-35dee32a
-  namespace: test-jvm-namespace
-spec:
-  gav: jakarta.interceptor:jakarta.interceptor-api:1.2.5

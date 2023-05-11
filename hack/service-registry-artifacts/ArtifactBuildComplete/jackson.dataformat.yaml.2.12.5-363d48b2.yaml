@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jackson.dataformat.yaml.2.12.5-363d48b2
-  namespace: test-jvm-namespace
-spec:
-  gav: com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.5

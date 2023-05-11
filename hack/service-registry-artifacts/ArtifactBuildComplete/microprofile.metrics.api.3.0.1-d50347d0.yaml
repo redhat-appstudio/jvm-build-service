@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: microprofile.metrics.api.3.0.1-d50347d0
-  namespace: test-jvm-namespace
-spec:
-  gav: org.eclipse.microprofile.metrics:microprofile-metrics-api:3.0.1

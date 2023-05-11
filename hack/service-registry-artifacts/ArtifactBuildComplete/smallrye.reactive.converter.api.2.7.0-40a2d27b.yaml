@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: smallrye.reactive.converter.api.2.7.0-40a2d27b
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye.reactive:smallrye-reactive-converter-api:2.7.0

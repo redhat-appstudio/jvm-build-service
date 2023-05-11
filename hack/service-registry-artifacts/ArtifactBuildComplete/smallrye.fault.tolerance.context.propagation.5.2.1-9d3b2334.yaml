@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: smallrye.fault.tolerance.context.propagation.5.2.1-9d3b2334
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye:smallrye-fault-tolerance-context-propagation:5.2.1

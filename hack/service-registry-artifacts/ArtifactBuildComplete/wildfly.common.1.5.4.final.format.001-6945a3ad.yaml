@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: wildfly.common.1.5.4.final.format.001-6945a3ad
-  namespace: test-jvm-namespace
-spec:
-  gav: org.wildfly.common:wildfly-common:1.5.4.Final-format-001

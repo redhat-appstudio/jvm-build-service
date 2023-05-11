@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-4e6e4786df17bb0eecc6: bda2be2b23d206868f57e9238d1f4c32
-  name: protobuf.java.3.4.0-7665a7de
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.protobuf:protobuf-java:3.4.0

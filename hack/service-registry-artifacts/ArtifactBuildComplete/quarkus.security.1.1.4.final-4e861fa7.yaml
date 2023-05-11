@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.security.1.1.4.final-4e861fa7
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus.security:quarkus-security:1.1.4.Final

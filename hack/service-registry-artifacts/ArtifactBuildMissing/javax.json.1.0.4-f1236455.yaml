@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-9621166bc4f193822257: f1ec184d8c48b56f6d9b5b942411d111
-  name: javax.json.1.0.4-f1236455
-  namespace: test-jvm-namespace
-spec:
-  gav: org.glassfish:javax.json:1.0.4

@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: guava.30.1.1.jre-8e2b3569
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.guava:guava:30.1.1-jre

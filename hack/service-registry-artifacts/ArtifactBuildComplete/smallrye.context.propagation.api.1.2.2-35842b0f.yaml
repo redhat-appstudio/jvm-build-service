@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: smallrye.context.propagation.api.1.2.2-35842b0f
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye:smallrye-context-propagation-api:1.2.2

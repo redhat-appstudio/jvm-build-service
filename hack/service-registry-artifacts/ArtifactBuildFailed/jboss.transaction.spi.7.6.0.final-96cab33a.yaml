@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jboss.transaction.spi.7.6.0.final-96cab33a
-  namespace: test-jvm-namespace
-spec:
-  gav: org.jboss:jboss-transaction-spi:7.6.0.Final

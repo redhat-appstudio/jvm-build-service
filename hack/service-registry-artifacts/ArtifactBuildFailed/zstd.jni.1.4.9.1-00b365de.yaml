@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: zstd.jni.1.4.9.1-00b365de
-  namespace: test-jvm-namespace
-spec:
-  gav: com.github.luben:zstd-jni:1.4.9-1

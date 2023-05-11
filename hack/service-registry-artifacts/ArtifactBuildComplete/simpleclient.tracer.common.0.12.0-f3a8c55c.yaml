@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: simpleclient.tracer.common.0.12.0-f3a8c55c
-  namespace: test-jvm-namespace
-spec:
-  gav: io.prometheus:simpleclient_tracer_common:0.12.0

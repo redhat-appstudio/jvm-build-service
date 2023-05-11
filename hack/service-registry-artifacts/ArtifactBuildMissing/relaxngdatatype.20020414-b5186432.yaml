@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-0166c08ae10a810facc2: 1ba645360e9136d45fe15e3d63a721de
-  name: relaxngdatatype.20020414-b5186432
-  namespace: test-jvm-namespace
-spec:
-  gav: relaxngDatatype:relaxngDatatype:20020414

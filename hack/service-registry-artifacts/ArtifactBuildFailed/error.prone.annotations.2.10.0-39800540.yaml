@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: error.prone.annotations.2.10.0-39800540
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.errorprone:error_prone_annotations:2.10.0
