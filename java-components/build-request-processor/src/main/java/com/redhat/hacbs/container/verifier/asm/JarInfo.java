@@ -34,27 +34,32 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
             var entry = (JarEntry) null;
 
             while ((entry = in.getNextJarEntry()) != null) {
-                var name = entry.getName();
+                try {
+                    var name = entry.getName();
 
-                // XXX: Also handle other files?
-                if (!name.endsWith(".class")) {
-                    continue;
+                    // XXX: Also handle other files?
+                    if (!name.endsWith(".class")) {
+                        continue;
+                    }
+
+                    // XXX: Skipping lambda for now
+                    if (name.contains("$$Lambda$")) {
+                        Log.debugf("Skipping file %s", name);
+                        continue;
+                    }
+
+                    var reader = new ClassReader(in);
+                    var node = new ClassNode();
+                    reader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+
+                    if (isPublic(node.access)) {
+                        var classInfo = new ClassInfo(node);
+                        classes.put(classInfo.name(), classInfo);
+                    }
+                } catch (Exception e) {
+                    Log.errorf(e, "Failed to verify %s", entry.getName());
                 }
 
-                // XXX: Skipping lambda for now
-                if (name.contains("$$Lambda$")) {
-                    Log.debugf("Skipping file %s", name);
-                    continue;
-                }
-
-                var reader = new ClassReader(in);
-                var node = new ClassNode();
-                reader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-
-                if (isPublic(node.access)) {
-                    var classInfo = new ClassInfo(node);
-                    classes.put(classInfo.name(), classInfo);
-                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
