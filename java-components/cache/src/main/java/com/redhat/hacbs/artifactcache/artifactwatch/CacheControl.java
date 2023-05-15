@@ -8,6 +8,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import org.apache.http.client.utils.DateUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.artifactcache.services.StorageManager;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
@@ -33,9 +34,12 @@ public class CacheControl {
     KubernetesClient client;
     SharedIndexInformer<GenericKubernetesResource> informer;
 
+    @ConfigProperty(name = "kube.disabled", defaultValue = "false")
+    boolean disabled;
+
     @PostConstruct
     void setup() {
-        if (LaunchMode.current() == LaunchMode.TEST) {
+        if (LaunchMode.current() == LaunchMode.TEST || disabled) {
             //don't start in tests, as kube might not be present
             return;
         }
