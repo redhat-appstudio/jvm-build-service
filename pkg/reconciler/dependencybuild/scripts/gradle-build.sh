@@ -13,8 +13,8 @@ export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
 export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
 export PATH="${JAVA_HOME}/bin:${PATH}"
 
-mkdir -p $(workspaces.source.path)/logs
-mkdir -p $(workspaces.source.path)/packages
+mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages $(workspaces.source.path)/build-info
+
 {{INSTALL_PACKAGE_SCRIPT}}
 
 #some gradle builds get the version from the tag
@@ -85,7 +85,6 @@ if [ ! -d $(workspaces.source.path)/source ]; then
 fi
 gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --info --stacktrace -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle.log
 
-mkdir $(workspaces.source.path)/build-info
 cp -r /root/.[^.]* $(workspaces.source.path)/build-info
 
 # This is replaced when the task is created by the golang code
