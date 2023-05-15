@@ -7,9 +7,7 @@
         <artifactId>jvm-build-service-parent</artifactId>
         <version>999-SNAPSHOT</version>
     </parent>
-    <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
     <artifactId>hacbs-cache</artifactId>
-    <version>999-SNAPSHOT</version>
     <dependencies>
         <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>

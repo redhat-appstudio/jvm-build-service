@@ -53,8 +53,9 @@ Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
 
-cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
-
+if [ ! -d $(workspaces.source.path)/source ]; then
+    cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+fi
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 

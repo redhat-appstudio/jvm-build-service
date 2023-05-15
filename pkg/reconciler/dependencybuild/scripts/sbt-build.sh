@@ -58,8 +58,9 @@ Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
 
-cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
-
+if [ ! -d $(workspaces.source.path)/source ]; then
+    cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+fi
 echo "Running SBT command with arguments: $@"
 
 eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
