@@ -51,6 +51,9 @@ jobs:
             echo "generated sources are not up to date:"
             git --no-pager diff
             exit 1
+          else
+            echo "generated sources are up to date"
+            git --no-pager diff
           fi
   unit:
     name: Golang Unit tests
