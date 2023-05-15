@@ -153,6 +153,6 @@ public class ArtifactFixMissingCommand implements Runnable {
     }
 
     private void throwUnspecified() {
-        throw new RuntimeException("Can only specify one of -a, -g or --failed");
+        throw new RuntimeException("Can only specify one of -a or -g");
     }
 }

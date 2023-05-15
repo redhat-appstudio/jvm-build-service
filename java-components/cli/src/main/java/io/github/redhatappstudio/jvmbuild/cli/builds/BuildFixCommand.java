@@ -1,7 +1,6 @@
 package io.github.redhatappstudio.jvmbuild.cli.builds;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
@@ -12,11 +11,11 @@ import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuildSpec;
 
-import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.ArtifactBuildCompleter;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.GavCompleter;
 import io.github.redhatappstudio.jvmbuild.cli.repo.RepositoryChange;
+import io.github.redhatappstudio.jvmbuild.cli.util.BuildConverter;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
 
@@ -65,10 +64,10 @@ public class BuildFixCommand implements Runnable {
                 throwUnspecified();
             }
             ArtifactBuild ab = ArtifactBuildCompleter.createNames().get(artifact);
-            theBuild = buildToArtifact(client, ab);
+            theBuild = BuildConverter.buildToArtifact(client, ab);
         } else if (gav != null) {
             ArtifactBuild ab = GavCompleter.createNames().get(gav);
-            theBuild = buildToArtifact(client, ab);
+            theBuild = BuildConverter.buildToArtifact(client, ab);
         } else {
             throw new RuntimeException("Must specify one of -b, -a or -g");
         }
@@ -99,19 +98,6 @@ public class BuildFixCommand implements Runnable {
                     buildSpec.getScm().getScmURL(), versionSpecific ? buildSpec.getVersion() : null));
         });
 
-    }
-
-    private DependencyBuild buildToArtifact(KubernetesClient client, ArtifactBuild ab) {
-        if (ab == null) {
-            return null;
-        }
-        for (var i : client.resources(DependencyBuild.class).list().getItems()) {
-            Optional<OwnerReference> ownerReferenceFor = i.getOwnerReferenceFor(ab);
-            if (ownerReferenceFor.isPresent()) {
-                return i;
-            }
-        }
-        return null;
     }
 
     private void throwUnspecified() {

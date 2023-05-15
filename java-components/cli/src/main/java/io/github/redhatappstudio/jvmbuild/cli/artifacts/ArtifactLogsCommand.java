@@ -60,6 +60,6 @@ public class ArtifactLogsCommand implements Runnable {
     }
 
     private void throwUnspecified() {
-        throw new RuntimeException("Can only specify one of -b, -a or -g");
+        throw new RuntimeException("Can only specify one of -a or -g");
     }
 }

@@ -6,15 +6,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 
-import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.ArtifactBuildCompleter;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.GavCompleter;
+import io.github.redhatappstudio.jvmbuild.cli.util.BuildConverter;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
 
@@ -59,10 +58,10 @@ public class BuildDiagnosticCommand
                 throwUnspecified();
             }
             ArtifactBuild ab = ArtifactBuildCompleter.createNames().get(artifact);
-            theBuild = buildToArtifact(client, ab);
+            theBuild = BuildConverter.buildToArtifact(client, ab);
         } else if (gav != null) {
             ArtifactBuild ab = GavCompleter.createNames().get(gav);
-            theBuild = buildToArtifact(client, ab);
+            theBuild = BuildConverter.buildToArtifact(client, ab);
         } else {
             throw new RuntimeException("Must specify one of -b, -a or -g");
         }
@@ -102,20 +101,6 @@ public class BuildDiagnosticCommand
         } catch (IOException e) {
             throw new RuntimeException("Failed to write Dockerfile", e);
         }
-    }
-
-    // TODO: Create utility class and move these (and their duplicates to that)
-    private DependencyBuild buildToArtifact(KubernetesClient client, ArtifactBuild ab) {
-        if (ab == null) {
-            return null;
-        }
-        for (var i : client.resources(DependencyBuild.class).list().getItems()) {
-            Optional<OwnerReference> ownerReferenceFor = i.getOwnerReferenceFor(ab);
-            if (ownerReferenceFor.isPresent()) {
-                return i;
-            }
-        }
-        return null;
     }
 
     private void throwUnspecified() {
