@@ -354,9 +354,9 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/build.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/project/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineGoals, paramValues), " ")+"\n")) + " | base64 -d >/root/run-full-build.sh" +
 		"\nRUN chmod +x /root/*.sh" +
-		"\n# TODO: Both of these should use jbs remote URL as the user may not have them locally." +
-		"\nADD diagnostic.md /root/README.md" +
-		"\nADD entry_script.sh /root/" +
+		"\n# Both of these should use jbs remote URL as the user may not have them locally." +
+		"\nADD https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/docs/diagnostic.md /root/README.md" +
+		"\nADD https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/pkg/reconciler/dependencybuild/scripts/entry_script.sh /root/" +
 		"\nCMD [ \"/bin/bash\", \"/root/entry_script.sh\" ]"
 
 	return ps, df, nil
