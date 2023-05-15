@@ -144,6 +144,16 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
+
+		if pr.DeletionTimestamp != nil {
+			//always remove the finalizer if it is deleted
+			//but continue with the method
+			//if the PR is deleted while it is running then we want to allow that
+			result, err2 := artifactbuild.RemovePipelineFinalizer(ctx, &pr, r.client)
+			if err2 != nil {
+				return result, err2
+			}
+		}
 		log = log.WithValues("kind", "PipelineRun")
 		pipelineType := pr.Labels[PipelineType]
 		switch pipelineType {

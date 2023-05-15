@@ -181,6 +181,16 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 
+	if pr.DeletionTimestamp != nil {
+		//always remove the finalizer if it is deleted
+		//but continue with the method
+		//if the PR is deleted while it is running then we want to allow that
+		result, err2 := RemovePipelineFinalizer(ctx, pr, r.client)
+		if err2 != nil {
+			return result, err2
+		}
+	}
+
 	if pr.Status.PipelineResults != nil {
 		for _, prRes := range pr.Status.PipelineResults {
 			if prRes.Name == JavaCommunityDependencies {
