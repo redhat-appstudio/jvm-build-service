@@ -113,6 +113,7 @@ public abstract class AbstractPomScmLocator implements ScmLocator {
             map.put(prop.getKey().toString(), prop.getValue().toString());
         }
         map.put("project.version", version);
+        map.put("project.artifactId", model.getArtifactId());
         return new StringSubstitutor(map).replace(str);
     }
 
