@@ -45,3 +45,15 @@ subjects:
   - kind: ServiceAccount
     name: pipeline
     namespace: test-jvm-namespace
+---
+apiVersion: v1
+data:
+  default-service-account: "pipeline"
+
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+  name: config-defaults
+  namespace: tekton-pipelines

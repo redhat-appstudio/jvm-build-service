@@ -81,7 +81,7 @@ jobs:
           name: controller
           path: /tmp
       - name: Start minikube
-        uses: medyagh/setup-minikube@master
+        uses: medyagh/setup-minikube@3213bac7294895b1d92c1f4db1f99c91a308efaf
         with:
           cpus: max
           memory: max
