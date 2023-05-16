@@ -11,6 +11,8 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import com.redhat.hacbs.resources.model.v1alpha1.RebuiltArtifact;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -24,6 +26,9 @@ public class RebuiltArtifacts {
     @Inject
     KubernetesClient client;
 
+    @ConfigProperty(name = "kube.disabled", defaultValue = "false")
+    boolean disabled;
+
     final List<Consumer<String>> imageDeletionListeners = Collections.synchronizedList(new ArrayList<>());
 
     private final Set<String> gavs = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -31,7 +36,7 @@ public class RebuiltArtifacts {
     @PostConstruct
     void setup() {
 
-        if (LaunchMode.current() == LaunchMode.TEST) {
+        if (LaunchMode.current() == LaunchMode.TEST || disabled) {
             //don't start in tests, as kube might not be present
             return;
         }
