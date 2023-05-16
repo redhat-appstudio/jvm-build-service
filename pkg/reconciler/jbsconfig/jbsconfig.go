@@ -4,6 +4,7 @@ import (
 	"context"
 	errors2 "errors"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"regexp"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -33,6 +34,7 @@ import (
 
 const TlsServiceName = v1alpha1.CacheDeploymentName + "-tls"
 const TestRegistry = "jvmbuildservice.io/test-registry"
+const DefaultRecipeRepository = "https://github.com/redhat-appstudio/jvm-build-data"
 
 type ReconcilerJBSConfig struct {
 	client               client.Client
@@ -57,7 +59,7 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
 	defer cancel()
-	log := ctrl.Log.WithName("jbsconfig").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name, "kind", "SystemConfig")
+	log := ctrl.Log.WithName("jbsconfig").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name, "kind", "JBSConfig")
 	jbsConfig := v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
@@ -139,8 +141,15 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		}
 		return reconcile.Result{}, err
 	}
+
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
+
+		systemConfig := v1alpha1.SystemConfig{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 		err = r.validations(ctx, log, request, &jbsConfig)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -151,7 +160,7 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 			return reconcile.Result{}, err
 		}
 
-		err = r.cacheDeployment(ctx, log, request, &jbsConfig)
+		err = r.cacheDeployment(ctx, log, request, &jbsConfig, &systemConfig)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -354,7 +363,7 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 	return nil
 }
 
-func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logger, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig) error {
+func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logger, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig, sysConfig *v1alpha1.SystemConfig) error {
 	cache := &appsv1.Deployment{}
 	trueBool := true
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
@@ -432,6 +441,18 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		name     string
 		position int
 	}
+
+	recipeData := ""
+	if sysConfig.Spec.RecipeDatabase == "" {
+		recipeData = DefaultRecipeRepository
+	} else {
+		recipeData = sysConfig.Spec.RecipeDatabase
+	}
+	for _, i := range jbsConfig.Spec.AdditionalRecipes {
+		recipeData = recipeData + "," + i
+	}
+	cache = settingIfSet(recipeData, "BUILD_INFO_REPOSITORIES", cache)
+
 	//central is at the hard coded 200 position
 	//redhat is configured at 250
 	repos := []Repo{{name: "central", position: 200}, {name: "redhat", position: 250}}

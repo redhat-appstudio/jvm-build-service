@@ -9,6 +9,8 @@ import java.util.Optional;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.merge.ContentMergeStrategy;
+import org.eclipse.jgit.merge.MergeStrategy;
 
 import com.redhat.hacbs.recipies.util.GitCredentials;
 
@@ -113,7 +115,8 @@ public class RecipeRepositoryManager implements RecipeDirectory {
             synchronized (this) {
                 if (lastUpdate + updateInterval.get().toMillis() < System.currentTimeMillis()) {
                     try {
-                        git.pull().call();
+                        git.pull().setContentMergeStrategy(ContentMergeStrategy.THEIRS).setStrategy(MergeStrategy.THEIRS)
+                                .call();
                     } catch (GitAPIException e) {
                         throw new RuntimeException(e);
                     }

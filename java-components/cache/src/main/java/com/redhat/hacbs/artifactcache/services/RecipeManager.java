@@ -59,7 +59,7 @@ public class RecipeManager {
             Log.infof("Reading repos from %s at %s", i, tempDir);
             tempFiles.add(tempDir);
             recipeDirs
-                    .add(RecipeRepositoryManager.create(i, Optional.of(Duration.of(10, ChronoUnit.MINUTES)), tempDir));
+                    .add(RecipeRepositoryManager.create(i, Optional.of(Duration.of(1, ChronoUnit.MINUTES)), tempDir));
         }
         recipeGroupManager = new RecipeGroupManager(recipeDirs);
     }
