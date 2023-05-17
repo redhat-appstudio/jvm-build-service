@@ -98,6 +98,19 @@ public class BuildDiagnosticCommand
                 Files.writeString(Paths.get(targetDirectory.toString(), fileName),
                         dockerFiles.get(i));
             }
+            System.out.println(CommandLine.Help.Ansi.AUTO
+                    .string("""
+                            \n@|green To build the image, a standard build command e.g. |@@|yellow podman build . |@@|green (or |@@|yellow podman build -f <Dockerfile> .|@@|green ) is sufficient.
+
+                            To use this image to run a build, run
+
+                            |@@|yellow podman run -it <image> |@
+
+                            @|green or, if the last image built was this one:
+
+                            |@@|yellow podman run -v -it $(podman images -n -q | head -1)|@
+                            """));
+
         } catch (IOException e) {
             throw new RuntimeException("Failed to write Dockerfile", e);
         }
