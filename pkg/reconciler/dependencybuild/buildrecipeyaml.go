@@ -340,7 +340,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineCacheUrl+")", paramValues, commitTime, buildRepos) +
 		"\nENV BUILD_POLICY_DEFAULT_STORE_LIST=central,redhat,jboss,gradleplugins,confluent,gradle,eclipselink,jitpack,jsweet,jenkins,spring-plugins,dokkadev,ajoberstar,googleandroid,kotlinnative14linux,jcs,kotlin-bootstrap,kotlin-kotlin-dependencies" +
 		"\nRUN mkdir -p /root/project /root/software/settings && microdnf install vim curl procps-ng bash-completion" +
-		"\nRUN wget -qO- https://github.com/swsnr/mdcat/releases/download/mdcat-2.0.3/mdcat-2.0.3-x86_64-unknown-linux-musl.tar.gz | tar -xz -C /opt/" +
+		"\nRUN wget -q https://github.com/swsnr/mdcat/releases/download/mdcat-2.0.3/mdcat-2.0.3-x86_64-unknown-linux-musl.tar.gz https://github.com/swsnr/mdcat/releases/download/mdcat-2.0.3/B2SUMS.txt \\" +
+		"\n  && b2sum --quiet --ignore-missing -c B2SUMS.txt && tar -xzf mdcat-2.0.3-x86_64-unknown-linux-musl.tar.gz -C /opt && rm -f B2SUMS.txt mdcat-2.0.3-x86_64-unknown-linux-musl.tar.gz" +
 		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
 		// Copying JDK17 for the cache.
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +

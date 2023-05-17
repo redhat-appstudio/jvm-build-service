@@ -18,7 +18,7 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 DIR=`dirname $0`
-rm -rf ./operator/overlays/development ./overlays/development
+rm -rf $DIR/operator/overlays/development $DIR/overlays/development
 find $DIR -name dev-template -exec cp -r {} {}/../development \;
 find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-image%${JVM_BUILD_SERVICE_IMAGE}% {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-cache-image%${JVM_BUILD_SERVICE_CACHE_IMAGE}% {} \;
