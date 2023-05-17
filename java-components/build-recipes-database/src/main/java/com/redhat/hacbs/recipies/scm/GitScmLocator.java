@@ -30,7 +30,7 @@ public class GitScmLocator implements ScmLocator {
 
     private static final Logger log = Logger.getLogger(GitScmLocator.class);
 
-    private static final Pattern NUMERIC_PART = Pattern.compile("(\\d+\\.)(\\d+\\.?)+");
+    private static final Pattern NUMERIC_PART = Pattern.compile("(\\d+)(\\.\\d+)+");
 
     private static final String DEFAULT_RECIPE_REPO_URL = "https://github.com/redhat-appstudio/jvm-build-data";
 
@@ -236,9 +236,8 @@ public class GitScmLocator implements ScmLocator {
                 }
 
                 String version = toBuild.getVersion();
+                String underscoreVersion = version.replace(".", "_");
                 String selectedTag = null;
-                Set<String> versionExactContains = new HashSet<>();
-                Set<String> tagExactContains = new HashSet<>();
 
                 //first try tag mappings
                 for (var mapping : allMappings) {
@@ -261,61 +260,21 @@ public class GitScmLocator implements ScmLocator {
                 }
 
                 if (selectedTag == null) {
-                    for (var name : tagsToHash.keySet()) {
-                        if (name.equals(version)) {
-                            //exact match is always good
-                            selectedTag = version;
-                            break;
-                        } else if (name.contains(version)) {
-                            versionExactContains.add(name);
-                        } else if (version.contains(name)) {
-                            tagExactContains.add(name);
+                    try {
+                        selectedTag = runTagHeuristic(version, tagsToHash);
+                    } catch (RuntimeException e) {
+                        if (firstFailure == null) {
+                            firstFailure = e;
+                        } else {
+                            firstFailure.addSuppressed(e);
                         }
-                    }
-                }
-                if (selectedTag == null) {
-                    //no exact match
-                    if (versionExactContains.size() == 1) {
-                        //only one contained the full version
-                        selectedTag = versionExactContains.iterator().next();
-                    } else {
-                        for (var i : versionExactContains) {
-                            //look for a tag that ends with the version (i.e. no -rc1 or similar)
-                            if (i.endsWith(version)) {
-                                if (selectedTag == null) {
-                                    selectedTag = i;
-                                } else {
-                                    throw new RuntimeException(
-                                            "Could not determine tag for " + version
-                                                    + " multiple possible tags were found: "
-                                                    + versionExactContains);
-                                }
-                            }
-                        }
-                        if (selectedTag == null && tagExactContains.size() == 1) {
-                            //this is for cases where the tag is something like 1.2.3 and the version is 1.2.3.Final
-                            //we need to be careful though, as e.g. this could also make '1.2' match '1.2.3'
-                            //we make sure the numeric part is an exact match
-                            var tempTag = tagExactContains.iterator().next();
-                            Matcher tm = NUMERIC_PART.matcher(tempTag);
-                            Matcher vm = NUMERIC_PART.matcher(version);
-                            if (tm.find() && vm.find()) {
-                                if (Objects.equals(tm.group(0), vm.group(0))) {
-                                    selectedTag = tempTag;
-                                }
-                            }
-                        }
-                        if (selectedTag == null) {
-                            RuntimeException runtimeException = new RuntimeException(
-                                    "Could not determine tag for " + version);
-                            runtimeException.setStackTrace(new StackTraceElement[0]);
-                            throw runtimeException;
-                        }
-                        firstFailure = null;
+                        //it is a very common pattern to use underscores instead of dots in the tags
+                        selectedTag = runTagHeuristic(underscoreVersion, tagsToHash);
                     }
                 }
 
                 if (selectedTag != null) {
+                    firstFailure = null;
                     return new TagInfo(parsedInfo, selectedTag, tagsToHash.get(selectedTag));
                 }
             } catch (RuntimeException ex) {
@@ -332,6 +291,63 @@ public class GitScmLocator implements ScmLocator {
         }
 
         return null;
+    }
+
+    static String runTagHeuristic(String version, Map<String, String> tagsToHash) {
+        String selectedTag = null;
+        Set<String> versionExactContains = new HashSet<>();
+        Set<String> tagExactContains = new HashSet<>();
+        for (var name : tagsToHash.keySet()) {
+            if (name.equals(version)) {
+                //exact match is always good
+                selectedTag = version;
+                break;
+            } else if (name.contains(version)) {
+                versionExactContains.add(name);
+            } else if (version.contains(name)) {
+                tagExactContains.add(name);
+            }
+        }
+
+        //no exact match
+        if (versionExactContains.size() == 1) {
+            //only one contained the full version
+            selectedTag = versionExactContains.iterator().next();
+        } else {
+            for (var i : versionExactContains) {
+                //look for a tag that ends with the version (i.e. no -rc1 or similar)
+                if (i.endsWith(version)) {
+                    if (selectedTag == null) {
+                        selectedTag = i;
+                    } else {
+                        throw new RuntimeException(
+                                "Could not determine tag for " + version
+                                        + " multiple possible tags were found: "
+                                        + versionExactContains);
+                    }
+                }
+            }
+            if (selectedTag == null && tagExactContains.size() == 1) {
+                //this is for cases where the tag is something like 1.2.3 and the version is 1.2.3.Final
+                //we need to be careful though, as e.g. this could also make '1.2' match '1.2.3'
+                //we make sure the numeric part is an exact match
+                var tempTag = tagExactContains.iterator().next();
+                Matcher tm = NUMERIC_PART.matcher(tempTag);
+                Matcher vm = NUMERIC_PART.matcher(version);
+                if (tm.find() && vm.find()) {
+                    if (Objects.equals(tm.group(0), vm.group(0))) {
+                        selectedTag = tempTag;
+                    }
+                }
+            }
+            if (selectedTag == null) {
+                RuntimeException runtimeException = new RuntimeException(
+                        "Could not determine tag for " + version);
+                runtimeException.setStackTrace(new StackTraceElement[0]);
+                throw runtimeException;
+            }
+        }
+        return selectedTag;
     }
 
     private Map<String, String> getTagToHashMap(RepositoryInfo repo) {
