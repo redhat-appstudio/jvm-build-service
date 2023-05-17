@@ -46,6 +46,8 @@ spec:
                       type: string
                   type: object
                 type: object
+              maxAdditionalMemory:
+                type: integer
               quota:
                 description: DEPRECATED
                 type: string

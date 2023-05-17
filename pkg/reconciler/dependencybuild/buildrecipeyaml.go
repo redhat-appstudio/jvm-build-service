@@ -40,7 +40,7 @@ var antBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
-func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
+func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := []string{
@@ -126,6 +126,9 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"$(workspaces." + WorkspaceSource + ".path)/workspace",
 	}
 	additionalMemory := recipe.AdditionalMemory
+	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
+		additionalMemory = systemConfig.Spec.MaxAdditionalMemory
+	}
 	var settings string
 	var build string
 	trueBool := true
