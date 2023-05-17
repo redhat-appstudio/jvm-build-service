@@ -110,6 +110,7 @@ func dumpNodes(ta *testArgs) {
 
 func debugAndFailTest(ta *testArgs, failMsg string) {
 	GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
+	dumpPodDetails(ta)
 	dumpBadEvents(ta)
 	ta.t.Fatalf(failMsg)
 
@@ -787,6 +788,16 @@ func setupMinikube(t *testing.T, ta *testArgs) *testArgs {
 
 	time.Sleep(time.Second * 10)
 
+	dumpPodDetails(ta)
+
+	err = waitForCache(ta)
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+	return ta
+}
+
+func dumpPodDetails(ta *testArgs) {
 	list, err := kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
@@ -799,16 +810,10 @@ func setupMinikube(t *testing.T, ta *testArgs) *testArgs {
 		for _, pod := range podList.Items {
 			fmt.Printf("Pod %s\n", pod.Name)
 			for _, cs := range pod.Spec.Containers {
-				fmt.Printf("Container %s has limit %s and request %s\n", cs.Name, cs.Resources.Limits.Cpu().String(), cs.Resources.Requests.Cpu().String())
+				fmt.Printf("Container %s has CPU limit %s and request %s and Memory limit %s and request %s\n", cs.Name, cs.Resources.Limits.Cpu().String(), cs.Resources.Requests.Cpu().String(), cs.Resources.Limits.Memory().String(), cs.Resources.Requests.Memory().String())
 			}
 		}
 	}
-
-	err = waitForCache(ta)
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
-	return ta
 }
 
 func deployDockerRegistry(ta *testArgs) {
