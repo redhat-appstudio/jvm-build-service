@@ -557,9 +557,15 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
 		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
+
+	systemConfig := v1alpha1.SystemConfig{}
+	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	diagnostic := ""
 	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
-	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Tool, db.Status.CommitTime, jbsConfig, db.Status.CurrentBuildRecipe, db, paramValues, buildRequestProcessorImage)
+	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, db.Status.CurrentBuildRecipe, db, paramValues, buildRequestProcessorImage)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -648,7 +654,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 		if !success {
 
-			//if there was a cache issue we want to rety the build
+			//if there was a cache issue we want to retry the build
 			//we check and see if there is a cache pod newer than the build
 			//if so we just delete the pipelinerun
 			p := v1.PodList{}

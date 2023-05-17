@@ -3,6 +3,7 @@ package dependencybuild
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 )
 
 const TestArtifact = "com.test:test:1.0"
+const MaxAdditionalMemory = 700
 
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileDependencyBuild) {
 	scheme := runtime.NewScheme()
@@ -45,6 +47,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	sysConfig := v1alpha1.SystemConfig{
 		ObjectMeta: metav1.ObjectMeta{Name: systemconfig.SystemConfigKey},
 		Spec: v1alpha1.SystemConfigSpec{
+			MaxAdditionalMemory: MaxAdditionalMemory,
 			Builders: map[string]v1alpha1.JavaVersionInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
@@ -244,9 +247,12 @@ func getBuild(client runtimeclient.Client, g *WithT) *v1alpha1.DependencyBuild {
 	return &build
 }
 func getBuildPipeline(client runtimeclient.Client, g *WithT) *pipelinev1beta1.PipelineRun {
+	return getBuildPipelineNo(client, g, 0)
+}
+func getBuildPipelineNo(client runtimeclient.Client, g *WithT, no int) *pipelinev1beta1.PipelineRun {
 	ctx := context.TODO()
 	build := pipelinev1beta1.PipelineRun{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-0"}, &build)).Should(BeNil())
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: fmt.Sprintf("test-build-%d", no)}, &build)).Should(BeNil())
 	return &build
 }
 func getBuildInfoPipeline(client runtimeclient.Client, g *WithT) *pipelinev1beta1.PipelineRun {
@@ -373,6 +379,43 @@ func TestStateBuilding(t *testing.T) {
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(db.Status.CurrentBuildRecipe.AdditionalMemory).Should(Equal(MemoryIncrement))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+
+		pr = getBuildPipelineNo(client, g, 1)
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "False",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
+		ts = &pipelinev1beta1.PipelineRunTaskRunStatus{Status: &pipelinev1beta1.TaskRunStatus{TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{Steps: []pipelinev1beta1.StepState{{ContainerState: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "OOMKilled"}}}}}}}
+		pr.Status.TaskRuns = map[string]*pipelinev1beta1.PipelineRunTaskRunStatus{"task": ts}
+
+		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}}))
+		db = getBuild(client, g)
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
+		g.Expect(db.Status.CurrentBuildRecipe.AdditionalMemory).Should(Equal(1024))
+
+		//now verify that the system wide limit kicks in
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+
+		pr = getBuildPipelineNo(client, g, 2)
+
+		found := false
+		for _, task := range pr.Spec.PipelineSpec.Tasks {
+			for _, step := range task.TaskSpec.Steps {
+				if step.Name == "build" {
+					//default is 1024 + the 700 limit
+					g.Expect(step.Resources.Requests.Memory().String()).Should(Equal("1724Mi"))
+					found = true
+				}
+			}
+		}
+
+		g.Expect(found).Should(BeTrue())
 	})
 	t.Run("Test reconcile building DependencyBuild with contaminants", func(t *testing.T) {
 		g := NewGomegaWithT(t)
