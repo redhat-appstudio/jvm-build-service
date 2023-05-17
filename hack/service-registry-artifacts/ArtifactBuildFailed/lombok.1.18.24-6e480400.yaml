@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: lombok.1.18.24-6e480400
-  namespace: test-jvm-namespace
-spec:
-  gav: org.projectlombok:lombok:1.18.24

@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: vertx.mutiny.generator.2.21.0-1286ca72
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye.reactive:vertx-mutiny-generator:2.21.0

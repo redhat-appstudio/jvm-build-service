@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: netty.tcnative.classes.2.0.48.final-473f8e9f
-  namespace: test-jvm-namespace
-spec:
-  gav: io.netty:netty-tcnative-classes:2.0.48.Final

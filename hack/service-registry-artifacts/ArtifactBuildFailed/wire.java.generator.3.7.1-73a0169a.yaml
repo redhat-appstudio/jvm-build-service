@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: wire.java.generator.3.7.1-73a0169a
-  namespace: test-jvm-namespace
-spec:
-  gav: com.squareup.wire:wire-java-generator:3.7.1

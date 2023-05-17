@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: antlr4.runtime.4.9.2-3a575097
-  namespace: test-jvm-namespace
-spec:
-  gav: org.antlr:antlr4-runtime:4.9.2

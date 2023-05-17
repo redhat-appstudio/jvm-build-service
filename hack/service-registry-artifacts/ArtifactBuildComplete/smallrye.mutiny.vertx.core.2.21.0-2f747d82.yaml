@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: smallrye.mutiny.vertx.core.2.21.0-2f747d82
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye.reactive:smallrye-mutiny-vertx-core:2.21.0

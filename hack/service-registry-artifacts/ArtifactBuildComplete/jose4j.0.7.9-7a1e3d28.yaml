@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jose4j.0.7.9-7a1e3d28
-  namespace: test-jvm-namespace
-spec:
-  gav: org.bitbucket.b_c:jose4j:0.7.9

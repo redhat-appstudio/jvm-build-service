@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: sentry.1.7.30-d3d604c7
-  namespace: test-jvm-namespace
-spec:
-  gav: io.sentry:sentry:1.7.30

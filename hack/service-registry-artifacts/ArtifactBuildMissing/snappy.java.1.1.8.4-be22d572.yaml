@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: snappy.java.1.1.8.4-be22d572
-  namespace: test-jvm-namespace
-spec:
-  gav: org.xerial.snappy:snappy-java:1.1.8.4

@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-acce4f2a927779953ad3: bda2be2b23d206868f57e9238d1f4c32
-  name: failureaccess.1.0.1-b93c7202
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.guava:failureaccess:1.0.1

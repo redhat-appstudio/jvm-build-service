@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.vertx.http.dev.console.runtime.spi.2.7.6.final-71a25444
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus:quarkus-vertx-http-dev-console-runtime-spi:2.7.6.Final

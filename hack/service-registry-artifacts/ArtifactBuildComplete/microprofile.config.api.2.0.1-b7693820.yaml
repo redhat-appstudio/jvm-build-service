@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: microprofile.config.api.2.0.1-b7693820
-  namespace: test-jvm-namespace
-spec:
-  gav: org.eclipse.microprofile.config:microprofile-config-api:2.0.1

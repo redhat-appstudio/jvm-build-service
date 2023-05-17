@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.http.vertx.backend.4.1.7-692ddc05
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus.http:quarkus-http-vertx-backend:4.1.7

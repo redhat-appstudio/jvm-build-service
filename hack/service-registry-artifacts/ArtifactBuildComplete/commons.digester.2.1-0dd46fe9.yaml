@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: commons.digester.2.1-0dd46fe9
-  namespace: test-jvm-namespace
-spec:
-  gav: commons-digester:commons-digester:2.1

@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: commons.compress.1.21-b219faec
-  namespace: test-jvm-namespace
-spec:
-  gav: org.apache.commons:commons-compress:1.21

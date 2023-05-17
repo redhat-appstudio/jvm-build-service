@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: apicurio.common.app.components.config.index.0.1.10.final-ec27b160
-  namespace: test-jvm-namespace
-spec:
-  gav: io.apicurio:apicurio-common-app-components-config-index:0.1.10.Final

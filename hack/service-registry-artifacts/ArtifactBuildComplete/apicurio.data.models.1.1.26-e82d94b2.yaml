@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: apicurio.data.models.1.1.26-e82d94b2
-  namespace: test-jvm-namespace
-spec:
-  gav: io.apicurio:apicurio-data-models:1.1.26

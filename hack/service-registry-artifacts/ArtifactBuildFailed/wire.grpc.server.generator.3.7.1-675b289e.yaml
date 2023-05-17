@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: wire.grpc.server.generator.3.7.1-675b289e
-  namespace: test-jvm-namespace
-spec:
-  gav: com.squareup.wire:wire-grpc-server-generator:3.7.1

@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: commons.logging.1.2-472adc7d
-  namespace: test-jvm-namespace
-spec:
-  gav: commons-logging:commons-logging:1.2

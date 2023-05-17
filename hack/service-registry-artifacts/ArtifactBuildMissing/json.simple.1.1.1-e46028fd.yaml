@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-ab892a89a8309b363fcf: bf3faa469efdd1de517438465de5200e
-  name: json.simple.1.1.1-e46028fd
-  namespace: test-jvm-namespace
-spec:
-  gav: com.googlecode.json-simple:json-simple:1.1.1

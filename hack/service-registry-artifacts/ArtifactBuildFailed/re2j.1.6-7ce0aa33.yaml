@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: re2j.1.6-7ce0aa33
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.re2j:re2j:1.6

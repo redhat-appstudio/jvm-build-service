@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: kaml.0.20.0-68495629
-  namespace: test-jvm-namespace
-spec:
-  gav: com.charleskorn.kaml:kaml:0.20.0

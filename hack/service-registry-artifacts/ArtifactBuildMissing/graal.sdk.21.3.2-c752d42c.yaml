@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: graal.sdk.21.3.2-c752d42c
-  namespace: test-jvm-namespace
-spec:
-  gav: org.graalvm.sdk:graal-sdk:21.3.2

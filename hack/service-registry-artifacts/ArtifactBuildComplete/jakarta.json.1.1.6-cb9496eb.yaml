@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jakarta.json.1.1.6-cb9496eb
-  namespace: test-jvm-namespace
-spec:
-  gav: org.glassfish:jakarta.json:1.1.6

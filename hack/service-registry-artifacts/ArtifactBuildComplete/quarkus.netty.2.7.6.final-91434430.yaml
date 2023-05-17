@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.netty.2.7.6.final-91434430
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus:quarkus-netty:2.7.6.Final

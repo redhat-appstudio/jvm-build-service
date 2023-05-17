@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: netty.handler.proxy.4.1.74.final-ed3891eb
-  namespace: test-jvm-namespace
-spec:
-  gav: io.netty:netty-handler-proxy:4.1.74.Final

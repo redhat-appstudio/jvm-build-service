@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: agroal.api.1.15-401ad867
-  namespace: test-jvm-namespace
-spec:
-  gav: io.agroal:agroal-api:1.15

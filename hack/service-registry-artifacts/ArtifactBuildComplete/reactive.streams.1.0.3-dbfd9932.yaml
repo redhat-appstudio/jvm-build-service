@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: reactive.streams.1.0.3-dbfd9932
-  namespace: test-jvm-namespace
-spec:
-  gav: org.reactivestreams:reactive-streams:1.0.3

@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: kotlin.reflect.1.6.10-f6020a4a
-  namespace: test-jvm-namespace
-spec:
-  gav: org.jetbrains.kotlin:kotlin-reflect:1.6.10

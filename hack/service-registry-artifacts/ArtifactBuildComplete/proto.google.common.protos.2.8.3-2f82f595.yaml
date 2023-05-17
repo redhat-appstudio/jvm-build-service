@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: proto.google.common.protos.2.8.3-2f82f595
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.api.grpc:proto-google-common-protos:2.8.3

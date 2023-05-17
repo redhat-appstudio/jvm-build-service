@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: vertx.core.4.2.7-63a01a18
-  namespace: test-jvm-namespace
-spec:
-  gav: io.vertx:vertx-core:4.2.7

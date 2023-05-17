@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: vertx.bridge.common.4.2.7-b089e7d6
-  namespace: test-jvm-namespace
-spec:
-  gav: io.vertx:vertx-bridge-common:4.2.7

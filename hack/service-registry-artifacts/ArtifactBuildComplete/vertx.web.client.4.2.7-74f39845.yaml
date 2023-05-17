@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: vertx.web.client.4.2.7-74f39845
-  namespace: test-jvm-namespace
-spec:
-  gav: io.vertx:vertx-web-client:4.2.7

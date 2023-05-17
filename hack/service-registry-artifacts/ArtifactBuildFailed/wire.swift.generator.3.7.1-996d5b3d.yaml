@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: wire.swift.generator.3.7.1-996d5b3d
-  namespace: test-jvm-namespace
-spec:
-  gav: com.squareup.wire:wire-swift-generator:3.7.1

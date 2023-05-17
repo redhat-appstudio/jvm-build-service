@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-85a56b4f3bbcfcabd713: b430445f7ab85d39f5e95d2699bcec4a
-  name: auto.common.0.10-abb1f5d9
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.auto:auto-common:0.10

@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: resteasy.core.spi.4.7.5.final-707c5142
-  namespace: test-jvm-namespace
-spec:
-  gav: org.jboss.resteasy:resteasy-core-spi:4.7.5.Final

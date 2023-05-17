@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: wire.compiler.3.7.1-2fe511a5
-  namespace: test-jvm-namespace
-spec:
-  gav: com.squareup.wire:wire-compiler:3.7.1

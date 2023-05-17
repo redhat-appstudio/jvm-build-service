@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: javassist.3.27.0.ga-5df186e8
-  namespace: test-jvm-namespace
-spec:
-  gav: org.javassist:javassist:3.27.0-GA

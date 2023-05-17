@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: kotlinx.serialization.core.jvm.1.0.1-0188e32c
-  namespace: test-jvm-namespace
-spec:
-  gav: org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.0.1

@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-46c82d77b75c9402bc3e: b430445f7ab85d39f5e95d2699bcec4a
-  name: escapevelocity.0.9.1-3877018e
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.escapevelocity:escapevelocity:0.9.1

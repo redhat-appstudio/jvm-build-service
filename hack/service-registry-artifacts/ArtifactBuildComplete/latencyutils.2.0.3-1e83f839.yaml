@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: latencyutils.2.0.3-1e83f839
-  namespace: test-jvm-namespace
-spec:
-  gav: org.latencyutils:LatencyUtils:2.0.3

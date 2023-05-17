@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: vertx.auth.common.4.2.7-3d1ee871
-  namespace: test-jvm-namespace
-spec:
-  gav: io.vertx:vertx-auth-common:4.2.7

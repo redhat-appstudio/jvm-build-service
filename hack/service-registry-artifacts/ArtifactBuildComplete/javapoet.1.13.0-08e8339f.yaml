@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: javapoet.1.13.0-08e8339f
-  namespace: test-jvm-namespace
-spec:
-  gav: com.squareup:javapoet:1.13.0

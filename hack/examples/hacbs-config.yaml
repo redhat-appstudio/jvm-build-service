@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: build-pipelines-defaults
-data:
-  default_build_bundle: "quay.io/redhat-appstudio/hacbs-templates-bundle:latest"

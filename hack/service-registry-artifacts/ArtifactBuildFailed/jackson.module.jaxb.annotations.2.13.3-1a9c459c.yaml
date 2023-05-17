@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jackson.module.jaxb.annotations.2.13.3-1a9c459c
-  namespace: test-jvm-namespace
-spec:
-  gav: com.fasterxml.jackson.module:jackson-module-jaxb-annotations:2.13.3

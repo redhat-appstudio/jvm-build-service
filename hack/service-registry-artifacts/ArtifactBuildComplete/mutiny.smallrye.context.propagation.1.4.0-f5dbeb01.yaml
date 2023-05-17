@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: mutiny.smallrye.context.propagation.1.4.0-f5dbeb01
-  namespace: test-jvm-namespace
-spec:
-  gav: io.smallrye.reactive:mutiny-smallrye-context-propagation:1.4.0

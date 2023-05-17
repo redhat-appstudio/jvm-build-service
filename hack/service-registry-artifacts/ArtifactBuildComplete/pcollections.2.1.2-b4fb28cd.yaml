@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-7ac3ebc1254ec96c0b17: bda2be2b23d206868f57e9238d1f4c32
-  name: pcollections.2.1.2-b4fb28cd
-  namespace: test-jvm-namespace
-spec:
-  gav: org.pcollections:pcollections:2.1.2

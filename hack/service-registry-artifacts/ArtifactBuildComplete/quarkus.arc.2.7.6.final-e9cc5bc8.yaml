@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: quarkus.arc.2.7.6.final-e9cc5bc8
-  namespace: test-jvm-namespace
-spec:
-  gav: io.quarkus:quarkus-arc:2.7.6.Final

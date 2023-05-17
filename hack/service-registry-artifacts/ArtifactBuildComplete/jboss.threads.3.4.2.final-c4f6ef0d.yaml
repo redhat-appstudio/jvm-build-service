@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: jboss.threads.3.4.2.final-c4f6ef0d
-  namespace: test-jvm-namespace
-spec:
-  gav: org.jboss.threads:jboss-threads:3.4.2.Final

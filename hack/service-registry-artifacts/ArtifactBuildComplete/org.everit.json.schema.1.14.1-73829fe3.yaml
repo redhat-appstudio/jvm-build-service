@@ -1,7 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  name: org.everit.json.schema.1.14.1-73829fe3
-  namespace: test-jvm-namespace
-spec:
-  gav: com.github.everit-org.json-schema:org.everit.json.schema:1.14.1

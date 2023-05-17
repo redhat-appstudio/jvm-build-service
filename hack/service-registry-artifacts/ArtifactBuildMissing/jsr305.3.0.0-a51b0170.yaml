@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-2d1b031a2a86f2a36cb2: bda2be2b23d206868f57e9238d1f4c32
-  name: jsr305.3.0.0-a51b0170
-  namespace: test-jvm-namespace
-spec:
-  gav: com.google.code.findbugs:jsr305:3.0.0

@@ -1,9 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: ArtifactBuild
-metadata:
-  annotations:
-    jvmbuildservice.io/contaminated-6083812c2ef59ef125c6: d5e0d034a4d0acec36eb48156d21521a
-  name: stringtemplate.3.2.1-1ff51cbb
-  namespace: test-jvm-namespace
-spec:
-  gav: org.antlr:stringtemplate:3.2.1
