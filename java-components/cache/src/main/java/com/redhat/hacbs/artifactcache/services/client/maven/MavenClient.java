@@ -71,33 +71,34 @@ public class MavenClient implements RepositoryClient {
         long backoff = 200;
         IOException networkException = null;
         int retryCount = 0;
+        String sha1 = null;
         while (retryCount <= networkRetries) {
 
             CloseableHttpResponse response = null;
             try {
-                String sha1 = null;
                 //this must be first, having it lower down can create a deadlock in some situations
                 //if all the connections are being used to download the main artifacts then there are
                 //none in the pool to download the shas
-                if (!target.endsWith(SHA_1)) {
-                    try (var hash = remoteClient.execute(new HttpGet(
-                            targetUri + SHA_1))) {
-                        requestCleanup.addResource(hash);
-                        if (hash.getStatusLine().getStatusCode() == 404) {
-                            Log.debugf("Could not find sha1 hash for artifact %s/%s/%s/%s from repo %s at %s", group, artifact,
-                                    version,
-                                    target, name, uri);
-                        } else {
-                            sha1 = new String(hash.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8).trim();
-                            //older maven version would deploy sha files with extra stuff after the sha
-                            if (sha1.contains(" ")) {
-                                sha1 = sha1.split(" ")[0];
+                try {
+                    if (!target.endsWith(SHA_1) && sha1 == null) {
+                        try (var hash = remoteClient.execute(new HttpGet(
+                                targetUri + SHA_1))) {
+                            requestCleanup.addResource(hash);
+                            if (hash.getStatusLine().getStatusCode() == 404) {
+                                Log.debugf("Could not find sha1 hash for artifact %s/%s/%s/%s from repo %s at %s", group,
+                                        artifact,
+                                        version,
+                                        target, name, uri);
+                            } else {
+                                sha1 = new String(hash.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8).trim();
+                                //older maven version would deploy sha files with extra stuff after the sha
+                                if (sha1.contains(" ")) {
+                                    sha1 = sha1.split(" ")[0];
+                                }
                             }
                         }
                     }
-                }
-                HttpGet httpGet = new HttpGet(targetUri);
-                try {
+                    HttpGet httpGet = new HttpGet(targetUri);
                     response = remoteClient.execute(httpGet);
                     requestCleanup.addResource(response);
                 } catch (IOException e) {
