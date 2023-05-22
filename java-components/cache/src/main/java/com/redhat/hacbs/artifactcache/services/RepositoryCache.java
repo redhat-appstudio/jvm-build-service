@@ -84,7 +84,8 @@ public class RepositoryCache {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-            return Optional.of(new ArtifactResult(new ByteArrayInputStream(bytes), bytes.length, Optional.empty(), Map.of()));
+            return Optional
+                    .of(new ArtifactResult(null, new ByteArrayInputStream(bytes), bytes.length, Optional.empty(), Map.of()));
 
         } else {
             //TODO: we don't really care about the policy when using standard maven repositories
@@ -169,7 +170,8 @@ public class RepositoryCache {
                 sha = Files.readString(originalSha1, StandardCharsets.UTF_8);
             }
             return Optional
-                    .of(new ArtifactResult(Files.newInputStream(downloaded), Files.size(downloaded), Optional.ofNullable(sha),
+                    .of(new ArtifactResult(downloaded, Files.newInputStream(downloaded), Files.size(downloaded),
+                            Optional.ofNullable(sha),
                             headerMap));
         }
 
@@ -218,11 +220,12 @@ public class RepositoryCache {
                     sha = Files.readString(instrumentedSha, StandardCharsets.UTF_8);
                 }
                 return Optional
-                        .of(new ArtifactResult(Files.newInputStream(trackedJarFile), Files.size(trackedJarFile),
+                        .of(new ArtifactResult(trackedJarFile, Files.newInputStream(trackedJarFile), Files.size(trackedJarFile),
                                 Optional.ofNullable(sha), headerMap));
             } else {
                 return Optional
-                        .of(new ArtifactResult(Files.newInputStream(instrumentedSha), Files.size(instrumentedSha),
+                        .of(new ArtifactResult(instrumentedSha, Files.newInputStream(instrumentedSha),
+                                Files.size(instrumentedSha),
                                 Optional.empty(), Map.of()));
             }
         }
@@ -232,7 +235,8 @@ public class RepositoryCache {
             sha = Files.readString(originalSha1, StandardCharsets.UTF_8);
         }
         return Optional
-                .of(new ArtifactResult(Files.newInputStream(downloaded), Files.size(downloaded), Optional.ofNullable(sha),
+                .of(new ArtifactResult(downloaded, Files.newInputStream(downloaded), Files.size(downloaded),
+                        Optional.ofNullable(sha),
                         headerMap));
 
     }
@@ -314,25 +318,27 @@ public class RepositoryCache {
                                             transformedOut, overwriteExistingBytecodeMarkers);
                                 }
                                 Files.delete(tempFile);
-                                return Optional.of(new ArtifactResult(Files.newInputStream(tempTransformedFile),
-                                        Files.size(tempTransformedFile),
-                                        Optional.empty(), result.get().getMetadata(), () -> {
-                                            try {
-                                                Files.delete(tempTransformedFile);
-                                            } catch (IOException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                        }));
+                                return Optional
+                                        .of(new ArtifactResult(tempTransformedFile, Files.newInputStream(tempTransformedFile),
+                                                Files.size(tempTransformedFile),
+                                                Optional.empty(), result.get().getMetadata(), () -> {
+                                                    try {
+                                                        Files.delete(tempTransformedFile);
+                                                    } catch (IOException e) {
+                                                        throw new RuntimeException(e);
+                                                    }
+                                                }));
 
                             } else {
-                                return Optional.of(new ArtifactResult(Files.newInputStream(tempFile), Files.size(tempFile),
-                                        Optional.empty(), result.get().getMetadata(), () -> {
-                                            try {
-                                                Files.delete(tempFile);
-                                            } catch (IOException e) {
-                                                throw new RuntimeException(e);
-                                            }
-                                        }));
+                                return Optional
+                                        .of(new ArtifactResult(tempFile, Files.newInputStream(tempFile), Files.size(tempFile),
+                                                Optional.empty(), result.get().getMetadata(), () -> {
+                                                    try {
+                                                        Files.delete(tempFile);
+                                                    } catch (IOException e) {
+                                                        throw new RuntimeException(e);
+                                                    }
+                                                }));
                             }
                         }
                     }
