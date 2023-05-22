@@ -696,7 +696,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					for _, trs := range pr.Status.TaskRuns {
 						for _, cont := range trs.Status.Steps {
 							//check for oomkilled pods
-							if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.Reason == "OOMKilled") {
+							if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.ExitCode == 134 || cont.Terminated.Reason == "OOMKilled") {
 								msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s, PR UID: %s, Current additional memory: %d", db.Name, pr.UID, db.Status.CurrentBuildRecipe.AdditionalMemory)
 								log.Info(msg)
 								doRetry = true
@@ -986,7 +986,7 @@ func failedDueToMemory(pr *pipelinev1beta1.PipelineRun) bool {
 	for _, trs := range pr.Status.TaskRuns {
 		for _, cont := range trs.Status.Steps {
 			//check for oomkilled pods
-			if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.Reason == "OOMKilled") {
+			if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.ExitCode == 134 || cont.Terminated.Reason == "OOMKilled") {
 				return true
 			}
 		}
