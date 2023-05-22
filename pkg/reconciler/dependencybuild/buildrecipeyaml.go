@@ -41,6 +41,9 @@ var antBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
+//go:embed scripts/entry-script.sh
+var entryScript string
+
 func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
 	zero := int64(0)
@@ -340,8 +343,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineCacheUrl+")", paramValues, commitTime, buildRepos) +
 		"\nENV BUILD_POLICY_DEFAULT_STORE_LIST=central,redhat,jboss,gradleplugins,confluent,gradle,eclipselink,jitpack,jsweet,jenkins,spring-plugins,dokkadev,ajoberstar,googleandroid,kotlinnative14linux,jcs,kotlin-bootstrap,kotlin-kotlin-dependencies" +
 		"\nRUN mkdir -p /root/project /root/software/settings && microdnf install vim curl procps-ng bash-completion" +
-		"\nRUN wget -q https://github.com/swsnr/mdcat/releases/download/mdcat-2.0.3/mdcat-2.0.3-x86_64-unknown-linux-musl.tar.gz https://github.com/swsnr/mdcat/releases/download/mdcat-2.0.3/B2SUMS.txt \\" +
-		"\n  && b2sum --quiet --ignore-missing -c B2SUMS.txt && tar -xzf mdcat-2.0.3-x86_64-unknown-linux-musl.tar.gz -C /opt && rm -f B2SUMS.txt mdcat-2.0.3-x86_64-unknown-linux-musl.tar.gz" +
 		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
 		// Copying JDK17 for the cache.
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
@@ -354,11 +355,9 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos)+"\n")) + " | base64 -d >/root/preprocessor.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/build.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/project/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineGoals, paramValues), " ")+"\n")) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(entryScript)) + " | base64 -d >/root/entry-script.sh" +
 		"\nRUN chmod +x /root/*.sh" +
-		"\n# Both of these should use jbs remote URL as the user may not have them locally." +
-		"\nADD https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/docs/diagnostic.md /root/README.md" +
-		"\nADD https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/pkg/reconciler/dependencybuild/scripts/entry_script.sh /root/" +
-		"\nCMD [ \"/bin/bash\", \"/root/entry_script.sh\" ]"
+		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
 
 	return ps, df, nil
 }

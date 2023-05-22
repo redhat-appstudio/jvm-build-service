@@ -73,44 +73,43 @@ public class BuildDiagnosticCommand
         System.out.println("Target directory: " + targetDirectory);
         System.out.println(
                 "Selected build: " + theBuild.getMetadata().getName() + " of " + theBuild.getSpec().getScm().getScmURL() + ':' +
-                        theBuild.getSpec().getVersion());
+                        theBuild.getSpec().getVersion() + '\n');
 
         List<String> dockerFiles = theBuild.getStatus().getDiagnosticDockerFiles();
-        if ((theBuild.getStatus().getFailedBuildRecipes() == null ? 0 : theBuild.getStatus().getFailedBuildRecipes().size())
-                + 1 != dockerFiles.size()) {
-            throw new RuntimeException("Mismatch between failed/current build recipe count and number of Dockerfiles.");
-        }
+        int failed = (theBuild.getStatus().getFailedBuildRecipes() == null ? 0
+                : theBuild.getStatus().getFailedBuildRecipes().size());
+        int succeedMarker = dockerFiles.size() == failed ? -1 : dockerFiles.size() - 1;
         try {
             for (int i = 0; i < dockerFiles.size(); i++) {
                 String fileName;
-                if (i == dockerFiles.size() - 1) {
-                    // Final one - which is successful.
-                    fileName = "Dockerfile." + name + ".succeed.jdk" + theBuild.getStatus()
+                String javaVersion;
+                String tagName;
+                if (i == succeedMarker) {
+                    javaVersion = theBuild.getStatus()
                             .getCurrentBuildRecipe()
                             .getJavaVersion();
+                    tagName = name + ".succeed.jdk" + javaVersion;
                 } else {
-                    fileName = "Dockerfile." + name + ".failed.jdk" + theBuild.getStatus()
+                    javaVersion = theBuild.getStatus()
                             .getFailedBuildRecipes()
                             .get(i)
                             .getJavaVersion();
+                    tagName = name + ".failed.jdk" + javaVersion;
                 }
-                System.out.println("Writing " + fileName);
+                fileName = "Dockerfile." + tagName;
+                tagName = "localhost/" + tagName;
+                System.out.println(
+                        CommandLine.Help.Ansi.AUTO
+                                .string(
+                                        """
+                                                @|green To diagnose the JDK%s build:
+
+                                                |@@|yellow podman build -f %s -t %s .
+                                                podman run -it %s|@
+                                                """.formatted(javaVersion, fileName, tagName, tagName)));
                 Files.writeString(Paths.get(targetDirectory.toString(), fileName),
                         dockerFiles.get(i));
             }
-            System.out.println(CommandLine.Help.Ansi.AUTO
-                    .string("""
-                            \n@|green To build the image, a standard build command e.g. |@@|yellow podman build . |@@|green (or |@@|yellow podman build -f <Dockerfile> .|@@|green ) is sufficient.
-
-                            To use this image to run a build, run
-
-                            |@@|yellow podman run -it <image> |@
-
-                            @|green or, if the last image built was this one:
-
-                            |@@|yellow podman run -v -it $(podman images -n -q | head -1)|@
-                            """));
-
         } catch (IOException e) {
             throw new RuntimeException("Failed to write Dockerfile", e);
         }
