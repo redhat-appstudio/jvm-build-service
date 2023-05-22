@@ -6,8 +6,6 @@ public class SimpleClass {
 
     public int intField;
 
-    private String stringField;
-
     @Deprecated
     public String publicMethod() {
         return "";

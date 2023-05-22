@@ -1,7 +1,6 @@
 package com.redhat.hacbs.container.verifier;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.function.Function;
@@ -19,36 +18,39 @@ public class JarVerifierUtils {
 
     public static void runTests(Class<?> baseClass, Function<ClassVisitor, ClassVisitor> visitorFunction, int expected,
             String... exclusions) {
-        try (InputStream in = baseClass.getResourceAsStream(baseClass.getSimpleName() + ".class")) {
+        var name = baseClass.getSimpleName() + ".class";
+
+        try (var in = baseClass.getResourceAsStream(name)) {
+            Assertions.assertNotNull(in);
             var dir = Files.createTempDirectory("tests");
             var jar1Path = dir.resolve("tmp1.jar");
             var jar2Path = dir.resolve("tmp2.jar");
-            byte[] classData = in.readAllBytes();
+            var classData = in.readAllBytes();
 
-            try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar1Path))) {
-                ZipEntry zipEntry = new ZipEntry(baseClass.getName().replace(".", "/") + ".class");
+            try (var out = new JarOutputStream(Files.newOutputStream(jar1Path))) {
+                var zipEntry = new ZipEntry(baseClass.getName().replace(".", "/") + ".class");
                 zipEntry.setSize(classData.length);
                 out.putNextEntry(zipEntry);
                 out.write(classData);
                 out.closeEntry();
             }
 
-            ClassReader classReader = new ClassReader(classData);
-            ClassWriter writer = new ClassWriter(classReader, 0);
+            var classReader = new ClassReader(classData);
+            var writer = new ClassWriter(classReader, 0);
             var visitor = visitorFunction.apply(writer);
             classReader.accept(visitor, 0);
             var modClassData = writer.toByteArray();
 
-            try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar2Path))) {
-                ZipEntry zipEntry = new ZipEntry(baseClass.getName().replace(".", "/") + ".class");
+            try (var out = new JarOutputStream(Files.newOutputStream(jar2Path))) {
+                var zipEntry = new ZipEntry(baseClass.getName().replace(".", "/") + ".class");
                 zipEntry.setSize(modClassData.length);
                 out.putNextEntry(zipEntry);
                 out.write(modClassData);
                 out.closeEntry();
             }
 
-            JarInfo left = new JarInfo(jar1Path);
-            JarInfo right = new JarInfo(jar2Path);
+            var left = new JarInfo(jar1Path);
+            var right = new JarInfo(jar2Path);
             Assertions.assertEquals(expected, left.diffJar(right, Arrays.stream(exclusions).toList()));
 
         } catch (IOException e) {

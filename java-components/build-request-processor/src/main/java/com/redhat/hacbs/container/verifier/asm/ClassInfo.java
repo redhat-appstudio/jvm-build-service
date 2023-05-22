@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 import org.objectweb.asm.tree.ClassNode;
 
 public record ClassInfo(ClassVersion version, Set<ClassAccess> access, String name, String signature, String superName,
-        List<String> interfaces, String sourceFile, String sourceDebug, ModuleInfo module, String outerClass,
+        List<String> interfaces, String sourceFile, String sourceDebug, Map<String, ModuleInfo> module, String outerClass,
         String outerMethod, String outerMethodDesc, Map<String, AnnotationInfo> visibleAnnotations,
         /* Map<String, AnnotationInfo> invisibleAnnotations, *//* Map<String, TypeAnnotationInfo> visibleTypeAnnotations, */
         /* Map<String, TypeAnnotationInfo> invisibleTypeAnnotations, *//* List<AttributeInfo> attrs, */
@@ -24,7 +24,9 @@ public record ClassInfo(ClassVersion version, Set<ClassAccess> access, String na
         this(new ClassVersion(node.version), accessToSet(node.access, ClassAccess.class), node.name, node.signature,
                 node.superName,
                 List.copyOf(node.interfaces), node.sourceFile, node.sourceDebug,
-                node.module != null ? new ModuleInfo(node.module) : null, node.outerClass, node.outerMethod,
+                node.module != null ? Collections.singletonMap(node.module.name, new ModuleInfo(node.module))
+                        : Collections.emptyMap(),
+                node.outerClass, node.outerMethod,
                 node.outerMethodDesc,
                 node.visibleAnnotations != null
                         ? node.visibleAnnotations.stream()

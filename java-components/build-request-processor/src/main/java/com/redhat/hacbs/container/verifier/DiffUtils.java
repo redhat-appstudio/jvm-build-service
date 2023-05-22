@@ -1,6 +1,7 @@
 package com.redhat.hacbs.container.verifier;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,14 +16,15 @@ import com.redhat.hacbs.container.verifier.asm.AsmDiffable;
 public class DiffUtils {
     private static final Logger Log = Logger.getLogger(DiffUtils.class);
 
-    public record DiffResults(Set<String> shared, Set<String> added, Set<String> deleted, List<DiffResult<?>> diffResults,
+    public record DiffResults(Set<String> shared, Set<String> added, Set<String> deleted,
+            Map<String, DiffResult<?>> diffResults,
             List<String> results) {
-        public DiffResults(Set<String> shared, Set<String> added, Set<String> deleted, List<DiffResult<?>> diffResults,
+        public DiffResults(Set<String> shared, Set<String> added, Set<String> deleted, Map<String, DiffResult<?>> diffResults,
                 List<String> results) {
             this.shared = Set.copyOf(shared);
             this.added = Set.copyOf(added);
             this.deleted = Set.copyOf(deleted);
-            this.diffResults = List.copyOf(diffResults);
+            this.diffResults = Map.copyOf(diffResults);
             this.results = List.copyOf(results);
         }
     }
@@ -45,12 +47,12 @@ public class DiffUtils {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         added.forEach(i -> results.add(String.format("+:%s:%s:%s", nname, type, right.get(i).getName().replace('/', '.'))));
         deleted.forEach(i -> results.add(String.format("-:%s:%s:%s", oname, type, left.get(i).getName().replace('/', '.'))));
-        var diffResults = new ArrayList<DiffResult<?>>(shared.size());
+        var diffResults = new LinkedHashMap<String, DiffResult<?>>();
         shared.forEach(clazz -> {
             var l = left.get(clazz);
             var r = right.get(clazz);
             var diffResult = l.diff(r);
-            diffResults.add(diffResult);
+            diffResults.put(clazz, diffResult);
         });
         return new DiffResults(shared, added, deleted, diffResults, results);
     }
