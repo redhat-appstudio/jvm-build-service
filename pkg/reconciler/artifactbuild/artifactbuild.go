@@ -230,7 +230,12 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		msg := "get for pipelinerun %s:%s owning abr %s:%s yielded error %s"
 		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error())
 		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error()))
-		return reconcile.Result{}, err
+		if !errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+		//on not found we don't return the error
+		//no need to retry it would just result in an infinite loop
+		return reconcile.Result{}, nil
 	}
 
 	//we grab the results here and put them on the ABR
@@ -326,7 +331,12 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 				msg := "get for dependencybuild %s:%s owning abr %s:%s yielded error %s"
 				r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error())
 				log.Error(err, fmt.Sprintf(msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error()))
-				return reconcile.Result{}, err
+				if !errors.IsNotFound(err) {
+					return reconcile.Result{}, err
+				}
+				//on not found we don't return the error
+				//no need to retry it would just result in an infinite loop
+				return reconcile.Result{}, nil
 			}
 			oldState := abr.Status.State
 			switch db.Status.State {
@@ -613,7 +623,12 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 						other := v1alpha1.ArtifactBuild{}
 						err := r.client.Get(ctx, types.NamespacedName{Name: ownerRef.Name, Namespace: abr.Namespace}, &other)
 						if err != nil {
-							return reconcile.Result{}, err
+							if !errors.IsNotFound(err) {
+								return reconcile.Result{}, err
+							}
+							//on not found we don't return the error
+							//no need to retry it would just result in an infinite loop
+							return reconcile.Result{}, nil
 						}
 						if other.Annotations == nil {
 							other.Annotations = map[string]string{Rebuild: "true"}
