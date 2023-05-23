@@ -59,6 +59,7 @@ func TestArtifactBuildStateNew(t *testing.T) {
 	abr := v1alpha1.ArtifactBuild{}
 	abr.Namespace = metav1.NamespaceDefault
 	abr.Name = "test"
+	abr.Spec.GAV = "com.foo:foo:1.0"
 	abr.Status.State = v1alpha1.ArtifactBuildStateNew
 
 	ctx := context.TODO()
@@ -68,24 +69,9 @@ func TestArtifactBuildStateNew(t *testing.T) {
 
 	g.Expect(client.Update(context.TODO(), &sysConfig)).Should(Succeed())
 
-	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}}))
+	res, _ := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}})
+	g.Expect(res.RequeueAfter.Seconds() > 0).Should(BeTrue()) //the cache is down, but we should have tried to hit it and then requeued
 
-	g.Expect(client.Get(ctx, types.NamespacedName{
-		Namespace: metav1.NamespaceDefault,
-		Name:      "test",
-	}, &abr))
-	g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateDiscovering))
-
-	trList := &pipelinev1beta1.PipelineRunList{}
-	g.Expect(client.List(ctx, trList))
-	g.Expect(len(trList.Items)).Should(Equal(1))
-	for _, tr := range trList.Items {
-		for _, or := range tr.OwnerReferences {
-			g.Expect(or.Kind).Should(Equal(abr.Kind))
-			g.Expect(or.Name).Should(Equal(abr.Name))
-		}
-		g.Expect(len(tr.Finalizers)).Should(Equal(1))
-	}
 }
 
 func getABR(client runtimeclient.Client, g *WithT) *v1alpha1.ArtifactBuild {
@@ -321,11 +307,13 @@ func TestStateBuilding(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
 		abr := getABR(client, g)
+		abr.Spec.GAV = "com.foo:gax:2.0"
 		abr.Status.SCMInfo.SCMURL = repo
 		abr.Status.SCMInfo.Tag = version
 		g.Expect(client.Update(ctx, abr)).Should(Succeed())
 
 		other := getNamedABR(client, g, otherName)
+		other.Spec.GAV = "org.other:args:1.0"
 		other.Status.SCMInfo.SCMURL = repo
 		other.Status.SCMInfo.Tag = version
 		g.Expect(client.Update(ctx, other)).Should(Succeed())
@@ -366,9 +354,8 @@ func TestStateBuilding(t *testing.T) {
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
 		g.Expect(abr.Annotations[Rebuild]).Should(Equal("")) //second reconcile removes the annotation
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr = getABR(client, g)
-		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateDiscovering)) //3rd reconcile kicks off discovery
+		res, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}})
+		g.Expect(res.RequeueAfter.Seconds() > 0).Should(BeTrue()) //the cache is down, but we should have tried to hit it and then requeued
 
 	})
 	t.Run("Contaminated build", func(t *testing.T) {

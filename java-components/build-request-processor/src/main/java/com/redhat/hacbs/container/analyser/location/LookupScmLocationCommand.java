@@ -15,6 +15,7 @@ import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "lookup-scm")
+@Deprecated
 public class LookupScmLocationCommand implements Runnable {
 
     public static final String CACHE_PATH = "/v2/cache/user/default";

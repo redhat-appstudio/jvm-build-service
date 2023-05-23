@@ -139,29 +139,6 @@ func createAbr(componentLookupKey types.NamespacedName) {
 
 }
 
-func getTrAbr() *tektonapi.PipelineRun {
-	hash := artifactbuild.ABRLabelForGAV(ABRGav)
-	listOpts := &client.ListOptions{
-		Namespace:     TestNamespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuild.ArtifactBuildIdLabel: hash}),
-	}
-	trl := tektonapi.PipelineRunList{}
-	var tr *tektonapi.PipelineRun
-	Eventually(func() bool {
-		Expect(k8sClient.List(ctx, &trl, listOpts)).ToNot(HaveOccurred())
-		//there should only be one, be guard against multiple
-		for _, current := range trl.Items {
-			if tr == nil || tr.CreationTimestamp.Before(&current.CreationTimestamp) {
-				tmp := current
-				tr = &tmp
-			}
-		}
-		return tr != nil
-	}, timeout, interval).Should(BeTrue())
-
-	return tr
-}
-
 func getTrBuildDiscovery() *tektonapi.PipelineRun {
 	listOpts := &client.ListOptions{
 		Namespace:     TestNamespace,
@@ -256,47 +233,6 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 			deleteDb(dbName)
 			deletePipelineRuns()
 		}, 30)
-
-		It("should move state to ArtifactBuildDiscovered on Success", func() {
-			tr := getTrAbr()
-			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-			tr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
-				Name:  artifactbuild.PipelineResultScmTag,
-				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "tag1"},
-			}, {
-				Name:  artifactbuild.PipelineResultScmUrl,
-				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "url1"},
-			}, {
-				Name:  artifactbuild.PipelineResultScmType,
-				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "git"},
-			}, {
-				Name:  artifactbuild.PipelineResultContextPath,
-				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "/path1"},
-			}, {
-				Name:  artifactbuild.PipelineResultMessage,
-				Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "OK"},
-			}}
-			Expect(k8sClient.Status().Update(ctx, tr)).Should(Succeed())
-			print(tr.Name)
-			tr = getTrAbr()
-			Expect(tr.Status.CompletionTime).ToNot(BeNil())
-			Eventually(func() error {
-				abr := v1alpha1.ArtifactBuild{}
-				_ = k8sClient.Get(ctx, abrName, &abr)
-				if abr.Status.State == v1alpha1.ArtifactBuildStateBuilding {
-					return nil
-				}
-				return errors.New("not updated yet " + abr.Status.State + " " + abr.Status.Message + " " + abr.Status.SCMInfo.SCMURL)
-			}, timeout, interval).Should(Succeed())
-
-			abr := v1alpha1.ArtifactBuild{}
-			Expect(k8sClient.Get(ctx, abrName, &abr)).Should(Succeed())
-			Expect(abr.Status.SCMInfo.SCMURL).Should(Equal("url1"))
-			Expect(abr.Status.SCMInfo.SCMType).Should(Equal("git"))
-			Expect(abr.Status.SCMInfo.Tag).Should(Equal("tag1"))
-			Expect(abr.Status.Message).Should(Equal("OK"))
-			Expect(abr.Status.SCMInfo.Path).Should(Equal("/path1"))
-		})
 
 		It("db", func() {
 			for {

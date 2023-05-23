@@ -1,15 +1,17 @@
 package artifactbuild
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"  //#nosec G501
 	"crypto/sha1" //#nosec G505
 	_ "embed"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	"k8s.io/apimachinery/pkg/api/resource"
+	"io"
 	"k8s.io/apimachinery/pkg/labels"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -27,7 +29,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -361,50 +362,74 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 
 func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild, jbsConfig *v1alpha1.JBSConfig) (reconcile.Result, error) {
 
-	// create pipeline run
-	pr := pipelinev1beta1.PipelineRun{}
-	pr.Finalizers = []string{PipelineRunFinalizer}
-	pr.GenerateName = abr.Name + "-scm-discovery-"
-	pr.Namespace = abr.Namespace
-	systemConfig := v1alpha1.SystemConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
+	cacheUrl := "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
+
+	parts := strings.Split(abr.Spec.GAV, ":")
+	gav := struct {
+		GroupId    string `json:"groupId"`
+		ArtifactId string `json:"artifactId"`
+		Version    string `json:"version"`
+	}{
+		GroupId:    parts[0],
+		ArtifactId: parts[1],
+		Version:    parts[2],
+	}
+	data, err := json.Marshal(gav)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	task, err2 := r.createLookupScmInfoTask(ctx, log, abr.Spec.GAV, jbsConfig, &systemConfig)
-	if err2 != nil {
-		return reconcile.Result{}, err2
-	}
-	pr.Spec.PipelineSpec = &pipelinev1beta1.PipelineSpec{
-		Tasks: []pipelinev1beta1.PipelineTask{{
-			Name: TaskName,
-			TaskSpec: &pipelinev1beta1.EmbeddedTask{
-				TaskSpec: *task,
-			},
-			Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{{Name: "tls", Workspace: "tls"}},
-		}},
-		Results:    []pipelinev1beta1.PipelineResult{},
-		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
-	}
-	if !jbsConfig.Spec.CacheSettings.DisableTLS {
-		pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}}}
+	log.Info("About to lookup from cache with data", "data", data)
+	res, err := http.Post(cacheUrl+"/v2/recipe-lookup/scm-info", "application/json", bytes.NewReader(data))
+	if err != nil {
+		log.Error(err, "Failed to post discovery information to Cache")
+		//we don't move to missing here, this is an issue with the cache
+		//it should resolve itself
+		return reconcile.Result{RequeueAfter: time.Minute}, nil
 	} else {
-		pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", EmptyDir: &corev1.EmptyDirVolumeSource{}}}
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(res.Body)
+		buf := new(bytes.Buffer)
+		_, err := buf.ReadFrom(res.Body)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		responseBody := buf.String()
+		log.Info("Received result from cache", "result", responseBody)
+		if res.StatusCode != 200 {
+			abr.Status.State = v1alpha1.ArtifactBuildStateMissing
+			abr.Status.Message = responseBody
+		} else {
+			result := struct {
+				RepoInfo struct {
+					Type        string
+					Uri         string
+					Path        string
+					PrivateRepo bool
+					TagMapping  []struct {
+						Pattern string
+						Tag     string
+					}
+				}
+				Tag  string
+				Hash string
+			}{}
+			err = json.Unmarshal([]byte(responseBody), &result)
+			if err != nil {
+				abr.Status.State = v1alpha1.ArtifactBuildStateMissing
+				abr.Status.Message = err.Error()
+			} else {
+				abr.Status.State = v1alpha1.ArtifactBuildStateDiscovering
+			}
+			abr.Status.SCMInfo.Tag = result.Tag
+			abr.Status.SCMInfo.CommitHash = result.Hash
+			abr.Status.SCMInfo.SCMURL = result.RepoInfo.Uri
+			abr.Status.SCMInfo.Path = result.RepoInfo.Path
+			abr.Status.SCMInfo.Private = result.RepoInfo.PrivateRepo
+			abr.Status.State = v1alpha1.ArtifactBuildStateDiscovering
+		}
 	}
-	for _, i := range task.Results {
-		pr.Spec.PipelineSpec.Results = append(pr.Spec.PipelineSpec.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Type: pipelinev1beta1.ResultsTypeString, Description: i.Description, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + TaskName + ".results." + i.Name + ")"}})
-	}
-
-	pr.Labels = map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV), PipelineRunLabel: ""}
-	if err := controllerutil.SetOwnerReference(abr, &pr, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-	abr.Status.State = v1alpha1.ArtifactBuildStateDiscovering
 	if err := r.client.Status().Update(ctx, abr); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	if err := r.client.Create(ctx, &pr); err != nil {
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
@@ -710,76 +735,6 @@ func CreateABRName(gav string) string {
 	newName.WriteString("-")
 	newName.WriteString(hash)
 	return strings.ToLower(newName.String())
-}
-
-func (r *ReconcileArtifactBuild) createLookupScmInfoTask(ctx context.Context, log logr.Logger, gav string, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.TaskSpec, error) {
-	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
-
-	trueBool := true
-	if err != nil {
-		return nil, err
-	}
-
-	zero := int64(0)
-	cacheUrl := "https://jvm-build-workspace-artifact-cache-tls." + jbsConfig.Namespace + ".svc.cluster.local"
-	if jbsConfig.Spec.CacheSettings.DisableTLS {
-		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
-	}
-	pullPolicy := corev1.PullIfNotPresent
-	if strings.HasPrefix(image, "quay.io/minikube") {
-		pullPolicy = corev1.PullNever
-	} else if strings.HasSuffix(image, "dev") {
-		pullPolicy = corev1.PullAlways
-	}
-	return &pipelinev1beta1.TaskSpec{
-		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: "tls"}},
-		Results: []pipelinev1beta1.TaskResult{
-			{Name: PipelineResultScmUrl},
-			{Name: PipelineResultScmTag},
-			{Name: PipelineResultScmHash},
-			{Name: PipelineResultScmType},
-			{Name: PipelineResultContextPath},
-			{Name: PipelineResultPrivate},
-			{Name: PipelineResultMessage},
-		},
-		Steps: []pipelinev1beta1.Step{
-			{
-				Name:            "lookup-artifact-location",
-				Image:           image,
-				ImagePullPolicy: pullPolicy,
-				SecurityContext: &corev1.SecurityContext{RunAsUser: &zero},
-				Script: InstallKeystoreIntoBuildRequestProcessor([]string{
-					"lookup-scm",
-					"--scm-url",
-					"$(results." + PipelineResultScmUrl + ".path)",
-					"--scm-tag",
-					"$(results." + PipelineResultScmTag + ".path)",
-					"--scm-hash",
-					"$(results." + PipelineResultScmHash + ".path)",
-					"--scm-type",
-					"$(results." + PipelineResultScmType + ".path)",
-					"--message",
-					"$(results." + PipelineResultMessage + ".path)",
-					"--context",
-					"$(results." + PipelineResultContextPath + ".path)",
-					"--private",
-					"$(results." + PipelineResultPrivate + ".path)",
-					"--gav",
-					gav,
-					"--cache-url",
-					cacheUrl,
-				}),
-				Resources: corev1.ResourceRequirements{
-					//TODO: make configurable
-					Requests: corev1.ResourceList{"memory": resource.MustParse("128Mi"), "cpu": resource.MustParse("10m")},
-					Limits:   corev1.ResourceList{"memory": resource.MustParse("128Mi")},
-				},
-				Env: []corev1.EnvVar{
-					{Name: "GIT_TOKEN", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
-				},
-			},
-		},
-	}, nil
 }
 
 func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context, split []string, namespace string, log logr.Logger) error {
