@@ -2,6 +2,7 @@ package com.redhat.hacbs.recipies.scm;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,8 +56,21 @@ public class GitScmLocator implements ScmLocator {
         private String cacheUrl;
         private ScmLocator fallbackScmLocator;
         private boolean cloneLocalRecipeRepos = true;
+        private Path gitCloneBaseDir;
 
         private Builder() {
+        }
+
+        /**
+         * Base directory for cloning recipe repositories. If not provided,
+         * each repository will be cloned in a temporary directory.
+         *
+         * @param gitCloneBaseDir base directory for cloning recipe repositories
+         * @return this builder instance
+         */
+        public Builder setGitCloneBaseDir(Path gitCloneBaseDir) {
+            this.gitCloneBaseDir = gitCloneBaseDir;
+            return this;
         }
 
         /**
@@ -130,6 +145,7 @@ public class GitScmLocator implements ScmLocator {
     private final ScmLocator fallbackScmLocator;
     private final Map<String, Map<String, String>> repoTagsToHash;
     private final boolean cloneLocalRecipeRepos;
+    private final Path gitCloneBaseDir;
 
     private RecipeGroupManager recipeGroupManager;
 
@@ -140,6 +156,7 @@ public class GitScmLocator implements ScmLocator {
         this.repoTagsToHash = cacheRepoTags ? new HashMap<>() : Map.of();
         this.cloneLocalRecipeRepos = builder.cloneLocalRecipeRepos;
         this.recipeGroupManager = builder.recipeGroupManager;
+        this.gitCloneBaseDir = builder.gitCloneBaseDir;
     }
 
     private RecipeGroupManager getRecipeGroupManager() {
@@ -152,7 +169,10 @@ public class GitScmLocator implements ScmLocator {
                 if (remotePattern == null || remotePattern.matcher(i).matches()) {
                     log.infof("Cloning recipe repo %s", i);
                     try {
-                        repoManager = RecipeRepositoryManager.create(i);
+                        repoManager = gitCloneBaseDir == null
+                                ? RecipeRepositoryManager.create(i)
+                                : RecipeRepositoryManager.create(i, Optional.empty(),
+                                        Files.createTempDirectory(gitCloneBaseDir, "recipe"));
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to checkout " + i, e);
                     }
