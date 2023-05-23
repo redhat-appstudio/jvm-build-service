@@ -248,7 +248,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
             if (optionalRemoteFile.isEmpty()) {
                 Log.warnf("Ignoring missing artifact %s", coords);
-                return 1;
+                return 0;
             }
 
             var remoteFile = optionalRemoteFile.get();
@@ -267,7 +267,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
             //these are usually tools that have heaps of classes shaded in
             //we just ignore this case for now
             Log.errorf(e, "Failed to analyse %s as it is too big", file);
-            return 1;
+            return 0;
         }
     }
 }
