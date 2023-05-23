@@ -10,6 +10,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jboss.logging.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -179,9 +180,12 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
         }
 
         var errors = new ArrayList<>(diffResults);
-        excludes.stream().map(Pattern::compile).map(Pattern::asPredicate).forEachOrdered(errors::removeIf);
-        Log.infof("Got %d results: %s", diffResults.size(), diffResults);
-        Log.infof("Got %d errors: %s", errors.size(), errors);
+        excludes.stream().map(Pattern::compile).map(Pattern::asPredicate).forEach(errors::removeIf);
+
+        if (Log.isInfoEnabled() && !errors.isEmpty()) {
+            Log.infof("Jar verification got %d errors:\n%s", errors.size(), StringUtils.join(errors, '\n'));
+        }
+
         return errors.size();
     }
 
