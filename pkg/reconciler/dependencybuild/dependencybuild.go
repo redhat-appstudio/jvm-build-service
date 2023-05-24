@@ -185,7 +185,12 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
-		return reconcile.Result{}, err
+		if !errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+		//on not found we don't return the error
+		//no need to retry it would just result in an infinite loop
+		return reconcile.Result{}, nil
 	}
 	additionalMemory := 0
 	if db.Annotations != nil && db.Annotations[RetryDueToMemory] == "true" {
@@ -251,7 +256,12 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error())
 		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error()))
-		return reconcile.Result{}, err
+		if !errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+		//on not found we don't return the error
+		//no need to retry it would just result in an infinite loop
+		return reconcile.Result{}, nil
 	}
 	if db.Status.State != v1alpha1.DependencyBuildStateAnalyzeBuild {
 		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
@@ -643,7 +653,12 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error())
 			log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error()))
-			return reconcile.Result{}, err
+			if errors.IsNotFound(err) {
+				return reconcile.Result{}, err
+			}
+			//on not found we don't return the error
+			//no need to retry
+			return reconcile.Result{}, nil
 		}
 
 		if pr.Name == db.Status.LastCompletedBuildPipelineRun || pr.Name != currentDependencyBuildPipelineName(&db) {
@@ -758,7 +773,12 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 								//if it already exists we update the image field
 								err := r.client.Get(ctx, types.NamespacedName{Namespace: ra.Namespace, Name: ra.Name}, &ra)
 								if err != nil {
-									return reconcile.Result{}, err
+									if !errors.IsNotFound(err) {
+										return reconcile.Result{}, err
+									}
+									//on not found we don't return the error
+									//no need to retry it would just result in an infinite loop
+									return reconcile.Result{}, nil
 								}
 								ra.Spec.Image = image
 								log.Info(fmt.Sprintf("Updating existing RebuiltArtifact %s to reference image %s", ra.Name, ra.Spec.Image), "action", "UPDATE")
@@ -822,7 +842,13 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 			ab := v1alpha1.ArtifactBuild{}
 			err := r.client.Get(ctx, types.NamespacedName{Name: ownerRef.Name, Namespace: db.Namespace}, &ab)
 			if err != nil {
-				return reconcile.Result{}, err
+				l.Info(fmt.Sprintf("Unable to find owner %s to to mark as affected by contamination from %s", ownerRef.Name, db.Name), "action", "UPDATE")
+				if !errors.IsNotFound(err) {
+					return reconcile.Result{}, err
+				}
+				//on not found we don't return the error
+				//no need to retry it would just result in an infinite loop
+				return reconcile.Result{}, nil
 			}
 			ownerGavs[ab.Spec.GAV] = true
 		}
