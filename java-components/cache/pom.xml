@@ -46,7 +46,7 @@
             <artifactId>quarkus-arc</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.quarkus</groupId>
+            <groupId>io.quarkiverse.jgit</groupId>
             <artifactId>quarkus-jgit</artifactId>
         </dependency>
         <dependency>
