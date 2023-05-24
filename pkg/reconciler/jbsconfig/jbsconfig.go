@@ -175,12 +175,46 @@ func settingOrDefault(setting, def string) string {
 	return setting
 }
 
-func settingIfSet(field, envName string, cache *appsv1.Deployment) *appsv1.Deployment {
-	if len(strings.TrimSpace(field)) > 0 {
-		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  envName,
-			Value: field,
-		})
+func setEnvVarValue(field, envName string, cache *appsv1.Deployment) *appsv1.Deployment {
+	envVar := corev1.EnvVar{
+		Name:  envName,
+		Value: field,
+	}
+	return setEnvVar(envVar, cache)
+}
+
+func setEnvVar(envVar corev1.EnvVar, cache *appsv1.Deployment) *appsv1.Deployment {
+	if len(strings.TrimSpace(envVar.Value)) > 0 {
+		//insert them in alphabetical order
+		for i, e := range cache.Spec.Template.Spec.Containers[0].Env {
+
+			compare := strings.Compare(envVar.Name, e.Name)
+			if compare < 0 {
+				val := []corev1.EnvVar{}
+				val = append(val, cache.Spec.Template.Spec.Containers[0].Env[0:i]...)
+				val = append(val, envVar)
+				val = append(val, cache.Spec.Template.Spec.Containers[0].Env[i:]...)
+				cache.Spec.Template.Spec.Containers[0].Env = val
+				return cache
+			} else if compare == 0 {
+				//already present, overwrite
+				cache.Spec.Template.Spec.Containers[0].Env[i] = envVar
+				return cache
+			}
+		}
+		//needs to go at the end
+		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, envVar)
+	} else {
+		//we might need to remove the setting
+		for i, e := range cache.Spec.Template.Spec.Containers[0].Env {
+			if envVar.Name == e.Name {
+				//remove the entry
+				val := cache.Spec.Template.Spec.Containers[0].Env[0:i]
+				val = append(val, cache.Spec.Template.Spec.Containers[0].Env[i+1:]...)
+				cache.Spec.Template.Spec.Containers[0].Env = val
+				return cache
+			}
+		}
 	}
 	return cache
 }
@@ -422,19 +456,19 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		}
 	}
 	cache.Spec.Template.Spec.ServiceAccountName = v1alpha1.CacheDeploymentName
-	cache.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
-		{Name: "CACHE_PATH", Value: "/cache"},
-		{Name: "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", Value: settingOrDefault(jbsConfig.Spec.CacheSettings.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault)},
-		{Name: "QUARKUS_THREAD_POOL_MAX_THREADS", Value: settingOrDefault(jbsConfig.Spec.CacheSettings.WorkerThreads, v1alpha1.ConfigArtifactCacheWorkerThreadsDefault)},
-	}
+	cache.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
+	setEnvVarValue("/cache", "CACHE_PATH", cache)
+	setEnvVarValue(settingOrDefault(jbsConfig.Spec.CacheSettings.IOThreads, v1alpha1.ConfigArtifactCacheIOThreadsDefault), "QUARKUS_VERTX_EVENT_LOOPS_POOL_SIZE", cache)
+	setEnvVarValue(settingOrDefault(jbsConfig.Spec.CacheSettings.WorkerThreads, v1alpha1.ConfigArtifactCacheWorkerThreadsDefault), "QUARKUS_THREAD_POOL_MAX_THREADS", cache)
+
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
-		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_FILES", Value: "/tls/tls.crt"}, corev1.EnvVar{Name: "QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES", Value: "/tls/tls.key"})
+		setEnvVarValue("/tls/tls.crt", "QUARKUS_HTTP_SSL_CERTIFICATE_FILES", cache)
+		setEnvVarValue("/tls/tls.key", "QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES", cache)
 	}
 	if jbsConfig.Annotations != nil {
 		val := jbsConfig.Annotations[TestRegistry]
 		if val == "true" {
-			cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "INSECURE_TEST_REGISTRY", Value: "true"})
-
+			setEnvVarValue("true", "INSECURE_TEST_REGISTRY", cache)
 		}
 	}
 	type Repo struct {
@@ -451,7 +485,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	for _, i := range jbsConfig.Spec.AdditionalRecipes {
 		recipeData = recipeData + "," + i
 	}
-	cache = settingIfSet(recipeData, "BUILD_INFO_REPOSITORIES", cache)
+	cache = setEnvVarValue(recipeData, "BUILD_INFO_REPOSITORIES", cache)
 
 	//central is at the hard coded 200 position
 	//redhat is configured at 250
@@ -459,19 +493,20 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	if jbsConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
 
-		cache = settingIfSet(jbsConfig.Spec.Owner, "REGISTRY_OWNER", cache)
-		cache = settingIfSet(jbsConfig.Spec.Host, "REGISTRY_HOST", cache)
-		cache = settingIfSet(jbsConfig.Spec.Port, "REGISTRY_PORT", cache)
-		cache = settingIfSet(jbsConfig.Spec.Repository, "REGISTRY_REPOSITORY", cache)
-		cache = settingIfSet(strconv.FormatBool(jbsConfig.Spec.Insecure), "REGISTRY_INSECURE", cache)
-		cache = settingIfSet(jbsConfig.Spec.PrependTag, "REGISTRY_PREPEND_TAG", cache)
-		cache.Spec.Template.Spec.Containers[0].Env = append(cache.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		cache = setEnvVarValue(jbsConfig.Spec.Owner, "REGISTRY_OWNER", cache)
+		cache = setEnvVarValue(jbsConfig.Spec.Host, "REGISTRY_HOST", cache)
+		cache = setEnvVarValue(jbsConfig.Spec.Port, "REGISTRY_PORT", cache)
+		cache = setEnvVarValue(jbsConfig.Spec.Repository, "REGISTRY_REPOSITORY", cache)
+		cache = setEnvVarValue(strconv.FormatBool(jbsConfig.Spec.Insecure), "REGISTRY_INSECURE", cache)
+		cache = setEnvVarValue(jbsConfig.Spec.PrependTag, "REGISTRY_PREPEND_TAG", cache)
+		cache = setEnvVar(corev1.EnvVar{
 			Name:      "REGISTRY_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &trueBool}},
-		}, corev1.EnvVar{
+		}, cache)
+		cache = setEnvVar(corev1.EnvVar{
 			Name:      "GIT_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}},
-		})
+		}, cache)
 		for _, relocationPatternElement := range jbsConfig.Spec.RelocationPatterns {
 			buildPolicy := relocationPatternElement.RelocationPattern.BuildPolicy
 			if buildPolicy == "" {
@@ -484,7 +519,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 				envValues = append(envValues, patternElement.Pattern.From+"="+patternElement.Pattern.To)
 			}
 			envValue := strings.Join(envValues, ",")
-			cache = settingIfSet(envValue, envName, cache)
+			cache = setEnvVarValue(envValue, envName, cache)
 		}
 	}
 
@@ -511,8 +546,8 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 				jbsConfig.Status.Message = jbsConfig.Status.Message + " Repository " + name + " defined twice, ignoring " + v
 				continue
 			}
-			cache = settingIfSet(v, "STORE_"+strings.ToUpper(strings.Replace(name, "-", "_", -1))+"_URL", cache)
-			cache = settingIfSet("maven2", "STORE_"+strings.ToUpper(strings.Replace(name, "-", "_", -1))+"_TYPE", cache)
+			cache = setEnvVarValue(v, "STORE_"+strings.ToUpper(strings.Replace(name, "-", "_", -1))+"_URL", cache)
+			cache = setEnvVarValue("maven2", "STORE_"+strings.ToUpper(strings.Replace(name, "-", "_", -1))+"_TYPE", cache)
 			repos = append(repos, Repo{position: atoi, name: name})
 		}
 	}
@@ -526,7 +561,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		}
 		sb.WriteString(i.name)
 	}
-	cache = settingIfSet(sb.String(), "BUILD_POLICY_DEFAULT_STORE_LIST", cache)
+	cache = setEnvVarValue(sb.String(), "BUILD_POLICY_DEFAULT_STORE_LIST", cache)
 
 	if len(r.configuredCacheImage) == 0 {
 		r.configuredCacheImage, err = util.GetImageName(ctx, r.client, log, "cache", "JVM_BUILD_SERVICE_CACHE_IMAGE")
