@@ -9,6 +9,9 @@ import java.util.stream.Collectors;
 
 import org.objectweb.asm.tree.MethodNode;
 
+import static org.objectweb.asm.Opcodes.ACC_FINAL;
+import static org.objectweb.asm.Opcodes.ACC_STATIC;
+
 public record MethodInfo(AccessSet<MethodAccess> access, String name, String desc, String signature, List<String> exceptions,
         Map<String, ParameterInfo> parameters, Map<String, AnnotationInfo> visibleAnnotations,
         /*
@@ -29,7 +32,7 @@ public record MethodInfo(AccessSet<MethodAccess> access, String name, String des
  * Map<String, LocalVariableAnnotationInfo> invisibleLocalVariableAnnotations
  */) implements AsmDiffable<MethodInfo> {
     public MethodInfo(MethodNode node) {
-        this(new AccessSet<>(node.access, MethodAccess.class), node.name, node.desc, node.signature,
+        this(new AccessSet<>((node.access & ACC_STATIC) != 0 ? (node.access & ~ACC_FINAL) : node.access, MethodAccess.class), node.name, node.desc, node.signature,
                 List.copyOf(node.exceptions),
                 node.parameters != null
                         ? node.parameters.stream()
