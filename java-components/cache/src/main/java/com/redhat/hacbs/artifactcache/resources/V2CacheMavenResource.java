@@ -61,7 +61,7 @@ public class V2CacheMavenResource {
         Log.debugf("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
         var result = facade.getArtifactFile("", group, artifact, version, target, true);
         if (result.isPresent()) {
-            var builder = Response.ok(result.get().getData());
+            var builder = Response.ok(result.get().getFileOrStream());
             if (result.get().getMetadata().containsKey("maven-repo")) {
                 builder.header("X-maven-repo", result.get().getMetadata().get("maven-repo"))
                         .build();

@@ -42,7 +42,7 @@ public class S3RepositoryClient implements RepositoryClient {
             String s3key = i + "/" + fullTarget;
             try {
                 var response = client.getObject(buildGetRequest(s3key));
-                return Optional.of(new ArtifactResult(response, response.response().contentLength(),
+                return Optional.of(new ArtifactResult(null, response, response.response().contentLength(),
                         Optional.ofNullable(response.response().metadata().get(SHA_1)), response.response().metadata()));
 
             } catch (NoSuchKeyException ignore) {

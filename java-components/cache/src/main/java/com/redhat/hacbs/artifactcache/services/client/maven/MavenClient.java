@@ -126,9 +126,10 @@ public class MavenClient implements RepositoryClient {
                     headers.put(i.getName(), i.getValue());
                 }
                 Log.debugf("Found artifact %s/%s/%s/%s from repo %s at %s", group, artifact, version, target, name, uri);
-                return Optional.of(new ArtifactResult(new CloseDelegateInputStream(response.getEntity().getContent(), response),
-                        response.getEntity().getContentLength(),
-                        Optional.ofNullable(sha1), headers));
+                return Optional
+                        .of(new ArtifactResult(null, new CloseDelegateInputStream(response.getEntity().getContent(), response),
+                                response.getEntity().getContentLength(),
+                                Optional.ofNullable(sha1), headers));
             } catch (Exception e) {
                 try {
                     if (response != null) {

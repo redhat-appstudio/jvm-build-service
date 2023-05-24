@@ -189,7 +189,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
                 boolean exists = Files.exists(fileWeAreAfter);
                 if (exists) {
                     return Optional.of(
-                            new ArtifactResult(Files.newInputStream(fileWeAreAfter), Files.size(fileWeAreAfter),
+                            new ArtifactResult(null, Files.newInputStream(fileWeAreAfter), Files.size(fileWeAreAfter),
                                     getSha1(fileWeAreAfter),
                                     Map.of()));
                 } else {

@@ -55,7 +55,7 @@ public class LocalCacheTest {
         runTest((localCache, path) -> {
             try {
                 current = new ArtifactResult(
-                        new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4, Optional.of("wrong sha"),
+                        null, new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4, Optional.of("wrong sha"),
                         Map.of());
                 localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", false);
                 Files.walkFileTree(path, new SimpleFileVisitor<>() {
@@ -70,7 +70,7 @@ public class LocalCacheTest {
 
                 //now try with the correct hash
                 current = new ArtifactResult(
-                        new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4,
+                        null, new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)), 4,
                         Optional.of(HashUtil.sha1("test")), Map.of());
                 localCache.getArtifactFile("default", "test", "test", "1.0", "test.pom", false);
                 AtomicReference<Path> cachedFile = new AtomicReference<>();
@@ -100,7 +100,7 @@ public class LocalCacheTest {
             try {
                 byte[] jarFile = createJarFile();
                 current = new ArtifactResult(
-                        new ByteArrayInputStream(jarFile), jarFile.length, Optional.of(HashUtil.sha1(jarFile)),
+                        null, new ByteArrayInputStream(jarFile), jarFile.length, Optional.of(HashUtil.sha1(jarFile)),
                         Map.of());
                 localCache.getArtifactFile("default", "test", "test", "1.0", "test.jar.sha1", true);
                 var result = localCache.getArtifactFile("default", "test", "test", "1.0", "test.jar", true);

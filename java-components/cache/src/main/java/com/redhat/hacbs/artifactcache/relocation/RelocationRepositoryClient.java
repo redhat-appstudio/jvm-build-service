@@ -52,7 +52,7 @@ public class RelocationRepositoryClient implements RepositoryClient {
 
     private Optional<ArtifactResult> getGavRelocation(String group, String artifact, String version) {
         byte[] b = getGavRelocationBytes(group, artifact, version);
-        return Optional.of(new ArtifactResult(new ByteArrayInputStream(b), b.length, Optional.of(HashUtil.sha1(b)),
+        return Optional.of(new ArtifactResult(null, new ByteArrayInputStream(b), b.length, Optional.of(HashUtil.sha1(b)),
                 Collections.emptyMap()));
     }
 
@@ -60,7 +60,7 @@ public class RelocationRepositoryClient implements RepositoryClient {
         var res = getGavRelocation(group, artifact, version);
         if (res.isPresent() && res.get().getExpectedSha().isPresent()) {
             byte[] bytes = res.get().getExpectedSha().get().getBytes(StandardCharsets.UTF_8);
-            return Optional.of(new ArtifactResult(new ByteArrayInputStream(bytes), bytes.length, Optional.empty(),
+            return Optional.of(new ArtifactResult(null, new ByteArrayInputStream(bytes), bytes.length, Optional.empty(),
                     Collections.emptyMap()));
         }
         return Optional.empty();
