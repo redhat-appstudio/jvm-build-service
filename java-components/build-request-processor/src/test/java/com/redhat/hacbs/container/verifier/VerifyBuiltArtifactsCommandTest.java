@@ -62,6 +62,6 @@ public class VerifyBuiltArtifactsCommandTest {
         var args = new String[] { "-of", origFile.toString(), "-nf", newFile.toString(),
                 "--excludes", "+:.*[^:]:class:.*", "--excludes-file", excludesFile.toString() };
         var exitCode = new CommandLine(new VerifyBuiltArtifactsCommand()).execute(args);
-        assertThat(exitCode).isEqualTo(5);
+        assertThat(exitCode).isEqualTo(6);
     }
 }

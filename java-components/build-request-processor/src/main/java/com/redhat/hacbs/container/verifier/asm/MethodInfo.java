@@ -1,18 +1,15 @@
 package com.redhat.hacbs.container.verifier.asm;
 
-import static com.redhat.hacbs.container.verifier.asm.AsmUtils.accessToSet;
-
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.objectweb.asm.tree.MethodNode;
 
-public record MethodInfo(Set<MethodAccess> access, String name, String desc, String signature, List<String> exceptions,
+public record MethodInfo(AccessSet<MethodAccess> access, String name, String desc, String signature, List<String> exceptions,
         Map<String, ParameterInfo> parameters, Map<String, AnnotationInfo> visibleAnnotations,
         /*
          * Map<String, AnnotationInfo> invisibleAnnotations, Map<String, TypeAnnotationInfo> visibleTypeAnnotations,
@@ -32,7 +29,8 @@ public record MethodInfo(Set<MethodAccess> access, String name, String desc, Str
  * Map<String, LocalVariableAnnotationInfo> invisibleLocalVariableAnnotations
  */) implements AsmDiffable<MethodInfo> {
     public MethodInfo(MethodNode node) {
-        this(accessToSet(node.access, MethodAccess.class), node.name, node.desc, node.signature, List.copyOf(node.exceptions),
+        this(new AccessSet<>(node.access, MethodAccess.class), node.name, node.desc, node.signature,
+                List.copyOf(node.exceptions),
                 node.parameters != null
                         ? node.parameters.stream()
                                 .collect(Collectors.toMap(n -> n.name, ParameterInfo::new, (x, y) -> x, LinkedHashMap::new))

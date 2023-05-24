@@ -6,4 +6,14 @@ public record AttributeInfo(String type) implements AsmDiffable<AttributeInfo> {
     public AttributeInfo(Attribute attribute) {
         this(attribute.type);
     }
+
+    @Override
+    public String getName() {
+        return type;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }
