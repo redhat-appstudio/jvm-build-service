@@ -54,16 +54,20 @@ spec:
                       of a pipeline
                     type: string
                   taskLimitCPU:
-                    description: The CPU limit for all other steps of a pipeline
+                    description: 'The CPU limit for all other steps of a pipeline
+                      Deprecated: This is no longer used'
                     type: string
                   taskLimitMemory:
-                    description: The memory limit for all other steps of a pipeline
+                    description: 'The memory limit for all other steps of a pipeline
+                      Deprecated: This is no longer used'
                     type: string
                   taskRequestCPU:
-                    description: The requested CPU for all other steps of a pipeline
+                    description: 'The requested CPU for all other steps of a pipeline
+                      Deprecated: This is no longer used'
                     type: string
                   taskRequestMemory:
                     description: The requested memory for all other steps of a pipeline
+                      Deprecated
                     type: string
                 type: object
               cacheSettings:

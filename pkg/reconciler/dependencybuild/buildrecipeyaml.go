@@ -40,6 +40,9 @@ var antBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
+//go:embed scripts/copy-request-processor.sh
+var copyRequestProcessor string
+
 func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
 	zero := int64(0)
@@ -165,19 +168,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	if !recipe.DisableSubmodules {
 		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
 	}
-	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "512Mi"))
-	if err != nil {
-		return nil, "", err
-	}
 	defaultBuildContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestMemory, "1024Mi"))
-	if err != nil {
-		return nil, "", err
-	}
-	defaultContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
-	if err != nil {
-		return nil, "", err
-	}
-	defaultContainerLimitCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskLimitCPU, "300m"))
 	if err != nil {
 		return nil, "", err
 	}
@@ -190,7 +181,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	if additionalMemory > 0 {
 		additional := resource.MustParse(fmt.Sprintf("%dMi", additionalMemory))
 		buildContainerRequestMemory.Add(additional)
-		defaultContainerRequestMemory.Add(additional)
 	}
 	buildRepos := ""
 	if len(recipe.Repositories) > 0 {
@@ -233,22 +223,9 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}, {Name: artifactbuild.Image}, {Name: artifactbuild.PassedVerification}},
 		Steps: []pipelinev1beta1.Step{
 			{
-				Name:            "git-clone-and-settings",
-				Image:           "$(params." + PipelineImage + ")",
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Resources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
-				},
-				Script: gitArgs + "\n" + settings,
-				Env: []v1.EnvVar{
-					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
-					{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitSecretName}, Key: v1alpha12.GitSecretTokenKey, Optional: &trueBool}}},
-				},
-			},
-			{
-				Name:            "preprocessor",
+				Name:            "copy-build-request-processor",
 				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)",
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
@@ -256,42 +233,39 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: make configurable
-					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
+					Requests: v1.ResourceList{"memory": resource.MustParse("100Mi"), "cpu": resource.MustParse("30m")},
+					Limits:   v1.ResourceList{"memory": resource.MustParse("100Mi"), "cpu": resource.MustParse("30m")},
 				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preprocessorArgs),
+				Script: artifactbuild.InstallKeystoreScript() + copyRequestProcessor,
 			},
 			{
 				Name:            "build",
 				Image:           "$(params." + PipelineImage + ")",
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env: []v1.EnvVar{
-					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
-					{Name: PipelineEnforceVersion, Value: "$(params." + PipelineEnforceVersion + ")"},
-				},
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				Resources: v1.ResourceRequirements{
-					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": buildContainerRequestCPU},
 				},
+				//we run everything as a single task, which has massive memory usage savings
+				//as every step has its own memory allocation, which is all allocated together
+				Script: "#!/usr/bin/env bash\n" +
+					gitArgs +
+					"\n" +
+					settings +
+					"\n" +
+					runBuildRequestProcessor(preprocessorArgs) +
+					"\n" +
+					build +
+					"\n" +
+					runBuildRequestProcessor(verifyBuiltArtifactsArgs) +
+					"\n" +
+					runBuildRequestProcessor(deployArgs),
 				Args: []string{"$(params.GOALS[*])"},
-
-				Script: build,
-			},
-			{
-				Name:            "verify-deploy-and-check-for-contaminates",
-				Image:           "$(params." + PipelineRequestProcessorImage + ")",
-				ImagePullPolicy: pullPolicy,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
 					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.ImageSecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
+					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
+					{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitSecretName}, Key: v1alpha12.GitSecretTokenKey, Optional: &trueBool}}},
 				},
-				Resources: v1.ResourceRequirements{
-					//TODO: make configurable
-					Requests: v1.ResourceList{"memory": defaultBuildContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-					Limits:   v1.ResourceList{"memory": defaultBuildContainerRequestMemory, "cpu": defaultContainerLimitCPU},
-				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs),
 			},
 		},
 	}
@@ -349,6 +323,15 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nRUN chmod +x /root/*.sh"
 
 	return ps, df, nil
+}
+
+func runBuildRequestProcessor(cmd []string) string {
+	ret := "JAVA_HOME=$(workspaces." + WorkspaceSource + ".path)/system-java $(workspaces." + WorkspaceSource + ".path)/system-java/bin/java -jar $(workspaces." + WorkspaceSource + ".path)/build-request-processor/quarkus-run.jar"
+	for _, i := range cmd {
+		ret += " \"" + i + "\""
+	}
+	ret += "\n"
+	return ret
 }
 
 func extractParam(key string, paramValues []pipelinev1beta1.Param) string {

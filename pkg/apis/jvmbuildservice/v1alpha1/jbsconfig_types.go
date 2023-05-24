@@ -58,12 +58,16 @@ type BuildSettings struct {
 	// The requested CPU for the build and deploy steps of a pipeline
 	BuildRequestCPU string `json:"buildRequestCPU,omitempty"`
 	// The requested memory for all other steps of a pipeline
+	//Deprecated
 	TaskRequestMemory string `json:"taskRequestMemory,omitempty"`
 	// The requested CPU for all other steps of a pipeline
+	// Deprecated: This is no longer used
 	TaskRequestCPU string `json:"taskRequestCPU,omitempty"`
 	// The memory limit for all other steps of a pipeline
+	// Deprecated: This is no longer used
 	TaskLimitMemory string `json:"taskLimitMemory,omitempty"`
 	// The CPU limit for all other steps of a pipeline
+	// Deprecated: This is no longer used
 	TaskLimitCPU string `json:"taskLimitCPU,omitempty"`
 }
 type ImageRegistry struct {
