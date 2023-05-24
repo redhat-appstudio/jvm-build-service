@@ -1,6 +1,6 @@
 package com.redhat.hacbs.analyser.pnc.rest;
 
-import javax.ws.rs.QueryParam;
+import jakarta.ws.rs.QueryParam;
 
 /**
  * Parameters for querying and sorting lists.

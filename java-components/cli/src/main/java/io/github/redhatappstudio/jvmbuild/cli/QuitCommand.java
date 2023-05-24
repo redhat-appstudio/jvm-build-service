@@ -1,6 +1,6 @@
 package io.github.redhatappstudio.jvmbuild.cli;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import picocli.CommandLine;
 

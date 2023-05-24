@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
-import javax.enterprise.inject.spi.BeanManager;
+import jakarta.enterprise.inject.spi.BeanManager;
 
 import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;

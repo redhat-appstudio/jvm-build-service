@@ -9,7 +9,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Singleton;
+import jakarta.inject.Singleton;
 
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 

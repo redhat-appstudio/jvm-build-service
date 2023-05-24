@@ -3,7 +3,7 @@ package com.redhat.hacbs.analyser.github;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GHRepository;

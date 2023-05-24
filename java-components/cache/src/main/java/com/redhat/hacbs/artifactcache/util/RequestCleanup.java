@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.annotation.PreDestroy;
-import javax.enterprise.context.RequestScoped;
+import jakarta.annotation.PreDestroy;
+import jakarta.enterprise.context.RequestScoped;
 
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.Unremovable;

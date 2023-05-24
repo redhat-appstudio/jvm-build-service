@@ -15,8 +15,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.ProgressMonitor;
@@ -206,6 +206,11 @@ public class LegacyCheckoutRepositoriesCommand implements Runnable {
         @Override
         public boolean isCancelled() {
             return false;
+        }
+
+        @Override
+        public void showDuration(boolean b) {
+
         }
     }
 }
