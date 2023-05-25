@@ -295,7 +295,11 @@ public class GitScmLocator implements ScmLocator {
 
                 if (selectedTag != null) {
                     firstFailure = null;
-                    return new TagInfo(parsedInfo, selectedTag, tagsToHash.get(selectedTag));
+                    String hash = tagsToHash.get(selectedTag);
+                    if (hash == null) {
+                        hash = selectedTag; //sometimes the tag is a hash
+                    }
+                    return new TagInfo(parsedInfo, selectedTag, hash);
                 }
             } catch (RuntimeException ex) {
                 log.error("Failure to determine tag", ex);
