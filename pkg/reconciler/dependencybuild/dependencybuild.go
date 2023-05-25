@@ -616,7 +616,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		// get db
 		ownerRefs := pr.GetOwnerReferences()
 		if len(ownerRefs) == 0 {
-			msg := "pipelinerun missing onwerrefs %s:%s"
+			msg := "pipelinerun missing ownerrefs %s:%s"
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)
 
@@ -817,9 +817,9 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-
+		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
 	}
-	return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+	return reconcile.Result{}, nil
 }
 
 // This checks that the build is still considered uncontaminated
