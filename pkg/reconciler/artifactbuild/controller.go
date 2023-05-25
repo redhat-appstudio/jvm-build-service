@@ -20,7 +20,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 			communitArtifacts := false
 			if pipelineRun.Status.PipelineResults != nil {
 				for _, r := range pipelineRun.Status.PipelineResults {
-					if r.Name == JavaCommunityDependencies {
+					if r.Name == PipelineResultJavaCommunityDependencies {
 						communitArtifacts = true
 					}
 				}

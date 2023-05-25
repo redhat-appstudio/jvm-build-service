@@ -142,7 +142,7 @@ func createAbr(componentLookupKey types.NamespacedName) {
 func getTrBuildDiscovery() *tektonapi.PipelineRun {
 	listOpts := &client.ListOptions{
 		Namespace:     TestNamespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{dependencybuild.PipelineType: dependencybuild.PipelineTypeBuildInfo}),
+		LabelSelector: labels.SelectorFromSet(map[string]string{dependencybuild.PipelineTypeLabel: dependencybuild.PipelineTypeBuildInfo}),
 	}
 	trl := tektonapi.PipelineRunList{}
 	var tr *tektonapi.PipelineRun
@@ -244,10 +244,10 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 					LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 				})
 				btr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
-					Name:  dependencybuild.BuildInfoPipelineMessage,
+					Name:  dependencybuild.BuildInfoPipelineResultMessage,
 					Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "OK"},
 				}, {
-					Name:  dependencybuild.BuildInfoPipelineBuildInfo,
+					Name:  dependencybuild.BuildInfoPipelineResultBuildInfo,
 					Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","clean","install","-DskipTests","-Denforcer.skip","-Dcheckstyle.skip","-Drat.skip=true","-Dmaven.deploy.skip=false"]],"enforceVersion":null,"toolVersion":null,"javaHome":null}`},
 				}}
 				err := k8sClient.Status().Update(ctx, btr)

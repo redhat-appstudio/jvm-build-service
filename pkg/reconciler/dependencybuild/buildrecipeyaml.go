@@ -53,7 +53,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"--global-settings=/usr/share/maven/conf/settings.xml",
 		"--settings=$(workspaces.build-settings.path)/settings.xml",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
-		"--results-file=$(results." + artifactbuild.PassedVerification + ".path)",
+		"--results-file=$(results." + artifactbuild.PipelineResultPassedVerification + ".path)",
 	}
 
 	if !jbsConfig.Spec.RequireArtifactVerification {
@@ -164,7 +164,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
 		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
 	}
-	gitArgs = gitArgs + "git clone $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineScmHash + ")"
+	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineParamScmHash + ")"
 
 	if !recipe.DisableSubmodules {
 		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
@@ -223,23 +223,24 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params: []pipelinev1beta1.ParamSpec{
 			{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineScmUrl, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineScmTag, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineScmHash, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineImage, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineGoals, Type: pipelinev1beta1.ParamTypeArray},
-			{Name: PipelineJavaVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineToolVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelinePath, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
+
+			{Name: PipelineParamScmUrl, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamScmTag, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamScmHash, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamImage, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamGoals, Type: pipelinev1beta1.ParamTypeArray},
+			{Name: PipelineParamJavaVersion, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamToolVersion, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamPath, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 		},
-		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.Contaminants}, {Name: artifactbuild.DeployedResources}, {Name: artifactbuild.Image}, {Name: artifactbuild.PassedVerification}},
+		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.PipelineResultContaminants}, {Name: artifactbuild.PipelineResultDeployedResources}, {Name: PipelineResultImage}, {Name: artifactbuild.PipelineResultPassedVerification}},
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "git-clone-and-settings",
-				Image:           "$(params." + PipelineImage + ")",
+				Image:           "$(params." + PipelineParamImage + ")",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Resources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
@@ -247,17 +248,17 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				},
 				Script: gitArgs + "\n" + settings,
 				Env: []v1.EnvVar{
-					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
+					{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 					{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitSecretName}, Key: v1alpha12.GitSecretTokenKey, Optional: &trueBool}}},
 				},
 			},
 			{
 				Name:            "preprocessor",
-				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				Image:           "$(params." + PipelineParamRequestProcessorImage + ")",
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
-					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
+					{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: make configurable
@@ -268,12 +269,12 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			},
 			{
 				Name:            "build",
-				Image:           "$(params." + PipelineImage + ")",
+				Image:           "$(params." + PipelineParamImage + ")",
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
-					{Name: PipelineCacheUrl, Value: "$(params." + PipelineCacheUrl + ")"},
-					{Name: PipelineEnforceVersion, Value: "$(params." + PipelineEnforceVersion + ")"},
+					{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
+					{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"},
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
@@ -285,7 +286,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			},
 			{
 				Name:            "verify-deploy-and-check-for-contaminates",
-				Image:           "$(params." + PipelineRequestProcessorImage + ")",
+				Image:           "$(params." + PipelineParamRequestProcessorImage + ")",
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
@@ -336,12 +337,12 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
-	df := "FROM " + extractParam(PipelineRequestProcessorImage, paramValues) + " AS build-request-processor" +
-		"\nFROM " + strings.ReplaceAll(extractParam(PipelineRequestProcessorImage, paramValues), "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
-		"\nFROM " + extractParam(PipelineImage, paramValues) +
+	df := "FROM " + extractParam(PipelineParamRequestProcessorImage, paramValues) + " AS build-request-processor" +
+		"\nFROM " + strings.ReplaceAll(extractParam(PipelineParamRequestProcessorImage, paramValues), "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
+		"\nFROM " + extractParam(PipelineParamImage, paramValues) +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
-		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineCacheUrl+")", paramValues, commitTime, buildRepos) +
+		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
 		"\nENV BUILD_POLICY_DEFAULT_STORE_LIST=central,redhat,jboss,gradleplugins,confluent,gradle,eclipselink,jitpack,jsweet,jenkins,spring-plugins,dokkadev,ajoberstar,googleandroid,kotlinnative14linux,jcs,kotlin-bootstrap,kotlin-kotlin-dependencies" +
 		"\nRUN mkdir -p /root/project /root/software/settings && microdnf install vim curl procps-ng bash-completion" +
 		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
@@ -355,7 +356,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(settings, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/settings.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos)+"\n")) + " | base64 -d >/root/preprocessor.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/project/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineGoals, paramValues), " ")+"\n")) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/project/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineParamGoals, paramValues), " ")+"\n")) + " | base64 -d >/root/run-full-build.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(entryScript)) + " | base64 -d >/root/entry-script.sh" +
 		"\nRUN chmod +x /root/*.sh" +
 		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"

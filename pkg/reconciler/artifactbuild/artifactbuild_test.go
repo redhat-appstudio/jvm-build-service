@@ -319,13 +319,13 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: otherName}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateFailed))
-		abr.Annotations = map[string]string{Rebuild: "true"}
+		abr.Annotations = map[string]string{RebuildAnnotation: "true"}
 		g.Expect(client.Update(ctx, abr))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: otherName}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
-		g.Expect(abr.Annotations[Rebuild]).Should(Equal("true")) //first reconcile does not remove the annotation
+		g.Expect(abr.Annotations[RebuildAnnotation]).Should(Equal("true")) //first reconcile does not remove the annotation
 		err := client.Get(ctx, types.NamespacedName{Name: db.Name, Namespace: db.Namespace}, &db)
 		g.Expect(errors.IsNotFound(err)).Should(BeTrue())
 		other = getNamedABR(client, g, otherName)
@@ -333,8 +333,7 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
-		g.Expect(abr.Annotations[Rebuild]).Should(Equal("")) //second reconcile removes the annotation
-
+		g.Expect(abr.Annotations[RebuildAnnotation]).Should(Equal("")) //second reconcile removes the annotation
 	})
 	t.Run("Contaminated build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -379,7 +378,7 @@ func TestStateCompleteFixingContamination(t *testing.T) {
 				Namespace: metav1.NamespaceDefault,
 				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
 				Annotations: map[string]string{
-					DependencyBuildContaminatedBy + "suffix": contaminatedName,
+					DependencyBuildContaminatedByAnnotation + "suffix": contaminatedName,
 				},
 			},
 			Spec: v1alpha1.ArtifactBuildSpec{GAV: "com.test:test:1.0"},

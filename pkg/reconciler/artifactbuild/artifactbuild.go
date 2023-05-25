@@ -30,27 +30,28 @@ import (
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout       = 300 * time.Second
-	PipelineRunLabel     = "jvmbuildservice.io/pipelinerun"
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
-	// DependencyBuildContaminatedBy label prefix that indicates that a dependency build was contaminated by this artifact
-	DependencyBuildContaminatedBy = "jvmbuildservice.io/contaminated-"
-	DependencyBuildIdLabel        = "jvmbuildservice.io/dependencybuild-id"
-	ArtifactBuildIdLabel          = "jvmbuildservice.io/abr-id"
-	PipelineResultScmUrl          = "scm-url"
-	PipelineResultScmTag          = "scm-tag"
-	PipelineResultScmHash         = "scm-hash"
-	PipelineResultScmType         = "scm-type"
-	PipelineResultContextPath     = "context"
-	PipelineResultMessage         = "message"
-	PipelineResultPrivate         = "private"
-	TaskName                      = "task"
-	JavaCommunityDependencies     = "JAVA_COMMUNITY_DEPENDENCIES"
-	Contaminants                  = "CONTAMINANTS"
-	DeployedResources             = "DEPLOYED_RESOURCES"
-	PassedVerification            = "PASSED_VERIFICATION" //#nosec
-	Image                         = "IMAGE"
-	Rebuild                       = "jvmbuildservice.io/rebuild"
-	Verify                        = "jvmbuildservice.io/verify"
+	// DependencyBuildContaminatedByAnnotation label prefix that indicates that a dependency build was contaminated by this artifact
+	DependencyBuildContaminatedByAnnotation = "jvmbuildservice.io/contaminated-"
+	DependencyBuildIdLabel                  = "jvmbuildservice.io/dependencybuild-id"
+	ArtifactBuildIdLabel                    = "jvmbuildservice.io/abr-id"
+	PipelineRunLabel                        = "jvmbuildservice.io/pipelinerun"
+
+	PipelineResultScmUrl      = "scm-url"
+	PipelineResultScmTag      = "scm-tag"
+	PipelineResultScmHash     = "scm-hash"
+	PipelineResultScmType     = "scm-type"
+	PipelineResultContextPath = "context"
+	PipelineResultMessage     = "message"
+	PipelineResultPrivate     = "private"
+
+	TaskName                                = "task"
+	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
+	PipelineResultContaminants              = "CONTAMINANTS"
+	PipelineResultDeployedResources         = "DEPLOYED_RESOURCES"
+	PipelineResultPassedVerification        = "PASSED_VERIFICATION" //#nosec
+
+	RebuildAnnotation = "jvmbuildservice.io/rebuild"
 )
 
 type ReconcileArtifactBuild struct {
@@ -140,18 +141,18 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		// TODO: if verify = true, then find dependency build and add veify = false to dep build, add ourself to the owner references, if new dep created, also add it to that
 		//log.Info("cluster set on obj ", r.clusterSetOnObj(&abr))
 		//first check for a rebuild annotation
-		if abr.Annotations[Rebuild] == "true" {
+		if abr.Annotations[RebuildAnnotation] == "true" {
 			if abr.Status.State != v1alpha1.ArtifactBuildStateNew {
 				return r.handleRebuild(ctx, &abr)
 			} else {
-				delete(abr.Annotations, Rebuild)
+				delete(abr.Annotations, RebuildAnnotation)
 				return reconcile.Result{}, r.client.Update(ctx, &abr)
 			}
-		} else if abr.Annotations[Rebuild] == "failed" {
+		} else if abr.Annotations[RebuildAnnotation] == "failed" {
 			if abr.Status.State != v1alpha1.ArtifactBuildStateComplete && abr.Status.State != v1alpha1.ArtifactBuildStateNew {
 				return r.handleRebuild(ctx, &abr)
 			} else {
-				delete(abr.Annotations, Rebuild)
+				delete(abr.Annotations, RebuildAnnotation)
 				return reconcile.Result{}, r.client.Update(ctx, &abr)
 			}
 		}
@@ -189,7 +190,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 
 	if pr.Status.PipelineResults != nil {
 		for _, prRes := range pr.Status.PipelineResults {
-			if prRes.Name == JavaCommunityDependencies {
+			if prRes.Name == PipelineResultJavaCommunityDependencies {
 				return reconcile.Result{}, r.handleCommunityDependencies(ctx, strings.Split(prRes.Value.StringVal, ","), pr.Namespace, log)
 			}
 		}
@@ -473,7 +474,7 @@ func ABRLabelForGAV(hashInput string) string {
 
 func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 	for key, value := range abr.Annotations {
-		if strings.HasPrefix(key, DependencyBuildContaminatedBy) {
+		if strings.HasPrefix(key, DependencyBuildContaminatedByAnnotation) {
 			log.Info("Attempting to resolve contamination for items that depend on this ArtifactBuild", "completed-artifact-build", abr.Name)
 			db := v1alpha1.DependencyBuild{}
 			if err := r.client.Get(ctx, types.NamespacedName{Name: value, Namespace: abr.Namespace}, &db); err != nil {
@@ -582,9 +583,9 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 							return reconcile.Result{}, nil
 						}
 						if other.Annotations == nil {
-							other.Annotations = map[string]string{Rebuild: "true"}
+							other.Annotations = map[string]string{RebuildAnnotation: "true"}
 						} else {
-							other.Annotations[Rebuild] = "true"
+							other.Annotations[RebuildAnnotation] = "true"
 						}
 						err = r.client.Update(ctx, &other)
 						if err != nil {
