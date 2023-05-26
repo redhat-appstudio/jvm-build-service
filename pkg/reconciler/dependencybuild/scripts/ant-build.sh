@@ -22,8 +22,7 @@ fi
 
 export PATH="${ANT_HOME}/bin:${PATH}"
 
-mkdir -p $(workspaces.source.path)/logs
-mkdir -p $(workspaces.source.path)/packages
+mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages $(workspaces.source.path)/build-info
 {{INSTALL_PACKAGE_SCRIPT}}
 
 # XXX: It's possible that build.xml is not in the root directory
@@ -53,12 +52,12 @@ Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
 
-cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
-
+if [ ! -d $(workspaces.source.path)/source ]; then
+    cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+fi
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
-mkdir $(workspaces.source.path)/build-info
 cp -r /root/.[^.]* $(workspaces.source.path)/build-info
 
 # This is replaced when the task is created by the golang code

@@ -20,8 +20,7 @@ fi
 
 export PATH="${SBT_DIST}/bin:${PATH}"
 
-mkdir -p $(workspaces.source.path)/logs
-mkdir -p $(workspaces.source.path)/packages
+mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages $(workspaces.source.path)/build-info
 {{INSTALL_PACKAGE_SCRIPT}}
 
 mkdir -p "$HOME/.sbt/1.0/"
@@ -58,13 +57,13 @@ Pre build script: {{PRE_BUILD_SCRIPT}}
 EOF
 {{PRE_BUILD_SCRIPT}}
 
-cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
-
+if [ ! -d $(workspaces.source.path)/source ]; then
+    cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+fi
 echo "Running SBT command with arguments: $@"
 
 eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
 
-mkdir $(workspaces.source.path)/build-info
 cp -r /root/.[^.]* $(workspaces.source.path)/build-info
 
 # This is replaced when the task is created by the golang code

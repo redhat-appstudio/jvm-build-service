@@ -6,8 +6,8 @@ if [ -n "$(params.CONTEXT_DIR)" ]
 then
     cd $(params.CONTEXT_DIR)
 fi
-mkdir -p $(workspaces.source.path)/logs
-mkdir -p $(workspaces.source.path)/packages
+
+mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages $(workspaces.source.path)/build-info
 {{INSTALL_PACKAGE_SCRIPT}}
 
 #This is replaced when the task is created by the golang code
@@ -30,12 +30,13 @@ export MAVEN_OPTS="-XX:+CrashOnOutOfMemoryError"
 
 echo "Running Maven command with arguments: $@"
 
-cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+if [ ! -d $(workspaces.source.path)/source ]; then
+  cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+fi
 #we can't use array parameters directly here
 #we pass them in as goals
 mvn -V -B -e -s "$(workspaces.build-settings.path)/settings.xml" "$@" "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/artifacts" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" | tee $(workspaces.source.path)/logs/maven.log
 
-mkdir $(workspaces.source.path)/build-info
 cp -r /root/.[^.]* $(workspaces.source.path)/build-info
 
 # This is replaced when the task is created by the golang code

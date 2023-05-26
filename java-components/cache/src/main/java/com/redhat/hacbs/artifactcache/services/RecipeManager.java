@@ -16,7 +16,6 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
@@ -38,9 +37,6 @@ import io.quarkus.runtime.Startup;
 public class RecipeManager {
 
     @Inject
-    Config config;
-
-    @Inject
     CachePomScmLocator cachePomScmLocator;
 
     @ConfigProperty(name = "build-info.repositories", defaultValue = "https://github.com/redhat-appstudio/jvm-build-data")
@@ -52,8 +48,6 @@ public class RecipeManager {
 
     @PostConstruct
     void setup() throws IOException, GitAPIException {
-        var registryOwner = config.getOptionalValue("registry.owner", String.class);
-
         for (var i : buildInfoRepos) {
             Path tempDir = Files.createTempDirectory("recipe");
             Log.infof("Reading repos from %s at %s", i, tempDir);

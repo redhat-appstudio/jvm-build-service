@@ -31,15 +31,17 @@ public class RebuiltArtifacts {
 
     final List<Consumer<String>> imageDeletionListeners = Collections.synchronizedList(new ArrayList<>());
 
-    private final Set<String> gavs = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    final Set<String> gavs = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @PostConstruct
     void setup() {
 
         if (LaunchMode.current() == LaunchMode.TEST || disabled) {
             //don't start in tests, as kube might not be present
+            Log.warnf("Kubernetes client disabled so unable to initiate RebuiltArtifacts");
             return;
         }
+
         client.resources(RebuiltArtifact.class).inform().addEventHandler(new ResourceEventHandler<RebuiltArtifact>() {
             @Override
             public void onAdd(RebuiltArtifact artifactBuild) {
@@ -91,4 +93,5 @@ public class RebuiltArtifacts {
     public boolean isPossiblyRebuilt(String gav) {
         return gavs.contains(gav);
     }
+
 }

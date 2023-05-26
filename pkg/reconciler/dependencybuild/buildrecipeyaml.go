@@ -4,13 +4,14 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"strconv"
+	"strings"
+
 	v1alpha12 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -39,6 +40,9 @@ var antBuild string
 
 //go:embed scripts/install-package.sh
 var packageTemplate string
+
+//go:embed scripts/entry-script.sh
+var entryScript string
 
 func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
@@ -334,19 +338,26 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	df := "FROM " + extractParam(PipelineRequestProcessorImage, paramValues) + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(extractParam(PipelineRequestProcessorImage, paramValues), "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
 		"\nFROM " + extractParam(PipelineImage, paramValues) +
-		"\nUSER 0 " +
+		"\nUSER 0" +
+		"\nWORKDIR /root" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nCOPY --from=build-request-processor /deployments/ /root/build-request-processor" +
-		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/system-java" +
-		"\nCOPY --from=cache /deployments/ /root/cache" +
-		"\nRUN mkdir -p /root/workspace && mkdir -p /root/settings && microdnf install vim" +
+		"\nENV BUILD_POLICY_DEFAULT_STORE_LIST=central,redhat,jboss,gradleplugins,confluent,gradle,eclipselink,jitpack,jsweet,jenkins,spring-plugins,dokkadev,ajoberstar,googleandroid,kotlinnative14linux,jcs,kotlin-bootstrap,kotlin-kotlin-dependencies" +
+		"\nRUN mkdir -p /root/project /root/software/settings && microdnf install vim curl procps-ng bash-completion" +
+		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
+		// Copying JDK17 for the cache.
+		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
+		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
+		"\nCOPY --from=cache /deployments/ /root/software/cache" +
 		"\nRUN " + doSubstitution(gitArgs, paramValues, commitTime, buildRepos) +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/system-java/bin/java -jar /root/cache/quarkus-run.jar >/root/cache.log &")) + " | base64 -d >/root/start-cache.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
+		"\necho \"Please wait a few seconds for cache to start. Run 'tail -f cache.log'\"\n")) + " | base64 -d >/root/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(settings, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/settings.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/system-java/bin/java -jar /root/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos))) + " | base64 -d >/root/preprocessor.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos)+"\n")) + " | base64 -d >/root/preprocessor.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/workspace/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineGoals, paramValues), " "))) + " | base64 -d >/root/run-full-build.sh" +
-		"\nRUN chmod +x /root/*.sh"
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/project/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineGoals, paramValues), " ")+"\n")) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(entryScript)) + " | base64 -d >/root/entry-script.sh" +
+		"\nRUN chmod +x /root/*.sh" +
+		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
 
 	return ps, df, nil
 }
@@ -375,8 +386,9 @@ func doSubstitution(script string, paramValues []pipelinev1beta1.Param, commitTi
 		}
 	}
 	script = strings.ReplaceAll(script, "$(params.CACHE_URL)", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
-	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/root/settings/")
-	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/root/workspace/")
+	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/root/software/settings")
+	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/root/project")
+	script = strings.ReplaceAll(script, "$(workspaces.tls.path)", "/root/project/tls/service-ca.crt")
 	return script
 }
 

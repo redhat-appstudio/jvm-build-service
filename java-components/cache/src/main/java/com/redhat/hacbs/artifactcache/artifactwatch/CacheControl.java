@@ -20,6 +20,7 @@ import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
 import io.fabric8.kubernetes.client.informers.SharedIndexInformer;
+import io.quarkus.logging.Log;
 import io.quarkus.runtime.LaunchMode;
 import io.quarkus.runtime.Startup;
 
@@ -32,6 +33,7 @@ public class CacheControl {
 
     @Inject
     KubernetesClient client;
+
     SharedIndexInformer<GenericKubernetesResource> informer;
 
     @ConfigProperty(name = "kube.disabled", defaultValue = "false")
@@ -41,10 +43,13 @@ public class CacheControl {
     void setup() {
         if (LaunchMode.current() == LaunchMode.TEST || disabled) {
             //don't start in tests, as kube might not be present
+            Log.warnf("Kubernetes client disabled so unable to initiate CacheControl");
             return;
         }
+
         MixedOperation<GenericKubernetesResource, GenericKubernetesResourceList, Resource<GenericKubernetesResource>> jbsConfig = client
                 .genericKubernetesResources(ModelConstants.GROUP + "/" + ModelConstants.VERSION, "JBSConfig");
+
         informer = jbsConfig.inform();
         informer.addEventHandler(new ResourceEventHandler<GenericKubernetesResource>() {
             @Override
@@ -68,10 +73,13 @@ public class CacheControl {
                                         @Override
                                         public GenericKubernetesResource apply(
                                                 GenericKubernetesResource genericKubernetesResource) {
-                                            genericKubernetesResource.getMetadata().getAnnotations()
+                                            genericKubernetesResource.getMetadata()
+                                                    .getAnnotations()
                                                     .remove(ModelConstants.CLEAR_CACHE);
-                                            genericKubernetesResource.getMetadata().getAnnotations()
-                                                    .put(ModelConstants.LAST_CLEAR_CACHE, DateUtils.formatDate(new Date()));
+                                            genericKubernetesResource.getMetadata()
+                                                    .getAnnotations()
+                                                    .put(ModelConstants.LAST_CLEAR_CACHE,
+                                                            DateUtils.formatDate(new Date()));
                                             return genericKubernetesResource;
                                         }
                                     });
