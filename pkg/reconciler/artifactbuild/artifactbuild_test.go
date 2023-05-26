@@ -54,26 +54,6 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	return client, reconciler
 }
 
-func TestArtifactBuildStateNew(t *testing.T) {
-	g := NewGomegaWithT(t)
-	abr := v1alpha1.ArtifactBuild{}
-	abr.Namespace = metav1.NamespaceDefault
-	abr.Name = "test"
-	abr.Spec.GAV = "com.foo:foo:1.0"
-	abr.Status.State = v1alpha1.ArtifactBuildStateNew
-
-	ctx := context.TODO()
-	client, reconciler := setupClientAndReconciler(&abr)
-	sysConfig := v1alpha1.JBSConfig{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Name: v1alpha1.JBSConfigName, Namespace: metav1.NamespaceDefault}, &sysConfig)).Should(Succeed())
-
-	g.Expect(client.Update(context.TODO(), &sysConfig)).Should(Succeed())
-
-	res, _ := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: abr.Namespace, Name: abr.Name}})
-	g.Expect(res.RequeueAfter.Seconds() > 0).Should(BeTrue()) //the cache is down, but we should have tried to hit it and then requeued
-
-}
-
 func getABR(client runtimeclient.Client, g *WithT) *v1alpha1.ArtifactBuild {
 	return getNamedABR(client, g, "test")
 }
@@ -354,8 +334,6 @@ func TestStateBuilding(t *testing.T) {
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
 		g.Expect(abr.Annotations[Rebuild]).Should(Equal("")) //second reconcile removes the annotation
-		res, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}})
-		g.Expect(res.RequeueAfter.Seconds() > 0).Should(BeTrue()) //the cache is down, but we should have tried to hit it and then requeued
 
 	})
 	t.Run("Contaminated build", func(t *testing.T) {

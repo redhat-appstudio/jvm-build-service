@@ -127,4 +127,10 @@ public class RecipeGroupManager {
         }
         return scmUri;
     }
+
+    public void forceUpdate() {
+        for (var r : repositories) {
+            r.update();
+        }
+    }
 }

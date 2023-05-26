@@ -1,17 +1,12 @@
 package artifactbuild
 
 import (
-	"bytes"
 	"context"
 	"crypto/md5"  //#nosec G501
 	"crypto/sha1" //#nosec G505
 	_ "embed"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io"
-	"k8s.io/apimachinery/pkg/labels"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -361,77 +356,8 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 }
 
 func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild, jbsConfig *v1alpha1.JBSConfig) (reconcile.Result, error) {
-
-	cacheUrl := "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
-
-	parts := strings.Split(abr.Spec.GAV, ":")
-	gav := struct {
-		GroupId    string `json:"groupId"`
-		ArtifactId string `json:"artifactId"`
-		Version    string `json:"version"`
-	}{
-		GroupId:    parts[0],
-		ArtifactId: parts[1],
-		Version:    parts[2],
-	}
-	data, err := json.Marshal(gav)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	log.Info("About to lookup from cache with data", "data", data)
-	res, err := http.Post(cacheUrl+"/v2/recipe-lookup/scm-info", "application/json", bytes.NewReader(data))
-	if err != nil {
-		log.Error(err, "Failed to post discovery information to Cache")
-		//we don't move to missing here, this is an issue with the cache
-		//it should resolve itself
-		return reconcile.Result{RequeueAfter: time.Minute}, nil
-	} else {
-		defer func(Body io.ReadCloser) {
-			_ = Body.Close()
-		}(res.Body)
-		buf := new(bytes.Buffer)
-		_, err := buf.ReadFrom(res.Body)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		responseBody := buf.String()
-		log.Info("Received result from cache", "result", responseBody)
-		if res.StatusCode != 200 {
-			abr.Status.State = v1alpha1.ArtifactBuildStateMissing
-			abr.Status.Message = responseBody
-		} else {
-			result := struct {
-				RepoInfo struct {
-					Type        string
-					Uri         string
-					Path        string
-					PrivateRepo bool
-					TagMapping  []struct {
-						Pattern string
-						Tag     string
-					}
-				}
-				Tag  string
-				Hash string
-			}{}
-			err = json.Unmarshal([]byte(responseBody), &result)
-			if err != nil {
-				abr.Status.State = v1alpha1.ArtifactBuildStateMissing
-				abr.Status.Message = err.Error()
-			} else {
-				abr.Status.State = v1alpha1.ArtifactBuildStateDiscovering
-			}
-			abr.Status.SCMInfo.Tag = result.Tag
-			abr.Status.SCMInfo.CommitHash = result.Hash
-			abr.Status.SCMInfo.SCMURL = result.RepoInfo.Uri
-			abr.Status.SCMInfo.Path = result.RepoInfo.Path
-			abr.Status.SCMInfo.Private = result.RepoInfo.PrivateRepo
-			abr.Status.State = v1alpha1.ArtifactBuildStateDiscovering
-		}
-	}
-	if err := r.client.Status().Update(ctx, abr); err != nil {
-		return reconcile.Result{}, err
-	}
+	//this is now handled directly by the cache
+	//which massivly reduces the number of pipelines created
 	return reconcile.Result{}, nil
 }
 
@@ -685,31 +611,7 @@ func (r *ReconcileArtifactBuild) handleRebuild(ctx context.Context, abr *v1alpha
 	abr.Status.SCMInfo = v1alpha1.SCMInfo{}
 	abr.Status.Message = ""
 	err := r.client.Status().Update(ctx, abr)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	//now delete old pipelines
-
-	pr := pipelinev1beta1.PipelineRunList{}
-	listOpts := &client.ListOptions{
-		Namespace:     abr.Namespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(abr.Spec.GAV)}),
-	}
-	err = r.client.List(ctx, &pr, listOpts)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	for _, i := range pr.Items {
-		h := i
-		err = r.client.Delete(ctx, &h)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
-	return reconcile.Result{}, err
-
+	return ctrl.Result{}, err
 }
 
 func CreateABRName(gav string) string {

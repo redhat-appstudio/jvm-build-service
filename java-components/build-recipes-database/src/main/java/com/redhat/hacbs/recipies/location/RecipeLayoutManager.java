@@ -134,6 +134,11 @@ public class RecipeLayoutManager implements RecipeDirectory {
     }
 
     @Override
+    public void update() {
+
+    }
+
+    @Override
     public <T> void writeArtifactData(AddRecipeRequest<T> data) {
         String groupId = data.getGroupId();
         String artifactId = data.getArtifactId();

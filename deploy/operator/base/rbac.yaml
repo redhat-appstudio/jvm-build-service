@@ -265,6 +265,13 @@ rules:
   - apiGroups:
       - jvmbuildservice.io
     resources:
+      - artifactbuilds/status
+    verbs:
+      - patch
+      - update
+  - apiGroups:
+      - jvmbuildservice.io
+    resources:
       - jbsconfigs
     verbs:
       - get
