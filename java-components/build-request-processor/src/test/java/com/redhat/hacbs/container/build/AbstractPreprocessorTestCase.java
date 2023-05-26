@@ -78,7 +78,7 @@ public abstract class AbstractPreprocessorTestCase {
     @MethodSource("factory")
     public void testPreprocessor(Path path, QuarkusMainLauncher launcher) throws IOException {
         System.out.println(path);
-        var result = launcher.launch(getCommand(), path.toString(), "-r", "http://localhost:8080/maven2");
+        var result = launcher.launch(getCommand(), path.toString());
         Assertions.assertEquals(0, result.exitCode());
         AtomicInteger count = new AtomicInteger();
         Files.walkFileTree(path, new SimpleFileVisitor<>() {

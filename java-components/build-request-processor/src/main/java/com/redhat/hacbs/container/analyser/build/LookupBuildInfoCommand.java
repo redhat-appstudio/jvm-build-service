@@ -212,8 +212,10 @@ public class LookupBuildInfoCommand implements Runnable {
                 inv.add(GRADLE);
                 inv.addAll(GradleUtils.getGradleArgs(path));
                 if (skipTests) {
-                    inv.add("-x");
-                    inv.add("test");
+                    //this looks wrong (normally this would be -x test)
+                    //however this is read by an init script that conditionally disables the test plugin
+                    //-x test will fail if any module in the project does not have tests configured
+                    inv.add("-DskipTests=true");
                 }
                 info.invocations.add(inv);
                 info.toolVersion = detectedGradleVersion;

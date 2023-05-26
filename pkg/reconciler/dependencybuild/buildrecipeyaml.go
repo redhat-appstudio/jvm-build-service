@@ -121,8 +121,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 
 	preprocessorArgs := []string{
 		"maven-prepare",
-		"-r",
-		"$(params.CACHE_URL)",
 		"$(workspaces." + WorkspaceSource + ".path)/workspace",
 	}
 	additionalMemory := recipe.AdditionalMemory

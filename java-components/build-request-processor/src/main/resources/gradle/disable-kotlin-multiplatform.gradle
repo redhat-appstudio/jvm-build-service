@@ -16,7 +16,7 @@ class DisableKotlinMultiplatformPlugin implements Plugin<Gradle> {
                                     compileKotlinTask.enabled = false
                                 }
                                 project.tasks.matching { task ->
-                                    task.name.contains(target.name)
+                                    task.name.toLowerCase().contains(target.name.toLowerCase())
                                 }.configureEach { disabledTask ->
                                     disabledTask.enabled = false
                                 }

@@ -1,0 +1,25 @@
+apply plugin: DisableTestsPlugin
+
+class DisableTestsPlugin implements Plugin<Gradle> {
+
+    def PLUGINS = ["org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest", "org.gradle.api.tasks.testing.Test"]
+
+    void apply(Gradle gradle) {
+        if (Boolean.getBoolean("skipTests")) {
+            gradle.allprojects {
+                tasks.configureEach({
+                    if (it.getName().equals("test")) {
+                        it.setEnabled(false)
+                    } else {
+                        for (i in PLUGINS) {
+                            if (it.class.getName().contains(i)) {
+                                it.setEnabled(false)
+                                return
+                            }
+                        }
+                    }
+                })
+            }
+        }
+    }
+}

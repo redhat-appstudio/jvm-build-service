@@ -26,7 +26,8 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
             "javadoc.gradle",
             "disable-plugins.gradle",
             "disable-kotlin-multiplatform.gradle",
-            "version.gradle"
+            "version.gradle",
+            "disable-tests.gradle"
     };
 
     @Override
