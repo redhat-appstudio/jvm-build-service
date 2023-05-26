@@ -6,7 +6,7 @@
 
     <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
     <artifactId>jvm-build-service-parent</artifactId>
-    <version>999-SNAPSHOT</version>
+    <version>0.7</version>
     <packaging>pom</packaging>
     <name>JVM Build Service</name>
     <description>The JVM Build Service Parent</description>
