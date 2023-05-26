@@ -1,0 +1,30 @@
+apply plugin: DisableKotlinMultiplatformPlugin
+
+class DisableKotlinMultiplatformPlugin implements Plugin<Gradle> {
+
+    void apply(Gradle gradle) {
+        gradle.allprojects {
+            afterEvaluate {
+                it.plugins.all({
+                    if (it.class.getName().equals("org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper")) {
+                        println("Project is Multiplatform Kotlin Project")
+                        project.kotlin.targets.all { target ->
+                            println("Target Name: ${target.name}, Target Platform: ${target.platformType}")
+                            if (!(target.platformType.getName().equals("jvm")||target.platformType.getName().equals("common"))) {
+                                println("Disabling Target Name: ${target.name}, Target Platform: ${target.platformType}")
+                                target.compilations.all {
+                                    compileKotlinTask.enabled = false
+                                }
+                                project.tasks.matching { task ->
+                                    task.name.contains(target.name)
+                                }.configureEach { disabledTask ->
+                                    disabledTask.enabled = false
+                                }
+                            }
+                        }
+                    }
+                })
+            }
+        }
+    }
+}
