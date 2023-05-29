@@ -549,5 +549,6 @@ func watchEvents(eventClient v1.EventInterface, ta *testArgs) {
 		}
 		ta.Logf(fmt.Sprintf("non-normal event reason %s about obj %s:%s message %s", event.Reason, event.Regarding.Kind, event.Regarding.Name, event.Note))
 		dumpNodes(ta)
+		dumpPodDetails(ta)
 	}
 }

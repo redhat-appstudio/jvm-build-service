@@ -110,6 +110,7 @@ func dumpNodes(ta *testArgs) {
 
 func debugAndFailTest(ta *testArgs, failMsg string) {
 	GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
+	dumpPodDetails(ta)
 	dumpBadEvents(ta)
 	ta.t.Fatalf(failMsg)
 
@@ -724,12 +725,43 @@ func (a SortableArtifact) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func setupMinikube(t *testing.T, ta *testArgs) *testArgs {
 
 	ta = commonSetup(t, ta, minikubeGitCloneTaskUrl)
+	//go through and limit all deployments
+	//we have very little memory, we need some limits to make sure minikube can actually run
+	//limit every deployment to 100mb
+	list, err := kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+	for _, ns := range list.Items {
+		deploymentList, err := kubeClient.AppsV1().Deployments(ns.Name).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+		}
+		for depIdx := range deploymentList.Items {
+			dep := deploymentList.Items[depIdx]
+			fmt.Printf("Adjusting memory limit for pod %s.%s\n", dep.Namespace, dep.Name)
+			for i := range dep.Spec.Template.Spec.Containers {
+				if dep.Spec.Template.Spec.Containers[i].Resources.Limits == nil {
+					dep.Spec.Template.Spec.Containers[i].Resources.Limits = corev1.ResourceList{}
+				}
+				if dep.Spec.Template.Spec.Containers[i].Resources.Requests == nil {
+					dep.Spec.Template.Spec.Containers[i].Resources.Requests = corev1.ResourceList{}
+				}
+				dep.Spec.Template.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("110Mi")
+				dep.Spec.Template.Spec.Containers[i].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("100Mi")
+			}
+			_, err := kubeClient.AppsV1().Deployments(ns.Name).Update(context.TODO(), &dep, metav1.UpdateOptions{})
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
 
 	//create the ServiceAccount
 	sa := corev1.ServiceAccount{}
 	sa.Name = "pipeline"
 	sa.Namespace = ta.ns
-	_, err := kubeClient.CoreV1().ServiceAccounts(ta.ns).Create(context.Background(), &sa, metav1.CreateOptions{})
+	_, err = kubeClient.CoreV1().ServiceAccounts(ta.ns).Create(context.Background(), &sa, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, "pipeline SA not created in timely fashion")
 	}
@@ -755,6 +787,11 @@ func setupMinikube(t *testing.T, ta *testArgs) *testArgs {
 		},
 		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds: true,
+			BuildSettings: v1alpha1.BuildSettings{
+				BuildRequestMemory: "256Mi",
+				TaskRequestMemory:  "256Mi",
+				TaskLimitMemory:    "256mi",
+			},
 			MavenBaseLocations: map[string]string{
 				"maven-repository-300-jboss":     "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-confluent": "https://packages.confluent.io/maven",
@@ -787,6 +824,16 @@ func setupMinikube(t *testing.T, ta *testArgs) *testArgs {
 
 	time.Sleep(time.Second * 10)
 
+	dumpPodDetails(ta)
+
+	err = waitForCache(ta)
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+	return ta
+}
+
+func dumpPodDetails(ta *testArgs) {
 	list, err := kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
@@ -799,16 +846,10 @@ func setupMinikube(t *testing.T, ta *testArgs) *testArgs {
 		for _, pod := range podList.Items {
 			fmt.Printf("Pod %s\n", pod.Name)
 			for _, cs := range pod.Spec.Containers {
-				fmt.Printf("Container %s has limit %s and request %s\n", cs.Name, cs.Resources.Limits.Cpu().String(), cs.Resources.Requests.Cpu().String())
+				fmt.Printf("Container %s has CPU limit %s and request %s and Memory limit %s and request %s\n", cs.Name, cs.Resources.Limits.Cpu().String(), cs.Resources.Requests.Cpu().String(), cs.Resources.Limits.Memory().String(), cs.Resources.Requests.Memory().String())
 			}
 		}
 	}
-
-	err = waitForCache(ta)
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
-	return ta
 }
 
 func deployDockerRegistry(ta *testArgs) {
