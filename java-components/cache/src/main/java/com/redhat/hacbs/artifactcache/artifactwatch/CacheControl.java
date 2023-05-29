@@ -3,9 +3,9 @@ package com.redhat.hacbs.artifactcache.artifactwatch;
 import java.util.Date;
 import java.util.function.UnaryOperator;
 
-import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import org.apache.http.client.utils.DateUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;

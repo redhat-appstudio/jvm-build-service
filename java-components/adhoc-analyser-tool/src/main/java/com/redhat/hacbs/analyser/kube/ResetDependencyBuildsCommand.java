@@ -3,7 +3,7 @@ package com.redhat.hacbs.analyser.kube;
 import java.util.Collections;
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 

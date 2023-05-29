@@ -4,7 +4,7 @@ import java.net.URI;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 

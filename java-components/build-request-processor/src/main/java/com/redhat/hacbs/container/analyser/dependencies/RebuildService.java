@@ -3,9 +3,9 @@ package com.redhat.hacbs.container.analyser.dependencies;
 import java.util.*;
 import java.util.function.UnaryOperator;
 
-import javax.enterprise.inject.Instance;
-import javax.inject.Inject;
-import javax.inject.Singleton;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.logging.Log;

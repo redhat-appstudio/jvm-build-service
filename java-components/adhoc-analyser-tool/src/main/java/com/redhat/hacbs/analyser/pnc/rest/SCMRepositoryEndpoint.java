@@ -3,9 +3,9 @@ package com.redhat.hacbs.analyser.pnc.rest;
 import static com.redhat.hacbs.analyser.pnc.rest.SwaggerConstants.MATCH_QUERY_PARAM;
 import static com.redhat.hacbs.analyser.pnc.rest.SwaggerConstants.SEARCH_QUERY_PARAM;
 
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 

@@ -3,8 +3,8 @@ package com.redhat.hacbs.container.analyser.deploy;
 import java.nio.file.Path;
 import java.util.Set;
 
-import javax.enterprise.inject.spi.BeanManager;
-import javax.inject.Inject;
+import jakarta.enterprise.inject.spi.BeanManager;
+import jakarta.inject.Inject;
 
 import com.redhat.hacbs.container.analyser.deploy.s3.S3Deployer;
 

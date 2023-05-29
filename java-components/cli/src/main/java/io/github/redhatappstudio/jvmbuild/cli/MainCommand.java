@@ -2,7 +2,7 @@ package io.github.redhatappstudio.jvmbuild.cli;
 
 import java.io.PrintWriter;
 
-import javax.enterprise.inject.Vetoed;
+import jakarta.enterprise.inject.Vetoed;
 
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.ArtifactCommand;
 import io.github.redhatappstudio.jvmbuild.cli.builds.BuildCommand;

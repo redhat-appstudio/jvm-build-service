@@ -3,7 +3,7 @@ package com.redhat.hacbs.artifactcache.health;
 import java.lang.management.ManagementFactory;
 import java.util.Map;
 
-import javax.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
