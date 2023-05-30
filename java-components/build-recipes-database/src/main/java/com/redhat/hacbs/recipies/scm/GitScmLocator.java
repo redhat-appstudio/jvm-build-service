@@ -332,6 +332,9 @@ public class GitScmLocator implements ScmLocator {
                 tagExactContains.add(name);
             }
         }
+        if (selectedTag != null) {
+            return selectedTag;
+        }
 
         //no exact match
         if (versionExactContains.size() == 1) {
