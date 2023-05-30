@@ -372,6 +372,10 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 							toolVersions = append(toolVersions, i)
 						}
 					}
+					//if there is no match we just try all of them
+					if len(toolVersions) == 0 {
+						toolVersions = append(toolVersions, gradleVersionsInImage...)
+					}
 				} else if tool == "sbt" {
 					//sbt has an explicit tool version, but we need to map it to what is in the image
 					sbtVersionsInImage := image.Tools["sbt"]
@@ -380,13 +384,20 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 							toolVersions = append(toolVersions, i)
 						}
 					}
-
+					//if there is no match we just try all of them
+					if len(toolVersions) == 0 {
+						toolVersions = append(toolVersions, sbtVersionsInImage...)
+					}
 				} else if tool == "ant" {
 					antVersionsInImage := image.Tools["ant"]
 					for _, i := range antVersionsInImage {
 						if sameMajorVersion(i, unmarshalled.ToolVersion) {
 							toolVersions = append(toolVersions, i)
 						}
+					}
+					//if there is no match we just try all of them
+					if len(toolVersions) == 0 {
+						toolVersions = append(toolVersions, antVersionsInImage...)
 					}
 					tool = "ant"
 				} else {
