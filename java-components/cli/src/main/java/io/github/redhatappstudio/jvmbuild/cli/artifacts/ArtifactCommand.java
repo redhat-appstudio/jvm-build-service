@@ -4,6 +4,6 @@ import picocli.CommandLine;
 
 @CommandLine.Command(name = "artifact", subcommands = { ArtifactLogsCommand.class, ArtifactSummaryCommand.class,
         ArtifactListCommand.class, ArtifactRebuildCommand.class,
-        ArtifactFixMissingCommand.class }, mixinStandardHelpOptions = true)
+        ArtifactFixMissingCommand.class, ArtifactCreateCommand.class }, mixinStandardHelpOptions = true)
 public class ArtifactCommand {
 }
