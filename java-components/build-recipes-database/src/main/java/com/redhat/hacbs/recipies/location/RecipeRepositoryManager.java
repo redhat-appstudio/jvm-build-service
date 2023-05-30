@@ -107,6 +107,17 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         return recipeLayoutManager.getRepositoryPaths(name);
     }
 
+    @Override
+    public void update() {
+        try {
+            git.pull().setContentMergeStrategy(ContentMergeStrategy.THEIRS).setStrategy(MergeStrategy.THEIRS)
+                    .call();
+        } catch (GitAPIException e) {
+            throw new RuntimeException(e);
+        }
+        lastUpdate = System.currentTimeMillis();
+    }
+
     private void doUpdate() {
         if (updateInterval.isEmpty()) {
             return;
@@ -114,13 +125,7 @@ public class RecipeRepositoryManager implements RecipeDirectory {
         if (lastUpdate + updateInterval.get().toMillis() < System.currentTimeMillis()) {
             synchronized (this) {
                 if (lastUpdate + updateInterval.get().toMillis() < System.currentTimeMillis()) {
-                    try {
-                        git.pull().setContentMergeStrategy(ContentMergeStrategy.THEIRS).setStrategy(MergeStrategy.THEIRS)
-                                .call();
-                    } catch (GitAPIException e) {
-                        throw new RuntimeException(e);
-                    }
-                    lastUpdate = System.currentTimeMillis();
+                    update();
                 }
             }
         }

@@ -58,6 +58,10 @@ public class RecipeManager {
         recipeGroupManager = new RecipeGroupManager(recipeDirs);
     }
 
+    public void forceUpdate() {
+        recipeGroupManager.forceUpdate();
+    }
+
     @PreDestroy
     void clear() {
         for (var i : tempFiles) {
