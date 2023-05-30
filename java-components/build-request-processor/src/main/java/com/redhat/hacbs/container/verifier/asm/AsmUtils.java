@@ -1,6 +1,8 @@
 package com.redhat.hacbs.container.verifier.asm;
 
+import static org.objectweb.asm.Opcodes.ACC_BRIDGE;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
+import static org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -39,4 +41,10 @@ public final class AsmUtils {
     public static boolean isPublic(int access) {
         return ((access & ACC_PUBLIC) != 0);
     }
+
+    public static boolean isSyntheticBridge(int access) {
+        var b = ACC_BRIDGE | ACC_SYNTHETIC;
+        return ((access & b) == b);
+    }
+
 }
