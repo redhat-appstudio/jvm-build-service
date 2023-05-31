@@ -15,7 +15,7 @@ jobs:
           java-version: 17
       - name: Build with Maven
         working-directory: java-components
-        run: mvn -B package -Dvalidate-format
+        run: mvn -V -B package -Dvalidate-format
       - name: Run unit tests
         working-directory: java-components
-        run: mvn test
+        run: mvn -V test

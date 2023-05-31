@@ -3,7 +3,7 @@ FROM registry.access.redhat.com/ubi8/openjdk-17:1.14 AS builder
 WORKDIR /work
 COPY ./ .
 
-RUN mvn -B package -pl cli -am -DskipTests
+RUN mvn -V -B package -pl cli -am -DskipTests
 
 FROM registry.access.redhat.com/ubi8/openjdk-17-runtime:1.14
 WORKDIR /work/
