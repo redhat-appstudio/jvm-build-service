@@ -7,7 +7,6 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -194,86 +193,6 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 			}
 		}
 	}
-
-	if pr.Status.CompletionTime == nil {
-		return reconcile.Result{}, nil
-	}
-	ownerRefs := pr.GetOwnerReferences()
-	if len(ownerRefs) == 0 {
-		msg := "pipelinerun missing onwerrefs %s:%s"
-		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
-		return RemovePipelineFinalizer(ctx, pr, r.client)
-	}
-	ownerName := ""
-	for _, ownerRef := range ownerRefs {
-		if strings.EqualFold(ownerRef.Kind, "artifactbuild") || strings.EqualFold(ownerRef.Kind, "artifactbuilds") {
-			ownerName = ownerRef.Name
-			break
-		}
-	}
-	if len(ownerName) == 0 {
-		msg := "pipelinerun missing artifactbuilds ownerrefs %s:%s"
-		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
-		return RemovePipelineFinalizer(ctx, pr, r.client)
-	}
-
-	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
-	abr := v1alpha1.ArtifactBuild{}
-	err := r.client.Get(ctx, key, &abr)
-	if err != nil {
-		msg := "get for pipelinerun %s:%s owning abr %s:%s yielded error %s"
-		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error())
-		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error()))
-		if !errors.IsNotFound(err) {
-			return reconcile.Result{}, err
-		}
-		//on not found we don't return the error
-		//no need to retry it would just result in an infinite loop
-		return reconcile.Result{}, nil
-	}
-
-	//we grab the results here and put them on the ABR
-	for _, res := range pr.Status.PipelineResults {
-		switch res.Name {
-		case PipelineResultScmUrl:
-			abr.Status.SCMInfo.SCMURL = res.Value.StringVal
-		case PipelineResultScmTag:
-			abr.Status.SCMInfo.Tag = res.Value.StringVal
-		case PipelineResultScmHash:
-			abr.Status.SCMInfo.CommitHash = res.Value.StringVal
-		case PipelineResultScmType:
-			abr.Status.SCMInfo.SCMType = res.Value.StringVal
-		case PipelineResultMessage:
-			abr.Status.Message = res.Value.StringVal
-		case PipelineResultContextPath:
-			abr.Status.SCMInfo.Path = res.Value.StringVal
-		case PipelineResultPrivate:
-			private, err := strconv.ParseBool(res.Value.StringVal)
-			if err != nil {
-				private = false
-			}
-			abr.Status.SCMInfo.Private = private
-		}
-	}
-
-	//now let's create the dependency build object
-	//once this object has been created its resolver takes over
-	if abr.Status.SCMInfo.Tag == "" {
-		//this is a failure
-		r.eventRecorder.Eventf(&abr, corev1.EventTypeWarning, "MissingTag", "The ArtifactBuild %s/%s had an empty tag field %s", abr.Namespace, abr.Name, pr.Status.PipelineResults)
-		abr.Status.State = v1alpha1.ArtifactBuildStateMissing
-	}
-	err = r.client.Status().Update(ctx, &abr)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	result, err2 := RemovePipelineFinalizer(ctx, pr, r.client)
-	if err2 != nil {
-		return result, err2
-	}
-
 	return reconcile.Result{}, nil
 }
 
@@ -340,7 +259,7 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 			case v1alpha1.DependencyBuildStateContaminated:
 				abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 			case v1alpha1.DependencyBuildStateComplete:
-				return r.handleDependencyBuildSucess(ctx, db, &abr)
+				return r.handleDependencyBuildSuccess(ctx, db, &abr)
 			default:
 				abr.Status.State = v1alpha1.ArtifactBuildStateBuilding
 			}
@@ -406,7 +325,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		//if the build is done update our state accordingly
 		switch db.Status.State {
 		case v1alpha1.DependencyBuildStateComplete:
-			return r.handleDependencyBuildSucess(ctx, db, abr)
+			return r.handleDependencyBuildSuccess(ctx, db, abr)
 		case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
 			abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 		}
@@ -450,7 +369,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 
 }
 
-func (r *ReconcileArtifactBuild) handleDependencyBuildSucess(ctx context.Context, db *v1alpha1.DependencyBuild, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handleDependencyBuildSuccess(ctx context.Context, db *v1alpha1.DependencyBuild, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 	for _, i := range db.Status.DeployedArtifacts {
 		if i == abr.Spec.GAV {
 			abr.Status.State = v1alpha1.ArtifactBuildStateComplete
@@ -545,7 +464,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 	//if the build is done update our state accordingly
 	switch db.Status.State {
 	case v1alpha1.DependencyBuildStateComplete:
-		return r.handleDependencyBuildSucess(ctx, db, abr)
+		return r.handleDependencyBuildSuccess(ctx, db, abr)
 	case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
 		abr.Status.State = v1alpha1.ArtifactBuildStateFailed
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)

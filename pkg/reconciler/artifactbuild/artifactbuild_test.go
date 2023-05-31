@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"knative.dev/pkg/apis/duck/v1beta1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -95,7 +94,6 @@ func TestStateDiscovering(t *testing.T) {
 
 	var client runtimeclient.Client
 	var reconciler *ReconcileArtifactBuild
-	now := metav1.Now()
 	setup := func() {
 		abr := &v1alpha1.ArtifactBuild{
 			TypeMeta: metav1.TypeMeta{},
@@ -110,87 +108,31 @@ func TestStateDiscovering(t *testing.T) {
 		}
 		client, reconciler = setupClientAndReconciler(abr)
 	}
-	t.Run("SCM tag cannot be determined", func(t *testing.T) {
-		g := NewGomegaWithT(t)
-		setup()
-		tr := &pipelinev1beta1.PipelineRun{
-			TypeMeta: metav1.TypeMeta{},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-tr",
-				Namespace:  metav1.NamespaceDefault,
-				Labels:     map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
-				Finalizers: []string{PipelineRunFinalizer},
-			},
-			Spec: pipelinev1beta1.PipelineRunSpec{},
-			Status: pipelinev1beta1.PipelineRunStatus{
-				Status:                  v1beta1.Status{},
-				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now},
-			},
-		}
-		g.Expect(client.Create(ctx, tr)).Should(Succeed())
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
-		abr := getABR(client, g)
-		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateDiscovering))
-		g.Expect(controllerutil.SetOwnerReference(abr, tr, reconciler.scheme)).Should(Succeed())
-		g.Expect(client.Update(ctx, tr)).To(Succeed())
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-tr"}}))
-		abr = getABR(client, g)
-		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateMissing))
-		g.Expect(client.Get(ctx, types.NamespacedName{Name: tr.Name, Namespace: tr.Namespace}, tr)).Should(Succeed())
-		g.Expect(len(tr.Finalizers)).Should(Equal(0))
-	})
 	t.Run("First ABR creates DependencyBuild", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
-		tr := &pipelinev1beta1.PipelineRun{
-			TypeMeta: metav1.TypeMeta{},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-tr",
-				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
-			},
-			Spec: pipelinev1beta1.PipelineRunSpec{},
-			Status: pipelinev1beta1.PipelineRunStatus{
-				Status: v1beta1.Status{},
-				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now, PipelineResults: []pipelinev1beta1.PipelineRunResult{
-					{Name: PipelineResultScmTag, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "foo"}},
-					{Name: PipelineResultScmUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "goo"}},
-					{Name: PipelineResultScmType, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "hoo"}},
-					{Name: PipelineResultContextPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "ioo"}}}},
-			},
-		}
 		abr := getABR(client, g)
-		g.Expect(controllerutil.SetOwnerReference(abr, tr, reconciler.scheme))
-		g.Expect(client.Create(ctx, tr)).Should(Succeed())
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-tr"}}))
+		abr.Status.SCMInfo.Tag = "foo"
+		abr.Status.SCMInfo.SCMURL = "goo"
+		abr.Status.SCMInfo.SCMType = "hoo"
+		abr.Status.SCMInfo.Path = "ioo"
+		abr.Status.State = v1alpha1.ArtifactBuildStateDiscovering
+		g.Expect(client.Status().Update(ctx, abr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
 		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: depId}}))
 		fullValidation(client, g)
-		g.Expect(client.Get(ctx, types.NamespacedName{Name: tr.Name, Namespace: tr.Namespace}, tr)).Should(Succeed())
-		g.Expect(len(tr.Finalizers)).Should(Equal(0))
 	})
 	t.Run("DependencyBuild already exists for ABR", func(t *testing.T) {
 		g := NewGomegaWithT(t)
-		g.Expect(client.Create(ctx, &pipelinev1beta1.PipelineRun{
-			TypeMeta: metav1.TypeMeta{},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{ArtifactBuildIdLabel: ABRLabelForGAV(gav)},
-			},
-			Spec: pipelinev1beta1.PipelineRunSpec{},
-			Status: pipelinev1beta1.PipelineRunStatus{
-				Status: v1beta1.Status{},
-				PipelineRunStatusFields: pipelinev1beta1.PipelineRunStatusFields{CompletionTime: &now, PipelineResults: []pipelinev1beta1.PipelineRunResult{
-					{Name: PipelineResultScmTag, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "foo"}},
-					{Name: PipelineResultScmUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "goo"}},
-					{Name: PipelineResultScmType, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "hoo"}},
-					{Name: PipelineResultContextPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "ioo"}}},
-				},
-			},
-		}))
+		abr := getABR(client, g)
+		abr.Status.SCMInfo.Tag = "foo"
+		abr.Status.SCMInfo.SCMURL = "goo"
+		abr.Status.SCMInfo.SCMType = "hoo"
+		abr.Status.SCMInfo.Path = "ioo"
+		abr.Status.State = v1alpha1.ArtifactBuildStateDiscovering
+		g.Expect(client.Status().Update(ctx, abr)).Should(BeNil())
 		g.Expect(client.Create(ctx, &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
