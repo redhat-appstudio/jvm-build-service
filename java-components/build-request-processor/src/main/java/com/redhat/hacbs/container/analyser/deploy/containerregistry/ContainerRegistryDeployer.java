@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
@@ -51,7 +51,7 @@ public class ContainerRegistryDeployer implements Deployer {
     private final String username;
     private final String password;
 
-    private final Consumer<String> imageNameCallback;
+    private final BiConsumer<String, String> imageNameHashCallback;
 
     static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -62,7 +62,7 @@ public class ContainerRegistryDeployer implements Deployer {
             String token,
             String repository,
             boolean insecure,
-            String prependTag, Consumer<String> imageNameCallback) {
+            String prependTag, BiConsumer<String, String> imageNameHashCallback) {
         if (insecure) {
             System.setProperty("sendCredentialsOverHttp", "true");
         }
@@ -73,7 +73,7 @@ public class ContainerRegistryDeployer implements Deployer {
         this.repository = repository;
         this.insecure = insecure;
         this.prependTag = prependTag;
-        this.imageNameCallback = imageNameCallback;
+        this.imageNameHashCallback = imageNameHashCallback;
         if (!token.isBlank()) {
             if (token.trim().startsWith("{")) {
                 //we assume this is a .dockerconfig file
@@ -139,9 +139,6 @@ public class ContainerRegistryDeployer implements Deployer {
             CacheDirectoryCreationException, ExecutionException {
 
         String imageName = createImageName();
-        if (imageNameCallback != null) {
-            imageNameCallback.accept(imageName);
-        }
         RegistryImage registryImage = RegistryImage.named(imageName);
         if (username != null) {
             registryImage = registryImage.addCredential(username, password);
@@ -172,7 +169,11 @@ public class ContainerRegistryDeployer implements Deployer {
 
         Log.debugf("Image %s created", imageName);
 
-        containerBuilder.containerize(containerizer);
+        var result = containerBuilder.containerize(containerizer);
+
+        if (imageNameHashCallback != null) {
+            imageNameHashCallback.accept(imageName, result.getDigest().getHash());
+        }
     }
 
     private String createImageName() {

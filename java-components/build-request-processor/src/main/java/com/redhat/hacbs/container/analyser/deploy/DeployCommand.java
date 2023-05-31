@@ -72,6 +72,7 @@ public abstract class DeployCommand implements Runnable {
     @CommandLine.Option(required = false, names = "--scm-commit")
     String commit;
     protected String imageName;
+    protected String imageDigest;
 
     public DeployCommand(BeanManager beanManager,
             KubernetesClient kubernetesClient) {
@@ -224,7 +225,8 @@ public abstract class DeployCommand implements Runnable {
                                     taskRun.getMetadata().getName(), serialisedContaminants, gavs);
                             results.add(new TaskRunResult("CONTAMINANTS", serialisedContaminants));
                             results.add(new TaskRunResult("DEPLOYED_RESOURCES", String.join(",", gavs)));
-                            results.add(new TaskRunResult("IMAGE", imageName == null ? "" : imageName));
+                            results.add(new TaskRunResult("IMAGE_URL", imageName == null ? "" : imageName));
+                            results.add(new TaskRunResult("IMAGE_DIGEST", imageDigest == null ? "" : imageDigest));
                             taskRun.getStatus().setTaskResults(results);
                             return taskRun;
                         }

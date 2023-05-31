@@ -227,6 +227,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineParamScmUrl, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamScmTag, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamScmHash, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamChainsGitUrl, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamChainsGitCommit, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamImage, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamGoals, Type: pipelinev1beta1.ParamTypeArray},
 			{Name: PipelineParamJavaVersion, Type: pipelinev1beta1.ParamTypeString},
@@ -236,7 +238,13 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineParamRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 		},
-		Results: []pipelinev1beta1.TaskResult{{Name: artifactbuild.PipelineResultContaminants}, {Name: artifactbuild.PipelineResultDeployedResources}, {Name: PipelineResultImage}, {Name: artifactbuild.PipelineResultPassedVerification}},
+		Results: []pipelinev1beta1.TaskResult{
+			{Name: artifactbuild.PipelineResultContaminants},
+			{Name: artifactbuild.PipelineResultDeployedResources},
+			{Name: PipelineResultImage},
+			{Name: PipelineResultImageDigest},
+			{Name: artifactbuild.PipelineResultPassedVerification},
+		},
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "git-clone-and-settings",
