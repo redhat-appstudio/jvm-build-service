@@ -210,11 +210,13 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(10))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(11))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
-				case PipelineScmTag:
+				case PipelineScmHash:
 					g.Expect(param.Value.StringVal).Should(Equal("some-hash"))
+				case PipelineScmTag:
+					g.Expect(param.Value.StringVal).Should(Equal("some-tag"))
 				case PipelinePath:
 					g.Expect(param.Value.StringVal).Should(Equal("some-path"))
 				case PipelineScmUrl:
