@@ -129,7 +129,7 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	trList := &pipelinev1beta1.PipelineRunList{}
 	g.Expect(client.List(ctx, trList))
 	for _, i := range trList.Items {
-		if i.Labels[PipelineType] == PipelineTypeBuildInfo {
+		if i.Labels[PipelineTypeLabel] == PipelineTypeBuildInfo {
 			pr = &i
 			break
 		}
@@ -138,9 +138,9 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(len(pr.Finalizers)).Should(Equal(1))
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null, "repositories": ["jboss","gradle"]}`}}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null, "repositories": ["jboss","gradle"]}`}}}
 	} else {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "build info missing"}}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "build info missing"}}}
 	}
 	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	pr.Status.SetCondition(&apis.Condition{
@@ -200,7 +200,7 @@ func TestStateDetect(t *testing.T) {
 
 		g.Expect(len(trList.Items)).Should(Equal(2))
 		for _, pr := range trList.Items {
-			if pr.Labels[PipelineType] != PipelineTypeBuild {
+			if pr.Labels[PipelineTypeLabel] != PipelineTypeBuild {
 				continue
 			}
 			g.Expect(pr.Labels[artifactbuild.DependencyBuildIdLabel]).Should(Equal(db.Labels[artifactbuild.DependencyBuildIdLabel]))
@@ -213,21 +213,21 @@ func TestStateDetect(t *testing.T) {
 			g.Expect(len(pr.Spec.Params)).Should(Equal(11))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
-				case PipelineScmHash:
+				case PipelineParamScmHash:
 					g.Expect(param.Value.StringVal).Should(Equal("some-hash"))
-				case PipelineScmTag:
+				case PipelineParamScmTag:
 					g.Expect(param.Value.StringVal).Should(Equal("some-tag"))
-				case PipelinePath:
+				case PipelineParamPath:
 					g.Expect(param.Value.StringVal).Should(Equal("some-path"))
-				case PipelineScmUrl:
+				case PipelineParamScmUrl:
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
-				case PipelineImage:
+				case PipelineParamImage:
 					g.Expect(param.Value.StringVal).Should(HavePrefix("quay.io/redhat-appstudio/hacbs-jdk"))
-				case PipelineGoals:
+				case PipelineParamGoals:
 					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
-				case PipelineEnforceVersion:
+				case PipelineParamEnforceVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
-				case PipelineToolVersion:
+				case PipelineParamToolVersion:
 					g.Expect(param.Value.StringVal).Should(Equal("3.8.1"))
 				}
 			}
@@ -294,7 +294,7 @@ func TestStateBuilding(t *testing.T) {
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Finalizers = []string{artifactbuild.PipelineRunFinalizer}
 		pr.Name = "test-build-0"
-		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineType: PipelineTypeBuild}
+		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineTypeLabel: PipelineTypeBuild}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme)).Should(BeNil())
 		g.Expect(client.Create(ctx, &pr)).Should(BeNil())
 
@@ -332,7 +332,7 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "True",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: artifactbuild.DeployedResources, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: TestArtifact}}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: artifactbuild.PipelineResultDeployedResources, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: TestArtifact}}}
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
@@ -470,7 +470,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		pr := pipelinev1beta1.PipelineRun{}
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Name = "test-build-discovery"
-		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineType: PipelineTypeBuildInfo}
+		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineTypeLabel: PipelineTypeBuildInfo}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme))
 		g.Expect(client.Create(ctx, &pr)).Should(BeNil())
 
@@ -482,7 +482,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "True",
@@ -515,7 +515,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "True",

@@ -35,33 +35,31 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout                = 300 * time.Second
-	PipelineBuildId               = "DEPENDENCY_BUILD"
-	PipelineScmUrl                = "URL"
-	PipelineScmTag                = "TAG"
-	PipelineScmHash               = "HASH"
-	PipelinePath                  = "CONTEXT_DIR"
-	PipelineImage                 = "IMAGE"
-	PipelineRequestProcessorImage = "REQUEST_PROCESSOR_IMAGE"
-	PipelineGoals                 = "GOALS"
-	PipelineJavaVersion           = "JAVA_VERSION"
-	PipelineToolVersion           = "TOOL_VERSION"
-	PipelineEnforceVersion        = "ENFORCE_VERSION"
-	PipelineCacheUrl              = "CACHE_URL"
+	contextTimeout                     = 300 * time.Second
+	PipelineBuildId                    = "DEPENDENCY_BUILD"
+	PipelineParamScmUrl                = "URL"
+	PipelineParamScmTag                = "TAG"
+	PipelineParamScmHash               = "HASH"
+	PipelineParamPath                  = "CONTEXT_DIR"
+	PipelineParamImage                 = "IMAGE"
+	PipelineParamRequestProcessorImage = "REQUEST_PROCESSOR_IMAGE"
+	PipelineParamGoals                 = "GOALS"
+	PipelineParamJavaVersion           = "JAVA_VERSION"
+	PipelineParamToolVersion           = "TOOL_VERSION"
+	PipelineParamEnforceVersion        = "ENFORCE_VERSION"
+	PipelineParamCacheUrl              = "CACHE_URL"
+	PipelineResultImage                = "IMAGE"
 
-	BuildInfoPipelineScmUrlParam  = "SCM_URL"
-	BuildInfoPipelineTagParam     = "TAG"
-	BuildInfoPipelineContextParam = "CONTEXT"
-	BuildInfoPipelineVersionParam = "VERSION"
-	BuildInfoPipelineMessage      = "message"
-	BuildInfoPipelineBuildInfo    = "build-info"
+	BuildInfoPipelineResultMessage   = "message"
+	BuildInfoPipelineResultBuildInfo = "build-info"
 
-	PipelineType          = "jvmbuildservice.io/pipeline-type"
-	RetryDueToMemory      = "jvmbuildservice.io/retry-build-lookup-due-to-memory"
+	PipelineTypeLabel     = "jvmbuildservice.io/pipeline-type"
 	PipelineTypeBuildInfo = "build-info"
 	PipelineTypeBuild     = "build"
-	MaxRetries            = 3
-	MemoryIncrement       = 512
+
+	RetryDueToMemoryAnnotation = "jvmbuildservice.io/retry-build-lookup-due-to-memory"
+	MaxRetries                 = 3
+	MemoryIncrement            = 512
 )
 
 type ReconcileDependencyBuild struct {
@@ -156,7 +154,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			}
 		}
 		log = log.WithValues("kind", "PipelineRun")
-		pipelineType := pr.Labels[PipelineType]
+		pipelineType := pr.Labels[PipelineTypeLabel]
 		switch pipelineType {
 		case PipelineTypeBuildInfo:
 			return r.handleStateAnalyzeBuild(ctx, log, &pr)
@@ -194,7 +192,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		return reconcile.Result{}, nil
 	}
 	additionalMemory := 0
-	if db.Annotations != nil && db.Annotations[RetryDueToMemory] == "true" {
+	if db.Annotations != nil && db.Annotations[RetryDueToMemoryAnnotation] == "true" {
 		//TODO: hard coded for now
 		//should be enough for the build lookup task
 		additionalMemory = 1024
@@ -210,7 +208,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	}
 	pr.Namespace = db.Namespace
 	pr.GenerateName = db.Name + "-build-discovery-"
-	pr.Labels = map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineType: PipelineTypeBuildInfo}
+	pr.Labels = map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineTypeLabel: PipelineTypeBuildInfo}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -273,16 +271,16 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	//we grab the results here and put them on the ABR
 	for _, res := range pr.Status.PipelineResults {
 		switch res.Name {
-		case BuildInfoPipelineBuildInfo:
+		case BuildInfoPipelineResultBuildInfo:
 			buildInfo = res.Value.StringVal
-		case BuildInfoPipelineMessage:
+		case BuildInfoPipelineResultMessage:
 			message = res.Value.StringVal
 		}
 	}
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 	if !success || len(buildInfo) == 0 {
 
-		if (db.Annotations == nil || db.Annotations[RetryDueToMemory] != "true") && failedDueToMemory(pr) {
+		if (db.Annotations == nil || db.Annotations[RetryDueToMemoryAnnotation] != "true") && failedDueToMemory(pr) {
 			err := r.client.Delete(ctx, pr)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -290,7 +288,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			if db.Annotations == nil {
 				db.Annotations = map[string]string{}
 			}
-			db.Annotations[RetryDueToMemory] = "true"
+			db.Annotations[RetryDueToMemoryAnnotation] = "true"
 			return r.handleStateNew(ctx, log, &db)
 		} else {
 			db.Status.State = v1alpha1.DependencyBuildStateFailed
@@ -544,7 +542,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
 	// we move the db out of building
 	pr.Name = currentDependencyBuildPipelineName(db)
-	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineType: PipelineTypeBuild}
+	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineTypeLabel: PipelineTypeBuild}
 
 	jbsConfig := &v1alpha1.JBSConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
@@ -558,16 +556,16 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 	paramValues := []pipelinev1beta1.Param{
 		{Name: PipelineBuildId, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
-		{Name: PipelineScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
-		{Name: PipelineScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
-		{Name: PipelineScmHash, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
-		{Name: PipelinePath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
-		{Name: PipelineImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
-		{Name: PipelineRequestProcessorImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: buildRequestProcessorImage}},
-		{Name: PipelineGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
-		{Name: PipelineEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
-		{Name: PipelineToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
-		{Name: PipelineJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
+		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: PipelineParamScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
+		{Name: PipelineParamScmHash, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
+		{Name: PipelineParamPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
+		{Name: PipelineParamImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
+		{Name: PipelineParamRequestProcessorImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: buildRequestProcessorImage}},
+		{Name: PipelineParamGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
+		{Name: PipelineParamEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
+		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
+		{Name: PipelineParamJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
 
 	systemConfig := v1alpha1.SystemConfig{}
@@ -740,12 +738,12 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		if success {
 			var image string
 			for _, i := range pr.Status.PipelineResults {
-				if i.Name == artifactbuild.Image {
+				if i.Name == PipelineResultImage {
 					image = i.Value.StringVal
 				}
 			}
 			for _, i := range pr.Status.PipelineResults {
-				if i.Name == artifactbuild.Contaminants {
+				if i.Name == artifactbuild.PipelineResultContaminants {
 
 					db.Status.Contaminants = []v1alpha1.Contaminant{}
 					//unmarshal directly into the contaminants field
@@ -753,7 +751,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					if err != nil {
 						return reconcile.Result{}, err
 					}
-				} else if i.Name == artifactbuild.DeployedResources && len(i.Value.StringVal) > 0 {
+				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed := strings.Split(i.Value.StringVal, ",")
 					db.Status.DeployedArtifacts = deployed
@@ -791,7 +789,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 							}
 						}
 					}
-				} else if i.Name == artifactbuild.PassedVerification {
+				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
 					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
 					db.Status.FailedVerification = !parseBool
 				}
@@ -873,14 +871,14 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 					abr.Namespace = db.Namespace
 					abr.Annotations = map[string]string{}
 					//use this annotation to link back to the dependency build
-					abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
+					abr.Annotations[artifactbuild.DependencyBuildContaminatedByAnnotation+suffix] = db.Name
 					err := r.client.Create(ctx, &abr)
 					if err != nil {
 						return reconcile.Result{}, err
 					}
 				} else {
 					abr.Annotations = map[string]string{}
-					abr.Annotations[artifactbuild.DependencyBuildContaminatedBy+suffix] = db.Name
+					abr.Annotations[artifactbuild.DependencyBuildContaminatedByAnnotation+suffix] = db.Name
 					l.Info("Marking ArtifactBuild %s as a contaminant of %s", abr.Name, db.Name, "action", "ADD")
 					err := r.client.Update(ctx, &abr)
 					if err != nil {
@@ -934,9 +932,9 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		"--version",
 		build.Version,
 		"--message",
-		"$(results." + BuildInfoPipelineMessage + ".path)",
+		"$(results." + BuildInfoPipelineResultMessage + ".path)",
 		"--build-info",
-		"$(results." + BuildInfoPipelineBuildInfo + ".path)",
+		"$(results." + BuildInfoPipelineResultBuildInfo + ".path)",
 	}
 	if build.ScmInfo.Private {
 		args = append(args, "--private-repo")
@@ -950,7 +948,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	memory := fmt.Sprintf("%dMi", 512+additionalMemory)
 	return &pipelinev1beta1.PipelineSpec{
 		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
-		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineMessage + ")"}}, {Name: BuildInfoPipelineBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineBuildInfo + ")"}}},
+		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineResultMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineResultMessage + ")"}}, {Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineResultBuildInfo + ")"}}},
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
 				Name:       artifactbuild.TaskName,
@@ -958,7 +956,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 				TaskSpec: &pipelinev1beta1.EmbeddedTask{
 					TaskSpec: pipelinev1beta1.TaskSpec{
 						Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: "tls"}},
-						Results:    []pipelinev1beta1.TaskResult{{Name: BuildInfoPipelineMessage}, {Name: BuildInfoPipelineBuildInfo}},
+						Results:    []pipelinev1beta1.TaskResult{{Name: BuildInfoPipelineResultMessage}, {Name: BuildInfoPipelineResultBuildInfo}},
 						Steps: []pipelinev1beta1.Step{
 							{
 								Name:            "process-build-requests",

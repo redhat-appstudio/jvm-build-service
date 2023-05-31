@@ -493,7 +493,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		createdBy := ""
 		if ab.Annotations != nil {
 			for k, v := range ab.Annotations {
-				if strings.HasPrefix(k, artifactbuild.DependencyBuildContaminatedBy) {
+				if strings.HasPrefix(k, artifactbuild.DependencyBuildContaminatedByAnnotation) {
 					createdBy = " (created by build " + v + ")"
 				}
 			}
