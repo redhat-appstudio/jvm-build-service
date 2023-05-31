@@ -150,7 +150,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			//always remove the finalizer if it is deleted
 			//but continue with the method
 			//if the PR is deleted while it is running then we want to allow that
-			result, err2 := artifactbuild.RemovePipelineFinalizer(ctx, &pr, r.client)
+			result, err2 := RemovePipelineFinalizer(ctx, &pr, r.client)
 			if err2 != nil {
 				return result, err2
 			}
@@ -233,7 +233,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		msg := "pipelinerun missing ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
-		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+		return RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 	ownerName := ""
 	for _, ownerRef := range ownerRefs {
@@ -247,7 +247,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
 
-		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+		return RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 
 	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
@@ -265,7 +265,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		return reconcile.Result{}, nil
 	}
 	if db.Status.State != v1alpha1.DependencyBuildStateAnalyzeBuild {
-		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+		return RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 
 	var buildInfo string
@@ -412,7 +412,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		return reconcile.Result{}, err
 	}
 
-	return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+	return RemovePipelineFinalizer(ctx, pr, r.client)
 }
 
 type marshalledBuildInfo struct {
@@ -622,7 +622,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)
 
-			return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+			return RemovePipelineFinalizer(ctx, pr, r.client)
 		}
 		if len(ownerRefs) > 1 {
 			// workaround for event/logging methods that can only take string args
@@ -645,7 +645,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 			log.Info(msg, pr.Namespace, pr.Name)
 
-			return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+			return RemovePipelineFinalizer(ctx, pr, r.client)
 		}
 
 		key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerRef.Name}
@@ -665,7 +665,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 		if pr.Name == db.Status.LastCompletedBuildPipelineRun || pr.Name != currentDependencyBuildPipelineName(&db) {
 			//already handled
-			return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+			return RemovePipelineFinalizer(ctx, pr, r.client)
 		}
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 
@@ -809,7 +809,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				if err != nil {
 					return reconcile.Result{}, err
 				}
-				return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+				return RemovePipelineFinalizer(ctx, pr, r.client)
 			}
 		} else {
 			//try again, if there are no more recipes this gets handled in the submit build logic
@@ -819,7 +819,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		return artifactbuild.RemovePipelineFinalizer(ctx, pr, r.client)
+		return RemovePipelineFinalizer(ctx, pr, r.client)
 	}
 	return reconcile.Result{}, nil
 }
@@ -1005,4 +1005,28 @@ type BuilderImage struct {
 	Image    string
 	Tools    map[string][]string
 	Priority int
+}
+
+func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun, client client.Client) (reconcile.Result, error) {
+	//remove the finalizer
+	if pr.Finalizers != nil {
+		mod := false
+		for i, fz := range pr.Finalizers {
+			if fz == artifactbuild.PipelineRunFinalizer {
+				newLength := len(pr.Finalizers) - 1
+				pr.Finalizers[i] = pr.Finalizers[newLength] // Copy last element to index i.
+				pr.Finalizers[newLength] = ""               // Erase last element (write zero value).
+				pr.Finalizers = pr.Finalizers[:newLength]   // Truncate slice.
+				mod = true
+				break
+			}
+		}
+		if mod {
+			err := client.Update(ctx, pr)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	}
+	return reconcile.Result{}, nil
 }

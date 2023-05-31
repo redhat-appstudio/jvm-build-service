@@ -26,18 +26,7 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 				}
 			}
 			if !communitArtifacts {
-				// check if the TaskRun is related to ArtifactBuild
-				if pipelineRun.GetLabels() == nil {
-					return []reconcile.Request{}
-				}
-				_, ok := pipelineRun.GetLabels()[PipelineRunLabel]
-				if !ok {
-					return []reconcile.Request{}
-				}
-				_, ok = pipelineRun.GetLabels()[ArtifactBuildIdLabel]
-				if !ok {
-					return []reconcile.Request{}
-				}
+				return []reconcile.Request{}
 			}
 			return []reconcile.Request{
 				{
