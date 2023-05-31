@@ -115,7 +115,8 @@ func TestServiceRegistry(t *testing.T) {
 		var dbContaminatedCount uint32
 		var dbBuildingCount uint32
 		var createdDB int32
-		state := sync.Map{}
+		stateMap := map[string]string{}
+		stateMutex := sync.Mutex{}
 		exitForLoop := false
 		timeoutChannel := time.After(2 * time.Hour)
 
@@ -133,6 +134,28 @@ func TestServiceRegistry(t *testing.T) {
 				//abWatch.Stop()
 				dbWatch.Stop()
 				ta.Logf("timed out waiting for dependencybuilds to reach steady state")
+				ta.Logf(fmt.Sprintf("dependencybuild FINAL created count: %d complete count: %d, failed count: %d, contaminated count: %d", createdDB, dbCompleteCount, dbFailedCount, dbContaminatedCount))
+
+				dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(ctx, metav1.ListOptions{})
+				if err != nil {
+					ta.Logf("Failed to generate diagnostics")
+
+				} else {
+					stateMutex.Lock()
+					for _, db := range dbList.Items {
+						s, k := stateMap[db.Name]
+						stableState := stable[db.Status.State] //if the DB is currently in a stable state
+						var oldStableState bool
+						if k {
+							oldStableState = stable[s] //if the DB used to be in a stable state
+						}
+						if stableState != oldStableState {
+							ta.Logf(fmt.Sprintf("DependencyBuild %s has incorrect state", db.Name))
+						}
+					}
+					stateMutex.Unlock()
+				}
+
 				exitForLoop = true
 				didNotCompleteInTime = true
 				break
@@ -144,24 +167,52 @@ func TestServiceRegistry(t *testing.T) {
 				if !ok {
 					continue
 				}
-				s, k := state.Load(db.Name)
+				stateMutex.Lock()
+				//so there is the possibility of a race here
+				//if a DB has quick state changes we can get two concurrent goroutines for the same DependencyBuild
+				//if they are processed out of order then we could essentually miss the build going into its final state
+				//to get around this we use a Mutex, and query the current resource version. If this matches then we know
+				//the version we are using is up to date, and update the state map accordingly
+				//note that we don't need the mutex for the add/delete code below, as even if these do race the end
+				//net result will be correct as the state changes themselves will be processed in the correct order
+				s, k := stateMap[db.Name]
+				current, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(ctx, db.Name, metav1.GetOptions{})
+				if err != nil {
+					ta.Logf("Failed to get latest DependencyBuild version" + err.Error())
+					stateMutex.Unlock()
+					break
+				}
+				if current.ResourceVersion != db.ResourceVersion {
+					ta.Logf(fmt.Sprintf("Skipping watch event as DependencyBuild %s was not the most recent version", db.Name))
+					stateMutex.Unlock()
+					break
+				}
+
 				stableState := stable[db.Status.State] //if the DB is currently in a stable state
 				var oldStableState bool
 				if k {
-					oldStableState = stable[s.(string)] //if the DB used to be in a stable state
+					oldStableState = stable[s] //if the DB used to be in a stable state
 				}
-				state.Store(db.Name, db.Status.State)
+				stateMap[db.Name] = db.Status.State
+				stateMutex.Unlock()
 
 				//if this is the first time we have seen it increment the created count
 				if !k {
+					//if this is new increase the created count
 					atomic.AddInt32(&createdDB, 1)
-				}
-				//if the state has changed to/from a stable or unstable state modify the building count
-				if stableState != oldStableState || !k {
-					if stableState {
-						atomic.AddUint32(&dbBuildingCount, ^uint32(0))
-					} else {
+					if !stableState {
+						//if we are unstable set it to building
+						//in theory we could see an already completed one if the timing is weird
 						atomic.AddUint32(&dbBuildingCount, 1)
+					}
+				} else {
+					//if the state has changed to/from a stable or unstable state modify the building count
+					if stableState != oldStableState {
+						if stableState {
+							atomic.AddUint32(&dbBuildingCount, ^uint32(0))
+						} else {
+							atomic.AddUint32(&dbBuildingCount, 1)
+						}
 					}
 				}
 				//if the state has changed, or there is a new DB we need to check the current state
