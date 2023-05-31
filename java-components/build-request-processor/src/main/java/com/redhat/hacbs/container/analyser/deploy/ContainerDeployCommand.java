@@ -3,7 +3,7 @@ package com.redhat.hacbs.container.analyser.deploy;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.inject.Inject;
@@ -42,10 +42,11 @@ public class ContainerDeployCommand extends DeployCommand {
     protected void doDeployment(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
         ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                 insecure,
-                prependTag, new Consumer<String>() {
+                prependTag, new BiConsumer<String, String>() {
                     @Override
-                    public void accept(String s) {
+                    public void accept(String s, String hash) {
                         imageName = s;
+                        imageDigest = hash;
                     }
                 });
         deployer.deployArchive(deployDir, sourcePath, logsPath, gavs);

@@ -41,6 +41,8 @@ const (
 	PipelineParamScmTag                = "TAG"
 	PipelineParamScmHash               = "HASH"
 	PipelineParamPath                  = "CONTEXT_DIR"
+	PipelineParamChainsGitUrl          = "CHAINS-GIT_URL"
+	PipelineParamChainsGitCommit       = "CHAINS-GIT_COMMIT"
 	PipelineParamImage                 = "IMAGE"
 	PipelineParamRequestProcessorImage = "REQUEST_PROCESSOR_IMAGE"
 	PipelineParamGoals                 = "GOALS"
@@ -48,7 +50,8 @@ const (
 	PipelineParamToolVersion           = "TOOL_VERSION"
 	PipelineParamEnforceVersion        = "ENFORCE_VERSION"
 	PipelineParamCacheUrl              = "CACHE_URL"
-	PipelineResultImage                = "IMAGE"
+	PipelineResultImage                = "IMAGE_URL"
+	PipelineResultImageDigest          = "IMAGE_DIGEST"
 
 	BuildInfoPipelineResultMessage   = "message"
 	BuildInfoPipelineResultBuildInfo = "build-info"
@@ -559,6 +562,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
 		{Name: PipelineParamScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
 		{Name: PipelineParamScmHash, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
+		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: PipelineParamImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
 		{Name: PipelineParamRequestProcessorImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: buildRequestProcessorImage}},

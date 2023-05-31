@@ -210,16 +210,19 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(11))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(13))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineParamScmHash:
+				case PipelineParamChainsGitCommit:
+
 					g.Expect(param.Value.StringVal).Should(Equal("some-hash"))
 				case PipelineParamScmTag:
 					g.Expect(param.Value.StringVal).Should(Equal("some-tag"))
 				case PipelineParamPath:
 					g.Expect(param.Value.StringVal).Should(Equal("some-path"))
 				case PipelineParamScmUrl:
+				case PipelineParamChainsGitUrl:
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
 				case PipelineParamImage:
 					g.Expect(param.Value.StringVal).Should(HavePrefix("quay.io/redhat-appstudio/hacbs-jdk"))
