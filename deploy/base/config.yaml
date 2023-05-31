@@ -10,3 +10,4 @@ spec:
     maven-repository-301-confluent: "https://packages.confluent.io/maven"
     maven-repository-302-redhat: "https://maven.repository.redhat.com/ga"
     maven-repository-303-jitpack: "https://jitpack.io"
+    maven-repository-304-gradle: "https://repo.gradle.org/artifactory/libs-releases"
