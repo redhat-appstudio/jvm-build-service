@@ -172,7 +172,7 @@ spec:
         # with scripts.  I could not get bash to reconcile with tekton var sub, and "$(param.GOALS[*])" vs.
         # "${params.GOALS[*]}".  Hard coding the params for now and ignoring GOALS until I can talk to Stuart
         # and reconcile the param type here vs. having to use a script to change the permissions for running on OpenShift
-        mvn -B -e -s "$(workspaces.maven-settings.path)/settings.xml" -DskipTests clean package -Denforcer.skip
+        mvn -V -B -e -s "$(workspaces.maven-settings.path)/settings.xml" -DskipTests clean package -Denforcer.skip
 
     - name: analyse-dependencies
       securityContext:
