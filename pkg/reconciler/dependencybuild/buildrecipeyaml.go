@@ -164,7 +164,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
 		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
 	}
-	gitArgs = gitArgs + "git clone $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineScmTag + ")"
+	gitArgs = gitArgs + "git clone $(params." + PipelineScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineScmHash + ")"
 
 	if !recipe.DisableSubmodules {
 		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
@@ -225,6 +225,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineScmUrl, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineScmTag, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineScmHash, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineImage, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineGoals, Type: pipelinev1beta1.ParamTypeArray},
 			{Name: PipelineJavaVersion, Type: pipelinev1beta1.ParamTypeString},
