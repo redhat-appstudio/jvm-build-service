@@ -45,8 +45,8 @@ public class DiffUtils {
         });
         var added = right.keySet().stream().filter(key -> !left.containsKey(key))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        added.forEach(i -> results.add(String.format("+:%s:%s:%s", nname, type, right.get(i).getName().replace('/', '.'))));
-        deleted.forEach(i -> results.add(String.format("-:%s:%s:%s", oname, type, left.get(i).getName().replace('/', '.'))));
+        added.forEach(key -> results.add(String.format("+:%s:%s:%s", nname, type, key)));
+        deleted.forEach(key -> results.add(String.format("-:%s:%s:%s", oname, type, key)));
         var diffResults = new LinkedHashMap<String, DiffResult<?>>();
         shared.forEach(clazz -> {
             var l = left.get(clazz);
