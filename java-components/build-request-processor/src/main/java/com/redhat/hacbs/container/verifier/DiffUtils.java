@@ -50,9 +50,12 @@ public class DiffUtils {
         var diffResults = new LinkedHashMap<String, DiffResult<?>>();
         shared.forEach(clazz -> {
             var l = left.get(clazz);
-            var r = right.get(clazz);
-            var diffResult = l.diff(r);
-            diffResults.put(clazz, diffResult);
+
+            if (l != null) {
+                var r = right.get(clazz);
+                var diffResult = l.diff(r);
+                diffResults.put(clazz, diffResult);
+            }
         });
         return new DiffResults(shared, added, deleted, diffResults, results);
     }

@@ -35,10 +35,10 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
 
             while ((entry = in.getNextJarEntry()) != null) {
                 try {
-                    var name = entry.getName();
+                    var name = entry.getRealName();
 
-                    // XXX: Also handle other files?
                     if (!name.endsWith(".class")) {
+                        classes.put(name, null);
                         continue;
                     }
 
@@ -54,7 +54,7 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
 
                     if (isPublic(node.access)) {
                         var classInfo = new ClassInfo(node);
-                        classes.put(classInfo.name(), classInfo);
+                        classes.put(name, classInfo);
                     }
                 } catch (Exception e) {
                     Log.errorf(e, "Failed to verify %s", entry.getName());
@@ -93,6 +93,12 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
 
         for (var name : classResults.shared()) {
             var left = this.classes().get(name);
+
+            // null means file other than .class file
+            if (left == null) {
+                continue;
+            }
+
             var right = jar.classes().get(name);
 
             if (!Objects.equals(left.version(), right.version())) {
