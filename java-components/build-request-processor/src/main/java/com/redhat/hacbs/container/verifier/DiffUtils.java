@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -45,8 +46,8 @@ public class DiffUtils {
         });
         var added = right.keySet().stream().filter(key -> !left.containsKey(key))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        added.forEach(key -> results.add(String.format("+:%s:%s:%s", nname, type, key)));
-        deleted.forEach(key -> results.add(String.format("-:%s:%s:%s", oname, type, key)));
+        added.forEach(key -> results.add(String.format("+:%s:%s:%s", nname, type, toString(right, key))));
+        deleted.forEach(key -> results.add(String.format("-:%s:%s:%s", oname, type, toString(left, key))));
         var diffResults = new LinkedHashMap<String, DiffResult<?>>();
         shared.forEach(clazz -> {
             var l = left.get(clazz);
@@ -58,5 +59,9 @@ public class DiffUtils {
             }
         });
         return new DiffResults(shared, added, deleted, diffResults, results);
+    }
+
+    private static <T extends AsmDiffable<T>> Object toString(Map<String, T> map, String key) {
+        return Objects.toString(map.get(key), key);
     }
 }

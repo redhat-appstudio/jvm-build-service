@@ -36,4 +36,14 @@ public record TryCatchBlockInfo(LabelInfo start, LabelInfo end, LabelInfo handle
                                                                                                         * : null
                                                                                                         */);
     }
+
+    @Override
+    public String getName() {
+        return start.getName() + " " + end.getName() + " " + handler.getName() + " " + type;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

@@ -12,4 +12,9 @@ public record InnerClassInfo(String name, String outerName, String innerName,
     public String getName() {
         return name;
     }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

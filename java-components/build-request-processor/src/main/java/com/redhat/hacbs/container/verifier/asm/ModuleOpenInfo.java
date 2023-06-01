@@ -10,4 +10,14 @@ public record ModuleOpenInfo(String packaze, AccessSet<ModuleAccess> access,
         this(node.packaze, new AccessSet<>(node.access, ModuleAccess.class),
                 node.modules != null ? List.copyOf(node.modules) : null);
     }
+
+    @Override
+    public String getName() {
+        return packaze + " " + modules;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

@@ -108,6 +108,6 @@ public class JarVerificationTestCase {
                 }
                 return super.visitAnnotation(descriptor, visible);
             }
-        }, 0, "-:.*:com.redhat.hacbs.container.verifier.SimpleClass:annotation:java.lang.Deprecated");
+        }, 0, "-:.*:com.redhat.hacbs.container.verifier.SimpleClass:annotation:@java.lang.Deprecated");
     }
 }

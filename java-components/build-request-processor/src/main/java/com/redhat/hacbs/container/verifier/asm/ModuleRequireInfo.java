@@ -7,4 +7,14 @@ public record ModuleRequireInfo(String module, AccessSet<ModuleAccess> access,
     public ModuleRequireInfo(ModuleRequireNode node) {
         this(node.module, new AccessSet<>(node.access, ModuleAccess.class), node.version);
     }
+
+    @Override
+    public String getName() {
+        return module + " " + version;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

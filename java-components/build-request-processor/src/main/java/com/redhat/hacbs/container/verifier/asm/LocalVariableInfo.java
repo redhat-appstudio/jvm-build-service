@@ -12,4 +12,9 @@ public record LocalVariableInfo(String name, String desc, String signature, Labe
     public String getName() {
         return name;
     }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

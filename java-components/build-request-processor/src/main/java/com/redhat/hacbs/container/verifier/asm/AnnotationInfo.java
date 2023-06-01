@@ -9,7 +9,7 @@ public record AnnotationInfo(String desc/* , List<Object> values */) implements 
 
     @Override
     public String getName() {
-        return desc != null && desc.length() >= 2 ? desc.substring(1, desc.length() - 1) : desc;
+        return (desc != null && desc.length() >= 2 ? desc.substring(1, desc.length() - 1).replace('/', '.') : desc);
     }
 
     @Override

@@ -20,4 +20,14 @@ public record InsnInfo(int opcode, int type/*
                                               * : null
                                               */);
     }
+
+    @Override
+    public String getName() {
+        return opcode + " " + type;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

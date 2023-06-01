@@ -55,6 +55,11 @@ record ClassVersion(int version, int majorVersion, int minorVersion,
     }
 
     @Override
+    public String getName() {
+        return majorVersion + "." + minorVersion;
+    }
+
+    @Override
     public String toString() {
         return majorVersion + "." + minorVersion + " (Java " + javaVersion.version() + ")";
     }

@@ -66,4 +66,9 @@ public record ClassInfo(ClassVersion version, AccessSet<ClassAccess> access, Str
     public String getName() {
         return name;
     }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

@@ -98,4 +98,9 @@ public record MethodInfo(AccessSet<MethodAccess> access, String name, String des
     public String getName() {
         return name;
     }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

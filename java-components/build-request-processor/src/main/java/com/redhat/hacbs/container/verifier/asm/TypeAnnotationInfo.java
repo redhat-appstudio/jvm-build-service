@@ -8,4 +8,14 @@ public record TypeAnnotationInfo(String desc/* , List<Object> values */, int typ
         this(node.desc/* , node.values != null ? List.copyOf(node.values) : null */, node.typeRef,
                 node.typePath != null ? node.typePath.toString() : null);
     }
+
+    @Override
+    public String getName() {
+        return desc;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }
