@@ -38,7 +38,7 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
                     var name = entry.getRealName();
 
                     if (!name.endsWith(".class")) {
-                        classes.put(name, null);
+                        //classes.put(name, null);
                         continue;
                     }
 
