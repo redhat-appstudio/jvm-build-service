@@ -2,8 +2,10 @@ package com.redhat.hacbs.recipies.build;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BuildRecipeInfo {
@@ -37,6 +39,15 @@ public class BuildRecipeInfo {
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
 
     boolean runTests;
+
+    /**
+     * This contains a map of additional build instructions for builds referenced
+     * by a scm.yaml with a hash fragment. Note that the commands are combined individually
+     * with this parent thereby avoiding the user having to duplicate everything. The
+     * instructions in this take precedence.
+     */
+    @JsonDeserialize(using = CustomDeserialiser.class)
+    Map<String, BuildRecipeInfo> additionalBuilds;
 
     public List<String> getAdditionalArgs() {
         return additionalArgs;
@@ -146,6 +157,15 @@ public class BuildRecipeInfo {
         return this;
     }
 
+    public Map<String, BuildRecipeInfo> getAdditionalBuilds() {
+        return additionalBuilds;
+    }
+
+    public BuildRecipeInfo setAdditionalBuilds(Map<String, BuildRecipeInfo> additionalBuilds) {
+        this.additionalBuilds = additionalBuilds;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildRecipeInfo{" +
@@ -160,6 +180,7 @@ public class BuildRecipeInfo {
                 ", disableSubmodules=" + disableSubmodules +
                 ", additionalMemory=" + additionalMemory +
                 ", additionalDownloads=" + additionalDownloads +
+                ", additionalBuilds=" + additionalBuilds +
                 '}';
     }
 }

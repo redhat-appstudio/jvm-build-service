@@ -166,7 +166,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
 		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
 	}
-	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineParamScmHash + ")"
+	// ### Total hack to remove fragment component. Tekton substitutes these params.xxx .... is there a better way of handling this?
+	gitArgs = gitArgs + "git clone `echo $(params." + PipelineParamScmUrl + ") | sed -E 's/(.*)#.*/\\1/'` $(workspaces." + WorkspaceSource + ".path)/workspace && echo hello " + " && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineParamScmHash + ")"
 
 	if !recipe.DisableSubmodules {
 		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"

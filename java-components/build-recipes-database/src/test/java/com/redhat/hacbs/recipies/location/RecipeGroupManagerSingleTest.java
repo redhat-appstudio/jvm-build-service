@@ -4,14 +4,18 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 
 public class RecipeGroupManagerSingleTest {
@@ -19,6 +23,7 @@ public class RecipeGroupManagerSingleTest {
 
     @BeforeAll
     public static void setup() throws Exception {
+        //noinspection DataFlowIssue
         Path path = Paths.get(RecipeGroupManagerSingleTest.class.getClassLoader().getResource("test-recipes").toURI());
         manager = new RecipeGroupManager(List.of(new RecipeLayoutManager(path)));
     }
@@ -91,6 +96,47 @@ public class RecipeGroupManagerSingleTest {
         Assertions.assertEquals(List.of(),
                 BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAdditionalArgs());
 
+    }
+
+    @Test
+    public void testBuildInfoRecipeAdditional() throws IOException {
+        BuildInfoResponse result = manager.requestBuildInformation(
+                new BuildInfoRequest("https://github.com/lz4/lz4-java.git", "1.0", Set.of(BuildRecipe.BUILD)));
+
+        BuildRecipeInfo recipeInfo = BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD));
+        Map<String, BuildRecipeInfo> recipeInfoMap = recipeInfo.getAdditionalBuilds();
+
+        ObjectMapper mapper = new ObjectMapper(); // ### DEBUG
+        mapper.enable(SerializationFeature.INDENT_OUTPUT); // ### DEBUG
+        System.err.println("### map " + mapper.writeValueAsString(recipeInfoMap)); // ### DEBUG
+
+        Assertions.assertEquals(List.of("-Dlz4-pure-java=true"),
+                recipeInfoMap.get("pureJava").getAdditionalArgs());
+        Assertions.assertTrue(recipeInfoMap.get("pureJava").isEnforceVersion());
+        Assertions.assertTrue(recipeInfoMap.get("pureJava").getPreBuildScript().startsWith("sed -i"));
+
+        Assertions.assertEquals(List.of("-Dfoo=foo"),
+                recipeInfoMap.get("pureJava2").getAdditionalArgs());
+        Assertions.assertFalse(recipeInfoMap.get("pureJava2").isEnforceVersion());
+        Assertions.assertTrue(recipeInfoMap.get("pureJava2").getPreBuildScript().startsWith("sed -i"));
+    }
+
+    @Test
+    public void testArtifactLZ4()
+            throws IOException {
+        GAV req = new GAV("org.lz4", "lz4", "1.8.0");
+        List<Path> scmLookup = manager.lookupScmInformation(req);
+        var result = BuildRecipe.SCM.getHandler().parse(scmLookup.get(0));
+
+        Assertions.assertNull(result.getBuildNameFragment());
+        Assertions.assertEquals("https://github.com/lz4/lz4-java.git", result.getUri());
+
+        req = new GAV("org.lz4", "lz4-pure-java", "1.8.0");
+        scmLookup = manager.lookupScmInformation(req);
+        result = BuildRecipe.SCM.getHandler().parse(scmLookup.get(0));
+
+        Assertions.assertEquals("pureJava", result.getBuildNameFragment());
+        Assertions.assertEquals("https://github.com/lz4/lz4-java.git", result.getUriWithoutFragment());
     }
 
     private String readScmUrl(Path scmPath) {

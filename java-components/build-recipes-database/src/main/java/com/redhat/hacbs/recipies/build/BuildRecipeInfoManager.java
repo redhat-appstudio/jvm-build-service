@@ -11,12 +11,13 @@ import com.redhat.hacbs.recipies.RecipeManager;
 
 public class BuildRecipeInfoManager implements RecipeManager<BuildRecipeInfo> {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory())
+    static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
 
     @Override
-    public BuildRecipeInfo parse(Path file) throws IOException {
+    public BuildRecipeInfo parse(Path file)
+            throws IOException {
         BuildRecipeInfo buildRecipeInfo = MAPPER.readValue(file.toFile(), BuildRecipeInfo.class);
         if (buildRecipeInfo == null) {
             return new BuildRecipeInfo(); //can happen with empty files
@@ -25,7 +26,8 @@ public class BuildRecipeInfoManager implements RecipeManager<BuildRecipeInfo> {
     }
 
     @Override
-    public void write(BuildRecipeInfo data, Path file) throws IOException {
+    public void write(BuildRecipeInfo data, Path file)
+            throws IOException {
         MAPPER.writeValue(file.toFile(), data);
     }
 }

@@ -83,6 +83,7 @@ public class ScmLookup {
                             newObj.getStatus().setMessage("");
                             newObj.getStatus().setState(ArtifactBuild.DISCOVERING);
                         } catch (Exception e) {
+                            Log.errorf(e, "Failed to update rebuilt object");
                             newObj.getStatus().setMessage(e.getMessage());
                             newObj.getStatus().setState(ArtifactBuild.MISSING);
                         }
@@ -99,7 +100,6 @@ public class ScmLookup {
                     } catch (Exception e) {
                         Log.errorf(e, "Failed to update ArtifactBuild with discovery results");
                     }
-
                 }
             }
 

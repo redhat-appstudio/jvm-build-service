@@ -3,11 +3,16 @@ package com.redhat.hacbs.recipies.scm;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jboss.logging.Logger;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RepositoryInfo {
+    private static final Logger log = Logger.getLogger(RecipeGroupManager.class.getName());
 
     String type;
     String uri;
@@ -15,20 +20,23 @@ public class RepositoryInfo {
 
     boolean privateRepo;
 
+    @JsonIgnore
+    String buildNameFragment;
+
     private List<TagMapping> tagMapping = new ArrayList<>();
 
     public RepositoryInfo() {
     }
 
     public RepositoryInfo(String type, String uri) {
-        this.type = type;
-        this.uri = uri;
+        setType(type);
+        setUri(uri);
     }
 
     public RepositoryInfo(String type, String uri, String path) {
-        this.type = type;
-        this.uri = uri;
-        this.path = path;
+        setType(type);
+        setUri(uri);
+        setPath(path);
     }
 
     public String getType() {
@@ -45,6 +53,11 @@ public class RepositoryInfo {
 
     public void setUri(String uri) {
         this.uri = uri;
+        int index = uri.lastIndexOf("#");
+        if (index != -1) {
+            this.buildNameFragment = uri.substring(index + 1);
+            log.infof("Found buildName %s within SCM URL %s", buildNameFragment, uri);
+        }
     }
 
     public String getPath() {
@@ -71,5 +84,22 @@ public class RepositoryInfo {
     public RepositoryInfo setPrivateRepo(boolean privateRepo) {
         this.privateRepo = privateRepo;
         return this;
+    }
+
+    public String getBuildNameFragment() {
+        return buildNameFragment;
+    }
+
+    public RepositoryInfo setBuildNameFragment(String buildNameFragment) {
+        this.buildNameFragment = buildNameFragment;
+        return this;
+    }
+
+    public String getUriWithoutFragment() {
+        return uri.replace("#" + buildNameFragment, "");
+    }
+
+    public void setUriWithoutFragment(String s) {
+        // Noop to avoid bean issues.
     }
 }
