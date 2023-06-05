@@ -23,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
@@ -91,8 +92,6 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
     private RepositorySystem system;
 
-    private boolean failed;
-
     private DefaultRepositorySystemSession session;
 
     public VerifyBuiltArtifactsCommand() {
@@ -104,18 +103,9 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
         try {
             var excludes = getExcludes();
 
-            if (excludes == null) {
-                return 1;
-            }
-
             if (options.localOptions.originalFile != null && options.localOptions.newFile != null) {
                 var numErrors = handleJar(options.localOptions.originalFile, options.localOptions.newFile, excludes);
-
-                if (numErrors > 0) {
-                    return (1 + numErrors);
-                }
-
-                return (failed && !reportOnly ? 1 : 0);
+                return (numErrors > 0 && !reportOnly ? 1 : 0);
             }
 
             if (session == null) {
@@ -126,6 +116,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
             var passedCoords = (List<String>) new ArrayList<String>();
             var failedCoords = (List<String>) new ArrayList<String>();
 
+            AtomicBoolean failed = new AtomicBoolean();
             Files.walkFileTree(options.mavenOptions.deployPath, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
@@ -138,7 +129,9 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                             Log.debugf("File %s has coordinates %s", relativeFile, coords);
                             var numFailues = handleJar(file, coords, excludes);
                             var jarFailed = (numFailues > 0);
-                            failed |= jarFailed;
+                            if (jarFailed) {
+                                failed.set(true);
+                            }
 
                             if (jarFailed) {
                                 failedCoords.add(coords);
@@ -164,13 +157,13 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
             if (resultsFile != null) {
                 try {
-                    Files.writeString(resultsFile, Boolean.toString(!failed));
+                    Files.writeString(resultsFile, Boolean.toString(!failed.get()));
                 } catch (IOException ex) {
                     Log.errorf(ex, "Failed to write results");
                 }
             }
 
-            return (failed && !reportOnly ? 1 : 0);
+            return (failed.get() && !reportOnly ? 1 : 0);
         } catch (IOException e) {
             Log.errorf("%s", e.getMessage(), e);
             if (resultsFile != null) {
@@ -188,17 +181,15 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
     }
 
     private List<String> getExcludes() throws IOException {
+        var newExcludes = new ArrayList<String>();
         if (excludesFile != null) {
             if (!Files.isRegularFile(excludesFile) || !Files.isReadable(excludesFile)) {
-                Log.errorf("Error reading excludes file %s", excludesFile.toAbsolutePath());
-                return null;
+                throw new RuntimeException("Error reading excludes file " + excludesFile.toAbsolutePath());
             }
 
             var lines = Files.readAllLines(excludesFile);
-            excludes.addAll(lines);
+            newExcludes.addAll(lines);
         }
-
-        var newExcludes = new ArrayList<String>(excludes.size());
 
         for (var exclude : excludes) {
             if (!exclude.matches("^[+-^]:.*$")) {
