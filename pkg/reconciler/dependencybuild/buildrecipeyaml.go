@@ -49,7 +49,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
-		"--repository-url=$(params.CACHE_URL)",
+		"--repository-url=$(params.CACHE_URL)?upstream-only=true",
 		"--global-settings=/usr/share/maven/conf/settings.xml",
 		"--settings=$(workspaces.build-settings.path)/settings.xml",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
