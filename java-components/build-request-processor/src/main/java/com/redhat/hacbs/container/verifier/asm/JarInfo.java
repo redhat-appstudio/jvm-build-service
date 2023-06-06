@@ -5,7 +5,12 @@ import static com.redhat.hacbs.container.verifier.asm.AsmUtils.isPublic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.regex.Pattern;
@@ -67,9 +72,9 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
         return classes;
     }
 
-    private static void addChange(List<String> diffResults, String jarName, String type, String className,
+    private static void addChange(List<String> diffResults, String jarName, String className,
             String fieldName, String oldValue, String newValue) {
-        var s = String.format("^:%s:%s:%s|%s:%s>%s", jarName, type, className.replace('/', '.'), fieldName, oldValue, newValue);
+        var s = String.format("^:%s:%s:%s:%s>%s", jarName, className.replace('/', '.'), fieldName, oldValue, newValue);
         diffResults.add(s);
     }
 
@@ -81,7 +86,7 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
 
         for (var r : results.diffResults().entrySet()) {
             for (var s : r.getValue().getDiffs()) {
-                addChange(diffResults, jarName, type, oldName, r.getKey(), Objects.toString(s.getLeft()),
+                addChange(diffResults, jarName, oldName, r.getKey(), Objects.toString(s.getLeft()),
                         Objects.toString(s.getRight()));
             }
         }
@@ -102,61 +107,62 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
             var right = jar.classes().get(name);
 
             if (!Objects.equals(left.version(), right.version())) {
-                addChange(diffResults, this.name(), "class", left.name(), "version",
+                addChange(diffResults, this.name(), left.name(), "version",
                         left.version().majorVersion() + "." + left.version().minorVersion(),
                         right.version().majorVersion() + "." + right.version().minorVersion());
             }
 
             if (!Objects.equals(left.access(), right.access())) {
-                addChange(diffResults, this.name(), "class", left.name(), "access", Objects.toString(left.access()),
+                addChange(diffResults, this.name(), left.name(), "access", Objects.toString(left.access()),
                         Objects.toString(right.access()));
             }
 
             if (!Objects.equals(left.name(), right.name())) {
-                addChange(diffResults, this.name(), "class", left.name(), "name", left.name(), right.name());
+                addChange(diffResults, this.name(), left.name(), "name", left.name(), right.name());
             }
 
             if (!Objects.equals(left.signature(), right.signature())) {
-                addChange(diffResults, this.name(), "class", left.signature(), "signature", left.signature(),
+                addChange(diffResults, this.name(), left.name(), "signature", left.signature(),
                         right.signature());
             }
 
             if (!Objects.equals(left.superName(), right.superName())) {
-                addChange(diffResults, this.name(), "class", left.superName(), "superName", left.superName(),
+                addChange(diffResults, this.name(), left.name(), "superName", left.superName(),
                         right.superName());
             }
 
             if (!Objects.equals(left.interfaces(), right.interfaces())) {
-                addChange(diffResults, this.name(), "class", Objects.toString(left.interfaces()), "interfaces",
+                addChange(diffResults, this.name(), left.name(), "interfaces",
                         Objects.toString(left.interfaces()), Objects.toString(right.interfaces()));
             }
 
-            if (!Objects.equals(left.sourceFile(), right.sourceFile())) {
-                addChange(diffResults, this.name(), "class", left.sourceFile(), "sourceFile", left.sourceFile(),
-                        right.sourceFile());
-            }
-
-            if (!Objects.equals(left.sourceDebug(), right.sourceDebug())) {
-                addChange(diffResults, this.name(), "class", left.sourceDebug(), "sourceDebug", left.sourceDebug(),
-                        right.sourceDebug());
-            }
+            //we don't care about these from a verification point of view
+            //            if (!Objects.equals(left.sourceFile(), right.sourceFile())) {
+            //                addChange(diffResults, this.name(), left.name(), "sourceFile", left.sourceFile(),
+            //                        right.sourceFile());
+            //            }
+            //
+            //            if (!Objects.equals(left.sourceDebug(), right.sourceDebug())) {
+            //                addChange(diffResults, this.name(), left.name(), "sourceDebug", left.sourceDebug(),
+            //                        right.sourceDebug());
+            //            }
 
             if (!Objects.equals(left.module(), right.module())) {
                 addChanges(diffResults, this.name, "module", left.name(), right.name(), left.module(), right.module());
             }
 
             if (!Objects.equals(left.outerClass(), right.outerClass())) {
-                addChange(diffResults, this.name(), "class", left.outerClass(), "outerClass", left.outerClass(),
+                addChange(diffResults, this.name(), left.name(), "outerClass", left.outerClass(),
                         right.outerClass());
             }
 
             if (!Objects.equals(left.outerMethod(), right.outerMethod())) {
-                addChange(diffResults, this.name(), "class", left.outerMethod(), "outerMethod", left.outerMethod(),
+                addChange(diffResults, this.name(), left.name(), "outerMethod", left.outerMethod(),
                         right.outerMethod());
             }
 
             if (!Objects.equals(left.outerMethodDesc(), right.outerMethodDesc())) {
-                addChange(diffResults, this.name(), "class", left.outerMethodDesc(), "outerMethodDesc", left.outerMethodDesc(),
+                addChange(diffResults, this.name(), left.name(), "outerMethodDesc", left.outerMethodDesc(),
                         right.outerMethodDesc());
             }
 
@@ -166,7 +172,7 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
             }
 
             if (!Objects.equals(left.permittedSubclasses(), right.permittedSubclasses())) {
-                addChange(diffResults, this.name(), "class", Objects.toString(left.permittedSubclasses()),
+                addChange(diffResults, this.name(), left.name(),
                         "permittedSubclasses", Objects.toString(left.permittedSubclasses()),
                         Objects.toString(right.permittedSubclasses()));
             }
