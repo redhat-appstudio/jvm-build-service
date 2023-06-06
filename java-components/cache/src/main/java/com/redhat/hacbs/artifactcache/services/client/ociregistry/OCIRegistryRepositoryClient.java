@@ -14,6 +14,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
@@ -55,6 +57,8 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     private final Credential credential;
 
     final RebuiltArtifacts rebuiltArtifacts;
+
+    final Map<String, CountDownLatch> locks = new ConcurrentHashMap<>();
 
     public OCIRegistryRepositoryClient(String registry, String owner, String repository, Optional<String> authToken,
             Optional<String> prependHashedGav,
@@ -114,10 +118,13 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         rebuiltArtifacts.addImageDeletionListener(new Consumer<String>() {
             @Override
             public void accept(String s) {
-                var hash = s.substring(s.lastIndexOf(":") + 1);
-                Log.infof("Deleting cached image %s", hash);
                 try {
-                    storageManager.delete(hash);
+                    ManifestAndDigest<ManifestTemplate> manifestAndDigest = getRegistryClient().pullManifest(s,
+                            ManifestTemplate.class);
+                    DescriptorDigest descriptorDigest = manifestAndDigest.getDigest();
+                    String digestHash = descriptorDigest.getHash();
+                    Log.infof("Deleting cached image %s", digestHash);
+                    storageManager.delete(digestHash);
                 } catch (Exception e) {
                     Log.errorf(e, "Failed to clear cache path for image %s", s);
                 }
@@ -240,10 +247,30 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     private Optional<Path> getLocalCachePath(RegistryClient registryClient, ManifestTemplate manifest, String digestHash)
             throws IOException {
         Path digestHashPath = storageManager.accessDirectory(digestHash);
+        Path artifactsPath = Paths.get(digestHashPath.toString(), ARTIFACTS);
         if (existInLocalCache(digestHashPath)) {
-            return Optional.of(Paths.get(digestHashPath.toString(), ARTIFACTS));
+            return Optional.of(artifactsPath);
         } else {
-            return pullFromRemoteAndCache(registryClient, manifest, digestHash, digestHashPath);
+            CountDownLatch latch = new CountDownLatch(1);
+            var existing = locks.putIfAbsent(digestHash, latch);
+            if (existing == null) {
+                try {
+                    return pullFromRemoteAndCache(registryClient, manifest, digestHash, digestHashPath);
+                } finally {
+                    latch.countDown();
+                    locks.remove(digestHash);
+                }
+            } else {
+                try {
+                    existing.await();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                if (existInLocalCache(digestHashPath)) {
+                    return Optional.of(artifactsPath);
+                }
+                return Optional.empty();
+            }
         }
     }
 
