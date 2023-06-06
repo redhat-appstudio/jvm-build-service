@@ -591,12 +591,30 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 			if strings.HasPrefix(pipelineRun.Name, db.Name) {
 				t := pipelineRun
 				yaml := encodeToYaml(&t)
-				target := directory + "/" + localDir + "-" + "pipeline-" + t.Name
+				localPart := localDir + "-" + "pipeline-" + t.Name
+				target := directory + "/" + localPart
 				err := os.WriteFile(target, []byte(yaml), 0644) //#nosec G306)
 				if err != nil {
 					print(fmt.Sprintf("Failed to write pipleine file %s: %s", target, err))
+				} else {
+					instance.Logs = append(instance.Logs, localPart)
 				}
-				instance.Logs = append(instance.Logs, localDir+"-"+"pipeline-"+t.Name)
+				if db.Status.FailedVerification {
+					localPart := localDir + "-" + "verification-results-" + t.Name
+					target := directory + "/" + localPart
+					verification := ""
+					for _, res := range pipelineRun.Status.PipelineResults {
+						if res.Name == artifactbuild.PipelineResultVerificationResult {
+							verification = res.Value.StringVal
+						}
+					}
+					err := os.WriteFile(target, []byte(verification), 0644) //#nosec G306)
+					if err != nil {
+						print(fmt.Sprintf("Failed to write pipleine file %s: %s", target, err))
+					} else {
+						instance.Logs = append(instance.Logs, localPart)
+					}
+				}
 			}
 		}
 	}

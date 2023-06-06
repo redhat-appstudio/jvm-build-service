@@ -53,6 +53,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"--global-settings=/usr/share/maven/conf/settings.xml",
 		"--settings=$(workspaces.build-settings.path)/settings.xml",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
+		"--task-run-name=$(context.taskRun.name)",
 		"--results-file=$(results." + artifactbuild.PipelineResultPassedVerification + ".path)",
 	}
 
@@ -244,6 +245,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineResultImage},
 			{Name: PipelineResultImageDigest},
 			{Name: artifactbuild.PipelineResultPassedVerification},
+			{Name: artifactbuild.PipelineResultVerificationResult},
 		},
 		Steps: []pipelinev1beta1.Step{
 			{

@@ -87,7 +87,7 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
         }
     }
 
-    public int diffJar(JarInfo jar, List<String> excludes) {
+    public List<String> diffJar(JarInfo jar, List<String> excludes) {
         var classResults = DiffUtils.diff(this.name(), jar.name(), "class", this.classes(), jar.classes());
         var diffResults = new ArrayList<>(classResults.results());
 
@@ -191,8 +191,8 @@ public record JarInfo(String name, Map<String, ClassInfo> classes) implements As
         if (Log.isInfoEnabled() && !errors.isEmpty()) {
             Log.infof("Jar verification got %d errors:\n%s", errors.size(), StringUtils.join(errors, '\n'));
         }
-
-        return errors.size();
+        Collections.sort(errors);
+        return errors;
     }
 
     @Override

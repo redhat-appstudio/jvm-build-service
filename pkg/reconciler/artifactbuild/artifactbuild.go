@@ -48,6 +48,7 @@ const (
 	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
 	PipelineResultContaminants              = "CONTAMINANTS"
 	PipelineResultDeployedResources         = "DEPLOYED_RESOURCES"
+	PipelineResultVerificationResult        = "VERIFICATION_RESULTS"
 	PipelineResultPassedVerification        = "PASSED_VERIFICATION" //#nosec
 
 	RebuildAnnotation = "jvmbuildservice.io/rebuild"

@@ -51,7 +51,7 @@ public class JarVerifierUtils {
 
             var left = new JarInfo(jar1Path);
             var right = new JarInfo(jar2Path);
-            Assertions.assertEquals(expected, left.diffJar(right, Arrays.stream(exclusions).toList()));
+            Assertions.assertEquals(expected, left.diffJar(right, Arrays.stream(exclusions).toList()).size());
 
         } catch (IOException e) {
             throw new RuntimeException(e);
