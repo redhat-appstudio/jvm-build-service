@@ -12,10 +12,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 
@@ -55,9 +57,10 @@ public class V2CacheMavenResource {
     public Response getRebuild(@PathParam("stores") String stores,
             @PathParam("group") String group,
             @PathParam("artifact") String artifact,
-            @PathParam("version") String version, @PathParam("target") String target) throws Exception {
+            @PathParam("version") String version, @PathParam("target") String target,
+            @QueryParam(value = "upstream-only") @DefaultValue("false") boolean upstreamOnly) throws Exception {
 
-        CacheFacade facade = rebuildCache(stores);
+        CacheFacade facade = rebuildCache(stores, upstreamOnly);
         Log.debugf("Retrieving artifact %s/%s/%s/%s", group, artifact, version, target);
         var result = facade.getArtifactFile("", group, artifact, version, target, true);
         if (result.isPresent()) {
@@ -75,9 +78,11 @@ public class V2CacheMavenResource {
         throw new NotFoundException();
     }
 
-    private CacheFacade rebuildCache(String stores) throws Exception {
+    private CacheFacade rebuildCache(String stores, boolean upstreamOnly) throws Exception {
         List<RepositoryCache> caches = new ArrayList<>();
-        caches.addAll(remoteRepositoryManager.getRemoteRepositories("rebuilt"));
+        if (!upstreamOnly) {
+            caches.addAll(remoteRepositoryManager.getRemoteRepositories("rebuilt"));
+        }
         if (stores.length() > 1) {
             stores = stores.substring(1);
             for (var i : stores.split(",")) {
@@ -102,9 +107,10 @@ public class V2CacheMavenResource {
     public InputStream getRebuild(@PathParam("stores") String stores,
             @PathParam("commit-time") long commitTime,
             @PathParam("group") String group,
-            @PathParam("hash") String hash) throws Exception {
+            @PathParam("hash") String hash, @QueryParam(value = "upstream-only") @DefaultValue("false") boolean upstreamOnly)
+            throws Exception {
         Log.debugf("Retrieving file %s/%s", group, "maven-metadata.xml");
-        CacheFacade cache = rebuildCache(stores);
+        CacheFacade cache = rebuildCache(stores, upstreamOnly);
         var result = cache.getMetadataFiles("", group, "maven-metadata.xml" + hash);
         if (!result.isEmpty()) {
             boolean sha = hash.equals(".sha1");
