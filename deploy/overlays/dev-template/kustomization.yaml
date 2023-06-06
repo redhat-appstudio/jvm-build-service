@@ -18,3 +18,4 @@ patches:
 
 patchesStrategicMerge:
   - config.yaml
+  - system-config.yaml
