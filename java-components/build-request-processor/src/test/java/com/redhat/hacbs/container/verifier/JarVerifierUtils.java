@@ -3,8 +3,12 @@ package com.redhat.hacbs.container.verifier;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.jar.JarOutputStream;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 
 import org.junit.jupiter.api.Assertions;
@@ -16,7 +20,8 @@ import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
 public class JarVerifierUtils {
 
-    public static void runTests(Class<?> baseClass, Function<ClassVisitor, ClassVisitor> visitorFunction, int expected,
+    public static void runTests(Class<?> baseClass, Function<ClassVisitor, ClassVisitor> visitorFunction,
+            List<ExpectedChange> expectedChanges,
             String... exclusions) {
         var name = baseClass.getSimpleName() + ".class";
 
@@ -51,7 +56,24 @@ public class JarVerifierUtils {
 
             var left = new JarInfo(jar1Path);
             var right = new JarInfo(jar2Path);
-            Assertions.assertEquals(expected, left.diffJar(right, Arrays.stream(exclusions).toList()));
+            Set<String> expected = new HashSet<>();
+            for (var i : expectedChanges) {
+                StringBuilder sb = new StringBuilder();
+                if (i.changeType() == ChangeType.ADD) {
+                    sb.append("+");
+                } else if (i.changeType() == ChangeType.REMOVE) {
+                    sb.append("-");
+                } else {
+                    sb.append("^");
+                }
+                sb.append(":tmp1.jar:");
+                sb.append(baseClass.getName());
+                sb.append(":");
+                sb.append(i.change());
+                expected.add(sb.toString());
+            }
+            Assertions.assertEquals(expected,
+                    new HashSet<>(left.diffJar(right, Arrays.stream(exclusions).collect(Collectors.toList()))));
 
         } catch (IOException e) {
             throw new RuntimeException(e);

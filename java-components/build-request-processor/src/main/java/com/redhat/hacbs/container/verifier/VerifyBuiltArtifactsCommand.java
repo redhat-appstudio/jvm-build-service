@@ -19,11 +19,16 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.UnaryOperator;
+
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
@@ -32,8 +37,14 @@ import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.repository.RemoteRepository.Builder;
 import org.jboss.logging.Logger;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.redhat.hacbs.container.analyser.dependencies.TaskRun;
+import com.redhat.hacbs.container.analyser.dependencies.TaskRunResult;
 import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
+import io.fabric8.kubernetes.client.KubernetesClient;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -69,10 +80,14 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
         @ArgGroup(exclusive = false)
         MavenOptions mavenOptions = new MavenOptions();
+
     }
 
     @ArgGroup(multiplicity = "1")
     Options options = new Options();
+
+    @CommandLine.Option(names = "--task-run-name")
+    String taskRunName;
 
     @Option(names = { "--report-only" })
     boolean reportOnly;
@@ -94,6 +109,9 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
     private DefaultRepositorySystemSession session;
 
+    @Inject
+    Instance<KubernetesClient> client;
+
     public VerifyBuiltArtifactsCommand() {
 
     }
@@ -105,7 +123,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
             if (options.localOptions.originalFile != null && options.localOptions.newFile != null) {
                 var numErrors = handleJar(options.localOptions.originalFile, options.localOptions.newFile, excludes);
-                return (numErrors > 0 && !reportOnly ? 1 : 0);
+                return (!numErrors.isEmpty() && !reportOnly ? 1 : 0);
             }
 
             if (session == null) {
@@ -113,8 +131,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
             }
 
             Log.debugf("Deploy path: %s", options.mavenOptions.deployPath);
-            var passedCoords = (List<String>) new ArrayList<String>();
-            var failedCoords = (List<String>) new ArrayList<String>();
+            var verificationResults = new HashMap<String, List<String>>();
 
             AtomicBoolean failed = new AtomicBoolean();
             Files.walkFileTree(options.mavenOptions.deployPath, new SimpleFileVisitor<>() {
@@ -127,16 +144,10 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                             var relativeFile = options.mavenOptions.deployPath.relativize(file);
                             var coords = pathToCoords(relativeFile);
                             Log.debugf("File %s has coordinates %s", relativeFile, coords);
-                            var numFailues = handleJar(file, coords, excludes);
-                            var jarFailed = (numFailues > 0);
-                            if (jarFailed) {
+                            var failures = handleJar(file, coords, excludes);
+                            verificationResults.put(coords, failures);
+                            if (!failures.isEmpty()) {
                                 failed.set(true);
-                            }
-
-                            if (jarFailed) {
-                                failedCoords.add(coords);
-                            } else {
-                                passedCoords.add(coords);
                             }
                         } catch (Exception e) {
                             throw new RuntimeException(e);
@@ -147,12 +158,14 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 }
             });
 
-            if (!passedCoords.isEmpty()) {
-                Log.infof("Passed: %s", passedCoords);
-            }
-
-            if (!failedCoords.isEmpty()) {
-                Log.infof("Failed: %s", failedCoords);
+            if (!verificationResults.isEmpty()) {
+                for (var e : verificationResults.entrySet()) {
+                    if (e.getValue().isEmpty()) {
+                        Log.infof("Passed: %s", e.getKey());
+                    } else {
+                        Log.errorf("Failed: %s:\n%s", e.getKey(), String.join("\n", e.getValue()));
+                    }
+                }
             }
 
             if (resultsFile != null) {
@@ -161,6 +174,30 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 } catch (IOException ex) {
                     Log.errorf(ex, "Failed to write results");
                 }
+            }
+            if (taskRunName != null) {
+
+                var client = this.client.get();
+                var resources = client.resources(TaskRun.class);
+                resources.withName(taskRunName).editStatus(new UnaryOperator<TaskRun>() {
+                    @Override
+                    public TaskRun apply(TaskRun taskRun) {
+                        List<TaskRunResult> results = new ArrayList<>();
+                        if (taskRun.getStatus().getTaskResults() != null) {
+                            results.addAll(taskRun.getStatus().getTaskResults());
+                        }
+                        ObjectMapper objectMapper = new ObjectMapper();
+                        try {
+                            var json = objectMapper.writer().writeValueAsString(verificationResults);
+                            io.quarkus.logging.Log.infof("Writing verification results %s", json);
+                            results.add(new TaskRunResult("VERIFICATION_RESULTS", json));
+                            taskRun.getStatus().setTaskResults(results);
+                            return taskRun;
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
             }
 
             return (failed.get() && !reportOnly ? 1 : 0);
@@ -227,38 +264,36 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
         }
     }
 
-    private int handleJar(Path remoteFile, Path file, List<String> excludes) {
+    private List<String> handleJar(Path remoteFile, Path file, List<String> excludes) {
         var left = new JarInfo(remoteFile);
         var right = new JarInfo(file);
         return left.diffJar(right, excludes);
     }
 
-    private int handleJar(Path file, String coords, List<String> excludes) {
+    private List<String> handleJar(Path file, String coords, List<String> excludes) {
         try {
             var optionalRemoteFile = resolveArtifact(coords, remoteRepositories, session, system);
 
             if (optionalRemoteFile.isEmpty()) {
                 Log.warnf("Ignoring missing artifact %s", coords);
-                return 0;
+                return List.of();
             }
 
             var remoteFile = optionalRemoteFile.get();
             Log.infof("Verifying %s (%s, %s)", coords, remoteFile.toAbsolutePath(), file.toAbsolutePath());
-            var numFailures = handleJar(remoteFile, file, excludes);
+            var errors = handleJar(remoteFile, file, excludes);
+            int numFailures = errors.size();
+
             Log.debugf("Verification of %s %s", coords, numFailures > 0 ? "failed" : "passed");
 
-            if (numFailures > 0) {
-                numFailures++;
-            }
-
-            return numFailures;
+            return errors;
         } catch (OutOfMemoryError e) {
             //HUGE hack, but some things are just too large to diff in memory
             //but we would need a complete re-rewrite to handle this
             //these are usually tools that have heaps of classes shaded in
             //we just ignore this case for now
             Log.errorf(e, "Failed to analyse %s as it is too big", file);
-            return 0;
+            return List.of();
         }
     }
 }
