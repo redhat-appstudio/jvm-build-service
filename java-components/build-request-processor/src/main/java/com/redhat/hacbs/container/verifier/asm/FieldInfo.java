@@ -1,16 +1,13 @@
 package com.redhat.hacbs.container.verifier.asm;
 
-import static com.redhat.hacbs.container.verifier.asm.AsmUtils.accessToSet;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.objectweb.asm.tree.FieldNode;
 
 public record FieldInfo(
-        Set<FieldAccess> access, String name,
+        AccessSet<FieldAccess> access, String name,
         String desc, String signature,
         Object value,
         Map<String, AnnotationInfo> visibleAnnotations/*
@@ -22,7 +19,7 @@ public record FieldInfo(
                                                        */) implements AsmDiffable<FieldInfo> {
 
     public FieldInfo(FieldNode node) {
-        this(accessToSet(node.access, FieldAccess.class), node.name, node.desc, node.signature, node.value,
+        this(new AccessSet<>(node.access, FieldAccess.class), node.name, node.desc, node.signature, node.value,
                 node.visibleAnnotations != null
                         ? node.visibleAnnotations.stream()
                                 .collect(Collectors.toMap(n -> n.desc, AnnotationInfo::new, (x, y) -> x, LinkedHashMap::new))
@@ -42,5 +39,15 @@ public record FieldInfo(
                                * node.attrs != null ? node.attrs.stream().map(AttributeInfo::new).collect(Collectors.toList()) :
                                * null
                                */);
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 }

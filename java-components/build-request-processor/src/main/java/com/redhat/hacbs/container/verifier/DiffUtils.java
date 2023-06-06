@@ -1,29 +1,40 @@
 package com.redhat.hacbs.container.verifier;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.builder.DiffResult;
-import org.apache.commons.lang3.builder.Diffable;
 import org.jboss.logging.Logger;
+
+import com.redhat.hacbs.container.verifier.asm.AsmDiffable;
 
 public class DiffUtils {
     private static final Logger Log = Logger.getLogger(DiffUtils.class);
 
-    public record DiffResults(Set<String> shared, Set<String> added, Set<String> deleted, List<DiffResult<?>> diffResults) {
-        public DiffResults(Set<String> shared, Set<String> added, Set<String> deleted, List<DiffResult<?>> diffResults) {
+    public record DiffResults(Set<String> shared, Set<String> added, Set<String> deleted,
+            Map<String, DiffResult<?>> diffResults,
+            List<String> results) {
+        public DiffResults(Set<String> shared, Set<String> added, Set<String> deleted, Map<String, DiffResult<?>> diffResults,
+                List<String> results) {
             this.shared = Set.copyOf(shared);
             this.added = Set.copyOf(added);
             this.deleted = Set.copyOf(deleted);
-            this.diffResults = List.copyOf(diffResults);
+            this.diffResults = Map.copyOf(diffResults);
+            this.results = List.copyOf(results);
         }
     }
 
-    public static <T extends Diffable<T>> DiffResults diff(String name, Map<String, T> left, Map<String, T> right) {
+    public static <T extends AsmDiffable<T>> DiffResults diff(String oldName, String newName, String type, Map<String, T> left,
+            Map<String, T> right) {
+        var results = new ArrayList<String>();
+        var oname = oldName.replace('/', '.');
+        var nname = newName.replace('/', '.');
         var shared = (Set<String>) new LinkedHashSet<String>();
         var deleted = (Set<String>) new LinkedHashSet<String>();
         left.keySet().forEach(key -> {
@@ -35,31 +46,18 @@ public class DiffUtils {
         });
         var added = right.keySet().stream().filter(key -> !left.containsKey(key))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+        added.forEach(key -> results.add(String.format("+:%s:%s:%s", nname, type, Objects.toString(right.get(key), key))));
+        deleted.forEach(key -> results.add(String.format("-:%s:%s:%s", oname, type, Objects.toString(left.get(key), key))));
+        var diffResults = new LinkedHashMap<String, DiffResult<?>>();
+        shared.forEach(clazz -> {
+            var l = left.get(clazz);
 
-        if (!added.isEmpty()) {
-            Log.warnf("%s: %d items were added: %s", name, added.size(), added);
-        }
-
-        if (!deleted.isEmpty()) {
-            Log.warnf("%s: %d items were removed: %s", name, deleted.size(), deleted);
-        }
-
-        var results = (List<DiffResult<?>>) new ArrayList<DiffResult<?>>(shared.size());
-        shared.forEach(s -> {
-            var l = left.get(s);
-            var r = right.get(s);
-            var result = l.diff(r);
-            results.add(result);
-
-            if (result.getNumberOfDiffs() > 0) {
-                Log.warnf("%s %s has %d differences", name, s, result.getNumberOfDiffs());
-                var diffs = result.getDiffs();
-
-                for (var diff : diffs) {
-                    Log.warnf("  %s", diff);
-                }
+            if (l != null) {
+                var r = right.get(clazz);
+                var diffResult = l.diff(r);
+                diffResults.put(clazz, diffResult);
             }
         });
-        return new DiffResults(shared, added, deleted, results);
+        return new DiffResults(shared, added, deleted, diffResults, results);
     }
 }

@@ -8,4 +8,14 @@ public record ModuleProvideInfo(String service, List<String> providers) implemen
     public ModuleProvideInfo(ModuleProvideNode node) {
         this(node.service, List.copyOf(node.providers));
     }
+
+    @Override
+    public String getName() {
+        return service + " " + providers;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

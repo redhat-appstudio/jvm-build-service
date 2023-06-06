@@ -7,4 +7,14 @@ public record LocalVariableInfo(String name, String desc, String signature, Labe
     public LocalVariableInfo(LocalVariableNode node) {
         this(node.name, node.desc, node.signature, new LabelInfo(node.start), new LabelInfo(node.end), node.index);
     }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

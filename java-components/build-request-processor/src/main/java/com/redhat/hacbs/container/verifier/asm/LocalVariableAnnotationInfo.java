@@ -13,4 +13,14 @@ public record LocalVariableAnnotationInfo(String desc, List<Object> values, int 
                 node.start.stream().map(LabelInfo::new).collect(Collectors.toList()),
                 node.end.stream().map(LabelInfo::new).collect(Collectors.toList()), List.copyOf(node.index));
     }
+
+    @Override
+    public String getName() {
+        return desc;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
+    }
 }

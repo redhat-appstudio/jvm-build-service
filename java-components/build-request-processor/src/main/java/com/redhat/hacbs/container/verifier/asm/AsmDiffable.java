@@ -12,4 +12,8 @@ public interface AsmDiffable<T> extends Diffable<T> {
     default DiffResult<T> diff(T obj) {
         return new ReflectionDiffBuilder<>((T) this, obj, MULTI_LINE_STYLE).build();
     }
+
+    default String getName() {
+        return "";
+    }
 }
