@@ -1,0 +1,3 @@
+---
+additionalArgs:
+  - "-Dquarkus1=true"

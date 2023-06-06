@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.Response;
 import com.redhat.hacbs.artifactcache.services.RecipeManager;
 import com.redhat.hacbs.recipies.GAV;
 
+import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;
 
 @Path("/v2/recipe-lookup")
@@ -48,6 +49,7 @@ public class V2RecipeLookupResource {
             var result = recipeManager.resolveBuildInfo(scmUrl, version);
             return Response.ok(result).build();
         } catch (Exception e) {
+            Log.errorf(e, "Failed to lookup build info for %s@%s", scmUrl, version);
             return Response.status(500).entity(e.getMessage()).build();
         }
 
