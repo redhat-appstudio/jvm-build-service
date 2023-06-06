@@ -7,6 +7,7 @@ public class RebuiltArtifactSpec {
 
     private String gav;
     private String image;
+    private String digest;
 
     public String getGav() {
         return gav;
@@ -22,6 +23,15 @@ public class RebuiltArtifactSpec {
 
     public RebuiltArtifactSpec setImage(String image) {
         this.image = image;
+        return this;
+    }
+
+    public String getDigest() {
+        return digest;
+    }
+
+    public RebuiltArtifactSpec setDigest(String digest) {
+        this.digest = digest;
         return this;
     }
 }

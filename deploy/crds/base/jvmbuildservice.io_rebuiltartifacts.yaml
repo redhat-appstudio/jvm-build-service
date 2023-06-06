@@ -40,6 +40,8 @@ spec:
             type: object
           spec:
             properties:
+              digest:
+                type: string
               gav:
                 description: The GAV of the rebuilt artifact
                 type: string

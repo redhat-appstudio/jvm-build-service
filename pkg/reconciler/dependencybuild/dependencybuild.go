@@ -742,9 +742,12 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 		if success {
 			var image string
+			var digest string
 			for _, i := range pr.Status.PipelineResults {
 				if i.Name == PipelineResultImage {
 					image = i.Value.StringVal
+				} else if i.Name == PipelineResultImageDigest {
+					digest = i.Value.StringVal
 				}
 			}
 			for _, i := range pr.Status.PipelineResults {
@@ -770,6 +773,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 						}
 						ra.Spec.GAV = i
 						ra.Spec.Image = image
+						ra.Spec.Digest = digest
 						err := r.client.Create(ctx, &ra)
 						if err != nil {
 							if !errors.IsAlreadyExists(err) {
@@ -786,6 +790,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 									return reconcile.Result{}, nil
 								}
 								ra.Spec.Image = image
+								ra.Spec.Digest = digest
 								log.Info(fmt.Sprintf("Updating existing RebuiltArtifact %s to reference image %s", ra.Name, ra.Spec.Image), "action", "UPDATE")
 								err = r.client.Update(ctx, &ra)
 								if err != nil {
