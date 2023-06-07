@@ -103,7 +103,17 @@ rules:
       - jvm-build-image-secrets
       - jvm-build-git-secrets
     verbs:
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    # note - tekton gives its controller read access to secrets, so any pods there can access secrets in the pods namespace
+    resources:
+      - secrets
+    verbs:
       - get
+      - create
   - apiGroups:
       - "apps"
     resources:

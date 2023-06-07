@@ -4,7 +4,11 @@ import (
 	"flag"
 	zap2 "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"strings"
+
 	// needed for hack/update-codegen.sh
 	_ "k8s.io/code-generator"
 
@@ -15,6 +19,7 @@ import (
 
 	//+kubebuilder:scaffold:imports
 	"github.com/go-logr/logr"
+	"github.com/redhat-appstudio/image-controller/pkg/quay"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/controller"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 )
@@ -52,8 +57,23 @@ func main() {
 	restConfig := ctrl.GetConfigOrDie()
 	klog.SetLogger(mainLog)
 
+	tokenPath := "/workspace/quaytoken"
+	tokenContent, err := ioutil.ReadFile(tokenPath)
+	if err != nil {
+		mainLog.Error(err, "unable to read quay token")
+	}
+	orgPath := "/workspace/organization"
+	orgContent, err := ioutil.ReadFile(orgPath)
+	if err != nil {
+		mainLog.Error(err, "unable to read quay organization")
+	}
+	var quayClient *quay.QuayClient
+	if orgContent != nil && tokenContent != nil {
+		client := quay.NewQuayClient(&http.Client{Transport: &http.Transport{}}, strings.TrimSpace(string(tokenContent)), "https://quay.io/api/v1")
+		quayClient = &client
+	}
+
 	var mgr ctrl.Manager
-	var err error
 	mopts := ctrl.Options{
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
@@ -65,7 +85,7 @@ func main() {
 	util.ImageTag = os.Getenv("IMAGE_TAG")
 	util.ImageRepo = os.Getenv("IMAGE_REPO")
 
-	mgr, err = controller.NewManager(restConfig, mopts)
+	mgr, err = controller.NewManager(restConfig, mopts, quayClient, string(orgContent))
 	if err != nil {
 		mainLog.Error(err, "unable to start manager")
 		os.Exit(1)

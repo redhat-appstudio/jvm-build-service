@@ -2,8 +2,10 @@ package jbsconfig
 
 import (
 	"context"
+	"encoding/base64"
 	errors2 "errors"
 	"fmt"
+	"github.com/redhat-appstudio/image-controller/pkg/quay"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"regexp"
@@ -35,6 +37,17 @@ import (
 const TlsServiceName = v1alpha1.CacheDeploymentName + "-tls"
 const TestRegistry = "jvmbuildservice.io/test-registry"
 const DefaultRecipeRepository = "https://github.com/redhat-appstudio/jvm-build-data"
+const ImageRepositoryFinalizer = "jvmbuildservice.io/quay-repository-finalizer"
+const DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
+
+const (
+	Action              = "action"
+	Audit               = "audit"
+	ActionView   string = "VIEW"
+	ActionAdd    string = "ADD"
+	ActionUpdate string = "UPDATE"
+	ActionDelete string = "DELETE"
+)
 
 type ReconcilerJBSConfig struct {
 	client               client.Client
@@ -42,14 +55,18 @@ type ReconcilerJBSConfig struct {
 	eventRecorder        record.EventRecorder
 	configuredCacheImage string
 	spiPresent           bool
+	quayClient           *quay.QuayClient
+	quayOrgName          string
 }
 
-func newReconciler(mgr ctrl.Manager, spiPresent bool) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, spiPresent bool, quayClient *quay.QuayClient, quayOrgName string) reconcile.Reconciler {
 	ret := &ReconcilerJBSConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("JBSConfig"),
 		spiPresent:    spiPresent,
+		quayClient:    quayClient,
+		quayOrgName:   quayOrgName,
 	}
 	return ret
 }
@@ -141,6 +158,38 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		}
 		return reconcile.Result{}, err
 	}
+	if !jbsConfig.DeletionTimestamp.IsZero() {
+		if controllerutil.ContainsFinalizer(&jbsConfig, ImageRepositoryFinalizer) {
+			robotAccountName := generateRobotAccountName(&jbsConfig)
+			isDeleted, err := r.quayClient.DeleteRobotAccount(r.quayOrgName, robotAccountName)
+			if err != nil {
+				log.Error(err, "failed to delete robot account")
+				// Do not block Component deletion if failed to delete robot account
+			}
+			if isDeleted {
+				log.Info(fmt.Sprintf("Deleted robot account %s", robotAccountName))
+			}
+
+			if val, exists := jbsConfig.Annotations[DeleteImageRepositoryAnnotationName]; exists && val == "true" {
+				imageRepo := generateRepositoryName(&jbsConfig)
+				isRepoDeleted, err := r.quayClient.DeleteRepository(r.quayOrgName, imageRepo)
+				if err != nil {
+					log.Error(err, "failed to delete image repository")
+					// Do not block Component deletion if failed to delete image repository
+				}
+				if isRepoDeleted {
+					log.Info(fmt.Sprintf("Deleted image repository %s", imageRepo))
+				}
+			}
+
+			controllerutil.RemoveFinalizer(&jbsConfig, ImageRepositoryFinalizer)
+			if err := r.client.Update(ctx, &jbsConfig); err != nil {
+				log.Error(err, "failed to remove image repository finalizer")
+				return ctrl.Result{}, err
+			}
+			log.Info("Image repository finalizer removed from the JBSConfig")
+		}
+	}
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
@@ -174,7 +223,15 @@ func settingOrDefault(setting, def string) string {
 	}
 	return setting
 }
+func generateRobotAccountName(component *v1alpha1.JBSConfig) string {
+	robotAccountName := component.Namespace + component.Name
+	robotAccountName = strings.Replace(robotAccountName, "-", "_", -1)
+	return robotAccountName
+}
 
+func generateRepositoryName(component *v1alpha1.JBSConfig) string {
+	return component.Namespace + "/jvm-build-service-artifacts"
+}
 func setEnvVarValue(field, envName string, cache *appsv1.Deployment) *appsv1.Deployment {
 	envVar := corev1.EnvVar{
 		Name:  envName,
@@ -229,12 +286,17 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	if !jbsConfig.Spec.EnableRebuilds {
 		return nil
 	}
+
+	if jbsConfig.Spec.Owner == "" {
+		return r.handleNoOwnerSpecified(ctx, log, jbsConfig)
+	}
+
 	registrySecret := &corev1.Secret{}
 	// our client is wired to not cache secrets / establish informers for secrets
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.ImageSecretName}, registrySecret)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return r.processSpiImageSecret(ctx, jbsConfig)
+			return r.handleNoImageSecretFound(ctx, jbsConfig)
 		}
 		return err
 	}
@@ -584,8 +646,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	}
 }
 
-func (r *ReconcilerJBSConfig) processSpiImageSecret(ctx context.Context, config *v1alpha1.JBSConfig) error {
-	//no secret exists, lets try and grab one from the SPI
+func (r *ReconcilerJBSConfig) handleNoImageSecretFound(ctx context.Context, config *v1alpha1.JBSConfig) error {
 	binding := v1beta1.SPIAccessTokenBinding{}
 	err := r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.ImageSecretName, Namespace: config.Namespace}, &binding)
 	if err != nil {
@@ -633,4 +694,111 @@ func (r *ReconcilerJBSConfig) processSpiImageSecret(ctx context.Context, config 
 		return errors2.New("unexpected error, SPIAccessTokenBinding claims to be injected but secret was not found")
 	}
 	return errors2.New("created SPIAccessTokenBinding, waiting for secret to be injected")
+}
+
+func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log logr.Logger, config *v1alpha1.JBSConfig) error {
+	if r.quayClient == nil || r.quayOrgName == "" {
+		return errors2.New("no owner specified and automatic repo creation is disabled")
+	}
+
+	repo, robotAccount, err := r.generateImageRepository(log, config)
+	if err != nil {
+		return err
+	}
+	if repo == nil || robotAccount == nil {
+		return errors2.New("unknown error in the repository generation process")
+	}
+	controllerutil.AddFinalizer(config, ImageRepositoryFinalizer)
+	config.Spec.Owner = r.quayOrgName
+	config.Spec.Host = "quay.io"
+	config.Spec.Repository = repo.Name
+	err = r.client.Update(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	// Create secret with the reposuitory credentials
+	robotAccountSecret := generateSecret(config, *robotAccount)
+
+	robotAccountSecretKey := types.NamespacedName{Namespace: config.Namespace, Name: v1alpha1.ImageSecretName}
+	existingRobotAccountSecret := &corev1.Secret{}
+	if err := r.client.Get(ctx, robotAccountSecretKey, existingRobotAccountSecret); err == nil {
+		if err := r.client.Delete(ctx, existingRobotAccountSecret); err != nil {
+			log.Error(err, fmt.Sprintf("failed to delete robot account secret %v", robotAccountSecretKey), Action, ActionDelete)
+			return err
+		} else {
+			log.Info(fmt.Sprintf("Deleted old robot account secret %v", robotAccountSecretKey), Action, ActionDelete)
+		}
+	} else if !errors.IsNotFound(err) {
+		log.Error(err, fmt.Sprintf("failed to read robot account secret %v", robotAccountSecretKey), Action, ActionView)
+		return err
+	}
+
+	if err := r.client.Create(ctx, &robotAccountSecret); err != nil {
+		log.Error(err, fmt.Sprintf("error writing robot account token into Secret: %v", robotAccountSecretKey), Action, ActionAdd)
+		return err
+	}
+	log.Info(fmt.Sprintf("Created image registry secret %s for Component", robotAccountSecretKey.Name), Action, ActionAdd)
+
+	return nil
+}
+
+func (r *ReconcilerJBSConfig) generateImageRepository(log logr.Logger, component *v1alpha1.JBSConfig) (*quay.Repository, *quay.RobotAccount, error) {
+
+	imageRepositoryName := generateRepositoryName(component)
+	repo, err := r.quayClient.CreateRepository(quay.RepositoryRequest{
+		Namespace:   r.quayOrgName,
+		Visibility:  "public",
+		Description: "JVM Build Service repository for the user",
+		Repository:  imageRepositoryName,
+	})
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to create image repository %s", imageRepositoryName))
+		return nil, nil, err
+	}
+
+	robotAccountName := generateRobotAccountName(component)
+	_, _ = r.quayClient.DeleteRobotAccount(r.quayOrgName, robotAccountName)
+	robotAccount, err := r.quayClient.CreateRobotAccount(r.quayOrgName, robotAccountName)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to create robot account %s", robotAccountName))
+		return nil, nil, err
+	}
+
+	err = r.quayClient.AddWritePermissionsToRobotAccount(r.quayOrgName, repo.Name, robotAccountName)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to add permissions to robot account %s", robotAccountName))
+		return nil, nil, err
+	}
+
+	return repo, robotAccount, nil
+}
+
+// generateSecret dumps the robot account token into a Secret for future consumption.
+func generateSecret(c *v1alpha1.JBSConfig, r quay.RobotAccount) corev1.Secret {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      v1alpha1.ImageSecretName,
+			Namespace: c.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Name:       c.Name,
+					APIVersion: c.APIVersion,
+					Kind:       c.Kind,
+					UID:        c.UID,
+				},
+			},
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+	}
+
+	secretData := map[string]string{}
+	authString := fmt.Sprintf("%s:%s", r.Name, r.Token)
+	secretData[corev1.DockerConfigJsonKey] = fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`,
+		"quay.io",
+		base64.StdEncoding.EncodeToString([]byte(authString)),
+	)
+
+	secret.StringData = secretData
+	return secret
 }

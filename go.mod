@@ -25,6 +25,7 @@ require (
 require (
 	github.com/CycloneDX/cyclonedx-go v0.7.0
 	github.com/google/go-containerregistry v0.12.0
+	github.com/redhat-appstudio/image-controller v0.0.0-20230606065013-5c7c65e0db05
 	github.com/redhat-appstudio/service-provider-integration-operator v0.9.1-0.20230420083506-cd7210b05b60
 	go.uber.org/zap v1.24.0
 )

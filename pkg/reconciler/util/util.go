@@ -27,7 +27,6 @@ var (
 
 	ImageTag  string
 	ImageRepo string
-	KCP       bool
 )
 
 func GetImageName(ctx context.Context, client client.Client, log logr.Logger, substr, envvar string) (string, error) {
@@ -35,11 +34,9 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 	imgTag := ""
 	depImg := ""
 	controllerDeployment := &appsv1.Deployment{}
-	if !KCP {
-		err = client.Get(ctx, controllerName, controllerDeployment)
-		if err != nil && !errors.IsNotFound(err) {
-			return "", err
-		}
+	err = client.Get(ctx, controllerName, controllerDeployment)
+	if err != nil && !errors.IsNotFound(err) {
+		return "", err
 	}
 
 	// Get the image name using a controller's env var (if the env var value is specified)
@@ -60,7 +57,7 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 		}
 		return fmt.Sprintf("quay.io/%s/hacbs-jvm-%s:%s", repo, substr, imgTag), nil
 	}
-	if err == nil && !KCP {
+	if err == nil {
 		if len(controllerDeployment.Spec.Template.Spec.Containers) == 0 {
 			return "", fmt.Errorf("no containers in controller deployment !!!")
 		}
