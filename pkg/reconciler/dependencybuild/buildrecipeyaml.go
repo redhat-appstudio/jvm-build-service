@@ -70,23 +70,24 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
-	if jbsConfig.Spec.ImageRegistry.Host != "" {
-		deployArgs = append(deployArgs, "--registry-host="+jbsConfig.Spec.ImageRegistry.Host)
+	imageRegistry := jbsConfig.ImageRegistry()
+	if imageRegistry.Host != "" {
+		deployArgs = append(deployArgs, "--registry-host="+imageRegistry.Host)
 	}
-	if jbsConfig.Spec.ImageRegistry.Port != "" {
-		deployArgs = append(deployArgs, "--registry-port="+jbsConfig.Spec.ImageRegistry.Port)
+	if imageRegistry.Port != "" {
+		deployArgs = append(deployArgs, "--registry-port="+imageRegistry.Port)
 	}
-	if jbsConfig.Spec.ImageRegistry.Owner != "" {
-		deployArgs = append(deployArgs, "--registry-owner="+jbsConfig.Spec.ImageRegistry.Owner)
+	if imageRegistry.Owner != "" {
+		deployArgs = append(deployArgs, "--registry-owner="+imageRegistry.Owner)
 	}
-	if jbsConfig.Spec.ImageRegistry.Repository != "" {
-		deployArgs = append(deployArgs, "--registry-repository="+jbsConfig.Spec.ImageRegistry.Repository)
+	if imageRegistry.Repository != "" {
+		deployArgs = append(deployArgs, "--registry-repository="+imageRegistry.Repository)
 	}
-	if jbsConfig.Spec.ImageRegistry.Insecure {
+	if imageRegistry.Insecure {
 		deployArgs = append(deployArgs, "--registry-insecure")
 	}
-	if jbsConfig.Spec.ImageRegistry.PrependTag != "" {
-		deployArgs = append(deployArgs, "--registry-prepend-tag="+jbsConfig.Spec.ImageRegistry.PrependTag)
+	if jbsConfig.ImageRegistry().PrependTag != "" {
+		deployArgs = append(deployArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
 	}
 
 	install := ""

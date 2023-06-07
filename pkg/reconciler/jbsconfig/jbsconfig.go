@@ -555,12 +555,13 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	if jbsConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
 
-		cache = setEnvVarValue(jbsConfig.Spec.Owner, "REGISTRY_OWNER", cache)
-		cache = setEnvVarValue(jbsConfig.Spec.Host, "REGISTRY_HOST", cache)
-		cache = setEnvVarValue(jbsConfig.Spec.Port, "REGISTRY_PORT", cache)
-		cache = setEnvVarValue(jbsConfig.Spec.Repository, "REGISTRY_REPOSITORY", cache)
-		cache = setEnvVarValue(strconv.FormatBool(jbsConfig.Spec.Insecure), "REGISTRY_INSECURE", cache)
-		cache = setEnvVarValue(jbsConfig.Spec.PrependTag, "REGISTRY_PREPEND_TAG", cache)
+		imageRegistry := jbsConfig.ImageRegistry()
+		cache = setEnvVarValue(imageRegistry.Owner, "REGISTRY_OWNER", cache)
+		cache = setEnvVarValue(imageRegistry.Host, "REGISTRY_HOST", cache)
+		cache = setEnvVarValue(imageRegistry.Port, "REGISTRY_PORT", cache)
+		cache = setEnvVarValue(imageRegistry.Repository, "REGISTRY_REPOSITORY", cache)
+		cache = setEnvVarValue(strconv.FormatBool(imageRegistry.Insecure), "REGISTRY_INSECURE", cache)
+		cache = setEnvVarValue(imageRegistry.PrependTag, "REGISTRY_PREPEND_TAG", cache)
 		cache = setEnvVar(corev1.EnvVar{
 			Name:      "REGISTRY_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &trueBool}},
@@ -653,17 +654,18 @@ func (r *ReconcilerJBSConfig) handleNoImageSecretFound(ctx context.Context, conf
 		if errors.IsNotFound(err) {
 			binding.Name = v1alpha1.ImageSecretName
 			binding.Namespace = config.Namespace
+			imageRegistry := config.ImageRegistry()
 			url := "https://"
-			if config.Spec.Host == "" {
+			if imageRegistry.Host == "" {
 				url += "quay.io"
 			} else {
-				url += config.Spec.Host
+				url += imageRegistry.Host
 			}
-			url += "/" + config.Spec.Owner + "/"
-			if config.Spec.Repository == "" {
+			url += "/" + imageRegistry.Owner + "/"
+			if imageRegistry.Repository == "" {
 				url += "artifact-deployments"
 			} else {
-				url += config.Spec.Repository
+				url += imageRegistry.Repository
 			}
 
 			binding.Spec.RepoUrl = url
@@ -709,10 +711,12 @@ func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log lo
 		return errors2.New("unknown error in the repository generation process")
 	}
 	controllerutil.AddFinalizer(config, ImageRepositoryFinalizer)
-	config.Spec.Owner = r.quayOrgName
-	config.Spec.Host = "quay.io"
-	config.Spec.Repository = repo.Name
-	err = r.client.Update(ctx, config)
+	config.Status.ImageRegistry = &v1alpha1.ImageRegistry{
+		Owner:      r.quayOrgName,
+		Host:       "quay.io",
+		Repository: repo.Name,
+	}
+	err = r.client.Status().Update(ctx, config)
 	if err != nil {
 		return err
 	}

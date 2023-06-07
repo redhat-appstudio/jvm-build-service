@@ -38,7 +38,8 @@ type JBSConfigSpec struct {
 }
 
 type JBSConfigStatus struct {
-	Message string `json:"message,omitempty"`
+	Message       string         `json:"message,omitempty"`
+	ImageRegistry *ImageRegistry `json:"imageRegistry,omitempty"`
 }
 
 type CacheSettings struct {
@@ -105,6 +106,32 @@ type JBSConfig struct {
 
 	Spec   JBSConfigSpec   `json:"spec"`
 	Status JBSConfigStatus `json:"status,omitempty"`
+}
+
+func (in *JBSConfig) ImageRegistry() ImageRegistry {
+	ret := in.Spec.ImageRegistry
+	if in.Status.ImageRegistry == nil {
+		return ret
+	}
+	if in.Status.ImageRegistry.Host != "" {
+		ret.Host = in.Status.ImageRegistry.Host
+	}
+	if in.Status.ImageRegistry.Owner != "" {
+		ret.Owner = in.Status.ImageRegistry.Owner
+	}
+	if in.Status.ImageRegistry.Repository != "" {
+		ret.Repository = in.Status.ImageRegistry.Repository
+	}
+	if in.Status.ImageRegistry.Port != "" {
+		ret.Port = in.Status.ImageRegistry.Port
+	}
+	if in.Status.ImageRegistry.PrependTag != "" {
+		ret.PrependTag = in.Status.ImageRegistry.PrependTag
+	}
+	if in.Status.ImageRegistry.Insecure {
+		ret.Insecure = true
+	}
+	return ret
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -57,7 +57,7 @@ func main() {
 	restConfig := ctrl.GetConfigOrDie()
 	klog.SetLogger(mainLog)
 
-	tokenPath := "/workspace/quaytoken"
+	tokenPath := "/workspace/quaytoken" //#nosec
 	tokenContent, err := ioutil.ReadFile(tokenPath)
 	if err != nil {
 		mainLog.Error(err, "unable to read quay token")

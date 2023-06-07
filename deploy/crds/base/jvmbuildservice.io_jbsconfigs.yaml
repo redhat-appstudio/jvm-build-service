@@ -140,6 +140,21 @@ spec:
             type: object
           status:
             properties:
+              imageRegistry:
+                properties:
+                  host:
+                    type: string
+                  insecure:
+                    type: boolean
+                  owner:
+                    type: string
+                  port:
+                    type: string
+                  prependTag:
+                    type: string
+                  repository:
+                    type: string
+                type: object
               message:
                 type: string
             type: object
