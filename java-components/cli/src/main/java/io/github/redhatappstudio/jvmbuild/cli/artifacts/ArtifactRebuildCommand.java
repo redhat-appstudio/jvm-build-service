@@ -21,15 +21,23 @@ public class ArtifactRebuildCommand implements Runnable {
     @CommandLine.Option(names = "--failed", description = "Rebuild all failed artifacts")
     boolean failed;
 
+    @CommandLine.Option(names = "--missing", description = "Rebuild all missing artifacts")
+    boolean missing;
+
     @Override
     public void run() {
-        if (failed) {
+        if (failed || missing) {
             if (gav != null || artifact != null) {
                 throw new RuntimeException("Must specify one of -a or -g or --failed");
             }
             var client = Arc.container().instance(KubernetesClient.class).get();
             for (var ab : client.resources(ArtifactBuild.class).list().getItems()) {
                 if (!ab.getStatus().getState().equals(ArtifactBuild.COMPLETE)) {
+                    if (missing) {
+                        if (!ab.getStatus().getState().equals(ArtifactBuild.MISSING)) {
+                            continue;
+                        }
+                    }
                     System.out.println("Rebuilding: " + ab.getMetadata().getName());
                     client.resources(ArtifactBuild.class).withName(ab.getMetadata().getName())
                             .edit(new UnaryOperator<ArtifactBuild>() {
