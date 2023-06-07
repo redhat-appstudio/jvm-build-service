@@ -14,9 +14,12 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -78,11 +81,12 @@ public class LookupBuildInfoCommand implements Runnable {
     public void run() {
         try {
 
-            BuildRecipeInfo buildRecipeInfo = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl))
-                    .build(CacheBuildInfoLocator.class).resolveBuildInfo(scmUrl, version);
+            CacheBuildInfoLocator buildInfoLocator = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl))
+                    .build(CacheBuildInfoLocator.class);
+            BuildRecipeInfo buildRecipeInfo = buildInfoLocator.resolveBuildInfo(scmUrl, version);
 
             Log.infof("Checking out %s at tag %s", scmUrl, tag);
-            doBuildAnalysis(scmUrl, tag, context, buildRecipeInfo, privateRepo);
+            doBuildAnalysis(scmUrl, tag, context, buildRecipeInfo, privateRepo, buildInfoLocator);
 
             if (message != null) {
                 Files.createFile(message);
@@ -100,7 +104,7 @@ public class LookupBuildInfoCommand implements Runnable {
     }
 
     private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo,
-            boolean privateRepo)
+            boolean privateRepo, CacheBuildInfoLocator buildInfoLocator)
             throws Exception {
         var path = Files.createTempDirectory("checkout");
         try (var clone = Git.cloneRepository()
@@ -146,6 +150,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 try (BufferedReader pomReader = Files.newBufferedReader(pomFile)) {
                     MavenXpp3Reader reader = new MavenXpp3Reader();
                     Model model = reader.read(pomReader);
+                    //TODO: we should do discoery on the whole tree
                     List<DiscoveryResult> results = new ArrayList<>();
                     if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
                         //not tagged properly, deal with it automatically
@@ -164,6 +169,14 @@ public class LookupBuildInfoCommand implements Runnable {
                             Log.errorf(t, "Failed to run analysis step %s", i);
                         }
                     }
+
+                    //look for repositories
+                    for (var repo : handleRepositories(model, buildInfoLocator)) {
+                        if (!info.repositories.contains(repo)) {
+                            info.repositories.add(repo);
+                        }
+                    }
+
                     Collections.sort(results);
                     for (var i : results) {
                         info.tools.putAll(i.toolVersions);
@@ -276,8 +289,30 @@ public class LookupBuildInfoCommand implements Runnable {
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
             }
             ObjectMapper mapper = new ObjectMapper();
-            Log.infof("Writing %s to %s", info.getInvocations(), buildInfo.toFile());
+            Log.infof("Writing %s to %s", info, buildInfo.toFile());
             mapper.writeValue(buildInfo.toFile(), info);
         }
+    }
+
+    private Collection<String> handleRepositories(Model model, CacheBuildInfoLocator buildInfoLocator) {
+        Set<String> repos = new HashSet<>();
+        if (model.getRepositories() != null) {
+            for (var i : model.getRepositories()) {
+                repos.add(i.getUrl());
+            }
+        }
+        if (model.getProfiles() != null) {
+            for (var profile : model.getProfiles()) {
+                if (profile.getRepositories() != null) {
+                    for (var i : profile.getRepositories()) {
+                        repos.add(i.getUrl());
+                    }
+                }
+            }
+        }
+        if (repos.isEmpty()) {
+            return List.of();
+        }
+        return buildInfoLocator.findRepositories(repos);
     }
 }

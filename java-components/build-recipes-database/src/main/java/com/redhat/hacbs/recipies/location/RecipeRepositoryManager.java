@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.jgit.api.Git;
@@ -105,6 +106,12 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     public Optional<Path> getRepositoryPaths(String name) {
         doUpdate();
         return recipeLayoutManager.getRepositoryPaths(name);
+    }
+
+    @Override
+    public List<Path> getAllRepositoryPaths() {
+        doUpdate();
+        return recipeLayoutManager.getAllRepositoryPaths();
     }
 
     @Override
