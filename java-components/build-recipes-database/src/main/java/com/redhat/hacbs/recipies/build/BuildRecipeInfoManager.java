@@ -11,7 +11,7 @@ import com.redhat.hacbs.recipies.RecipeManager;
 
 public class BuildRecipeInfoManager implements RecipeManager<BuildRecipeInfo> {
 
-    static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory())
+    private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
 

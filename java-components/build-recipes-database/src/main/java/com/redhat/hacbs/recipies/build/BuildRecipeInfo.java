@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BuildRecipeInfo {
@@ -42,11 +41,9 @@ public class BuildRecipeInfo {
 
     /**
      * This contains a map of additional build instructions for builds referenced
-     * by a scm.yaml with a hash fragment. Note that the commands are combined individually
-     * with this parent thereby avoiding the user having to duplicate everything. The
-     * instructions in this take precedence.
+     * by a scm.yaml with a hash fragment. These build instructions are not combined
+     * with the parent so any common instructions must be duplicated.
      */
-    @JsonDeserialize(using = CustomDeserialiser.class)
     Map<String, BuildRecipeInfo> additionalBuilds;
 
     public List<String> getAdditionalArgs() {

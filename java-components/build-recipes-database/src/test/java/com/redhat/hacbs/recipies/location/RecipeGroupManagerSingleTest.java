@@ -11,8 +11,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
@@ -106,19 +104,10 @@ public class RecipeGroupManagerSingleTest {
         BuildRecipeInfo recipeInfo = BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD));
         Map<String, BuildRecipeInfo> recipeInfoMap = recipeInfo.getAdditionalBuilds();
 
-        ObjectMapper mapper = new ObjectMapper(); // ### DEBUG
-        mapper.enable(SerializationFeature.INDENT_OUTPUT); // ### DEBUG
-        System.err.println("### map " + mapper.writeValueAsString(recipeInfoMap)); // ### DEBUG
-
         Assertions.assertEquals(List.of("-Dlz4-pure-java=true"),
                 recipeInfoMap.get("pureJava").getAdditionalArgs());
         Assertions.assertTrue(recipeInfoMap.get("pureJava").isEnforceVersion());
         Assertions.assertTrue(recipeInfoMap.get("pureJava").getPreBuildScript().startsWith("sed -i"));
-
-        Assertions.assertEquals(List.of("-Dfoo=foo"),
-                recipeInfoMap.get("pureJava2").getAdditionalArgs());
-        Assertions.assertFalse(recipeInfoMap.get("pureJava2").isEnforceVersion());
-        Assertions.assertTrue(recipeInfoMap.get("pureJava2").getPreBuildScript().startsWith("sed -i"));
     }
 
     @Test

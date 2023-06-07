@@ -8,11 +8,10 @@ import org.jboss.logging.Logger;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RepositoryInfo {
-    private static final Logger log = Logger.getLogger(RecipeGroupManager.class.getName());
+    private static final Logger log = Logger.getLogger( RepositoryInfo.class.getName());
 
     String type;
     String uri;
