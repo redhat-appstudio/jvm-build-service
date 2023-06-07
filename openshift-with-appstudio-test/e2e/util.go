@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
@@ -600,19 +601,37 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 					instance.Logs = append(instance.Logs, localPart)
 				}
 				if db.Status.FailedVerification {
-					localPart := localDir + "-" + "verification-results-" + t.Name
-					target := directory + "/" + localPart
 					verification := ""
 					for _, res := range pipelineRun.Status.PipelineResults {
 						if res.Name == artifactbuild.PipelineResultVerificationResult {
 							verification = res.Value.StringVal
 						}
 					}
-					err := os.WriteFile(target, []byte(verification), 0644) //#nosec G306)
-					if err != nil {
-						print(fmt.Sprintf("Failed to write pipleine file %s: %s", target, err))
-					} else {
-						instance.Logs = append(instance.Logs, localPart)
+					if verification != "" {
+						localPart := localDir + "-" + "pipeline-" + t.Name + "-FAILED-VERIFICATION"
+						target := directory + "/" + localPart
+
+						parsed := map[string][]string{}
+						err := json.Unmarshal([]byte(verification), &parsed)
+						if err != nil {
+							print(fmt.Sprintf("Failed to parse json for pipleine file %s: %s", target, err))
+						}
+						output := ""
+						for k, v := range parsed {
+							if len(v) > 0 {
+								output += "\n\nFAILED: " + k + "\n"
+								for _, i := range v {
+									output += "\t" + i + "\n"
+								}
+							}
+						}
+
+						err = os.WriteFile(target, []byte(output), 0644) //#nosec G306)
+						if err != nil {
+							print(fmt.Sprintf("Failed to write pipleine file %s: %s", target, err))
+						} else {
+							instance.Logs = append(instance.Logs, localPart)
+						}
 					}
 				}
 			}
