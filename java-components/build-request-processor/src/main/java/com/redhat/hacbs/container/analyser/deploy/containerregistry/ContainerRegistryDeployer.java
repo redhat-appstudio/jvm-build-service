@@ -74,6 +74,7 @@ public class ContainerRegistryDeployer implements Deployer {
         this.insecure = insecure;
         this.prependTag = prependTag;
         this.imageNameHashCallback = imageNameHashCallback;
+        String fullName = host + (port == 443 ? "" : ":" + port) + "/" + owner + "/" + repository;
         if (!token.isBlank()) {
             if (token.trim().startsWith("{")) {
                 //we assume this is a .dockerconfig file
@@ -83,7 +84,7 @@ public class ContainerRegistryDeployer implements Deployer {
                     String tmpUser = null;
                     String tmpPw = null;
                     for (var i : config.getAuths().entrySet()) {
-                        if (host.contains(i.getKey())) { //TODO: is contains enough?
+                        if (fullName.startsWith(i.getKey())) {
                             found = true;
                             var decodedAuth = new String(Base64.getDecoder().decode(i.getValue().getAuth()),
                                     StandardCharsets.UTF_8);

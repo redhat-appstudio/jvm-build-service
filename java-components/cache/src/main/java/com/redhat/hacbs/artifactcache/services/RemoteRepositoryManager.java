@@ -74,7 +74,8 @@ public class RemoteRepositoryManager {
                     "http" + (insecure ? "" : "s") + "://" + host + ":" + port + "/" + registryOwner.get() + "/"
                             + repository,
                     RepositoryType.OCI_REGISTRY,
-                    new OCIRegistryRepositoryClient(host + ":" + port, registryOwner.get(), repository, token, prependTag,
+                    new OCIRegistryRepositoryClient(host + (port == 443 ? "" : ":" + port), registryOwner.get(), repository,
+                            token, prependTag,
                             insecure, rebuiltArtifacts, storageManager));
             remoteStores.put("rebuilt", List.of(new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false)));
         }
