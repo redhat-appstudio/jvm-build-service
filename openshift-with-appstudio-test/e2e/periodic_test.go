@@ -25,7 +25,22 @@ import (
 )
 
 func TestServiceRegistry(t *testing.T) {
-	ta := setup(t, nil)
+	t.Parallel()
+	runTests(t, "apicurio-", "run-service-registry.yaml")
+}
+
+//func TestWildfly(t *testing.T) {
+//	t.Parallel()
+//	runTests(t, "wildfly-", "run-wildfly.yaml")
+//}
+
+func TestJBS(t *testing.T) {
+	t.Parallel()
+	runTests(t, "jbs-", "run-jvm-build-service.yaml")
+}
+
+func runTests(t *testing.T, namespace string, runYaml string) {
+	ta := setup(t, namespace)
 
 	countQuota := &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
@@ -49,7 +64,7 @@ func TestServiceRegistry(t *testing.T) {
 	}
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
-	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-service-registry.yaml")
+	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", runYaml)
 	ta.run = &v1beta1.PipelineRun{}
 	obj := streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
 	var ok bool
