@@ -83,8 +83,9 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
                     String tmpUser = null;
                     String tmpPw = null;
                     String host = null;
+                    String fullName = registry + "/" + owner + "/" + repository;
                     for (var i : config.getAuths().entrySet()) {
-                        if (registry.contains(i.getKey())) { //TODO: is contains enough?
+                        if (fullName.startsWith(i.getKey())) {
                             found = true;
                             var decodedAuth = new String(Base64.getDecoder().decode(i.getValue().getAuth()),
                                     StandardCharsets.UTF_8);
