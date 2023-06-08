@@ -573,16 +573,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
 		{Name: PipelineParamJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
-	log.Info("### handleStateBuilding::params start", paramValues)
-	log.Info("### handleStateBuilding::params start", "length", len(paramValues))
-	log.Info("### handleStateBuilding::params start", "spec", pr.Spec.Params)
 
-	extracted := extractParam(PipelineParamScmUrl, paramValues)
-	fmt.Printf("### extracted %s\n", extracted)
-
-	modifyURLFragment(&paramValues)
-	extracted = extractParam(PipelineParamScmUrl, paramValues)
-	fmt.Printf("### extracted afet modify %s\n", extracted)
+	modifyURLFragment(log, &paramValues)
 
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
@@ -595,8 +587,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	log.Info("### handleStateBuilding::params after createPipelineSpec with incorrect param ", pr.Spec.Params)
-	log.Info("### handleStateBuilding", "", paramValues)
 
 	db.Status.DiagnosticDockerFiles = append(db.Status.DiagnosticDockerFiles, diagnostic)
 	pr.Spec.Params = paramValues
@@ -1054,14 +1044,13 @@ func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 }
 
 // This is to remove any '#xxx' fragment from a URI so that git clone commands don't need seperate adjustment
-func modifyURLFragment(paramValues *[]pipelinev1beta1.Param) {
+func modifyURLFragment(log logr.Logger, paramValues *[]pipelinev1beta1.Param) {
 	for index, value := range *paramValues {
 		if value.Name == PipelineParamScmUrl {
-			fmt.Printf("### modifyURLFragment %s : [type]%s [str]%s\n", value.Name, value.Value.Type, value.Value.StringVal)
 			if value.Value.Type == pipelinev1beta1.ParamTypeString {
 				hashIndex := strings.Index(value.Value.StringVal, "#")
-				fmt.Printf("### modifyURLFragment hashIndex %d and index %d \n", hashIndex, index)
 				if hashIndex > -1 {
+					log.Info(fmt.Sprintf("Removing URL fragment of %s from %s", value.Value.StringVal[hashIndex+1:], value.Value.StringVal))
 					(*paramValues)[index].Value.StringVal = value.Value.StringVal[:hashIndex]
 				}
 			}

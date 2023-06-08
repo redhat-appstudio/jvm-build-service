@@ -89,10 +89,8 @@ public class LookupBuildInfoCommand implements Runnable {
                     .build(CacheBuildInfoLocator.class);
             BuildRecipeInfo buildRecipeInfo = buildInfoLocator.resolveBuildInfo(info.getUri(), version);
 
-
             if (info.getBuildNameFragment() != null) {
                 Log.infof("Using alternate name fragment of " + info.getBuildNameFragment());
-                Log.infof("### Recipe " + buildRecipeInfo);
                 buildRecipeInfo = buildRecipeInfo.getAdditionalBuilds().get(info.getBuildNameFragment());
                 if (buildRecipeInfo == null) {
                     throw new RuntimeException("Unknown build name " + info.getBuildNameFragment() + " for " + this.scmUrl
@@ -101,7 +99,6 @@ public class LookupBuildInfoCommand implements Runnable {
             }
 
             Log.infof("Checking out %s at tag %s", scmUrl, tag);
-            Log.infof("### build recipe  %s and %s", buildRecipeInfo, info.getUriWithoutFragment());
             doBuildAnalysis(info.getUriWithoutFragment(), tag, context, buildRecipeInfo, privateRepo, buildInfoLocator);
 
             if (message != null) {

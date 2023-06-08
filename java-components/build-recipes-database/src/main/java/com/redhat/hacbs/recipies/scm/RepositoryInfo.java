@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RepositoryInfo {
-    private static final Logger log = Logger.getLogger( RepositoryInfo.class.getName());
+    private static final Logger log = Logger.getLogger(RepositoryInfo.class.getName());
 
     String type;
     String uri;
