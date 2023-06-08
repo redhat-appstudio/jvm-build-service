@@ -3,85 +3,39 @@ on:
   pull_request:
     branches: [ main ]
 jobs:
-  build-controller:
+  wait-for-images:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build and export
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          tags: quay.io/minikube/hacbs-jvm-controller:dev
-          outputs: type=docker,dest=/tmp/controller.tar
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: controller
-          path: /tmp/controller.tar
-  build-cache:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build and export
-        uses: docker/build-push-action@v4
-        with:
-          context: java-components
-          file: java-components/cache/src/main/docker/Dockerfile.all-in-one
-          tags: quay.io/minikube/hacbs-jvm-cache:dev
-          outputs: type=docker,dest=/tmp/cache.tar
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: cache
-          path: /tmp/cache.tar
-  build-build-request-processor:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build and export
-        uses: docker/build-push-action@v4
-        with:
-          context: java-components
-          file: java-components/build-request-processor/src/main/docker/Dockerfile.all-in-one
-          tags: quay.io/minikube/hacbs-jvm-build-request-processor:dev
-          outputs: type=docker,dest=/tmp/build-request-processor.tar
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-request-processor
-          path: /tmp/build-request-processor.tar
+      - name: Wait for Images
+        run: |
+          while true
+          do
+            if ! docker pull quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }} ; then
+              echo "Failed to pull image 1"
+              sleep 10
+              continue
+            fi
+            if ! docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }} ; then
+              echo "Failed to pull image 2"
+              sleep 10
+              continue
+            fi
+            if ! docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} ; then
+              echo "Failed to pull image 3"
+              sleep 10
+              continue
+            fi
+            exit 0
+          done
+
   run-sample-project-tests:
-    needs: [build-build-request-processor, build-cache, build-controller]
+    needs: [wait-for-images]
     runs-on: ubuntu-latest
     name: Minikube Test Sample Project
     steps:
       - uses: actions/checkout@v2
-      - name: Download Cache
-        uses: actions/download-artifact@v3
-        with:
-          name: cache
-          path: /tmp
-      - name: Download Build Request Proessor
-        uses: actions/download-artifact@v3
-        with:
-          name: build-request-processor
-          path: /tmp
-      - name: Download Controller
-        uses: actions/download-artifact@v3
-        with:
-          name: controller
-          path: /tmp
       - name: Start minikube
-        uses: medyagh/setup-minikube@3213bac7294895b1d92c1f4db1f99c91a308efaf
+        uses: medyagh/setup-minikube@eefe3e32b8e0cbd99330ebb68c5fc2d0c2a5e68c
         with:
           cpus: max
           memory: max
@@ -92,9 +46,12 @@ jobs:
 
           eval $(minikube -p minikube docker-env)
 
-          docker load --input /tmp/controller.tar
-          docker load --input /tmp/cache.tar
-          docker load --input /tmp/build-request-processor.tar
+          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }}
+          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }}
+          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }}
+          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-build-request-processor:dev
+          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-cache:dev
+          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
 
           ./deploy/minikube-ci.sh
           make minikube-test
@@ -104,28 +61,13 @@ jobs:
         gavs:
           - "commons-collections:commons-collections:3.2.2,org.apache.commons:commons-lang3:3.12.0"
           - "org.xerial.snappy:snappy-java:1.1.8.4,org.lz4:lz4-java:1.8.0"
-    needs: [build-build-request-processor, build-cache, build-controller]
+    needs: [wait-for-images]
     runs-on: ubuntu-latest
     name: Minikube GAV Matrix
     steps:
       - uses: actions/checkout@v2
-      - name: Download Cache
-        uses: actions/download-artifact@v3
-        with:
-          name: cache
-          path: /tmp
-      - name: Download Build Request Proessor
-        uses: actions/download-artifact@v3
-        with:
-          name: build-request-processor
-          path: /tmp
-      - name: Download Controller
-        uses: actions/download-artifact@v3
-        with:
-          name: controller
-          path: /tmp
       - name: Start minikube
-        uses: medyagh/setup-minikube@master
+        uses: medyagh/setup-minikube@eefe3e32b8e0cbd99330ebb68c5fc2d0c2a5e68c
         with:
           cpus: max
           memory: max
@@ -136,9 +78,12 @@ jobs:
 
           eval $(minikube -p minikube docker-env)
 
-          docker load --input /tmp/controller.tar
-          docker load --input /tmp/cache.tar
-          docker load --input /tmp/build-request-processor.tar
+          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }}
+          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }}
+          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }}
+          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-build-request-processor:dev
+          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-cache:dev
+          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
 
           export GAVS=${{ matrix.gavs }}
 
