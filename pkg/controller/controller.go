@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/redhat-appstudio/image-controller/pkg/quay"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/metrics"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -34,7 +35,7 @@ var (
 	controllerLog = ctrl.Log.WithName("controller")
 )
 
-func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
+func NewManager(cfg *rest.Config, options ctrl.Options, quayClient *quay.QuayClient, quayOrgName string) (ctrl.Manager, error) {
 
 	// we have seen in e2e testing that this path can get invoked prior to the TaskRun CRD getting generated,
 	// and controller-runtime does not retry on missing CRDs.
@@ -134,7 +135,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
-	if err := jbsconfig.SetupNewReconcilerWithManager(mgr, spiPresent); err != nil {
+	if err := jbsconfig.SetupNewReconcilerWithManager(mgr, spiPresent, quayClient, quayOrgName); err != nil {
 		return nil, err
 	}
 
