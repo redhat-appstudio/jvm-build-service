@@ -558,12 +558,13 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	scmUrl := modifyURLFragment(log, db.Spec.ScmInfo.SCMURL)
 	paramValues := []pipelinev1beta1.Param{
 		{Name: PipelineBuildId, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
-		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
 		{Name: PipelineParamScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
 		{Name: PipelineParamScmHash, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
-		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
 		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: PipelineParamImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
@@ -573,8 +574,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
 		{Name: PipelineParamJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
-
-	modifyURLFragment(log, &paramValues)
 
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
@@ -1043,17 +1042,13 @@ func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 	return reconcile.Result{}, nil
 }
 
-// This is to remove any '#xxx' fragment from a URI so that git clone commands don't need seperate adjustment
-func modifyURLFragment(log logr.Logger, paramValues *[]pipelinev1beta1.Param) {
-	for index, value := range *paramValues {
-		if value.Name == PipelineParamScmUrl {
-			if value.Value.Type == pipelinev1beta1.ParamTypeString {
-				hashIndex := strings.Index(value.Value.StringVal, "#")
-				if hashIndex > -1 {
-					log.Info(fmt.Sprintf("Removing URL fragment of %s from %s", value.Value.StringVal[hashIndex+1:], value.Value.StringVal))
-					(*paramValues)[index].Value.StringVal = value.Value.StringVal[:hashIndex]
-				}
-			}
-		}
+// This is to remove any '#xxx' fragment from a URI so that git clone commands don't need separate adjustment
+func modifyURLFragment(log logr.Logger, scmURL string) string {
+	var result = scmURL
+	hashIndex := strings.Index(scmURL, "#")
+	if hashIndex > -1 {
+		log.Info(fmt.Sprintf("Removing URL fragment of %s from %s", scmURL[hashIndex+1:], scmURL))
+		result = scmURL[:hashIndex]
 	}
+	return result
 }
