@@ -4,8 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.maven.artifact.versioning.ComparableVersion;
 
@@ -90,6 +93,15 @@ public class RecipeLayoutManager implements RecipeDirectory {
             return Optional.of(target);
         }
         return Optional.empty();
+    }
+
+    @Override
+    public List<Path> getAllRepositoryPaths() {
+        try (Stream<Path> list = Files.list(repositoryInfoDirectory)) {
+            return list.filter(s -> s.toString().endsWith(".yaml")).collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Optional<Path> resolveVersion(Path target, String version) {

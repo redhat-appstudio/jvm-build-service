@@ -145,4 +145,21 @@ public class BuildInfo {
         this.repositories = repositories;
         return this;
     }
+
+    @Override
+    public String toString() {
+        return "BuildInfo{" +
+                "tools=" + tools +
+                ", invocations=" + invocations +
+                ", repositories=" + repositories +
+                ", enforceVersion='" + enforceVersion + '\'' +
+                ", toolVersion='" + toolVersion + '\'' +
+                ", commitTime=" + commitTime +
+                ", preBuildScript='" + preBuildScript + '\'' +
+                ", postBuildScript='" + postBuildScript + '\'' +
+                ", additionalDownloads=" + additionalDownloads +
+                ", disableSubmodules=" + disableSubmodules +
+                ", additionalMemory=" + additionalMemory +
+                '}';
+    }
 }

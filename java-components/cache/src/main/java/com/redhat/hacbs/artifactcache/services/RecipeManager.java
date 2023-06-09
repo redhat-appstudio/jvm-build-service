@@ -6,7 +6,9 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -85,6 +87,22 @@ public class RecipeManager {
                     ret.add(MavenRepositoryInfoManager.INSTANCE.parse(path.get()));
                 } catch (IOException e) {
                     Log.errorf(e, "Failed to parse repository info file %s", path.get());
+                }
+            }
+        }
+        return ret;
+    }
+
+    public Map<String, MavenRepositoryInfo> getAllRepositoryInfo() {
+        Map<String, MavenRepositoryInfo> ret = new HashMap<>();
+        for (var i : recipeDirs) {
+            var paths = i.getAllRepositoryPaths();
+            for (var path : paths) {
+                try {
+                    ret.put(path.getFileName().toString().replace(".yaml", ""),
+                            MavenRepositoryInfoManager.INSTANCE.parse(path));
+                } catch (IOException e) {
+                    Log.errorf(e, "Failed to parse repository info file %s", path);
                 }
             }
         }
