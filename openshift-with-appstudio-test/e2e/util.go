@@ -88,6 +88,10 @@ func dumpNodes(ta *testArgs) {
 			ta.Logf(fmt.Sprintf("Node %s does not have allocatable mem", node.Name))
 			continue
 		}
+		if node.Status.Allocatable.Storage() == nil {
+			ta.Logf(fmt.Sprintf("Node %s does not have allocatable storage", node.Name))
+			continue
+		}
 		if node.Status.Capacity.Cpu() == nil {
 			ta.Logf(fmt.Sprintf("Node %s does not have capacity cpu", node.Name))
 			continue
@@ -96,16 +100,24 @@ func dumpNodes(ta *testArgs) {
 			ta.Logf(fmt.Sprintf("Node %s does not have capacity mem", node.Name))
 			continue
 		}
+		if node.Status.Capacity.Storage() == nil {
+			ta.Logf(fmt.Sprintf("Node %s does not have capacity storage", node.Name))
+			continue
+		}
 		alloccpu := node.Status.Allocatable.Cpu()
 		allocmem := node.Status.Allocatable.Memory()
+		allocstorage := node.Status.Allocatable.Storage()
 		capaccpu := node.Status.Capacity.Cpu()
 		capacmem := node.Status.Capacity.Memory()
-		ta.Logf(fmt.Sprintf("Node %s allocatable CPU %s allocatable mem %s capacity CPU %s capacitymem %s",
+		capstorage := node.Status.Capacity.Storage()
+		ta.Logf(fmt.Sprintf("Node %s allocatable CPU %s allocatable mem %s allocatable storage %s capacity CPU %s capacitymem %s capacity storage %s",
 			node.Name,
 			alloccpu.String(),
 			allocmem.String(),
+			allocstorage.String(),
 			capaccpu.String(),
-			capacmem.String()))
+			capacmem.String(),
+			capstorage.String()))
 	}
 }
 
