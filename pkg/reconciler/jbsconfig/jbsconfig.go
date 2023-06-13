@@ -36,7 +36,6 @@ import (
 
 const TlsServiceName = v1alpha1.CacheDeploymentName + "-tls"
 const TestRegistry = "jvmbuildservice.io/test-registry"
-const DefaultRecipeRepository = "https://github.com/redhat-appstudio/jvm-build-data"
 const ImageRepositoryFinalizer = "jvmbuildservice.io/quay-repository-finalizer"
 const DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
 
@@ -540,7 +539,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 
 	recipeData := ""
 	if sysConfig.Spec.RecipeDatabase == "" {
-		recipeData = DefaultRecipeRepository
+		recipeData = v1alpha1.DefaultRecipeDatabase
 	} else {
 		recipeData = sysConfig.Spec.RecipeDatabase
 	}

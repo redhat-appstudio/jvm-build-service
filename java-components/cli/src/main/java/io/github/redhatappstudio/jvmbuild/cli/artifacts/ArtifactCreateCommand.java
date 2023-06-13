@@ -9,7 +9,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "create", mixinStandardHelpOptions = true, description = "Creates a pull request against the recipe database that adds SCM information for an artifact.")
+@CommandLine.Command(name = "create", mixinStandardHelpOptions = true, description = "Creates an artifact build for a specified GAV.")
 public class ArtifactCreateCommand implements Runnable {
 
     @Inject

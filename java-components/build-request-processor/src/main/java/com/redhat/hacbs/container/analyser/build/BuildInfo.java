@@ -20,8 +20,8 @@ public class BuildInfo {
      */
     Map<String, VersionRange> tools = new HashMap<>();
     /**
-     * List of commands to try. Normally there is only one, but if there is both maven and gradle
-     * present then we might try to invoke both.
+     * List of commands to try. Normally there is only one, but if there is both maven, gradle, sbt, ant
+     * present then we might try to invoke them all.
      */
     List<List<String>> invocations = new ArrayList<>();
 

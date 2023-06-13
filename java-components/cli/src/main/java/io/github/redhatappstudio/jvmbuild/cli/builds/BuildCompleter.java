@@ -32,7 +32,8 @@ public class BuildCompleter extends RequestScopedCompleter {
             String full = createFullName(scm);
             try {
                 URI uri = new URI(scm.getScmURL());
-                String name = uri.getPath().substring(1) + "@" + scm.getTag();
+                String name = uri.getPath().substring(1) + (uri.getFragment() == null ? "" : "#" + uri.getFragment()) + "@"
+                        + scm.getTag();
                 if (scm.getPath() != null && scm.getPath().length() > 1) {
                     name = name + ":" + scm.getPath();
                 }

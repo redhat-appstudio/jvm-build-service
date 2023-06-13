@@ -177,7 +177,7 @@ public class GitScmLocator implements ScmLocator {
                         throw new RuntimeException("Failed to checkout " + i, e);
                     }
                 } else {
-                    log.debugf("Opening local recipe repo %s", i);
+                    log.infof("Opening local recipe repo %s", i);
                     final Path p;
                     if (i.startsWith("file:")) {
                         p = Path.of(i.substring("file:".length()));
@@ -211,7 +211,6 @@ public class GitScmLocator implements ScmLocator {
         List<RepositoryInfo> repos = new ArrayList<>();
         List<TagMapping> allMappings = new ArrayList<>();
         for (var recipe : recipes) {
-            log.debugf("Found %s", recipes);
             ScmInfo main;
             try {
                 main = BuildRecipe.SCM.getHandler().parse(recipe);
@@ -299,6 +298,7 @@ public class GitScmLocator implements ScmLocator {
                     if (hash == null) {
                         hash = selectedTag; //sometimes the tag is a hash
                     }
+
                     return new TagInfo(parsedInfo, selectedTag, hash);
                 }
             } catch (RuntimeException ex) {
@@ -395,7 +395,7 @@ public class GitScmLocator implements ScmLocator {
             tags = Git.lsRemoteRepository()
                     .setCredentialsProvider(
                             new GitCredentials())
-                    .setRemote(parsedInfo.getUri()).setTags(true).setHeads(false).call();
+                    .setRemote(parsedInfo.getUriWithoutFragment()).setTags(true).setHeads(false).call();
         } catch (GitAPIException e) {
             throw new RuntimeException("Failed to obtain a list of tags from " + parsedInfo.getUri(), e);
         }
@@ -404,6 +404,7 @@ public class GitScmLocator implements ScmLocator {
             var name = tag.getName().replace("refs/tags/", "");
             tagsToHash.put(name, tag.getObjectId().name());
         }
+
         return tagsToHash;
     }
 }

@@ -6,12 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/labels"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/labels"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -557,12 +558,13 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	scmUrl := modifyURLFragment(log, db.Spec.ScmInfo.SCMURL)
 	paramValues := []pipelinev1beta1.Param{
 		{Name: PipelineBuildId, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
-		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
 		{Name: PipelineParamScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
 		{Name: PipelineParamScmHash, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
-		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.SCMURL}},
+		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
 		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: PipelineParamImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
@@ -584,6 +586,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+
 	db.Status.DiagnosticDockerFiles = append(db.Status.DiagnosticDockerFiles, diagnostic)
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
@@ -1037,4 +1040,15 @@ func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+// This is to remove any '#xxx' fragment from a URI so that git clone commands don't need separate adjustment
+func modifyURLFragment(log logr.Logger, scmURL string) string {
+	var result = scmURL
+	hashIndex := strings.Index(scmURL, "#")
+	if hashIndex > -1 {
+		log.Info(fmt.Sprintf("Removing URL fragment of %s from %s", scmURL[hashIndex+1:], scmURL))
+		result = scmURL[:hashIndex]
+	}
+	return result
 }

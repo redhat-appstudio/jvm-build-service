@@ -37,6 +37,7 @@ import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.build.maven.MavenDiscoveryTask;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipies.scm.ScmInfo;
 import com.redhat.hacbs.recipies.util.GitCredentials;
 
 import io.quarkus.logging.Log;
@@ -54,6 +55,7 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--scm-tag", required = true)
     String tag;
 
+    // This is a subdirectory to operate upon.
     @CommandLine.Option(names = "--context", required = true)
     String context;
 
@@ -80,13 +82,24 @@ public class LookupBuildInfoCommand implements Runnable {
     @Override
     public void run() {
         try {
+            ScmInfo info = new ScmInfo("git", this.scmUrl);
+            Log.infof("LookupBuildInfo::resolving " + info.getUri());
 
             CacheBuildInfoLocator buildInfoLocator = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl))
                     .build(CacheBuildInfoLocator.class);
-            BuildRecipeInfo buildRecipeInfo = buildInfoLocator.resolveBuildInfo(scmUrl, version);
+            BuildRecipeInfo buildRecipeInfo = buildInfoLocator.resolveBuildInfo(info.getUri(), version);
+
+            if (info.getBuildNameFragment() != null) {
+                Log.infof("Using alternate name fragment of " + info.getBuildNameFragment());
+                buildRecipeInfo = buildRecipeInfo.getAdditionalBuilds().get(info.getBuildNameFragment());
+                if (buildRecipeInfo == null) {
+                    throw new RuntimeException("Unknown build name " + info.getBuildNameFragment() + " for " + this.scmUrl
+                            + " please add it to the additionalBuilds section");
+                }
+            }
 
             Log.infof("Checking out %s at tag %s", scmUrl, tag);
-            doBuildAnalysis(scmUrl, tag, context, buildRecipeInfo, privateRepo, buildInfoLocator);
+            doBuildAnalysis(info.getUriWithoutFragment(), tag, context, buildRecipeInfo, privateRepo, buildInfoLocator);
 
             if (message != null) {
                 Files.createFile(message);

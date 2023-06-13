@@ -118,10 +118,15 @@ public class RecipeGroupManager {
     }
 
     public static String normalizeScmUri(String scmUri) {
+        // Remove any fragment
+        int pos = scmUri.indexOf("#");
+        if (pos != -1) {
+            scmUri = scmUri.substring(0, pos);
+        }
         if (scmUri.endsWith(".git")) {
             scmUri = scmUri.substring(0, scmUri.length() - 4);
         }
-        int pos = scmUri.indexOf("://");
+        pos = scmUri.indexOf("://");
         if (pos != -1) {
             scmUri = scmUri.substring(pos + 3);
         }

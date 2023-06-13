@@ -47,8 +47,7 @@ public class V2RecipeLookupResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("build-info")
-    public Response resolveBuildInfo(@QueryParam("scmUrl") String scmUrl, @QueryParam("version") String version)
-            throws IOException {
+    public Response resolveBuildInfo(@QueryParam("scmUrl") String scmUrl, @QueryParam("version") String version) {
         try {
             var result = recipeManager.resolveBuildInfo(scmUrl, version);
             return Response.ok(result).build();
