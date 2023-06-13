@@ -38,6 +38,7 @@ const TlsServiceName = v1alpha1.CacheDeploymentName + "-tls"
 const TestRegistry = "jvmbuildservice.io/test-registry"
 const ImageRepositoryFinalizer = "jvmbuildservice.io/quay-repository-finalizer"
 const DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
+const UploadSecretName = "jvm-build-service-temp-upload-secret" //#nosec
 
 const (
 	Action              = "action"
@@ -81,113 +82,13 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	if err != nil {
 		// Deleted JBSConfig - delete cache resources
 		if errors.IsNotFound(err) && request.Name == v1alpha1.JBSConfigName {
-			service := &corev1.Service{}
-			service.Name = v1alpha1.CacheDeploymentName
-			service.Namespace = request.Namespace
-			err = r.client.Delete(ctx, service)
-			if err != nil && !errors.IsNotFound(err) {
-				msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
-				log.Error(err, msg)
-				r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
-			}
-			service = &corev1.Service{}
-			service.Name = TlsServiceName
-			service.Namespace = request.Namespace
-			err = r.client.Delete(ctx, service)
-			if err != nil && !errors.IsNotFound(err) {
-				msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
-				log.Error(err, msg)
-				r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
-			}
-			tlsConfigMap := &corev1.ConfigMap{}
-			tlsConfigMap.Name = v1alpha1.TlsConfigMapName
-			tlsConfigMap.Namespace = request.Namespace
-			err = r.client.Delete(ctx, tlsConfigMap)
-			if err != nil && !errors.IsNotFound(err) {
-				msg := fmt.Sprintf("Unable to delete configmap - %s", err.Error())
-				log.Error(err, msg)
-				r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
-			}
-			serviceAccount := &corev1.ServiceAccount{}
-			serviceAccount.Name = v1alpha1.CacheDeploymentName
-			serviceAccount.Namespace = request.Namespace
-			err = r.client.Delete(ctx, serviceAccount)
-			if err != nil && !errors.IsNotFound(err) {
-				msg := fmt.Sprintf("Unable to delete serviceAccount - %s", err.Error())
-				log.Error(err, msg)
-				r.eventRecorder.Event(serviceAccount, corev1.EventTypeWarning, msg, "")
-			}
-			roleBinding := &rbacv1.RoleBinding{}
-			roleBinding.Name = v1alpha1.CacheDeploymentName
-			roleBinding.Namespace = request.Namespace
-			err = r.client.Delete(ctx, roleBinding)
-			if err != nil && !errors.IsNotFound(err) {
-				msg := fmt.Sprintf("Unable to delete roleBinding - %s", err.Error())
-				log.Error(err, msg)
-				r.eventRecorder.Event(roleBinding, corev1.EventTypeWarning, msg, "")
-			}
-			deployment := &appsv1.Deployment{}
-			deployment.Name = v1alpha1.CacheDeploymentName
-			deployment.Namespace = request.Namespace
-			err = r.client.Delete(ctx, deployment)
-			if err != nil && !errors.IsNotFound(err) {
-				msg := fmt.Sprintf("Unable to delete deployment - %s", err.Error())
-				log.Error(err, msg)
-				r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
-			}
-			pvc := &corev1.PersistentVolumeClaim{}
-			pvc.Name = v1alpha1.CacheDeploymentName
-			pvc.Namespace = request.Namespace
-			err = r.client.Delete(ctx, pvc)
-			if err != nil && !errors.IsNotFound(err) {
-				msg := fmt.Sprintf("Unable to delete PersistentVolumeClaim - %s", err.Error())
-				log.Error(err, msg)
-				r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
-			}
-			binding := &v1beta1.SPIAccessTokenBinding{}
-			binding.Name = v1alpha1.ImageSecretName
-			binding.Namespace = request.Namespace
-			err = r.client.Delete(ctx, binding)
-			if err != nil && !errors.IsNotFound(err) {
-				msg := fmt.Sprintf("Unable to delete SPIAccessTokenBinding - %s", err.Error())
-				log.Error(err, msg)
-				r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
-			}
-			return reconcile.Result{}, nil
+			return r.handleConfigDeleted(ctx, request, log)
 		}
 		return reconcile.Result{}, err
 	}
 	if !jbsConfig.DeletionTimestamp.IsZero() {
-		if controllerutil.ContainsFinalizer(&jbsConfig, ImageRepositoryFinalizer) {
-			robotAccountName := generateRobotAccountName(&jbsConfig)
-			isDeleted, err := r.quayClient.DeleteRobotAccount(r.quayOrgName, robotAccountName)
-			if err != nil {
-				log.Error(err, "failed to delete robot account")
-				// Do not block Component deletion if failed to delete robot account
-			}
-			if isDeleted {
-				log.Info(fmt.Sprintf("Deleted robot account %s", robotAccountName))
-			}
-
-			if val, exists := jbsConfig.Annotations[DeleteImageRepositoryAnnotationName]; exists && val == "true" {
-				imageRepo := generateRepositoryName(&jbsConfig)
-				isRepoDeleted, err := r.quayClient.DeleteRepository(r.quayOrgName, imageRepo)
-				if err != nil {
-					log.Error(err, "failed to delete image repository")
-					// Do not block Component deletion if failed to delete image repository
-				}
-				if isRepoDeleted {
-					log.Info(fmt.Sprintf("Deleted image repository %s", imageRepo))
-				}
-			}
-
-			controllerutil.RemoveFinalizer(&jbsConfig, ImageRepositoryFinalizer)
-			if err := r.client.Update(ctx, &jbsConfig); err != nil {
-				log.Error(err, "failed to remove image repository finalizer")
-				return ctrl.Result{}, err
-			}
-			log.Info("Image repository finalizer removed from the JBSConfig")
-		}
+		err := r.handlePossibleRepositoryCleanup(ctx, jbsConfig, log)
+		return reconcile.Result{}, err
 	}
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
@@ -212,6 +113,117 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+	}
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcilerJBSConfig) handlePossibleRepositoryCleanup(ctx context.Context, jbsConfig v1alpha1.JBSConfig, log logr.Logger) error {
+	if controllerutil.ContainsFinalizer(&jbsConfig, ImageRepositoryFinalizer) {
+		robotAccountName := generateRobotAccountName(&jbsConfig)
+		isDeleted, err := r.quayClient.DeleteRobotAccount(r.quayOrgName, robotAccountName)
+		if err != nil {
+			log.Error(err, "failed to delete robot account")
+			// Do not block Component deletion if failed to delete robot account
+		}
+		if isDeleted {
+			log.Info(fmt.Sprintf("Deleted robot account %s", robotAccountName))
+		}
+
+		if val, exists := jbsConfig.Annotations[DeleteImageRepositoryAnnotationName]; exists && val == "true" {
+			imageRepo := generateRepositoryName(&jbsConfig)
+			isRepoDeleted, err := r.quayClient.DeleteRepository(r.quayOrgName, imageRepo)
+			if err != nil {
+				log.Error(err, "failed to delete image repository")
+				// Do not block Component deletion if failed to delete image repository
+			}
+			if isRepoDeleted {
+				log.Info(fmt.Sprintf("Deleted image repository %s", imageRepo))
+			}
+		}
+
+		controllerutil.RemoveFinalizer(&jbsConfig, ImageRepositoryFinalizer)
+		if err := r.client.Update(ctx, &jbsConfig); err != nil {
+			log.Error(err, "failed to remove image repository finalizer")
+			return err
+		}
+		log.Info("Image repository finalizer removed from the JBSConfig")
+		return err
+	}
+	return nil
+}
+
+func (r *ReconcilerJBSConfig) handleConfigDeleted(ctx context.Context, request reconcile.Request, log logr.Logger) (reconcile.Result, error) {
+	service := &corev1.Service{}
+	service.Name = v1alpha1.CacheDeploymentName
+	service.Namespace = request.Namespace
+	err := r.client.Delete(ctx, service)
+	if err != nil && !errors.IsNotFound(err) {
+		msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
+		log.Error(err, msg)
+		r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
+	}
+	service = &corev1.Service{}
+	service.Name = TlsServiceName
+	service.Namespace = request.Namespace
+	err = r.client.Delete(ctx, service)
+	if err != nil && !errors.IsNotFound(err) {
+		msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
+		log.Error(err, msg)
+		r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
+	}
+	tlsConfigMap := &corev1.ConfigMap{}
+	tlsConfigMap.Name = v1alpha1.TlsConfigMapName
+	tlsConfigMap.Namespace = request.Namespace
+	err = r.client.Delete(ctx, tlsConfigMap)
+	if err != nil && !errors.IsNotFound(err) {
+		msg := fmt.Sprintf("Unable to delete configmap - %s", err.Error())
+		log.Error(err, msg)
+		r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
+	}
+	serviceAccount := &corev1.ServiceAccount{}
+	serviceAccount.Name = v1alpha1.CacheDeploymentName
+	serviceAccount.Namespace = request.Namespace
+	err = r.client.Delete(ctx, serviceAccount)
+	if err != nil && !errors.IsNotFound(err) {
+		msg := fmt.Sprintf("Unable to delete serviceAccount - %s", err.Error())
+		log.Error(err, msg)
+		r.eventRecorder.Event(serviceAccount, corev1.EventTypeWarning, msg, "")
+	}
+	roleBinding := &rbacv1.RoleBinding{}
+	roleBinding.Name = v1alpha1.CacheDeploymentName
+	roleBinding.Namespace = request.Namespace
+	err = r.client.Delete(ctx, roleBinding)
+	if err != nil && !errors.IsNotFound(err) {
+		msg := fmt.Sprintf("Unable to delete roleBinding - %s", err.Error())
+		log.Error(err, msg)
+		r.eventRecorder.Event(roleBinding, corev1.EventTypeWarning, msg, "")
+	}
+	deployment := &appsv1.Deployment{}
+	deployment.Name = v1alpha1.CacheDeploymentName
+	deployment.Namespace = request.Namespace
+	err = r.client.Delete(ctx, deployment)
+	if err != nil && !errors.IsNotFound(err) {
+		msg := fmt.Sprintf("Unable to delete deployment - %s", err.Error())
+		log.Error(err, msg)
+		r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
+	}
+	pvc := &corev1.PersistentVolumeClaim{}
+	pvc.Name = v1alpha1.CacheDeploymentName
+	pvc.Namespace = request.Namespace
+	err = r.client.Delete(ctx, pvc)
+	if err != nil && !errors.IsNotFound(err) {
+		msg := fmt.Sprintf("Unable to delete PersistentVolumeClaim - %s", err.Error())
+		log.Error(err, msg)
+		r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
+	}
+	binding := &v1beta1.SPIAccessTokenBinding{}
+	binding.Name = v1alpha1.ImageSecretName
+	binding.Namespace = request.Namespace
+	err = r.client.Delete(ctx, binding)
+	if err != nil && !errors.IsNotFound(err) {
+		msg := fmt.Sprintf("Unable to delete SPIAccessTokenBinding - %s", err.Error())
+		log.Error(err, msg)
+		r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
 	}
 	return reconcile.Result{}, nil
 }
@@ -720,8 +732,9 @@ func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log lo
 		return err
 	}
 
-	// Create secret with the reposuitory credentials
-	robotAccountSecret := generateSecret(config, *robotAccount)
+	// Create secret with the repository credentials
+	imageURL := fmt.Sprintf("quay.io/%s/%s", r.quayOrgName, repo.Name)
+	robotAccountSecret := generateSecret(config, *robotAccount, imageURL, r.spiPresent)
 
 	robotAccountSecretKey := types.NamespacedName{Namespace: config.Namespace, Name: v1alpha1.ImageSecretName}
 	existingRobotAccountSecret := &corev1.Secret{}
@@ -778,10 +791,9 @@ func (r *ReconcilerJBSConfig) generateImageRepository(log logr.Logger, component
 }
 
 // generateSecret dumps the robot account token into a Secret for future consumption.
-func generateSecret(c *v1alpha1.JBSConfig, r quay.RobotAccount) corev1.Secret {
+func generateSecret(c *v1alpha1.JBSConfig, r quay.RobotAccount, imageURL string, spiPresent bool) corev1.Secret {
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      v1alpha1.ImageSecretName,
 			Namespace: c.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -792,16 +804,30 @@ func generateSecret(c *v1alpha1.JBSConfig, r quay.RobotAccount) corev1.Secret {
 				},
 			},
 		},
-		Type: corev1.SecretTypeDockerConfigJson,
 	}
+	if spiPresent {
+		//create a secret to upload this to the SPI
+		secret.Labels = map[string]string{"spi.appstudio.redhat.com/upload-secret": "token"}
+		secret.Name = UploadSecretName
+		secret.Type = corev1.SecretTypeOpaque
+		secretData := map[string]string{}
+		secretData["spiTokenName"] = v1alpha1.ImageSecretName
+		secretData["providerUrl"] = "https://" + imageURL
+		secretData["userName"] = r.Name
+		secretData["tokenData"] = r.Token
+		secret.StringData = secretData
+		return secret
+	} else {
+		secret.Name = v1alpha1.ImageSecretName
+		secret.Type = corev1.SecretTypeDockerConfigJson
+		secretData := map[string]string{}
+		authString := fmt.Sprintf("%s:%s", r.Name, r.Token)
+		secretData[corev1.DockerConfigJsonKey] = fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`,
+			imageURL,
+			base64.StdEncoding.EncodeToString([]byte(authString)),
+		)
 
-	secretData := map[string]string{}
-	authString := fmt.Sprintf("%s:%s", r.Name, r.Token)
-	secretData[corev1.DockerConfigJsonKey] = fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`,
-		"quay.io",
-		base64.StdEncoding.EncodeToString([]byte(authString)),
-	)
-
-	secret.StringData = secretData
-	return secret
+		secret.StringData = secretData
+		return secret
+	}
 }
