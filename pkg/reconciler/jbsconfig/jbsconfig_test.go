@@ -37,6 +37,7 @@ func setupClientAndReconciler(includeSpi bool, objs ...runtimeclient.Object) (ru
 		client:        client,
 		scheme:        scheme,
 		eventRecorder: &record.FakeRecorder{},
+		spiPresent:    includeSpi,
 	}
 	util.ImageTag = "foo"
 	return client, reconciler
