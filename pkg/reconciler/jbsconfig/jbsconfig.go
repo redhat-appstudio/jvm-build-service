@@ -298,7 +298,7 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 		return nil
 	}
 
-	if jbsConfig.Spec.Owner == "" {
+	if jbsConfig.ImageRegistry().Owner == "" {
 		return r.handleNoOwnerSpecified(ctx, log, jbsConfig)
 	}
 
