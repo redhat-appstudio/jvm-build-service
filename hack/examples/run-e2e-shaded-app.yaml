@@ -20,7 +20,7 @@ spec:
             - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
           resources:
             requests:
-              storage: 1Gi
+              storage: 100Mi
   taskRunSpecs:
     - pipelineTaskName: maven-run
       taskServiceAccountName: pipeline
