@@ -741,7 +741,7 @@ func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log lo
 
 	// Create secret with the repository credentials
 	imageURL := fmt.Sprintf("quay.io/%s/%s", r.quayOrgName, repo.Name)
-	robotAccountSecret := generateSecret(config, *robotAccount, imageURL, r.spiPresent)
+	robotAccountSecret := generateSecret(config, *robotAccount, imageURL, false) //don't use the SPI for now until it is working with plain secrets
 
 	robotAccountSecretKey := types.NamespacedName{Namespace: config.Namespace, Name: v1alpha1.ImageSecretName}
 	existingRobotAccountSecret := &corev1.Secret{}
