@@ -7,8 +7,8 @@ import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.inject.Inject;
 
 import com.redhat.hacbs.container.analyser.deploy.s3.S3Deployer;
+import com.redhat.hacbs.container.results.ResultsUpdater;
 
-import io.fabric8.kubernetes.client.KubernetesClient;
 import picocli.CommandLine;
 import software.amazon.awssdk.services.s3.S3Client;
 
@@ -25,8 +25,8 @@ public class S3DeployCommand extends DeployCommand {
     S3Client s3Client;
 
     @Inject
-    public S3DeployCommand(BeanManager beanManager, KubernetesClient kubernetesClient) {
-        super(beanManager, kubernetesClient);
+    public S3DeployCommand(BeanManager beanManager, ResultsUpdater resultsUpdater) {
+        super(beanManager, resultsUpdater);
     }
 
     @Override

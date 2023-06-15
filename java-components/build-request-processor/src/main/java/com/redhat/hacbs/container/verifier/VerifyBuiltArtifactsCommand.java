@@ -22,10 +22,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.UnaryOperator;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -39,11 +39,9 @@ import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.redhat.hacbs.container.analyser.dependencies.TaskRun;
-import com.redhat.hacbs.container.analyser.dependencies.TaskRunResult;
+import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
-import io.fabric8.kubernetes.client.KubernetesClient;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -110,7 +108,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
     private DefaultRepositorySystemSession session;
 
     @Inject
-    Instance<KubernetesClient> client;
+    Instance<ResultsUpdater> resultsUpdater;
 
     public VerifyBuiltArtifactsCommand() {
 
@@ -177,27 +175,14 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
             }
             if (taskRunName != null) {
 
-                var client = this.client.get();
-                var resources = client.resources(TaskRun.class);
-                resources.withName(taskRunName).editStatus(new UnaryOperator<TaskRun>() {
-                    @Override
-                    public TaskRun apply(TaskRun taskRun) {
-                        List<TaskRunResult> results = new ArrayList<>();
-                        if (taskRun.getStatus().getTaskResults() != null) {
-                            results.addAll(taskRun.getStatus().getTaskResults());
-                        }
-                        ObjectMapper objectMapper = new ObjectMapper();
-                        try {
-                            var json = objectMapper.writer().writeValueAsString(verificationResults);
-                            io.quarkus.logging.Log.infof("Writing verification results %s", json);
-                            results.add(new TaskRunResult("VERIFICATION_RESULTS", json));
-                            taskRun.getStatus().setTaskResults(results);
-                            return taskRun;
-                        } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                });
+                ObjectMapper objectMapper = new ObjectMapper();
+                try {
+                    var json = objectMapper.writer().writeValueAsString(verificationResults);
+                    io.quarkus.logging.Log.infof("Writing verification results %s", json);
+                    resultsUpdater.get().updateResults(taskRunName, Map.of("VERIFICATION_RESULTS", json));
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
             return (failed.get() && !reportOnly ? 1 : 0);

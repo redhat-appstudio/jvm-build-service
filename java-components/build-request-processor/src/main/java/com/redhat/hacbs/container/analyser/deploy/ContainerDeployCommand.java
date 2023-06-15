@@ -11,8 +11,8 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
+import com.redhat.hacbs.container.results.ResultsUpdater;
 
-import io.fabric8.kubernetes.client.KubernetesClient;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "deploy-container")
@@ -34,8 +34,8 @@ public class ContainerDeployCommand extends DeployCommand {
     String prependTag;
 
     @Inject
-    public ContainerDeployCommand(BeanManager beanManager, KubernetesClient kubernetesClient) {
-        super(beanManager, kubernetesClient);
+    public ContainerDeployCommand(BeanManager beanManager, ResultsUpdater resultsUpdater) {
+        super(beanManager, resultsUpdater);
     }
 
     @Override
