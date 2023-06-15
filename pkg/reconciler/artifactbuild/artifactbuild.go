@@ -77,6 +77,14 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	log := ctrl.Log.WithName("artifactbuild").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name)
+	res, err := r.doReconcile(ctx, request, log)
+	if err != nil {
+		log.Error(err, "ArtifactBuild reconcile error")
+	}
+	return res, err
+}
+
+func (r *ReconcileArtifactBuild) doReconcile(ctx context.Context, request reconcile.Request, log logr.Logger) (reconcile.Result, error) {
 	//_, clusterSet := logicalcluster.ClusterFromContext(ctx)
 	//if !clusterSet {
 	//	log.Info("cluster is not set in context", request.String())

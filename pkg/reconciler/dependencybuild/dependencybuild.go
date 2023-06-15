@@ -332,7 +332,6 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 					return reconcile.Result{}, err
 				}
 				if versionResult < 0 {
-					log.Info(fmt.Sprintf("Not building with %s because of min java version %s (image version %s)", image.Image, java.Min, imageJava))
 					continue
 				}
 			}
@@ -343,7 +342,6 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 					return reconcile.Result{}, err
 				}
 				if versionResult > 0 {
-					log.Info(fmt.Sprintf("Not building with %s because of max java version %s (image version %s)", image.Image, java.Min, imageJava))
 					continue
 				}
 			}
