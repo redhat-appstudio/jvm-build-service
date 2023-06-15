@@ -2,8 +2,6 @@ package dependencybuild
 
 import (
 	"context"
-	"crypto/md5" //#nosec
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -119,13 +117,14 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		//we validate that our dep id hash is still valid
 		//if a field has been modified we need to update the label
 		//which may result in a new build
-		depId := hashToString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
+		depId := util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
 		if db.Labels == nil || len(db.Labels) == 0 {
 			return reconcile.Result{}, fmt.Errorf("dependency build %s missing labels", depId)
 		}
 		if depId != db.Labels[artifactbuild.DependencyBuildIdLabel] {
 			//if our id has changed we just update the label and set our state back to new
 			//this will kick off a new build
+
 			db.Labels[artifactbuild.DependencyBuildIdLabel] = depId
 			db.Status.State = v1alpha1.DependencyBuildStateNew
 			// TODO possibly abort instead, possibly allow but file event, or metric alert later on
@@ -168,12 +167,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func hashToString(unique string) string {
-	hash := md5.Sum([]byte(unique)) //#nosec
-	depId := hex.EncodeToString(hash[:])
-	return depId
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
@@ -875,7 +868,7 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 				abr := v1alpha1.ArtifactBuild{}
 				//look for existing ABR
 				err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
-				suffix := hashToString(contaminant.GAV)[0:20]
+				suffix := util.HashString(contaminant.GAV)[0:20]
 				if err != nil {
 					l.Info(fmt.Sprintf("Creating ArtifactBuild %s for GAV %s to resolve contamination of %s", abrName, contaminant.GAV, artifact), "contaminate", contaminant, "owner", artifact, "action", "ADD")
 					//we just assume this is because it does not exist
