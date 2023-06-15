@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import jakarta.enterprise.inject.spi.BeanManager;
@@ -27,14 +26,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
-import com.redhat.hacbs.container.analyser.dependencies.TaskRun;
-import com.redhat.hacbs.container.analyser.dependencies.TaskRunResult;
+import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipies.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.Contaminant;
 import com.redhat.hacbs.resources.util.HashUtil;
 
-import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.dsl.Resource;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
@@ -45,8 +41,7 @@ public abstract class DeployCommand implements Runnable {
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";
     final BeanManager beanManager;
-
-    final KubernetesClient kubernetesClient;
+    final ResultsUpdater resultsUpdater;
 
     @CommandLine.Option(required = false, names = "--allowed-sources", defaultValue = "redhat,rebuilt", split = ",")
     Set<String> allowedSources;
@@ -75,9 +70,9 @@ public abstract class DeployCommand implements Runnable {
     protected String imageDigest;
 
     public DeployCommand(BeanManager beanManager,
-            KubernetesClient kubernetesClient) {
+            ResultsUpdater resultsUpdater) {
         this.beanManager = beanManager;
-        this.kubernetesClient = kubernetesClient;
+        this.resultsUpdater = resultsUpdater;
     }
 
     public void run() {
@@ -207,30 +202,18 @@ public abstract class DeployCommand implements Runnable {
                 }
                 if (taskRun != null) {
 
-                    Resource<TaskRun> taskRunResource = kubernetesClient.resources(TaskRun.class)
-                            .withName(taskRun);
                     List<Contaminant> newContaminates = new ArrayList<>();
                     for (var i : contaminatedGavs.entrySet()) {
                         newContaminates.add(new Contaminant(i.getKey(), new ArrayList<>(i.getValue())));
                     }
                     String serialisedContaminants = new ObjectMapper().writeValueAsString(newContaminates);
-                    taskRunResource.editStatus(new UnaryOperator<TaskRun>() {
-                        @Override
-                        public TaskRun apply(TaskRun taskRun) {
-                            List<TaskRunResult> results = new ArrayList<>();
-                            if (taskRun.getStatus().getTaskResults() != null) {
-                                results.addAll(taskRun.getStatus().getTaskResults());
-                            }
-                            Log.infof("Updating results %s with contaminants %s and deployed resources %s",
-                                    taskRun.getMetadata().getName(), serialisedContaminants, gavs);
-                            results.add(new TaskRunResult("CONTAMINANTS", serialisedContaminants));
-                            results.add(new TaskRunResult("DEPLOYED_RESOURCES", String.join(",", gavs)));
-                            results.add(new TaskRunResult("IMAGE_URL", imageName == null ? "" : imageName));
-                            results.add(new TaskRunResult("IMAGE_DIGEST", imageDigest == null ? "" : imageDigest));
-                            taskRun.getStatus().setTaskResults(results);
-                            return taskRun;
-                        }
-                    });
+                    Log.infof("Updating results %s with contaminants %s and deployed resources %s",
+                            taskRun, serialisedContaminants, gavs);
+                    resultsUpdater.updateResults(taskRun, Map.of(
+                            "CONTAMINANTS", serialisedContaminants,
+                            "DEPLOYED_RESOURCES", String.join(",", gavs),
+                            "IMAGE_URL", imageName == null ? "" : imageName,
+                            "IMAGE_DIGEST", imageDigest == null ? "" : imageDigest));
                 }
             } finally {
                 if (Files.exists(modified)) {
