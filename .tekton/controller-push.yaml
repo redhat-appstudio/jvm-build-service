@@ -20,8 +20,8 @@ spec:
       value: Dockerfile
     - name: infra-deployment-update-script
       value: |
-        sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/jvm-build-service/kustomization.yaml
-        sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/jvm-build-service/operator_env_patch.yaml
+        sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/jvm-build-service/base/kustomization.yaml
+        sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/jvm-build-service/base/operator_env_patch.yaml
         sed -i -E 's/[0-9a-f]{40}/{{ revision }}/g' components/monitoring/grafana/base/jvm-build-service/kustomization.yaml
     - name: slack-webhook-notification-team
       value: build
