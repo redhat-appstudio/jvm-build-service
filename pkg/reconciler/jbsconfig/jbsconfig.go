@@ -543,9 +543,11 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		setEnvVarValue("/tls/tls.crt", "QUARKUS_HTTP_SSL_CERTIFICATE_FILES", cache)
 		setEnvVarValue("/tls/tls.key", "QUARKUS_HTTP_SSL_CERTIFICATE_KEY_FILES", cache)
 	}
+	secretOptional := false
 	if jbsConfig.Annotations != nil {
 		val := jbsConfig.Annotations[TestRegistry]
 		if val == "true" {
+			secretOptional = true
 			setEnvVarValue("true", "INSECURE_TEST_REGISTRY", cache)
 		}
 	}
@@ -580,7 +582,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		cache = setEnvVarValue(imageRegistry.PrependTag, "REGISTRY_PREPEND_TAG", cache)
 		cache = setEnvVar(corev1.EnvVar{
 			Name:      "REGISTRY_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &trueBool}},
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}},
 		}, cache)
 		cache = setEnvVar(corev1.EnvVar{
 			Name:      "GIT_TOKEN",
