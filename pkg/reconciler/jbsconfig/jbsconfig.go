@@ -310,7 +310,20 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.ImageSecretName}, registrySecret)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return r.handleNoImageSecretFound(ctx, jbsConfig)
+			if r.spiPresent {
+				return r.handleNoImageSecretFound(ctx, jbsConfig)
+			} else {
+				errorMessage := "Secret jvm-build-image-secrets not found, and SPI not installed. Rebuilds not possible."
+				if jbsConfig.Status.Message != errorMessage {
+					jbsConfig.Status.Message = errorMessage
+					err2 := r.client.Status().Update(ctx, jbsConfig)
+					if err2 != nil {
+						return err2
+					}
+				}
+				return errors2.New(errorMessage)
+			}
+
 		}
 		return err
 	}
@@ -721,6 +734,16 @@ func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log lo
 		return errors2.New("no owner specified and automatic repo creation is disabled")
 	}
 
+	//remove the existing secret if preset
+	registrySecret := &corev1.Secret{}
+	// our client is wired to not cache secrets / establish informers for secrets
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: config.Namespace, Name: v1alpha1.ImageSecretName}, registrySecret)
+	if err == nil {
+		err := r.client.Delete(ctx, registrySecret)
+		if err != nil {
+			return err
+		}
+	}
 	repo, robotAccount, err := r.generateImageRepository(log, config)
 	if err != nil {
 		return err
