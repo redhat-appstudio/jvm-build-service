@@ -481,6 +481,8 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	create := false
 	if err != nil {
 		if errors.IsNotFound(err) {
+			message := fmt.Sprintf("Creating cache in namespace %s", request.Namespace)
+			log.Info(message)
 			create = true
 			cache.Name = deploymentName.Name
 			cache.Namespace = deploymentName.Namespace
