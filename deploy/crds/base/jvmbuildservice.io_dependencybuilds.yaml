@@ -181,6 +181,10 @@ spec:
                     type: array
                   additionalMemory:
                     type: integer
+                  allowedDifferences:
+                    items:
+                      type: string
+                    type: array
                   commandLine:
                     items:
                       type: string
@@ -242,6 +246,10 @@ spec:
                       type: array
                     additionalMemory:
                       type: integer
+                    allowedDifferences:
+                      items:
+                        type: string
+                      type: array
                     commandLine:
                       items:
                         type: string
@@ -304,6 +312,10 @@ spec:
                       type: array
                     additionalMemory:
                       type: integer
+                    allowedDifferences:
+                      items:
+                        type: string
+                      type: array
                     commandLine:
                       items:
                         type: string
