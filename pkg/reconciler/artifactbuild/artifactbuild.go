@@ -165,8 +165,10 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 			return r.handleStateDiscovering(ctx, log, &abr)
 		case v1alpha1.ArtifactBuildStateComplete:
 			return r.handleStateComplete(ctx, log, &abr)
-		case v1alpha1.ArtifactBuildStateBuilding, v1alpha1.ArtifactBuildStateFailed: //ABR can go from failed to complete when contamination is resolved, so we treat it the same as building
+		case v1alpha1.ArtifactBuildStateBuilding:
 			return r.handleStateBuilding(ctx, log, &abr)
+		case v1alpha1.ArtifactBuildStateFailed:
+			return r.handleStateFailed(ctx, log, &abr)
 		}
 	}
 
@@ -254,7 +256,7 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 				}
 				//on not found we don't return the error
 				//no need to retry it would just result in an infinite loop
-				return reconcile.Result{}, nil
+				continue
 			}
 			oldState := abr.Status.State
 			switch db.Status.State {
@@ -280,8 +282,7 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Conte
 func setArtifactState(log *logr.Logger, abr *v1alpha1.ArtifactBuild, state string) {
 	abr.Status.State = state
 	switch state {
-	case v1alpha1.ArtifactBuildStateComplete:
-	case v1alpha1.ArtifactBuildStateFailed:
+	case v1alpha1.ArtifactBuildStateFailed, v1alpha1.ArtifactBuildStateComplete:
 		log.Info(fmt.Sprintf("ArtifactBuild %s has state set to %s", abr.Name, state))
 	}
 }
@@ -483,6 +484,36 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateBuilding)
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	}
+}
+
+func (r *ReconcileArtifactBuild) handleStateFailed(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
+	depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+	db := &v1alpha1.DependencyBuild{}
+	dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}
+	err := r.client.Get(ctx, dbKey, db)
+
+	switch {
+	case err == nil:
+	case errors.IsNotFound(err):
+		//we don't have a build for this ABR, this is very odd
+		//it already failed though, so just return
+		return reconcile.Result{}, nil
+	default:
+		log.Error(err, "for artifactbuild %s:%s", abr.Namespace, abr.Name)
+		return reconcile.Result{}, err
+	}
+
+	//if the build is done update our state accordingly
+	switch db.Status.State {
+	case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
+		//do nothing, this is expected
+	case v1alpha1.DependencyBuildStateComplete:
+		return r.handleDependencyBuildSuccess(log, ctx, db, abr)
+	default:
+		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateBuilding)
+		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+	}
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Context, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
