@@ -100,15 +100,6 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		}
 	}
 
-	db := v1alpha1.DependencyBuild{}
-	dberr := r.client.Get(ctx, request.NamespacedName, &db)
-	if dberr != nil {
-		if !errors.IsNotFound(dberr) {
-			log.Error(dberr, "Reconcile key %s as dependencybuild unexpected error", request.NamespacedName.String())
-			return ctrl.Result{}, dberr
-		}
-	}
-
 	pr := pipelinev1beta1.PipelineRun{}
 	prerr := r.client.Get(ctx, request.NamespacedName, &pr)
 	if prerr != nil {
@@ -118,60 +109,64 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		}
 	}
 
-	if prerr != nil && dberr != nil && abrerr != nil {
+	if prerr != nil && abrerr != nil {
 		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
-		msg := "Reconcile key received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted): " + request.NamespacedName.String()
+		msg := "Reconcile key received not found errors for pipelineruns, artifactbuilds (probably deleted): " + request.NamespacedName.String()
 		log.Info(msg)
 		//log.Info("Reconcile key %s received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
 		return ctrl.Result{}, nil
 	}
 
 	switch {
-	case dberr == nil:
-		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag, "db-initial-state", db.Status.State)
-		//log.Info("cluster set on obj ", r.clusterSetOnObj(&db))
-		return r.handleDependencyBuildReceived(ctx, log, &db)
-
 	case prerr == nil:
 		log = log.WithValues("kind", "PipelineRun")
 		return r.handlePipelineRunReceived(ctx, log, &pr)
 
 	case abrerr == nil:
 		log = log.WithValues("kind", "ArtifactBuild", "ab-gav", abr.Spec.GAV, "ab-initial-state", abr.Status.State)
-		// TODO: if verify = true, then find dependency build and add veify = false to dep build, add ourself to the owner references, if new dep created, also add it to that
-		//log.Info("cluster set on obj ", r.clusterSetOnObj(&abr))
-		//first check for a rebuild annotation
-		if abr.Annotations[RebuildAnnotation] == "true" {
-			if abr.Status.State != v1alpha1.ArtifactBuildStateNew {
-				return r.handleRebuild(log, ctx, &abr)
-			} else {
-				delete(abr.Annotations, RebuildAnnotation)
-				return reconcile.Result{}, r.client.Update(ctx, &abr)
-			}
-		} else if abr.Annotations[RebuildAnnotation] == "failed" {
-			if abr.Status.State != v1alpha1.ArtifactBuildStateComplete && abr.Status.State != v1alpha1.ArtifactBuildStateNew {
-				return r.handleRebuild(log, ctx, &abr)
-
-			} else {
-				delete(abr.Annotations, RebuildAnnotation)
-				return reconcile.Result{}, r.client.Update(ctx, &abr)
-			}
+		result, err := r.handleArtifactBuildReceived(ctx, abr, log, jbsConfig)
+		if err != nil {
+			log.Error(err, "failure reconciling ArtifactBuild")
 		}
+		return result, err
+	}
 
-		switch abr.Status.State {
-		case v1alpha1.ArtifactBuildStateNew, "":
-			return r.handleStateNew(ctx, log, &abr, jbsConfig)
-		case v1alpha1.ArtifactBuildStateDiscovering:
-			return r.handleStateDiscovering(ctx, log, &abr)
-		case v1alpha1.ArtifactBuildStateComplete:
-			return r.handleStateComplete(ctx, log, &abr)
-		case v1alpha1.ArtifactBuildStateBuilding:
-			return r.handleStateBuilding(ctx, log, &abr)
-		case v1alpha1.ArtifactBuildStateFailed:
-			return r.handleStateFailed(ctx, log, &abr)
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context, abr v1alpha1.ArtifactBuild, log logr.Logger, jbsConfig *v1alpha1.JBSConfig) (reconcile.Result, error) {
+	// TODO: if verify = true, then find dependency build and add veify = false to dep build, add ourself to the owner references, if new dep created, also add it to that
+	//log.Info("cluster set on obj ", r.clusterSetOnObj(&abr))
+	//first check for a rebuild annotation
+	if abr.Annotations[RebuildAnnotation] == "true" {
+		if abr.Status.State != v1alpha1.ArtifactBuildStateNew {
+			return r.handleRebuild(log, ctx, &abr)
+		} else {
+			delete(abr.Annotations, RebuildAnnotation)
+			return reconcile.Result{}, r.client.Update(ctx, &abr)
+		}
+	} else if abr.Annotations[RebuildAnnotation] == "failed" {
+		if abr.Status.State != v1alpha1.ArtifactBuildStateComplete && abr.Status.State != v1alpha1.ArtifactBuildStateNew {
+			return r.handleRebuild(log, ctx, &abr)
+
+		} else {
+			delete(abr.Annotations, RebuildAnnotation)
+			return reconcile.Result{}, r.client.Update(ctx, &abr)
 		}
 	}
 
+	switch abr.Status.State {
+	case v1alpha1.ArtifactBuildStateNew, "":
+		return r.handleStateNew(ctx, log, &abr, jbsConfig)
+	case v1alpha1.ArtifactBuildStateDiscovering:
+		return r.handleStateDiscovering(ctx, log, &abr)
+	case v1alpha1.ArtifactBuildStateComplete:
+		return r.handleStateComplete(ctx, log, &abr)
+	case v1alpha1.ArtifactBuildStateBuilding:
+		return r.handleStateBuilding(ctx, log, &abr)
+	case v1alpha1.ArtifactBuildStateFailed:
+		return r.handleStateFailed(ctx, log, &abr)
+	}
 	return reconcile.Result{}, nil
 }
 
@@ -219,60 +214,6 @@ func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 			err := client.Update(ctx, pr)
 			if err != nil {
 				return reconcile.Result{}, err
-			}
-		}
-	}
-	return reconcile.Result{}, nil
-}
-
-func (r *ReconcileArtifactBuild) handleDependencyBuildReceived(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	ownerRefs := db.GetOwnerReferences()
-	if len(ownerRefs) == 0 {
-		msg := "dependencybuild missing onwerrefs %s:%s"
-		r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name)
-		log.Info(msg, db.Namespace, db.Name)
-		return reconcile.Result{}, nil
-	}
-	//update all the owners based on the current state
-	for _, ownerRef := range ownerRefs {
-		if strings.EqualFold(ownerRef.Kind, "artifactbuild") {
-			ownerName := ownerRef.Name
-			if len(ownerName) == 0 {
-				msg := "dependencybuild missing artifactbuilds owner refs %s:%s"
-				r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name)
-				log.Info(msg, db.Namespace, db.Name)
-				continue
-			}
-
-			key := types.NamespacedName{Namespace: db.Namespace, Name: ownerName}
-			abr := v1alpha1.ArtifactBuild{}
-			err := r.client.Get(ctx, key, &abr)
-			if err != nil {
-				msg := "get for dependencybuild %s:%s owning abr %s:%s yielded error %s"
-				r.eventRecorder.Eventf(db, corev1.EventTypeWarning, msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error())
-				log.Error(err, fmt.Sprintf(msg, db.Namespace, db.Name, db.Namespace, ownerName, err.Error()))
-				if !errors.IsNotFound(err) {
-					return reconcile.Result{}, err
-				}
-				//on not found we don't return the error
-				//no need to retry it would just result in an infinite loop
-				continue
-			}
-			oldState := abr.Status.State
-			switch db.Status.State {
-			case v1alpha1.DependencyBuildStateFailed:
-			case v1alpha1.DependencyBuildStateContaminated:
-				setArtifactState(&log, &abr, v1alpha1.ArtifactBuildStateFailed)
-			case v1alpha1.DependencyBuildStateComplete:
-				return r.handleDependencyBuildSuccess(log, ctx, db, &abr)
-			default:
-				setArtifactState(&log, &abr, v1alpha1.ArtifactBuildStateBuilding)
-			}
-			if oldState != abr.Status.State {
-				err = r.client.Status().Update(ctx, &abr)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
 			}
 		}
 	}
@@ -481,8 +422,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateFailed)
 		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 	default:
-		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateBuilding)
-		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+		return reconcile.Result{}, nil
 	}
 }
 

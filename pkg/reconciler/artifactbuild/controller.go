@@ -37,27 +37,6 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 				},
 			}
 		})).
-		Watches(&source.Kind{Type: &v1alpha1.DependencyBuild{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
-			dependencyBuild := o.(*v1alpha1.DependencyBuild)
-
-			// check if the DependencyBuild is related to ArtifactBuild
-			if dependencyBuild.GetLabels() == nil {
-				return []reconcile.Request{}
-			}
-			_, ok := dependencyBuild.GetLabels()[DependencyBuildIdLabel]
-			if !ok {
-				return []reconcile.Request{}
-			}
-
-			return []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Name:      dependencyBuild.Name,
-						Namespace: dependencyBuild.Namespace,
-					},
-				},
-			}
-		})).
 		Watches(&source.Kind{Type: &v1alpha1.DependencyBuild{}}, &handler.EnqueueRequestForOwner{OwnerType: &v1alpha1.ArtifactBuild{}, IsController: false}).
 		Complete(r)
 }
