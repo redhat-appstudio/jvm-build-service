@@ -60,6 +60,13 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	if !jbsConfig.Spec.RequireArtifactVerification {
 		verifyBuiltArtifactsArgs = append(verifyBuiltArtifactsArgs, "--report-only")
 	}
+
+	if len(recipe.AllowedDifferences) > 0 {
+		for _, i := range recipe.AllowedDifferences {
+			verifyBuiltArtifactsArgs = append(verifyBuiltArtifactsArgs, "--excludes="+i)
+		}
+	}
+
 	deployArgs := []string{
 		"deploy-container",
 		"--path=$(workspaces.source.path)/artifacts",

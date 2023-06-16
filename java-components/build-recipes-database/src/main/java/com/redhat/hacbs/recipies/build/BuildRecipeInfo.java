@@ -46,6 +46,8 @@ public class BuildRecipeInfo {
      */
     Map<String, BuildRecipeInfo> additionalBuilds;
 
+    List<String> allowedDifferences = new ArrayList<>();
+
     public List<String> getAdditionalArgs() {
         return additionalArgs;
     }
@@ -163,6 +165,15 @@ public class BuildRecipeInfo {
         return this;
     }
 
+    public List<String> getAllowedDifferences() {
+        return allowedDifferences;
+    }
+
+    public BuildRecipeInfo setAllowedDifferences(List<String> allowedDifferences) {
+        this.allowedDifferences = allowedDifferences;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildRecipeInfo{" +
@@ -178,6 +189,7 @@ public class BuildRecipeInfo {
                 ", additionalMemory=" + additionalMemory +
                 ", additionalDownloads=" + additionalDownloads +
                 ", additionalBuilds=" + additionalBuilds +
+                ", allowedDifferences=" + allowedDifferences +
                 '}';
     }
 }

@@ -1,3 +1,5 @@
 ---
 additionalArgs:
   - "-DskipDocs=true"
+allowedDifferences:
+  - ".:.*-javadoc\\.jar:.*"

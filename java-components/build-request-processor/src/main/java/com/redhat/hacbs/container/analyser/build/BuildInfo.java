@@ -50,6 +50,7 @@ public class BuildInfo {
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
     boolean disableSubmodules;
     int additionalMemory;
+    List<String> allowedDifferences = new ArrayList<>();
 
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
@@ -146,6 +147,15 @@ public class BuildInfo {
         return this;
     }
 
+    public List<String> getAllowedDifferences() {
+        return allowedDifferences;
+    }
+
+    public BuildInfo setAllowedDifferences(List<String> allowedDifferences) {
+        this.allowedDifferences = allowedDifferences;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildInfo{" +
@@ -160,6 +170,7 @@ public class BuildInfo {
                 ", additionalDownloads=" + additionalDownloads +
                 ", disableSubmodules=" + disableSubmodules +
                 ", additionalMemory=" + additionalMemory +
+                ", allowedDifferences=" + allowedDifferences +
                 '}';
     }
 }

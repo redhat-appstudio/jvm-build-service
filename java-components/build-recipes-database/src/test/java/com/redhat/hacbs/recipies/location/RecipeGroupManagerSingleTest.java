@@ -84,16 +84,20 @@ public class RecipeGroupManagerSingleTest {
                 new BuildInfoRequest("https://github.com/quarkusio/quarkus.git", "2.0", Set.of(BuildRecipe.BUILD)));
         Assertions.assertEquals(List.of("-DskipDocs=true"),
                 BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAdditionalArgs());
-
+        Assertions.assertEquals(List.of(".:.*-javadoc\\.jar:.*"),
+                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAllowedDifferences());
         result = manager.requestBuildInformation(
                 new BuildInfoRequest("https://github.com/quarkusio/quarkus.git", "1.0", Set.of(BuildRecipe.BUILD)));
         Assertions.assertEquals(List.of("-Dquarkus1=true"),
                 BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAdditionalArgs());
+        Assertions.assertEquals(List.of(".:.*-sources\\.jar:.*"),
+                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAllowedDifferences());
         result = manager.requestBuildInformation(
                 new BuildInfoRequest("https://github.com/quarkusio/quarkus.git", "0.1", Set.of(BuildRecipe.BUILD)));
         Assertions.assertEquals(List.of(),
                 BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAdditionalArgs());
-
+        Assertions.assertEquals(List.of(),
+                BuildRecipe.BUILD.getHandler().parse(result.getData().get(BuildRecipe.BUILD)).getAllowedDifferences());
     }
 
     @Test

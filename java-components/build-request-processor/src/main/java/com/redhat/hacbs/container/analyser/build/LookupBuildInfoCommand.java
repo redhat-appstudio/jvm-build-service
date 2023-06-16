@@ -299,6 +299,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.postBuildScript = buildRecipeInfo.getPostBuildScript();
                 info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
                 info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
+                info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
             }
             ObjectMapper mapper = new ObjectMapper();

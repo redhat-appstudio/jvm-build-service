@@ -84,6 +84,7 @@ type BuildRecipe struct {
 	DisableSubmodules   bool                 `json:"disableSubmodules,omitempty"`
 	AdditionalMemory    int                  `json:"additionalMemory,omitempty"`
 	Repositories        []string             `json:"repositories,omitempty"`
+	AllowedDifferences  []string             `json:"allowedDifferences,omitempty"`
 }
 type Contaminant struct {
 	GAV                   string   `json:"gav,omitempty"`
