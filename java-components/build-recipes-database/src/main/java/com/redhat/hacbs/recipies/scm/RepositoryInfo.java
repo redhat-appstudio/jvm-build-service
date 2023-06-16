@@ -94,6 +94,7 @@ public class RepositoryInfo {
         return this;
     }
 
+    @JsonIgnore
     public String getUriWithoutFragment() {
         return uri.replace("#" + buildNameFragment, "");
     }
