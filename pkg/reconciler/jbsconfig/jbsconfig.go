@@ -752,6 +752,10 @@ func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log lo
 		return errors2.New("unknown error in the repository generation process")
 	}
 	controllerutil.AddFinalizer(config, ImageRepositoryFinalizer)
+	err = r.client.Update(ctx, config)
+	if err != nil {
+		return err
+	}
 	config.Status.ImageRegistry = &v1alpha1.ImageRegistry{
 		Owner:      r.quayOrgName,
 		Host:       "quay.io",
@@ -784,7 +788,7 @@ func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log lo
 		log.Error(err, fmt.Sprintf("error writing robot account token into Secret: %v", robotAccountSecretKey), Action, ActionAdd)
 		return err
 	}
-	log.Info(fmt.Sprintf("Created image registry secret %s for Component", robotAccountSecretKey.Name), Action, ActionAdd)
+	log.Info(fmt.Sprintf("Created image registry secret %s", robotAccountSecretKey.Name), Action, ActionAdd)
 
 	return nil
 }

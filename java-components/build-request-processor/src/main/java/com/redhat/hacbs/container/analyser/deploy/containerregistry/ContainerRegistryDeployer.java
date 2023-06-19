@@ -92,7 +92,7 @@ public class ContainerRegistryDeployer implements Deployer {
                         }
                     }
                     if (!found) {
-                        throw new RuntimeException("Unable to find a host matching " + host
+                        throw new RuntimeException("Unable to find a host matching " + fullName
                                 + " in provided dockerconfig, hosts provided: " + config.getAuths().keySet());
                     }
                     username = tmpUser;
