@@ -30,9 +30,6 @@ import io.quarkus.logging.Log;
 
 public class ContainerRegistryDeployer implements Deployer {
 
-    private static final String DOUBLE_POINT = ":";
-    private static final String SLASH = "/";
-
     static {
         if (System.getProperty("jib.httpTimeout") == null) {
             //long timeout, but not infinite
@@ -156,7 +153,7 @@ public class ContainerRegistryDeployer implements Deployer {
             containerizer = containerizer.withAdditionalTag(gav.getTag());
         }
 
-        AbsoluteUnixPath imageRoot = AbsoluteUnixPath.get(SLASH);
+        AbsoluteUnixPath imageRoot = AbsoluteUnixPath.get("/");
         JibContainerBuilder containerBuilder = Jib.fromScratch()
                 .setFormat(ImageFormat.OCI)
                 .addLabel("groupId", imageData.getGroupIds())
@@ -179,8 +176,12 @@ public class ContainerRegistryDeployer implements Deployer {
 
     private String createImageName() {
         String imageName = UUID.randomUUID().toString();
-        return host + DOUBLE_POINT + port + SLASH + owner + SLASH + repository
-                + DOUBLE_POINT + imageName;
+        if (port == 443) {
+            return host + "/" + owner + "/" + repository
+                    + ":" + imageName;
+        }
+        return host + ":" + port + "/" + owner + "/" + repository
+                + ":" + imageName;
     }
 
     private List<Path> getLayers(Path artifacts, Path source, Path logs) {
