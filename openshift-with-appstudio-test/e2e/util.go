@@ -268,7 +268,8 @@ func setup(t *testing.T, namespace string) *testArgs {
 				"maven-repository-300-jboss":     "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-confluent": "https://packages.confluent.io/maven",
 				"maven-repository-302-redhat":    "https://maven.repository.redhat.com/ga",
-				"maven-repository-303-jitpack":   "https://jitpack.io"},
+				"maven-repository-303-jitpack":   "https://jitpack.io",
+				"maven-repository-304-gradle":    "https://repo.gradle.org/artifactory/libs-releases"},
 
 			CacheSettings: v1alpha1.CacheSettings{ //up the cache size, this is a lot of builds all at once, we could limit the number of pods instead but this gets the test done faster
 				RequestMemory: "1024Mi",

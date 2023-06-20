@@ -33,6 +33,9 @@ openshift-e2e:
 openshift-e2e-periodic:
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags periodic -timeout 180m -v ./openshift-with-appstudio-test/...
 
+openshift-e2e-quickstarts:
+	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags quickstarts -timeout 180m -v ./openshift-with-appstudio-test/...
+
 minikube-test:
 	go test -count 1 -tags minikube -timeout 180m -v ./openshift-with-appstudio-test/e2e
 build:

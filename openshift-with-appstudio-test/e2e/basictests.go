@@ -28,7 +28,10 @@ import (
 )
 
 func runBasicTests(t *testing.T, doSetup func(t *testing.T, namespace string) *testArgs, namespace string) {
+	runPipelineTests(t, doSetup, "run-e2e-shaded-app.yaml", namespace)
+}
 
+func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string) *testArgs, pipeline string, namespace string) {
 	ta := doSetup(t, namespace)
 	defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 	//TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
@@ -42,7 +45,7 @@ func runBasicTests(t *testing.T, doSetup func(t *testing.T, namespace string) *t
 	}
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
-	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-e2e-shaded-app.yaml")
+	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", pipeline)
 	ta.run = &v1beta1.PipelineRun{}
 	var ok bool
 	obj := streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
