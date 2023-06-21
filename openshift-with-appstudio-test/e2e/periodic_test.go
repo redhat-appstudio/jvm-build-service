@@ -1,6 +1,3 @@
-//go:build periodic
-// +build periodic
-
 package e2e
 
 import (
@@ -24,8 +21,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestServiceRegistry(t *testing.T) {
-	ta := setup(t, nil)
+func runTests(t *testing.T, namespace string, runYaml string) {
+	ta := setup(t, namespace)
 
 	countQuota := &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
@@ -49,7 +46,7 @@ func TestServiceRegistry(t *testing.T) {
 	}
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
-	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-service-registry.yaml")
+	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", runYaml)
 	ta.run = &v1beta1.PipelineRun{}
 	obj := streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
 	var ok bool

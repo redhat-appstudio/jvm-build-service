@@ -8,5 +8,5 @@ import (
 )
 
 func TestExampleMinikubeRun(t *testing.T) {
-	runBasicTests(t, setupMinikube)
+	runBasicTests(t, setupMinikube, testNamespace)
 }

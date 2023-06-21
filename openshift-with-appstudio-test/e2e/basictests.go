@@ -27,9 +27,12 @@ import (
 	"time"
 )
 
-func runBasicTests(t *testing.T, doSetup func(t *testing.T, ta *testArgs) *testArgs) {
+func runBasicTests(t *testing.T, doSetup func(t *testing.T, namespace string) *testArgs, namespace string) {
+	runPipelineTests(t, doSetup, "run-e2e-shaded-app.yaml", namespace)
+}
 
-	ta := doSetup(t, nil)
+func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string) *testArgs, pipeline string, namespace string) {
+	ta := doSetup(t, namespace)
 	defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 	//TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
 	// and successful runs (in case a run succeeds, but we find something amiss if we look at passing runs; our in repo
@@ -42,7 +45,7 @@ func runBasicTests(t *testing.T, doSetup func(t *testing.T, ta *testArgs) *testA
 	}
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
-	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "run-e2e-shaded-app.yaml")
+	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", pipeline)
 	ta.run = &v1beta1.PipelineRun{}
 	var ok bool
 	obj := streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
@@ -548,6 +551,5 @@ func watchEvents(eventClient v1.EventInterface, ta *testArgs) {
 			continue
 		}
 		ta.Logf(fmt.Sprintf("non-normal event reason %s about obj %s:%s message %s", event.Reason, event.Regarding.Kind, event.Regarding.Name, event.Note))
-		dumpNodes(ta)
 	}
 }

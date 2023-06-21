@@ -129,19 +129,17 @@ func debugAndFailTest(ta *testArgs, failMsg string) {
 
 }
 
-func commonSetup(t *testing.T, ta *testArgs, gitCloneUrl string) *testArgs {
+func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 
-	if ta == nil {
-		ta = &testArgs{
-			t:        t,
-			timeout:  time.Minute * 15,
-			interval: time.Second * 10,
-		}
+	ta := &testArgs{
+		t:        t,
+		timeout:  time.Minute * 15,
+		interval: time.Second * 10,
 	}
 	setupClients(ta.t)
 
 	if len(ta.ns) == 0 {
-		ta.ns = generateName(testNamespace)
+		ta.ns = generateName(namespace)
 		namespace := &corev1.Namespace{}
 		namespace.Name = ta.ns
 		_, err := kubeClient.CoreV1().Namespaces().Create(context.Background(), namespace, metav1.CreateOptions{})
@@ -241,9 +239,9 @@ func commonSetup(t *testing.T, ta *testArgs, gitCloneUrl string) *testArgs {
 	}
 	return ta
 }
-func setup(t *testing.T, ta *testArgs) *testArgs {
+func setup(t *testing.T, namespace string) *testArgs {
 
-	ta = commonSetup(t, ta, gitCloneTaskUrl)
+	ta := commonSetup(t, gitCloneTaskUrl, namespace)
 	err := wait.PollImmediate(1*time.Second, 1*time.Minute, func() (done bool, err error) {
 		_, err = kubeClient.CoreV1().ServiceAccounts(ta.ns).Get(context.TODO(), "pipeline", metav1.GetOptions{})
 		if err != nil {
@@ -270,7 +268,8 @@ func setup(t *testing.T, ta *testArgs) *testArgs {
 				"maven-repository-300-jboss":     "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-confluent": "https://packages.confluent.io/maven",
 				"maven-repository-302-redhat":    "https://maven.repository.redhat.com/ga",
-				"maven-repository-303-jitpack":   "https://jitpack.io"},
+				"maven-repository-303-jitpack":   "https://jitpack.io",
+				"maven-repository-304-gradle":    "https://repo.gradle.org/artifactory/libs-releases"},
 
 			CacheSettings: v1alpha1.CacheSettings{ //up the cache size, this is a lot of builds all at once, we could limit the number of pods instead but this gets the test done faster
 				RequestMemory: "1024Mi",
@@ -478,7 +477,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	if directory == "" {
 		directory = "/tmp/jvm-build-service-report"
 	} else {
-		directory = directory + "/jvm-build-service-report"
+		directory = directory + "/jvm-build-service-report/" + namespace
 	}
 	err := os.MkdirAll(directory, 0755) //#nosec G306 G301
 	if err != nil {
@@ -654,6 +653,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	report := directory + "/index.html"
 
 	data := ReportData{
+		Name:       namespace,
 		Artifact:   artifact,
 		Dependency: dependency,
 	}
@@ -754,6 +754,7 @@ type DependencyReportData struct {
 	Instances    []*ReportInstanceData
 }
 type ReportData struct {
+	Name       string
 	Artifact   ArtifactReportData
 	Dependency DependencyReportData
 }
@@ -771,9 +772,9 @@ func (a SortableArtifact) Len() int           { return len(a) }
 func (a SortableArtifact) Less(i, j int) bool { return strings.Compare(a[i].Name, a[j].Name) < 0 }
 func (a SortableArtifact) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-func setupMinikube(t *testing.T, ta *testArgs) *testArgs {
+func setupMinikube(t *testing.T, namespace string) *testArgs {
 
-	ta = commonSetup(t, ta, minikubeGitCloneTaskUrl)
+	ta := commonSetup(t, minikubeGitCloneTaskUrl, namespace)
 	//go through and limit all deployments
 	//we have very little memory, we need some limits to make sure minikube can actually run
 	//limit every deployment to 100mb
