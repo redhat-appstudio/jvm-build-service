@@ -7,6 +7,7 @@ import jakarta.enterprise.inject.Vetoed;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.ArtifactCommand;
 import io.github.redhatappstudio.jvmbuild.cli.builds.BuildCommand;
 import io.github.redhatappstudio.jvmbuild.cli.rebuilt.RebuiltCommand;
+import io.github.redhatappstudio.jvmbuild.cli.settings.SetupCommand;
 import jline.console.ConsoleReader;
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;
@@ -16,7 +17,8 @@ import picocli.CommandLine.Spec;
         QuitCommand.class,
         BuildCommand.class,
         ArtifactCommand.class,
-        RebuiltCommand.class
+        RebuiltCommand.class,
+        SetupCommand.class
 })
 @Vetoed
 public class MainCommand {
