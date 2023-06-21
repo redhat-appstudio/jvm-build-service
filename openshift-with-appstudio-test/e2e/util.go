@@ -653,6 +653,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	report := directory + "/index.html"
 
 	data := ReportData{
+		Name:       namespace,
 		Artifact:   artifact,
 		Dependency: dependency,
 	}
@@ -753,6 +754,7 @@ type DependencyReportData struct {
 	Instances    []*ReportInstanceData
 }
 type ReportData struct {
+	Name       string
 	Artifact   ArtifactReportData
 	Dependency DependencyReportData
 }

@@ -1,6 +1,3 @@
-//go:build periodic
-// +build periodic
-
 package e2e
 
 import (
@@ -23,21 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
 )
-
-func TestServiceRegistry(t *testing.T) {
-	t.Parallel()
-	runTests(t, "apicurio-", "run-service-registry.yaml")
-}
-
-//func TestWildfly(t *testing.T) {
-//	t.Parallel()
-//	runTests(t, "wildfly-", "run-wildfly.yaml")
-//}
-
-func TestJBS(t *testing.T) {
-	t.Parallel()
-	runTests(t, "jbs-", "run-jvm-build-service.yaml")
-}
 
 func runTests(t *testing.T, namespace string, runYaml string) {
 	ta := setup(t, namespace)
