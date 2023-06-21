@@ -153,6 +153,11 @@ func (in *BuildRecipe) DeepCopyInto(out *BuildRecipe) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.AllowedDifferences != nil {
+		in, out := &in.AllowedDifferences, &out.AllowedDifferences
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

@@ -38,8 +38,9 @@ type JBSConfigSpec struct {
 }
 
 type JBSConfigStatus struct {
-	Message       string         `json:"message,omitempty"`
-	ImageRegistry *ImageRegistry `json:"imageRegistry,omitempty"`
+	Message          string         `json:"message,omitempty"`
+	ImageRegistry    *ImageRegistry `json:"imageRegistry,omitempty"`
+	RebuildsPossible bool           `json:"rebuildsPossible,omitempty"`
 }
 
 type CacheSettings struct {

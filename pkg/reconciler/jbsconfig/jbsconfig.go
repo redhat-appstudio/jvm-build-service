@@ -93,7 +93,6 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
-
 		systemConfig := v1alpha1.SystemConfig{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 		if err != nil {
@@ -101,7 +100,16 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		}
 		err = r.validations(ctx, log, request, &jbsConfig)
 		if err != nil {
-			return reconcile.Result{}, err
+			if jbsConfig.Status.Message != err.Error() || jbsConfig.Status.RebuildsPossible {
+				jbsConfig.Status.Message = err.Error()
+				jbsConfig.Status.RebuildsPossible = false
+				err2 := r.client.Status().Update(ctx, &jbsConfig)
+				if err2 != nil {
+					return reconcile.Result{}, err2
+				}
+			}
+			//we don't return the error because we won't want to requeue
+			return reconcile.Result{}, nil
 		}
 
 		err = r.deploymentSupportObjects(ctx, log, request, &jbsConfig)
@@ -314,13 +322,6 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 				return r.handleNoImageSecretFound(ctx, jbsConfig)
 			} else {
 				errorMessage := "Secret jvm-build-image-secrets not found, and SPI not installed. Rebuilds not possible."
-				if jbsConfig.Status.Message != errorMessage {
-					jbsConfig.Status.Message = errorMessage
-					err2 := r.client.Status().Update(ctx, jbsConfig)
-					if err2 != nil {
-						return err2
-					}
-				}
 				return errors2.New(errorMessage)
 			}
 
@@ -331,22 +332,12 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	_, keyPresent2 := registrySecret.StringData[v1alpha1.ImageSecretTokenKey]
 	if !keyPresent1 && !keyPresent2 {
 		err := fmt.Errorf("need image registry token set at key %s in secret %s to enable rebuilds", v1alpha1.ImageSecretTokenKey, v1alpha1.ImageSecretName)
-		errorMessage := err.Error()
-		if jbsConfig.Status.Message != errorMessage {
-			jbsConfig.Status.Message = errorMessage
-			err2 := r.client.Status().Update(ctx, jbsConfig)
-			if err2 != nil {
-				return err2
-			}
-		}
-		if r.spiPresent {
-			return nil
-		}
 		return err
 	}
 	message := fmt.Sprintf("found %s secret with appropriate token keys in namespace %s, rebuilds are possible", v1alpha1.ImageSecretTokenKey, request.Namespace)
 	log.Info(message)
-	if jbsConfig.Status.Message != message {
+	if jbsConfig.Status.Message != message || !jbsConfig.Status.RebuildsPossible {
+		jbsConfig.Status.RebuildsPossible = true
 		jbsConfig.Status.Message = message
 		err2 := r.client.Status().Update(ctx, jbsConfig)
 		if err2 != nil {
@@ -811,13 +802,13 @@ func (r *ReconcilerJBSConfig) generateImageRepository(log logr.Logger, component
 	_, _ = r.quayClient.DeleteRobotAccount(r.quayOrgName, robotAccountName)
 	robotAccount, err := r.quayClient.CreateRobotAccount(r.quayOrgName, robotAccountName)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to create robot account %s", robotAccountName))
+		log.Error(err, fmt.Sprintf("failed to create robot account %s for image repository %s and organisation %s", robotAccountName, imageRepositoryName, r.quayOrgName))
 		return nil, nil, err
 	}
 
 	err = r.quayClient.AddWritePermissionsToRobotAccount(r.quayOrgName, repo.Name, robotAccountName)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to add permissions to robot account %s", robotAccountName))
+		log.Error(err, fmt.Sprintf("failed to add permissions to robot account %s for image repository %s and organisation %s", robotAccountName, imageRepositoryName, r.quayOrgName))
 		return nil, nil, err
 	}
 

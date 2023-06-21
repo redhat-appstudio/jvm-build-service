@@ -18,6 +18,11 @@ DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml
 kubectl config set-context --current --namespace=test-jvm-namespace
 kubectl delete --ignore-not-found secret jvm-build-image-secrets jvm-build-git-secrets
+kubectl delete --ignore-not-found secret  -n jvm-build-service quaytoken
+
+if [ -n "$QUAY_ORG" ] && [ -n "$QUAY_TOKEN" ]; then
+    kubectl create secret generic -n jvm-build-service quaytoken --from-literal "quaytoken=$QUAY_TOKEN" --from-literal "organization=$QUAY_ORG"
+fi
 kubectl create secret generic jvm-build-image-secrets --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson
 kubectl create secret generic jvm-build-git-secrets --from-literal .git-credentials="
 https://$GITHUB_E2E_ORGANIZATION:$GITHUB_TOKEN@github.com

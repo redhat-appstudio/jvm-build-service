@@ -157,6 +157,8 @@ spec:
                 type: object
               message:
                 type: string
+              rebuildsPossible:
+                type: boolean
             type: object
         required:
         - spec

@@ -11,16 +11,17 @@ import io.fabric8.kubernetes.model.annotation.Version;
 @Group(ModelConstants.GROUP)
 @Version(ModelConstants.VERSION)
 @JsonInclude(Include.NON_NULL)
-public class JBSConfig extends CustomResource<ArtifactBuildSpec, ArtifactBuildStatus>
+public class JBSConfig extends CustomResource<JBSConfigSpec, JBSConfigStatus>
         implements Namespaced {
+    public static final String NAME = "jvm-build-config";
 
     @Override
-    protected ArtifactBuildSpec initSpec() {
-        return new ArtifactBuildSpec();
+    protected JBSConfigSpec initSpec() {
+        return new JBSConfigSpec();
     }
 
     @Override
-    protected ArtifactBuildStatus initStatus() {
-        return new ArtifactBuildStatus();
+    protected JBSConfigStatus initStatus() {
+        return new JBSConfigStatus();
     }
 }

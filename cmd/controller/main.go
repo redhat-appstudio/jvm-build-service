@@ -70,7 +70,7 @@ func main() {
 	var quayClient *quay.QuayClient
 	if orgContent != nil && tokenContent != nil {
 		client := quay.NewQuayClient(&http.Client{Transport: &http.Transport{}}, strings.TrimSpace(string(tokenContent)), "https://quay.io/api/v1")
-		quayClient = &client
+		quayClient = client
 	}
 
 	var mgr ctrl.Manager

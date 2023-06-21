@@ -89,9 +89,12 @@ func TestMissingRegistrySecret(t *testing.T) {
 	jbsConfig := setupJBSConfig()
 	jbsConfig.Spec.EnableRebuilds = true
 	objs := []runtimeclient.Object{jbsConfig, setupSystemConfig()}
-	_, reconciler := setupClientAndReconciler(false, objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
-	g.Expect(err).NotTo(BeNil())
+	client, reconciler := setupClientAndReconciler(false, objs...)
+	name := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: name})
+	g.Expect(err).To(BeNil())
+	g.Expect(client.Get(ctx, name, jbsConfig)).To(BeNil())
+	g.Expect(jbsConfig.Status.RebuildsPossible).To(BeFalse())
 }
 
 func TestMissingRegistrySecretRebuildFalse(t *testing.T) {
@@ -111,9 +114,12 @@ func TestMissingRegistrySecretKey(t *testing.T) {
 	jbsConfig := setupJBSConfig()
 	jbsConfig.Spec.EnableRebuilds = true
 	objs := []runtimeclient.Object{jbsConfig, secret, setupSystemConfig()}
-	_, reconciler := setupClientAndReconciler(false, objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
-	g.Expect(err).NotTo(BeNil())
+	client, reconciler := setupClientAndReconciler(false, objs...)
+	name := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: name})
+	g.Expect(err).To(BeNil())
+	g.Expect(client.Get(ctx, name, jbsConfig)).To(BeNil())
+	g.Expect(jbsConfig.Status.RebuildsPossible).To(BeFalse())
 }
 
 func TestSetupEmptyConfigWithSecret(t *testing.T) {
@@ -134,10 +140,13 @@ func TestRebuildEnabled(t *testing.T) {
 	jbsConfig.Spec.EnableRebuilds = true
 	objs := []runtimeclient.Object{jbsConfig, setupSecret(), setupSystemConfig()}
 	client, reconciler := setupClientAndReconciler(false, objs...)
-	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
+	name := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}
+	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: name})
 	g.Expect(err).To(BeNil())
 	value := readConfiguredRepositories(client, g)
 	g.Expect(*value).Should(Equal("rebuilt,central,redhat"))
+	g.Expect(client.Get(ctx, name, jbsConfig)).To(BeNil())
+	g.Expect(jbsConfig.Status.RebuildsPossible).To(BeTrue())
 
 }
 
@@ -184,7 +193,7 @@ func TestMissingRegistrySecretWithSpi(t *testing.T) {
 	objs := []runtimeclient.Object{jbsConfig, setupSystemConfig()}
 	client, reconciler := setupClientAndReconciler(true, objs...)
 	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
-	g.Expect(err).ToNot(BeNil())
+	g.Expect(err).To(BeNil()) //no error to prevent requeue
 
 	binding := spi.SPIAccessTokenBinding{}
 	err = client.Get(context.TODO(), types.NamespacedName{Namespace: jbsConfig.Namespace, Name: v1alpha1.ImageSecretName}, &binding)
