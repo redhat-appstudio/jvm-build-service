@@ -8,6 +8,7 @@ import (
 	"github.com/redhat-appstudio/image-controller/pkg/quay"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"go.uber.org/multierr"
 	"regexp"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sort"
@@ -34,11 +35,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const TlsServiceName = v1alpha1.CacheDeploymentName + "-tls"
-const TestRegistry = "jvmbuildservice.io/test-registry"
-const ImageRepositoryFinalizer = "jvmbuildservice.io/quay-repository-finalizer"
-const DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
-const UploadSecretName = "jvm-build-service-temp-upload-secret" //#nosec
+const (
+	TlsServiceName                      = v1alpha1.CacheDeploymentName + "-tls"
+	TestRegistry                        = "jvmbuildservice.io/test-registry"
+	JBSConfigFinalizer                  = "jvmbuildservice.io/jbsconfig-finalizer"
+	ImageRepositoryFinalizer            = "jvmbuildservice.io/quay-repository-finalizer"
+	DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
+	UploadSecretName                    = "jvm-build-service-temp-upload-secret" //#nosec
+)
 
 const (
 	Action              = "action"
@@ -80,19 +84,25 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	jbsConfig := v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
+		fmt.Printf("### Reconcile::afterClientGet for %s with error %s and jbsconfig %s\n", request.Name, err,
+			jbsConfig.DeletionTimestamp.IsZero())
 		// Deleted JBSConfig - delete cache resources
-		if errors.IsNotFound(err) && request.Name == v1alpha1.JBSConfigName {
-			return r.handleConfigDeleted(ctx, request, log)
-		}
+		//		if errors.IsNotFound(err) && request.Name == v1alpha1.JBSConfigName {
+		////			return r.handleConfigDeleted(ctx, request, log)
+		//		}
 		return reconcile.Result{}, err
 	}
 	if !jbsConfig.DeletionTimestamp.IsZero() {
-		err := r.handlePossibleRepositoryCleanup(ctx, jbsConfig, log)
-		return reconcile.Result{}, err
+		// The object is being deleted.
+		fmt.Printf("### Reconcile::deletiontimestamp %s \n", jbsConfig.DeletionTimestamp.String())
+		return reconcile.Result{}, multierr.Append(r.handlePossibleJBCConfigCleanup(ctx, &jbsConfig, log, request), r.handlePossibleRepositoryCleanup(ctx, &jbsConfig, log))
 	}
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
+		if err := r.insertFinalizerIfMissing(ctx, &jbsConfig, log); err != nil {
+			return reconcile.Result{}, err
+		}
 		systemConfig := v1alpha1.SystemConfig{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 		if err != nil {
@@ -127,9 +137,9 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcilerJBSConfig) handlePossibleRepositoryCleanup(ctx context.Context, jbsConfig v1alpha1.JBSConfig, log logr.Logger) error {
-	if controllerutil.ContainsFinalizer(&jbsConfig, ImageRepositoryFinalizer) {
-		robotAccountName := generateRobotAccountName(&jbsConfig)
+func (r *ReconcilerJBSConfig) handlePossibleRepositoryCleanup(ctx context.Context, jbsConfig *v1alpha1.JBSConfig, log logr.Logger) error {
+	if controllerutil.ContainsFinalizer(jbsConfig, ImageRepositoryFinalizer) {
+		robotAccountName := generateRobotAccountName(jbsConfig)
 		isDeleted, err := r.quayClient.DeleteRobotAccount(r.quayOrgName, robotAccountName)
 		if err != nil {
 			log.Error(err, "failed to delete robot account")
@@ -140,7 +150,7 @@ func (r *ReconcilerJBSConfig) handlePossibleRepositoryCleanup(ctx context.Contex
 		}
 
 		if val, exists := jbsConfig.Annotations[DeleteImageRepositoryAnnotationName]; exists && val == "true" {
-			imageRepo := generateRepositoryName(&jbsConfig)
+			imageRepo := generateRepositoryName(jbsConfig)
 			isRepoDeleted, err := r.quayClient.DeleteRepository(r.quayOrgName, imageRepo)
 			if err != nil {
 				log.Error(err, "failed to delete image repository")
@@ -151,8 +161,8 @@ func (r *ReconcilerJBSConfig) handlePossibleRepositoryCleanup(ctx context.Contex
 			}
 		}
 
-		controllerutil.RemoveFinalizer(&jbsConfig, ImageRepositoryFinalizer)
-		if err := r.client.Update(ctx, &jbsConfig); err != nil {
+		controllerutil.RemoveFinalizer(jbsConfig, ImageRepositoryFinalizer)
+		if err := r.client.Update(ctx, jbsConfig); err != nil {
 			log.Error(err, "failed to remove image repository finalizer")
 			return err
 		}
@@ -162,7 +172,9 @@ func (r *ReconcilerJBSConfig) handlePossibleRepositoryCleanup(ctx context.Contex
 	return nil
 }
 
-func (r *ReconcilerJBSConfig) handleConfigDeleted(ctx context.Context, request reconcile.Request, log logr.Logger) (reconcile.Result, error) {
+func (r *ReconcilerJBSConfig) handleConfigDeleted(ctx context.Context, request reconcile.Request, log logr.Logger) {
+
+	fmt.Printf("### handleConfigDeleted for %s\n", request.Namespace)
 	service := &corev1.Service{}
 	service.Name = v1alpha1.CacheDeploymentName
 	service.Namespace = request.Namespace
@@ -235,7 +247,6 @@ func (r *ReconcilerJBSConfig) handleConfigDeleted(ctx context.Context, request r
 		log.Error(err, msg)
 		r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
 	}
-	return reconcile.Result{}, nil
 }
 
 func settingOrDefault(setting, def string) string {
@@ -815,6 +826,35 @@ func (r *ReconcilerJBSConfig) generateImageRepository(log logr.Logger, component
 	}
 
 	return repo, robotAccount, nil
+}
+
+func (r *ReconcilerJBSConfig) insertFinalizerIfMissing(ctx context.Context, jbsConfig *v1alpha1.JBSConfig, log logr.Logger) error {
+	if !controllerutil.ContainsFinalizer(jbsConfig, JBSConfigFinalizer) {
+		fmt.Printf("### Adding finalizer %s to %s\n", JBSConfigFinalizer, jbsConfig.GetFinalizers())
+		controllerutil.AddFinalizer(jbsConfig, JBSConfigFinalizer)
+		if err := r.client.Update(ctx, jbsConfig); err != nil {
+			log.Error(err, "Failed to add JBSConfig repository finalizer")
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *ReconcilerJBSConfig) handlePossibleJBCConfigCleanup(ctx context.Context, jbsConfig *v1alpha1.JBSConfig, log logr.Logger, request reconcile.Request) error {
+	if controllerutil.ContainsFinalizer(jbsConfig, JBSConfigFinalizer) {
+		fmt.Printf("### Removing finalizer %s to %s\n", JBSConfigFinalizer, jbsConfig.GetFinalizers())
+
+		if request.Name == v1alpha1.JBSConfigName {
+			r.handleConfigDeleted(ctx, request, log)
+		}
+
+		controllerutil.RemoveFinalizer(jbsConfig, JBSConfigFinalizer)
+		if err := r.client.Update(ctx, jbsConfig); err != nil {
+			log.Error(err, "Failed to remove JBSConfig finalizer")
+			return err
+		}
+	}
+	return nil
 }
 
 // generateSecret dumps the robot account token into a Secret for future consumption.

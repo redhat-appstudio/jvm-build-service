@@ -219,10 +219,9 @@ func removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 }
 
 func setArtifactState(log *logr.Logger, abr *v1alpha1.ArtifactBuild, state string) {
-	abr.Status.State = state
-	switch state {
-	case v1alpha1.ArtifactBuildStateFailed, v1alpha1.ArtifactBuildStateComplete:
-		log.Info(fmt.Sprintf("ArtifactBuild %s has state set to %s", abr.Name, state))
+	if abr.Status.State != state {
+		log.Info(fmt.Sprintf("ArtifactBuild %s changing state from %s to %s", abr.Name, abr.Status.State, state))
+		abr.Status.State = state
 	}
 }
 
@@ -558,6 +557,7 @@ func (r *ReconcileArtifactBuild) updateLabel(ctx context.Context, log logr.Logge
 	if abr.Labels == nil {
 		abr.Labels = make(map[string]string)
 	}
+	originalLabel := abr.Labels[util.StatusLabel]
 	switch abr.Status.State {
 	case v1alpha1.ArtifactBuildStateNew, v1alpha1.ArtifactBuildStateDiscovering, v1alpha1.ArtifactBuildStateBuilding:
 		if abr.Labels[util.StatusLabel] != util.StatusBuilding {
@@ -576,7 +576,7 @@ func (r *ReconcileArtifactBuild) updateLabel(ctx context.Context, log logr.Logge
 		}
 	}
 	if result {
-		log.Info(fmt.Sprintf("Updating label to %s to match %s", abr.Labels[util.StatusLabel], abr.Status.State))
+		log.Info(fmt.Sprintf("Updating label from %s to %s to match %s", originalLabel, abr.Labels[util.StatusLabel], abr.Status.State))
 		if err := r.client.Update(ctx, abr); err != nil {
 			return result, err
 		}
