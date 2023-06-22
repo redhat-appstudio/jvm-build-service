@@ -2,7 +2,6 @@ package artifactbuild
 
 import (
 	"context"
-	"crypto/md5"  //#nosec G501
 	"crypto/sha1" //#nosec G505
 	_ "embed"
 	"encoding/hex"
@@ -23,6 +22,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -33,7 +33,6 @@ const (
 	// DependencyBuildContaminatedByAnnotation label prefix that indicates that a dependency build was contaminated by this artifact
 	DependencyBuildContaminatedByAnnotation = "jvmbuildservice.io/contaminated-"
 	DependencyBuildIdLabel                  = "jvmbuildservice.io/dependencybuild-id"
-	ArtifactBuildIdLabel                    = "jvmbuildservice.io/abr-id"
 	PipelineRunLabel                        = "jvmbuildservice.io/pipelinerun"
 
 	PipelineResultScmUrl      = "scm-url"
@@ -77,9 +76,6 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	log := ctrl.Log.WithName("artifactbuild").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name)
-	//_, clusterSet := logicalcluster.ClusterFromContext(ctx)
-	//if !clusterSet {
-	//	log.Info("cluster is not set in context", request.String())
 
 	jbsConfig := &v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
@@ -98,6 +94,12 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 			log.Error(abrerr, "Reconcile key %s as artifactbuild unexpected error", request.NamespacedName.String())
 			return ctrl.Result{}, abrerr
 		}
+	}
+	labelR, err := r.updateLabel(ctx, log, &abr)
+	if err != nil {
+		return reconcile.Result{}, err
+	} else if labelR {
+		return reconcile.Result{}, nil
 	}
 
 	pr := pipelinev1beta1.PipelineRun{}
@@ -170,17 +172,13 @@ func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context
 	return reconcile.Result{}, nil
 }
 
-//func (r *ReconcileArtifactBuild) clusterSetOnObj(object logicalcluster.Object) bool {
-//	return len(logicalcluster.From(object).String()) > 0
-//}
-
 func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 
 	if pr.DeletionTimestamp != nil {
 		//always remove the finalizer if it is deleted
 		//but continue with the method
 		//if the PR is deleted while it is running then we want to allow that
-		result, err2 := RemovePipelineFinalizer(ctx, pr, r.client)
+		result, err2 := removePipelineFinalizer(ctx, pr, r.client)
 		if err2 != nil {
 			return result, err2
 		}
@@ -196,7 +194,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun, client client.Client) (reconcile.Result, error) {
+func removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun, client client.Client) (reconcile.Result, error) {
 	//remove the finalizer
 	if pr.Finalizers != nil {
 		mod := false
@@ -230,7 +228,7 @@ func setArtifactState(log *logr.Logger, abr *v1alpha1.ArtifactBuild, state strin
 
 func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild, jbsConfig *v1alpha1.JBSConfig) (reconcile.Result, error) {
 	//this is now handled directly by the cache
-	//which massivly reduces the number of pipelines created
+	//which massively reduces the number of pipelines created
 	return reconcile.Result{}, nil
 }
 
@@ -250,7 +248,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 	}
 
 	//now lets look for an existing dependencybuild object
-	depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+	depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 	db := &v1alpha1.DependencyBuild{}
 	dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}
 	err := r.client.Get(ctx, dbKey, db)
@@ -335,15 +333,6 @@ func (r *ReconcileArtifactBuild) handleDependencyBuildSuccess(log logr.Logger, c
 	return reconcile.Result{}, r.client.Status().Update(ctx, abr)
 }
 
-func hashString(hashInput string) string {
-	hash := md5.Sum([]byte(hashInput)) //#nosec
-	depId := hex.EncodeToString(hash[:])
-	return depId
-}
-func ABRLabelForGAV(hashInput string) string {
-	return hashString(hashInput)
-}
-
 func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 	for key, value := range abr.Annotations {
 		if strings.HasPrefix(key, DependencyBuildContaminatedByAnnotation) {
@@ -379,7 +368,7 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log lo
 }
 
 func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
-	depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+	depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 	db := &v1alpha1.DependencyBuild{}
 	dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}
 	err := r.client.Get(ctx, dbKey, db)
@@ -427,7 +416,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 }
 
 func (r *ReconcileArtifactBuild) handleStateFailed(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
-	depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+	depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 	db := &v1alpha1.DependencyBuild{}
 	dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}
 	err := r.client.Get(ctx, dbKey, db)
@@ -461,7 +450,7 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 	//and delete it if it exists
 	if len(abr.Status.SCMInfo.SCMURL) > 0 {
 		//now lets look for an existing dependencybuild object
-		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		db := &v1alpha1.DependencyBuild{}
 		dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}
 		err := r.client.Get(ctx, dbKey, db)
@@ -491,13 +480,9 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 						if err != nil {
 							return reconcile.Result{}, err
 						}
-
 					}
-
 				}
-
 			}
-
 			//delete the dependency build object
 			err := r.client.Delete(ctx, db)
 			if err != nil {
@@ -565,6 +550,38 @@ func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context
 		}
 	}
 	return nil
+}
+
+func (r *ReconcileArtifactBuild) updateLabel(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (bool, error) {
+	result := false
+
+	if abr.Labels == nil {
+		abr.Labels = make(map[string]string)
+	}
+	switch abr.Status.State {
+	case v1alpha1.ArtifactBuildStateNew, v1alpha1.ArtifactBuildStateDiscovering, v1alpha1.ArtifactBuildStateBuilding:
+		if abr.Labels[util.StatusLabel] != util.StatusBuilding {
+			abr.Labels[util.StatusLabel] = util.StatusBuilding
+			result = true
+		}
+	case v1alpha1.ArtifactBuildStateFailed, v1alpha1.ArtifactBuildStateMissing:
+		if abr.Labels[util.StatusLabel] != util.StatusFailed {
+			abr.Labels[util.StatusLabel] = util.StatusFailed
+			result = true
+		}
+	case v1alpha1.ArtifactBuildStateComplete:
+		if abr.Labels[util.StatusLabel] != util.StatusSucceeded {
+			abr.Labels[util.StatusLabel] = util.StatusSucceeded
+			result = true
+		}
+	}
+	if result {
+		log.Info(fmt.Sprintf("Updating label to %s to match %s", abr.Labels[util.StatusLabel], abr.Status.State))
+		if err := r.client.Update(ctx, abr); err != nil {
+			return result, err
+		}
+	}
+	return result, nil
 }
 
 func InstallKeystoreIntoBuildRequestProcessor(args ...[]string) string {

@@ -2,6 +2,8 @@ package util
 
 import (
 	"context"
+	"crypto/md5" //#nosec G501
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
@@ -17,6 +19,13 @@ import (
 const (
 	ControllerDeploymentName = "hacbs-jvm-operator"
 	ControllerNamespace      = "jvm-build-service"
+
+	// goland:noinspection GoCommentStart
+	// Label convention as per https://kubernetes.io/docs/reference/labels-annotations-taints is to use lower-case.
+	StatusLabel     = "status"
+	StatusSucceeded = "succeeded"
+	StatusFailed    = "failed"
+	StatusBuilding  = "building"
 )
 
 var (
@@ -70,4 +79,10 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 		return retImg, nil
 	}
 	return retImg, fmt.Errorf("could not determine image for %s where image var is %s IMAGE_TAG env is %s and deployment get error is %+v", substr, depImg, imgTag, err)
+}
+
+func HashString(unique string) string {
+	hash := md5.Sum([]byte(unique)) //#nosec
+	depId := hex.EncodeToString(hash[:])
+	return depId
 }

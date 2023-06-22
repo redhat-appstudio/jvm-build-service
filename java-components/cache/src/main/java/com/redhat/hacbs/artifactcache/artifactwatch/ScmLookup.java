@@ -17,6 +17,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import com.redhat.hacbs.artifactcache.services.RecipeManager;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
+import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 import com.redhat.hacbs.resources.model.v1alpha1.ScmInfo;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -30,7 +31,6 @@ import io.quarkus.runtime.Startup;
 @Startup
 public class ScmLookup {
 
-    public static final String REBUILD = "jvmbuildservice.io/rebuild";
     @Inject
     KubernetesClient client;
 
@@ -64,11 +64,11 @@ public class ScmLookup {
                             || Objects.equals(newObj.getStatus().getState(), ArtifactBuild.NEW)) {
                         try {
                             if (newObj.getMetadata().getAnnotations() != null
-                                    && newObj.getMetadata().getAnnotations().containsKey(REBUILD)) {
+                                    && newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILD)) {
                                 //if this is a forced rebuild we always update the SCM info
                                 //there is a good chance there may be a new recipe
                                 recipeManager.forceUpdate();
-                                newObj.getMetadata().getAnnotations().remove(REBUILD);
+                                newObj.getMetadata().getAnnotations().remove(ModelConstants.REBUILD);
                                 client.resource(newObj).patch();
                             }
                             var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
@@ -86,6 +86,8 @@ public class ScmLookup {
                             Log.errorf(e, "Failed to update rebuilt object");
                             newObj.getStatus().setMessage(e.getMessage());
                             newObj.getStatus().setState(ArtifactBuild.MISSING);
+                            // Not setting status label to missing here but will be handled in artifactbuild.go
+                            // Reconcile operator loop that calls updateLabel.
                         }
                     }
                     try {

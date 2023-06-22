@@ -100,6 +100,7 @@ func TestStateDiscovering(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: metav1.NamespaceDefault,
+				Labels:    map[string]string{util.StatusLabel: util.StatusBuilding},
 			},
 			Spec: v1alpha1.ArtifactBuildSpec{GAV: gav},
 			Status: v1alpha1.ArtifactBuildStatus{
@@ -120,10 +121,11 @@ func TestStateDiscovering(t *testing.T) {
 		g.Expect(client.Status().Update(ctx, abr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
-		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: depId}}))
 		fullValidation(client, g)
 	})
+
 	t.Run("DependencyBuild already exists for ABR", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		abr := getABR(client, g)
@@ -162,7 +164,7 @@ func TestStateBuilding(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				Labels:    map[string]string{DependencyBuildIdLabel: "test", util.StatusLabel: util.StatusBuilding},
 			},
 			Spec: v1alpha1.ArtifactBuildSpec{},
 			Status: v1alpha1.ArtifactBuildStatus{
@@ -174,7 +176,7 @@ func TestStateBuilding(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      otherName,
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				Labels:    map[string]string{DependencyBuildIdLabel: "test", util.StatusLabel: util.StatusBuilding},
 			},
 			Spec: v1alpha1.ArtifactBuildSpec{},
 			Status: v1alpha1.ArtifactBuildStatus{
@@ -187,13 +189,13 @@ func TestStateBuilding(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
 		abr := getABR(client, g)
-		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		db := &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      depId,
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
+				Labels:    map[string]string{DependencyBuildIdLabel: util.HashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
@@ -208,13 +210,13 @@ func TestStateBuilding(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
 		abr := getABR(client, g)
-		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		db := &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      depId,
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
+				Labels:    map[string]string{DependencyBuildIdLabel: util.HashString(""), util.StatusLabel: util.StatusSucceeded},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateComplete, DeployedArtifacts: []string{abr.Spec.GAV}},
@@ -239,13 +241,13 @@ func TestStateBuilding(t *testing.T) {
 		other.Status.SCMInfo.SCMURL = repo
 		other.Status.SCMInfo.Tag = version
 		g.Expect(client.Update(ctx, other)).Should(Succeed())
-		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		db := v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      depId,
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
+				Labels:    map[string]string{DependencyBuildIdLabel: util.HashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateFailed},
@@ -268,6 +270,10 @@ func TestStateBuilding(t *testing.T) {
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
 		g.Expect(abr.Annotations[RebuildAnnotation]).Should(Equal("true")) //first reconcile does not remove the annotation
+
+		abr.Labels[util.StatusLabel] = util.StatusBuilding
+		g.Expect(client.Update(ctx, abr)).Should(Succeed())
+
 		err := client.Get(ctx, types.NamespacedName{Name: db.Name, Namespace: db.Namespace}, &db)
 		g.Expect(errors.IsNotFound(err)).Should(BeTrue())
 		other = getNamedABR(client, g, otherName)
@@ -281,13 +287,13 @@ func TestStateBuilding(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
 		abr := getABR(client, g)
-		depId := hashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
+		depId := util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
 		db := &v1alpha1.DependencyBuild{
 			TypeMeta: metav1.TypeMeta{},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      depId,
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
+				Labels:    map[string]string{DependencyBuildIdLabel: util.HashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []v1alpha1.Contaminant{{GAV: "com.test:test:1.0", ContaminatedArtifacts: []string{"a:b:1"}}}},
@@ -318,7 +324,7 @@ func TestStateCompleteFixingContamination(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: "test"},
+				Labels:    map[string]string{DependencyBuildIdLabel: "test", util.StatusLabel: util.StatusSucceeded},
 				Annotations: map[string]string{
 					DependencyBuildContaminatedByAnnotation + "suffix": contaminatedName,
 				},
@@ -333,7 +339,7 @@ func TestStateCompleteFixingContamination(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      contaminatedName,
 				Namespace: metav1.NamespaceDefault,
-				Labels:    map[string]string{DependencyBuildIdLabel: hashString("")},
+				Labels:    map[string]string{DependencyBuildIdLabel: util.HashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
 			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []v1alpha1.Contaminant{{GAV: "com.test:test:1.0", ContaminatedArtifacts: []string{"a:b:1"}}}},
