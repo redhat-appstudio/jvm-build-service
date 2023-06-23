@@ -63,44 +63,46 @@ public class ScmLookup {
                     if (newObj.getStatus().getState() == null || Objects.equals(newObj.getStatus().getState(), "")
                             || Objects.equals(newObj.getStatus().getState(), ArtifactBuild.NEW)) {
                         try {
-                            if (newObj.getMetadata().getAnnotations() != null
-                                    && newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILD)) {
-                                //if this is a forced rebuild we always update the SCM info
-                                //there is a good chance there may be a new recipe
-                                recipeManager.forceUpdate();
-                                newObj.getMetadata().getAnnotations().remove(ModelConstants.REBUILD);
-                                client.resource(newObj).patch();
+                            try {
+                                if (newObj.getMetadata().getAnnotations() != null
+                                        && newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILD)) {
+                                    //if this is a forced rebuild we always update the SCM info
+                                    //there is a good chance there may be a new recipe
+                                    recipeManager.forceUpdate();
+                                    newObj.getMetadata().getAnnotations().remove(ModelConstants.REBUILD);
+                                    client.resource(newObj).patch();
+                                    return; //the update should trigger the watch again
+                                }
+                                var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
+                                ScmInfo scm = new ScmInfo();
+                                scm.setScmType("git");
+                                scm.setScmURL(result.getRepoInfo().getUri());
+                                scm.setCommitHash(result.getHash());
+                                scm.setPath(result.getRepoInfo().getPath());
+                                scm.setPrivateRepo(result.getRepoInfo().isPrivateRepo());
+                                scm.setTag(result.getTag());
+                                newObj.getStatus().setScm(scm);
+                                newObj.getStatus().setMessage("");
+                                newObj.getStatus().setState(ArtifactBuild.DISCOVERING);
+                            } catch (Exception e) {
+                                Log.errorf(e, "Failed to update rebuilt object");
+                                newObj.getStatus().setMessage(e.getMessage());
+                                newObj.getStatus().setState(ArtifactBuild.MISSING);
+                                // Not setting status label to missing here but will be handled in artifactbuild.go
+                                // Reconcile operator loop that calls updateLabel.
                             }
-                            var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
-                            ScmInfo scm = new ScmInfo();
-                            scm.setScmType("git");
-                            scm.setScmURL(result.getRepoInfo().getUri());
-                            scm.setCommitHash(result.getHash());
-                            scm.setPath(result.getRepoInfo().getPath());
-                            scm.setPrivateRepo(result.getRepoInfo().isPrivateRepo());
-                            scm.setTag(result.getTag());
-                            newObj.getStatus().setScm(scm);
-                            newObj.getStatus().setMessage("");
-                            newObj.getStatus().setState(ArtifactBuild.DISCOVERING);
-                        } catch (Exception e) {
-                            Log.errorf(e, "Failed to update rebuilt object");
-                            newObj.getStatus().setMessage(e.getMessage());
-                            newObj.getStatus().setState(ArtifactBuild.MISSING);
-                            // Not setting status label to missing here but will be handled in artifactbuild.go
-                            // Reconcile operator loop that calls updateLabel.
-                        }
-                    }
-                    try {
-                        client.resource(newObj).patchStatus();
-                        return;
-                    } catch (KubernetesClientException e) {
-                        if (e.getCode() == 409) {
-                            //conflict, we will see a new version soon
+
+                            client.resource(newObj).patchStatus();
                             return;
+                        } catch (KubernetesClientException e) {
+                            if (e.getCode() == 409) {
+                                //conflict, we will see a new version soon
+                                return;
+                            }
+                            Log.errorf(e, "Failed to update ArtifactBuild with discovery results");
+                        } catch (Exception e) {
+                            Log.errorf(e, "Failed to update ArtifactBuild with discovery results");
                         }
-                        Log.errorf(e, "Failed to update ArtifactBuild with discovery results");
-                    } catch (Exception e) {
-                        Log.errorf(e, "Failed to update ArtifactBuild with discovery results");
                     }
                 }
             }

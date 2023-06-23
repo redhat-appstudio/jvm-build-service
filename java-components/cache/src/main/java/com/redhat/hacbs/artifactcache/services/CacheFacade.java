@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Singleton;
 
 import io.quarkus.logging.Log;
@@ -31,6 +32,7 @@ public class CacheFacade {
         }
     }
 
+    @ActivateRequestContext
     public Optional<ArtifactResult> getArtifactFile(String buildPolicy, String group, String artifact, String version,
             String target, boolean tracked) {
         //first attempt we only look for cached files, so no network access
@@ -47,6 +49,7 @@ public class CacheFacade {
         return Optional.empty();
     }
 
+    @ActivateRequestContext
     public Optional<Map<String, String>> getArtifactMetadata(String buildPolicy, String group, String artifact, String version,
             String target, boolean tracked) {
         //first attempt we only look for cached files, so no network access
@@ -74,6 +77,7 @@ public class CacheFacade {
         return Optional.empty();
     }
 
+    @ActivateRequestContext
     public List<ArtifactResult> getMetadataFiles(String buildPolicy, String group, String target) {
         List<ArtifactResult> results = new ArrayList<>();
         for (var i : buildPolicyCaches.get(buildPolicy)) {
