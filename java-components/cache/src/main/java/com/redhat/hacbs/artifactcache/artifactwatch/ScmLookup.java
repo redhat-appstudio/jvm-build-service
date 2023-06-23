@@ -69,8 +69,8 @@ public class ScmLookup {
                                     //if this is a forced rebuild we always update the SCM info
                                     //there is a good chance there may be a new recipe
                                     recipeManager.forceUpdate();
-                                    newObj.getMetadata().getAnnotations().remove(ModelConstants.REBUILD);
-                                    client.resource(newObj).patch();
+                                    // Not updating rebuild annotation as that will be handled in artifactbuild.go Reconcile
+                                    // operator loop.
                                     return; //the update should trigger the watch again
                                 }
                                 var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
@@ -88,8 +88,8 @@ public class ScmLookup {
                                 Log.errorf(e, "Failed to update rebuilt object");
                                 newObj.getStatus().setMessage(e.getMessage());
                                 newObj.getStatus().setState(ArtifactBuild.MISSING);
-                                // Not setting status label to missing here but will be handled in artifactbuild.go
-                                // Reconcile operator loop that calls updateLabel.
+                                // Not setting status label to missing here but will be handled in artifactbuild.go Reconcile
+                                // operator loop that calls updateLabel.
                             }
 
                             client.resource(newObj).patchStatus();
