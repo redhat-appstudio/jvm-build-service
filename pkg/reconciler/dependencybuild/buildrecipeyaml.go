@@ -3,7 +3,9 @@ package dependencybuild
 import (
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	"strconv"
 	"strings"
 
@@ -46,6 +48,11 @@ var entryScript string
 
 func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
+	marshaled, err := json.Marshal(recipe)
+	if err != nil {
+		return nil, "", err
+	}
+	imageId := util.HashString(string(marshaled) + buildRequestProcessorImage + tool + db.Name)
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
@@ -69,6 +76,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 
 	deployArgs := []string{
 		"deploy-container",
+		"--image-id=" + imageId,
 		"--path=$(workspaces.source.path)/artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--build-info-path=$(workspaces.source.path)/build-info",

@@ -33,6 +33,9 @@ public class ContainerDeployCommand extends DeployCommand {
     @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
     String prependTag;
 
+    @CommandLine.Option(names = "--image-id")
+    String imageId;
+
     @Inject
     public ContainerDeployCommand(BeanManager beanManager, ResultsUpdater resultsUpdater) {
         super(beanManager, resultsUpdater);
@@ -48,7 +51,7 @@ public class ContainerDeployCommand extends DeployCommand {
                         imageName = s;
                         imageDigest = hash;
                     }
-                });
+                }, imageId);
         deployer.deployArchive(deployDir, sourcePath, logsPath, gavs);
 
     }
