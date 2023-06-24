@@ -16,7 +16,7 @@ spec:
       volumes:
         - name: quaytoken
           secret:
-            optional: true
+            optional: false
             secretName: quaytoken
       containers:
         - name: hacbs-jvm-operator
