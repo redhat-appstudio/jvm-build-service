@@ -1,5 +1,5 @@
-//go:build wildfly
-// +build wildfly
+//go:build jbs
+// +build jbs
 
 package e2e
 
