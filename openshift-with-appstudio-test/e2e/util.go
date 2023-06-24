@@ -253,10 +253,23 @@ func setup(t *testing.T, namespace string) *testArgs {
 	if err != nil {
 		debugAndFailTest(ta, "pipeline SA not created in timely fashion")
 	}
+
 	owner := os.Getenv("QUAY_E2E_ORGANIZATION")
 	if owner == "" {
 		owner = "redhat-appstudio-qe"
 	}
+
+	decoded, err := base64.StdEncoding.DecodeString(os.Getenv("QUAY_TOKEN"))
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+	secret := corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jvm-build-image-secrets", Namespace: ta.ns},
+		Data: map[string][]byte{".dockerconfigjson": decoded}}
+	_, err = kubeClient.CoreV1().Secrets(ta.ns).Create(context.TODO(), &secret, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+
 	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ta.ns,
@@ -308,16 +321,6 @@ func setup(t *testing.T, namespace string) *testArgs {
 		Status: v1alpha1.JBSConfigStatus{},
 	}
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
-	decoded, err := base64.StdEncoding.DecodeString(os.Getenv("QUAY_TOKEN"))
-	if err != nil {
-		debugAndFailTest(ta, err.Error())
-	}
-	secret := corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jvm-build-image-secrets", Namespace: ta.ns},
-		Data: map[string][]byte{".dockerconfigjson": decoded}}
-	_, err = kubeClient.CoreV1().Secrets(ta.ns).Create(context.TODO(), &secret, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}

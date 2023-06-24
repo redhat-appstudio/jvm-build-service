@@ -108,7 +108,9 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 					return reconcile.Result{}, err2
 				}
 			}
-			//we don't return the error because we won't want to requeue
+			//TODO: temp fix, we should not be requeuing here but it causes CI issues
+			//need to investigate how to fix
+			log.Error(err, fmt.Sprintf("Unable to enable rebuilds for namespace %s", jbsConfig.Namespace))
 			return reconcile.Result{}, nil
 		}
 
