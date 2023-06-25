@@ -48,6 +48,8 @@ public class ContainerRegistryDeployer implements Deployer {
     private final String username;
     private final String password;
 
+    final String imageId;
+
     private final BiConsumer<String, String> imageNameHashCallback;
 
     static final ObjectMapper MAPPER = new ObjectMapper();
@@ -59,7 +61,7 @@ public class ContainerRegistryDeployer implements Deployer {
             String token,
             String repository,
             boolean insecure,
-            String prependTag, BiConsumer<String, String> imageNameHashCallback) {
+            String prependTag, BiConsumer<String, String> imageNameHashCallback, String imageId) {
         if (insecure) {
             System.setProperty("sendCredentialsOverHttp", "true");
         }
@@ -71,6 +73,7 @@ public class ContainerRegistryDeployer implements Deployer {
         this.insecure = insecure;
         this.prependTag = prependTag;
         this.imageNameHashCallback = imageNameHashCallback;
+        this.imageId = imageId;
         String fullName = host + (port == 443 ? "" : ":" + port) + "/" + owner + "/" + repository;
         if (!token.isBlank()) {
             if (token.trim().startsWith("{")) {
@@ -175,7 +178,7 @@ public class ContainerRegistryDeployer implements Deployer {
     }
 
     private String createImageName() {
-        String imageName = UUID.randomUUID().toString();
+        String imageName = imageId == null ? UUID.randomUUID().toString() : imageId;
         if (port == 443) {
             return host + "/" + owner + "/" + repository
                     + ":" + imageName;
