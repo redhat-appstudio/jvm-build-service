@@ -8,7 +8,6 @@ import (
 	"github.com/redhat-appstudio/image-controller/pkg/quay"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
-	"go.uber.org/multierr"
 	"regexp"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sort"
@@ -38,7 +37,6 @@ import (
 const (
 	TlsServiceName                      = v1alpha1.CacheDeploymentName + "-tls"
 	TestRegistry                        = "jvmbuildservice.io/test-registry"
-	JBSConfigFinalizer                  = "jvmbuildservice.io/jbsconfig-finalizer"
 	ImageRepositoryFinalizer            = "jvmbuildservice.io/quay-repository-finalizer"
 	DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
 	UploadSecretName                    = "jvm-build-service-temp-upload-secret" //#nosec
@@ -84,25 +82,15 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	jbsConfig := v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
-		fmt.Printf("### Reconcile::afterClientGet for %s with error %s and jbsconfig %s\n", request.Name, err,
-			jbsConfig.DeletionTimestamp.IsZero())
-		// Deleted JBSConfig - delete cache resources
-		//		if errors.IsNotFound(err) && request.Name == v1alpha1.JBSConfigName {
-		////			return r.handleConfigDeleted(ctx, request, log)
-		//		}
 		return reconcile.Result{}, err
 	}
 	if !jbsConfig.DeletionTimestamp.IsZero() {
 		// The object is being deleted.
-		fmt.Printf("### Reconcile::deletiontimestamp %s \n", jbsConfig.DeletionTimestamp.String())
-		return reconcile.Result{}, multierr.Append(r.handlePossibleJBCConfigCleanup(ctx, &jbsConfig, log, request), r.handlePossibleRepositoryCleanup(ctx, &jbsConfig, log))
+		return reconcile.Result{}, r.handlePossibleRepositoryCleanup(ctx, &jbsConfig, log)
 	}
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
-		if err := r.insertFinalizerIfMissing(ctx, &jbsConfig, log); err != nil {
-			return reconcile.Result{}, err
-		}
 		systemConfig := v1alpha1.SystemConfig{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 		if err != nil {
@@ -124,7 +112,7 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 			return reconcile.Result{}, nil
 		}
 
-		err = r.deploymentSupportObjects(ctx, log, request, &jbsConfig)
+		err = r.deploymentSupportObjects(ctx, request, &jbsConfig)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -172,89 +160,13 @@ func (r *ReconcilerJBSConfig) handlePossibleRepositoryCleanup(ctx context.Contex
 	return nil
 }
 
-func (r *ReconcilerJBSConfig) handleConfigDeleted(ctx context.Context, request reconcile.Request, log logr.Logger) {
-
-	fmt.Printf("### handleConfigDeleted for %s\n", request.Namespace)
-	service := &corev1.Service{}
-	service.Name = v1alpha1.CacheDeploymentName
-	service.Namespace = request.Namespace
-	err := r.client.Delete(ctx, service)
-	if err != nil && !errors.IsNotFound(err) {
-		msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
-		log.Error(err, msg)
-		r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
-	}
-	service = &corev1.Service{}
-	service.Name = TlsServiceName
-	service.Namespace = request.Namespace
-	err = r.client.Delete(ctx, service)
-	if err != nil && !errors.IsNotFound(err) {
-		msg := fmt.Sprintf("Unable to delete service - %s", err.Error())
-		log.Error(err, msg)
-		r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
-	}
-	tlsConfigMap := &corev1.ConfigMap{}
-	tlsConfigMap.Name = v1alpha1.TlsConfigMapName
-	tlsConfigMap.Namespace = request.Namespace
-	err = r.client.Delete(ctx, tlsConfigMap)
-	if err != nil && !errors.IsNotFound(err) {
-		msg := fmt.Sprintf("Unable to delete configmap - %s", err.Error())
-		log.Error(err, msg)
-		r.eventRecorder.Event(service, corev1.EventTypeWarning, msg, "")
-	}
-	serviceAccount := &corev1.ServiceAccount{}
-	serviceAccount.Name = v1alpha1.CacheDeploymentName
-	serviceAccount.Namespace = request.Namespace
-	err = r.client.Delete(ctx, serviceAccount)
-	if err != nil && !errors.IsNotFound(err) {
-		msg := fmt.Sprintf("Unable to delete serviceAccount - %s", err.Error())
-		log.Error(err, msg)
-		r.eventRecorder.Event(serviceAccount, corev1.EventTypeWarning, msg, "")
-	}
-	roleBinding := &rbacv1.RoleBinding{}
-	roleBinding.Name = v1alpha1.CacheDeploymentName
-	roleBinding.Namespace = request.Namespace
-	err = r.client.Delete(ctx, roleBinding)
-	if err != nil && !errors.IsNotFound(err) {
-		msg := fmt.Sprintf("Unable to delete roleBinding - %s", err.Error())
-		log.Error(err, msg)
-		r.eventRecorder.Event(roleBinding, corev1.EventTypeWarning, msg, "")
-	}
-	deployment := &appsv1.Deployment{}
-	deployment.Name = v1alpha1.CacheDeploymentName
-	deployment.Namespace = request.Namespace
-	err = r.client.Delete(ctx, deployment)
-	if err != nil && !errors.IsNotFound(err) {
-		msg := fmt.Sprintf("Unable to delete deployment - %s", err.Error())
-		log.Error(err, msg)
-		r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
-	}
-	pvc := &corev1.PersistentVolumeClaim{}
-	pvc.Name = v1alpha1.CacheDeploymentName
-	pvc.Namespace = request.Namespace
-	err = r.client.Delete(ctx, pvc)
-	if err != nil && !errors.IsNotFound(err) {
-		msg := fmt.Sprintf("Unable to delete PersistentVolumeClaim - %s", err.Error())
-		log.Error(err, msg)
-		r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
-	}
-	binding := &v1beta1.SPIAccessTokenBinding{}
-	binding.Name = v1alpha1.ImageSecretName
-	binding.Namespace = request.Namespace
-	err = r.client.Delete(ctx, binding)
-	if err != nil && !errors.IsNotFound(err) {
-		msg := fmt.Sprintf("Unable to delete SPIAccessTokenBinding - %s", err.Error())
-		log.Error(err, msg)
-		r.eventRecorder.Event(deployment, corev1.EventTypeWarning, msg, "")
-	}
-}
-
 func settingOrDefault(setting, def string) string {
 	if len(strings.TrimSpace(setting)) == 0 {
 		return def
 	}
 	return setting
 }
+
 func generateRobotAccountName(component *v1alpha1.JBSConfig) string {
 	robotAccountName := component.Namespace + component.Name
 	robotAccountName = strings.Replace(robotAccountName, "-", "_", -1)
@@ -334,8 +246,7 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 			if r.spiPresent {
 				return r.handleNoImageSecretFound(ctx, jbsConfig)
 			} else {
-				errorMessage := "Secret jvm-build-image-secrets not found, and SPI not installed. Rebuilds not possible."
-				return errors2.New(errorMessage)
+				return errors2.New("secret jvm-build-image-secrets not found, and SPI not installed. Rebuilds not possible")
 			}
 
 		}
@@ -360,7 +271,7 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	return nil
 }
 
-func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log logr.Logger, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig) error {
+func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, request reconcile.Request, jbsConfig *v1alpha1.JBSConfig) error {
 	//TODO may have to switch to ephemeral storage for KCP until storage story there is sorted out
 	pvc := corev1.PersistentVolumeClaim{}
 	deploymentName := types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.CacheDeploymentName}
@@ -376,8 +287,11 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 				return err
 			}
 			pvc.Spec.Resources.Requests = map[corev1.ResourceName]resource.Quantity{"storage": qty}
-			err = r.client.Create(ctx, &pvc)
-			if err != nil {
+
+			if err := controllerutil.SetOwnerReference(jbsConfig, &pvc, r.scheme); err != nil {
+				return err
+			}
+			if err := r.client.Create(ctx, &pvc); err != nil {
 				return err
 			}
 		}
@@ -403,8 +317,10 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 					Selector: map[string]string{"app": v1alpha1.CacheDeploymentName},
 				},
 			}
-			err := r.client.Create(ctx, &service)
-			if err != nil {
+			if err := controllerutil.SetOwnerReference(jbsConfig, &service, r.scheme); err != nil {
+				return err
+			}
+			if err := r.client.Create(ctx, &service); err != nil {
 				return err
 			}
 		}
@@ -431,8 +347,10 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 					Selector: map[string]string{"app": v1alpha1.CacheDeploymentName},
 				},
 			}
-			err := r.client.Create(ctx, &service)
-			if err != nil {
+			if err := controllerutil.SetOwnerReference(jbsConfig, &service, r.scheme); err != nil {
+				return err
+			}
+			if err := r.client.Create(ctx, &service); err != nil {
 				return err
 			}
 		}
@@ -449,8 +367,10 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 						Annotations: map[string]string{"service.beta.openshift.io/inject-cabundle": "true"},
 					},
 				}
-				err := r.client.Create(ctx, &service)
-				if err != nil {
+				if err := controllerutil.SetOwnerReference(jbsConfig, &service, r.scheme); err != nil {
+					return err
+				}
+				if err := r.client.Create(ctx, &service); err != nil {
 					return err
 				}
 			}
@@ -465,8 +385,10 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 			sa := corev1.ServiceAccount{}
 			sa.Name = v1alpha1.CacheDeploymentName
 			sa.Namespace = request.Namespace
-			err := r.client.Create(ctx, &sa)
-			if err != nil {
+			if err := controllerutil.SetOwnerReference(jbsConfig, &sa, r.scheme); err != nil {
+				return err
+			}
+			if err := r.client.Create(ctx, &sa); err != nil {
 				return err
 			}
 		}
@@ -481,8 +403,10 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, log 
 			cb.Namespace = request.Namespace
 			cb.RoleRef = rbacv1.RoleRef{Kind: "ClusterRole", Name: "hacbs-jvm-cache", APIGroup: "rbac.authorization.k8s.io"}
 			cb.Subjects = []rbacv1.Subject{{Kind: "ServiceAccount", Name: v1alpha1.CacheDeploymentName, Namespace: request.Namespace}}
-			err := r.client.Create(ctx, &cb)
-			if err != nil {
+			if err = controllerutil.SetOwnerReference(jbsConfig, &cb, r.scheme); err != nil {
+				return err
+			}
+			if err := r.client.Create(ctx, &cb); err != nil {
 				return err
 			}
 		}
@@ -509,7 +433,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			cache.Spec.Replicas = &replicas
 			cache.Spec.Strategy = appsv1.DeploymentStrategy{Type: appsv1.RecreateDeploymentStrategyType}
 			cache.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"app": v1alpha1.CacheDeploymentName}}
-			cache.Spec.Template.ObjectMeta.Labels = map[string]string{"app": v1alpha1.CacheDeploymentName}
+			cache.Spec.Template.Labels = map[string]string{"app": v1alpha1.CacheDeploymentName}
 			cache.Spec.Template.Spec.Containers = []corev1.Container{{
 				Name:            v1alpha1.CacheDeploymentName,
 				ImagePullPolicy: corev1.PullIfNotPresent,
@@ -676,6 +600,9 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	}
 
 	if create {
+		if err := controllerutil.SetOwnerReference(jbsConfig, cache, r.scheme); err != nil {
+			return err
+		}
 		return r.client.Create(ctx, cache)
 	} else {
 		return r.client.Update(ctx, cache)
@@ -826,35 +753,6 @@ func (r *ReconcilerJBSConfig) generateImageRepository(log logr.Logger, component
 	}
 
 	return repo, robotAccount, nil
-}
-
-func (r *ReconcilerJBSConfig) insertFinalizerIfMissing(ctx context.Context, jbsConfig *v1alpha1.JBSConfig, log logr.Logger) error {
-	if !controllerutil.ContainsFinalizer(jbsConfig, JBSConfigFinalizer) {
-		fmt.Printf("### Adding finalizer %s to %s\n", JBSConfigFinalizer, jbsConfig.GetFinalizers())
-		controllerutil.AddFinalizer(jbsConfig, JBSConfigFinalizer)
-		if err := r.client.Update(ctx, jbsConfig); err != nil {
-			log.Error(err, "Failed to add JBSConfig repository finalizer")
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *ReconcilerJBSConfig) handlePossibleJBCConfigCleanup(ctx context.Context, jbsConfig *v1alpha1.JBSConfig, log logr.Logger, request reconcile.Request) error {
-	if controllerutil.ContainsFinalizer(jbsConfig, JBSConfigFinalizer) {
-		fmt.Printf("### Removing finalizer %s to %s\n", JBSConfigFinalizer, jbsConfig.GetFinalizers())
-
-		if request.Name == v1alpha1.JBSConfigName {
-			r.handleConfigDeleted(ctx, request, log)
-		}
-
-		controllerutil.RemoveFinalizer(jbsConfig, JBSConfigFinalizer)
-		if err := r.client.Update(ctx, jbsConfig); err != nil {
-			log.Error(err, "Failed to remove JBSConfig finalizer")
-			return err
-		}
-	}
-	return nil
 }
 
 // generateSecret dumps the robot account token into a Secret for future consumption.

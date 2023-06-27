@@ -219,9 +219,10 @@ func removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 }
 
 func setArtifactState(log *logr.Logger, abr *v1alpha1.ArtifactBuild, state string) {
-	if abr.Status.State != state {
-		log.Info(fmt.Sprintf("ArtifactBuild %s changing state from %s to %s", abr.Name, abr.Status.State, state))
-		abr.Status.State = state
+	abr.Status.State = state
+	switch state {
+	case v1alpha1.ArtifactBuildStateFailed, v1alpha1.ArtifactBuildStateComplete:
+		log.Info(fmt.Sprintf("ArtifactBuild %s has state set to %s", abr.Name, state))
 	}
 }
 
