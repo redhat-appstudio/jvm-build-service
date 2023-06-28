@@ -1,1 +1,13 @@
-comment: off 
+comment: off
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        removed_code_behavior: adjust_base
+      patch:
+      default:
+        informational: true
+        target: auto
+        removed_code_behavior: adjust_base
