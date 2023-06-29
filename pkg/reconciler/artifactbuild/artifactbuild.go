@@ -218,12 +218,13 @@ func removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 	return reconcile.Result{}, nil
 }
 
-func setArtifactState(log *logr.Logger, abr *v1alpha1.ArtifactBuild, state string) {
-	abr.Status.State = state
-	switch state {
-	case v1alpha1.ArtifactBuildStateFailed, v1alpha1.ArtifactBuildStateComplete:
-		log.Info(fmt.Sprintf("ArtifactBuild %s has state set to %s", abr.Name, state))
+func (r *ReconcileArtifactBuild) updateArtifactState(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild, state string) error {
+	if abr.Status.State != state {
+		log.Info(fmt.Sprintf("ArtifactBuild %s changing state from %s to %s", abr.Name, abr.Status.State, state))
+		abr.Status.State = state
+		return r.client.Status().Update(ctx, abr)
 	}
+	return nil
 }
 
 func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild, jbsConfig *v1alpha1.JBSConfig) (reconcile.Result, error) {
@@ -243,8 +244,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 	}
 	if len(abr.Status.SCMInfo.SCMURL) == 0 || len(abr.Status.SCMInfo.Tag) == 0 {
 		//discovery failed
-		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateMissing)
-		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+		return reconcile.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateMissing)
 	}
 
 	//now lets look for an existing dependencybuild object
@@ -255,8 +255,6 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 
 	switch {
 	case err == nil:
-		//move the state to building
-		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateBuilding)
 		//build already exists, add us to the owner references
 		found := false
 		for _, or := range db.OwnerReferences {
@@ -279,15 +277,12 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		case v1alpha1.DependencyBuildStateComplete:
 			return r.handleDependencyBuildSuccess(log, ctx, db, abr)
 		case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
-			setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateFailed)
-		}
-		if err := r.client.Status().Update(ctx, abr); err != nil {
-			return reconcile.Result{}, err
+			return reconcile.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateFailed)
+		default:
+			//move the state to building
+			return reconcile.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateBuilding)
 		}
 	case errors.IsNotFound(err):
-		//move the state to building
-		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateBuilding)
-
 		//no existing build object found, lets create one
 		db := &v1alpha1.DependencyBuild{}
 		db.Namespace = abr.Namespace
@@ -307,7 +302,9 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 			Path:       abr.Status.SCMInfo.Path,
 			Private:    abr.Status.SCMInfo.Private,
 		}, Version: abr.Spec.GAV[strings.LastIndex(abr.Spec.GAV, ":")+1:]}
-		if err := r.client.Status().Update(ctx, abr); err != nil {
+
+		//move the state to building
+		if err := r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateBuilding); err != nil {
 			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, r.client.Create(ctx, db)
@@ -316,21 +313,16 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		log.Error(err, "for artifactbuild %s:%s", abr.Namespace, abr.Name)
 		return reconcile.Result{}, err
 	}
-
-	return reconcile.Result{}, nil
-
 }
 
 func (r *ReconcileArtifactBuild) handleDependencyBuildSuccess(log logr.Logger, ctx context.Context, db *v1alpha1.DependencyBuild, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
 	for _, i := range db.Status.DeployedArtifacts {
 		if i == abr.Spec.GAV {
-			setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateComplete)
-			return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+			return reconcile.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateComplete)
 		}
 	}
 	abr.Status.Message = "Discovered dependency build did not deploy this artifact, check SCM information is correct"
-	setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateFailed)
-	return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+	return reconcile.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateFailed)
 }
 
 func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) (reconcile.Result, error) {
@@ -379,8 +371,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 		//we don't have a build for this ABR, this is very odd
 		//move back to new and start again
 		r.eventRecorder.Eventf(abr, corev1.EventTypeWarning, "MissingDependencyBuild", "The ArtifactBuild %s/%s in state %s was missing a DependencyBuild", abr.Namespace, abr.Name, abr.Status.State)
-		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateNew)
-		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+		return reconcile.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateNew)
 	default:
 		log.Error(err, "for artifactbuild %s:%s", abr.Namespace, abr.Name)
 		return reconcile.Result{}, err
@@ -408,8 +399,7 @@ func (r *ReconcileArtifactBuild) handleStateBuilding(ctx context.Context, log lo
 	case v1alpha1.DependencyBuildStateComplete:
 		return r.handleDependencyBuildSuccess(log, ctx, db, abr)
 	case v1alpha1.DependencyBuildStateContaminated, v1alpha1.DependencyBuildStateFailed:
-		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateFailed)
-		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+		return reconcile.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateFailed)
 	default:
 		return reconcile.Result{}, nil
 	}
@@ -439,8 +429,7 @@ func (r *ReconcileArtifactBuild) handleStateFailed(ctx context.Context, log logr
 	case v1alpha1.DependencyBuildStateComplete:
 		return r.handleDependencyBuildSuccess(log, ctx, db, abr)
 	default:
-		setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateBuilding)
-		return reconcile.Result{}, r.client.Status().Update(ctx, abr)
+		return reconcile.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateBuilding)
 	}
 	return reconcile.Result{}, nil
 }
@@ -493,11 +482,9 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 		}
 	}
 	//set our state back to new
-	setArtifactState(&log, abr, v1alpha1.ArtifactBuildStateNew)
 	abr.Status.SCMInfo = v1alpha1.SCMInfo{}
 	abr.Status.Message = ""
-	err := r.client.Status().Update(ctx, abr)
-	return ctrl.Result{}, err
+	return ctrl.Result{}, r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateNew)
 }
 
 func CreateABRName(gav string) string {
