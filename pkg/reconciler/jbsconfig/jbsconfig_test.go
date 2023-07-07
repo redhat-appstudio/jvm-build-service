@@ -2,12 +2,13 @@ package jbsconfig
 
 import (
 	"context"
+	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	spi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
-
-	. "github.com/onsi/gomega"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
@@ -29,6 +30,7 @@ func setupClientAndReconciler(includeSpi bool, objs ...runtimeclient.Object) (ru
 	_ = v1alpha1.AddToScheme(scheme)
 	_ = appsv1.AddToScheme(scheme)
 	_ = corev1.AddToScheme(scheme)
+	_ = rbacv1.AddToScheme(scheme)
 	if includeSpi {
 		_ = spi.AddToScheme(scheme)
 	}
@@ -170,18 +172,55 @@ func TestCacheCreatedAndDeleted(t *testing.T) {
 	ctx := context.TODO()
 	jbsConfig := setupJBSConfig()
 	jbsConfig.Spec.EnableRebuilds = true
+	expectedOwnerReference := v1.OwnerReference{
+		Kind:       "JBSConfig",
+		APIVersion: "jvmbuildservice.io/v1alpha1",
+		UID:        "",
+		Name:       v1alpha1.JBSConfigName,
+	}
 	objs := []runtimeclient.Object{jbsConfig, setupSecret(), setupSystemConfig()}
 	client, reconciler := setupClientAndReconciler(false, objs...)
 	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil())
+
+	// Verify finalizer has been added
+	jbsc := v1alpha1.JBSConfig{}
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}, &jbsc)
+	g.Expect(err).To(BeNil())
+
+	// As this is not running on a real cluster no GC will be running. See https://book-v2.book.kubebuilder.io/reference/envtest.html
+	// Therefore we cannot verify deletion but we should verify the correct objects have the owner references configured.
 	dep := appsv1.Deployment{}
+	pvc := corev1.PersistentVolumeClaim{}
+	role := rbacv1.RoleBinding{}
+	svc := corev1.Service{}
+	svcacc := corev1.ServiceAccount{}
+	tlssvc := corev1.Service{}
 	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &dep)
 	g.Expect(err).To(BeNil())
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &pvc)
+	g.Expect(err).To(BeNil())
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &role)
+	g.Expect(err).To(BeNil())
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &svc)
+	g.Expect(err).To(BeNil())
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &svcacc)
+	g.Expect(err).To(BeNil())
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: TlsServiceName}, &tlssvc)
+	g.Expect(err).To(BeNil())
+	g.Expect(dep.OwnerReferences).To(ContainElement(expectedOwnerReference))
+	g.Expect(pvc.OwnerReferences).To(ContainElement(expectedOwnerReference))
+	g.Expect(role.OwnerReferences).To(ContainElement(expectedOwnerReference))
+	g.Expect(svc.OwnerReferences).To(ContainElement(expectedOwnerReference))
+	g.Expect(svcacc.OwnerReferences).To(ContainElement(expectedOwnerReference))
+	g.Expect(tlssvc.OwnerReferences).To(ContainElement(expectedOwnerReference))
+
 	err = client.Delete(ctx, jbsConfig)
 	g.Expect(err).To(BeNil())
+
+	// While the owner references are not deleted using fakeclient/envtest, the finalizers and the JBSConfig should be
+	// so attempt another reconcile to verify it does not exist.
 	_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
-	g.Expect(err).To(BeNil())
-	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.CacheDeploymentName}, &dep)
 	g.Expect(errors.IsNotFound(err)).To(BeTrue())
 }
 

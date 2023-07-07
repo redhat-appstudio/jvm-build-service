@@ -7,11 +7,7 @@ const (
 	JDK8Builder           = "jdk8"
 	JDK11Builder          = "jdk11"
 	JDK17Builder          = "jdk17"
-	ControllerNamespace   = "jvm-build-service"
 	DefaultRecipeDatabase = "https://github.com/redhat-appstudio/jvm-build-data"
-
-	OpenShiftQuota = QuotaImpl("openshift")
-	K8SQuota       = QuotaImpl("kubernetes")
 )
 
 type QuotaImpl string

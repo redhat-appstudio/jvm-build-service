@@ -30,6 +30,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
@@ -61,7 +62,7 @@ func setupSystemConfig() {
 	existing := v1alpha1.SystemConfig{}
 	err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: systemconfig.SystemConfigKey}, &existing)
 	if errors2.IsNotFound(err) {
-		nm := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ControllerNamespace}}
+		nm := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: util.ControllerNamespace}}
 		Expect(k8sClient.Create(context.TODO(), &nm)).Should(Succeed())
 
 		sysConfig := v1alpha1.SystemConfig{
