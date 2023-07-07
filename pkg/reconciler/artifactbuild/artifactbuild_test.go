@@ -2,6 +2,7 @@ package artifactbuild
 
 import (
 	"context"
+	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"testing"
 
@@ -185,6 +186,17 @@ func TestStateBuilding(t *testing.T) {
 		}
 		client, reconciler = setupClientAndReconciler(abr, other)
 	}
+	t.Run("UpdateArtifactState", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup()
+		abr := getABR(client, g)
+		result := reconciler.updateArtifactState(ctx, logr.Discard(), abr, v1alpha1.ArtifactBuildStateBuilding)
+		g.Expect(result).Should(BeNil())
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateBuilding))
+		result = reconciler.updateArtifactState(ctx, logr.Discard(), abr, v1alpha1.ArtifactBuildStateMissing)
+		g.Expect(result).Should(BeNil())
+		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateMissing))
+	})
 	t.Run("Failed build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup()
