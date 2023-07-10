@@ -34,7 +34,7 @@ public class ContainerRegistryStorageTest {
             "foo-baz", "foobaz-3.25.8.jar");
     public static final String DOT = ".";
 
-    private static final String POLICY = "prefer-rebuilt";
+    private static final String POLICY = "default";
     private static final String REBUILT = "rebuilt";
     private static final String HACBS = "hacbs";
 
