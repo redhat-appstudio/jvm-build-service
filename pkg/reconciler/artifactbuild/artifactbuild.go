@@ -43,7 +43,8 @@ const (
 	PipelineResultMessage     = "message"
 	PipelineResultPrivate     = "private"
 
-	TaskName                                = "task"
+	PreBuildTaskName                        = "pre-build"
+	BuildTaskName                           = "build"
 	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
 	PipelineResultContaminants              = "CONTAMINANTS"
 	PipelineResultDeployedResources         = "DEPLOYED_RESOURCES"

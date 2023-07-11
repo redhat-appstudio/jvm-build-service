@@ -2,6 +2,7 @@ package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
@@ -135,6 +137,35 @@ public class ContainerRegistryDeployer implements Deployer {
         }
     }
 
+    public void deployPreBuildImage(String baseImage, Path sourcePath, String imageSourcePath, String tag)
+            throws Exception {
+        Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
+        String imageName = createImageName(tag);
+        RegistryImage registryImage = RegistryImage.named(imageName);
+        if (username != null) {
+            registryImage = registryImage.addCredential(username, password);
+        }
+        Containerizer containerizer = Containerizer
+                .to(registryImage)
+                .setAllowInsecureRegistries(insecure);
+        Log.infof("Deploying pre build image %s", imageName);
+
+        JibContainerBuilder containerBuilder = Jib.from(baseImage)
+                .setFormat(ImageFormat.OCI)
+                .addLabel("quay.expires-after", "24h"); //we don't want to keep these around forever, they are an intermediate step
+
+        try (Stream<Path> list = Files.list(sourcePath)) {
+            var files = list.toList();
+            containerBuilder = containerBuilder.addLayer(files, imageSourcePath);
+            Log.debugf("Image %s created", imageName);
+            var result = containerBuilder.containerize(containerizer);
+
+            if (imageNameHashCallback != null) {
+                imageNameHashCallback.accept(imageName, result.getDigest().getHash());
+            }
+        }
+    }
+
     private void createImages(DeployData imageData, Path sourcePath, Path logsPath)
             throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
             CacheDirectoryCreationException, ExecutionException {
@@ -178,13 +209,17 @@ public class ContainerRegistryDeployer implements Deployer {
     }
 
     private String createImageName() {
-        String imageName = imageId == null ? UUID.randomUUID().toString() : imageId;
+        String tag = imageId == null ? UUID.randomUUID().toString() : imageId;
+        return createImageName(tag);
+    }
+
+    private String createImageName(String tag) {
         if (port == 443) {
             return host + "/" + owner + "/" + repository
-                    + ":" + imageName;
+                    + ":" + tag;
         }
         return host + ":" + port + "/" + owner + "/" + repository
-                + ":" + imageName;
+                + ":" + tag;
     }
 
     private List<Path> getLayers(Path artifacts, Path source, Path logs) {

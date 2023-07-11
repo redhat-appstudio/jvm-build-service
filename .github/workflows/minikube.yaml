@@ -55,6 +55,13 @@ jobs:
 
           ./deploy/minikube-ci.sh
           make minikube-test
+
+      - name: Archive Report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: sample-report
+          path: /tmp/jvm-build-service-report
   run-gav-based-tests:
     strategy:
       matrix:
@@ -89,3 +96,9 @@ jobs:
 
           ./deploy/minikube-ci.sh
           make minikube-test
+      - name: Archive Report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: matrix-report
+          path: /tmp/jvm-build-service-report

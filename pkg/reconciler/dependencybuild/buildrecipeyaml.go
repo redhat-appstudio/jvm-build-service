@@ -20,6 +20,7 @@ const (
 	WorkspaceBuildSettings = "build-settings"
 	WorkspaceSource        = "source"
 	WorkspaceTls           = "tls"
+	OriginalContentPath    = "/original-content"
 )
 
 //go:embed scripts/maven-settings.sh
@@ -54,91 +55,11 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	imageId := util.HashString(string(marshaled) + buildRequestProcessorImage + tool + db.Name)
 	zero := int64(0)
-	verifyBuiltArtifactsArgs := []string{
-		"verify-built-artifacts",
-		"--repository-url=$(params.CACHE_URL)?upstream-only=true",
-		"--global-settings=/usr/share/maven/conf/settings.xml",
-		"--settings=$(workspaces.build-settings.path)/settings.xml",
-		"--deploy-path=$(workspaces.source.path)/artifacts",
-		"--task-run-name=$(context.taskRun.name)",
-		"--results-file=$(results." + artifactbuild.PipelineResultPassedVerification + ".path)",
-	}
+	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 
-	if !jbsConfig.Spec.RequireArtifactVerification {
-		verifyBuiltArtifactsArgs = append(verifyBuiltArtifactsArgs, "--report-only")
-	}
-
-	if len(recipe.AllowedDifferences) > 0 {
-		for _, i := range recipe.AllowedDifferences {
-			verifyBuiltArtifactsArgs = append(verifyBuiltArtifactsArgs, "--excludes="+i)
-		}
-	}
-
-	deployArgs := []string{
-		"deploy-container",
-		"--image-id=" + imageId,
-		"--path=$(workspaces.source.path)/artifacts",
-		"--logs-path=$(workspaces.source.path)/logs",
-		"--build-info-path=$(workspaces.source.path)/build-info",
-		"--source-path=$(workspaces.source.path)/source",
-		"--task-run=$(context.taskRun.name)",
-		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
-		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
-	}
-	imageRegistry := jbsConfig.ImageRegistry()
-	if imageRegistry.Host != "" {
-		deployArgs = append(deployArgs, "--registry-host="+imageRegistry.Host)
-	}
-	if imageRegistry.Port != "" {
-		deployArgs = append(deployArgs, "--registry-port="+imageRegistry.Port)
-	}
-	if imageRegistry.Owner != "" {
-		deployArgs = append(deployArgs, "--registry-owner="+imageRegistry.Owner)
-	}
-	if imageRegistry.Repository != "" {
-		deployArgs = append(deployArgs, "--registry-repository="+imageRegistry.Repository)
-	}
-	if imageRegistry.Insecure {
-		deployArgs = append(deployArgs, "--registry-insecure")
-	}
-	if jbsConfig.ImageRegistry().PrependTag != "" {
-		deployArgs = append(deployArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
-	}
-
-	install := ""
-	for count, i := range recipe.AdditionalDownloads {
-		if i.FileType == "tar" {
-			if i.BinaryPath == "" {
-				install = "echo 'Binary path not specified for package " + i.Uri + "'; exit 1"
-			}
-
-		} else if i.FileType == "executable" {
-			if i.FileName == "" {
-				install = "echo 'File name not specified for package " + i.Uri + "'; exit 1"
-			}
-		} else if i.FileType == "rpm" {
-			if i.PackageName == "" {
-				install = "echo 'Package name not specified for rpm type'; exit 1"
-			}
-		} else {
-			//unknown
-			//we still run the pipeline so there is logs
-			install = "echo 'Unknown file type " + i.FileType + " for package " + i.Uri + "'; exit 1"
-			break
-		}
-		template := packageTemplate
-		fileName := i.FileName
-		if fileName == "" {
-			fileName = "package-" + strconv.Itoa(count)
-		}
-		template = strings.ReplaceAll(template, "{URI}", i.Uri)
-		template = strings.ReplaceAll(template, "{FILENAME}", fileName)
-		template = strings.ReplaceAll(template, "{SHA256}", i.Sha256)
-		template = strings.ReplaceAll(template, "{TYPE}", i.FileType)
-		template = strings.ReplaceAll(template, "{BINARY_PATH}", i.BinaryPath)
-		template = strings.ReplaceAll(template, "{PACKAGE_NAME}", i.PackageName)
-		install = install + template
-	}
+	preBuildImageName, preBuildImageArgs, deployArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig)
+	gitArgs := gitArgs(db, recipe)
+	install := additionalPackages(recipe)
 
 	preprocessorArgs := []string{
 		"maven-prepare",
@@ -176,43 +97,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	//we need to get our TLS CA's into our trust store
 	//we just add it at the start of the build
 	build = artifactbuild.InstallKeystoreScript() + "\n" + build
-	gitArgs := ""
-	if db.Spec.ScmInfo.Private {
-		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
-		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
-	}
-	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineParamScmHash + ")"
 
-	if !recipe.DisableSubmodules {
-		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
-	}
-	defaultContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "512Mi"))
-	if err != nil {
-		return nil, "", err
-	}
-	defaultBuildContainerRequestMemory, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestMemory, "1024Mi"))
-	if err != nil {
-		return nil, "", err
-	}
-	defaultContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
-	if err != nil {
-		return nil, "", err
-	}
-	defaultContainerLimitCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskLimitCPU, "300m"))
-	if err != nil {
-		return nil, "", err
-	}
-	buildContainerRequestCPU, err := resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
-	if err != nil {
-		return nil, "", err
-	}
-
-	buildContainerRequestMemory := defaultBuildContainerRequestMemory
-	if additionalMemory > 0 {
-		additional := resource.MustParse(fmt.Sprintf("%dMi", additionalMemory))
-		buildContainerRequestMemory.Add(additional)
-		defaultContainerRequestMemory.Add(additional)
-	}
 	buildRepos := ""
 	if len(recipe.Repositories) > 0 {
 		for c, i := range recipe.Repositories {
@@ -230,17 +115,17 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild"
 	}
-	pullPolicy := v1.PullIfNotPresent
-	if strings.HasPrefix(buildRequestProcessorImage, "quay.io/minikube") {
-		pullPolicy = v1.PullNever
-	} else if strings.HasSuffix(buildRequestProcessorImage, ":dev") {
-		pullPolicy = v1.PullAlways
+
+	pullPolicy := pullPolicy(buildRequestProcessorImage)
+	limits, err := memoryLimits(jbsConfig, additionalMemory)
+	if err != nil {
+		return nil, "", err
 	}
+
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params: []pipelinev1beta1.ParamSpec{
 			{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
-
 			{Name: PipelineParamScmUrl, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamScmTag, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamScmHash, Type: pipelinev1beta1.ParamTypeString},
@@ -252,7 +137,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineParamToolVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamPath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamRequestProcessorImage, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 		},
 		Results: []pipelinev1beta1.TaskResult{
@@ -269,8 +153,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Image:           "$(params." + PipelineParamImage + ")",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Resources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
+					Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
 				Script: gitArgs + "\n" + settings,
 				Env: []v1.EnvVar{
@@ -280,7 +164,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			},
 			{
 				Name:            "preprocessor",
-				Image:           "$(params." + PipelineParamRequestProcessorImage + ")",
+				Image:           buildRequestProcessorImage,
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
@@ -288,14 +172,59 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: make configurable
-					Requests: v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-					Limits:   v1.ResourceList{"memory": defaultContainerRequestMemory, "cpu": defaultContainerLimitCPU},
+					Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
 				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preprocessorArgs),
 			},
 			{
+				Name:            "create-pre-build-image",
+				Image:           buildRequestProcessorImage,
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env: []v1.EnvVar{
+					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.ImageSecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
+				},
+				Resources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preBuildImageArgs),
+			},
+		},
+	}
+
+	buildTask := pipelinev1beta1.TaskSpec{
+		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
+		Params: []pipelinev1beta1.ParamSpec{
+			{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamScmUrl, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamScmTag, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamScmHash, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamChainsGitUrl, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamChainsGitCommit, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamImage, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamGoals, Type: pipelinev1beta1.ParamTypeArray},
+			{Name: PipelineParamJavaVersion, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamToolVersion, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamPath, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
+			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
+		},
+		Results: []pipelinev1beta1.TaskResult{
+			{Name: artifactbuild.PipelineResultContaminants},
+			{Name: artifactbuild.PipelineResultDeployedResources},
+			{Name: PipelineResultImage},
+			{Name: PipelineResultImageDigest},
+			{Name: artifactbuild.PipelineResultPassedVerification},
+			{Name: artifactbuild.PipelineResultVerificationResult},
+		},
+		Steps: []pipelinev1beta1.Step{
+			{
 				Name:            "build",
-				Image:           "$(params." + PipelineParamImage + ")",
+				Image:           preBuildImageName,
+				ImagePullPolicy: v1.PullAlways,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
@@ -304,15 +233,15 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
-					Requests: v1.ResourceList{"memory": buildContainerRequestMemory, "cpu": buildContainerRequestCPU},
+					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
 				},
 				Args: []string{"$(params.GOALS[*])"},
 
-				Script: build,
+				Script: settings + "\ncp -r " + OriginalContentPath + "/* $(workspaces.source.path)\n" + build,
 			},
 			{
 				Name:            "verify-deploy-and-check-for-contaminates",
-				Image:           "$(params." + PipelineParamRequestProcessorImage + ")",
+				Image:           buildRequestProcessorImage,
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
@@ -320,20 +249,31 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				},
 				Resources: v1.ResourceRequirements{
 					//TODO: make configurable
-					Requests: v1.ResourceList{"memory": defaultBuildContainerRequestMemory, "cpu": defaultContainerRequestCPU},
-					Limits:   v1.ResourceList{"memory": defaultBuildContainerRequestMemory, "cpu": defaultContainerLimitCPU},
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
 				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs),
 			},
 		},
 	}
-
 	ps := &pipelinev1beta1.PipelineSpec{
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
-				Name: artifactbuild.TaskName,
+				Name: artifactbuild.PreBuildTaskName,
 				TaskSpec: &pipelinev1beta1.EmbeddedTask{
 					TaskSpec: buildSetup,
+				},
+				Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
+					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+					{Name: WorkspaceSource, Workspace: WorkspaceSource},
+					{Name: WorkspaceTls, Workspace: WorkspaceTls},
+				},
+			},
+			{
+				Name:     artifactbuild.BuildTaskName,
+				RunAfter: []string{artifactbuild.PreBuildTaskName},
+				TaskSpec: &pipelinev1beta1.EmbeddedTask{
+					TaskSpec: buildTask,
 				},
 				Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
 					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
@@ -346,7 +286,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 
 	for _, i := range buildSetup.Results {
-		ps.Results = append(ps.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + i.Name + ")"}})
+		ps.Results = append(ps.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + i.Name + ")"}})
 	}
 	for _, i := range buildSetup.Params {
 		ps.Params = append(ps.Params, pipelinev1beta1.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default, Type: i.Type})
@@ -359,12 +299,15 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		ps.Tasks[0].Params = append(ps.Tasks[0].Params, pipelinev1beta1.Param{
 			Name:  i.Name,
 			Value: value})
+		ps.Tasks[1].Params = append(ps.Tasks[1].Params, pipelinev1beta1.Param{
+			Name:  i.Name,
+			Value: value})
 	}
 
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
-	df := "FROM " + extractParam(PipelineParamRequestProcessorImage, paramValues) + " AS build-request-processor" +
-		"\nFROM " + strings.ReplaceAll(extractParam(PipelineParamRequestProcessorImage, paramValues), "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
+	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
+		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
 		"\nFROM " + extractParam(PipelineParamImage, paramValues) +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
@@ -387,6 +330,184 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
 
 	return ps, df, nil
+}
+
+func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
+	pullPolicy := v1.PullIfNotPresent
+	if strings.HasPrefix(buildRequestProcessorImage, "quay.io/minikube") {
+		pullPolicy = v1.PullNever
+	} else if strings.HasSuffix(buildRequestProcessorImage, ":dev") {
+		pullPolicy = v1.PullAlways
+	}
+	return pullPolicy
+}
+
+type memLimits struct {
+	defaultRequestMemory, defaultBuildRequestMemory, defaultRequestCPU, defaultLimitCPU, buildRequestCPU, buildRequestMemory resource.Quantity
+}
+
+func memoryLimits(jbsConfig *v1alpha12.JBSConfig, additionalMemory int) (*memLimits, error) {
+	limits := memLimits{}
+	var err error
+	limits.defaultRequestMemory, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "512Mi"))
+	if err != nil {
+		return nil, err
+	}
+	limits.defaultBuildRequestMemory, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestMemory, "1024Mi"))
+	if err != nil {
+		return nil, err
+	}
+	limits.defaultRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
+	if err != nil {
+		return nil, err
+	}
+	limits.defaultLimitCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskLimitCPU, "300m"))
+	if err != nil {
+		return nil, err
+	}
+	limits.buildRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
+	if err != nil {
+		return nil, err
+	}
+
+	limits.buildRequestMemory = limits.defaultBuildRequestMemory
+	if additionalMemory > 0 {
+		additional := resource.MustParse(fmt.Sprintf("%dMi", additionalMemory))
+		limits.buildRequestMemory.Add(additional)
+		limits.defaultRequestMemory.Add(additional)
+	}
+	return &limits, nil
+}
+
+func additionalPackages(recipe *v1alpha12.BuildRecipe) string {
+	install := ""
+	for count, i := range recipe.AdditionalDownloads {
+		if i.FileType == "tar" {
+			if i.BinaryPath == "" {
+				install = "echo 'Binary path not specified for package " + i.Uri + "'; exit 1"
+			}
+
+		} else if i.FileType == "executable" {
+			if i.FileName == "" {
+				install = "echo 'File name not specified for package " + i.Uri + "'; exit 1"
+			}
+		} else if i.FileType == "rpm" {
+			if i.PackageName == "" {
+				install = "echo 'Package name not specified for rpm type'; exit 1"
+			}
+		} else {
+			//unknown
+			//we still run the pipeline so there is logs
+			install = "echo 'Unknown file type " + i.FileType + " for package " + i.Uri + "'; exit 1"
+			break
+		}
+		template := packageTemplate
+		fileName := i.FileName
+		if fileName == "" {
+			fileName = "package-" + strconv.Itoa(count)
+		}
+		template = strings.ReplaceAll(template, "{URI}", i.Uri)
+		template = strings.ReplaceAll(template, "{FILENAME}", fileName)
+		template = strings.ReplaceAll(template, "{SHA256}", i.Sha256)
+		template = strings.ReplaceAll(template, "{TYPE}", i.FileType)
+		template = strings.ReplaceAll(template, "{BINARY_PATH}", i.BinaryPath)
+		template = strings.ReplaceAll(template, "{PACKAGE_NAME}", i.PackageName)
+		install = install + template
+	}
+	return install
+}
+
+func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) string {
+	gitArgs := ""
+	if db.Spec.ScmInfo.Private {
+		gitArgs = "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
+		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
+	}
+	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineParamScmHash + ")"
+
+	if !recipe.DisableSubmodules {
+		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
+	}
+	return gitArgs
+}
+
+func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig) (string, []string, []string) {
+	preBuildImageName := ""
+	preBuildImageTag := imageId + "-pre-build-image"
+	preBuildImageArgs := []string{
+		"deploy-pre-build-image",
+		"--builder-image=" + recipe.Image,
+		"--source-path=$(workspaces.source.path)",
+		"--image-source-path=" + OriginalContentPath,
+		"--image-name=" + preBuildImageTag,
+	}
+
+	deployArgs := []string{
+		"deploy-container",
+		"--image-id=" + imageId,
+		"--path=$(workspaces.source.path)/artifacts",
+		"--logs-path=$(workspaces.source.path)/logs",
+		"--build-info-path=$(workspaces.source.path)/build-info",
+		"--source-path=$(workspaces.source.path)/source",
+		"--task-run=$(context.taskRun.name)",
+		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
+		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
+	}
+	imageRegistry := jbsConfig.ImageRegistry()
+	registryArgs := []string{}
+	if imageRegistry.Host != "" {
+		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
+		preBuildImageName += imageRegistry.Host
+	} else {
+		preBuildImageName += "quay.io"
+	}
+	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
+		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
+		preBuildImageName += ":" + imageRegistry.Port
+	}
+	if imageRegistry.Owner != "" {
+		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
+		preBuildImageName += "/" + imageRegistry.Owner
+	}
+	if imageRegistry.Repository != "" {
+		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
+		preBuildImageName += "/" + imageRegistry.Repository
+	} else {
+		preBuildImageName += "/artifact-deployments"
+	}
+	preBuildImageName += ":" + preBuildImageTag
+	if imageRegistry.Insecure {
+		registryArgs = append(registryArgs, "--registry-insecure")
+	}
+	if jbsConfig.ImageRegistry().PrependTag != "" {
+		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
+	}
+	deployArgs = append(deployArgs, registryArgs...)
+	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
+	return preBuildImageName, preBuildImageArgs, deployArgs
+}
+
+func verifyParameters(jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe) []string {
+	verifyBuiltArtifactsArgs := []string{
+		"verify-built-artifacts",
+		"--repository-url=$(params.CACHE_URL)?upstream-only=true",
+		"--global-settings=/usr/share/maven/conf/settings.xml",
+		"--settings=$(workspaces.build-settings.path)/settings.xml",
+		"--deploy-path=$(workspaces.source.path)/artifacts",
+		"--task-run-name=$(context.taskRun.name)",
+		"--results-file=$(results." + artifactbuild.PipelineResultPassedVerification + ".path)",
+	}
+
+	if !jbsConfig.Spec.RequireArtifactVerification {
+		verifyBuiltArtifactsArgs = append(verifyBuiltArtifactsArgs, "--report-only")
+	}
+
+	if len(recipe.AllowedDifferences) > 0 {
+		for _, i := range recipe.AllowedDifferences {
+			verifyBuiltArtifactsArgs = append(verifyBuiltArtifactsArgs, "--excludes="+i)
+		}
+	}
+	return verifyBuiltArtifactsArgs
 }
 
 func extractParam(key string, paramValues []pipelinev1beta1.Param) string {
