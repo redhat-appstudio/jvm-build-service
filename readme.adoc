@@ -1,3 +1,5 @@
+DO NOT MERGE
+
 :img-build-status: https://codecov.io/gh/redhat-appstudio/jvm-build-service/branch/main/graph/badge.svg
 :uri-build-status: https://codecov.io/gh/redhat-appstudio/jvm-build-service
 image:{img-build-status}[Build Status Badge,link={uri-build-status}]
