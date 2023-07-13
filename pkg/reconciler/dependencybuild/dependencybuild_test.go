@@ -376,8 +376,16 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "False",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		ts := &pipelinev1beta1.PipelineRunTaskRunStatus{Status: &pipelinev1beta1.TaskRunStatus{TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{Steps: []pipelinev1beta1.StepState{{ContainerState: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "OOMKilled"}}}}}}}
-		pr.Status.TaskRuns = map[string]*pipelinev1beta1.PipelineRunTaskRunStatus{"task": ts}
+		newTr := pipelinev1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "task", Namespace: pr.Namespace},
+			Status: pipelinev1beta1.TaskRunStatus{
+				TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{
+					Steps: []pipelinev1beta1.StepState{{ContainerState: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "OOMKilled"}}}}},
+			},
+		}
+		g.Expect(client.Create(ctx, &newTr)).Should(BeNil())
+
+		pr.Status.ChildReferences = []pipelinev1beta1.ChildStatusReference{{Name: "task"}}
 
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
@@ -394,8 +402,15 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "False",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		ts = &pipelinev1beta1.PipelineRunTaskRunStatus{Status: &pipelinev1beta1.TaskRunStatus{TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{Steps: []pipelinev1beta1.StepState{{ContainerState: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "OOMKilled"}}}}}}}
-		pr.Status.TaskRuns = map[string]*pipelinev1beta1.PipelineRunTaskRunStatus{"task": ts}
+		newTr = pipelinev1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "task2", Namespace: pr.Namespace},
+			Status: pipelinev1beta1.TaskRunStatus{
+				TaskRunStatusFields: pipelinev1beta1.TaskRunStatusFields{Steps: []pipelinev1beta1.StepState{{ContainerState: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "OOMKilled"}}}}},
+			},
+		}
+		g.Expect(client.Create(ctx, &newTr)).Should(BeNil())
+
+		pr.Status.ChildReferences = []pipelinev1beta1.ChildStatusReference{{Name: "task2"}}
 
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}}))
