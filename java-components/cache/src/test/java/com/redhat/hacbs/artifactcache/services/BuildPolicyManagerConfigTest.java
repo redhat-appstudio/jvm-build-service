@@ -34,7 +34,7 @@ public class BuildPolicyManagerConfigTest {
                         "store.redhat.url", "https://maven.repository.redhat.com/ga", "build-policy.default.store-list",
                         "central,redhat"), "test", 1))
                 .build();
-        var policies = manager.createBuildPolicies(Set.of("default", "central-only"), config);
+        var policies = manager.createBuildPolicies(Set.of("default"), config);
         var result = policies.get("default").getRepositories();
         Repository central = result.get(0).getRepository();
         Assertions.assertEquals("https://repo.maven.apache.org/maven2", central.getUri());

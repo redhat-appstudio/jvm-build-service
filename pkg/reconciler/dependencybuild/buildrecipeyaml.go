@@ -369,7 +369,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nENV BUILD_POLICY_DEFAULT_STORE_LIST=central,redhat,jboss,gradleplugins,confluent,gradle,eclipselink,jitpack,jsweet,jenkins,spring-plugins,dokkadev,ajoberstar,googleandroid,kotlinnative14linux,jcs,kotlin-bootstrap,kotlin-kotlin-dependencies" +
 		"\nRUN mkdir -p /root/project /root/software/settings && microdnf install vim curl procps-ng bash-completion" +
 		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
 		// Copying JDK17 for the cache.

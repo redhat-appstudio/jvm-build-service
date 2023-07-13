@@ -29,7 +29,7 @@ public class S3ArtifactStorageTest {
     public static final String FILE = "test.txt";
     public static final String BAD_HASH = "bad-hash.txt";
     public static final String CONTENTS = "test-file";
-    public static final String POLICY = "prefer-rebuilt";
+    public static final String POLICY = "default";
     public static final String VERSION = "1.0";
     public static final String DEFAULT = "default";
     public static final String ARTIFACT_STORE = "artifact-store";
