@@ -25,4 +25,7 @@ find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-cache-ima
 find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-reqprocessor-image%${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}% {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s/dev-template/development/ {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s/QUAY_TOKEN/${QUAY_TOKEN}/ {} \;
+if [ -n "$QUAY_TOKEN" ]; then
+    $SED -i '/owner: QUAY_USERNAME/d' $DIR/overlays/development/config.yaml
+fi
 find $DIR -path \*development\*.yaml -exec $SED -i s/QUAY_USERNAME/${QUAY_USERNAME}/ {} \;
