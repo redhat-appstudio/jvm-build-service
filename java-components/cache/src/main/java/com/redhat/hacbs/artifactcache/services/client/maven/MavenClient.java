@@ -83,8 +83,8 @@ public class MavenClient implements RepositoryClient {
                     if (!target.endsWith(SHA_1) && sha1 == null) {
                         try (var hash = remoteClient.execute(new HttpGet(
                                 targetUri + SHA_1))) {
-                            requestCleanup.addResource(hash);
                             if (hash.getStatusLine().getStatusCode() == 404) {
+                                hash.getEntity().getContent().readAllBytes(); //read the 404 page
                                 Log.debugf("Could not find sha1 hash for artifact %s/%s/%s/%s from repo %s at %s", group,
                                         artifact,
                                         version,
@@ -112,6 +112,7 @@ public class MavenClient implements RepositoryClient {
                     continue;
                 }
                 if (response.getStatusLine().getStatusCode() == 404) {
+                    Log.infof("404 downloading artifact %s", targetUri);
                     closeResponse(response);
                     return Optional.empty();
                 }
