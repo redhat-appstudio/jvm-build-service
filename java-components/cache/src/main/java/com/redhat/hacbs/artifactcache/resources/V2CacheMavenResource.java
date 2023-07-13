@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +44,7 @@ import io.smallrye.common.annotation.Blocking;
 @Blocking
 public class V2CacheMavenResource {
 
+    public static final String DEFAULT = "default";
     final CacheFacade cache;
     final RemoteRepositoryManager remoteRepositoryManager;
 
@@ -84,18 +86,27 @@ public class V2CacheMavenResource {
             caches.addAll(remoteRepositoryManager.getRemoteRepositories("rebuilt"));
         }
         if (stores.length() > 1) {
+            Set<String> seen = new HashSet<>();
+            //we always add the default list
+            caches.addAll(remoteRepositoryManager.getRemoteRepositories(RemoteRepositoryManager.SYSTEM + DEFAULT));
+            caches.forEach(s -> seen.add(s.getRepository().getName()));
             stores = stores.substring(1);
             for (var i : stores.split(",")) {
                 var store = remoteRepositoryManager.getRemoteRepositories(RemoteRepositoryManager.SYSTEM + i);
                 if (store != null) {
-                    caches.addAll(store);
+                    for (var s : store) {
+                        if (!seen.contains(s.getRepository().getName())) {
+                            seen.add(s.getRepository().getName());
+                            caches.add(s);
+                        }
+                    }
                 } else {
                     Log.infof("Could not find system store %s", i);
                 }
             }
         } else {
             //TODO: once we have added repository info the the main recipe database we should change this to 'default'
-            caches.addAll(remoteRepositoryManager.getRemoteRepositories(RemoteRepositoryManager.SYSTEM + "all"));
+            caches.addAll(remoteRepositoryManager.getRemoteRepositories(RemoteRepositoryManager.SYSTEM + DEFAULT));
         }
         BuildPolicy bp = new BuildPolicy(caches);
         return new CacheFacade(Map.of("", bp));

@@ -20,8 +20,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
-import org.jboss.resteasy.reactive.ClientWebApplicationException;
-
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.HashingOutputStream;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
@@ -128,7 +126,7 @@ public class RepositoryCache {
             }
             DownloadingFile newFile = new DownloadingFile(targetFile);
             var existing = inProgressDownloads.putIfAbsent(targetFile, newFile);
-            if (existing != null) {
+            while (existing != null) {
                 //another thread is downloading this
                 existing.awaitReady();
                 //the result may have been a miss, so we need to check the file is there
@@ -137,6 +135,7 @@ public class RepositoryCache {
                 if (Files.exists(actual)) {
                     return handleDownloadedFile(actual, trackedFile, tracked, gav);
                 }
+                existing = inProgressDownloads.putIfAbsent(targetFile, newFile);
             }
             return newFile.download(clientInvocation, repository.getClient(), actual, trackedFile,
                     tempDownloads, tracked, gav);
@@ -361,12 +360,6 @@ public class RepositoryCache {
                     }
                     return handleDownloadedFile(downloadTarget, trackedFile, tracked, gav);
                 }
-                return Optional.empty();
-            } catch (ClientWebApplicationException e) {
-                if (e.getResponse().getStatus() == 404) {
-                    return Optional.empty();
-                }
-                Log.errorf(e, "Failed to download artifact %s from %s", downloadTarget, repositoryClient);
                 return Optional.empty();
             } catch (Throwable e) {
                 synchronized (this) {
