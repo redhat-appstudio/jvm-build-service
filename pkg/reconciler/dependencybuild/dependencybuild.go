@@ -276,7 +276,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 	if !success || len(buildInfo) == 0 {
 
-		if (db.Annotations == nil || db.Annotations[RetryDueToMemoryAnnotation] != "true") && failedDueToMemory(pr) {
+		if (db.Annotations == nil || db.Annotations[RetryDueToMemoryAnnotation] != "true") && r.failedDueToMemory(ctx, log, pr) {
 			err := r.client.Delete(ctx, pr)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -553,18 +553,18 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 	scmUrl := modifyURLFragment(log, db.Spec.ScmInfo.SCMURL)
 	paramValues := []pipelinev1beta1.Param{
-		{Name: PipelineBuildId, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
-		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
-		{Name: PipelineParamScmTag, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
-		{Name: PipelineParamScmHash, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
-		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
-		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
-		{Name: PipelineParamPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
-		{Name: PipelineParamImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
-		{Name: PipelineParamGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
-		{Name: PipelineParamEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
-		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
-		{Name: PipelineParamJavaVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
+		{Name: PipelineBuildId, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
+		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
+		{Name: PipelineParamScmTag, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
+		{Name: PipelineParamScmHash, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
+		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
+		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
+		{Name: PipelineParamPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
+		{Name: PipelineParamImage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
+		{Name: PipelineParamGoals, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
+		{Name: PipelineParamEnforceVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
+		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
+		{Name: PipelineParamJavaVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
 	}
 
 	systemConfig := v1alpha1.SystemConfig{}
@@ -591,7 +591,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	} else {
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, pipelinev1beta1.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
 	}
-	pr.Spec.Timeout = &v12.Duration{Duration: time.Hour * 3}
+	pr.Spec.Timeouts = &pipelinev1beta1.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * 3}}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -693,24 +693,18 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 				}
 				if !doRetry && db.Status.CurrentBuildRecipe.AdditionalMemory < 2048 {
-					for _, trs := range pr.Status.TaskRuns {
-						for _, cont := range trs.Status.Steps {
-							//check for oomkilled pods
-							if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.ExitCode == 134 || cont.Terminated.Reason == "OOMKilled") {
-								msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s, PR UID: %s, Current additional memory: %d", db.Name, pr.UID, db.Status.CurrentBuildRecipe.AdditionalMemory)
-								log.Info(msg)
-								doRetry = true
-								//increase the memory limit
-								if db.Status.CurrentBuildRecipe.AdditionalMemory == 0 {
-									db.Status.CurrentBuildRecipe.AdditionalMemory = MemoryIncrement
-								} else {
-									db.Status.CurrentBuildRecipe.AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory * 2
-								}
-								for i := range db.Status.PotentialBuildRecipes {
-									db.Status.PotentialBuildRecipes[i].AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory
-								}
-								break
-							}
+					if r.failedDueToMemory(ctx, log, pr) {
+						msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s, PR UID: %s, Current additional memory: %d", db.Name, pr.UID, db.Status.CurrentBuildRecipe.AdditionalMemory)
+						log.Info(msg)
+						doRetry = true
+						//increase the memory limit
+						if db.Status.CurrentBuildRecipe.AdditionalMemory == 0 {
+							db.Status.CurrentBuildRecipe.AdditionalMemory = MemoryIncrement
+						} else {
+							db.Status.CurrentBuildRecipe.AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory * 2
+						}
+						for i := range db.Status.PotentialBuildRecipes {
+							db.Status.PotentialBuildRecipes[i].AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory
 						}
 					}
 				}
@@ -987,12 +981,19 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	}, nil
 }
 
-func failedDueToMemory(pr *pipelinev1beta1.PipelineRun) bool {
-	for _, trs := range pr.Status.TaskRuns {
-		for _, cont := range trs.Status.Steps {
-			//check for oomkilled pods
-			if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.ExitCode == 134 || cont.Terminated.Reason == "OOMKilled") {
-				return true
+func (r *ReconcileDependencyBuild) failedDueToMemory(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) bool {
+	for _, trs := range pr.Status.ChildReferences {
+		tr := pipelinev1beta1.TaskRun{}
+		err := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: trs.Name}, &tr)
+		if err != nil {
+			log.Error(err, "Unable to retrieve TaskRun to check for memory conditions")
+		} else {
+
+			for _, cont := range tr.Status.Steps {
+				//check for oomkilled pods
+				if cont.Terminated != nil && (cont.Terminated.ExitCode == 137 || cont.Terminated.ExitCode == 134 || cont.Terminated.Reason == "OOMKilled") {
+					return true
+				}
 			}
 		}
 	}
