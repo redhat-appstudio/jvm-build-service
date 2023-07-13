@@ -35,10 +35,13 @@ public class BuildFixCommand implements Runnable {
     String build;
 
     @CommandLine.Option(names = "--enforce-version", description = "Sets enforce-version on the build recipe")
-    boolean enforceVersion;
+    Boolean enforceVersion;
 
     @CommandLine.Option(names = "--version-level", description = "If this should only be applied to this specific version (and earlier).")
     boolean versionSpecific;
+
+    @CommandLine.Option(names = "--add-repository", description = "Adds a maven repository to the build")
+    String addRepository;
 
     @Override
     public void run() {
@@ -93,7 +96,16 @@ public class BuildFixCommand implements Runnable {
             } else {
                 buildRecipe = new BuildRecipeInfo();
             }
-            buildRecipe.setEnforceVersion(enforceVersion);
+            if (enforceVersion != null) {
+                buildRecipe.setEnforceVersion(enforceVersion);
+            }
+            if (addRepository != null) {
+                if (recipeLayoutManager.getRepositoryPaths(addRepository).isEmpty()) {
+                    throw new IllegalArgumentException("Unknown repository " + addRepository);
+                }
+                buildRecipe.getRepositories().add(addRepository);
+            }
+
             recipeLayoutManager.writeBuildData(new AddBuildRecipeRequest<>(BuildRecipe.BUILD, buildRecipe,
                     buildSpec.getScm().getScmURL(), versionSpecific ? buildSpec.getVersion() : null));
         });
