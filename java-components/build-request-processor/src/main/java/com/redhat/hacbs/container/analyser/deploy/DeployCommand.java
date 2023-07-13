@@ -213,7 +213,7 @@ public abstract class DeployCommand implements Runnable {
                             "CONTAMINANTS", serialisedContaminants,
                             "DEPLOYED_RESOURCES", String.join(",", gavs),
                             "IMAGE_URL", imageName == null ? "" : imageName,
-                            "IMAGE_DIGEST", imageDigest == null ? "" : imageDigest));
+                            "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest));
                 }
             } finally {
                 if (Files.exists(modified)) {
