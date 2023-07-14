@@ -4,7 +4,6 @@ import (
 	"flag"
 	zap2 "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -58,12 +57,12 @@ func main() {
 	klog.SetLogger(mainLog)
 
 	tokenPath := "/workspace/quaytoken" //#nosec
-	tokenContent, err := ioutil.ReadFile(tokenPath)
+	tokenContent, err := os.ReadFile(tokenPath)
 	if err != nil {
 		mainLog.Error(err, "unable to read quay token")
 	}
 	orgPath := "/workspace/organization"
-	orgContent, err := ioutil.ReadFile(orgPath)
+	orgContent, err := os.ReadFile(orgPath)
 	if err != nil {
 		mainLog.Error(err, "unable to read quay organization")
 	}
