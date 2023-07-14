@@ -34,15 +34,24 @@ jobs:
     name: Minikube Test Sample Project
     steps:
       - uses: actions/checkout@v2
+      - name: Setup Registry
+        run: |
+          export DEV_IP=172.16.1.1
+          sudo ifconfig lo:0 $DEV_IP
+          docker run -d -p 5000:5000 --restart=always  registry:2
+          sudo echo '{ "insecure-registries": ["172.16.1.1:5000"] }' | sudo tee  /etc/docker/daemon.json
+
       - name: Start minikube
         uses: medyagh/setup-minikube@eefe3e32b8e0cbd99330ebb68c5fc2d0c2a5e68c
         with:
           cpus: max
           memory: max
+          insecure-registry: '172.16.1.1:5000'
       - name: Run Tests
         run: |
           export SHELL=/bin/bash
           export QUAY_USERNAME=minikube
+          export DEV_IP=172.16.1.1
 
           eval $(minikube -p minikube docker-env)
 
@@ -55,6 +64,13 @@ jobs:
 
           ./deploy/minikube-ci.sh
           make minikube-test
+
+      - name: Archive Report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: sample-report
+          path: /tmp/jvm-build-service-report
   run-gav-based-tests:
     strategy:
       matrix:
@@ -66,15 +82,23 @@ jobs:
     name: Minikube GAV Matrix
     steps:
       - uses: actions/checkout@v2
+      - name: Setup Registry
+        run: |
+          export DEV_IP=172.16.1.1
+          sudo ifconfig lo:0 $DEV_IP
+          docker run -d -p 5000:5000 --restart=always  registry:2
+          sudo echo '{ "insecure-registries": ["172.16.1.1:5000"] }' | sudo tee  /etc/docker/daemon.json
       - name: Start minikube
         uses: medyagh/setup-minikube@eefe3e32b8e0cbd99330ebb68c5fc2d0c2a5e68c
         with:
           cpus: max
           memory: max
+          insecure-registry: '172.16.1.1:5000'
       - name: Run Tests
         run: |
           export SHELL=/bin/bash
           export QUAY_USERNAME=minikube
+          export DEV_IP=172.16.1.1
 
           eval $(minikube -p minikube docker-env)
 
@@ -89,3 +113,9 @@ jobs:
 
           ./deploy/minikube-ci.sh
           make minikube-test
+      - name: Archive Report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: matrix-report
+          path: /tmp/jvm-build-service-report

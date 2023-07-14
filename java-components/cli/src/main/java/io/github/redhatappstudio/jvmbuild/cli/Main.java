@@ -1,6 +1,7 @@
 package io.github.redhatappstudio.jvmbuild.cli;
 
 import io.quarkus.arc.Arc;
+import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;
 import io.quarkus.runtime.annotations.QuarkusMain;
 import jline.TerminalFactory;
@@ -55,6 +56,7 @@ public class Main implements QuarkusApplication {
                 requestContext.terminate();
                 requestContext.activate();
             }
+            Quarkus.asyncExit(0);
         } catch (Throwable t) {
             t.printStackTrace();
         } finally {

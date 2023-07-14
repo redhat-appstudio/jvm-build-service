@@ -34,23 +34,22 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout                     = 300 * time.Second
-	PipelineBuildId                    = "DEPENDENCY_BUILD"
-	PipelineParamScmUrl                = "URL"
-	PipelineParamScmTag                = "TAG"
-	PipelineParamScmHash               = "HASH"
-	PipelineParamPath                  = "CONTEXT_DIR"
-	PipelineParamChainsGitUrl          = "CHAINS-GIT_URL"
-	PipelineParamChainsGitCommit       = "CHAINS-GIT_COMMIT"
-	PipelineParamImage                 = "IMAGE"
-	PipelineParamRequestProcessorImage = "REQUEST_PROCESSOR_IMAGE"
-	PipelineParamGoals                 = "GOALS"
-	PipelineParamJavaVersion           = "JAVA_VERSION"
-	PipelineParamToolVersion           = "TOOL_VERSION"
-	PipelineParamEnforceVersion        = "ENFORCE_VERSION"
-	PipelineParamCacheUrl              = "CACHE_URL"
-	PipelineResultImage                = "IMAGE_URL"
-	PipelineResultImageDigest          = "IMAGE_DIGEST"
+	contextTimeout               = 300 * time.Second
+	PipelineBuildId              = "DEPENDENCY_BUILD"
+	PipelineParamScmUrl          = "URL"
+	PipelineParamScmTag          = "TAG"
+	PipelineParamScmHash         = "HASH"
+	PipelineParamPath            = "CONTEXT_DIR"
+	PipelineParamChainsGitUrl    = "CHAINS-GIT_URL"
+	PipelineParamChainsGitCommit = "CHAINS-GIT_COMMIT"
+	PipelineParamImage           = "IMAGE"
+	PipelineParamGoals           = "GOALS"
+	PipelineParamJavaVersion     = "JAVA_VERSION"
+	PipelineParamToolVersion     = "TOOL_VERSION"
+	PipelineParamEnforceVersion  = "ENFORCE_VERSION"
+	PipelineParamCacheUrl        = "CACHE_URL"
+	PipelineResultImage          = "IMAGE_URL"
+	PipelineResultImageDigest    = "IMAGE_DIGEST"
 
 	BuildInfoPipelineResultMessage   = "message"
 	BuildInfoPipelineResultBuildInfo = "build-info"
@@ -562,7 +561,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
 		{Name: PipelineParamImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
-		{Name: PipelineParamRequestProcessorImage, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: buildRequestProcessorImage}},
 		{Name: PipelineParamGoals, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
 		{Name: PipelineParamEnforceVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
 		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
@@ -955,10 +953,10 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	memory := fmt.Sprintf("%dMi", 512+additionalMemory)
 	return &pipelinev1beta1.PipelineSpec{
 		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
-		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineResultMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineResultMessage + ")"}}, {Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.TaskName + ".results." + BuildInfoPipelineResultBuildInfo + ")"}}},
+		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineResultMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultMessage + ")"}}, {Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultBuildInfo + ")"}}},
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
-				Name:       artifactbuild.TaskName,
+				Name:       "task",
 				Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{{Name: "tls", Workspace: "tls"}},
 				TaskSpec: &pipelinev1beta1.EmbeddedTask{
 					TaskSpec: pipelinev1beta1.TaskSpec{
