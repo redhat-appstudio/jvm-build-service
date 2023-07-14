@@ -41,8 +41,6 @@ class BuildPolicyManager {
 
         Map<String, BuildPolicy> ret = new HashMap<>();
         Map<String, Map<String, String>> relocations = new HashMap<>();
-        //TODO: this is a bit of a hack
-        //we read the deployment config and if present use it to configure the 'rebuilt' repo
 
         for (String buildPolicy : buildPolicies) {
 

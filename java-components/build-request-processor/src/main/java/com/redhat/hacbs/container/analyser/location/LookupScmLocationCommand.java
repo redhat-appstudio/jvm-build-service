@@ -15,6 +15,8 @@ import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "lookup-scm")
+// Deprecated as scm discovery pipeline has been removed as the request controller
+// requests this information directly from the cache.
 @Deprecated
 public class LookupScmLocationCommand implements Runnable {
 

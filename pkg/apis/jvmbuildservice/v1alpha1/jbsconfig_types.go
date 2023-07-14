@@ -31,6 +31,8 @@ type JBSConfigSpec struct {
 
 	MavenBaseLocations map[string]string `json:"mavenBaseLocations,omitempty"`
 
+	SharedRegistries []ImageRegistry `json:"sharedRegistries,omitempty"`
+	// TODO: STONEBLD-1505 use an explicit variable
 	ImageRegistry      `json:",inline"`
 	CacheSettings      CacheSettings              `json:"cacheSettings,omitempty"`
 	BuildSettings      BuildSettings              `json:"buildSettings,omitempty"`
@@ -69,10 +71,10 @@ type BuildSettings struct {
 	TaskLimitCPU string `json:"taskLimitCPU,omitempty"`
 }
 type ImageRegistry struct {
-	Host       string `json:"host,omitempty"`
+	Host       string `json:"host,omitempty"` // Defaults to quay.io in handleNoImageSecretFound
 	Port       string `json:"port,omitempty"`
 	Owner      string `json:"owner,omitempty"`
-	Repository string `json:"repository,omitempty"`
+	Repository string `json:"repository,omitempty"` // Defaults to artifact-deployments in handleNoImageSecretFound
 	Insecure   bool   `json:"insecure,omitempty"`
 	PrependTag string `json:"prependTag,omitempty"`
 }
