@@ -14,11 +14,9 @@ import (
 	v13 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"net/http"
 	"os"
 	"path/filepath"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -829,8 +827,8 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 	if err != nil {
 		debugAndFailTest(ta, "pipeline SA not created in timely fashion")
 	}
-	deployDockerRegistry(ta)
 
+	devIp := os.Getenv("DEV_IP")
 	owner := "testuser"
 	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -860,10 +858,10 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 				DisableTLS:    true,
 			},
 			ImageRegistry: v1alpha1.ImageRegistry{
-				Host:       "registry." + ta.ns + ".svc.cluster.local",
+				Host:       devIp,
 				Owner:      owner,
 				Repository: "test-images",
-				Port:       "80",
+				Port:       "5000",
 				Insecure:   true,
 				PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
 			},
@@ -902,59 +900,5 @@ func dumpPodDetails(ta *testArgs) {
 				fmt.Printf("Container %s has CPU limit %s and request %s and Memory limit %s and request %s\n", cs.Name, cs.Resources.Limits.Cpu().String(), cs.Resources.Requests.Cpu().String(), cs.Resources.Limits.Memory().String(), cs.Resources.Requests.Memory().String())
 			}
 		}
-	}
-}
-
-func deployDockerRegistry(ta *testArgs) {
-
-	var one int32 = 1
-	deployment := v13.Deployment{}
-	deployment.Name = "registry"
-	deployment.Namespace = ta.ns
-	deployment.Spec.Replicas = &one
-	deployment.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"app": "registry"}}
-	deployment.Spec.Template = corev1.PodTemplateSpec{}
-	deployment.Spec.Template.Labels = map[string]string{"app": "registry"}
-	deployment.Spec.Template.Spec.Containers = []corev1.Container{
-		{
-			Name:  "registry",
-			Image: "registry:2",
-			Ports: []corev1.ContainerPort{{
-				Name:          "http",
-				ContainerPort: 5000,
-			}},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{"memory": resource.MustParse("50Mi"), "cpu": resource.MustParse("10m")},
-				Limits:   corev1.ResourceList{"memory": resource.MustParse("50Mi"), "cpu": resource.MustParse("10m")},
-			},
-		},
-	}
-	_, err := kubeClient.AppsV1().Deployments(ta.ns).Create(context.Background(), &deployment, metav1.CreateOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	//and setup the service
-
-	service := corev1.Service{
-		ObjectMeta: ctrl.ObjectMeta{
-			Name:      "registry",
-			Namespace: ta.ns,
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Port:       80,
-					TargetPort: intstr.IntOrString{IntVal: 5000},
-				},
-			},
-			Type:     corev1.ServiceTypeNodePort,
-			Selector: map[string]string{"app": "registry"},
-		},
-	}
-	_, err = kubeClient.CoreV1().Services(ta.ns).Create(context.Background(), &service, metav1.CreateOptions{})
-	if err != nil {
-		panic(err)
 	}
 }
