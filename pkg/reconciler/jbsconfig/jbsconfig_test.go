@@ -2,13 +2,13 @@ package jbsconfig
 
 import (
 	"context"
+	"testing"
+
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	spi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
@@ -172,7 +172,7 @@ func TestCacheCreatedAndDeleted(t *testing.T) {
 	ctx := context.TODO()
 	jbsConfig := setupJBSConfig()
 	jbsConfig.Spec.EnableRebuilds = true
-	expectedOwnerReference := v1.OwnerReference{
+	expectedOwnerReference := metav1.OwnerReference{
 		Kind:       "JBSConfig",
 		APIVersion: "jvmbuildservice.io/v1alpha1",
 		UID:        "",
