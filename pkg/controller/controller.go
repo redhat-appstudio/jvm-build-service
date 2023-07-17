@@ -15,7 +15,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -72,7 +72,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
-	if err := pipelinev1beta1.AddToScheme(options.Scheme); err != nil {
+	if err := pipelinev1.AddToScheme(options.Scheme); err != nil {
 		return nil, err
 	}
 
@@ -103,11 +103,11 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	cachePods = cachePods.Add(*cacheRequirement)
 	options.NewCache = cache.BuilderWithOptions(cache.Options{
 		SelectorsByObject: cache.SelectorsByObject{
-			&pipelinev1beta1.PipelineRun{}: {},
-			&v1alpha1.DependencyBuild{}:    {},
-			&v1alpha1.ArtifactBuild{}:      {},
-			&v1alpha1.RebuiltArtifact{}:    {},
-			&v1.Pod{}:                      {Label: cachePods},
+			&pipelinev1.PipelineRun{}:   {},
+			&v1alpha1.DependencyBuild{}: {},
+			&v1alpha1.ArtifactBuild{}:   {},
+			&v1alpha1.RebuiltArtifact{}: {},
+			&v1.Pod{}:                   {Label: cachePods},
 		}})
 
 	mgr, err = ctrl.NewManager(cfg, options)
