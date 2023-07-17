@@ -31,7 +31,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 
-	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 
 	"knative.dev/pkg/apis"
 
@@ -242,7 +242,7 @@ var _ = Describe("Test discovery PipelineRun complete updates ABR state", func()
 					Status:             "True",
 					LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 				})
-				btr.Status.PipelineResults = []tektonapi.PipelineRunResult{{
+				btr.Status.Results = []tektonapi.PipelineRunResult{{
 					Name:  dependencybuild.BuildInfoPipelineResultMessage,
 					Value: tektonapi.ResultValue{Type: tektonapi.ParamTypeString, StringVal: "OK"},
 				}, {

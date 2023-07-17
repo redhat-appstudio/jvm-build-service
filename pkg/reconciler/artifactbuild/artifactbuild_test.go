@@ -4,13 +4,12 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,7 +32,10 @@ const name = "test"
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileArtifactBuild) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
-	_ = pipelinev1beta1.AddToScheme(scheme)
+	err := pipelinev1beta1.AddToScheme(scheme)
+	if err != nil {
+		panic(err)
+	}
 	_ = v1.AddToScheme(scheme)
 	_ = appsv1.AddToScheme(scheme)
 	sysConfig := &v1alpha1.JBSConfig{

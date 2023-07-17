@@ -2,7 +2,8 @@ package e2e
 
 import (
 	"fmt"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	realv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"testing"
 	"time"
 )
@@ -14,7 +15,7 @@ type testArgs struct {
 	timeout  time.Duration
 	interval time.Duration
 
-	gitClone *v1beta1.Task
+	gitClone *realv1beta1.Task
 	maven    *v1beta1.Task
 	pipeline *v1beta1.Pipeline
 	run      *v1beta1.PipelineRun

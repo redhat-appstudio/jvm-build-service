@@ -13,7 +13,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -137,9 +137,9 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(len(pr.Finalizers)).Should(Equal(1))
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null,"repositories":["jboss","gradle"]}`}}}
+		pr.Status.Results = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null,"repositories":["jboss","gradle"]}`}}}
 	} else {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "build info missing"}}}
+		pr.Status.Results = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "build info missing"}}}
 	}
 	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	pr.Status.SetCondition(&apis.Condition{
@@ -332,7 +332,7 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "True",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: artifactbuild.PipelineResultDeployedResources, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: TestArtifact}}}
+		pr.Status.Results = []pipelinev1beta1.PipelineRunResult{{Name: artifactbuild.PipelineResultDeployedResources, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: TestArtifact}}}
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
@@ -426,7 +426,7 @@ func TestStateBuilding(t *testing.T) {
 			for _, step := range task.TaskSpec.Steps {
 				if step.Name == "build" {
 					//default is 1024 + the 700 limit
-					g.Expect(step.Resources.Requests.Memory().String()).Should(Equal("1724Mi"))
+					g.Expect(step.ComputeResources.Requests.Memory().String()).Should(Equal("1724Mi"))
 					found = true
 				}
 			}
@@ -450,7 +450,7 @@ func TestStateBuilding(t *testing.T) {
 		ab.Namespace = pr.Namespace
 		ab.Spec.GAV = TestArtifact
 		g.Expect(client.Create(ctx, &ab)).Should(BeNil())
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "[{\"gav\": \"com.acme:foo:1.0\", \"contaminatedArtifacts\": [\"" + TestArtifact + "\"]}]"}}}
+		pr.Status.Results = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "[{\"gav\": \"com.acme:foo:1.0\", \"contaminatedArtifacts\": [\"" + TestArtifact + "\"]}]"}}}
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		db := getBuild(client, g)
 		g.Expect(controllerutil.SetOwnerReference(&ab, db, reconciler.scheme)).Should(BeNil())
@@ -496,7 +496,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
+		pr.Status.Results = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "True",
@@ -529,7 +529,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
+		pr.Status.Results = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "True",

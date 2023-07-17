@@ -16,7 +16,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	spi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"

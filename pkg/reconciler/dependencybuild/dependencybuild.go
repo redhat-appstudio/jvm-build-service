@@ -29,7 +29,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
 const (
@@ -251,7 +251,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 	var buildInfo string
 	var message string
 	//we grab the results here and put them on the ABR
-	for _, res := range pr.Status.PipelineResults {
+	for _, res := range pr.Status.Results {
 		switch res.Name {
 		case BuildInfoPipelineResultBuildInfo:
 			buildInfo = res.Value.StringVal
@@ -718,14 +718,14 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		if success {
 			var image string
 			var digest string
-			for _, i := range pr.Status.PipelineResults {
+			for _, i := range pr.Status.Results {
 				if i.Name == PipelineResultImage {
 					image = i.Value.StringVal
 				} else if i.Name == PipelineResultImageDigest {
 					digest = i.Value.StringVal
 				}
 			}
-			for _, i := range pr.Status.PipelineResults {
+			for _, i := range pr.Status.Results {
 				if i.Name == artifactbuild.PipelineResultContaminants {
 
 					db.Status.Contaminants = []v1alpha1.Contaminant{}
@@ -949,7 +949,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 								ImagePullPolicy: pullPolicy,
 								SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 								Script:          artifactbuild.InstallKeystoreIntoBuildRequestProcessor(args),
-								Resources: v1.ResourceRequirements{
+								ComputeResources: v1.ResourceRequirements{
 									//TODO: make configurable
 									Requests: v1.ResourceList{"memory": resource.MustParse(memory), "cpu": resource.MustParse("10m")},
 									Limits:   v1.ResourceList{"memory": resource.MustParse(memory)},

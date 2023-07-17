@@ -41,7 +41,8 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
+	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	//+kubebuilder:scaffold:imports
 )
 

@@ -1,5 +1,5 @@
 # a placeholder for development; in a fully integrated system, this will come from the appstudio tekton bundle
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: maven

@@ -23,7 +23,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
 const (
@@ -194,8 +194,8 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		return reconcile.Result{}, nil
 	}
 
-	if pr.Status.PipelineResults != nil {
-		for _, prRes := range pr.Status.PipelineResults {
+	if pr.Status.Results != nil {
+		for _, prRes := range pr.Status.Results {
 			if prRes.Name == PipelineResultJavaCommunityDependencies {
 				return reconcile.Result{}, r.handleCommunityDependencies(ctx, strings.Split(prRes.Value.StringVal, ","), pr.Namespace, log)
 			}

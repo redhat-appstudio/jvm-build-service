@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
+	realv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"html/template"
 	"io"
 	"net/http"
@@ -19,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	v13 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,7 +28,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
 	corev1 "k8s.io/api/core/v1"
@@ -171,10 +172,10 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 		debugAndFailTest(ta, "task CRD not present in timely fashion")
 	}
 
-	ta.gitClone = &v1beta1.Task{}
+	ta.gitClone = &realv1beta1.Task{}
 	obj := streamRemoteYamlToTektonObj(gitCloneUrl, ta.gitClone, ta)
 	var ok bool
-	ta.gitClone, ok = obj.(*v1beta1.Task)
+	ta.gitClone, ok = obj.(*realv1beta1.Task)
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("%s did not produce a task: %#v", gitCloneTaskUrl, obj))
 	}
@@ -221,7 +222,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 			}
 		}
 	}
-	ta.maven, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.maven, metav1.CreateOptions{})
+	ta.maven, err = tektonClient.TektonV1().Tasks(ta.ns).Create(context.TODO(), ta.maven, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
@@ -232,7 +233,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipeline: %#v", pipelineYamlPath, obj))
 	}
-	ta.pipeline, err = tektonClient.TektonV1beta1().Pipelines(ta.ns).Create(context.TODO(), ta.pipeline, metav1.CreateOptions{})
+	ta.pipeline, err = tektonClient.TektonV1().Pipelines(ta.ns).Create(context.TODO(), ta.pipeline, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
@@ -466,7 +467,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	if err != nil {
 		panic(err)
 	}
-	pipelineList, err := pipelineClient.TektonV1beta1().PipelineRuns(namespace).List(context.TODO(), metav1.ListOptions{})
+	pipelineList, err := pipelineClient.TektonV1().PipelineRuns(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
@@ -591,7 +592,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 				}
 				if db.Status.FailedVerification {
 					verification := ""
-					for _, res := range pipelineRun.Status.PipelineResults {
+					for _, res := range pipelineRun.Status.Results {
 						if res.Name == artifactbuild.PipelineResultVerificationResult {
 							verification = res.Value.StringVal
 						}

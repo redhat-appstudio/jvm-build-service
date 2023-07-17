@@ -19,7 +19,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/events/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +73,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		}
 	} else {
 
-		ta.run, err = tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
+		ta.run, err = tektonClient.TektonV1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
 		if err != nil {
 			debugAndFailTest(ta, err.Error())
 		}
@@ -271,13 +271,13 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		if !ok {
 			debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 		}
-		ta.run, err = tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
+		ta.run, err = tektonClient.TektonV1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
 		if err != nil {
 			debugAndFailTest(ta, err.Error())
 		}
 
 		ctx := context.TODO()
-		watch, werr := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Watch(ctx, metav1.ListOptions{})
+		watch, werr := tektonClient.TektonV1().PipelineRuns(ta.ns).Watch(ctx, metav1.ListOptions{})
 		if werr != nil {
 			debugAndFailTest(ta, fmt.Sprintf("error creating watch %s", werr.Error()))
 		}
