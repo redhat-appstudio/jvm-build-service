@@ -22,6 +22,9 @@ import com.google.cloud.tools.jib.api.JibContainerBuilder;
 import com.google.cloud.tools.jib.api.RegistryException;
 import com.google.cloud.tools.jib.api.RegistryImage;
 import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
+import com.google.cloud.tools.jib.api.buildplan.FileEntriesLayer;
+import com.google.cloud.tools.jib.api.buildplan.FilePermissions;
+import com.google.cloud.tools.jib.api.buildplan.FilePermissionsProvider;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
 import com.redhat.hacbs.container.analyser.deploy.DeployData;
 import com.redhat.hacbs.container.analyser.deploy.Deployer;
@@ -154,9 +157,25 @@ public class ContainerRegistryDeployer implements Deployer {
                 .setFormat(ImageFormat.OCI)
                 .addLabel("quay.expires-after", "24h"); //we don't want to keep these around forever, they are an intermediate step
 
+        var pathInContainer = AbsoluteUnixPath.get(imageSourcePath);
         try (Stream<Path> list = Files.list(sourcePath)) {
             var files = list.toList();
-            containerBuilder = containerBuilder.addLayer(files, imageSourcePath);
+            FileEntriesLayer.Builder layerConfigurationBuilder = FileEntriesLayer.builder();
+            for (Path file : files) {
+                layerConfigurationBuilder.addEntryRecursive(
+                        file, pathInContainer.resolve(file.getFileName()), new FilePermissionsProvider() {
+                            @Override
+                            public FilePermissions get(Path sourcePath, AbsoluteUnixPath destinationPath) {
+                                try {
+                                    return FilePermissions.fromPosixFilePermissions(Files.getPosixFilePermissions(sourcePath));
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                        });
+            }
+
+            containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
             Log.debugf("Image %s created", imageName);
             var result = containerBuilder.containerize(containerizer);
 

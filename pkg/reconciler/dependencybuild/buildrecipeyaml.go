@@ -237,7 +237,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				},
 				Args: []string{"$(params.GOALS[*])"},
 
-				Script: settings + "\ncp -r " + OriginalContentPath + "/* $(workspaces.source.path)\n" + build,
+				Script: settings + "\ncp -r -a " + OriginalContentPath + "/* $(workspaces.source.path)\n" + build,
 			},
 			{
 				Name:            "verify-deploy-and-check-for-contaminates",
