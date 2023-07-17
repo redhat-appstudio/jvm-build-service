@@ -66,6 +66,8 @@ public abstract class DeployCommand implements Runnable {
 
     @CommandLine.Option(required = false, names = "--scm-commit")
     String commit;
+    @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
+    String prependTag;
     protected String imageName;
     protected String imageDigest;
 
@@ -82,7 +84,6 @@ public abstract class DeployCommand implements Runnable {
 
                 Set<String> gavs = new HashSet<>();
 
-                Set<String> contaminants = new HashSet<>();
                 Map<String, Set<String>> contaminatedPaths = new HashMap<>();
                 Map<String, Set<String>> contaminatedGavs = new HashMap<>();
                 Set<Path> toRemove = new HashSet<>();
@@ -91,7 +92,7 @@ public abstract class DeployCommand implements Runnable {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                         String name = deploymentPath.relativize(file).toString();
-                        Optional<Gav> gav = getGav(name);
+                        Optional<Gav> gav = getGav(name, prependTag);
                         gav.ifPresent(
                                 gav1 -> gavs.add(gav1.getGroupId() + ":" + gav1.getArtifactId() + ":" + gav1.getVersion()));
                         Log.debugf("Checking %s for contaminants", name);
@@ -104,7 +105,6 @@ public abstract class DeployCommand implements Runnable {
                                 gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav,
                                         s -> new HashSet<>())
                                         .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
-                                contaminants.add(i.gav);
                                 int index = name.lastIndexOf("/");
                                 if (index != -1) {
                                     contaminatedPaths
@@ -284,7 +284,7 @@ public abstract class DeployCommand implements Runnable {
         System.out.flush();
     }
 
-    private Optional<Gav> getGav(String entryName) {
+    private Optional<Gav> getGav(String entryName, String prependTag) {
         if (entryName.startsWith("./")) {
             entryName = entryName.substring(2);
         }
@@ -298,7 +298,7 @@ public abstract class DeployCommand implements Runnable {
             List<String> groupIdList = pathParts.subList(0, numberOfParts - 3);
             String groupId = String.join(DOT, groupIdList);
 
-            return Optional.of(new Gav(groupId, artifactId, version, null));
+            return Optional.of(Gav.create(groupId, artifactId, version, prependTag));
         }
         return Optional.empty();
     }

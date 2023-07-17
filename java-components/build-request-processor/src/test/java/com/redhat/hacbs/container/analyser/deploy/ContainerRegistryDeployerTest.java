@@ -33,9 +33,11 @@ public class ContainerRegistryDeployerTest {
 
     private static final String GROUP = "com.company.foo";
     private static final String VERSION = "3.25.8";
+    public static final String FOO_BAR = "foo-bar";
+    public static final String FOO_BAZ = "foo-baz";
     private static final Map<String, String> ARTIFACT_FILE_MAP = Map.of(
-            "foo-bar", "foobar-3.25.8.jar",
-            "foo-baz", "foobaz-3.25.8.jar");
+            FOO_BAR, "foobar-" + VERSION + ".jar",
+            FOO_BAZ, "foobaz-" + VERSION + ".jar");
     private static final String DOT = ".";
     private static final String SHA_1 = "sha1";
 
@@ -79,6 +81,7 @@ public class ContainerRegistryDeployerTest {
         Path logs = Files.createTempDirectory("hacbs");
         Files.writeString(logs.resolve("maven.log"), "");
         var result = launcher.launch("deploy-container", "--path=" + onDiskRepo.toAbsolutePath(),
+                "--image-id=test-image",
                 "--registry-host=" + container.getHost(),
                 "--registry-port=" + port,
                 "--registry-owner=" + OWNER,
@@ -94,6 +97,18 @@ public class ContainerRegistryDeployerTest {
         ContainerRegistryDetails containerRegistryDetails = getContainerRegistryDetails();
 
         Assertions.assertTrue(containerRegistryDetails.repoName.startsWith(OWNER + "/" + REPOSITORY));
+        Assertions.assertTrue(containerRegistryDetails.tags.contains("test-image"));
+        Assertions.assertFalse(containerRegistryDetails.tags.contains(EXPECTED_TAG_1));
+        Assertions.assertFalse(containerRegistryDetails.tags.contains(EXPECTED_TAG_2));
+        result = launcher.launch("tag-container",
+                "--registry-host=" + container.getHost(),
+                "--registry-port=" + port,
+                "--registry-owner=" + OWNER,
+                "--registry-repository=" + REPOSITORY,
+                "--registry-insecure",
+                "--image-id=test-image",
+                GROUP + ":" + FOO_BAR + ":" + VERSION + "," + GROUP + ":" + FOO_BAZ + ":" + VERSION);
+        containerRegistryDetails = getContainerRegistryDetails();
         Assertions.assertTrue(containerRegistryDetails.tags.contains(EXPECTED_TAG_1));
         Assertions.assertTrue(containerRegistryDetails.tags.contains(EXPECTED_TAG_2));
     }

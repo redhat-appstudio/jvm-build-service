@@ -1,22 +1,16 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
-import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.function.BiConsumer;
-
-import jakarta.enterprise.inject.spi.BeanManager;
-import jakarta.inject.Inject;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
-import com.redhat.hacbs.container.results.ResultsUpdater;
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "deploy-container")
-public class ContainerDeployCommand extends DeployCommand {
+@CommandLine.Command(name = "tag-container")
+public class ContainerTagCommand implements Runnable {
 
     @CommandLine.Option(names = "--registry-host", defaultValue = "quay.io")
     String host;
@@ -30,31 +24,28 @@ public class ContainerDeployCommand extends DeployCommand {
     String repository;
     @CommandLine.Option(names = "--registry-insecure", defaultValue = "false")
     boolean insecure;
+    @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
+    String prependTag;
 
-    @CommandLine.Option(names = "--image-id")
+    @CommandLine.Option(names = "--image-id", required = true)
     String imageId;
 
-    String imageName;
-    String imageDigest;
-
-    @Inject
-    public ContainerDeployCommand(BeanManager beanManager, ResultsUpdater resultsUpdater) {
-        super(beanManager, resultsUpdater);
-    }
+    @CommandLine.Parameters(split = ",")
+    List<String> gavs;
 
     @Override
-    protected void doDeployment(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+    public void run() {
+        if (gavs == null || gavs.isEmpty()) {
+            return; //nothing was deployed (e.g. contaminated build)
+        }
 
         ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                 insecure,
                 prependTag, imageId);
-        deployer.deployArchive(deployDir, sourcePath, logsPath, gavs, new BiConsumer<String, String>() {
-            @Override
-            public void accept(String s, String hash) {
-                imageName = s;
-                imageDigest = hash;
-            }
-        });
-
+        try {
+            deployer.tagArchive(gavs);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

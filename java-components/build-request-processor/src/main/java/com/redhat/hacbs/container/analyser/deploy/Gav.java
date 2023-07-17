@@ -8,11 +8,27 @@ public final class Gav {
     private final String version;
     private final String tag;
 
-    public Gav(String groupId, String artifactId, String version, String tag) {
+    private Gav(String groupId, String artifactId, String version, String tag) {
         this.groupId = groupId;
         this.artifactId = artifactId;
         this.version = version;
         this.tag = tag;
+    }
+
+    public static Gav parse(String gav, String prependTag) {
+        var parts = gav.split(":");
+        return create(parts[0], parts[1], parts[2], prependTag);
+    }
+
+    public static Gav create(String groupId, String artifactId, String version, String prependTag) {
+        String tag = DeployerUtil.sha256sum(groupId, artifactId, version);
+        if (!prependTag.isBlank()) {
+            tag = prependTag + "_" + tag;
+        }
+        if (tag.length() > 128) {
+            tag = tag.substring(0, 128);
+        }
+        return new Gav(groupId, artifactId, version, tag);
     }
 
     public String getGroupId() {
@@ -63,6 +79,10 @@ public final class Gav {
             return false;
         }
         return Objects.equals(this.tag, other.tag);
+    }
+
+    public String stringForm() {
+        return groupId + ":" + artifactId + ":" + version;
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.redhat.hacbs.container;
 import com.redhat.hacbs.container.analyser.build.LookupBuildInfoCommand;
 import com.redhat.hacbs.container.analyser.dependencies.AnalyseDependencies;
 import com.redhat.hacbs.container.analyser.deploy.ContainerDeployCommand;
+import com.redhat.hacbs.container.analyser.deploy.ContainerTagCommand;
 import com.redhat.hacbs.container.analyser.deploy.DeployPreBuildImageCommand;
 import com.redhat.hacbs.container.analyser.deploy.S3DeployCommand;
 import com.redhat.hacbs.container.analyser.location.LookupScmLocationCommand;
@@ -27,7 +28,8 @@ import picocli.CommandLine;
         VerifyBuiltArtifactsCommand.class,
         SBTPrepareCommand.class,
         AntPrepareCommand.class,
-        DeployPreBuildImageCommand.class
+        DeployPreBuildImageCommand.class,
+        ContainerTagCommand.class
 })
 public class EntryPoint {
 }

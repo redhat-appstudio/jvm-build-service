@@ -17,17 +17,7 @@ public final class DeployData {
 
     public DeployData(Path artifactsPath, Set<String> gavs, String prependTag) {
         this.artifactsPath = artifactsPath;
-        this.gavs = gavs.stream().map((s) -> {
-            var parts = s.split(":");
-            String tag = DeployerUtil.sha256sum(parts[0], parts[1], parts[2]);
-            if (!prependTag.isBlank()) {
-                tag = prependTag + "_" + tag;
-            }
-            if (tag.length() > 128) {
-                tag = tag.substring(0, 128);
-            }
-            return new Gav(parts[0], parts[1], parts[2], tag);
-        }).collect(Collectors.toSet());
+        this.gavs = gavs.stream().map(s -> Gav.parse(s, prependTag)).collect(Collectors.toSet());
     }
 
     public Path getArtifactsPath() {

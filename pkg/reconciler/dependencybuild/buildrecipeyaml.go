@@ -57,7 +57,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 
-	preBuildImageName, preBuildImageArgs, deployArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig)
+	preBuildImageName, preBuildImageArgs, deployArgs, tagArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig)
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
 
@@ -122,31 +122,24 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		return nil, "", err
 	}
 
+	pipelineParams := []pipelinev1beta1.ParamSpec{
+		{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamScmUrl, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamScmTag, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamScmHash, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamChainsGitUrl, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamChainsGitCommit, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamImage, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamGoals, Type: pipelinev1beta1.ParamTypeArray},
+		{Name: PipelineParamJavaVersion, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamToolVersion, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamPath, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
+		{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
+	}
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
-		Params: []pipelinev1beta1.ParamSpec{
-			{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamScmUrl, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamScmTag, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamScmHash, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamChainsGitUrl, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamChainsGitCommit, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamImage, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamGoals, Type: pipelinev1beta1.ParamTypeArray},
-			{Name: PipelineParamJavaVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamToolVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamPath, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
-		},
-		Results: []pipelinev1beta1.TaskResult{
-			{Name: artifactbuild.PipelineResultContaminants},
-			{Name: artifactbuild.PipelineResultDeployedResources},
-			{Name: PipelineResultImage},
-			{Name: PipelineResultImageDigest},
-			{Name: artifactbuild.PipelineResultPassedVerification},
-			{Name: artifactbuild.PipelineResultVerificationResult},
-		},
+		Params:     pipelineParams,
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "git-clone-and-settings",
@@ -197,21 +190,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 
 	buildTask := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
-		Params: []pipelinev1beta1.ParamSpec{
-			{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamScmUrl, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamScmTag, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamScmHash, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamChainsGitUrl, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamChainsGitCommit, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamImage, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamGoals, Type: pipelinev1beta1.ParamTypeArray},
-			{Name: PipelineParamJavaVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamToolVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamPath, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
-		},
+		Params:     pipelineParams,
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: artifactbuild.PipelineResultContaminants},
 			{Name: artifactbuild.PipelineResultDeployedResources},
@@ -256,6 +235,28 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			},
 		},
 	}
+
+	tagTask := pipelinev1beta1.TaskSpec{
+		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
+		Params:     []pipelinev1beta1.ParamSpec{{Name: "GAVS", Type: pipelinev1beta1.ParamTypeString}},
+		Steps: []pipelinev1beta1.Step{
+			{
+				Name:            "tag",
+				Image:           buildRequestProcessorImage,
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env: []v1.EnvVar{
+					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.ImageSecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
+				},
+				Resources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(tagArgs),
+			},
+		},
+	}
 	ps := &pipelinev1beta1.PipelineSpec{
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
@@ -281,11 +282,23 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 					{Name: WorkspaceTls, Workspace: WorkspaceTls},
 				},
 			},
+			{
+				Name:     artifactbuild.TagTaskName,
+				RunAfter: []string{artifactbuild.BuildTaskName},
+				TaskSpec: &pipelinev1beta1.EmbeddedTask{
+					TaskSpec: tagTask,
+				},
+				Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
+					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+					{Name: WorkspaceSource, Workspace: WorkspaceSource},
+					{Name: WorkspaceTls, Workspace: WorkspaceTls},
+				},
+			},
 		},
 		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
 
-	for _, i := range buildSetup.Results {
+	for _, i := range buildTask.Results {
 		ps.Results = append(ps.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + i.Name + ")"}})
 	}
 	for _, i := range buildSetup.Params {
@@ -303,6 +316,9 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			Name:  i.Name,
 			Value: value})
 	}
+	ps.Tasks[2].Params = append(ps.Tasks[2].Params, pipelinev1beta1.Param{
+		Name:  "GAVS",
+		Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + artifactbuild.PipelineResultDeployedResources + ")"}})
 
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
@@ -431,7 +447,7 @@ func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig) (string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig) (string, []string, []string, []string) {
 	preBuildImageName := ""
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -452,6 +468,10 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--task-run=$(context.taskRun.name)",
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
+	}
+	tagArgs := []string{
+		"tag-container",
+		"--image-id=" + imageId,
 	}
 	imageRegistry := jbsConfig.ImageRegistry()
 	registryArgs := []string{}
@@ -484,7 +504,9 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	}
 	deployArgs = append(deployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
-	return preBuildImageName, preBuildImageArgs, deployArgs
+	tagArgs = append(tagArgs, registryArgs...)
+	tagArgs = append(tagArgs, "$(params.GAVS)")
+	return preBuildImageName, preBuildImageArgs, deployArgs, tagArgs
 }
 
 func verifyParameters(jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe) []string {

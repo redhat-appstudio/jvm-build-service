@@ -2,7 +2,6 @@ package com.redhat.hacbs.container.analyser.deploy;
 
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -42,12 +41,7 @@ public class DeployPreBuildImageCommand implements Runnable {
     public void run() {
         ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                 insecure,
-                prependTag, new BiConsumer<String, String>() {
-                    @Override
-                    public void accept(String s, String s2) {
-
-                    }
-                }, "");
+                prependTag, "");
         try {
             deployer.deployPreBuildImage(builderImage, sourcePath, imageSourcePath, imageName);
         } catch (Exception e) {
