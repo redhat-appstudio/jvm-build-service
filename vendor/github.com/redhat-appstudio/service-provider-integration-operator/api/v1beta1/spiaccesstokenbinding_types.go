@@ -106,11 +106,12 @@ type SPIAccessTokenBindingList struct {
 	Items           []SPIAccessTokenBinding `json:"items"`
 }
 
-type SecretSpec struct {
+type LinkableSecretSpec struct {
 	// Name is the name of the secret to be created. If it is not defined a random name based on the name of the binding
 	// is used.
 	// +optional
-	Name string `json:"name,omitempty"`
+	Name         string `json:"name,omitempty"`
+	GenerateName string `json:"generateName,omitempty"`
 	// Labels contains the labels that the created secret should be labeled with.
 	Labels map[string]string `json:"labels,omitempty"`
 	// Annotations is the keys and values that the create secret should be annotated with.
@@ -121,11 +122,16 @@ type SecretSpec struct {
 	// Only kubernetes.io/service-account-token, kubernetes.io/dockercfg, kubernetes.io/dockerconfigjson and kubernetes.io/basic-auth
 	// are supported. All other secret types need to have their mapping specified manually using the Fields.
 	Type corev1.SecretType `json:"type,omitempty"`
-	// Fields specifies the mapping from the token record fields to the keys in the secret data.
-	Fields TokenFieldMapping `json:"fields,omitempty"`
 
 	// LinkedTo specifies the objects that the secret is linked to. Currently, only service accounts are supported.
 	LinkedTo []SecretLink `json:"linkedTo,omitempty"`
+}
+
+type SecretSpec struct {
+	LinkableSecretSpec `json:",inline"`
+
+	// Fields specifies the mapping from the token record fields to the keys in the secret data.
+	Fields TokenFieldMapping `json:"fields,omitempty"`
 }
 
 type TokenFieldMapping struct {

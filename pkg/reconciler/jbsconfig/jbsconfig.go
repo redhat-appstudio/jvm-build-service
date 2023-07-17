@@ -5,15 +5,16 @@ import (
 	"encoding/base64"
 	errors2 "errors"
 	"fmt"
-	"github.com/redhat-appstudio/image-controller/pkg/quay"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"regexp"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/redhat-appstudio/image-controller/pkg/quay"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
+	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -634,8 +635,10 @@ func (r *ReconcilerJBSConfig) handleNoImageSecretFound(ctx context.Context, conf
 			binding.Spec.Lifetime = "-1"
 			binding.Spec.Permissions = v1beta1.Permissions{Required: []v1beta1.Permission{{Type: v1beta1.PermissionTypeReadWrite, Area: v1beta1.PermissionAreaRegistry}}}
 			binding.Spec.Secret = v1beta1.SecretSpec{
-				Name: v1alpha1.ImageSecretName,
-				Type: corev1.SecretTypeDockerConfigJson,
+				LinkableSecretSpec: v1beta1.LinkableSecretSpec{
+					Name: v1alpha1.ImageSecretName,
+					Type: corev1.SecretTypeDockerConfigJson,
+				},
 			}
 			err = controllerutil.SetOwnerReference(config, &binding, r.scheme)
 			if err != nil {
