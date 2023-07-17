@@ -25,7 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -101,6 +103,8 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
     @Option(names = { "-e", "--excludes-file" })
     Path excludesFile;
 
+    @Option(names = { "--threads" }, defaultValue = "5")
+    int threads;
     private List<RemoteRepository> remoteRepositories;
 
     private RepositorySystem system;
@@ -116,6 +120,10 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
+        if (threads < 1) {
+            threads = 1;
+        }
+        ExecutorService executorService = Executors.newFixedThreadPool(threads);
         try {
             var excludes = getExcludes();
 
@@ -126,12 +134,12 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
             if (session == null) {
                 initMaven(options.mavenOptions.globalSettingsFile, options.mavenOptions.settingsFile);
+                session.setReadOnly();
             }
 
             Log.debugf("Deploy path: %s", options.mavenOptions.deployPath);
-            var verificationResults = new HashMap<String, List<String>>();
+            var futureResults = new HashMap<String, Future<List<String>>>();
 
-            AtomicBoolean failed = new AtomicBoolean();
             Files.walkFileTree(options.mavenOptions.deployPath, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
@@ -142,11 +150,14 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                             var relativeFile = options.mavenOptions.deployPath.relativize(file);
                             var coords = pathToCoords(relativeFile);
                             Log.debugf("File %s has coordinates %s", relativeFile, coords);
-                            var failures = handleJar(file, coords, excludes);
-                            verificationResults.put(coords, failures);
-                            if (!failures.isEmpty()) {
-                                failed.set(true);
-                            }
+                            var failures = executorService.submit(new Callable<List<String>>() {
+                                @Override
+                                public List<String> call() throws Exception {
+                                    return handleJar(file, coords, excludes);
+                                }
+                            });
+
+                            futureResults.put(coords, failures);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -156,19 +167,22 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 }
             });
 
-            if (!verificationResults.isEmpty()) {
-                for (var e : verificationResults.entrySet()) {
-                    if (e.getValue().isEmpty()) {
-                        Log.infof("Passed: %s", e.getKey());
-                    } else {
-                        Log.errorf("Failed: %s:\n%s", e.getKey(), String.join("\n", e.getValue()));
-                    }
+            boolean failed = false;
+            var verificationResults = new HashMap<String, List<String>>();
+            for (var e : futureResults.entrySet()) {
+                List<String> results = e.getValue().get();
+                verificationResults.put(e.getKey(), results);
+                if (results.isEmpty()) {
+                    Log.infof("Passed: %s", e.getKey());
+                } else {
+                    Log.errorf("Failed: %s:\n%s", e.getKey(), String.join("\n", results));
+                    failed = true;
                 }
             }
 
             if (resultsFile != null) {
                 try {
-                    Files.writeString(resultsFile, Boolean.toString(!failed.get()));
+                    Files.writeString(resultsFile, Boolean.toString(!failed));
                 } catch (IOException ex) {
                     Log.errorf(ex, "Failed to write results");
                 }
@@ -185,8 +199,8 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 }
             }
 
-            return (failed.get() && !reportOnly ? 1 : 0);
-        } catch (IOException e) {
+            return (failed && !reportOnly ? 1 : 0);
+        } catch (Exception e) {
             Log.errorf("%s", e.getMessage(), e);
             if (resultsFile != null) {
                 try {
@@ -199,6 +213,8 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 return 0;
             }
             return 1;
+        } finally {
+            executorService.shutdown();
         }
     }
 
