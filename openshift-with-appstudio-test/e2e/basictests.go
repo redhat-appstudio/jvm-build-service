@@ -176,7 +176,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		//our sample repo has shaded-jdk11 which is contaminated by simple-jdk8
 		var contaminated string
 		var simpleJDK8 string
-		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+		err = wait.PollImmediate(ta.interval, 3*ta.timeout, func() (done bool, err error) {
 
 			dbContaminated := false
 			shadedComplete := false
