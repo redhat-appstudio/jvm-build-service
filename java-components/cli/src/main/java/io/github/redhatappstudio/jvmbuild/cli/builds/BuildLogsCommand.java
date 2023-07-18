@@ -112,12 +112,12 @@ public class BuildLogsCommand implements Runnable {
 
             System.out.println("---------   Logs for PipelineRun " + pipelineRun.getMetadata().getName() + " ("
                     + (success ? "SUCCEEDED" : "FAILED") + ") ---------");
-            var references = pipelineRun.getStatus().getChildReferences();
+            var references = pipelineRun.getStatus().getTaskRuns().keySet();
             List<TaskRun> taskRuns = new ArrayList<>();
             for (var ref : references) {
-                var tr = client.resources(TaskRun.class).withName(ref.getName());
+                var tr = client.resources(TaskRun.class).withName(ref);
                 if (tr == null || tr.get() == null) {
-                    System.out.println("TaskRun " + ref.getName() + " not found so unable to extract logs.");
+                    System.out.println("TaskRun " + ref + " not found so unable to extract logs.");
                 } else {
                     taskRuns.add(tr.get());
                 }
@@ -148,7 +148,7 @@ public class BuildLogsCommand implements Runnable {
                     var p = pod.inContainer(i.getName());
 
                     System.out.println(
-                            "### Logs for container " + i.getName());
+                            "    Logs for container " + i.getName());
                     System.out.println("#####################################################\n\n");
                     try (var w = p.watchLog(); var in = w.getOutput()) {
                         int r;
@@ -165,7 +165,7 @@ public class BuildLogsCommand implements Runnable {
                     startTime = finishTime;
                     System.out.println("\n\n#####################################################");
                     System.out.println(
-                            "### Container " + i.getName() + " finished at " + i.getState().getTerminated().getFinishedAt()
+                            "    Container " + i.getName() + " finished at " + i.getState().getTerminated().getFinishedAt()
                                     + " in " + duration.getSeconds() + " seconds");
                 }
             }
