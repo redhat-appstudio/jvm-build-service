@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -57,7 +58,7 @@ func runTests(t *testing.T, namespace string, runYaml string) {
 	}
 
 	ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
-		err = wait.PollImmediate(3*ta.interval, 3*ta.timeout, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), 3*ta.interval, 3*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
@@ -92,7 +93,7 @@ func runTests(t *testing.T, namespace string, runYaml string) {
 		//note that we just check artifact builds
 		//as they track the dependency build state
 		defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
-		err = wait.PollImmediate(ta.interval, 2*time.Hour, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*time.Hour, true, func(ctx context.Context) (done bool, err error) {
 			abComplete, err := artifactBuildsStable(ta)
 			if err != nil {
 				return false, err

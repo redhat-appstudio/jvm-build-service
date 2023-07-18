@@ -3,11 +3,12 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/redhat-appstudio/image-controller/pkg/quay"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/metrics"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"time"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
@@ -41,7 +42,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, quayClient *quay.QuayCli
 	// and controller-runtime does not retry on missing CRDs.
 	// so we are going to wait on the CRDs existing before moving forward.
 	apiextensionsClient := apiextensionsclient.NewForConfigOrDie(cfg)
-	if err := wait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(context.TODO(), time.Second*5, time.Minute*5, true, func(ctx context.Context) (done bool, err error) {
 		_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "taskruns.tekton.dev", metav1.GetOptions{})
 		if err != nil {
 			controllerLog.Info(fmt.Sprintf("get of taskrun CRD failed with: %s", err.Error()))
