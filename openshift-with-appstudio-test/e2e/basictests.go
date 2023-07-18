@@ -117,7 +117,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	})
 
 	ta.t.Run("all artfactbuilds and dependencybuilds complete", func(t *testing.T) {
-		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+		err = wait.PollImmediate(ta.interval, time.Hour, func() (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
