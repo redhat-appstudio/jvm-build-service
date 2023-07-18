@@ -427,30 +427,6 @@ func streamFileYamlToTektonObj(path string, obj runtime.Object, ta *testArgs) ru
 	return decodeBytesToTektonObjbytes(bytes, obj, ta)
 }
 
-func activePipelineRuns(ta *testArgs, dbg bool) bool {
-	prClient := tektonClient.TektonV1beta1().PipelineRuns(ta.ns)
-	listOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=", artifactbuild.PipelineRunLabel),
-	}
-	prList, err := prClient.List(context.TODO(), listOptions)
-	if err != nil {
-		ta.Logf(fmt.Sprintf("error listing pipelineruns: %s", err.Error()))
-		return true
-	}
-	for _, pr := range prList.Items {
-		if !pr.IsDone() {
-			if dbg {
-				ta.Logf(fmt.Sprintf("pr %s not done out of %d items", pr.Name, len(prList.Items)))
-			}
-			return true
-		}
-	}
-	if dbg {
-		ta.Logf(fmt.Sprintf("all prs are done out of %d items", len(prList.Items)))
-	}
-	return false
-}
-
 func prPods(ta *testArgs, name string) []corev1.Pod {
 	podClient := kubeClient.CoreV1().Pods(ta.ns)
 	listOptions := metav1.ListOptions{
