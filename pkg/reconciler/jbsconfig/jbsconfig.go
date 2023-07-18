@@ -30,6 +30,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
+	rs "github.com/redhat-appstudio/remote-secret/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -635,7 +636,7 @@ func (r *ReconcilerJBSConfig) handleNoImageSecretFound(ctx context.Context, conf
 			binding.Spec.Lifetime = "-1"
 			binding.Spec.Permissions = v1beta1.Permissions{Required: []v1beta1.Permission{{Type: v1beta1.PermissionTypeReadWrite, Area: v1beta1.PermissionAreaRegistry}}}
 			binding.Spec.Secret = v1beta1.SecretSpec{
-				LinkableSecretSpec: v1beta1.LinkableSecretSpec{
+				LinkableSecretSpec: rs.LinkableSecretSpec{
 					Name: v1alpha1.ImageSecretName,
 					Type: corev1.SecretTypeDockerConfigJson,
 				},
