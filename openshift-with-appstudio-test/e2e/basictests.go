@@ -6,6 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
 	cdx "github.com/CycloneDX/cyclonedx-go"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -13,18 +20,12 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"io"
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/events/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes/typed/events/v1"
+	v1 "k8s.io/client-go/kubernetes/typed/events/v1"
 	"knative.dev/pkg/apis"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
-	"time"
 )
 
 func runBasicTests(t *testing.T, doSetup func(t *testing.T, namespace string) *testArgs, namespace string) {
@@ -77,7 +78,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			debugAndFailTest(ta, err.Error())
 		}
 		ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
-			err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 				pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
 				if err != nil {
 					ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
@@ -108,7 +109,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	}
 
 	ta.t.Run("artifactbuilds and dependencybuilds generated", func(t *testing.T) {
-		err = wait.PollImmediate(ta.interval, ta.timeout, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			return bothABsAndDBsGenerated(ta)
 		})
 		if err != nil {
@@ -117,7 +118,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	})
 
 	ta.t.Run("all artfactbuilds and dependencybuilds complete", func(t *testing.T) {
-		err = wait.PollImmediate(ta.interval, time.Hour, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
@@ -176,7 +177,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		//our sample repo has shaded-jdk11 which is contaminated by simple-jdk8
 		var contaminated string
 		var simpleJDK8 string
-		err = wait.PollImmediate(ta.interval, 3*ta.timeout, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 3*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 
 			dbContaminated := false
 			shadedComplete := false
@@ -210,7 +211,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		}
 		ta.Logf(fmt.Sprintf("contaminated dependencybuild: %s", contaminated))
 		//make sure simple-jdk8 was requested as a result
-		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
@@ -231,7 +232,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			debugAndFailTest(ta, "timed out waiting for simple-jdk8 to appear as an artifactbuild")
 		}
 		//now make sure simple-jdk8 eventually completes
-		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			ab, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Get(context.TODO(), simpleJDK8, metav1.GetOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error getting simple-jdk8 ArtifactBuild: %s", err.Error()))
@@ -244,7 +245,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			debugAndFailTest(ta, "timed out waiting for simple-jdk8 to complete")
 		}
 		//now make sure shaded-jdk11 eventually completes
-		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			db, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error getting shaded-jdk11 DependencyBuild: %s", err.Error()))
@@ -366,7 +367,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	})
 	ta.t.Run("Correct JDK identified for JDK11 build", func(t *testing.T) {
 		//test that we don't attempt to use JDK8 on a JDK11+ project
-		err = wait.PollImmediate(ta.interval, 2*ta.timeout, func() (done bool, err error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {

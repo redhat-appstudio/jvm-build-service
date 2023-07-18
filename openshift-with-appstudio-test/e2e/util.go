@@ -8,12 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"html/template"
 	"io"
-	v13 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,6 +18,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
+	v13 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
@@ -158,7 +159,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	var err error
 
 	// have seen delays in CRD presence along with missing pipeline SA
-	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.TODO(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		_, err = apiextensionClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "tasks.tekton.dev", metav1.GetOptions{})
 		if err != nil {
 			ta.Logf(fmt.Sprintf("get of task CRD: %s", err.Error()))
@@ -240,7 +241,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 func setup(t *testing.T, namespace string) *testArgs {
 
 	ta := commonSetup(t, gitCloneTaskUrl, namespace)
-	err := wait.PollImmediate(1*time.Second, 1*time.Minute, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		_, err = kubeClient.CoreV1().ServiceAccounts(ta.ns).Get(context.TODO(), "pipeline", metav1.GetOptions{})
 		if err != nil {
 			ta.Logf(fmt.Sprintf("get of pipeline SA err: %s", err.Error()))
@@ -330,7 +331,7 @@ func setup(t *testing.T, namespace string) *testArgs {
 }
 
 func waitForCache(ta *testArgs) error {
-	err := wait.PollImmediate(10*time.Second, 5*time.Minute, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		cache, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.CacheDeploymentName, metav1.GetOptions{})
 		if err != nil {
 			ta.Logf(fmt.Sprintf("get of cache: %s", err.Error()))
