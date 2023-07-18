@@ -80,7 +80,7 @@ public class ContainerRegistryDeployerTest {
         Files.writeString(source.resolve("pom.xml"), "");
         Path logs = Files.createTempDirectory("hacbs");
         Files.writeString(logs.resolve("maven.log"), "");
-        var result = launcher.launch("deploy-container", "--path=" + onDiskRepo.toAbsolutePath(),
+        var result = launcher.launch("deploy", "--path=" + onDiskRepo.toAbsolutePath(),
                 "--image-id=test-image",
                 "--registry-host=" + container.getHost(),
                 "--registry-port=" + port,

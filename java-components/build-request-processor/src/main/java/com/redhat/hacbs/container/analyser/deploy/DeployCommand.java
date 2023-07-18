@@ -15,17 +15,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 import jakarta.enterprise.inject.spi.BeanManager;
 
 import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
+import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipies.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.Contaminant;
@@ -34,7 +37,8 @@ import com.redhat.hacbs.resources.util.HashUtil;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-public abstract class DeployCommand implements Runnable {
+@CommandLine.Command(name = "deploy")
+public class DeployCommand implements Runnable {
 
     private static final String SLASH = "/";
     private static final String DOT_JAR = ".jar";
@@ -66,6 +70,23 @@ public abstract class DeployCommand implements Runnable {
 
     @CommandLine.Option(required = false, names = "--scm-commit")
     String commit;
+
+    @CommandLine.Option(names = "--registry-host", defaultValue = "quay.io")
+    String host;
+    @CommandLine.Option(names = "--registry-port", defaultValue = "443")
+    int port;
+    @CommandLine.Option(names = "--registry-owner", defaultValue = "hacbs")
+    String owner;
+    @ConfigProperty(name = "registry.token")
+    Optional<String> token;
+    @CommandLine.Option(names = "--registry-repository", defaultValue = "artifact-deployments")
+    String repository;
+    @CommandLine.Option(names = "--registry-insecure", defaultValue = "false")
+    boolean insecure;
+
+    @CommandLine.Option(names = "--image-id")
+    String imageId;
+
     @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
     String prependTag;
     protected String imageName;
@@ -277,7 +298,19 @@ public abstract class DeployCommand implements Runnable {
 
     }
 
-    protected abstract void doDeployment(Path deployFile, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception;
+    protected void doDeployment(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+
+        ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
+                insecure,
+                prependTag, imageId);
+        deployer.deployArchive(deployDir, sourcePath, logsPath, gavs, new BiConsumer<String, String>() {
+            @Override
+            public void accept(String s, String hash) {
+                imageName = s;
+                imageDigest = hash;
+            }
+        });
+    }
 
     private void flushLogs() {
         System.err.flush();

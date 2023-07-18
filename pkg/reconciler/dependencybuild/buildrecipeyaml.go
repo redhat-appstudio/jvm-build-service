@@ -459,7 +459,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	}
 
 	deployArgs := []string{
-		"deploy-container",
+		"deploy",
 		"--image-id=" + imageId,
 		"--path=$(workspaces.source.path)/artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
