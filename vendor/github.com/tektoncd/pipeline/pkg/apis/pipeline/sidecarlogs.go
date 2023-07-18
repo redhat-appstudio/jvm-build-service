@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2022 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,21 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package pipeline
 
-import (
-	"context"
+const (
+	// ReservedResultsSidecarName is the name of the results sidecar that outputs the results to stdout
+	// when the results-from feature-flag is set to "sidecar-logs".
+	ReservedResultsSidecarName = "tekton-log-results"
 
-	"knative.dev/pkg/apis"
+	// ReservedResultsSidecarContainerName is the name of the results sidecar container that is injected
+	// by the reconciler.
+	ReservedResultsSidecarContainerName = "sidecar-tekton-log-results"
 )
-
-var _ apis.Defaultable = (*PipelineResource)(nil)
-
-// SetDefaults implements api.Defaultable
-func (t *PipelineResource) SetDefaults(ctx context.Context) {
-	t.Spec.SetDefaults(ctx)
-}
-
-// SetDefaults implements api.Defaultable
-func (ts *PipelineResourceSpec) SetDefaults(ctx context.Context) {
-}

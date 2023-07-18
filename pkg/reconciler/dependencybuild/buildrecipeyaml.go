@@ -137,7 +137,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineParamToolVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamPath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
+			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 		},
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: artifactbuild.PipelineResultContaminants},
@@ -210,7 +210,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineParamToolVersion, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamPath, Type: pipelinev1beta1.ParamTypeString},
 			{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
-			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ArrayOrString{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
+			{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 		},
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: artifactbuild.PipelineResultContaminants},
@@ -290,11 +290,11 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	for _, i := range buildSetup.Params {
 		ps.Params = append(ps.Params, pipelinev1beta1.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default, Type: i.Type})
-		var value pipelinev1beta1.ArrayOrString
+		var value pipelinev1beta1.ResultValue
 		if i.Type == pipelinev1beta1.ParamTypeString {
-			value = pipelinev1beta1.ArrayOrString{Type: i.Type, StringVal: "$(params." + i.Name + ")"}
+			value = pipelinev1beta1.ResultValue{Type: i.Type, StringVal: "$(params." + i.Name + ")"}
 		} else {
-			value = pipelinev1beta1.ArrayOrString{Type: i.Type, ArrayVal: []string{"$(params." + i.Name + "[*])"}}
+			value = pipelinev1beta1.ResultValue{Type: i.Type, ArrayVal: []string{"$(params." + i.Name + "[*])"}}
 		}
 		ps.Tasks[0].Params = append(ps.Tasks[0].Params, pipelinev1beta1.Param{
 			Name:  i.Name,
