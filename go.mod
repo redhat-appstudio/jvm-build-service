@@ -26,6 +26,7 @@ require (
 	github.com/CycloneDX/cyclonedx-go v0.7.0
 	github.com/google/go-containerregistry v0.15.2
 	github.com/redhat-appstudio/image-controller v0.0.0-20230619094421-a6d78d062948
+	github.com/redhat-appstudio/remote-secret v0.0.0-20230713072146-a6094c712436
 	github.com/redhat-appstudio/service-provider-integration-operator v0.2023.22-0.20230713080056-eae17aa8c172
 	go.uber.org/zap v1.24.0
 )
@@ -81,7 +82,6 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/prometheus/statsd_exporter v0.21.0 // indirect
-	github.com/redhat-appstudio/remote-secret v0.0.0-20230713072146-a6094c712436 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
