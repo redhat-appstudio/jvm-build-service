@@ -11,11 +11,11 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/client_model v0.4.0
 	github.com/tektoncd/pipeline v0.47.3
-	k8s.io/api v0.26.1
+	k8s.io/api v0.27.3
 	k8s.io/apiextensions-apiserver v0.26.1
 	k8s.io/apimachinery v0.27.3
 	k8s.io/cli-runtime v0.24.3
-	k8s.io/client-go v0.26.1
+	k8s.io/client-go v0.27.3
 	k8s.io/code-generator v0.26.1
 	k8s.io/klog/v2 v2.100.1
 	knative.dev/pkg v0.0.0-20230221145627-8efb3485adcf
