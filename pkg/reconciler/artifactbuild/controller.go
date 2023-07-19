@@ -4,6 +4,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -17,15 +18,19 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.ArtifactBuild{}).
 		Watches(&source.Kind{Type: &v1beta1.PipelineRun{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 			pipelineRun := o.(*v1beta1.PipelineRun)
-			communitArtifacts := false
-			if pipelineRun.Status.PipelineResults != nil {
-				for _, r := range pipelineRun.Status.PipelineResults {
-					if r.Name == PipelineResultJavaCommunityDependencies {
-						communitArtifacts = true
+			communityArtifacts := false
+			if controllerutil.ContainsFinalizer(pipelineRun, ComponentFinalizer) {
+				communityArtifacts = true
+			} else {
+				if pipelineRun.Status.PipelineSpec != nil && pipelineRun.Status.PipelineSpec.Results != nil {
+					for _, r := range pipelineRun.Status.PipelineSpec.Results {
+						if r.Name == PipelineResultJavaCommunityDependencies {
+							communityArtifacts = true
+						}
 					}
 				}
 			}
-			if !communitArtifacts {
+			if !communityArtifacts {
 				return []reconcile.Request{}
 			}
 			return []reconcile.Request{

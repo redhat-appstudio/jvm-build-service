@@ -295,7 +295,7 @@ func TestStateBuilding(t *testing.T) {
 
 		pr := pipelinev1beta1.PipelineRun{}
 		pr.Namespace = metav1.NamespaceDefault
-		pr.Finalizers = []string{artifactbuild.PipelineRunFinalizer}
+		pr.Finalizers = []string{PipelineRunFinalizer}
 		pr.Name = "test-build-0"
 		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineTypeLabel: PipelineTypeBuild}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme)).Should(BeNil())

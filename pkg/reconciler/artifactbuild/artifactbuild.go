@@ -28,8 +28,8 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout       = 300 * time.Second
-	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
+	contextTimeout     = 300 * time.Second
+	ComponentFinalizer = "jvmbuildservice.io/component-finalizer"
 	// DependencyBuildContaminatedByAnnotation label prefix that indicates that a dependency build was contaminated by this artifact
 	DependencyBuildContaminatedByAnnotation = "jvmbuildservice.io/contaminated-"
 	DependencyBuildIdLabel                  = "jvmbuildservice.io/dependencybuild-id"
@@ -183,6 +183,15 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		if err2 != nil {
 			return result, err2
 		}
+	} else if pr.Status.CompletionTime == nil {
+		//not finished, add the finalizer if needed
+		//these PRs can be aggressively pruned, we need the finalizer to
+		//make sure we see the results
+		if !controllerutil.ContainsFinalizer(pr, ComponentFinalizer) {
+			controllerutil.AddFinalizer(pr, ComponentFinalizer)
+			return reconcile.Result{}, r.client.Update(ctx, pr)
+		}
+		return reconcile.Result{}, nil
 	}
 
 	if pr.Status.PipelineResults != nil {
@@ -200,7 +209,7 @@ func removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 	if pr.Finalizers != nil {
 		mod := false
 		for i, fz := range pr.Finalizers {
-			if fz == PipelineRunFinalizer {
+			if fz == ComponentFinalizer {
 				newLength := len(pr.Finalizers) - 1
 				pr.Finalizers[i] = pr.Finalizers[newLength] // Copy last element to index i.
 				pr.Finalizers[newLength] = ""               // Erase last element (write zero value).
