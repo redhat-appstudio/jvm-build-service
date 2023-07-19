@@ -23,7 +23,7 @@ require (
 )
 
 require (
-	github.com/CycloneDX/cyclonedx-go v0.7.0
+	github.com/CycloneDX/cyclonedx-go v0.7.1
 	github.com/google/go-containerregistry v0.15.2
 	github.com/redhat-appstudio/image-controller v0.0.0-20230619094421-a6d78d062948
 	github.com/redhat-appstudio/remote-secret v0.0.0-20230713072146-a6094c712436
