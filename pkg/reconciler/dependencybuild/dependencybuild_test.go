@@ -90,7 +90,6 @@ func TestStateNew(t *testing.T) {
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
-		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 
 		ctx := context.TODO()
 		client, reconciler := setupClientAndReconciler(&db)
@@ -165,7 +164,6 @@ func TestStateDetect(t *testing.T) {
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.CommitHash = "some-hash"
 		db.Spec.ScmInfo.Path = "some-path"
-		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 
 		ctx := context.TODO()
 		client, reconciler := setupClientAndReconciler(&db)
@@ -203,7 +201,7 @@ func TestStateDetect(t *testing.T) {
 			if pr.Labels[PipelineTypeLabel] != PipelineTypeBuild {
 				continue
 			}
-			g.Expect(pr.Labels[artifactbuild.DependencyBuildIdLabel]).Should(Equal(db.Labels[artifactbuild.DependencyBuildIdLabel]))
+			g.Expect(pr.Labels[artifactbuild.DependencyBuildIdLabel]).Should(Equal(db.Name))
 			for _, or := range pr.OwnerReferences {
 				if or.Kind != db.Kind || or.Name != db.Name {
 					g.Expect(or.Kind).Should(Equal(db.Kind))
@@ -289,7 +287,6 @@ func TestStateBuilding(t *testing.T) {
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
-		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 		g.Expect(controllerutil.SetOwnerReference(&ab, &db, reconciler.scheme)).Should(BeNil())
 		g.Expect(client.Create(ctx, &db)).Should(BeNil())
 
@@ -297,7 +294,7 @@ func TestStateBuilding(t *testing.T) {
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Finalizers = []string{artifactbuild.PipelineRunFinalizer}
 		pr.Name = "test-build-0"
-		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineTypeLabel: PipelineTypeBuild}
+		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Name, PipelineTypeLabel: PipelineTypeBuild}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme)).Should(BeNil())
 		g.Expect(client.Create(ctx, &pr)).Should(BeNil())
 
@@ -482,13 +479,12 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
-		db.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)}
 		g.Expect(client.Create(ctx, &db)).Should(BeNil())
 
 		pr := pipelinev1beta1.PipelineRun{}
 		pr.Namespace = metav1.NamespaceDefault
 		pr.Name = "test-build-discovery"
-		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path), PipelineTypeLabel: PipelineTypeBuildInfo}
+		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Name, PipelineTypeLabel: PipelineTypeBuildInfo}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme))
 		g.Expect(client.Create(ctx, &pr)).Should(BeNil())
 

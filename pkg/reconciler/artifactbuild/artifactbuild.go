@@ -287,9 +287,6 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		//no existing build object found, lets create one
 		db := &v1alpha1.DependencyBuild{}
 		db.Namespace = abr.Namespace
-		db.Labels = map[string]string{
-			DependencyBuildIdLabel: depId,
-		}
 		//TODO: do we in fact need to put depId through GenerateName sanitation algorithm for the name? label value restrictions are more stringent than obj name
 		db.Name = depId
 		if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
