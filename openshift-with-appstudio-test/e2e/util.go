@@ -833,6 +833,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 				LimitCPU:      "500m",
 				WorkerThreads: "100",
 				DisableTLS:    true,
+				Storage:       "756Mi",
 			},
 			ImageRegistry: v1alpha1.ImageRegistry{
 				Host:       devIp,
