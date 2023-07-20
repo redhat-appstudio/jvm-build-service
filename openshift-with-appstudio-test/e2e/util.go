@@ -544,7 +544,21 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		if db.Status.FailedVerification {
 			tool += " (FAILED VERIFICATION)"
 		}
-		instance := &ReportInstanceData{State: db.Status.State, Yaml: encodeToYaml(&tmp), Name: fmt.Sprintf("%s @{%s} (%s) %s", db.Spec.ScmInfo.SCMURL, db.Spec.ScmInfo.Tag, db.Name, tool)}
+		url := strings.TrimSuffix(db.Spec.ScmInfo.SCMURL, ".git")
+		if strings.Contains(url, "github.com") {
+			if len(db.Spec.ScmInfo.Tag) == 40 && !strings.Contains(db.Spec.ScmInfo.Tag, ".") && !strings.Contains(db.Spec.ScmInfo.Tag, "-") {
+				url = fmt.Sprintf("%s/commit/%s", url, db.Spec.ScmInfo.Tag)
+			} else {
+				url = fmt.Sprintf("%s/releases/tag/%s", url, db.Spec.ScmInfo.Tag)
+			}
+		}
+		instance := &ReportInstanceData{
+			State:  db.Status.State,
+			Yaml:   encodeToYaml(&tmp),
+			Name:   fmt.Sprintf("%s @{%s} (%s) %s", db.Spec.ScmInfo.SCMURL, db.Spec.ScmInfo.Tag, db.Name, tool),
+			GitUrl: url,
+		}
+
 		dependency.Instances = append(dependency.Instances, instance)
 		print(db.Status.State + "\n")
 		switch db.Status.State {
@@ -634,6 +648,22 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		Name:       namespace,
 		Artifact:   artifact,
 		Dependency: dependency,
+	}
+
+	_ = os.MkdirAll(directory+"/logs", 0755) //#nosec G306 G301
+	for _, pod := range podList.Items {
+		if strings.HasPrefix(pod.Name, "jvm-build-workspace-artifact-cache") {
+			logFile := dumpPod(pod, directory, "logs", podClient, true)
+			data.CacheLogs = append(data.CacheLogs, logFile...)
+		}
+	}
+	operatorPodClient := kubeClient.CoreV1().Pods("jvm-build-service")
+	operatorList, err := operatorPodClient.List(context.TODO(), metav1.ListOptions{})
+	if err == nil {
+		for _, pod := range operatorList.Items {
+			logFile := dumpPod(pod, directory, "logs", operatorPodClient, true)
+			data.OperatorLogs = append(data.OperatorLogs, logFile...)
+		}
 	}
 
 	t, err := template.New("report").Parse(reportTemplate)
@@ -732,16 +762,19 @@ type DependencyReportData struct {
 	Instances    []*ReportInstanceData
 }
 type ReportData struct {
-	Name       string
-	Artifact   ArtifactReportData
-	Dependency DependencyReportData
+	Name         string
+	Artifact     ArtifactReportData
+	Dependency   DependencyReportData
+	CacheLogs    []string
+	OperatorLogs []string
 }
 
 type ReportInstanceData struct {
-	Name  string
-	Logs  []string
-	State string
-	Yaml  string
+	Name   string
+	Logs   []string
+	State  string
+	Yaml   string
+	GitUrl string
 }
 
 type SortableArtifact []*ReportInstanceData
