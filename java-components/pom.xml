@@ -34,7 +34,7 @@
     </developers>
 
     <properties>
-        <compiler-plugin.version>3.8.1</compiler-plugin.version>
+        <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <jar-plugin.version>3.3.0</jar-plugin.version>
         <failsafe.useModulePath>false</failsafe.useModulePath>
         <maven.compiler.release>17</maven.compiler.release>
