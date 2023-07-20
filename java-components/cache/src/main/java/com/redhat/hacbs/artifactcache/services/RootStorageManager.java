@@ -82,8 +82,9 @@ public class RootStorageManager implements StorageManager {
         highWaterFreeSpace = (long) (fileStore.getTotalSpace() * (1 - highWater));
         lowWaterFreeSpace = (long) (fileStore.getTotalSpace() * (1 - lowWater));
         this.deleteBatchSize = deleteBatchSize;
-        Log.infof("Cache requires at least %s space free, and will delete to the low water mark of %s", highWaterFreeSpace,
-                lowWaterFreeSpace);
+        Log.infof("Cache requires at least %s space free, and will delete to the low water mark of %s. Total disk size is %s.",
+                formatSize(highWaterFreeSpace),
+                formatSize(lowWaterFreeSpace), formatSize(fileStore.getTotalSpace()));
         registry.gauge("free_disk_space", fileStore, new ToDoubleFunction<FileStore>() {
             @Override
             public double applyAsDouble(FileStore value) {
@@ -109,8 +110,9 @@ public class RootStorageManager implements StorageManager {
         highWaterFreeSpace = (long) (fileStore.getTotalSpace() * (1 - highWater));
         lowWaterFreeSpace = (long) (fileStore.getTotalSpace() * (1 - lowWater));
         this.deleteBatchSize = deleteBatchSize;
-        Log.infof("Cache requires at least %s space free, and will delete to the low water mark of %s", highWaterFreeSpace,
-                lowWaterFreeSpace);
+        Log.infof("Cache requires at least %s space free, and will delete to the low water mark of %s. Total disk size is %s.",
+                formatSize(highWaterFreeSpace),
+                formatSize(lowWaterFreeSpace), formatSize(fileStore.getTotalSpace()));
         cacheFreeCount = new NoopCounter(new Meter.Id("cache_free_count", Tags.empty(), null, null, Meter.Type.COUNTER));
         deletedEntries = new NoopCounter(new Meter.Id("cache_deleted_entries", Tags.empty(), null, null, Meter.Type.COUNTER));
     }
@@ -169,12 +171,7 @@ public class RootStorageManager implements StorageManager {
      */
     @Override
     public Path accessDirectory(String relative) throws IOException {
-        if (relative.startsWith("/")) {
-            throw new IllegalArgumentException("Path must not start with / :" + relative);
-        }
-        if (relative.endsWith("/")) {
-            throw new IllegalArgumentException("Path must not end with / :" + relative);
-        }
+        checkRelative(relative);
 
         //deletion locks, if this is being deleted it is set to -1
         //otherwise we just use CAS to update it
@@ -213,6 +210,18 @@ public class RootStorageManager implements StorageManager {
 
     }
 
+    private void checkRelative(String relative) {
+        if (relative.startsWith("/")) {
+            throw new IllegalArgumentException("Path must not start with / :" + relative);
+        }
+        if (relative.endsWith("/")) {
+            throw new IllegalArgumentException("Path must not end with / :" + relative);
+        }
+        if (relative.contains("//") || relative.contains("..") || relative.contains("./")) {
+            throw new IllegalArgumentException("Path must not be in relative form :" + relative);
+        }
+    }
+
     @Override
     public Path accessFile(String relative) throws IOException {
         if (!relative.contains("/")) {
@@ -226,6 +235,7 @@ public class RootStorageManager implements StorageManager {
 
     @Override
     public StorageManager resolve(String relative) {
+        checkRelative(relative);
         try {
             Files.createDirectories(path.resolve(relative));
         } catch (IOException e) {
@@ -236,13 +246,14 @@ public class RootStorageManager implements StorageManager {
 
     @Override
     public void delete(String relative) {
+        checkRelative(relative);
         //note that this is not lock safe
         //this is only for explicit deletes
         //if this is called while the file
         //is being downloaded the result is undefined
         Path dir = path.resolve(relative);
         if (Files.exists(dir)) {
-            deleteRecursive(dir);
+            safeDeleteRecursive(dir);
         }
         var existing = inUseMap.remove(relative);
         if (existing != null) {
@@ -260,13 +271,20 @@ public class RootStorageManager implements StorageManager {
 
     @Override
     public void clear() {
-        clear(path);
+        clear("");
     }
 
-    void clear(Path path) {
+    void clear(String path) {
+        var it = inUseMap.entrySet().iterator();
+        while (it.hasNext()) {
+            var e = it.next();
+            if (e.getKey().startsWith(path)) {
+                delete(e.getKey());
+            }
+        }
 
         Log.infof("Clearing path %s", path);
-        try (var s = Files.list(path)) {
+        try (var s = Files.list(this.path.resolve(path))) {
             s.forEach(RootStorageManager::deleteRecursive);
         } catch (IOException e) {
             Log.errorf("Failed to clear path %s", e);
@@ -294,7 +312,8 @@ public class RootStorageManager implements StorageManager {
     }
 
     private void freeSpace() throws IOException {
-        Log.infof("Disk usage is too high, freeing cache entries");
+        Log.infof("Disk usage is too high, currently %s/%s is free, trying to delete entries to get this to %s",
+                formatSize(fileStore.getUsableSpace()), formatSize(fileStore.getTotalSpace()), formatSize(lowWaterFreeSpace));
         cacheFreeCount.increment();
         try {
             TreeMap<Long, List<String>> entries = new TreeMap<>();
@@ -319,7 +338,7 @@ public class RootStorageManager implements StorageManager {
                         if (lock.compareAndSet(expect, DELETE_IN_PROGRESS)) {
                             inUseMap.remove(file);
                             try {
-                                deleteRecursive(path.resolve(file));
+                                safeDeleteRecursive(path.resolve(file));
                             } catch (Exception e) {
                                 Log.errorf(e, "Failed to clear %s", file);
                             } finally {
@@ -328,8 +347,9 @@ public class RootStorageManager implements StorageManager {
                                 }
                             }
 
+                        } else {
+                            Log.infof("Unable to delete %s as it is in use", file);
                         }
-
                     }
                 }
             }
@@ -338,11 +358,42 @@ public class RootStorageManager implements StorageManager {
         }
     }
 
+    /**
+     * Deletes a directory recursivly, but won't decend into sub directories with their own locks
+     *
+     * @param file
+     */
+    public static void safeDeleteRecursive(final Path file) {
+        try {
+            boolean canDelete = true;
+            if (Files.isDirectory(file)) {
+                try (Stream<Path> files = Files.list(file)) {
+                    for (var f : files.toList()) {
+                        if (Files.isDirectory(f)) {
+                            if (Files.exists(f.resolve(MARKER))) {
+                                canDelete = false;
+                                continue;
+                            }
+                        }
+                        safeDeleteRecursive(f);
+                    }
+                }
+            }
+            if (canDelete) {
+                Files.delete(file);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static void deleteRecursive(final Path file) {
         try {
             if (Files.isDirectory(file)) {
                 try (Stream<Path> files = Files.list(file)) {
-                    files.forEach(RootStorageManager::deleteRecursive);
+                    for (var f : files.toList()) {
+                        deleteRecursive(f);
+                    }
                 }
             }
             Files.delete(file);
@@ -357,6 +408,9 @@ public class RootStorageManager implements StorageManager {
         RelativeStorageManager(String relativePath) {
             if (!relativePath.endsWith("/")) {
                 relativePath = relativePath + "/";
+            }
+            if (relativePath.startsWith("/")) {
+                relativePath = relativePath.substring(1);
             }
             this.relativePath = relativePath;
         }
@@ -389,7 +443,7 @@ public class RootStorageManager implements StorageManager {
 
         @Override
         public void clear() {
-            RootStorageManager.this.clear(path);
+            RootStorageManager.this.clear(relativePath);
         }
 
         @Override
@@ -400,4 +454,15 @@ public class RootStorageManager implements StorageManager {
         }
     }
 
+    /**
+     * Turns bytes into a human readable format
+     */
+    public static String formatSize(long bytes) {
+        int unit = 1024;
+        if (bytes < unit)
+            return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(unit));
+        String pre = "KMGTPE".charAt(exp - 1) + "";
+        return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+    }
 }
