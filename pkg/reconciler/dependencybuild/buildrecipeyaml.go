@@ -115,6 +115,12 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild"
 	}
+	var javaHome string
+	if recipe.JavaVersion == "7" || recipe.JavaVersion == "8" {
+		javaHome = "/lib/jvm/java-1." + recipe.JavaVersion + ".0"
+	} else {
+		javaHome = "/lib/jvm/java-" + recipe.JavaVersion
+	}
 
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	limits, err := memoryLimits(jbsConfig, additionalMemory)
@@ -207,6 +213,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env: []v1.EnvVar{
+					{Name: JavaHome, Value: javaHome},
 					{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 					{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"},
 				},
