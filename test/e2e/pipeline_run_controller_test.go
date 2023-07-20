@@ -27,7 +27,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
@@ -112,7 +111,6 @@ func createDB(componentLookupKey types.NamespacedName) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      componentLookupKey.Name,
 			Namespace: componentLookupKey.Namespace,
-			Labels:    map[string]string{artifactbuild.DependencyBuildIdLabel: componentLookupKey.Name},
 		},
 		Spec: v1alpha1.DependencyBuildSpec{ScmInfo: v1alpha1.SCMInfo{
 			SCMURL:  "url1",

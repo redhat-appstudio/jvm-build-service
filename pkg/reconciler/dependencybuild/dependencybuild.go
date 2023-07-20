@@ -115,22 +115,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	switch {
 	case dberr == nil:
 		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
-		//we validate that our dep id hash is still valid
-		//if a field has been modified we need to update the label
-		//which may result in a new build
-		depId := util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
-		if db.Labels == nil || len(db.Labels) == 0 {
-			return reconcile.Result{}, fmt.Errorf("dependency build %s missing labels", depId)
-		}
-		if depId != db.Labels[artifactbuild.DependencyBuildIdLabel] {
-			//if our id has changed we just update the label and set our state back to new
-			//this will kick off a new build
-
-			db.Labels[artifactbuild.DependencyBuildIdLabel] = depId
-			db.Status.State = v1alpha1.DependencyBuildStateNew
-			// TODO possibly abort instead, possibly allow but file event, or metric alert later on
-			return reconcile.Result{}, r.client.Update(ctx, &db)
-		}
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
 			return r.handleStateNew(ctx, log, &db)
@@ -541,7 +525,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
 	// we move the db out of building
 	pr.Name = currentDependencyBuildPipelineName(db)
-	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Labels[artifactbuild.DependencyBuildIdLabel], artifactbuild.PipelineRunLabel: "", PipelineTypeLabel: PipelineTypeBuild}
+	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Name, artifactbuild.PipelineRunLabel: "", PipelineTypeLabel: PipelineTypeBuild}
 
 	jbsConfig := &v1alpha1.JBSConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
