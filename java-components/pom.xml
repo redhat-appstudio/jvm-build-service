@@ -54,7 +54,7 @@
         <quarkus-jgit.version>3.0.2</quarkus-jgit.version>
         <gradle-tooling-api.version>7.5</gradle-tooling-api.version>
         <quarkus-github-api.version>1.314.1</quarkus-github-api.version>
-        <cyclonedx-core-java.version>7.1.4</cyclonedx-core-java.version>
+        <cyclonedx-core-java.version>7.3.2</cyclonedx-core-java.version>
         <asm.version>9.5</asm.version>
         <maven-indexer.version>7.0.2</maven-indexer.version>
         <maven-resolver.version>1.9.13</maven-resolver.version>
