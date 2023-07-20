@@ -11,12 +11,12 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/client_model v0.4.0
 	github.com/tektoncd/pipeline v0.47.3
-	k8s.io/api v0.26.1
-	k8s.io/apiextensions-apiserver v0.26.1
-	k8s.io/apimachinery v0.27.3
+	k8s.io/api v0.27.4
+	k8s.io/apiextensions-apiserver v0.27.4
+	k8s.io/apimachinery v0.27.4
 	k8s.io/cli-runtime v0.24.3
-	k8s.io/client-go v0.26.1
-	k8s.io/code-generator v0.26.1
+	k8s.io/client-go v0.27.4
+	k8s.io/code-generator v0.27.4
 	k8s.io/klog/v2 v2.100.1
 	knative.dev/pkg v0.0.0-20230221145627-8efb3485adcf
 	sigs.k8s.io/controller-runtime v0.14.6
@@ -82,7 +82,6 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/prometheus/statsd_exporter v0.21.0 // indirect
-	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
@@ -112,7 +111,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.1.0 // indirect
-	k8s.io/component-base v0.26.1 // indirect
+	k8s.io/component-base v0.27.4 // indirect
 	k8s.io/gengo v0.0.0-20221011193443-fad74ee6edd9 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
