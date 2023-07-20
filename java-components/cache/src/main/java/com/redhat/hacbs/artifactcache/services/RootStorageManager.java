@@ -175,6 +175,9 @@ public class RootStorageManager implements StorageManager {
         if (relative.endsWith("/")) {
             throw new IllegalArgumentException("Path must not end with / :" + relative);
         }
+        if (relative.contains("//") || relative.contains("..") || relative.contains("./")) {
+            throw new IllegalArgumentException("Path must not be in relative form :" + relative);
+        }
 
         //deletion locks, if this is being deleted it is set to -1
         //otherwise we just use CAS to update it
@@ -294,7 +297,8 @@ public class RootStorageManager implements StorageManager {
     }
 
     private void freeSpace() throws IOException {
-        Log.infof("Disk usage is too high, freeing cache entries");
+        Log.infof("Disk usage is too high, currently %s is free, trying to delete entries to get this to %s",
+                fileStore.getUsableSpace(), lowWaterFreeSpace);
         cacheFreeCount.increment();
         try {
             TreeMap<Long, List<String>> entries = new TreeMap<>();
@@ -328,8 +332,9 @@ public class RootStorageManager implements StorageManager {
                                 }
                             }
 
+                        } else {
+                            Log.infof("Unable to delete %s as it is in use", file);
                         }
-
                     }
                 }
             }
