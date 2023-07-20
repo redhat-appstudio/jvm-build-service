@@ -14,9 +14,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.junit.QuarkusTest;
-
-@QuarkusTest
 public class StorageManagerTestCase {
 
     @Test
@@ -48,6 +45,8 @@ public class StorageManagerTestCase {
         Path f5 = manager.accessFile("t5/a");
         Thread.sleep(2);
         Files.writeString(f5, hundredAndOneBytes.toString());
+        Thread.sleep(2);
+        manager.accessDirectory("t5/sub");
         manager.checkSpace();
         Assertions.assertFalse(Files.exists(f1));
         Assertions.assertFalse(Files.exists(f2));
@@ -67,7 +66,9 @@ public class StorageManagerTestCase {
         Assertions.assertTrue(Files.exists(f2));
         Assertions.assertTrue(Files.exists(f3));
         Assertions.assertFalse(Files.exists(f4));
-        Assertions.assertFalse(Files.exists(f5));
+        Assertions.assertFalse(Files.exists(f5.resolve("a")));
+        Assertions.assertTrue(Files.exists(f5.getParent().resolve("sub"))); //we have a sub path in here that is managed separately, so f5 will not get deleted
+
     }
 
     private static class MockFileSystem extends FileStore {
