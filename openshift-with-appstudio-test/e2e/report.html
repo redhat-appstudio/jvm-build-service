@@ -47,6 +47,17 @@
                 </ul>
             </div>
         </div>
+        <div class="card" style="width: 18rem;">
+            <div class="card-body">
+                <h5 class="card-title">Other Logs</span></h5>
+                {{ range $.CacheLogs }}
+                <li class="list-group-item"><a href="{{ . }}" target="_blank">Cache</a></li>
+                {{ end }}
+                {{ range $.OperatorLogs }}
+                <li class="list-group-item"><a href="{{ . }}" target="_blank">Operator</a></li>
+                {{ end }}
+            </div>
+        </div>
 
     </div>
     <div class="tab-pane fade" id="ab" role="tabpanel" aria-labelledby="ab-tab">
@@ -115,6 +126,7 @@
                 <div id="bodyDb{{ $i }}" class="accordion-collapse collapse" aria-labelledby="headingDb{{ $i }}">
                     <div class="accordion-body">
                         <ul class="list-group">
+                            <li class="list-group-item"><a href="{{ $e.GitUrl }}" target="_blank">{{ $e.GitUrl }}</a></li>
                             {{ range $e.Logs }}
                             <li class="list-group-item"><a href="{{ . }}" target="_blank">{{ . }}</a></li>
                             {{ end }}
