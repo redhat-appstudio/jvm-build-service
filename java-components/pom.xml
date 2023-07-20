@@ -49,7 +49,7 @@
         <formatter-maven-plugin.version>2.23.0</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.9.0</impsort-maven-plugin.version>
 
-        <assertj.version>3.23.1</assertj.version>
+        <assertj.version>3.24.2</assertj.version>
         <aws-java-sdk-s3.version>1.12.261</aws-java-sdk-s3.version>
         <quarkus-jgit.version>3.0.2</quarkus-jgit.version>
         <gradle-tooling-api.version>7.5</gradle-tooling-api.version>
