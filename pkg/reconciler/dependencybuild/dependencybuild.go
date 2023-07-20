@@ -61,6 +61,8 @@ const (
 	RetryDueToMemoryAnnotation = "jvmbuildservice.io/retry-build-lookup-due-to-memory"
 	MaxRetries                 = 3
 	MemoryIncrement            = 512
+
+	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 )
 
 type ReconcileDependencyBuild struct {
@@ -176,7 +178,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	}
 	// create pipeline run
 	pr := pipelinev1beta1.PipelineRun{}
-	pr.Finalizers = []string{artifactbuild.PipelineRunFinalizer}
+	pr.Finalizers = []string{PipelineRunFinalizer}
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
@@ -529,7 +531,7 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//now submit the pipeline
 	pr := pipelinev1beta1.PipelineRun{}
-	pr.Finalizers = []string{artifactbuild.PipelineRunFinalizer}
+	pr.Finalizers = []string{PipelineRunFinalizer}
 	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -1016,7 +1018,7 @@ func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRu
 	if pr.Finalizers != nil {
 		mod := false
 		for i, fz := range pr.Finalizers {
-			if fz == artifactbuild.PipelineRunFinalizer {
+			if fz == PipelineRunFinalizer {
 				newLength := len(pr.Finalizers) - 1
 				pr.Finalizers[i] = pr.Finalizers[newLength] // Copy last element to index i.
 				pr.Finalizers[newLength] = ""               // Erase last element (write zero value).
