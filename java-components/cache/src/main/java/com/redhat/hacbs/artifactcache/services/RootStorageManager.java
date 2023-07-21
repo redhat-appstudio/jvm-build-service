@@ -61,13 +61,25 @@ public class RootStorageManager implements StorageManager {
 
     private static final Function<String, AtomicLong> FACTORY = (s) -> new AtomicLong(System.currentTimeMillis());
     private final FileStore fileStore;
-    private final long highWaterFreeSpace;
-    private final long lowWaterFreeSpace;
+    final double highWater;
+    final double lowWater;
+    private volatile long highWaterFreeSpace;
+    private volatile long lowWaterFreeSpace;
 
     private Timer timer;
 
     private final Counter cacheFreeCount;
     private final Counter deletedEntries;
+
+    /**
+     * This is an approximation, to deal with situations were we are not on our own volume.
+     *
+     * Basically we track the initial non-cache disk usage, and then subtract it from our calculations
+     *
+     * This is not exact, but is better than nothing, and only really comes into play on minikube, as
+     * 'real' kube environments will not be using a shared volume as the PVC source.
+     */
+    private volatile long otherDiskContents;
 
     @Inject
     public RootStorageManager(
@@ -76,6 +88,8 @@ public class RootStorageManager implements StorageManager {
             @ConfigProperty(name = "cache-disk-percentage-low-water") double lowWater,
             @ConfigProperty(name = "cache-delete-batch-size", defaultValue = "30") int deleteBatchSize,
             MeterRegistry registry) throws IOException {
+        this.highWater = highWater;
+        this.lowWater = lowWater;
         this.path = path;
         Files.createDirectories(path);
         this.fileStore = Files.getFileStore(path);
@@ -104,6 +118,8 @@ public class RootStorageManager implements StorageManager {
             double highWater,
             double lowWater,
             int deleteBatchSize) throws IOException {
+        this.highWater = highWater;
+        this.lowWater = lowWater;
         this.fileStore = fileStore;
         this.path = path;
         Files.createDirectories(path);
@@ -138,6 +154,7 @@ public class RootStorageManager implements StorageManager {
         //there map be initial data in the cache dir, we load it into the in-memory map to allow it to be deleted
         //if the cache needs to be cleared
         AtomicInteger count = new AtomicInteger();
+        AtomicLong ourSize = new AtomicLong();
         try {
 
             Files.walkFileTree(path, new SimpleFileVisitor<>() {
@@ -152,8 +169,23 @@ public class RootStorageManager implements StorageManager {
                     return FileVisitResult.CONTINUE;
                 }
 
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    ourSize.addAndGet(Files.size(file));
+                    return FileVisitResult.CONTINUE;
+                }
             });
-
+            long otherSpace = fileStore.getTotalSpace() - ourSize.get();
+            long overhead = otherSpace - fileStore.getUsableSpace();
+            if (overhead > fileStore.getTotalSpace() * 0.05d) { //if the overhead is more than 5%
+                Log.infof("Detected existing disk usage of %s, recalculating ", formatSize(overhead));
+                highWaterFreeSpace = (long) ((fileStore.getTotalSpace() - overhead) * (1 - highWater));
+                lowWaterFreeSpace = (long) ((fileStore.getTotalSpace() - overhead) * (1 - lowWater));
+                Log.infof(
+                        "Cache requires at least %s space free, and will delete to the low water mark of %s. Total disk size is %s.",
+                        formatSize(highWaterFreeSpace),
+                        formatSize(lowWaterFreeSpace), formatSize(fileStore.getTotalSpace()));
+            }
         } catch (IOException e) {
             Log.errorf("Failed to scan existing files", e);
         } finally {
