@@ -63,6 +63,7 @@ const (
 	MemoryIncrement            = 512
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
+	JavaHome             = "JAVA_HOME"
 )
 
 type ReconcileDependencyBuild struct {
@@ -302,30 +303,33 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			//other tools will potentially have multiple versions
 			//we only want to use builder images that have java versions that the analyser
 			//detected might be appropriate
-			imageJava := image.Tools["jdk"][0]
-			if java.Min != "" {
-				versionResult, err := compareVersions(imageJava, java.Min)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Min))
-					return reconcile.Result{}, err
+			for _, imageJava := range image.Tools["jdk"] {
+				if java.Min != "" {
+					versionResult, err := compareVersions(imageJava, java.Min)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Min))
+						return reconcile.Result{}, err
+					}
+					if versionResult < 0 {
+						log.Info(fmt.Sprintf("Not building with %s because of min java version %s (image version %s)", image.Image, java.Min, imageJava))
+						continue
+					}
 				}
-				if versionResult < 0 {
-					log.Info(fmt.Sprintf("Not building with %s because of min java version %s (image version %s)", image.Image, java.Min, imageJava))
-					continue
+				if java.Max != "" {
+					versionResult, err := compareVersions(imageJava, java.Max)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Max))
+						return reconcile.Result{}, err
+					}
+					if versionResult > 0 {
+						log.Info(fmt.Sprintf("Not building with %s because of max java version %s (image version %s)", image.Image, java.Min, imageJava))
+						continue
+					}
 				}
+				newImage := image
+				newImage.Tools["jdk"] = []string{imageJava}
+				selectedImages = append(selectedImages, newImage)
 			}
-			if java.Max != "" {
-				versionResult, err := compareVersions(imageJava, java.Max)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Max))
-					return reconcile.Result{}, err
-				}
-				if versionResult > 0 {
-					log.Info(fmt.Sprintf("Not building with %s because of max java version %s (image version %s)", image.Image, java.Min, imageJava))
-					continue
-				}
-			}
-			selectedImages = append(selectedImages, image)
 		}
 
 		if len(unmarshalled.Invocations) == 0 {
@@ -333,6 +337,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			db.Status.State = v1alpha1.DependencyBuildStateFailed
 			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 		}
+		seenToolJavaCombos := map[string]bool{}
 		for _, image := range selectedImages {
 			imageJava := image.Tools["jdk"][0]
 			for _, command := range unmarshalled.Invocations {
@@ -378,7 +383,11 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 				_, hasTool := image.Tools[tool]
 				if hasTool {
 					for _, tv := range toolVersions {
-						buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: imageJava, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories, AllowedDifferences: unmarshalled.AllowedDifferences})
+						combo := tool + tv + imageJava
+						if !seenToolJavaCombos[combo] {
+							buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: imageJava, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories, AllowedDifferences: unmarshalled.AllowedDifferences})
+							seenToolJavaCombos[combo] = true
+						}
 					}
 				}
 			}
