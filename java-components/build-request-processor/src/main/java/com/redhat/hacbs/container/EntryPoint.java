@@ -2,10 +2,9 @@ package com.redhat.hacbs.container;
 
 import com.redhat.hacbs.container.analyser.build.LookupBuildInfoCommand;
 import com.redhat.hacbs.container.analyser.dependencies.AnalyseDependencies;
-import com.redhat.hacbs.container.analyser.deploy.ContainerDeployCommand;
 import com.redhat.hacbs.container.analyser.deploy.ContainerTagCommand;
+import com.redhat.hacbs.container.analyser.deploy.DeployCommand;
 import com.redhat.hacbs.container.analyser.deploy.DeployPreBuildImageCommand;
-import com.redhat.hacbs.container.analyser.deploy.S3DeployCommand;
 import com.redhat.hacbs.container.analyser.location.LookupScmLocationCommand;
 import com.redhat.hacbs.container.build.preprocessor.ant.AntPrepareCommand;
 import com.redhat.hacbs.container.build.preprocessor.gradle.GradlePrepareCommand;
@@ -21,8 +20,7 @@ import picocli.CommandLine;
         LookupScmLocationCommand.class,
         LookupBuildInfoCommand.class,
         AnalyseDependencies.class,
-        S3DeployCommand.class,
-        ContainerDeployCommand.class,
+        DeployCommand.class,
         GradlePrepareCommand.class,
         MavenPrepareCommand.class,
         VerifyBuiltArtifactsCommand.class,

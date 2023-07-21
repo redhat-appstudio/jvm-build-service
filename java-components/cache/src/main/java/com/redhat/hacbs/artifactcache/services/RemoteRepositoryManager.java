@@ -3,7 +3,6 @@ package com.redhat.hacbs.artifactcache.services;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,12 +17,9 @@ import org.eclipse.microprofile.config.Config;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
 import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
-import com.redhat.hacbs.artifactcache.services.client.s3.S3RepositoryClient;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 
 @Startup
 @Singleton
@@ -44,9 +40,6 @@ public class RemoteRepositoryManager {
     private static final String INSECURE = ".insecure";
     public static final String ARTIFACT_DEPLOYMENTS = "artifact-deployments";
     private final ConcurrentHashMap<String, List<RepositoryCache>> remoteStores = new ConcurrentHashMap<>();
-
-    @Inject
-    S3Client s3Client;
 
     @Inject
     Config config;
@@ -123,22 +116,6 @@ public class RemoteRepositoryManager {
             Log.infof("Maven repository %s added with URI %s", repo, uri.get());
             RepositoryClient client = MavenClient.of(repo, uri.get());
             return List.of(new Repository(repo, uri.get().toASCIIString(), RepositoryType.MAVEN2, client));
-        } else if (optType.orElse(null) == RepositoryType.S3) {
-            //we need to get the config
-
-            Optional<String> bucket = config.getOptionalValue(STORE + repo + BUCKET, String.class);
-            if (bucket.isPresent()) {
-                //make sure the bucket is present
-                //TODO: permissions of buckets created this way?
-                s3Client.createBucket(CreateBucketRequest.builder().bucket(bucket.get()).build());
-                String[] prefixes = config.getOptionalValue(STORE + repo + PREFIXES, String.class).orElse("default").split(",");
-                RepositoryClient client = new S3RepositoryClient(s3Client, Arrays.asList(prefixes), bucket.get());
-                Log.infof("S3 repository %s added with bucket %s and prefixes %s", repo, bucket.get(),
-                        Arrays.toString(prefixes));
-                return List.of(new Repository(repo, "s3://" + bucket + Arrays.toString(prefixes), RepositoryType.S3, client));
-            } else {
-                Log.warnf("S3 Repository %s was listed but has no bucket configured and will be ignored", repo);
-            }
         } else if (optType.orElse(null) == RepositoryType.OCI_REGISTRY) {
             String registry = config.getOptionalValue(STORE + repo + REGISTRY, String.class).orElse("quay.io");
             Optional<String> owner = config.getOptionalValue(STORE + repo + OWNER, String.class);
