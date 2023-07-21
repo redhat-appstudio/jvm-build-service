@@ -8,8 +8,6 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 
-import com.redhat.hacbs.container.analyser.deploy.Deployer;
-
 import io.quarkus.logging.Log;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -17,7 +15,7 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-public class S3Deployer implements Deployer {
+public class S3Deployer {
 
     final S3Client client;
     final String deploymentBucket;
@@ -31,7 +29,6 @@ public class S3Deployer implements Deployer {
         this.deploymentPrefix = deploymentPrefix;
     }
 
-    @Override
     public void deployArchive(Path tarGzFile, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
         Files.walkFileTree(tarGzFile, new SimpleFileVisitor<>() {
             @Override

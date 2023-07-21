@@ -4,13 +4,16 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.Base64;
+import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,13 +30,12 @@ import com.google.cloud.tools.jib.api.buildplan.FilePermissions;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissionsProvider;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
 import com.redhat.hacbs.container.analyser.deploy.DeployData;
-import com.redhat.hacbs.container.analyser.deploy.Deployer;
 import com.redhat.hacbs.container.analyser.deploy.Gav;
 import com.redhat.hacbs.recipies.util.FileUtil;
 
 import io.quarkus.logging.Log;
 
-public class ContainerRegistryDeployer implements Deployer {
+public class ContainerRegistryDeployer {
 
     static {
         if (System.getProperty("jib.httpTimeout") == null) {
@@ -55,8 +57,6 @@ public class ContainerRegistryDeployer implements Deployer {
 
     final String imageId;
 
-    private final BiConsumer<String, String> imageNameHashCallback;
-
     static final ObjectMapper MAPPER = new ObjectMapper();
 
     public ContainerRegistryDeployer(
@@ -66,7 +66,7 @@ public class ContainerRegistryDeployer implements Deployer {
             String token,
             String repository,
             boolean insecure,
-            String prependTag, BiConsumer<String, String> imageNameHashCallback, String imageId) {
+            String prependTag, String imageId) {
         if (insecure) {
             System.setProperty("sendCredentialsOverHttp", "true");
         }
@@ -77,7 +77,6 @@ public class ContainerRegistryDeployer implements Deployer {
         this.repository = repository;
         this.insecure = insecure;
         this.prependTag = prependTag;
-        this.imageNameHashCallback = imageNameHashCallback;
         this.imageId = imageId;
         String fullName = host + (port == 443 ? "" : ":" + port) + "/" + owner + "/" + repository;
         if (!token.isBlank()) {
@@ -124,8 +123,8 @@ public class ContainerRegistryDeployer implements Deployer {
 
     }
 
-    @Override
-    public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+    public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs,
+            BiConsumer<String, String> imageNameHashCallback) throws Exception {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
         // Read the tar to get the gavs and files
@@ -133,11 +132,44 @@ public class ContainerRegistryDeployer implements Deployer {
 
         try {
             // Create the image layers
-            createImages(imageData, sourcePath, logsPath);
+            createImages(imageData, sourcePath, logsPath, imageNameHashCallback);
 
         } finally {
             FileUtil.deleteRecursive(imageData.getArtifactsPath());
         }
+    }
+
+    public void tagArchive(List<String> gavNames) throws Exception {
+        if (gavNames.isEmpty()) {
+            throw new RuntimeException("Empty GAV list");
+        }
+
+        Deque<Gav> gavs = new ArrayDeque<>();
+        for (var i : gavNames) {
+            gavs.push(Gav.parse(i, prependTag));
+        }
+        Gav first = gavs.pop();
+        String existingImage = createImageName(imageId);
+        RegistryImage existingRegistryImage = RegistryImage.named(existingImage);
+        RegistryImage registryImage = RegistryImage.named(createImageName(first.getTag()));
+        if (username != null) {
+            registryImage = registryImage.addCredential(username, password);
+        }
+        Containerizer containerizer = Containerizer
+                .to(registryImage)
+                .setAllowInsecureRegistries(insecure);
+
+        JibContainerBuilder containerBuilder = Jib.from(existingRegistryImage)
+                .setFormat(ImageFormat.OCI);
+
+        Log.infof("Deploying image with tag %s", first.getTag());
+        for (Gav gav : gavs) {
+            Log.infof("Deploying image with tag %s", gav.getTag());
+            containerizer = containerizer.withAdditionalTag(gav.getTag());
+        }
+        containerBuilder.addLabel("io.jvmbuildservice.gavs", String.join(",", gavNames));
+
+        var result = containerBuilder.containerize(containerizer);
     }
 
     public void deployPreBuildImage(String baseImage, Path sourcePath, String imageSourcePath, String tag)
@@ -178,14 +210,11 @@ public class ContainerRegistryDeployer implements Deployer {
             containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
             Log.debugf("Image %s created", imageName);
             var result = containerBuilder.containerize(containerizer);
-
-            if (imageNameHashCallback != null) {
-                imageNameHashCallback.accept(imageName, result.getDigest().getHash());
-            }
         }
     }
 
-    private void createImages(DeployData imageData, Path sourcePath, Path logsPath)
+    private void createImages(DeployData imageData, Path sourcePath, Path logsPath,
+            BiConsumer<String, String> imageNameHashCallback)
             throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
             CacheDirectoryCreationException, ExecutionException {
 
@@ -201,11 +230,6 @@ public class ContainerRegistryDeployer implements Deployer {
 
         Set<Gav> gavs = imageData.getGavs();
 
-        for (Gav gav : gavs) {
-            Log.infof("Deploying image with tag %s", gav.getTag());
-            containerizer = containerizer.withAdditionalTag(gav.getTag());
-        }
-
         AbsoluteUnixPath imageRoot = AbsoluteUnixPath.get("/");
         JibContainerBuilder containerBuilder = Jib.fromScratch()
                 .setFormat(ImageFormat.OCI)
@@ -213,6 +237,8 @@ public class ContainerRegistryDeployer implements Deployer {
                 .addLabel("version", imageData.getVersions())
                 .addLabel("artifactId", imageData.getArtifactIds());
 
+        containerBuilder.addLabel("io.jvmbuildservice.gavs",
+                gavs.stream().map(Gav::stringForm).collect(Collectors.joining(",")));
         List<Path> layers = getLayers(imageData.getArtifactsPath(), sourcePath, logsPath);
         for (Path layer : layers) {
             containerBuilder = containerBuilder.addLayer(List.of(layer), imageRoot);
@@ -249,4 +275,5 @@ public class ContainerRegistryDeployer implements Deployer {
 
         return List.of(source, logs, artifacts);
     }
+
 }

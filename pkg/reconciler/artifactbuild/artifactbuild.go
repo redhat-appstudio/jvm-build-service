@@ -45,6 +45,7 @@ const (
 
 	PreBuildTaskName                        = "pre-build"
 	BuildTaskName                           = "build"
+	TagTaskName                             = "tag"
 	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
 	PipelineResultContaminants              = "CONTAMINANTS"
 	PipelineResultDeployedResources         = "DEPLOYED_RESOURCES"
