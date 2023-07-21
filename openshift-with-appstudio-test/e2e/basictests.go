@@ -34,7 +34,6 @@ func runBasicTests(t *testing.T, doSetup func(t *testing.T, namespace string) *t
 
 func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string) *testArgs, pipeline string, namespace string) {
 	ta := doSetup(t, namespace)
-	defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 	//TODO, for now at least, keeping our test project to allow for analyzing the various CRD instances both for failure
 	// and successful runs (in case a run succeeds, but we find something amiss if we look at passing runs; our in repo
 	// tests do now run in conjunction with say the full suite of e2e's in the e2e-tests runs, so no contention there.
@@ -118,6 +117,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	})
 
 	ta.t.Run("all artfactbuilds and dependencybuilds complete", func(t *testing.T) {
+		defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
@@ -265,6 +265,19 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	})
 
 	ta.t.Run("make sure second build access cached dependencies", func(t *testing.T) {
+		//first delete all existing PipelineRuns to free up resources
+		//mostly for minikube
+		runs, lerr := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).List(context.TODO(), metav1.ListOptions{})
+		if lerr != nil {
+			debugAndFailTest(ta, fmt.Sprintf("error listing runs %s", lerr.Error()))
+		}
+		for _, r := range runs.Items {
+			err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Delete(context.TODO(), r.Name, metav1.DeleteOptions{})
+			if err != nil {
+				debugAndFailTest(ta, fmt.Sprintf("error deleting runs %s", err.Error()))
+			}
+		}
+
 		ta.run = &v1beta1.PipelineRun{}
 		obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
 		ta.run, ok = obj.(*v1beta1.PipelineRun)
