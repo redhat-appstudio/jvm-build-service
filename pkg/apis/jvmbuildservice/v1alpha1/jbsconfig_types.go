@@ -2,6 +2,8 @@ package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+type HermeticBuildType string
+
 const (
 	JBSConfigName                           = "jvm-build-config"
 	ImageSecretName                         = "jvm-build-image-secrets" //#nosec
@@ -18,6 +20,9 @@ const (
 	ConfigArtifactCacheIOThreadsDefault     = "4"
 	ConfigArtifactCacheWorkerThreadsDefault = "50"
 	ConfigArtifactCacheStorageDefault       = "10Gi"
+
+	HermeticBuildTypeNone     HermeticBuildType = "None"
+	HermeticBuildTypeRequired HermeticBuildType = "Required"
 )
 
 type JBSConfigSpec struct {
@@ -25,7 +30,8 @@ type JBSConfigSpec struct {
 
 	// If this is true then the build will fail if artifact verification fails
 	// otherwise deploy will happen as normal, but a field will be set on the DependencyBuild
-	RequireArtifactVerification bool `json:"requireArtifactVerification,omitempty"`
+	RequireArtifactVerification bool              `json:"requireArtifactVerification,omitempty"`
+	HermeticBuilds              HermeticBuildType `json:"hermeticBuilds,omitempty"`
 
 	AdditionalRecipes []string `json:"additionalRecipes,omitempty"`
 

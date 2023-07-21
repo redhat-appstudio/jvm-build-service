@@ -87,6 +87,8 @@ spec:
                 type: object
               enableRebuilds:
                 type: boolean
+              hermeticBuilds:
+                type: string
               host:
                 type: string
               insecure:

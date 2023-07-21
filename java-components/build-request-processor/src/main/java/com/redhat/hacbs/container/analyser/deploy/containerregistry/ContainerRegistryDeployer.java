@@ -2,8 +2,11 @@ package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
 import java.util.Base64;
 import java.util.Deque;
@@ -211,6 +214,44 @@ public class ContainerRegistryDeployer {
             Log.debugf("Image %s created", imageName);
             var result = containerBuilder.containerize(containerizer);
         }
+    }
+
+    public void deployHermeticPreBuildImage(String baseImage, Path buildArtifactsPath, Path repositoryPath,
+            String imageSourcePath, String tag) throws Exception {
+        Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
+        String imageName = createImageName(tag);
+        RegistryImage registryImage = RegistryImage.named(imageName);
+        if (username != null) {
+            registryImage = registryImage.addCredential(username, password);
+        }
+        Containerizer containerizer = Containerizer
+                .to(registryImage)
+                .setAllowInsecureRegistries(insecure);
+        Log.infof("Deploying hermetic pre build image %s", imageName);
+
+        JibContainerBuilder containerBuilder = Jib.from(baseImage)
+                .setFormat(ImageFormat.OCI);
+
+        FileEntriesLayer.Builder layerConfigurationBuilder = FileEntriesLayer.builder();
+        var pathInContainer = AbsoluteUnixPath.get(imageSourcePath);
+        Files.walkFileTree(repositoryPath, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (file.getFileName().toString().equals("_remote.repositories")) {
+                    return FileVisitResult.CONTINUE;
+                }
+                String relative = repositoryPath.relativize(file).toString();
+                if (Files.exists(buildArtifactsPath.resolve(relative))) {
+                    return FileVisitResult.CONTINUE;
+                }
+                layerConfigurationBuilder.addEntry(file, pathInContainer.resolve(relative),
+                        FilePermissions.fromPosixFilePermissions(Files.getPosixFilePermissions(file)));
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
+        Log.debugf("Image %s created", imageName);
+        var result = containerBuilder.containerize(containerizer);
     }
 
     private void createImages(DeployData imageData, Path sourcePath, Path logsPath,

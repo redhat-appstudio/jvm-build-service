@@ -87,6 +87,9 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--image-id")
     String imageId;
 
+    @CommandLine.Option(names = "--hermetic")
+    boolean hermetic;
+
     @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
     String prependTag;
     protected String imageName;
@@ -157,7 +160,9 @@ public class DeployCommand implements Runnable {
                                 new TrackingData(
                                         gav.getGroupId() + ":" + gav.getArtifactId() + ":"
                                                 + gav.getVersion(),
-                                        "rebuilt", Map.of("scm-uri", scmUri, "scm-commit", commit)),
+                                        "rebuilt",
+                                        Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
+                                                Boolean.toString(hermetic))),
                                 Files.newOutputStream(temp), false);
                         Files.delete(file);
                         Files.move(temp, file);

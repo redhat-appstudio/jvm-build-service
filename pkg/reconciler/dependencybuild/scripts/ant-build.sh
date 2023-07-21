@@ -1,15 +1,5 @@
 #!/usr/bin/env bash
-set -o verbose
-set -eu
-set -o pipefail
 
-if [ -n "$(params.CONTEXT_DIR)" ]
-then
-    cd $(params.CONTEXT_DIR)
-fi
-
-# Fix this when we no longer need to run as root
-export HOME=/root
 
 TOOL_VERSION="$(params.TOOL_VERSION)"
 export ANT_HOME="/opt/ant/${TOOL_VERSION}"
@@ -21,9 +11,6 @@ if [ ! -d "${ANT_HOME}" ]; then
 fi
 
 export PATH="${ANT_HOME}/bin:${PATH}"
-
-mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages $(workspaces.source.path)/build-info
-{{INSTALL_PACKAGE_SCRIPT}}
 
 # XXX: It's possible that build.xml is not in the root directory
 cat > ivysettings.xml << EOF
@@ -46,22 +33,9 @@ cat > ivysettings.xml << EOF
 </ivysettings>
 EOF
 
-# This is replaced when the task is created by the golang code
-cat <<EOF
-Pre build script: {{PRE_BUILD_SCRIPT}}
-EOF
-{{PRE_BUILD_SCRIPT}}
-
 if [ ! -d $(workspaces.source.path)/source ]; then
     cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 fi
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
-cp -r /root/.[^.]* $(workspaces.source.path)/build-info
-
-# This is replaced when the task is created by the golang code
-cat <<EOF
-Post build script: {{POST_BUILD_SCRIPT}}
-EOF
-{{POST_BUILD_SCRIPT}}

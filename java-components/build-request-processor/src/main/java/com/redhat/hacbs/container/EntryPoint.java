@@ -4,6 +4,7 @@ import com.redhat.hacbs.container.analyser.build.LookupBuildInfoCommand;
 import com.redhat.hacbs.container.analyser.dependencies.AnalyseDependencies;
 import com.redhat.hacbs.container.analyser.deploy.ContainerTagCommand;
 import com.redhat.hacbs.container.analyser.deploy.DeployCommand;
+import com.redhat.hacbs.container.analyser.deploy.DeployHermeticPreBuildImageCommand;
 import com.redhat.hacbs.container.analyser.deploy.DeployPreBuildImageCommand;
 import com.redhat.hacbs.container.analyser.location.LookupScmLocationCommand;
 import com.redhat.hacbs.container.build.preprocessor.ant.AntPrepareCommand;
@@ -27,6 +28,7 @@ import picocli.CommandLine;
         SBTPrepareCommand.class,
         AntPrepareCommand.class,
         DeployPreBuildImageCommand.class,
+        DeployHermeticPreBuildImageCommand.class,
         ContainerTagCommand.class
 })
 public class EntryPoint {

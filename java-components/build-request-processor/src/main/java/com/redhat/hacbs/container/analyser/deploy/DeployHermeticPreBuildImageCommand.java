@@ -9,21 +9,21 @@ import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerReg
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "deploy-pre-build-image", description = "This command will deploy a builder image containing the checked out source to an image registry."
+@CommandLine.Command(name = "deploy-hermetic-pre-build-image", description = "This adds an additional layer onto an existing pre-build-image that"
         +
-        "This image is used in a later step to actually build the artifact.")
-public class DeployPreBuildImageCommand implements Runnable {
-
-    @CommandLine.Option(names = "--builder-image", required = true)
+        "contains a list of all dependencies needed by the build. This can be used to generate a hermetic build.")
+public class DeployHermeticPreBuildImageCommand implements Runnable {
+    @CommandLine.Option(names = "--source-image", required = true)
     String builderImage;
-    @CommandLine.Option(names = "--source-path", required = true)
-    Path sourcePath;
-
-    @CommandLine.Option(names = "--image-source-path", required = true)
-    String imageSourcePath;
-
     @CommandLine.Option(names = "--image-name")
     String imageName;
+    @CommandLine.Option(names = "--build-artifact-path", required = true)
+    Path buildArtifactsPath;
+
+    @CommandLine.Option(names = "--repository-path", required = true)
+    Path repositoryPath;
+    @CommandLine.Option(names = "--image-source-path", required = true)
+    String imageSourcePath;
 
     @CommandLine.Option(names = "--registry-host", defaultValue = "quay.io")
     String host;
@@ -45,7 +45,7 @@ public class DeployPreBuildImageCommand implements Runnable {
                 insecure,
                 prependTag, "");
         try {
-            deployer.deployPreBuildImage(builderImage, sourcePath, imageSourcePath, imageName);
+            deployer.deployHermeticPreBuildImage(builderImage, buildArtifactsPath, repositoryPath, imageSourcePath, imageName);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

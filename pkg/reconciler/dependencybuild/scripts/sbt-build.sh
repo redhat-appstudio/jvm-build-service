@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
-set -o verbose
-set -eu
-set -o pipefail
-if [ -n "$(params.CONTEXT_DIR)" ]
-then
-    cd $(params.CONTEXT_DIR)
-fi
-#fix this when we no longer need to run as root
-export HOME=/root
 
+mkdir -p "${HOME}/.sbt"
+cp -r /maven-artifacts/* "$HOME/.sbt/*" || true
 TOOL_VERSION="$(params.TOOL_VERSION)"
 export SBT_DIST="/opt/sbt/${TOOL_VERSION}"
 echo "SBT_DIST=${SBT_DIST}"
@@ -20,8 +13,6 @@ fi
 
 export PATH="${SBT_DIST}/bin:${PATH}"
 
-mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages $(workspaces.source.path)/build-info
-{{INSTALL_PACKAGE_SCRIPT}}
 
 mkdir -p "$HOME/.sbt/1.0/"
 cat > "$HOME/.sbt/repositories" <<EOF
@@ -51,11 +42,6 @@ EOF
 fi
 
 
-#This is replaced when the task is created by the golang code
-cat <<EOF
-Pre build script: {{PRE_BUILD_SCRIPT}}
-EOF
-{{PRE_BUILD_SCRIPT}}
 
 if [ ! -d $(workspaces.source.path)/source ]; then
     cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
@@ -64,10 +50,4 @@ echo "Running SBT command with arguments: $@"
 
 eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
 
-cp -r /root/.[^.]* $(workspaces.source.path)/build-info
-
-# This is replaced when the task is created by the golang code
-cat <<EOF
-Post build script: {{POST_BUILD_SCRIPT}}
-EOF
-{{POST_BUILD_SCRIPT}}
+cp -r "${HOME}"/.sbt/* $(workspaces.source.path)/build-info
