@@ -50,7 +50,7 @@
         <impsort-maven-plugin.version>1.9.0</impsort-maven-plugin.version>
 
         <assertj.version>3.24.2</assertj.version>
-        <aws-java-sdk-s3.version>1.12.511</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>1.12.512</aws-java-sdk-s3.version>
         <quarkus-jgit.version>3.0.2</quarkus-jgit.version>
         <gradle-tooling-api.version>7.5</gradle-tooling-api.version>
         <quarkus-github-api.version>1.314.1</quarkus-github-api.version>
