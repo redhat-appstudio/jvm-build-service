@@ -15,7 +15,7 @@ cat >"$(workspaces.build-settings.path)"/settings.xml <<EOF
 </settings>
 EOF
 
-TOOLCHAINS_XML="${HOME}/.m2/toolchains.xml"
+TOOLCHAINS_XML="$(workspaces.build-settings.path)"/toolchains.xml
 
 cat >"$TOOLCHAINS_XML" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
