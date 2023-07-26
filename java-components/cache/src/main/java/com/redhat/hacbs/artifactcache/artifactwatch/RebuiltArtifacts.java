@@ -45,7 +45,7 @@ public class RebuiltArtifacts {
         client.resources(RebuiltArtifact.class).inform().addEventHandler(new ResourceEventHandler<RebuiltArtifact>() {
             @Override
             public void onAdd(RebuiltArtifact artifactBuild) {
-                Log.debugf("Adding new RebuiltArtifact %s", artifactBuild.getSpec().getGav());
+                Log.infof("Adding new RebuiltArtifact %s", artifactBuild.getSpec().getGav());
                 gavs.add(artifactBuild.getSpec().getGav());
             }
 

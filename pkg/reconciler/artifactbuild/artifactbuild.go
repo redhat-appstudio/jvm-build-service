@@ -117,15 +117,13 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	}
 
 	if prerr != nil && abrerr != nil {
-		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
-		msg := "Reconcile key received not found errors for pipelineruns, artifactbuilds (probably deleted): " + request.NamespacedName.String()
-		log.Info(msg)
-		//log.Info("Reconcile key %s received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
+		log.Info(fmt.Sprintf("Reconcile key %s received not found errors for pipelineruns and artifactbuilds (probably deleted)", request.NamespacedName.String()))
 		return ctrl.Result{}, nil
 	}
 
 	switch {
 	case prerr == nil:
+		fmt.Printf("### artifactbuild::reconcile::pipeline state %#v\n", pr.Status.PipelineResults)
 		log = log.WithValues("kind", "PipelineRun")
 		return r.handlePipelineRunReceived(ctx, log, &pr)
 
@@ -161,6 +159,7 @@ func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context
 			return reconcile.Result{}, r.client.Update(ctx, &abr)
 		}
 	}
+	fmt.Printf("### artifactbuild::handleArtifactBuildReceived::ab state %#v \n", abr.Status.State)
 
 	switch abr.Status.State {
 	case v1alpha1.ArtifactBuildStateNew, "":

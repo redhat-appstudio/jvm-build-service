@@ -52,6 +52,12 @@ public class BuildInfo {
     int additionalMemory;
     List<String> allowedDifferences = new ArrayList<>();
 
+    List<String> gavs = new ArrayList<>();
+
+    String digest;
+
+    String image;
+
     public BuildInfo setTools(Map<String, VersionRange> tools) {
         this.tools = tools;
         return this;
@@ -156,6 +162,33 @@ public class BuildInfo {
         return this;
     }
 
+    public List<String> getGavs() {
+        return gavs;
+    }
+
+    public BuildInfo setGavs(List<String> gavs) {
+        this.gavs = gavs;
+        return this;
+    }
+
+    public String getDigest() {
+        return digest;
+    }
+
+    public BuildInfo setDigest(String digest) {
+        this.digest = digest;
+        return this;
+    }
+
+    public String getImage() {
+        return image;
+    }
+
+    public BuildInfo setImage(String image) {
+        this.image = image;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildInfo{" +
@@ -171,6 +204,9 @@ public class BuildInfo {
                 ", disableSubmodules=" + disableSubmodules +
                 ", additionalMemory=" + additionalMemory +
                 ", allowedDifferences=" + allowedDifferences +
+                ", image=" + image +
+                ", digest=" + digest +
+                ", gavs=" + gavs +
                 '}';
     }
 }

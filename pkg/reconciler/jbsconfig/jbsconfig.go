@@ -547,14 +547,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			cache = setEnvVarValue(envValue, envName, cache)
 		}
 
-		sharedRegistryString := ""
-		sharedRegistries := jbsConfig.Spec.SharedRegistries
-		for i, shared := range sharedRegistries {
-			if i > 0 {
-				sharedRegistryString += ";"
-			}
-			sharedRegistryString += imageRegistryToString(shared)
-		}
+		sharedRegistryString := ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
 		cache = setEnvVarValue(sharedRegistryString, "SHARED_REGISTRIES", cache)
 	}
 
@@ -812,6 +805,18 @@ func generateSecret(c *v1alpha1.JBSConfig, r quay.RobotAccount, imageURL string,
 		secret.StringData = secretData
 		return secret
 	}
+}
+
+func ImageRegistriesToString(log logr.Logger, sharedRegistries []v1alpha1.ImageRegistry) string {
+	sharedRegistryString := ""
+	log.Info(fmt.Sprintf("Parsing sharedRegistry list %#v\n", sharedRegistries))
+	for i, shared := range sharedRegistries {
+		if i > 0 {
+			sharedRegistryString += ";"
+		}
+		sharedRegistryString += imageRegistryToString(shared)
+	}
+	return sharedRegistryString
 }
 
 func imageRegistryToString(registry v1alpha1.ImageRegistry) string {
