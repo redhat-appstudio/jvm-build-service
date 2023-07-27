@@ -2,6 +2,7 @@ package jbsconfig
 
 import (
 	"context"
+	"github.com/go-logr/logr"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -253,4 +254,29 @@ func TestImageRegistryToString(t *testing.T) {
 	}
 	result := imageRegistryToString(registry)
 	g.Expect(result).To(Equal("quay.io,,nobody,foo,false,"))
+}
+
+func TestImageRegistryArrayToString(t *testing.T) {
+	g := NewGomegaWithT(t)
+	registries1 := []v1alpha1.ImageRegistry{
+		{
+			Host:       "quay.io",
+			Port:       "",
+			Owner:      "nobody",
+			Repository: "foo",
+			Insecure:   false,
+			PrependTag: "",
+		},
+	}
+	registries2 := append(registries1, v1alpha1.ImageRegistry{
+		Host:       "quay.io",
+		Port:       "784",
+		Owner:      "nobody",
+		Repository: "foo",
+		Insecure:   false,
+		PrependTag: "foo",
+	})
+	g.Expect(ImageRegistriesToString(logr.Discard(), []v1alpha1.ImageRegistry{})).To(Equal(""))
+	g.Expect(ImageRegistriesToString(logr.Discard(), registries1)).To(Equal("quay.io,,nobody,foo,false,"))
+	g.Expect(ImageRegistriesToString(logr.Discard(), registries2)).To(Equal("quay.io,,nobody,foo,false,;quay.io,784,nobody,foo,false,foo"))
 }
