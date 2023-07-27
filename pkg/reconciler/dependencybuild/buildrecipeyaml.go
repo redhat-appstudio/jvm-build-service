@@ -21,16 +21,16 @@ const (
 	WorkspaceSource        = "source"
 	WorkspaceTls           = "tls"
 	OriginalContentPath    = "/original-content"
+	MavenArtifactsPath     = "/maven-artifacts"
 )
-
-//go:embed scripts/maven-settings.sh
-var mavenSettings string
-
-//go:embed scripts/gradle-settings.sh
-var gradleSettings string
 
 //go:embed scripts/maven-build.sh
 var mavenBuild string
+
+// used for both ant and maven
+//
+//go:embed scripts/maven-settings.sh
+var mavenSettings string
 
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
@@ -44,8 +44,14 @@ var antBuild string
 //go:embed scripts/install-package.sh
 var packageTemplate string
 
-//go:embed scripts/entry-script.sh
-var entryScript string
+//go:embed scripts/dockerfile-entry-script.sh
+var dockerfileEntryScript string
+
+//go:embed scripts/build-entry.sh
+var buildEntryScript string
+
+//go:embed scripts/hermetic-entry.sh
+var hermeticBuildEntryScript string
 
 func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
@@ -55,11 +61,14 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	imageId := util.HashString(string(marshaled) + buildRequestProcessorImage + tool + db.Name)
 	zero := int64(0)
+	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha12.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 
-	preBuildImageName, preBuildImageArgs, deployArgs, tagArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig)
+	preBuildImageName, hermeticPreBuildImageName, preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired)
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
+
+	println("HERMETIC IMAGE: " + hermeticPreBuildImageName)
 
 	preprocessorArgs := []string{
 		"maven-prepare",
@@ -67,32 +76,28 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"$(params.CACHE_URL)",
 		"$(workspaces." + WorkspaceSource + ".path)/workspace",
 	}
+
 	additionalMemory := recipe.AdditionalMemory
 	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
 		additionalMemory = systemConfig.Spec.MaxAdditionalMemory
 	}
-	var settings string
-	var build string
+	var buildToolSection string
 	trueBool := true
 	if tool == "maven" {
-		settings = mavenSettings
-		build = mavenBuild
+		buildToolSection = mavenSettings + "\n" + mavenBuild
 	} else if tool == "gradle" {
-		settings = gradleSettings
-		build = gradleBuild
+		buildToolSection = gradleBuild
 		preprocessorArgs[0] = "gradle-prepare"
 	} else if tool == "sbt" {
-		settings = "" //TODO: look at removing the setttings step altogether
-		build = sbtBuild
+		buildToolSection = sbtBuild
 		preprocessorArgs[0] = "sbt-prepare"
 	} else if tool == "ant" {
-		settings = mavenSettings
-		build = antBuild
+		buildToolSection = mavenSettings + "\n" + antBuild
 		preprocessorArgs[0] = "ant-prepare"
 	} else {
-		settings = "echo unknown build tool " + tool + " && exit 1"
-		build = ""
+		buildToolSection = "echo unknown build tool " + tool + " && exit 1"
 	}
+	build := buildEntryScript
 	//horrible hack
 	//we need to get our TLS CA's into our trust store
 	//we just add it at the start of the build
@@ -108,6 +113,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			}
 		}
 	}
+	build = strings.ReplaceAll(build, "{{BUILD}}", buildToolSection)
 	build = strings.ReplaceAll(build, "{{INSTALL_PACKAGE_SCRIPT}}", install)
 	build = strings.ReplaceAll(build, "{{PRE_BUILD_SCRIPT}}", recipe.PreBuildScript)
 	build = strings.ReplaceAll(build, "{{POST_BUILD_SCRIPT}}", recipe.PostBuildScript)
@@ -128,6 +134,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		return nil, "", err
 	}
 
+	createBuildScript := createBuildScript(build, hermeticBuildEntryScript)
 	pipelineParams := []pipelinev1beta1.ParamSpec{
 		{Name: PipelineBuildId, Type: pipelinev1beta1.ParamTypeString},
 		{Name: PipelineParamScmUrl, Type: pipelinev1beta1.ParamTypeString},
@@ -155,7 +162,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 					Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
-				Script: gitArgs + "\n" + settings,
+				Script: gitArgs + "\n" + createBuildScript,
 				Env: []v1.EnvVar{
 					{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 					{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitSecretName}, Key: v1alpha12.GitSecretTokenKey, Optional: &trueBool}}},
@@ -194,6 +201,12 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		},
 	}
 
+	var buildTaskScript string
+	if hermeticBuildRequired {
+		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs, createHermeticImageArgs)
+	} else {
+		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
+	}
 	buildTask := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params:     pipelineParams,
@@ -221,9 +234,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
 				},
-				Args: []string{"$(params.GOALS[*])"},
-
-				Script: settings + "\ncp -r -a " + OriginalContentPath + "/* $(workspaces.source.path)\n" + build,
+				Args:   []string{"$(params.GOALS[*])"},
+				Script: OriginalContentPath + "/build.sh \"$@\"",
 			},
 			{
 				Name:            "verify-deploy-and-check-for-contaminates",
@@ -238,11 +250,60 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs),
+				Script: buildTaskScript,
 			},
 		},
 	}
 
+	hermeticBuildTask := pipelinev1beta1.TaskSpec{
+		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
+		Params:     pipelineParams,
+		Results: []pipelinev1beta1.TaskResult{
+			{Name: artifactbuild.PipelineResultContaminants},
+			{Name: artifactbuild.PipelineResultDeployedResources},
+			{Name: PipelineResultImage},
+			{Name: PipelineResultImageDigest},
+			{Name: artifactbuild.PipelineResultPassedVerification},
+			{Name: artifactbuild.PipelineResultVerificationResult},
+		},
+		Steps: []pipelinev1beta1.Step{
+			{
+				Name:            "hermetic-build",
+				Image:           hermeticPreBuildImageName,
+				ImagePullPolicy: v1.PullAlways,
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)",
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
+				Env: []v1.EnvVar{
+					{Name: JavaHome, Value: javaHome},
+					{Name: PipelineParamCacheUrl, Value: "file://" + MavenArtifactsPath},
+					{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"},
+				},
+				Resources: v1.ResourceRequirements{
+					//TODO: limits management and configuration
+					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
+				},
+
+				Args: []string{"$(params.GOALS[*])"},
+
+				Script: OriginalContentPath + "/hermetic-build.sh \"$@\"",
+			},
+			{
+				Name:            "verify-deploy-and-check-for-contaminates",
+				Image:           buildRequestProcessorImage,
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env: []v1.EnvVar{
+					{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.ImageSecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
+				},
+				Resources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, hermeticDeployArgs, createHermeticImageArgs),
+			},
+		},
+	}
 	tagTask := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params:     []pipelinev1beta1.ParamSpec{{Name: "GAVS", Type: pipelinev1beta1.ParamTypeString}},
@@ -264,6 +325,37 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			},
 		},
 	}
+
+	tagDepends := artifactbuild.BuildTaskName
+	if hermeticBuildRequired {
+		tagDepends = artifactbuild.HermeticBuildTaskName
+	}
+	hermeticBuildPipelineTask := pipelinev1beta1.PipelineTask{
+		Name:     artifactbuild.HermeticBuildTaskName,
+		RunAfter: []string{artifactbuild.BuildTaskName},
+		TaskSpec: &pipelinev1beta1.EmbeddedTask{
+			TaskSpec: hermeticBuildTask,
+		},
+
+		Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
+			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+			{Name: WorkspaceSource, Workspace: WorkspaceSource},
+			{Name: WorkspaceTls, Workspace: WorkspaceTls},
+		},
+	}
+	tagPipelineTask := pipelinev1beta1.PipelineTask{
+		Name:     artifactbuild.TagTaskName,
+		RunAfter: []string{tagDepends},
+		TaskSpec: &pipelinev1beta1.EmbeddedTask{
+			TaskSpec: tagTask,
+		},
+		Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
+			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+			{Name: WorkspaceSource, Workspace: WorkspaceSource},
+			{Name: WorkspaceTls, Workspace: WorkspaceTls},
+		},
+	}
+
 	ps := &pipelinev1beta1.PipelineSpec{
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
@@ -289,21 +381,13 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 					{Name: WorkspaceTls, Workspace: WorkspaceTls},
 				},
 			},
-			{
-				Name:     artifactbuild.TagTaskName,
-				RunAfter: []string{artifactbuild.BuildTaskName},
-				TaskSpec: &pipelinev1beta1.EmbeddedTask{
-					TaskSpec: tagTask,
-				},
-				Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
-					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
-					{Name: WorkspaceSource, Workspace: WorkspaceSource},
-					{Name: WorkspaceTls, Workspace: WorkspaceTls},
-				},
-			},
 		},
 		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
+	if hermeticBuildRequired {
+		ps.Tasks = append(ps.Tasks, hermeticBuildPipelineTask)
+	}
+	ps.Tasks = append(ps.Tasks, tagPipelineTask)
 
 	for _, i := range buildTask.Results {
 		ps.Results = append(ps.Results, pipelinev1beta1.PipelineResult{Name: i.Name, Description: i.Description, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + i.Name + ")"}})
@@ -322,8 +406,20 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		ps.Tasks[1].Params = append(ps.Tasks[1].Params, pipelinev1beta1.Param{
 			Name:  i.Name,
 			Value: value})
+		if hermeticBuildRequired {
+			if i.Name == PipelineParamCacheUrl {
+				//bit of a hack, we don't have a remote cache for the hermetic build
+				ps.Tasks[2].Params = append(ps.Tasks[2].Params, pipelinev1beta1.Param{
+					Name:  i.Name,
+					Value: pipelinev1beta1.ParamValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "file://" + MavenArtifactsPath}})
+			} else {
+				ps.Tasks[2].Params = append(ps.Tasks[2].Params, pipelinev1beta1.Param{
+					Name:  i.Name,
+					Value: value})
+			}
+		}
 	}
-	ps.Tasks[2].Params = append(ps.Tasks[2].Params, pipelinev1beta1.Param{
+	ps.Tasks[len(ps.Tasks)-1].Params = append(ps.Tasks[len(ps.Tasks)-1].Params, pipelinev1beta1.Param{
 		Name:  "GAVS",
 		Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + artifactbuild.PipelineResultDeployedResources + ")"}})
 
@@ -344,15 +440,26 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"\nRUN " + doSubstitution(gitArgs, paramValues, commitTime, buildRepos) +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
 		"\necho \"Please wait a few seconds for cache to start. Run 'tail -f cache.log'\"\n")) + " | base64 -d >/root/start-cache.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(settings, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/settings.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos)+"\n")) + " | base64 -d >/root/preprocessor.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/settings.sh\n/root/preprocessor.sh\ncd /root/project/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineParamGoals, paramValues), " ")+"\n")) + " | base64 -d >/root/run-full-build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(entryScript)) + " | base64 -d >/root/entry-script.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\ncd /root/project/workspace\n/root/build.sh "+strings.Join(extractArrayParam(PipelineParamGoals, paramValues), " ")+"\n")) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/root/entry-script.sh" +
 		"\nRUN chmod +x /root/*.sh" +
 		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
 
 	return ps, df, nil
+}
+
+func createBuildScript(build string, hermeticBuildEntryScript string) string {
+	ret := "tee $(workspaces." + WorkspaceSource + ".path)/build.sh <<'RHTAPEOF'\n"
+	ret += build
+	ret += "\nRHTAPEOF\n"
+	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/build.sh\n"
+	ret += "tee $(workspaces." + WorkspaceSource + ".path)/hermetic-build.sh <<'RHTAPEOF'\n"
+	ret += hermeticBuildEntryScript
+	ret += "\nRHTAPEOF\n"
+	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/hermetic-build.sh"
+	return ret
 }
 
 func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
@@ -454,7 +561,7 @@ func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig) (string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig, hermeticBuild bool) (string, string, []string, []string, []string, []string, []string) {
 	preBuildImageName := ""
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -464,10 +571,11 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--image-source-path=" + OriginalContentPath,
 		"--image-name=" + preBuildImageTag,
 	}
+	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
+	hermeticImageId := imageId + "-hermetic"
 
 	deployArgs := []string{
 		"deploy",
-		"--image-id=" + imageId,
 		"--path=$(workspaces.source.path)/artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--build-info-path=$(workspaces.source.path)/build-info",
@@ -476,9 +584,21 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
+	hermeticDeployArgs := append([]string{}, deployArgs...)
+
+	deployArgs = append(deployArgs, "--image-id="+imageId)
+	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
+
+	var imageIdToTag string
+	if hermeticBuild {
+		imageIdToTag = hermeticImageId
+	} else {
+		imageIdToTag = imageId
+	}
+
 	tagArgs := []string{
 		"tag-container",
-		"--image-id=" + imageId,
+		"--image-id=" + imageIdToTag,
 	}
 	imageRegistry := jbsConfig.ImageRegistry()
 	registryArgs := []string{}
@@ -502,6 +622,8 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	} else {
 		preBuildImageName += "/artifact-deployments"
 	}
+
+	hermeticPreBuildImageName := preBuildImageName + ":" + hermeticPreBuildImageTag
 	preBuildImageName += ":" + preBuildImageTag
 	if imageRegistry.Insecure {
 		registryArgs = append(registryArgs, "--registry-insecure")
@@ -510,10 +632,21 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
 	}
 	deployArgs = append(deployArgs, registryArgs...)
+	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
 	tagArgs = append(tagArgs, registryArgs...)
 	tagArgs = append(tagArgs, "$(params.GAVS)")
-	return preBuildImageName, preBuildImageArgs, deployArgs, tagArgs
+
+	hermeticPreBuildImageArgs := []string{
+		"deploy-hermetic-pre-build-image",
+		"--source-image=" + preBuildImageName,
+		"--image-name=" + hermeticPreBuildImageTag,
+		"--build-artifact-path=$(workspaces.source.path)/artifacts",
+		"--image-source-path=" + MavenArtifactsPath,
+		"--repository-path=$(workspaces.source.path)/build-info/",
+	}
+	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
+	return preBuildImageName, hermeticPreBuildImageName, preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, hermeticPreBuildImageArgs
 }
 
 func verifyParameters(jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe) []string {

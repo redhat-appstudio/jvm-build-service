@@ -1,21 +1,75 @@
 #!/usr/bin/env bash
-set -o verbose
-set -eu
-set -o pipefail
-if [ -n "$(params.CONTEXT_DIR)" ]
-then
-    cd $(params.CONTEXT_DIR)
-fi
+export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
+mkdir -p "${GRADLE_USER_HOME}"
+mkdir -p "$HOME/.m2/"
+
+#copy back the gradle folder for hermetic
+cp -r /maven-artifacts/.gradle/* "$GRADLE_USER_HOME/" || true
+cp -r /maven-artifacts/.m2/* "$HOME/.m2/" || true
+
+cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF
+org.gradle.caching=false
+org.gradle.console=plain
+# This prevents the daemon from running (which is unnecessary in one-off builds) and increases the memory allocation
+org.gradle.daemon=false
+# For Spring/Nebula Release Plugins
+release.useLastTag=true
+
+# Increase timeouts
+systemProp.org.gradle.internal.http.connectionTimeout=600000
+systemProp.org.gradle.internal.http.socketTimeout=600000
+systemProp.http.socketTimeout=600000
+systemProp.http.connectionTimeout=600000
+
+# Settings for <https://github.com/vanniktech/gradle-maven-publish-plugin>
+RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/artifacts
+RELEASE_SIGNING_ENABLED=false
+mavenCentralUsername=
+mavenCentralPassword=
+EOF
+cat > "${GRADLE_USER_HOME}"/init.gradle << EOF
+allprojects {
+    buildscript {
+        repositories {
+            mavenLocal()
+            maven {
+                name "HACBS Maven Repository"
+                url "$(params.CACHE_URL)"
+                //allowInsecureProtocol = true
+            }
+        }
+    }
+    repositories {
+        mavenLocal()
+        maven {
+            name "HACBS Maven Repository"
+            url "$(params.CACHE_URL)"
+            //allowInsecureProtocol = true
+        }
+    }
+}
+
+settingsEvaluated { settings ->
+    settings.pluginManagement {
+        repositories {
+            mavenLocal()
+            maven {
+                name "HACBS Maven Repository"
+                url "$(params.CACHE_URL)"
+                //allowInsecureProtocol = true
+            }
+        }
+    }
+}
+EOF
+
+
 
 #if we run out of memory we want the JVM to die with error code 134
 export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
 
-export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
 export PATH="${JAVA_HOME}/bin:${PATH}"
 
-mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages $(workspaces.source.path)/build-info
-
-{{INSTALL_PACKAGE_SCRIPT}}
 
 #some gradle builds get the version from the tag
 #the git init task does not fetch tags
@@ -55,8 +109,13 @@ esac
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 
-# FIXME: additionalArgs is added to args, but we need additionalArgs only; assume that we know the original tasks so that we can remove them
-ADDITIONAL_ARGS=$(echo "$@" | sed -e 's/build \(publish\|uploadArchives\)\($\| \)//')
+#we want to pass in additional params to GME
+#but not the actual goals
+#TODO: add GME params and remove this
+ADDITIONAL_ARGS=$(echo "$@" | sed -e 's/build\($\| \)//')
+ADDITIONAL_ARGS=$(echo "$ADDITIONAL_ARGS" | sed -e 's/publish\($\| \)//')
+ADDITIONAL_ARGS=$(echo "$ADDITIONAL_ARGS" | sed -e 's/uploadArchives\($\| \)//')
+
 echo ADDITIONAL_ARGS="${ADDITIONAL_ARGS}"
 
 INIT_SCRIPTS=""
@@ -65,13 +124,6 @@ do
   INIT_SCRIPTS="$INIT_SCRIPTS -I $(pwd)/$i"
 done
 echo "INIT SCRIPTS: $INIT_SCRIPTS"
-
-#This is replaced when the task is created by the golang code
-cat <<EOF
-Pre build script: {{PRE_BUILD_SCRIPT}}
-EOF
-
-{{PRE_BUILD_SCRIPT}}
 
 #our dependency tracing breaks verification-metadata.xml
 #TODO: should we disable tracing for these builds? It means we can't track dependencies directly, so we can't detect contaminants
@@ -85,10 +137,6 @@ if [ ! -d $(workspaces.source.path)/source ]; then
 fi
 gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --info --stacktrace -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle.log
 
-cp -r /root/.[^.]* $(workspaces.source.path)/build-info
-
-# This is replaced when the task is created by the golang code
-cat <<EOF
-Post build script: {{POST_BUILD_SCRIPT}}
-EOF
-{{POST_BUILD_SCRIPT}}
+mkdir -p $(workspaces.source.path)/build-info
+cp -r "${GRADLE_USER_HOME}" $(workspaces.source.path)/build-info/.gradle
+cp -r "${HOME}/.m2" $(workspaces.source.path)/build-info/.m2
