@@ -17,14 +17,10 @@ import jakarta.inject.Singleton;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 
-import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.DescriptorDigest;
 import com.google.cloud.tools.jib.api.ImageReference;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.RegistryException;
-import com.google.cloud.tools.jib.event.EventHandlers;
-import com.google.cloud.tools.jib.frontend.CredentialRetrieverFactory;
-import com.google.cloud.tools.jib.http.FailoverHttpClient;
 import com.google.cloud.tools.jib.image.json.BuildableManifestTemplate;
 import com.google.cloud.tools.jib.image.json.ManifestTemplate;
 import com.google.cloud.tools.jib.image.json.V21ManifestTemplate;
@@ -33,6 +29,7 @@ import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.google.cloud.tools.jib.registry.credentials.CredentialRetrievalException;
 import com.redhat.hacbs.classfile.tracker.NoCloseInputStream;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
+import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
@@ -82,17 +79,9 @@ public class AnalyseImage extends AnalyserBase {
 
     RegistryClient extractLayers(String image, Consumer<DescriptorDigest> layerConsumer)
             throws InvalidImageReferenceException, IOException, RegistryException, CredentialRetrievalException {
+
         ImageReference imageReference = ImageReference.parse(image);
-        CredentialRetrieverFactory credentialRetrieverFactory = CredentialRetrieverFactory.forImage(imageReference,
-                (s) -> System.err.println(s.getMessage()));
-        RegistryClient.Factory factory = RegistryClient.factory(new EventHandlers.Builder().build(),
-                imageReference.getRegistry(),
-                imageReference.getRepository(), new FailoverHttpClient(false, false, s -> System.out.println(s.getMessage())));
-
-        Optional<Credential> optionalCredential = credentialRetrieverFactory.dockerConfig().retrieve();
-        optionalCredential.ifPresent(factory::setCredential);
-        RegistryClient registryClient = factory.newRegistryClient();
-
+        RegistryClient registryClient = ContainerUtil.getRegistryClient(imageReference);
         ManifestAndDigest<ManifestTemplate> result = registryClient.pullManifest(imageReference.getQualifier());
         if (result.getManifest() instanceof V21ManifestTemplate) {
             V21ManifestTemplate template = (V21ManifestTemplate) result.getManifest();

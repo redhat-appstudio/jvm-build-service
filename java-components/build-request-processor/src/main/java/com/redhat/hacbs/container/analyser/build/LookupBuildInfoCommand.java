@@ -46,8 +46,6 @@ import com.google.cloud.tools.jib.api.ImageReference;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.RegistryException;
 import com.google.cloud.tools.jib.blob.Blob;
-import com.google.cloud.tools.jib.event.EventHandlers;
-import com.google.cloud.tools.jib.http.FailoverHttpClient;
 import com.google.cloud.tools.jib.image.json.ManifestTemplate;
 import com.google.cloud.tools.jib.image.json.OciManifestTemplate;
 import com.google.cloud.tools.jib.registry.ManifestAndDigest;
@@ -55,6 +53,7 @@ import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.redhat.hacbs.container.analyser.build.ant.AntUtils;
 import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.build.maven.MavenDiscoveryTask;
+import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
@@ -351,14 +350,10 @@ public class LookupBuildInfoCommand implements Runnable {
 
                     Log.infof("Examining shared registry %s for image %s", fullName, imageId);
                     try {
+                        //TODO consider authentication whether via env token or dockerconfig. Would need to pass
+                        // token in env as per ContainerRegistryDeployer?
                         ImageReference reference = ImageReference.parse(fullName);
-                        RegistryClient.Factory factory = RegistryClient.factory(new EventHandlers.Builder().build(),
-                                reference.getRegistry(),
-                                reference.getRepository(), new FailoverHttpClient(false, false,
-                                        s -> Log.info(
-                                                s.getMessage())));
-                        RegistryClient registryClient = factory.newRegistryClient();
-
+                        RegistryClient registryClient = ContainerUtil.getRegistryClient(reference);
                         Optional<ManifestAndDigest<ManifestTemplate>> manifestAndDigest = registryClient
                                 .checkManifest(reference.getTag().get());
 
