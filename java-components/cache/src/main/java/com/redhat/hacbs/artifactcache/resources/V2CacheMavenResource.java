@@ -105,7 +105,6 @@ public class V2CacheMavenResource {
                 }
             }
         } else {
-            //TODO: once we have added repository info the the main recipe database we should change this to 'default'
             caches.addAll(remoteRepositoryManager.getRemoteRepositories(RemoteRepositoryManager.SYSTEM + DEFAULT));
         }
         BuildPolicy bp = new BuildPolicy(caches);

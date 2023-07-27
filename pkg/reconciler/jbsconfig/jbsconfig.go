@@ -229,6 +229,7 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 			return nil
 		}
 	}
+
 	if !jbsConfig.Spec.EnableRebuilds {
 		return nil
 	}
@@ -545,6 +546,16 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			envValue := strings.Join(envValues, ",")
 			cache = setEnvVarValue(envValue, envName, cache)
 		}
+
+		sharedRegistryString := ""
+		sharedRegistries := jbsConfig.Spec.SharedRegistries
+		for i, shared := range sharedRegistries {
+			if i > 0 {
+				sharedRegistryString += ";"
+			}
+			sharedRegistryString += imageRegistryToString(shared)
+		}
+		cache = setEnvVarValue(sharedRegistryString, "SHARED_REGISTRIES", cache)
 	}
 
 	regex, err := regexp.Compile(`maven-repository-(\d+)-([\w-]+)`)
@@ -666,7 +677,9 @@ func (r *ReconcilerJBSConfig) handleNoImageSecretFound(ctx context.Context, conf
 
 func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log logr.Logger, config *v1alpha1.JBSConfig) error {
 	if r.quayClient == nil || r.quayOrgName == "" {
-		return errors2.New("no owner specified and automatic repo creation is disabled")
+		log.Info(fmt.Sprintf("No Quay organisation specified ('%#v') and automatic repo creation is disabled with client %#v",
+			r.quayOrgName, r.quayClient))
+		return errors2.New("no Quay organisation specified and automatic repo creation is disabled")
 	}
 
 	//remove the existing secret if preset
@@ -799,4 +812,22 @@ func generateSecret(c *v1alpha1.JBSConfig, r quay.RobotAccount, imageURL string,
 		secret.StringData = secretData
 		return secret
 	}
+}
+
+func imageRegistryToString(registry v1alpha1.ImageRegistry) string {
+	result := registry.Host
+	result += ","
+	result += registry.Port
+	result += ","
+	result += registry.Owner
+	result += ","
+	result += registry.Repository
+	result += ","
+	result += strconv.FormatBool(registry.Insecure)
+	result += ","
+	result += registry.PrependTag
+
+	// TODO: How to transfer the secret across? Do we need multiple secrets?
+
+	return result
 }

@@ -240,3 +240,17 @@ func TestMissingRegistrySecretWithSpi(t *testing.T) {
 	g.Expect(binding.Spec.RepoUrl).To(Equal("https://quay.io/tests/artifact-deployments"))
 
 }
+
+func TestImageRegistryToString(t *testing.T) {
+	g := NewGomegaWithT(t)
+	registry := v1alpha1.ImageRegistry{
+		Host:       "quay.io",
+		Port:       "",
+		Owner:      "nobody",
+		Repository: "foo",
+		Insecure:   false,
+		PrependTag: "",
+	}
+	result := imageRegistryToString(registry)
+	g.Expect(result).To(Equal("quay.io,,nobody,foo,false,"))
+}

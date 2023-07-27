@@ -137,6 +137,23 @@ spec:
                   verification fails otherwise deploy will happen as normal, but a
                   field will be set on the DependencyBuild
                 type: boolean
+              sharedRegistries:
+                items:
+                  properties:
+                    host:
+                      type: string
+                    insecure:
+                      type: boolean
+                    owner:
+                      type: string
+                    port:
+                      type: string
+                    prependTag:
+                      type: string
+                    repository:
+                      type: string
+                  type: object
+                type: array
             type: object
           status:
             properties:

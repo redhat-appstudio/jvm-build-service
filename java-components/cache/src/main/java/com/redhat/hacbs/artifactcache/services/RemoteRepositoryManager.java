@@ -17,6 +17,7 @@ import org.eclipse.microprofile.config.Config;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
 import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
+import com.redhat.hacbs.resources.model.v1alpha1.ImageRegistry;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;
@@ -54,6 +55,8 @@ public class RemoteRepositoryManager {
 
     @PostConstruct
     void setup() throws IOException, GitAPIException {
+        //TODO: this is a bit of a hack
+        //we read the deployment config and if present use it to configure the 'rebuilt' repo
         var registryOwner = config.getOptionalValue("registry.owner", String.class);
         if (registryOwner.isPresent()) {
             var host = config.getOptionalValue("registry.host", String.class).orElse("quay.io");
@@ -71,6 +74,35 @@ public class RemoteRepositoryManager {
                             token, prependTag,
                             insecure, rebuiltArtifacts, storageManager));
             remoteStores.put("rebuilt", List.of(new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false)));
+        }
+        var sharedRegistries = config.getOptionalValue("shared.registries", String.class);
+        // We have a semicolon separated set of potential registries.
+        if (sharedRegistries.isPresent()) {
+            String[] registries = sharedRegistries.get().split(";", -1);
+            for (int i = 0; i < registries.length; i++) {
+                ImageRegistry registry = ImageRegistry.parseRegistry(registries[i]);
+                String name = "shared-rebuilt-" + i;
+
+                Repository rebuiltRepo = new Repository(name,
+                        "http" + (registry.isInsecure() ? "" : "s") + "://" +
+                                registry.getHost() + ":" + registry.getPort() + "/" +
+                                registry.getRepository() + "/"
+                                + registry.getPrependTag(),
+                        RepositoryType.OCI_REGISTRY,
+                        new OCIRegistryRepositoryClient(registry.getHost() + (registry.getPort().equals("443")
+                                ? ""
+                                : ":" + registry.getPort()), registry.getOwner(),
+                                registry.getRepository(),
+                                // TODO: How to pass token through
+                                Optional.empty(),
+                                Optional.of(registry.getPrependTag()),
+                                registry.isInsecure(),
+                                rebuiltArtifacts,
+                                storageManager));
+
+                remoteStores.put(name,
+                        List.of(new RepositoryCache(storageManager.resolve(name), rebuiltRepo, false)));
+            }
         }
     }
 

@@ -25,6 +25,8 @@ public class JBSConfigSpec {
     private CacheSettings cacheSettings;
     private BuildSettings buildSettings;
 
+    private List<ImageRegistry> sharedRegistries;
+
     public boolean isEnableRebuilds() {
         return enableRebuilds;
     }
@@ -130,6 +132,15 @@ public class JBSConfigSpec {
 
     public JBSConfigSpec setBuildSettings(BuildSettings buildSettings) {
         this.buildSettings = buildSettings;
+        return this;
+    }
+
+    public List<ImageRegistry> getSharedRegistries() {
+        return sharedRegistries;
+    }
+
+    public JBSConfigSpec setSharedRegistries(List<ImageRegistry> sharedRegistries) {
+        this.sharedRegistries = sharedRegistries;
         return this;
     }
 }
