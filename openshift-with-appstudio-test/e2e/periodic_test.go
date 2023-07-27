@@ -38,6 +38,27 @@ func runTests(t *testing.T, namespace string, runYaml string) {
 		debugAndFailTest(ta, err.Error())
 	}
 
+	//limit range to mimic prod
+	limitRange := &corev1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "resource-limits",
+			Namespace: ta.ns,
+		},
+		Spec: corev1.LimitRangeSpec{
+			Limits: []corev1.LimitRangeItem{
+				{
+					Type:           corev1.LimitTypeContainer,
+					Default:        corev1.ResourceList{"cpu": resource.MustParse("2"), "memory": resource.MustParse("2Gi")},
+					DefaultRequest: corev1.ResourceList{"cpu": resource.MustParse("10m"), "memory": resource.MustParse("256Mi")},
+				},
+			},
+		},
+	}
+	_, err = kubeClient.CoreV1().LimitRanges(ta.ns).Create(context.TODO(), limitRange, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+
 	path, err := os.Getwd()
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
