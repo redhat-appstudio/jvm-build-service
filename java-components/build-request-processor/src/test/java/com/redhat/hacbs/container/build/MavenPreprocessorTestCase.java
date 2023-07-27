@@ -17,4 +17,8 @@ public class MavenPreprocessorTestCase extends AbstractPreprocessorTestCase {
     public String getCommand() {
         return "maven-prepare";
     }
+
+    protected List<String> getAdditionalArgs() {
+        return List.of("--enforce-version", "5.10.6.Final");
+    }
 }

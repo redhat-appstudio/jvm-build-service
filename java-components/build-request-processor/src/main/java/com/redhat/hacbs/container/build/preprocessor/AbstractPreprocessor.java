@@ -15,6 +15,7 @@ public abstract class AbstractPreprocessor implements Runnable {
     @CommandLine.Parameters(description = "The directory to process")
     protected Path buildRoot;
 
-    @CommandLine.Option(names = "-r", required = false, description = "The repository URL")
-    protected String repositoryUrl;
+    @CommandLine.Option(names = "--enforce-version", required = false, description = "The version to enforce. Not all processors support this.")
+    protected String enforceVersion;
+
 }

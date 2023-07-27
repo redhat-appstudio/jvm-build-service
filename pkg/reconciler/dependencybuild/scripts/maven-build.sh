@@ -38,16 +38,6 @@ cat >>"$TOOLCHAINS_XML" <<EOF
 </toolchains>
 EOF
 
-
-if [ -z "$(params.ENFORCE_VERSION)" ]
-then
-  echo "Enforce version not set, skipping"
-else
-  echo "Setting version to $(params.ENFORCE_VERSION)"
-  mvn -B -e -s "$(workspaces.build-settings.path)/settings.xml" -t "$(workspaces.build-settings.path)/toolchains.xml" org.codehaus.mojo:versions-maven-plugin:2.12.0:set -DnewVersion="$(params.ENFORCE_VERSION)"  | tee $(workspaces.source.path)/logs/enforce-version.log
-fi
-
-
 #if we run out of memory we want the JVM to die with error code 134
 export MAVEN_OPTS="-XX:+CrashOnOutOfMemoryError"
 

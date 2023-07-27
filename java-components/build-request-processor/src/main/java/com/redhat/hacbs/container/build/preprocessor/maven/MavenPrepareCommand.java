@@ -66,8 +66,14 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
         try (BufferedReader pomReader = Files.newBufferedReader(file)) {
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(pomReader);
-
             boolean modified = false;
+            if (enforceVersion != null) {
+                if (!model.getVersion().equals(enforceVersion)) {
+                    model.setVersion(enforceVersion);
+                    modified = true;
+                }
+            }
+
             if (model.getBuild() != null && model.getBuild().getPlugins() != null) {
                 modified |= handlePlugins(model.getBuild().getPlugins(), false, topLevel);
             }
