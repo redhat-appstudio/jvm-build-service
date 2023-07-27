@@ -32,6 +32,7 @@ import com.google.cloud.tools.jib.api.buildplan.FileEntriesLayer;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissions;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissionsProvider;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
+import com.google.cloud.tools.jib.registry.credentials.json.DockerConfigTemplate;
 import com.redhat.hacbs.container.analyser.deploy.DeployData;
 import com.redhat.hacbs.container.analyser.deploy.Gav;
 import com.redhat.hacbs.recipies.util.FileUtil;
@@ -44,7 +45,7 @@ public class ContainerRegistryDeployer {
         if (System.getProperty("jib.httpTimeout") == null) {
             //long timeout, but not infinite
             long fiveMinutes = TimeUnit.MINUTES.toMillis(5);
-            System.setProperty("jib.httpTimeout", "" + fiveMinutes);
+            System.setProperty("jib.httpTimeout", String.valueOf(fiveMinutes));
         }
     }
 
@@ -84,9 +85,10 @@ public class ContainerRegistryDeployer {
         String fullName = host + (port == 443 ? "" : ":" + port) + "/" + owner + "/" + repository;
         if (!token.isBlank()) {
             if (token.trim().startsWith("{")) {
-                //we assume this is a .dockerconfig file
-                try (var parser = MAPPER.createParser(token)) {
-                    DockerConfig config = parser.readValueAs(DockerConfig.class);
+                try {
+                    //we assume this is a .dockerconfig file
+                    DockerConfigTemplate config = MAPPER.readValue(token, DockerConfigTemplate.class);
+
                     boolean found = false;
                     String tmpUser = null;
                     String tmpPw = null;
