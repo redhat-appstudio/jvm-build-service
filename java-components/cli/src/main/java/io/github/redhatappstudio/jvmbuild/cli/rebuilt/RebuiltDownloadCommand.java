@@ -14,17 +14,20 @@ import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.parsers.JsonParser;
 import org.cyclonedx.parsers.Parser;
 
+import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.ImageReference;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.RegistryException;
 import com.google.cloud.tools.jib.blob.Blob;
 import com.google.cloud.tools.jib.event.EventHandlers;
+import com.google.cloud.tools.jib.frontend.CredentialRetrieverFactory;
 import com.google.cloud.tools.jib.http.FailoverHttpClient;
 import com.google.cloud.tools.jib.image.json.BuildableManifestTemplate;
 import com.google.cloud.tools.jib.image.json.ManifestTemplate;
 import com.google.cloud.tools.jib.image.json.OciManifestTemplate;
 import com.google.cloud.tools.jib.registry.ManifestAndDigest;
 import com.google.cloud.tools.jib.registry.RegistryClient;
+import com.google.cloud.tools.jib.registry.credentials.CredentialRetrievalException;
 import com.redhat.hacbs.resources.model.v1alpha1.RebuiltArtifact;
 import com.redhat.hacbs.resources.model.v1alpha1.RebuiltArtifactSpec;
 
@@ -123,6 +126,10 @@ public class RebuiltDownloadCommand
                     new FailoverHttpClient(true,
                             true,
                             s -> Log.info(s.getMessage())));
+            CredentialRetrieverFactory credentialRetrieverFactory = CredentialRetrieverFactory.forImage(reference,
+                    (s) -> System.err.println(s.getMessage()));
+            Optional<Credential> optionalCredential = credentialRetrieverFactory.dockerConfig().retrieve();
+            optionalCredential.ifPresent(factory::setCredential);
             RegistryClient registryClient = factory.newRegistryClient();
 
             ManifestAndDigest<ManifestTemplate> manifestAndDigest = registryClient.pullManifest(reference.getTag().get(),
@@ -147,7 +154,7 @@ public class RebuiltDownloadCommand
             } else {
                 throw new RuntimeException("Unexpected manifest size");
             }
-        } catch (InvalidImageReferenceException | RegistryException e) {
+        } catch (InvalidImageReferenceException | RegistryException | CredentialRetrievalException e) {
             throw new RuntimeException(e);
         }
     }
