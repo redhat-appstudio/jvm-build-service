@@ -336,7 +336,6 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
             }
-
             if (registries != null) {
                 String[] splitRegistries = registries.split(";", -1);
                 for (String value : splitRegistries) {
@@ -349,7 +348,7 @@ public class LookupBuildInfoCommand implements Runnable {
                     String fullName = registry.getHost() + (port.equals("443") ? "" : ":" + port) + "/" + registry.getOwner()
                             + "/" + registry.getRepository() + ":" + imageId;
 
-                    Log.infof("Examining shared registry %s for image %s", fullName, imageId);
+                    Log.infof("Examining registry %s for image %s", fullName, imageId);
                     try {
                         //TODO consider authentication whether via env token or dockerconfig. Would need to pass
                         // token in env as per ContainerRegistryDeployer?

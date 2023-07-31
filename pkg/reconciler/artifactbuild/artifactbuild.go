@@ -123,7 +123,6 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 
 	switch {
 	case prerr == nil:
-		fmt.Printf("### artifactbuild::reconcile::pipeline state %#v\n", pr.Status.PipelineResults)
 		log = log.WithValues("kind", "PipelineRun")
 		return r.handlePipelineRunReceived(ctx, log, &pr)
 
@@ -159,7 +158,6 @@ func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context
 			return reconcile.Result{}, r.client.Update(ctx, &abr)
 		}
 	}
-	fmt.Printf("### artifactbuild::handleArtifactBuildReceived::ab state %#v \n", abr.Status.State)
 
 	switch abr.Status.State {
 	case v1alpha1.ArtifactBuildStateNew, "":

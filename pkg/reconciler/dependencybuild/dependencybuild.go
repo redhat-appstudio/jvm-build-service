@@ -117,7 +117,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		if done || err != nil {
 			return reconcile.Result{}, err
 		}
-		fmt.Printf("### dependencybuild::reconcile::db %#v\n", db.Status.State)
 		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
@@ -135,7 +134,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-		fmt.Printf("### dependencybuild::reconcile::pipeline %#v\n", pr.Name)
 		if pr.DeletionTimestamp != nil {
 			//always remove the finalizer if it is deleted
 			//but continue with the method
@@ -432,8 +430,6 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 
 		db.Status.PotentialBuildRecipes = buildRecipes
 
-		fmt.Printf("handleAnalyzeBuildPipelineRunReceived::marshalledBuildInfo %#v and GAVS %#v\n", unmarshalled.Image, unmarshalled.Gavs)
-
 		if len(unmarshalled.Image) > 0 {
 			log.Info(fmt.Sprintf("Found preexisting shared build with deployed GAVs %#v from image %#v", unmarshalled.Gavs, unmarshalled.Image))
 			db.Status.State = v1alpha1.DependencyBuildStateComplete
@@ -681,7 +677,6 @@ func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
 }
 
 func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
-	fmt.Printf("### handleBuildPipelineRunReceived %#v results %#v\n\n", pr.Status.CompletionTime, pr.Status.PipelineResults)
 	if pr.Status.CompletionTime != nil {
 		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
 		if err != nil || db == nil {
@@ -813,12 +808,11 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 						return reconcile.Result{}, err
 					}
 				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
-					fmt.Printf("### handleBuildPipelineRunReceived about to create RebuiltArtifact i.Name %s, i.Value %s with db.Status %#v\n", i.Name, i.Value, db.Status)
-
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed := strings.Split(i.Value.StringVal, ",")
 
 					con, err := r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
+
 					if err != nil {
 						return reconcile.Result{}, err
 					} else if !con {

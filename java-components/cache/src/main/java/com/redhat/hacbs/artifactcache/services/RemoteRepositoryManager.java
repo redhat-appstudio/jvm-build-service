@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import com.redhat.hacbs.resources.model.v1alpha1.Util;
 import jakarta.annotation.PostConstruct;
@@ -41,6 +42,7 @@ public class RemoteRepositoryManager {
     private static final String REPOSITORY = ".repository";
     private static final String INSECURE = ".insecure";
     public static final String ARTIFACT_DEPLOYMENTS = "artifact-deployments";
+    private static final String HACBS = "hacbs";
     private final ConcurrentHashMap<String, List<RepositoryCache>> remoteStores = new ConcurrentHashMap<>();
 
     @Inject
@@ -54,8 +56,11 @@ public class RemoteRepositoryManager {
     @Inject
     RecipeManager recipeManager;
 
+    StorageManager hacbsStorageMgr;
+
     @PostConstruct
     void setup() throws IOException, GitAPIException {
+        hacbsStorageMgr = storageManager.resolve(HACBS);
         //TODO: this is a bit of a hack
         //we read the deployment config and if present use it to configure the 'rebuilt' repo
         var registryOwner = config.getOptionalValue("registry.owner", String.class);
@@ -73,7 +78,7 @@ public class RemoteRepositoryManager {
                     RepositoryType.OCI_REGISTRY,
                     new OCIRegistryRepositoryClient(host + (port == 443 ? "" : ":" + port), registryOwner.get(), repository,
                             token, prependTag,
-                            insecure, rebuiltArtifacts, storageManager));
+                            insecure, rebuiltArtifacts, hacbsStorageMgr));
             remoteStores.put("rebuilt", List.of(new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false)));
         }
         var sharedRegistries = config.getOptionalValue("shared.registries", String.class);
@@ -99,12 +104,26 @@ public class RemoteRepositoryManager {
                                 Optional.of(registry.getPrependTag()),
                                 registry.getInsecure(),
                                 rebuiltArtifacts,
-                                storageManager));
+                                hacbsStorageMgr));
 
                 remoteStores.put(name,
                         List.of(new RepositoryCache(storageManager.resolve(name), rebuiltRepo, false)));
             }
         }
+        rebuiltArtifacts.addImageDeletionListener(new Consumer<>() {
+            private static final String DIGEST_PREFIX = "sha256:";
+
+            @Override
+            public void accept(String s) {
+                try {
+                    String digestHash = s.substring(DIGEST_PREFIX.length());
+                    Log.infof("Deleting cached image with digest %s", digestHash);
+                    storageManager.delete(digestHash);
+                } catch (Exception e) {
+                    Log.errorf(e, "Failed to clear cache path for image %s", s);
+                }
+            }
+        });
     }
 
     public List<RepositoryCache> getRemoteRepositories(String name) {
@@ -161,7 +180,7 @@ public class RemoteRepositoryManager {
                 String u = owner.get();
 
                 RepositoryClient client = new OCIRegistryRepositoryClient(registry, u, repository, token, prependTag,
-                        enableHttpAndInsecureFailover, rebuiltArtifacts, storageManager);
+                        enableHttpAndInsecureFailover, rebuiltArtifacts, hacbsStorageMgr);
                 Log.infof("OCI registry %s added with owner %s", registry, u);
                 return List.of(new Repository(repo, "oci://" + registry + "/" + u, RepositoryType.OCI_REGISTRY, client));
             } else {

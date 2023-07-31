@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
@@ -115,22 +114,7 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
             credential = null;
             Log.infof("No credential provided");
         }
-        this.storageManager = storageManager.resolve(HACBS);
-        rebuiltArtifacts.addImageDeletionListener(new Consumer<String>() {
-            @Override
-            public void accept(String s) {
-                try {
-                    ManifestAndDigest<ManifestTemplate> manifestAndDigest = getRegistryClient().pullManifest(s,
-                            ManifestTemplate.class);
-                    DescriptorDigest descriptorDigest = manifestAndDigest.getDigest();
-                    String digestHash = descriptorDigest.getHash();
-                    Log.infof("Deleting cached image %s", digestHash);
-                    storageManager.delete(digestHash);
-                } catch (Exception e) {
-                    Log.errorf(e, "Failed to clear cache path for image %s", s);
-                }
-            }
-        });
+        this.storageManager = storageManager;
     }
 
     @Override
@@ -355,7 +339,6 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
     }
 
     private static final String UNDERSCORE = "_";
-    private static final String HACBS = "hacbs";
     private static final String ARTIFACTS = "artifacts";
     private static final String DOT = ".";
     private static final String SHA_1 = "sha1";

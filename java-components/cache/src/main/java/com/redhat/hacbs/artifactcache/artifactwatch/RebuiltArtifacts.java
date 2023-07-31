@@ -57,7 +57,7 @@ public class RebuiltArtifacts {
                 }
                 for (var i : listeners) {
                     try {
-                        i.accept(old.getSpec().getImage());
+                        i.accept(old.getSpec().getDigest());
                     } catch (Throwable t) {
                         Log.errorf(t, "Failed to notify deletion listener");
                     }
@@ -76,7 +76,7 @@ public class RebuiltArtifacts {
                     }
                     for (var i : listeners) {
                         try {
-                            i.accept(artifactBuild.getSpec().getImage());
+                            i.accept(artifactBuild.getSpec().getDigest());
                         } catch (Throwable t) {
                             Log.errorf(t, "Failed to notify deletion listener");
                         }
