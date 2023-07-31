@@ -814,12 +814,12 @@ func ImageRegistriesToString(log logr.Logger, sharedRegistries []v1alpha1.ImageR
 		if i > 0 {
 			sharedRegistryString += ";"
 		}
-		sharedRegistryString += imageRegistryToString(shared)
+		sharedRegistryString += ImageRegistryToString(shared)
 	}
 	return sharedRegistryString
 }
 
-func imageRegistryToString(registry v1alpha1.ImageRegistry) string {
+func ImageRegistryToString(registry v1alpha1.ImageRegistry) string {
 	result := registry.Host
 	result += ","
 	result += registry.Port

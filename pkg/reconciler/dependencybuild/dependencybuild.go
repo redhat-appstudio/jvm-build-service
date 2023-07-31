@@ -1063,7 +1063,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
 	}
-	sharedRegistries := jbsconfig.ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
+	registries := jbsconfig.ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
 
 	trueBool := true
 	args := []string{
@@ -1086,9 +1086,15 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if len(path) > 0 {
 		args = append(args, "--context", path)
 	}
-	if sharedRegistries != "" {
-		args = append(args, "--shared-registries", sharedRegistries)
+
+	// Search not only the configured shared registries but the main registry as well.
+	if registries == "" {
+		registries = jbsconfig.ImageRegistryToString(jbsConfig.Spec.ImageRegistry)
+	} else {
+		registries += ";" + jbsconfig.ImageRegistryToString(jbsConfig.Spec.ImageRegistry)
 	}
+	args = append(args, "--registries", registries)
+
 	if build.ScmInfo.Private {
 		args = append(args, "--private-repo")
 	}

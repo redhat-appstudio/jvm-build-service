@@ -92,8 +92,8 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--private-repo")
     boolean privateRepo;
 
-    @CommandLine.Option(names = "--shared-registries")
-    String sharedRegistries;
+    @CommandLine.Option(names = "--registries", description = "Denotes registries to search for preexisting builds")
+    String registries;
 
     /**
      * The build info, in JSON format as per BuildRecipe.
@@ -336,9 +336,10 @@ public class LookupBuildInfoCommand implements Runnable {
                 info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
             }
-            if (sharedRegistries != null) {
-                String[] registries = sharedRegistries.split(";", -1);
-                for (String value : registries) {
+
+            if (registries != null) {
+                String[] splitRegistries = registries.split(";", -1);
+                for (String value : splitRegistries) {
                     ImageRegistry registry = Util.parseRegistry( value);
                     // Meant to match Go code that does
                     // util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)

@@ -252,7 +252,7 @@ func TestImageRegistryToString(t *testing.T) {
 		Insecure:   false,
 		PrependTag: "",
 	}
-	result := imageRegistryToString(registry)
+	result := ImageRegistryToString(registry)
 	g.Expect(result).To(Equal("quay.io,,nobody,foo,false,"))
 }
 
