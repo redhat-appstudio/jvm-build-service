@@ -68,7 +68,7 @@ public class MavenClient implements RepositoryClient {
 
     private Optional<ArtifactResult> downloadMavenFile(String group, String artifact, String version, String target,
             String targetUri) {
-        long backoff = 200;
+        long backoff = 10000;
         IOException networkException = null;
         int retryCount = 0;
         String sha1 = null;
