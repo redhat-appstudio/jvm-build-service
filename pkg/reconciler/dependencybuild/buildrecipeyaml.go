@@ -233,6 +233,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Resources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
 				},
 				Args:   []string{"$(params.GOALS[*])"},
 				Script: OriginalContentPath + "/build.sh \"$@\"",
