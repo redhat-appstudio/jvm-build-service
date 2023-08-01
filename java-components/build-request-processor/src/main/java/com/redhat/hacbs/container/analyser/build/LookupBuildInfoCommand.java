@@ -119,6 +119,7 @@ public class LookupBuildInfoCommand implements Runnable {
     private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo,
             boolean privateRepo, CacheBuildInfoLocator buildInfoLocator)
             throws Exception {
+        boolean versionCorrect = false;
         var path = Files.createTempDirectory("checkout");
         try (var clone = Git.cloneRepository()
                 .setCredentialsProvider(
@@ -163,11 +164,16 @@ public class LookupBuildInfoCommand implements Runnable {
                 try (BufferedReader pomReader = Files.newBufferedReader(pomFile)) {
                     MavenXpp3Reader reader = new MavenXpp3Reader();
                     Model model = reader.read(pomReader);
+
                     //TODO: we should do discoery on the whole tree
                     List<DiscoveryResult> results = new ArrayList<>();
                     if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
                         //not tagged properly, deal with it automatically
                         info.enforceVersion = version;
+                    } else if (model.getVersion().equals(version)) {
+                        //version is correct, don't run enforce version as it can fail on things
+                        //that are tagged correctly
+                        versionCorrect = true;
                     }
                     results.add(new DiscoveryResult(
                             Map.of(JDK, new VersionRange("7", "17", "11"), MAVEN, new VersionRange("3.8", "3.8", "3.8")),
@@ -290,7 +296,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         i.addAll(buildRecipeInfo.getAdditionalArgs());
                     }
                 }
-                if (buildRecipeInfo.isEnforceVersion()) {
+                if (buildRecipeInfo.isEnforceVersion() && !versionCorrect) {
                     info.enforceVersion = version;
                 }
                 info.setRepositories(buildRecipeInfo.getRepositories());
