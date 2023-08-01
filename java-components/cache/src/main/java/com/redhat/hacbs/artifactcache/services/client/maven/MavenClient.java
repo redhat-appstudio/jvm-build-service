@@ -106,6 +106,7 @@ public class MavenClient implements RepositoryClient {
                     networkException = e;
                     retryCount++;
                     if (retryCount <= networkRetries) {
+                        Log.infof("Retrying request to %s due to network failure %s", targetUri, e.getMessage());
                         Thread.sleep(backoff);
                         backoff += backoff;
                     }
