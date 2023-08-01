@@ -28,8 +28,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import com.redhat.hacbs.resources.model.v1alpha1.Util;
-import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
@@ -39,9 +37,11 @@ import org.apache.maven.cli.CLIManager;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.ImageReference;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.RegistryException;
@@ -58,6 +58,8 @@ import com.redhat.hacbs.container.analyser.location.VersionRange;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 import com.redhat.hacbs.recipies.util.GitCredentials;
+import com.redhat.hacbs.resources.model.v1alpha1.Util;
+import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.quarkus.logging.Log;
@@ -94,6 +96,9 @@ public class LookupBuildInfoCommand implements Runnable {
 
     @CommandLine.Option(names = "--registries", description = "Denotes registries to search for preexisting builds")
     String registries;
+
+    @ConfigProperty(name = "registry.token")
+    Optional<String> envToken;
 
     /**
      * The build info, in JSON format as per BuildRecipe.
@@ -338,8 +343,11 @@ public class LookupBuildInfoCommand implements Runnable {
             }
             if (registries != null) {
                 String[] splitRegistries = registries.split(";", -1);
+
+                String token = envToken.orElse("");
+
                 for (String value : splitRegistries) {
-                    ImageRegistry registry = Util.parseRegistry( value);
+                    ImageRegistry registry = Util.parseRegistry(value);
                     // Meant to match Go code that does
                     // util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
                     String contextPath = context == null ? "" : context;
@@ -347,13 +355,15 @@ public class LookupBuildInfoCommand implements Runnable {
                     String port = isBlank(registry.getPort()) ? "443" : registry.getPort();
                     String fullName = registry.getHost() + (port.equals("443") ? "" : ":" + port) + "/" + registry.getOwner()
                             + "/" + registry.getRepository() + ":" + imageId;
+                    Credential credential = ContainerUtil.processToken(fullName, envToken.orElse(""));
 
                     Log.infof("Examining registry %s for image %s", fullName, imageId);
                     try {
                         //TODO consider authentication whether via env token or dockerconfig. Would need to pass
                         // token in env as per ContainerRegistryDeployer?
                         ImageReference reference = ImageReference.parse(fullName);
-                        RegistryClient registryClient = ContainerUtil.getRegistryClient(reference);
+                        RegistryClient registryClient = ContainerUtil.getRegistryClient(reference, credential,
+                                registry.getInsecure());
                         Optional<ManifestAndDigest<ManifestTemplate>> manifestAndDigest = registryClient
                                 .checkManifest(reference.getTag().get());
 
@@ -374,13 +384,23 @@ public class LookupBuildInfoCommand implements Runnable {
                             JsonObject configJson = tagListJson.getJsonObject("config");
                             JsonObject labels = configJson.getJsonObject("Labels");
                             // ContainerRegistryDeployer uses a comma separated list
-                            String containedGAVS = labels.getMap().get("io.jvmbuildservice.gavs").toString();
-                            String[] gavs = containedGAVS.split(",", -1);
-                            info.setGavs(Arrays.asList(gavs));
+                            List<String> gavList;
+                            if (labels.getMap().containsKey("io.jvmbuildservice.gavs")) {
+                                gavList = Arrays.asList(
+                                        labels.getString("io.jvmbuildservice.gavs").split(",", -1));
+                            } else {
+                                // Backwards compatibility check for builds with older label format.
+                                String g = labels.getString("groupId");
+                                String v = labels.getString("version");
+                                gavList = new ArrayList<>();
+                                Arrays.stream(labels.getString("artifactId").split(","))
+                                        .forEach(a -> gavList.add(g + ":" + a + ":" + v));
+                            }
+                            info.setGavs(gavList);
                             info.setImage(fullName);
                             info.setDigest(manifestAndDigest.get().getDigest().toString());
                             Log.infof(
-                                    "Found GAVs " + Arrays.toString(gavs) + " and digest " + manifestAndDigest.get()
+                                    "Found GAVs " + gavList + " and digest " + manifestAndDigest.get()
                                             .getDigest());
                             break;
                         }

@@ -8,7 +8,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-import com.redhat.hacbs.resources.model.v1alpha1.Util;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -19,6 +18,7 @@ import org.eclipse.microprofile.config.Config;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
 import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
+import com.redhat.hacbs.resources.model.v1alpha1.Util;
 import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
 import io.quarkus.logging.Log;
@@ -86,7 +86,7 @@ public class RemoteRepositoryManager {
         if (sharedRegistries.isPresent()) {
             String[] registries = sharedRegistries.get().split(";", -1);
             for (int i = 0; i < registries.length; i++) {
-                ImageRegistry registry = Util.parseRegistry( registries[i]);
+                ImageRegistry registry = Util.parseRegistry(registries[i]);
                 String name = "shared-rebuilt-" + i;
 
                 Repository rebuiltRepo = new Repository(name,

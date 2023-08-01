@@ -624,18 +624,9 @@ func (r *ReconcilerJBSConfig) handleNoImageSecretFound(ctx context.Context, conf
 			binding.Namespace = config.Namespace
 			imageRegistry := config.ImageRegistry()
 			url := "https://"
-			if imageRegistry.Host == "" {
-				url += "quay.io"
-			} else {
-				url += imageRegistry.Host
-			}
+			url += imageRegistry.Host
 			url += "/" + imageRegistry.Owner + "/"
-			if imageRegistry.Repository == "" {
-				url += "artifact-deployments"
-			} else {
-				url += imageRegistry.Repository
-			}
-
+			url += imageRegistry.Repository
 			binding.Spec.RepoUrl = url
 			binding.Spec.Lifetime = "-1"
 			binding.Spec.Permissions = v1beta1.Permissions{Required: []v1beta1.Permission{{Type: v1beta1.PermissionTypeReadWrite, Area: v1beta1.PermissionAreaRegistry}}}

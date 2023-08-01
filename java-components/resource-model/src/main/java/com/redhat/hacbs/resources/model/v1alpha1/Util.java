@@ -2,9 +2,8 @@ package com.redhat.hacbs.resources.model.v1alpha1;
 
 import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
-public class Util
-{
-    public static ImageRegistry parseRegistry( String registry) {
+public class Util {
+    public static ImageRegistry parseRegistry(String registry) {
         ImageRegistry result = new ImageRegistry();
         // This represents a comma-separated sequence in the *same* order as defined in
         // ImageRegistry in pkg/apis/jvmbuildservice/v1alpha1/jbsconfig_types.go

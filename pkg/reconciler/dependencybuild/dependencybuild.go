@@ -1083,9 +1083,9 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 
 	// Search not only the configured shared registries but the main registry as well.
 	if registries == "" {
-		registries = jbsconfig.ImageRegistryToString(jbsConfig.Spec.ImageRegistry)
+		registries = jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())
 	} else {
-		registries += ";" + jbsconfig.ImageRegistryToString(jbsConfig.Spec.ImageRegistry)
+		registries += ";" + jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())
 	}
 	args = append(args, "--registries", registries)
 
@@ -1097,6 +1097,13 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		pullPolicy = v1.PullNever
 	} else if strings.HasSuffix(image, "dev") {
 		pullPolicy = v1.PullAlways
+	}
+	secretOptional := false
+	if jbsConfig.Annotations != nil {
+		val := jbsConfig.Annotations[jbsconfig.TestRegistry]
+		if val == "true" {
+			secretOptional = true
+		}
 	}
 	memory := fmt.Sprintf("%dMi", 512+additionalMemory)
 	return &pipelinev1beta1.PipelineSpec{
@@ -1125,6 +1132,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 								Env: []v1.EnvVar{
 									{Name: "JAVA_OPTS", Value: "-XX:+CrashOnOutOfMemoryError"},
 									{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
+									{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}}},
 								},
 							},
 						},

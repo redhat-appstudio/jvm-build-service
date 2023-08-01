@@ -1,6 +1,8 @@
 package v1alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 type HermeticBuildType string
 
@@ -77,10 +79,10 @@ type BuildSettings struct {
 	TaskLimitCPU string `json:"taskLimitCPU,omitempty"`
 }
 type ImageRegistry struct {
-	Host       string `json:"host,omitempty"` // Defaults to quay.io in handleNoImageSecretFound
+	Host       string `json:"host,omitempty"` // Defaults to quay.io in ImageRegistry()
 	Port       string `json:"port,omitempty"`
 	Owner      string `json:"owner,omitempty"`
-	Repository string `json:"repository,omitempty"` // Defaults to artifact-deployments in handleNoImageSecretFound
+	Repository string `json:"repository,omitempty"` // Defaults to artifact-deployments in ImageRegistry()
 	Insecure   bool   `json:"insecure,omitempty"`
 	PrependTag string `json:"prependTag,omitempty"`
 }
@@ -119,6 +121,12 @@ type JBSConfig struct {
 
 func (in *JBSConfig) ImageRegistry() ImageRegistry {
 	ret := in.Spec.ImageRegistry
+	if ret.Host == "" {
+		ret.Host = "quay.io"
+	}
+	if ret.Repository == "" {
+		ret.Repository = "artifact-deployments"
+	}
 	if in.Status.ImageRegistry == nil {
 		return ret
 	}

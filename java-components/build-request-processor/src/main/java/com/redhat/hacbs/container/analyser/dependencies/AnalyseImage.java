@@ -81,7 +81,7 @@ public class AnalyseImage extends AnalyserBase {
             throws InvalidImageReferenceException, IOException, RegistryException, CredentialRetrievalException {
 
         ImageReference imageReference = ImageReference.parse(image);
-        RegistryClient registryClient = ContainerUtil.getRegistryClient(imageReference);
+        RegistryClient registryClient = ContainerUtil.getRegistryClient(imageReference, null, false);
         ManifestAndDigest<ManifestTemplate> result = registryClient.pullManifest(imageReference.getQualifier());
         if (result.getManifest() instanceof V21ManifestTemplate) {
             V21ManifestTemplate template = (V21ManifestTemplate) result.getManifest();
