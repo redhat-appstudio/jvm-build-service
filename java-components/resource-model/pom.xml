@@ -22,6 +22,10 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>generator-annotations</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -33,6 +37,25 @@
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>java-generator-maven-plugin</artifactId>
+                <version>${kubernetes-client.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <source>src/main/resources/crds</source>
+                    <packageOverrides>
+                    <io.jvmbuildservice.v1alpha1>com.redhat.hacbs.resources.model.v1alpha1</io.jvmbuildservice.v1alpha1>
+                    </packageOverrides>
+
                 </configuration>
             </plugin>
         </plugins>

@@ -6,8 +6,10 @@ import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.redhat.hacbs.resources.model.v1alpha1.ImageRegistry;
 import com.redhat.hacbs.resources.model.v1alpha1.JBSConfig;
+import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
+import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigspec.SharedRegistries;
+import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import picocli.CommandLine;
@@ -20,7 +22,7 @@ public class SetupSharedRepositoriesCommand {
 
     @Command(mixinStandardHelpOptions = true, description = "List shared repositories")
     public void list() {
-        var resource = client.resources(JBSConfig.class).withName(JBSConfig.NAME);
+        var resource = client.resources(JBSConfig.class).withName(ModelConstants.JBS_CONFIG_NAME);
         JBSConfig config = resource.get();
         if (config != null) {
             var registries = config.getSpec().getSharedRegistries();
@@ -29,7 +31,7 @@ public class SetupSharedRepositoriesCommand {
                     System.out.println(
                             "Found shared image registry of " + r.getHost() + ',' + r.getPort() + ',' + r.getOwner() + ','
                                     + r.getRepository()
-                                    + ',' + r.isInsecure() + ',' + r.getPrependTag());
+                                    + ',' + r.getInsecure() + ',' + r.getPrependTag());
                 }
             }
 
@@ -38,14 +40,14 @@ public class SetupSharedRepositoriesCommand {
 
     @Command(mixinStandardHelpOptions = true, description = "Add a shared repository")
     public void add(@CommandLine.ArgGroup(exclusive = false) Group group) {
-        var resource = client.resources(JBSConfig.class).withName(JBSConfig.NAME);
+        var resource = client.resources(JBSConfig.class).withName(ModelConstants.JBS_CONFIG_NAME);
         JBSConfig config = resource.get();
         if (config != null) {
             var registries = config.getSpec().getSharedRegistries();
             if (StringUtils.isAnyBlank(group.host, group.owner, group.repository)) {
                 throw new RuntimeException("Host, owner and repository must be defined for a shared repository.");
             }
-            ImageRegistry ir = group.getImageRegistry();
+            SharedRegistries ir = group.getImageRegistry();
             System.out.println("Creating shared repo for " + group.repository);
             if (registries == null) {
                 registries = new ArrayList<>();
@@ -58,11 +60,11 @@ public class SetupSharedRepositoriesCommand {
 
     @Command(mixinStandardHelpOptions = true, description = "Delete a shared repository")
     public void delete(@CommandLine.ArgGroup(exclusive = false) Group group) {
-        var resource = client.resources(JBSConfig.class).withName(JBSConfig.NAME);
+        var resource = client.resources(JBSConfig.class).withName(ModelConstants.JBS_CONFIG_NAME);
         JBSConfig config = resource.get();
         if (config != null) {
             var registries = config.getSpec().getSharedRegistries();
-            ImageRegistry ir = group.getImageRegistry();
+            SharedRegistries ir = group.getImageRegistry();
             if (registries.contains(ir)) {
                 System.out.println("Removing shared repo " + group.repository);
                 registries.remove(ir);
@@ -103,8 +105,8 @@ public class SetupSharedRepositoriesCommand {
         @CommandLine.Option(names = "--prependTag")
         String prependTag;
 
-        ImageRegistry getImageRegistry() {
-            ImageRegistry ir = new ImageRegistry();
+        SharedRegistries getImageRegistry() {
+            SharedRegistries ir = new SharedRegistries();
             ir.setHost(host);
             ir.setPort(port);
             ir.setOwner(owner);

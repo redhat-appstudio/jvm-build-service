@@ -461,6 +461,11 @@ func (in *JBSConfigSpec) DeepCopyInto(out *JBSConfigSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.SharedRegistries != nil {
+		in, out := &in.SharedRegistries, &out.SharedRegistries
+		*out = make([]ImageRegistry, len(*in))
+		copy(*out, *in)
+	}
 	out.ImageRegistry = in.ImageRegistry
 	out.CacheSettings = in.CacheSettings
 	out.BuildSettings = in.BuildSettings

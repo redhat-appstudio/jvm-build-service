@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
-import com.redhat.hacbs.resources.model.v1alpha1.ScmInfo;
+import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildspec.Scm;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.github.redhatappstudio.jvmbuild.cli.RequestScopedCompleter;
@@ -28,7 +28,7 @@ public class BuildCompleter extends RequestScopedCompleter {
         Set<String> doubleUps = new HashSet<>();
         Map<String, DependencyBuild> names = new HashMap<>();
         for (var i : builds) {
-            ScmInfo scm = i.getSpec().getScm();
+            var scm = i.getSpec().getScm();
             String full = createFullName(scm);
             try {
                 URI uri = new URI(scm.getScmURL());
@@ -56,7 +56,7 @@ public class BuildCompleter extends RequestScopedCompleter {
         return names;
     }
 
-    private static String createFullName(ScmInfo scm) {
+    private static String createFullName(Scm scm) {
         String full = scm.getScmURL() + "@" + scm.getTag();
         if (scm.getPath() != null && scm.getPath().length() > 1) {
             full = full + ":" + scm.getPath();

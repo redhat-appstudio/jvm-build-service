@@ -59,6 +59,7 @@ generate-crds:
 	"$(CONTROLLER_GEN)" "$(CRD_OPTIONS)" rbac:roleName=manager-role webhook paths=./pkg/apis/jvmbuildservice/v1alpha1 output:crd:artifacts:config=deploy/crds/base
 
 generate: generate-crds generate-deepcopy-client
+	cp deploy/crds/base/* java-components/resource-model/src/main/resources/crds
 
 verify-generate-deepcopy-client: generate-deepcopy-client
 	hack/verify-codegen.sh

@@ -17,7 +17,7 @@ import org.eclipse.microprofile.config.Config;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
 import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
-import com.redhat.hacbs.resources.model.v1alpha1.ImageRegistry;
+import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;
@@ -80,11 +80,11 @@ public class RemoteRepositoryManager {
         if (sharedRegistries.isPresent()) {
             String[] registries = sharedRegistries.get().split(";", -1);
             for (int i = 0; i < registries.length; i++) {
-                ImageRegistry registry = ImageRegistry.parseRegistry(registries[i]);
+                ImageRegistry registry = parseRegistry(registries[i]);
                 String name = "shared-rebuilt-" + i;
 
                 Repository rebuiltRepo = new Repository(name,
-                        "http" + (registry.isInsecure() ? "" : "s") + "://" +
+                        "http" + (registry.getInsecure() ? "" : "s") + "://" +
                                 registry.getHost() + ":" + registry.getPort() + "/" +
                                 registry.getRepository() + "/"
                                 + registry.getPrependTag(),
@@ -96,7 +96,7 @@ public class RemoteRepositoryManager {
                                 // TODO: How to pass token through
                                 Optional.empty(),
                                 Optional.of(registry.getPrependTag()),
-                                registry.isInsecure(),
+                                registry.getInsecure(),
                                 rebuiltArtifacts,
                                 storageManager));
 
@@ -193,6 +193,24 @@ public class RemoteRepositoryManager {
             Log.warnf("No system repository %s found.", repo);
         }
         return ret;
+    }
+
+    static ImageRegistry parseRegistry(String registry) {
+        ImageRegistry result = new ImageRegistry();
+        // This represents a comma-separated sequence in the *same* order as defined in
+        // ImageRegistry in pkg/apis/jvmbuildservice/v1alpha1/jbsconfig_types.go
+        String[] splitRegistry = registry.split(",", -1);
+        if (splitRegistry.length != 6) {
+            throw new RuntimeException("Invalid registry format");
+        }
+        result.setHost(splitRegistry[0]);
+        result.setPort(splitRegistry[1]);
+        result.setOwner(splitRegistry[2]);
+        result.setRepository(splitRegistry[3]);
+        result.setInsecure(Boolean.parseBoolean(splitRegistry[4]));
+        result.setPrependTag(splitRegistry[5]);
+
+        return result;
     }
 
 }
