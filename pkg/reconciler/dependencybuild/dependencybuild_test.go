@@ -116,9 +116,9 @@ func TestStateNew(t *testing.T) {
 			Namespace: metav1.NamespaceDefault,
 			Name:      "test",
 		}, &db))
-		g.Expect(db.Status.CurrentBuildRecipe).ShouldNot(BeNil())
-		g.Expect(db.Status.CurrentBuildRecipe.Image).Should(HavePrefix("quay.io/redhat-appstudio/hacbs-jdk"))
-		g.Expect(db.Status.CurrentBuildRecipe.Repositories).Should(Equal([]string{"jboss", "gradle"}))
+		g.Expect(len(db.Status.BuildAttempts)).Should(Equal(1))
+		g.Expect(db.Status.BuildAttempts[0].Recipe.Image).Should(HavePrefix("quay.io/redhat-appstudio/hacbs-jdk"))
+		g.Expect(db.Status.BuildAttempts[0].Recipe.Repositories).Should(Equal([]string{"jboss", "gradle"}))
 
 	})
 }
@@ -147,10 +147,16 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 		Status:             "True",
 		LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 	})
-	g.Expect(client.Update(ctx, pr))
+	g.Expect(client.Update(ctx, pr)).Should(BeNil())
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
 	g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).Should(Succeed())
-	g.Expect(len(pr.Finalizers)).Should(Equal(0))
+	g.Expect(len(pr.Finalizers)).Should(Equal(1))
+
+	pr.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+
+	g.Expect(client.Update(ctx, pr)).Should(BeNil())
+	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
+	g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).ShouldNot(Succeed())
 }
 
 func TestStateDetect(t *testing.T) {
@@ -196,7 +202,7 @@ func TestStateDetect(t *testing.T) {
 		trList := &pipelinev1beta1.PipelineRunList{}
 		g.Expect(client.List(ctx, trList))
 
-		g.Expect(len(trList.Items)).Should(Equal(2))
+		g.Expect(len(trList.Items)).Should(Equal(1))
 		for _, pr := range trList.Items {
 			if pr.Labels[PipelineTypeLabel] != PipelineTypeBuild {
 				continue
@@ -283,7 +289,16 @@ func TestStateBuilding(t *testing.T) {
 		db.Namespace = metav1.NamespaceDefault
 		db.Name = "test"
 		db.Status.State = v1alpha1.DependencyBuildStateBuilding
-		db.Status.CurrentBuildRecipe = &v1alpha1.BuildRecipe{Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest"}
+		db.Status.BuildAttempts = []*v1alpha1.BuildAttempt{
+			{
+				Recipe: &v1alpha1.BuildRecipe{
+					Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
+				},
+				Build: &v1alpha1.BuildPipelineRun{
+					PipelineName: "test-build-0",
+				},
+			},
+		}
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"
@@ -343,7 +358,13 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(ra.Spec.GAV).Should(Equal(TestArtifact))
 		g.Expect(ra.Spec.Image).ShouldNot(BeNil())
 		pr = getBuildPipeline(client, g)
-		g.Expect(len(pr.Finalizers)).Should(Equal(0))
+		g.Expect(len(pr.Finalizers)).Should(Equal(1))
+
+		pr.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+
+		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
+		g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).ShouldNot(Succeed())
 	})
 	t.Run("Test reconcile building DependencyBuild with failed pipeline", func(t *testing.T) {
 		g := NewGomegaWithT(t)
@@ -388,7 +409,7 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
-		g.Expect(db.Status.CurrentBuildRecipe.AdditionalMemory).Should(Equal(MemoryIncrement))
+		g.Expect(db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1].Recipe.AdditionalMemory).Should(Equal(MemoryIncrement))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
 
@@ -413,7 +434,7 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}}))
 		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
-		g.Expect(db.Status.CurrentBuildRecipe.AdditionalMemory).Should(Equal(1024))
+		g.Expect(db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1].Recipe.AdditionalMemory).Should(Equal(1024))
 
 		//now verify that the system wide limit kicks in
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))

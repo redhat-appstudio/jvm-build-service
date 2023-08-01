@@ -400,20 +400,17 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 				jdk11 := false
 				jdk17 := false
 				for _, i := range db.Status.PotentialBuildRecipes {
-					jdk7 = jdk7 || strings.Contains(i.Image, "jdk7")
-					jdk8 = jdk8 || strings.Contains(i.Image, "jdk8")
-					jdk11 = jdk11 || strings.Contains(i.Image, "jdk11")
-					jdk17 = jdk17 || strings.Contains(i.Image, "jdk17")
+					jdk7 = jdk7 || i.JavaVersion == "7"
+					jdk8 = jdk8 || i.JavaVersion == "8"
+					jdk11 = jdk11 || i.JavaVersion == "11"
+					jdk17 = jdk17 || i.JavaVersion == "17"
 				}
-				for _, i := range db.Status.FailedBuildRecipes {
-					jdk8 = jdk8 || strings.Contains(i.Image, "jdk8")
-					jdk11 = jdk11 || strings.Contains(i.Image, "jdk11")
-					jdk17 = jdk17 || strings.Contains(i.Image, "jdk17")
+				for _, i := range db.Status.BuildAttempts {
+					jdk7 = jdk7 || i.Recipe.JavaVersion == "7"
+					jdk8 = jdk8 || i.Recipe.JavaVersion == "8"
+					jdk11 = jdk11 || i.Recipe.JavaVersion == "11"
+					jdk17 = jdk17 || i.Recipe.JavaVersion == "17"
 				}
-				jdk7 = jdk7 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk7")
-				jdk8 = jdk8 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk8")
-				jdk11 = jdk11 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk11")
-				jdk17 = jdk17 || strings.Contains(db.Status.CurrentBuildRecipe.Image, "jdk17")
 
 				if jdk7 {
 					return false, fmt.Errorf("build should not have been attempted with jdk7")

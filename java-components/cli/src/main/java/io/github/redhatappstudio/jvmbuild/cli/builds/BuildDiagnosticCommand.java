@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Map;
 
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
@@ -75,25 +74,17 @@ public class BuildDiagnosticCommand
                 "Selected build: " + theBuild.getMetadata().getName() + " of " + theBuild.getSpec().getScm().getScmURL() + ':' +
                         theBuild.getSpec().getVersion() + '\n');
 
-        List<String> dockerFiles = theBuild.getStatus().getDiagnosticDockerFiles();
-        int failed = (theBuild.getStatus().getFailedBuildRecipes() == null ? 0
-                : theBuild.getStatus().getFailedBuildRecipes().size());
-        int succeedMarker = dockerFiles.size() == failed ? -1 : dockerFiles.size() - 1;
+        var builds = theBuild.getStatus().getBuildAttempts();
         try {
-            for (int i = 0; i < dockerFiles.size(); i++) {
+            for (var i : builds) {
                 String fileName;
                 String javaVersion;
                 String tagName;
-                if (i == succeedMarker) {
-                    javaVersion = theBuild.getStatus()
-                            .getCurrentBuildRecipe()
-                            .getJavaVersion();
+                if (Boolean.TRUE.equals(i.getBuild().getSucceeded())) {
+                    javaVersion = i.getBuildRecipe().getJavaVersion();
                     tagName = name + ".succeed.jdk" + javaVersion;
                 } else {
-                    javaVersion = theBuild.getStatus()
-                            .getFailedBuildRecipes()
-                            .get(i)
-                            .getJavaVersion();
+                    javaVersion = i.getBuildRecipe().getJavaVersion();
                     tagName = name + ".failed.jdk" + javaVersion;
                 }
                 fileName = "Dockerfile." + tagName;
@@ -108,7 +99,7 @@ public class BuildDiagnosticCommand
                                                 podman run -it %s|@
                                                 """.formatted(javaVersion, fileName, tagName, tagName)));
                 Files.writeString(Paths.get(targetDirectory.toString(), fileName),
-                        dockerFiles.get(i));
+                        i.getBuild().getDiagnosticDockerFile());
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to write Dockerfile", e);

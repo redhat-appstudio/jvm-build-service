@@ -547,8 +547,8 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		localDir := db.Status.State + "/" + db.Name
 		tmp := db
 		tool := "maven"
-		if db.Status.CurrentBuildRecipe != nil {
-			tool = db.Status.CurrentBuildRecipe.Tool
+		if db.Status.CurrentBuildAttempt() != nil {
+			tool = db.Status.CurrentBuildAttempt().Recipe.Tool
 		}
 		if db.Status.FailedVerification {
 			tool += " (FAILED VERIFICATION)"
@@ -583,11 +583,11 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 			dependency.Other++
 		}
 		_ = os.MkdirAll(directory+"/"+localDir, 0755) //#nosec G306 G301
-		for index, docker := range db.Status.DiagnosticDockerFiles {
+		for index, docker := range db.Status.BuildAttempts {
 
 			localPart := localDir + "-docker-" + strconv.Itoa(index) + ".txt"
 			fileName := directory + "/" + localPart
-			err = os.WriteFile(fileName, []byte(docker), 0644) //#nosec G306
+			err = os.WriteFile(fileName, []byte(docker.Build.DiagnosticDockerFile), 0644) //#nosec G306
 			if err != nil {
 				print(fmt.Sprintf("Failed to write docker filer %s: %s", fileName, err))
 			} else {

@@ -4,6 +4,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type DependencyBuildState string
+
 const (
 	DependencyBuildStateNew          = "DependencyBuildStateNew"
 	DependencyBuildStateAnalyzeBuild = "DependencyBuildStateAnalyzeBuild"
@@ -29,18 +31,25 @@ type DependencyBuildStatus struct {
 	Contaminants []Contaminant      `json:"contaminates,omitempty"`
 	//BuildRecipe the current build recipe. If build is done then this recipe was used
 	//to get to the current state
-	CurrentBuildRecipe *BuildRecipe `json:"currentBuildRecipe,omitempty"`
+	// Deprecated
+	DeprecatedCurrentBuildRecipe *BuildRecipe `json:"currentBuildRecipe,omitempty"`
 	// PotentialBuildRecipes additional recipes to try if the current recipe fails
 	PotentialBuildRecipes []*BuildRecipe `json:"potentialBuildRecipes,omitempty"`
 	//FailedBuildRecipes recipes that resulted in a failure
 	//if the current state is failed this may include the current BuildRecipe
-	FailedBuildRecipes            []*BuildRecipe `json:"failedBuildRecipes,omitempty"`
-	LastCompletedBuildPipelineRun string         `json:"lastCompletedBuildPipelineRun,omitempty"`
-	CommitTime                    int64          `json:"commitTime,omitempty"`
-	DeployedArtifacts             []string       `json:"deployedArtifacts,omitempty"`
-	FailedVerification            bool           `json:"failedVerification,omitempty"`
-	DiagnosticDockerFiles         []string       `json:"diagnosticDockerFiles,omitempty"`
-	PipelineRetries               int            `json:"pipelineRetries,omitempty"`
+	//Deprecated
+	DeprecatedFailedBuildRecipes []*BuildRecipe `json:"failedBuildRecipes,omitempty"`
+	//Deprecated
+	DeprecatedLastCompletedBuildPipelineRun string   `json:"lastCompletedBuildPipelineRun,omitempty"`
+	CommitTime                              int64    `json:"commitTime,omitempty"`
+	DeployedArtifacts                       []string `json:"deployedArtifacts,omitempty"`
+	FailedVerification                      bool     `json:"failedVerification,omitempty"`
+	Hermetic                                bool     `json:"hermetic,omitempty"`
+	// Deprecated
+	DeprecatedDiagnosticDockerFiles []string         `json:"diagnosticDockerFiles,omitempty"`
+	PipelineRetries                 int              `json:"pipelineRetries,omitempty"`
+	BuildAttempts                   []*BuildAttempt  `json:"buildAttempts,omitempty"`
+	DiscoveryPipelineResults        *PipelineResults `json:"discoveryPipelineResults,omitempty"`
 }
 
 // +genclient
@@ -70,6 +79,52 @@ type DependencyBuildList struct {
 	Items           []DependencyBuild `json:"items"`
 }
 
+type BuildAttempt struct {
+	Recipe *BuildRecipe      `json:"buildRecipe,omitempty"`
+	Build  *BuildPipelineRun `json:"build,omitempty"`
+}
+
+type BuildPipelineRun struct {
+	PipelineName         string                   `json:"pipelineName"`
+	Complete             bool                     `json:"complete"`
+	Succeeded            bool                     `json:"succeeded,omitempty"`
+	DiagnosticDockerFile string                   `json:"diagnosticDockerFile,omitempty"`
+	Results              *BuildPipelineRunResults `json:"results,omitempty"`
+}
+
+type BuildPipelineRunResults struct {
+	//the image resulting from the run
+	Image       string `json:"image,omitempty"`
+	ImageDigest string `json:"imageDigest"`
+	//If the resulting image was verified
+	Verified bool `json:"verified,omitempty"`
+	// The produced GAVs
+	Gavs []string `json:"gavs,omitempty"`
+	// The hermetic build image produced by the build
+	HermeticBuildImage string `json:"hermeticBuildImage,omitempty"`
+
+	// The Tekton results
+	PipelineResults *PipelineResults `json:"pipelineResults,omitempty"`
+}
+
+func (r *DependencyBuildStatus) GetBuildPipelineRun(pipeline string) *BuildAttempt {
+	for i := range r.BuildAttempts {
+		ba := r.BuildAttempts[i]
+		if ba.Build != nil {
+			if ba.Build.PipelineName == pipeline {
+				return ba
+			}
+		}
+	}
+	return nil
+}
+func (r *DependencyBuildStatus) CurrentBuildAttempt() *BuildAttempt {
+	if len(r.BuildAttempts) == 0 {
+		return nil
+	}
+	return r.BuildAttempts[len(r.BuildAttempts)-1]
+}
+
 type BuildRecipe struct {
 	Pipeline            string               `json:"pipeline,omitempty"`
 	Tool                string               `json:"tool,omitempty"`
@@ -97,4 +152,11 @@ type AdditionalDownload struct {
 	BinaryPath  string `json:"binaryPath,omitempty"`
 	PackageName string `json:"packageName,omitempty"`
 	FileType    string `json:"type"`
+}
+
+// A representation of the Tekton Results records for a pipeline
+type PipelineResults struct {
+	Result string `json:"result,omitempty"`
+	Record string `json:"record,omitempty"`
+	Logs   string `json:"logs,omitempty"`
 }

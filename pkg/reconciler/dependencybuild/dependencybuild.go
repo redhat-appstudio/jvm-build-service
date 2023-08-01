@@ -115,6 +115,10 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 
 	switch {
 	case dberr == nil:
+		err, done := r.handleDeprecatedFields(ctx, db)
+		if done || err != nil {
+			return reconcile.Result{}, err
+		}
 		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
@@ -153,6 +157,30 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileDependencyBuild) handleDeprecatedFields(ctx context.Context, db v1alpha1.DependencyBuild) (error, bool) {
+	deprecatedInfoRemoved := false
+	if db.Status.DeprecatedCurrentBuildRecipe != nil {
+		db.Status.DeprecatedCurrentBuildRecipe = nil
+		deprecatedInfoRemoved = true
+	}
+	if db.Status.DeprecatedDiagnosticDockerFiles != nil {
+		db.Status.DeprecatedDiagnosticDockerFiles = nil
+		deprecatedInfoRemoved = true
+	}
+	if db.Status.DeprecatedFailedBuildRecipes != nil {
+		db.Status.DeprecatedFailedBuildRecipes = nil
+		deprecatedInfoRemoved = true
+	}
+	if db.Status.DeprecatedLastCompletedBuildPipelineRun != "" {
+		db.Status.DeprecatedLastCompletedBuildPipelineRun = ""
+		deprecatedInfoRemoved = true
+	}
+	if deprecatedInfoRemoved {
+		return r.client.Status().Update(ctx, &db), true
+	}
+	return nil, false
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
@@ -214,7 +242,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		msg := "pipelinerun missing ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
-		return RemovePipelineFinalizer(ctx, pr, r.client)
+		return reconcile.Result{}, nil
 	}
 	ownerName := ""
 	for _, ownerRef := range ownerRefs {
@@ -228,7 +256,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
 		log.Info(msg, pr.Namespace, pr.Name)
 
-		return RemovePipelineFinalizer(ctx, pr, r.client)
+		return reconcile.Result{}, nil
 	}
 
 	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
@@ -245,8 +273,15 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		//no need to retry it would just result in an infinite loop
 		return reconcile.Result{}, nil
 	}
+	if db.Status.DiscoveryPipelineResults == nil {
+		db.Status.DiscoveryPipelineResults = &v1alpha1.PipelineResults{}
+	}
+	modified := r.handleTektonResultsForPipeline(db.Status.DiscoveryPipelineResults, pr)
 	if db.Status.State != v1alpha1.DependencyBuildStateAnalyzeBuild {
-		return RemovePipelineFinalizer(ctx, pr, r.client)
+		if modified {
+			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+		}
+		return reconcile.Result{}, nil
 	}
 
 	var buildInfo string
@@ -401,7 +436,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		return reconcile.Result{}, err
 	}
 
-	return RemovePipelineFinalizer(ctx, pr, r.client)
+	return reconcile.Result{}, nil
 }
 
 type marshalledBuildInfo struct {
@@ -503,27 +538,46 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 	//pick the first recipe in the potential list
 	//new build, kick off a pipeline run to run the build
 	//first we update the recipes, but add a flag that this is not submitted yet
-	if db.Status.CurrentBuildRecipe != nil {
-		db.Status.FailedBuildRecipes = append(db.Status.FailedBuildRecipes, db.Status.CurrentBuildRecipe)
-	}
+
 	//no more attempts
 	if len(db.Status.PotentialBuildRecipes) == 0 {
 		db.Status.State = v1alpha1.DependencyBuildStateFailed
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildFailed", "The DependencyBuild %s/%s moved to failed, all recipes exhausted", db.Namespace, db.Name)
 		return reconcile.Result{}, r.client.Status().Update(ctx, db)
 	}
-	db.Status.CurrentBuildRecipe = db.Status.PotentialBuildRecipes[0]
+	ba := v1alpha1.BuildAttempt{}
+	ba.Recipe = db.Status.PotentialBuildRecipes[0]
+	pipelineName := currentDependencyBuildPipelineName(db)
+	ba.Build = &v1alpha1.BuildPipelineRun{
+		PipelineName: pipelineName,
+	}
 	//and remove if from the potential list
 	db.Status.PotentialBuildRecipes = db.Status.PotentialBuildRecipes[1:]
+	db.Status.BuildAttempts = append(db.Status.BuildAttempts, &ba)
 	db.Status.State = v1alpha1.DependencyBuildStateBuilding
-	//update the recipes
+	//create the pipeline run
 	return reconcile.Result{}, r.client.Status().Update(ctx, db)
 
 }
 
 func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-	//now submit the pipeline
+
+	//first we check to see if the pipeline exists
+	attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
+
 	pr := pipelinev1beta1.PipelineRun{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: attempt.Build.PipelineName, Namespace: db.Namespace}, &pr)
+	if err == nil {
+		//the build already exists
+		//do nothing
+		return reconcile.Result{}, nil
+	}
+	if !errors.IsNotFound(err) {
+		//other error
+		return reconcile.Result{}, err
+	}
+
+	//now submit the pipeline
 	pr.Finalizers = []string{PipelineRunFinalizer}
 	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
@@ -533,7 +587,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
 	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
 	// we move the db out of building
-	pr.Name = currentDependencyBuildPipelineName(db)
+	pr.Name = attempt.Build.PipelineName
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Name, artifactbuild.PipelineRunLabel: "", PipelineTypeLabel: PipelineTypeBuild}
 
 	jbsConfig := &v1alpha1.JBSConfig{}
@@ -555,11 +609,11 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
 		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
-		{Name: PipelineParamImage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.Image}},
-		{Name: PipelineParamGoals, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: db.Status.CurrentBuildRecipe.CommandLine}},
-		{Name: PipelineParamEnforceVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.EnforceVersion}},
-		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.ToolVersion}},
-		{Name: PipelineParamJavaVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Status.CurrentBuildRecipe.JavaVersion}},
+		{Name: PipelineParamImage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.Image}},
+		{Name: PipelineParamGoals, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
+		{Name: PipelineParamEnforceVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.EnforceVersion}},
+		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.ToolVersion}},
+		{Name: PipelineParamJavaVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
 	}
 
 	systemConfig := v1alpha1.SystemConfig{}
@@ -569,12 +623,12 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 	diagnostic := ""
 	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
-	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(db.Status.CurrentBuildRecipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, db.Status.CurrentBuildRecipe, db, paramValues, buildRequestProcessorImage)
+	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	db.Status.DiagnosticDockerFiles = append(db.Status.DiagnosticDockerFiles, diagnostic)
+	attempt.Build.DiagnosticDockerFile = diagnostic
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
 		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
@@ -603,66 +657,41 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 }
 
 func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
-	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.FailedBuildRecipes))
+	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.BuildAttempts))
 }
 
 func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+
 	if pr.Status.CompletionTime != nil {
-		// get db
-		ownerRefs := pr.GetOwnerReferences()
-		if len(ownerRefs) == 0 {
-			msg := "pipelinerun missing ownerrefs %s:%s"
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
+		if err != nil || db == nil {
+			return reconcile.Result{}, err
+		}
+
+		attempt := db.Status.GetBuildPipelineRun(pr.Name)
+		if attempt == nil {
+			msg := fmt.Sprintf("unknown build pipeline run for db %s %s:%s", db.Name, pr.Namespace, pr.Name)
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, msg)
 			log.Info(msg, pr.Namespace, pr.Name)
+			return reconcile.Result{}, nil
+		}
+		run := attempt.Build
 
-			return RemovePipelineFinalizer(ctx, pr, r.client)
-		}
-		if len(ownerRefs) > 1 {
-			// workaround for event/logging methods that can only take string args
-			count := fmt.Sprintf("%d", len(ownerRefs))
-			msg := "pipelinerun %s:%s has %s ownerrefs but only using the first dependencybuild ownerfef"
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, count)
-			log.Info(msg, pr.Namespace, pr.Name, count)
-		}
-		// even though we filter out artifactbuild pipelineruns, let's check the kind and make sure
-		// we use a dependencybuild ownerref
-		var ownerRef *v12.OwnerReference
-		for i, or := range ownerRefs {
-			if strings.EqualFold(or.Kind, "dependencybuild") || strings.EqualFold(or.Kind, "dependencybuilds") {
-				ownerRef = &ownerRefs[i]
-				break
+		if run.Complete {
+			//we have already seen this
+
+			//we still need to check for tekton results updates though
+			if r.handleTektonResults(db, pr) {
+				return reconcile.Result{}, r.client.Update(ctx, db)
 			}
-		}
-		if ownerRef == nil {
-			msg := "pipelinerun missing dependencybuild onwerrefs %s:%s"
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
-			log.Info(msg, pr.Namespace, pr.Name)
 
-			return RemovePipelineFinalizer(ctx, pr, r.client)
-		}
-
-		key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerRef.Name}
-		db := v1alpha1.DependencyBuild{}
-		err := r.client.Get(ctx, key, &db)
-		if err != nil {
-			msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error())
-			log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error()))
-			if errors.IsNotFound(err) {
-				return reconcile.Result{}, err
-			}
-			//on not found we don't return the error
-			//no need to retry
 			return reconcile.Result{}, nil
 		}
 
-		if pr.Name == db.Status.LastCompletedBuildPipelineRun || pr.Name != currentDependencyBuildPipelineName(&db) {
-			//already handled
-			return RemovePipelineFinalizer(ctx, pr, r.client)
-		}
-		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+		run.Complete = true
+		run.Succeeded = pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 
-		if !success {
+		if !run.Succeeded {
 
 			//if there was a cache issue we want to retry the build
 			//we check and see if there is a cache pod newer than the build
@@ -687,53 +716,73 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					}
 
 				}
-				if !doRetry && db.Status.CurrentBuildRecipe.AdditionalMemory < 2048 {
+				if !doRetry && attempt.Recipe.AdditionalMemory < 2048 {
 					if r.failedDueToMemory(ctx, log, pr) {
-						msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s, PR UID: %s, Current additional memory: %d", db.Name, pr.UID, db.Status.CurrentBuildRecipe.AdditionalMemory)
+						msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s, PR UID: %s, Current additional memory: %d", db.Name, pr.UID, attempt.Recipe.AdditionalMemory)
 						log.Info(msg)
 						doRetry = true
 						//increase the memory limit
-						if db.Status.CurrentBuildRecipe.AdditionalMemory == 0 {
-							db.Status.CurrentBuildRecipe.AdditionalMemory = MemoryIncrement
+						if attempt.Recipe.AdditionalMemory == 0 {
+							attempt.Recipe.AdditionalMemory = MemoryIncrement
 						} else {
-							db.Status.CurrentBuildRecipe.AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory * 2
+							attempt.Recipe.AdditionalMemory = attempt.Recipe.AdditionalMemory * 2
 						}
 						for i := range db.Status.PotentialBuildRecipes {
-							db.Status.PotentialBuildRecipes[i].AdditionalMemory = db.Status.CurrentBuildRecipe.AdditionalMemory
+							db.Status.PotentialBuildRecipes[i].AdditionalMemory = attempt.Recipe.AdditionalMemory
 						}
 					}
 				}
 
 				if doRetry {
-
 					existing := db.Status.PotentialBuildRecipes
-					db.Status.PotentialBuildRecipes = []*v1alpha1.BuildRecipe{db.Status.CurrentBuildRecipe}
+					db.Status.PotentialBuildRecipes = []*v1alpha1.BuildRecipe{attempt.Recipe}
 					db.Status.PotentialBuildRecipes = append(db.Status.PotentialBuildRecipes, existing...)
 					db.Status.PipelineRetries++
-					err := r.client.Status().Update(ctx, &db)
-					if err != nil {
-						return reconcile.Result{}, err
-					}
+					db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+					err := r.client.Status().Update(ctx, db)
+					return reconcile.Result{}, err
 				}
 			}
 
 		}
 
-		db.Status.LastCompletedBuildPipelineRun = pr.Name
-		//the pr is done, lets potentially update the dependency build
-		//we just set the state here, the ABR logic is in the ABR controller
-		//this keeps as much of the logic in one place as possible
+		//the pr is done, lets update the run details
 
-		if success {
+		if run.Succeeded {
 			var image string
 			var digest string
+			var passedVerification bool
+			var gavs []string
+			var hermeticBuildImage string
 			for _, i := range pr.Status.PipelineResults {
 				if i.Name == PipelineResultImage {
 					image = i.Value.StringVal
 				} else if i.Name == PipelineResultImageDigest {
 					digest = i.Value.StringVal
+				} else if i.Name == artifactbuild.PipelineResultContaminants {
+
+					db.Status.Contaminants = []v1alpha1.Contaminant{}
+					//unmarshal directly into the contaminants field
+					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
+				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
+					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
+					passedVerification = !parseBool
+				} else if i.Name == artifactbuild.PipelineResultGavs {
+					deployed := strings.Split(i.Value.StringVal, ",")
+					db.Status.DeployedArtifacts = deployed
 				}
 			}
+			run.Results = &v1alpha1.BuildPipelineRunResults{
+				Image:              image,
+				ImageDigest:        digest,
+				Verified:           passedVerification,
+				Gavs:               gavs,
+				HermeticBuildImage: hermeticBuildImage,
+			}
+
 			for _, i := range pr.Status.PipelineResults {
 				if i.Name == artifactbuild.PipelineResultContaminants {
 
@@ -752,7 +801,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 						ra.Namespace = pr.Namespace
 						ra.Name = artifactbuild.CreateABRName(i)
-						if err := controllerutil.SetOwnerReference(&db, &ra, r.scheme); err != nil {
+						if err := controllerutil.SetOwnerReference(db, &ra, r.scheme); err != nil {
 							return reconcile.Result{}, err
 						}
 						ra.Spec.GAV = i
@@ -792,28 +841,99 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			if len(db.Status.Contaminants) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
-				r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
+				r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
 				//the dependency was contaminated with community deps
 				//most likely shaded in
 				//we don't need to update the status here, it will be handled by the handleStateComplete method
 				//even though there are contaminates they may not be in artifacts we care about
-				_, err := r.handleStateCompleted(ctx, &db, log)
+				_, err := r.handleStateCompleted(ctx, db, log)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
-				return RemovePipelineFinalizer(ctx, pr, r.client)
+				return reconcile.Result{}, nil
 			}
 		} else {
 			//try again, if there are no more recipes this gets handled in the submit build logic
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		}
-		err = r.client.Status().Update(ctx, &db)
-		if err != nil {
+		err = r.client.Status().Update(ctx, db)
+		return reconcile.Result{}, err
+	} else if pr.GetDeletionTimestamp() != nil {
+		//pr is being deleted
+		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
+		if err != nil || db == nil {
 			return reconcile.Result{}, err
 		}
-		return RemovePipelineFinalizer(ctx, pr, r.client)
+		changed := r.handleTektonResults(db, pr)
+		ba := db.Status.GetBuildPipelineRun(pr.Name)
+		//the relevant run was not complete, mark it as failed
+		if !ba.Build.Complete {
+			ba.Build.Succeeded = false
+			ba.Build.Complete = true
+			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+			changed = true
+		}
+		if changed {
+			err = r.client.Status().Update(ctx, db)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		return reconcile.Result{}, nil
 	}
 	return reconcile.Result{}, nil
+
+}
+
+func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (*v1alpha1.DependencyBuild, error) {
+	// get db
+	ownerRefs := pr.GetOwnerReferences()
+	if len(ownerRefs) == 0 {
+		msg := "pipelinerun missing ownerrefs %s:%s"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+		log.Info(msg, pr.Namespace, pr.Name)
+
+		return nil, nil
+	}
+	if len(ownerRefs) > 1 {
+		// workaround for event/logging methods that can only take string args
+		count := fmt.Sprintf("%d", len(ownerRefs))
+		msg := "pipelinerun %s:%s has %s ownerrefs but only using the first dependencybuild ownerfef"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, count)
+		log.Info(msg, pr.Namespace, pr.Name, count)
+	}
+	// even though we filter out artifactbuild pipelineruns, let's check the kind and make sure
+	// we use a dependencybuild ownerref
+	var ownerRef *v12.OwnerReference
+	for i, or := range ownerRefs {
+		if strings.EqualFold(or.Kind, "dependencybuild") || strings.EqualFold(or.Kind, "dependencybuilds") {
+			ownerRef = &ownerRefs[i]
+			break
+		}
+	}
+	if ownerRef == nil {
+		msg := "pipelinerun missing dependencybuild onwerrefs %s:%s"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
+		log.Info(msg, pr.Namespace, pr.Name)
+
+		return nil, nil
+	}
+
+	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerRef.Name}
+	db := v1alpha1.DependencyBuild{}
+	err := r.client.Get(ctx, key, &db)
+	if err != nil {
+		msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error())
+		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error()))
+		//on not found we don't return the error
+		//no need to retry
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &db, nil
 }
 
 // This checks that the build is still considered uncontaminated
@@ -998,6 +1118,40 @@ func (r *ReconcileDependencyBuild) failedDueToMemory(ctx context.Context, log lo
 func (r *ReconcileDependencyBuild) buildRequestProcessorImage(ctx context.Context, log logr.Logger) (string, error) {
 	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	return image, err
+}
+
+func (r *ReconcileDependencyBuild) handleTektonResults(db *v1alpha1.DependencyBuild, pr *pipelinev1beta1.PipelineRun) bool {
+	if pr.GetAnnotations() == nil {
+		return false
+	}
+	ba := db.Status.GetBuildPipelineRun(pr.Name)
+	if ba.Build.Results == nil {
+		ba.Build.Results = &v1alpha1.BuildPipelineRunResults{}
+	}
+	if ba.Build.Results.PipelineResults == nil {
+		ba.Build.Results.PipelineResults = &v1alpha1.PipelineResults{}
+	}
+	return r.handleTektonResultsForPipeline(ba.Build.Results.PipelineResults, pr)
+}
+
+func (r *ReconcileDependencyBuild) handleTektonResultsForPipeline(ba *v1alpha1.PipelineResults, pr *pipelinev1beta1.PipelineRun) bool {
+	log := pr.GetAnnotations()["results.tekton.dev/log"]
+	rec := pr.GetAnnotations()["results.tekton.dev/record"]
+	result := pr.GetAnnotations()["results.tekton.dev/result"]
+	changed := false
+	if log != "" && log != ba.Logs {
+		ba.Logs = log
+		changed = true
+	}
+	if rec != "" && rec != ba.Record {
+		ba.Record = rec
+		changed = true
+	}
+	if result != "" && result != ba.Result {
+		ba.Result = result
+		changed = true
+	}
+	return changed
 }
 
 type BuilderImage struct {
