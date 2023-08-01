@@ -31,7 +31,7 @@ import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipies.util.FileUtil;
-import com.redhat.hacbs.resources.model.v1alpha1.Contaminant;
+import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
 import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.quarkus.logging.Log;
@@ -228,9 +228,12 @@ public class DeployCommand implements Runnable {
                 }
                 if (taskRun != null) {
 
-                    List<Contaminant> newContaminates = new ArrayList<>();
+                    List<Contaminates> newContaminates = new ArrayList<>();
                     for (var i : contaminatedGavs.entrySet()) {
-                        newContaminates.add(new Contaminant(i.getKey(), new ArrayList<>(i.getValue())));
+                        Contaminates contaminates = new Contaminates();
+                        contaminates.setContaminatedArtifacts(new ArrayList<>(i.getValue()));
+                        contaminates.setGav(i.getKey());
+                        newContaminates.add(contaminates);
                     }
                     String serialisedContaminants = new ObjectMapper().writeValueAsString(newContaminates);
                     Log.infof("Updating results %s with contaminants %s and deployed resources %s",

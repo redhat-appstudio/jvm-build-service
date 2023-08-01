@@ -1,0 +1,194 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.6.2
+  creationTimestamp: null
+  name: jbsconfigs.jvmbuildservice.io
+spec:
+  group: jvmbuildservice.io
+  names:
+    kind: JBSConfig
+    listKind: JBSConfigList
+    plural: jbsconfigs
+    singular: jbsconfig
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.message
+      name: Message
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: JBSConfig TODO provide godoc description
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              additionalRecipes:
+                items:
+                  type: string
+                type: array
+              buildSettings:
+                properties:
+                  buildRequestCPU:
+                    description: The requested CPU for the build and deploy steps
+                      of a pipeline
+                    type: string
+                  buildRequestMemory:
+                    description: The requested memory for the build and deploy steps
+                      of a pipeline
+                    type: string
+                  taskLimitCPU:
+                    description: The CPU limit for all other steps of a pipeline
+                    type: string
+                  taskLimitMemory:
+                    description: The memory limit for all other steps of a pipeline
+                    type: string
+                  taskRequestCPU:
+                    description: The requested CPU for all other steps of a pipeline
+                    type: string
+                  taskRequestMemory:
+                    description: The requested memory for all other steps of a pipeline
+                    type: string
+                type: object
+              cacheSettings:
+                properties:
+                  disableTLS:
+                    type: boolean
+                  ioThreads:
+                    type: string
+                  limitCPU:
+                    type: string
+                  limitMemory:
+                    type: string
+                  requestCPU:
+                    type: string
+                  requestMemory:
+                    type: string
+                  storage:
+                    type: string
+                  workerThreads:
+                    type: string
+                type: object
+              enableRebuilds:
+                type: boolean
+              hermeticBuilds:
+                type: string
+              host:
+                type: string
+              insecure:
+                type: boolean
+              mavenBaseLocations:
+                additionalProperties:
+                  type: string
+                type: object
+              owner:
+                type: string
+              port:
+                type: string
+              prependTag:
+                type: string
+              relocationPatterns:
+                items:
+                  properties:
+                    relocationPattern:
+                      properties:
+                        buildPolicy:
+                          type: string
+                        patterns:
+                          items:
+                            properties:
+                              pattern:
+                                properties:
+                                  from:
+                                    type: string
+                                  to:
+                                    type: string
+                                required:
+                                - from
+                                - to
+                                type: object
+                            required:
+                            - pattern
+                            type: object
+                          type: array
+                      type: object
+                  required:
+                  - relocationPattern
+                  type: object
+                type: array
+              repository:
+                type: string
+              requireArtifactVerification:
+                description: If this is true then the build will fail if artifact
+                  verification fails otherwise deploy will happen as normal, but a
+                  field will be set on the DependencyBuild
+                type: boolean
+              sharedRegistries:
+                items:
+                  properties:
+                    host:
+                      type: string
+                    insecure:
+                      type: boolean
+                    owner:
+                      type: string
+                    port:
+                      type: string
+                    prependTag:
+                      type: string
+                    repository:
+                      type: string
+                  type: object
+                type: array
+            type: object
+          status:
+            properties:
+              imageRegistry:
+                properties:
+                  host:
+                    type: string
+                  insecure:
+                    type: boolean
+                  owner:
+                    type: string
+                  port:
+                    type: string
+                  prependTag:
+                    type: string
+                  repository:
+                    type: string
+                type: object
+              message:
+                type: string
+              rebuildsPossible:
+                type: boolean
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

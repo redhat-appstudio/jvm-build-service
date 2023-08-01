@@ -1,6 +1,6 @@
 package io.github.redhatappstudio.jvmbuild.cli.artifacts;
 
-import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
+import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import picocli.CommandLine;
 
@@ -24,10 +24,11 @@ public class ArtifactListCommand implements Runnable {
             }
             var e = it.next();
             String state = e.getValue().getStatus().getState();
-            boolean buildFailed = state.equals(ArtifactBuild.FAILED) || state.equals(ArtifactBuild.MISSING);
+            boolean buildFailed = state.equals(ModelConstants.ARTIFACT_BUILD_FAILED)
+                    || state.equals(ModelConstants.ARTIFACT_BUILD_MISSING);
             if (failed && !buildFailed) {
                 it.remove();
-            } else if (building && (buildFailed || state.equals(ArtifactBuild.COMPLETE))) {
+            } else if (building && (buildFailed || state.equals(ModelConstants.ARTIFACT_BUILD_COMPLETE))) {
                 it.remove();
             } else {
                 nameLongest = Math.max(nameLongest, e.getKey().length());

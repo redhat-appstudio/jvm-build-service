@@ -17,8 +17,9 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import com.redhat.hacbs.artifactcache.services.RecipeManager;
 import com.redhat.hacbs.recipies.GAV;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
+import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildStatus;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
-import com.redhat.hacbs.resources.model.v1alpha1.ScmInfo;
+import com.redhat.hacbs.resources.model.v1alpha1.artifactbuildstatus.Scm;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
@@ -60,8 +61,9 @@ public class ScmLookup {
             public void onAdd(ArtifactBuild newObj) {
 
                 for (var i = 0; i < 3; ++i) { //retry loop
-                    if (newObj.getStatus().getState() == null || Objects.equals(newObj.getStatus().getState(), "")
-                            || Objects.equals(newObj.getStatus().getState(), ArtifactBuild.NEW)) {
+                    if (newObj.getStatus() == null || newObj.getStatus().getState() == null
+                            || Objects.equals(newObj.getStatus().getState(), "")
+                            || Objects.equals(newObj.getStatus().getState(), ModelConstants.ARTIFACT_BUILD_NEW)) {
                         try {
                             try {
                                 if (newObj.getMetadata().getAnnotations() != null
@@ -74,20 +76,23 @@ public class ScmLookup {
                                     return; //the update should trigger the watch again
                                 }
                                 var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
-                                ScmInfo scm = new ScmInfo();
+                                Scm scm = new Scm();
                                 scm.setScmType("git");
                                 scm.setScmURL(result.getRepoInfo().getUri());
                                 scm.setCommitHash(result.getHash());
                                 scm.setPath(result.getRepoInfo().getPath());
-                                scm.setPrivateRepo(result.getRepoInfo().isPrivateRepo());
+                                scm.set_private(result.getRepoInfo().isPrivateRepo());
                                 scm.setTag(result.getTag());
+                                if (newObj.getStatus() == null) {
+                                    newObj.setStatus(new ArtifactBuildStatus());
+                                }
                                 newObj.getStatus().setScm(scm);
                                 newObj.getStatus().setMessage("");
-                                newObj.getStatus().setState(ArtifactBuild.DISCOVERING);
+                                newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
                             } catch (Exception e) {
                                 Log.errorf(e, "Failed to update rebuilt object");
                                 newObj.getStatus().setMessage(e.getMessage());
-                                newObj.getStatus().setState(ArtifactBuild.MISSING);
+                                newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_MISSING);
                                 // Not setting status label to missing here but will be handled in artifactbuild.go Reconcile
                                 // operator loop that calls updateLabel.
                             }

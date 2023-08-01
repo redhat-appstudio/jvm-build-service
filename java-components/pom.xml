@@ -48,6 +48,7 @@
         <surefire-plugin.version>3.1.2</surefire-plugin.version>
         <formatter-maven-plugin.version>2.23.0</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.9.0</impsort-maven-plugin.version>
+        <kubernetes-client.version>6.7.2</kubernetes-client.version>
 
         <assertj.version>3.24.2</assertj.version>
         <aws-java-sdk-s3.version>1.12.518</aws-java-sdk-s3.version>

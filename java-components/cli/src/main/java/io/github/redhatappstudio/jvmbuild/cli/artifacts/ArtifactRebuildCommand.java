@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.function.UnaryOperator;
 
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
+import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.arc.Arc;
@@ -32,9 +33,9 @@ public class ArtifactRebuildCommand implements Runnable {
             }
             var client = Arc.container().instance(KubernetesClient.class).get();
             for (var ab : client.resources(ArtifactBuild.class).list().getItems()) {
-                if (!ab.getStatus().getState().equals(ArtifactBuild.COMPLETE)) {
+                if (!ab.getStatus().getState().equals(ModelConstants.ARTIFACT_BUILD_COMPLETE)) {
                     if (missing) {
-                        if (!ab.getStatus().getState().equals(ArtifactBuild.MISSING)) {
+                        if (!ab.getStatus().getState().equals(ModelConstants.ARTIFACT_BUILD_MISSING)) {
                             continue;
                         }
                     }
