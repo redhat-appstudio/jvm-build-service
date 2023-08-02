@@ -68,6 +68,111 @@ spec:
             type: object
           status:
             properties:
+              buildAttempts:
+                items:
+                  properties:
+                    build:
+                      properties:
+                        complete:
+                          type: boolean
+                        diagnosticDockerFile:
+                          type: string
+                        pipelineName:
+                          type: string
+                        results:
+                          properties:
+                            gavs:
+                              description: The produced GAVs
+                              items:
+                                type: string
+                              type: array
+                            hermeticBuildImage:
+                              description: The hermetic build image produced by the
+                                build
+                              type: string
+                            image:
+                              description: the image resulting from the run
+                              type: string
+                            imageDigest:
+                              type: string
+                            pipelineResults:
+                              description: The Tekton results
+                              properties:
+                                logs:
+                                  type: string
+                                record:
+                                  type: string
+                                result:
+                                  type: string
+                              type: object
+                            verified:
+                              description: If the resulting image was verified
+                              type: boolean
+                          required:
+                          - imageDigest
+                          type: object
+                        succeeded:
+                          type: boolean
+                      required:
+                      - complete
+                      - pipelineName
+                      type: object
+                    buildRecipe:
+                      properties:
+                        additionalDownloads:
+                          items:
+                            properties:
+                              binaryPath:
+                                type: string
+                              fileName:
+                                type: string
+                              packageName:
+                                type: string
+                              sha256:
+                                type: string
+                              type:
+                                type: string
+                              uri:
+                                type: string
+                            required:
+                            - type
+                            type: object
+                          type: array
+                        additionalMemory:
+                          type: integer
+                        allowedDifferences:
+                          items:
+                            type: string
+                          type: array
+                        commandLine:
+                          items:
+                            type: string
+                          type: array
+                        disableSubmodules:
+                          type: boolean
+                        enforceVersion:
+                          type: string
+                        image:
+                          type: string
+                        javaVersion:
+                          type: string
+                        pipeline:
+                          type: string
+                        postBuildScript:
+                          type: string
+                        preBuildScript:
+                          type: string
+                        repositories:
+                          items:
+                            type: string
+                          type: array
+                        tool:
+                          type: string
+                        toolVersion:
+                          type: string
+                      type: object
+                  type: object
+                type: array
               commitTime:
                 format: int64
                 type: integer
@@ -158,7 +263,7 @@ spec:
                 type: array
               currentBuildRecipe:
                 description: BuildRecipe the current build recipe. If build is done
-                  then this recipe was used to get to the current state
+                  then this recipe was used to get to the current state Deprecated
                 properties:
                   additionalDownloads:
                     items:
@@ -217,12 +322,25 @@ spec:
                   type: string
                 type: array
               diagnosticDockerFiles:
+                description: Deprecated
                 items:
                   type: string
                 type: array
+              discoveryPipelineResults:
+                description: A representation of the Tekton Results records for a
+                  pipeline
+                properties:
+                  logs:
+                    type: string
+                  record:
+                    type: string
+                  result:
+                    type: string
+                type: object
               failedBuildRecipes:
                 description: FailedBuildRecipes recipes that resulted in a failure
                   if the current state is failed this may include the current BuildRecipe
+                  Deprecated
                 items:
                   properties:
                     additionalDownloads:
@@ -280,7 +398,10 @@ spec:
                 type: array
               failedVerification:
                 type: boolean
+              hermetic:
+                type: boolean
               lastCompletedBuildPipelineRun:
+                description: Deprecated
                 type: string
               message:
                 type: string

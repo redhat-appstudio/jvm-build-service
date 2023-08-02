@@ -52,6 +52,8 @@ const (
 	PipelineResultDeployedResources         = "DEPLOYED_RESOURCES"
 	PipelineResultVerificationResult        = "VERIFICATION_RESULTS"
 	PipelineResultPassedVerification        = "PASSED_VERIFICATION" //#nosec
+	PipelineResultHermeticBuildImage        = "HERMETIC_BUILD_IMAGE"
+	PipelineResultGavs                      = "GAVS"
 
 	RebuildAnnotation = "jvmbuildservice.io/rebuild"
 )

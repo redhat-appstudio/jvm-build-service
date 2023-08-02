@@ -24,9 +24,6 @@ vet: ## Run go vet against code.
 test: fmt vet ## Run tests.
 	go test -v ./pkg/... -coverprofile cover.out
 
-e2etest: fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -count 1 -v ./test/...
-
 openshift-e2e:
 	KUBERNETES_CONFIG=${KUBECONFIG} go test -count 1 -tags normal -timeout 120m -v ./openshift-with-appstudio-test/...
 
