@@ -626,10 +626,10 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	if imageRegistry.Insecure {
 		registryArgs = append(registryArgs, "--registry-insecure")
 	}
-	if jbsConfig.ImageRegistry().PrependTag != "" {
+	if imageRegistry.PrependTag != "" {
 		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
-		preBuildImageName = prependTagToImage(preBuildImageName, jbsConfig.Spec.ImageRegistry.PrependTag)
-		hermeticPreBuildImageName = prependTagToImage(hermeticPreBuildImageName, jbsConfig.Spec.ImageRegistry.PrependTag)
+		preBuildImageName = prependTagToImage(preBuildImageName, imageRegistry.PrependTag)
+		hermeticPreBuildImageName = prependTagToImage(hermeticPreBuildImageName, imageRegistry.PrependTag)
 	}
 	deployArgs = append(deployArgs, registryArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)

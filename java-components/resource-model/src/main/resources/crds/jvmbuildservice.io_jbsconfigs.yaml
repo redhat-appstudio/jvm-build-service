@@ -103,6 +103,21 @@ spec:
                 type: string
               prependTag:
                 type: string
+              registry:
+                properties:
+                  host:
+                    type: string
+                  insecure:
+                    type: boolean
+                  owner:
+                    type: string
+                  port:
+                    type: string
+                  prependTag:
+                    type: string
+                  repository:
+                    type: string
+                type: object
               relocationPatterns:
                 items:
                   properties:

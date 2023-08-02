@@ -555,6 +555,7 @@ func (in *JBSConfigSpec) DeepCopyInto(out *JBSConfigSpec) {
 		*out = make([]ImageRegistry, len(*in))
 		copy(*out, *in)
 	}
+	out.Registry = in.Registry
 	out.ImageRegistry = in.ImageRegistry
 	out.CacheSettings = in.CacheSettings
 	out.BuildSettings = in.BuildSettings
