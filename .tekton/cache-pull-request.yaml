@@ -19,8 +19,14 @@ spec:
     - name: dockerfile
       value: cache/src/main/docker/Dockerfile.all-in-one
   pipelineRef:
-    name: docker-build
-    bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
+    resolver: bundles
+    params:
+      - name: bundle
+        value: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
+      - name: name
+        value: docker-build
+      - name: kind
+        value: Pipeline
   workspaces:
     - name: workspace
       volumeClaimTemplate:
