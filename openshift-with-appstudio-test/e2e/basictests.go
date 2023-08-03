@@ -77,6 +77,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			return
 		}
 		for _, s := range parts {
+			ta.Logf(fmt.Sprintf("Creating ArtifactBuild for GAV: %s", s))
 			ab := v1alpha1.ArtifactBuild{}
 			ab.Name = artifactbuild.CreateABRName(s)
 			ab.Namespace = ta.ns
