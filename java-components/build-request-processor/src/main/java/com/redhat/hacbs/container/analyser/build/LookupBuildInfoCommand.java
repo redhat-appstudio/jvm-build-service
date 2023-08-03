@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import jakarta.enterprise.inject.Instance;
@@ -170,7 +171,8 @@ public class LookupBuildInfoCommand implements Runnable {
                     if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
                         //not tagged properly, deal with it automatically
                         info.enforceVersion = version;
-                    } else if (model.getVersion().equals(version)) {
+                    } else if (model.getVersion() == null || Objects.equals(version, model.getVersion())) {
+                        //if the version is null we can't run enforce version at this point
                         //version is correct, don't run enforce version as it can fail on things
                         //that are tagged correctly
                         versionCorrect = true;

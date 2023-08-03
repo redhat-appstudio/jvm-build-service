@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
 	"strings"
 	"testing"
 	"time"
@@ -54,13 +55,29 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 	}
 
-	gavs := os.Getenv("GAVS")
+	set := os.Getenv("TESTSET")
 	//if the GAVS env var is set then we just create pre-defined GAVS
 	//otherwise we do a full build of a sample project
-	if len(gavs) > 0 {
+	if len(set) > 0 {
+		bytes, err := os.ReadFile(filepath.Clean(filepath.Join(path, "minikube.yaml")))
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+			return
+		}
+		testData := map[string][]string{}
+		err = yaml.Unmarshal(bytes, &testData)
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+			return
+		}
 
-		parts := strings.Split(gavs, ",")
+		parts := testData[set]
+		if len(parts) == 0 {
+			debugAndFailTest(ta, "No test data for "+set)
+			return
+		}
 		for _, s := range parts {
+			ta.Logf(fmt.Sprintf("Creating ArtifactBuild for GAV: %s", s))
 			ab := v1alpha1.ArtifactBuild{}
 			ab.Name = artifactbuild.CreateABRName(s)
 			ab.Namespace = ta.ns
@@ -122,7 +139,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
-				return false, nil
+				return false, err
 			}
 			//we want to make sure there is more than one ab, and that they are all complete
 			abComplete := len(abList.Items) > 0
@@ -137,21 +154,21 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
-				return false, nil
+				return false, err
 			}
 			dbComplete := len(dbList.Items) > 0
 			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
 			dbCompleteCount := 0
 			for _, db := range dbList.Items {
-				if db.Status.State != v1alpha1.DependencyBuildStateComplete {
+				if db.Status.State == v1alpha1.DependencyBuildStateFailed {
+					ta.Logf(fmt.Sprintf("depedencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
+					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
+				} else if db.Status.State != v1alpha1.DependencyBuildStateComplete {
 					if dbComplete {
 						//only print the first one
 						ta.Logf(fmt.Sprintf("depedencybuild %s not complete", db.Spec.ScmInfo.SCMURL))
 					}
 					dbComplete = false
-				} else if db.Status.State == v1alpha1.DependencyBuildStateFailed {
-					ta.Logf(fmt.Sprintf("depedencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
-					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
 				} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
 					dbCompleteCount++
 				}
@@ -167,7 +184,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		}
 	})
 
-	if len(gavs) > 0 {
+	if len(set) > 0 {
 		//no futher checks required here
 		//we are just checking that the GAVs in question actually build
 		return

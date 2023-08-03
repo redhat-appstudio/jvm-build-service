@@ -856,7 +856,8 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 			Annotations: map[string]string{jbsconfig.TestRegistry: "true"},
 		},
 		Spec: v1alpha1.JBSConfigSpec{
-			EnableRebuilds: true,
+			EnableRebuilds:    true,
+			AdditionalRecipes: []string{"https://github.com/jvm-build-service-test-data/recipe-repo"},
 			BuildSettings: v1alpha1.BuildSettings{
 				BuildRequestMemory: "256Mi",
 				TaskRequestMemory:  "256Mi",

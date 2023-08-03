@@ -59,7 +59,9 @@ public class ScmLookup {
 
             @Override
             public void onAdd(ArtifactBuild newObj) {
-
+                if (newObj.getStatus() == null) {
+                    newObj.setStatus(new ArtifactBuildStatus());
+                }
                 for (var i = 0; i < 3; ++i) { //retry loop
                     if (newObj.getStatus() == null || newObj.getStatus().getState() == null
                             || Objects.equals(newObj.getStatus().getState(), "")
@@ -83,9 +85,6 @@ public class ScmLookup {
                                 scm.setPath(result.getRepoInfo().getPath());
                                 scm.set_private(result.getRepoInfo().isPrivateRepo());
                                 scm.setTag(result.getTag());
-                                if (newObj.getStatus() == null) {
-                                    newObj.setStatus(new ArtifactBuildStatus());
-                                }
                                 newObj.getStatus().setScm(scm);
                                 newObj.getStatus().setMessage("");
                                 newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
