@@ -73,6 +73,7 @@ jobs:
           path: /tmp/jvm-build-service-report
   run-gav-based-tests:
     strategy:
+      fail-fast: true
       matrix:
         gavs:
           - "commons-collections:commons-collections:3.2.2,org.apache.commons:commons-lang3:3.12.0"

@@ -122,7 +122,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
-				return false, nil
+				return false, err
 			}
 			//we want to make sure there is more than one ab, and that they are all complete
 			abComplete := len(abList.Items) > 0
@@ -137,21 +137,21 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
-				return false, nil
+				return false, err
 			}
 			dbComplete := len(dbList.Items) > 0
 			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
 			dbCompleteCount := 0
 			for _, db := range dbList.Items {
-				if db.Status.State != v1alpha1.DependencyBuildStateComplete {
+				if db.Status.State == v1alpha1.DependencyBuildStateFailed {
+					ta.Logf(fmt.Sprintf("depedencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
+					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
+				} else if db.Status.State != v1alpha1.DependencyBuildStateComplete {
 					if dbComplete {
 						//only print the first one
 						ta.Logf(fmt.Sprintf("depedencybuild %s not complete", db.Spec.ScmInfo.SCMURL))
 					}
 					dbComplete = false
-				} else if db.Status.State == v1alpha1.DependencyBuildStateFailed {
-					ta.Logf(fmt.Sprintf("depedencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
-					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
 				} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
 					dbCompleteCount++
 				}
