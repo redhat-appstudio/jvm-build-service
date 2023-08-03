@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
 	"strings"
 	"testing"
 	"time"
@@ -54,12 +55,27 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 	}
 
-	gavs := os.Getenv("GAVS")
+	set := os.Getenv("TESTSET")
 	//if the GAVS env var is set then we just create pre-defined GAVS
 	//otherwise we do a full build of a sample project
-	if len(gavs) > 0 {
+	if len(set) > 0 {
+		bytes, err := os.ReadFile(filepath.Clean(filepath.Join(path, "minikube.yaml")))
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+			return
+		}
+		testData := map[string][]string{}
+		err = yaml.Unmarshal(bytes, &testData)
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+			return
+		}
 
-		parts := strings.Split(gavs, ",")
+		parts := testData[set]
+		if len(parts) == 0 {
+			debugAndFailTest(ta, "No test data for "+set)
+			return
+		}
 		for _, s := range parts {
 			ab := v1alpha1.ArtifactBuild{}
 			ab.Name = artifactbuild.CreateABRName(s)
@@ -167,7 +183,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		}
 	})
 
-	if len(gavs) > 0 {
+	if len(set) > 0 {
 		//no futher checks required here
 		//we are just checking that the GAVs in question actually build
 		return

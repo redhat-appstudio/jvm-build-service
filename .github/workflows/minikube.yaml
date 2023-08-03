@@ -73,12 +73,12 @@ jobs:
           path: /tmp/jvm-build-service-report
   run-gav-based-tests:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
-        gavs:
-          - "commons-collections:commons-collections:3.2.2,org.apache.commons:commons-lang3:3.12.0"
-          - "org.xerial.snappy:snappy-java:1.1.8.4,org.lz4:lz4-java:1.8.0,org.lz4:lz4-pure-java:1.8.0"
-          - "io.github.jvm-build-service-test-data.maven-version-from-parent-enforce-version:maven-version-from-parent-enforce-version:1.0"
+        testsets:
+          - "test-repos"
+          - "build-systems"
+          - "commons"
     needs: [wait-for-images]
     runs-on: ubuntu-latest
     name: Minikube GAV Matrix
@@ -111,7 +111,7 @@ jobs:
           docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-cache:dev
           docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
 
-          export GAVS=${{ matrix.gavs }}
+          export TESTSET=${{ matrix.testsets }}
 
           ./deploy/minikube-ci.sh
           make minikube-test
@@ -119,5 +119,5 @@ jobs:
         uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: matrix-report
+          name: matrix-report-${{ matrix.testsets }}
           path: /tmp/jvm-build-service-report
