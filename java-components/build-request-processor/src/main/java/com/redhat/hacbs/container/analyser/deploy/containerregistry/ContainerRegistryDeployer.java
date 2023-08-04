@@ -91,7 +91,7 @@ public class ContainerRegistryDeployer {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
         // Read the tar to get the gavs and files
-        DeployData imageData = new DeployData(deployDir, gavs, prependTag);
+        DeployData imageData = new DeployData(deployDir, gavs);
 
         try {
             // Create the image layers
@@ -109,7 +109,7 @@ public class ContainerRegistryDeployer {
 
         Deque<Gav> gavs = new ArrayDeque<>();
         for (var i : gavNames) {
-            gavs.push(Gav.parse(i, prependTag));
+            gavs.push(Gav.parse(i));
         }
         Gav first = gavs.pop();
         String existingImage = createImageName(imageId);
@@ -260,6 +260,16 @@ public class ContainerRegistryDeployer {
     }
 
     private String createImageName(String tag) {
+        // As the tests utilise prependTag for uniqueness so check for that
+        // here to avoid reusing images when we want differentiation.
+        if (!prependTag.isBlank()) {
+            tag = prependTag + "_" + tag;
+        }
+        // Docker tag maximum size is 128
+        // https://docs.docker.com/engine/reference/commandline/tag/
+        if (tag.length() > 128) {
+            tag = tag.substring(0, 128);
+        }
         if (port == 443) {
             return host + "/" + owner + "/" + repository
                     + ":" + tag;

@@ -344,14 +344,13 @@ public class LookupBuildInfoCommand implements Runnable {
             if (registries != null) {
                 String[] splitRegistries = registries.split(";", -1);
 
-                String token = envToken.orElse("");
-
                 for (String value : splitRegistries) {
                     ImageRegistry registry = Util.parseRegistry(value);
                     // Meant to match Go code that does
                     // util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
                     String contextPath = context == null ? "" : context;
-                    String imageId = DigestUtils.md5Hex(scmUrl + tag + contextPath);
+                    String prependTag = isBlank(registry.getPrependTag()) ? "" : registry.getPrependTag() + "_";
+                    String imageId = prependTag + DigestUtils.md5Hex(scmUrl + tag + contextPath);
                     String port = isBlank(registry.getPort()) ? "443" : registry.getPort();
                     String fullName = registry.getHost() + (port.equals("443") ? "" : ":" + port) + "/" + registry.getOwner()
                             + "/" + registry.getRepository() + ":" + imageId;
