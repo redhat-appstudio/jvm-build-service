@@ -10,14 +10,9 @@ public final class DeployData {
     private final Path artifactsPath;
     private final Set<Gav> gavs;
 
-    public DeployData(Path artifactsPath, Set<Gav> gavs) {
+    public DeployData(Path artifactsPath, Set<String> gavs) {
         this.artifactsPath = artifactsPath;
-        this.gavs = gavs;
-    }
-
-    public DeployData(Path artifactsPath, Set<String> gavs, String prependTag) {
-        this.artifactsPath = artifactsPath;
-        this.gavs = gavs.stream().map(s -> Gav.parse(s, prependTag)).collect(Collectors.toSet());
+        this.gavs = gavs.stream().map(Gav::parse).collect(Collectors.toSet());
     }
 
     public Path getArtifactsPath() {

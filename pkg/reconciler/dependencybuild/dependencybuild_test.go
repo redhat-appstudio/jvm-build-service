@@ -575,4 +575,32 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(find11).To(BeTrue())
 		g.Expect(find8).To(BeTrue())
 	})
+
+	t.Run("Test build info discovery with shared registry", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup(g)
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "5.8.7", Tools: map[string]toolInfo{"gradle": {}}, Invocations: [][]string{{"gradle"}}, Image: "quay.io/dummy-namespace/jvm-build-service-artifacts:4f8a8179ceadcde76e4cbc037dd7c9fd",
+			Digest: "sha256:0a959a76264f7a34f1d6793ce3fb0d37b8a12768483f075cd644265b258477e3", Gavs: []string{"commons-lang:commons-lang:2.6"}})
+		g.Expect(err).Should(BeNil())
+		pr := getBuildInfoPipeline(client, g)
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: string(buildInfoJson)}}}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "True",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+
+		db := getBuild(client, g)
+		ra := v1alpha1.RebuiltArtifact{}
+		g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "commons.lang.2.6-82c211d5"}, &ra)).Should(BeNil())
+
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
+		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(2))
+		g.Expect(ra.Spec.GAV).Should(Equal("commons-lang:commons-lang:2.6"))
+		g.Expect(ra.Spec.Digest).Should(Equal("sha256:0a959a76264f7a34f1d6793ce3fb0d37b8a12768483f075cd644265b258477e3"))
+		g.Expect(ra.Spec.Image).Should(Equal("quay.io/dummy-namespace/jvm-build-service-artifacts:4f8a8179ceadcde76e4cbc037dd7c9fd"))
+	})
 }

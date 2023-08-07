@@ -547,14 +547,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			cache = setEnvVarValue(envValue, envName, cache)
 		}
 
-		sharedRegistryString := ""
-		sharedRegistries := jbsConfig.Spec.SharedRegistries
-		for i, shared := range sharedRegistries {
-			if i > 0 {
-				sharedRegistryString += ";"
-			}
-			sharedRegistryString += imageRegistryToString(shared)
-		}
+		sharedRegistryString := ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
 		cache = setEnvVarValue(sharedRegistryString, "SHARED_REGISTRIES", cache)
 	}
 
@@ -631,18 +624,9 @@ func (r *ReconcilerJBSConfig) handleNoImageSecretFound(ctx context.Context, conf
 			binding.Namespace = config.Namespace
 			imageRegistry := config.ImageRegistry()
 			url := "https://"
-			if imageRegistry.Host == "" {
-				url += "quay.io"
-			} else {
-				url += imageRegistry.Host
-			}
+			url += imageRegistry.Host
 			url += "/" + imageRegistry.Owner + "/"
-			if imageRegistry.Repository == "" {
-				url += "artifact-deployments"
-			} else {
-				url += imageRegistry.Repository
-			}
-
+			url += imageRegistry.Repository
 			binding.Spec.RepoUrl = url
 			binding.Spec.Lifetime = "-1"
 			binding.Spec.Permissions = v1beta1.Permissions{Required: []v1beta1.Permission{{Type: v1beta1.PermissionTypeReadWrite, Area: v1beta1.PermissionAreaRegistry}}}
@@ -814,7 +798,19 @@ func generateSecret(c *v1alpha1.JBSConfig, r quay.RobotAccount, imageURL string,
 	}
 }
 
-func imageRegistryToString(registry v1alpha1.ImageRegistry) string {
+func ImageRegistriesToString(log logr.Logger, sharedRegistries []v1alpha1.ImageRegistry) string {
+	sharedRegistryString := ""
+	log.Info(fmt.Sprintf("Parsing sharedRegistry list %#v\n", sharedRegistries))
+	for i, shared := range sharedRegistries {
+		if i > 0 {
+			sharedRegistryString += ";"
+		}
+		sharedRegistryString += ImageRegistryToString(shared)
+	}
+	return sharedRegistryString
+}
+
+func ImageRegistryToString(registry v1alpha1.ImageRegistry) string {
 	result := registry.Host
 	result += ","
 	result += registry.Port

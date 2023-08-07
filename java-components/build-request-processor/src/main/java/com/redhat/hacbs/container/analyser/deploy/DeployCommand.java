@@ -339,7 +339,7 @@ public class DeployCommand implements Runnable {
             List<String> groupIdList = pathParts.subList(0, numberOfParts - 3);
             String groupId = String.join(DOT, groupIdList);
 
-            return Optional.of(Gav.create(groupId, artifactId, version, prependTag));
+            return Optional.of(Gav.create(groupId, artifactId, version));
         }
         return Optional.empty();
     }

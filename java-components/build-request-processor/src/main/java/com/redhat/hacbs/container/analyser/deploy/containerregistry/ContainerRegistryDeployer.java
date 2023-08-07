@@ -1,16 +1,15 @@
 package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
-import java.util.Base64;
 import java.util.Deque;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -19,9 +18,9 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.CacheDirectoryCreationException;
 import com.google.cloud.tools.jib.api.Containerizer;
+import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.Jib;
 import com.google.cloud.tools.jib.api.JibContainerBuilder;
@@ -44,7 +43,7 @@ public class ContainerRegistryDeployer {
         if (System.getProperty("jib.httpTimeout") == null) {
             //long timeout, but not infinite
             long fiveMinutes = TimeUnit.MINUTES.toMillis(5);
-            System.setProperty("jib.httpTimeout", "" + fiveMinutes);
+            System.setProperty("jib.httpTimeout", String.valueOf(fiveMinutes));
         }
     }
 
@@ -55,12 +54,9 @@ public class ContainerRegistryDeployer {
     private final boolean insecure;
     private final String prependTag;
 
-    private final String username;
-    private final String password;
+    private final Credential credential;
 
     final String imageId;
-
-    static final ObjectMapper MAPPER = new ObjectMapper();
 
     public ContainerRegistryDeployer(
             String host,
@@ -82,48 +78,12 @@ public class ContainerRegistryDeployer {
         this.prependTag = prependTag;
         this.imageId = imageId;
         String fullName = host + (port == 443 ? "" : ":" + port) + "/" + owner + "/" + repository;
-        if (!token.isBlank()) {
-            if (token.trim().startsWith("{")) {
-                //we assume this is a .dockerconfig file
-                try (var parser = MAPPER.createParser(token)) {
-                    DockerConfig config = parser.readValueAs(DockerConfig.class);
-                    boolean found = false;
-                    String tmpUser = null;
-                    String tmpPw = null;
-                    for (var i : config.getAuths().entrySet()) {
-                        if (fullName.startsWith(i.getKey())) {
-                            found = true;
-                            var decodedAuth = new String(Base64.getDecoder().decode(i.getValue().getAuth()),
-                                    StandardCharsets.UTF_8);
-                            int pos = decodedAuth.indexOf(":");
-                            tmpUser = decodedAuth.substring(0, pos);
-                            tmpPw = decodedAuth.substring(pos + 1);
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        throw new RuntimeException("Unable to find a host matching " + fullName
-                                + " in provided dockerconfig, hosts provided: " + config.getAuths().keySet());
-                    }
-                    username = tmpUser;
-                    password = tmpPw;
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            } else {
-                var decoded = new String(Base64.getDecoder().decode(token), StandardCharsets.UTF_8);
-                int pos = decoded.indexOf(":");
-                username = decoded.substring(0, pos);
-                password = decoded.substring(pos + 1);
-            }
-        } else {
-            Log.errorf("No token configured");
-            username = null;
-            password = null;
-        }
-        Log.infof("Using username %s to publish to %s/%s/%s", username, host, owner, repository);
-        Log.infof("Prepend tag is %s", prependTag);
+        this.credential = ContainerUtil.processToken(fullName, token);
 
+        Log.infof("Using username '%s' to publish to %s/%s/%s",
+                (credential == null ? "" : credential.getUsername()),
+                host, owner, repository);
+        Log.infof("Prepend tag is %s", prependTag);
     }
 
     public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs,
@@ -131,7 +91,7 @@ public class ContainerRegistryDeployer {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
         // Read the tar to get the gavs and files
-        DeployData imageData = new DeployData(deployDir, gavs, prependTag);
+        DeployData imageData = new DeployData(deployDir, gavs);
 
         try {
             // Create the image layers
@@ -149,14 +109,14 @@ public class ContainerRegistryDeployer {
 
         Deque<Gav> gavs = new ArrayDeque<>();
         for (var i : gavNames) {
-            gavs.push(Gav.parse(i, prependTag));
+            gavs.push(Gav.parse(i));
         }
         Gav first = gavs.pop();
         String existingImage = createImageName(imageId);
         RegistryImage existingRegistryImage = RegistryImage.named(existingImage);
         RegistryImage registryImage = RegistryImage.named(createImageName(first.getTag()));
-        if (username != null) {
-            registryImage = registryImage.addCredential(username, password);
+        if (credential != null) {
+            registryImage = registryImage.addCredentialRetriever(() -> Optional.of(credential));
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
@@ -180,8 +140,8 @@ public class ContainerRegistryDeployer {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
         String imageName = createImageName(tag);
         RegistryImage registryImage = RegistryImage.named(imageName);
-        if (username != null) {
-            registryImage = registryImage.addCredential(username, password);
+        if (credential != null) {
+            registryImage = registryImage.addCredentialRetriever(() -> Optional.of(credential));
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
@@ -221,8 +181,8 @@ public class ContainerRegistryDeployer {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
         String imageName = createImageName(tag);
         RegistryImage registryImage = RegistryImage.named(imageName);
-        if (username != null) {
-            registryImage = registryImage.addCredential(username, password);
+        if (credential != null) {
+            registryImage = registryImage.addCredentialRetriever(() -> Optional.of(credential));
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
@@ -261,8 +221,8 @@ public class ContainerRegistryDeployer {
 
         String imageName = createImageName();
         RegistryImage registryImage = RegistryImage.named(imageName);
-        if (username != null) {
-            registryImage = registryImage.addCredential(username, password);
+        if (credential != null) {
+            registryImage = registryImage.addCredentialRetriever(() -> Optional.of(credential));
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
@@ -300,6 +260,16 @@ public class ContainerRegistryDeployer {
     }
 
     private String createImageName(String tag) {
+        // As the tests utilise prependTag for uniqueness so check for that
+        // here to avoid reusing images when we want differentiation.
+        if (!prependTag.isBlank()) {
+            tag = prependTag + "_" + tag;
+        }
+        // Docker tag maximum size is 128
+        // https://docs.docker.com/engine/reference/commandline/tag/
+        if (tag.length() > 128) {
+            tag = tag.substring(0, 128);
+        }
         if (port == 443) {
             return host + "/" + owner + "/" + repository
                     + ":" + tag;

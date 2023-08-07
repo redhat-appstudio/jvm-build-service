@@ -67,6 +67,9 @@ public class ScmLookup {
                             || Objects.equals(newObj.getStatus().getState(), "")
                             || Objects.equals(newObj.getStatus().getState(), ModelConstants.ARTIFACT_BUILD_NEW)) {
                         try {
+                            if (newObj.getStatus() == null) {
+                                newObj.setStatus(new ArtifactBuildStatus());
+                            }
                             try {
                                 if (newObj.getMetadata().getAnnotations() != null
                                         && newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILD)) {

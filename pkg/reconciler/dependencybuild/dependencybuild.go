@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"sort"
 	"strconv"
 	"strings"
@@ -106,10 +107,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	}
 
 	if trerr != nil && dberr != nil {
-		//TODO weird - during envtest the logging code panicked on the commented out log.Info call: 'com.acme.example.1.0-scm-discovery-5vjvmpanic: odd number of arguments passed as key-value pairs for logging'
-		msg := fmt.Sprintf("Reconcile key %s received not found errors for both pipelineruns and dependencybuilds (probably deleted)\"", request.NamespacedName.String())
-		log.Info(msg)
-		//log.Info("Reconcile key %s received not found errors for pipelineruns, dependencybuilds, artifactbuilds (probably deleted)", request.NamespacedName.String())
+		log.Info(fmt.Sprintf("Reconcile key %s received not found errors for both pipelineruns and dependencybuilds (probably deleted)", request.NamespacedName.String()))
 		return ctrl.Result{}, nil
 	}
 
@@ -136,7 +134,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-
 		if pr.DeletionTimestamp != nil {
 			//always remove the finalizer if it is deleted
 			//but continue with the method
@@ -150,7 +147,9 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		pipelineType := pr.Labels[PipelineTypeLabel]
 		switch pipelineType {
 		case PipelineTypeBuildInfo:
-			return r.handleStateAnalyzeBuild(ctx, log, &pr)
+			// Note in the case where shared repositories are configured the build discovery pipeline can shortcut
+			// setting the DependencyBuild state to Complete utilising the pre-existing builds.
+			return r.handleAnalyzeBuildPipelineRunReceived(ctx, log, &pr)
 		case PipelineTypeBuild:
 			return r.handleBuildPipelineRunReceived(ctx, log, &pr)
 		}
@@ -233,7 +232,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
 	}
@@ -320,6 +319,7 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
 			return reconcile.Result{}, err
 		}
+
 		//read our builder images from the config
 		var allBuilderImages []BuilderImage
 		var selectedImages []BuilderImage
@@ -429,8 +429,21 @@ func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, 
 		}
 
 		db.Status.PotentialBuildRecipes = buildRecipes
-		db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+
+		if len(unmarshalled.Image) > 0 {
+			log.Info(fmt.Sprintf("Found preexisting shared build with deployed GAVs %#v from image %#v", unmarshalled.Gavs, unmarshalled.Image))
+			db.Status.State = v1alpha1.DependencyBuildStateComplete
+			con, err := r.createRebuiltArtifacts(ctx, log, pr, &db, unmarshalled.Image, unmarshalled.Digest, unmarshalled.Gavs)
+			if err != nil {
+				return reconcile.Result{}, err
+			} else if !con {
+				return reconcile.Result{}, nil
+			}
+		} else {
+			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+		}
 	}
+
 	err = r.client.Status().Update(ctx, &db)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -452,6 +465,9 @@ type marshalledBuildInfo struct {
 	AdditionalMemory    int
 	Repositories        []string
 	AllowedDifferences  []string
+	Image               string
+	Digest              string
+	Gavs                []string
 }
 
 type toolInfo struct {
@@ -661,7 +677,6 @@ func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
 }
 
 func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
-
 	if pr.Status.CompletionTime != nil {
 		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
 		if err != nil || db == nil {
@@ -795,42 +810,13 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed := strings.Split(i.Value.StringVal, ",")
-					db.Status.DeployedArtifacts = deployed
-					for _, i := range deployed {
-						ra := v1alpha1.RebuiltArtifact{}
 
-						ra.Namespace = pr.Namespace
-						ra.Name = artifactbuild.CreateABRName(i)
-						if err := controllerutil.SetOwnerReference(db, &ra, r.scheme); err != nil {
-							return reconcile.Result{}, err
-						}
-						ra.Spec.GAV = i
-						ra.Spec.Image = image
-						ra.Spec.Digest = digest
-						err := r.client.Create(ctx, &ra)
-						if err != nil {
-							if !errors.IsAlreadyExists(err) {
-								return reconcile.Result{}, err
-							} else {
-								//if it already exists we update the image field
-								err := r.client.Get(ctx, types.NamespacedName{Namespace: ra.Namespace, Name: ra.Name}, &ra)
-								if err != nil {
-									if !errors.IsNotFound(err) {
-										return reconcile.Result{}, err
-									}
-									//on not found we don't return the error
-									//no need to retry it would just result in an infinite loop
-									return reconcile.Result{}, nil
-								}
-								ra.Spec.Image = image
-								ra.Spec.Digest = digest
-								log.Info(fmt.Sprintf("Updating existing RebuiltArtifact %s to reference image %s", ra.Name, ra.Spec.Image), "action", "UPDATE")
-								err = r.client.Update(ctx, &ra)
-								if err != nil {
-									return reconcile.Result{}, err
-								}
-							}
-						}
+					con, err := r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
+
+					if err != nil {
+						return reconcile.Result{}, err
+					} else if !con {
+						return reconcile.Result{}, nil
 					}
 				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
 					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
@@ -1017,21 +1003,62 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
+func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun, db *v1alpha1.DependencyBuild,
+	image string, digest string, deployed []string) (bool, error) {
+	db.Status.DeployedArtifacts = deployed
+
+	for _, i := range deployed {
+		ra := v1alpha1.RebuiltArtifact{}
+
+		ra.Namespace = pr.Namespace
+		ra.Name = artifactbuild.CreateABRName(i)
+		if err := controllerutil.SetOwnerReference(db, &ra, r.scheme); err != nil {
+			return false, err
+		}
+		ra.Spec.GAV = i
+		ra.Spec.Image = image
+		ra.Spec.Digest = digest
+		err := r.client.Create(ctx, &ra)
+		if err != nil {
+			if !errors.IsAlreadyExists(err) {
+				return false, err
+			} else {
+				//if it already exists we update the image field
+				err := r.client.Get(ctx, types.NamespacedName{Namespace: ra.Namespace, Name: ra.Name}, &ra)
+				if err != nil {
+					if !errors.IsNotFound(err) {
+						return false, err
+					}
+					//on not found we don't return the error
+					//no need to retry it would just result in an infinite loop
+					return false, nil
+				}
+				ra.Spec.Image = image
+				ra.Spec.Digest = digest
+				log.Info(fmt.Sprintf("Updating existing RebuiltArtifact %s to reference image %s", ra.Name, ra.Spec.Image), "action", "UPDATE")
+				err = r.client.Update(ctx, &ra)
+				if err != nil {
+					return false, err
+				}
+			}
+		}
+	}
+	return true, nil
+}
+
 func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, jbsConfig *v1alpha1.JBSConfig, additionalMemory int) (*pipelinev1beta1.PipelineSpec, error) {
 	image, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return nil, err
 	}
 	path := build.ScmInfo.Path
-	//TODO should the buidl request process require context to be set ?
-	if len(path) == 0 {
-		path = "."
-	}
 	zero := int64(0)
 	cacheUrl := "https://jvm-build-workspace-artifact-cache-tls." + jbsConfig.Namespace + ".svc.cluster.local"
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
 	}
+	registries := jbsconfig.ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
+
 	trueBool := true
 	args := []string{
 		"lookup-build-info",
@@ -1040,9 +1067,9 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		"--scm-url",
 		build.ScmInfo.SCMURL,
 		"--scm-tag",
+		build.ScmInfo.Tag,
+		"--scm-commit",
 		build.ScmInfo.CommitHash,
-		"--context",
-		path,
 		"--version",
 		build.Version,
 		"--message",
@@ -1050,6 +1077,18 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		"--build-info",
 		"$(results." + BuildInfoPipelineResultBuildInfo + ".path)",
 	}
+	if len(path) > 0 {
+		args = append(args, "--context", path)
+	}
+
+	// Search not only the configured shared registries but the main registry as well.
+	if registries == "" {
+		registries = jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())
+	} else {
+		registries += ";" + jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())
+	}
+	args = append(args, "--registries", registries)
+
 	if build.ScmInfo.Private {
 		args = append(args, "--private-repo")
 	}
@@ -1058,6 +1097,13 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		pullPolicy = v1.PullNever
 	} else if strings.HasSuffix(image, "dev") {
 		pullPolicy = v1.PullAlways
+	}
+	secretOptional := false
+	if jbsConfig.Annotations != nil {
+		val := jbsConfig.Annotations[jbsconfig.TestRegistry]
+		if val == "true" {
+			secretOptional = true
+		}
 	}
 	memory := fmt.Sprintf("%dMi", 512+additionalMemory)
 	return &pipelinev1beta1.PipelineSpec{
@@ -1086,6 +1132,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 								Env: []v1.EnvVar{
 									{Name: "JAVA_OPTS", Value: "-XX:+CrashOnOutOfMemoryError"},
 									{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
+									{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}}},
 								},
 							},
 						},

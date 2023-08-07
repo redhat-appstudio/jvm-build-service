@@ -55,7 +55,6 @@
                     <packageOverrides>
                     <io.jvmbuildservice.v1alpha1>com.redhat.hacbs.resources.model.v1alpha1</io.jvmbuildservice.v1alpha1>
                     </packageOverrides>
-
                 </configuration>
             </plugin>
         </plugins>

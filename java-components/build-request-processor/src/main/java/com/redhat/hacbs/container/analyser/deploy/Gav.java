@@ -2,7 +2,12 @@ package com.redhat.hacbs.container.analyser.deploy;
 
 import java.util.Objects;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 public final class Gav {
+
+    private static final String GAV_FORMAT = "%s:%s:%s";
+
     private final String groupId;
     private final String artifactId;
     private final String version;
@@ -15,19 +20,13 @@ public final class Gav {
         this.tag = tag;
     }
 
-    public static Gav parse(String gav, String prependTag) {
+    public static Gav parse(String gav) {
         var parts = gav.split(":");
-        return create(parts[0], parts[1], parts[2], prependTag);
+        return create(parts[0], parts[1], parts[2]);
     }
 
-    public static Gav create(String groupId, String artifactId, String version, String prependTag) {
-        String tag = DeployerUtil.sha256sum(groupId, artifactId, version);
-        if (!prependTag.isBlank()) {
-            tag = prependTag + "_" + tag;
-        }
-        if (tag.length() > 128) {
-            tag = tag.substring(0, 128);
-        }
+    public static Gav create(String groupId, String artifactId, String version) {
+        String tag = DigestUtils.sha256Hex(String.format(GAV_FORMAT, groupId, artifactId, version));
         return new Gav(groupId, artifactId, version, tag);
     }
 

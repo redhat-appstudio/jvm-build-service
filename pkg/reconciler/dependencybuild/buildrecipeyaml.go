@@ -3,9 +3,7 @@ package dependencybuild
 import (
 	_ "embed"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	"strconv"
 	"strings"
 
@@ -55,11 +53,9 @@ var hermeticBuildEntryScript string
 
 func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
-	marshaled, err := json.Marshal(recipe)
-	if err != nil {
-		return nil, "", err
-	}
-	imageId := util.HashString(string(marshaled) + buildRequestProcessorImage + tool + db.Name)
+	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
+	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
+	imageId := db.Name
 	zero := int64(0)
 	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha12.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
@@ -68,6 +64,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
 
+	println("PREBUILD IMAGE: " + preBuildImageName)
 	println("HERMETIC IMAGE: " + hermeticPreBuildImageName)
 
 	preprocessorArgs := []string{
@@ -631,6 +628,8 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	}
 	if jbsConfig.ImageRegistry().PrependTag != "" {
 		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
+		preBuildImageName = prependTagToImage(preBuildImageName, jbsConfig.Spec.ImageRegistry.PrependTag)
+		hermeticPreBuildImageName = prependTagToImage(hermeticPreBuildImageName, jbsConfig.Spec.ImageRegistry.PrependTag)
 	}
 	deployArgs = append(deployArgs, registryArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
@@ -647,7 +646,20 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--repository-path=$(workspaces.source.path)/build-info/",
 	}
 	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
+
 	return preBuildImageName, hermeticPreBuildImageName, preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, hermeticPreBuildImageArgs
+}
+
+// This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
+func prependTagToImage(imageId string, prependTag string) string {
+	i := strings.LastIndex(imageId, ":")
+	slice := imageId[0:i]
+	tag := prependTag + "_" + imageId[i+1:]
+	if len(tag) > 128 {
+		tag = tag[0:128]
+	}
+	imageId = slice + ":" + tag
+	return imageId
 }
 
 func verifyParameters(jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe) []string {

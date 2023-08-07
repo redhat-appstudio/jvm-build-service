@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import jakarta.inject.Inject;
 
 import com.redhat.hacbs.resources.model.v1alpha1.JBSConfig;
+import com.redhat.hacbs.resources.model.v1alpha1.JBSConfigSpec;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -32,6 +33,7 @@ public class SetupRebuildsCommand implements Runnable {
             resource.patch(config);
         } else {
             config = new JBSConfig();
+            config.setSpec(new JBSConfigSpec());
             config.getMetadata().setName(ModelConstants.JBS_CONFIG_NAME);
             config.getSpec().setEnableRebuilds(true);
             config.getSpec().setRequireArtifactVerification(true);
