@@ -53,7 +53,7 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(required = true, names = "--path")
     Path deploymentPath;
 
-    @CommandLine.Option(required = false, names = "--task-run")
+    @CommandLine.Option(required = false, names = "--task-run-name")
     String taskRun;
 
     @CommandLine.Option(required = false, names = "--source-path")

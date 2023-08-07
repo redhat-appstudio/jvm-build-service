@@ -578,7 +578,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--build-info-path=$(workspaces.source.path)/build-info",
 		"--source-path=$(workspaces.source.path)/source",
-		"--task-run=$(context.taskRun.name)",
+		"--task-run-name=$(context.taskRun.name)",
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
