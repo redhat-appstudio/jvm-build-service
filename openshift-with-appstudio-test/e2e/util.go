@@ -295,7 +295,7 @@ func setupConfig(t *testing.T, namespace string, hermetic bool) *testArgs {
 				WorkerThreads: "100",
 				RequestCPU:    "10m",
 			},
-			ImageRegistry: v1alpha1.ImageRegistry{
+			Registry: v1alpha1.ImageRegistry{
 				Host:       "quay.io",
 				Owner:      owner,
 				Repository: "test-images",
@@ -878,7 +878,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 				DisableTLS:    true,
 				Storage:       "756Mi",
 			},
-			ImageRegistry: v1alpha1.ImageRegistry{
+			Registry: v1alpha1.ImageRegistry{
 				Host:       devIp,
 				Owner:      owner,
 				Repository: "test-images",

@@ -60,7 +60,7 @@ func setupSecret() *corev1.Secret {
 
 func setupJBSConfig() *v1alpha1.JBSConfig {
 	jbsConfig := v1alpha1.JBSConfig{}
-	jbsConfig.Spec.Owner = "tests"
+	jbsConfig.Spec.Registry.Owner = "tests"
 	jbsConfig.Namespace = metav1.NamespaceDefault
 	jbsConfig.Name = v1alpha1.JBSConfigName
 	return &jbsConfig
@@ -279,4 +279,19 @@ func TestImageRegistryArrayToString(t *testing.T) {
 	g.Expect(ImageRegistriesToString(logr.Discard(), []v1alpha1.ImageRegistry{})).To(Equal(""))
 	g.Expect(ImageRegistriesToString(logr.Discard(), registries1)).To(Equal("quay.io,,nobody,foo,false,"))
 	g.Expect(ImageRegistriesToString(logr.Discard(), registries2)).To(Equal("quay.io,,nobody,foo,false,;quay.io,784,nobody,foo,false,foo"))
+}
+
+func TestDeprecatedRegistry(t *testing.T) {
+	g := NewGomegaWithT(t)
+	ctx := context.TODO()
+	jbsConfig := setupJBSConfig()
+	jbsConfig.Spec.Owner = "tests"
+	jbsConfig.Spec.Registry.Owner = ""
+	jbsConfig.Spec.EnableRebuilds = true
+	objs := []runtimeclient.Object{jbsConfig, setupSystemConfig()}
+	_, reconciler := setupClientAndReconciler(false, objs...)
+	_, res := reconciler.handleDeprecatedRegistryDefinition(ctx, jbsConfig)
+	g.Expect(res).To(Equal(true))
+	g.Expect(jbsConfig.Spec.ImageRegistry.Owner).To(Equal(""))
+	g.Expect(jbsConfig.Spec.Registry.Owner).To(Equal("tests"))
 }
