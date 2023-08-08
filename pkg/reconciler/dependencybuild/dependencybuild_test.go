@@ -137,16 +137,22 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(len(pr.Finalizers)).Should(Equal(1))
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"toolVersion":null,"javaVersion":null,"repositories":["jboss","gradle"]}`}}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"javaVersion":null,"repositories":["jboss","gradle"]}`}}}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "True",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
 	} else {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "build info missing"}}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{
+			{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "build info missing"}}}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "False",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
 	}
 	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-	pr.Status.SetCondition(&apis.Condition{
-		Type:               apis.ConditionSucceeded,
-		Status:             "True",
-		LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
-	})
 	g.Expect(client.Update(ctx, pr)).Should(BeNil())
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
 	g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).Should(Succeed())
@@ -244,8 +250,8 @@ func TestStateDetect(t *testing.T) {
 		g := NewGomegaWithT(t)
 		db, client, reconciler, ctx := setup(g)
 		runBuildDiscoveryPipeline(db, g, reconciler, client, ctx, false)
-
 		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
+		g.Expect(getBuild(client, g).Status.Message).Should(Equal("build info missing"))
 	})
 }
 

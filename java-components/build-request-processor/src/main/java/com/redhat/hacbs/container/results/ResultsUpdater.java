@@ -10,6 +10,8 @@ import jakarta.inject.Inject;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRun;
 import com.redhat.hacbs.container.analyser.dependencies.TaskRunResult;
 
@@ -20,9 +22,14 @@ import io.quarkus.logging.Log;
 @ApplicationScoped
 public class ResultsUpdater {
 
+    public static final ObjectMapper MAPPER = new ObjectMapper();
     final int retries;
 
     final KubernetesClient kubernetesClient;
+
+    static {
+        MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    }
 
     @Inject
     public ResultsUpdater(KubernetesClient kubernetesClient,

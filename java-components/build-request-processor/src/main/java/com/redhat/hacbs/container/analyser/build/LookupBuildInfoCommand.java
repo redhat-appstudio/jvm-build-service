@@ -40,7 +40,6 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.ImageReference;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
@@ -55,6 +54,7 @@ import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.build.maven.MavenDiscoveryTask;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
 import com.redhat.hacbs.container.analyser.location.VersionRange;
+import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
 import com.redhat.hacbs.recipies.util.GitCredentials;
@@ -88,9 +88,6 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--version", required = true)
     String version;
 
-    @CommandLine.Option(names = "--message")
-    Path message;
-
     @CommandLine.Option(names = "--private-repo")
     boolean privateRepo;
 
@@ -100,17 +97,14 @@ public class LookupBuildInfoCommand implements Runnable {
     @ConfigProperty(name = "registry.token")
     Optional<String> envToken;
 
-    /**
-     * The build info, in JSON format as per BuildRecipe.
-     * <p>
-     * This just gives facts discovered by examining the checkout, it does not make any inferences from those facts (e.g. which
-     * image to use).
-     */
-    @CommandLine.Option(names = "--build-info")
-    Path buildInfo;
+    @CommandLine.Option(names = "--task-run-name")
+    String taskRun;
 
     @Inject
     Instance<MavenDiscoveryTask> mavenDiscoveryTasks;
+
+    @Inject
+    Instance<ResultsUpdater> resultsUpdater;
 
     @Override
     public void run() {
@@ -133,19 +127,10 @@ public class LookupBuildInfoCommand implements Runnable {
 
             Log.infof("Cloning commit %s (tag %s) for path %s", commit, tag, context);
             doBuildAnalysis(info.getUriWithoutFragment(), commit, context, buildRecipeInfo, privateRepo, buildInfoLocator);
-
-            if (message != null) {
-                Files.createFile(message);
-            }
         } catch (Exception e) {
             Log.errorf(e, "Failed to process build info for " + scmUrl);
-            if (message != null) {
-                try {
-                    Files.writeString(message, "Failed to analyse build for " + scmUrl + ". Failure reason: " + e.getMessage());
-                } catch (IOException ex) {
-                    Log.errorf(e, "Failed to write result");
-                }
-            }
+            resultsUpdater.get().updateResults(taskRun, Map.of(
+                    "BUILD_INFO", "Failed to analyse build for " + scmUrl + ". Failure reason: " + e.getMessage()));
         }
     }
 
@@ -414,9 +399,11 @@ public class LookupBuildInfoCommand implements Runnable {
                     }
                 }
             }
-            ObjectMapper mapper = new ObjectMapper();
-            Log.infof("Writing %s to %s", info, buildInfo.toFile());
-            mapper.writeValue(buildInfo.toFile(), info);
+            if (taskRun != null) {
+                Log.infof("Writing %s", info);
+                resultsUpdater.get().updateResults(taskRun, Map.of("BUILD_INFO",
+                        ResultsUpdater.MAPPER.writeValueAsString(info)));
+            }
         }
     }
 
