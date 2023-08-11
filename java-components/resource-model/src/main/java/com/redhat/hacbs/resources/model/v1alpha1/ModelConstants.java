@@ -16,4 +16,9 @@ public class ModelConstants {
     public static final String ARTIFACT_BUILD_MISSING = "ArtifactBuildMissing";
     public static final String ARTIFACT_BUILD_BUILDING = "ArtifactBuildBuilding";
     public static final String ARTIFACT_BUILD_FAILED = "ArtifactBuildFailed";
+
+    public static final String DEPENDENCY_BUILD_COMPLETE = "DependencyBuildStateComplete";
+    public static final String DEPENDENCY_BUILD_BUILDING = "DependencyBuildStateBuilding";
+    public static final String DEPENDENCY_BUILD_FAILED = "DependencyBuildStateFailed";
+    public static final String DEPENDENCY_BUILD_CONTAMINATED = "DependencyBuildStateContaminated";
 }

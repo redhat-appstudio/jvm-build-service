@@ -7,9 +7,9 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "list", mixinStandardHelpOptions = true, description = "Lists ArtifactBuild objects")
 public class ArtifactListCommand implements Runnable {
 
-    @CommandLine.Option(names = "--failed")
+    @CommandLine.Option(names = "--failed", description = "List only failed")
     boolean failed;
-    @CommandLine.Option(names = "--building")
+    @CommandLine.Option(names = "--building", description = "List only building")
     boolean building;
 
     @Override
