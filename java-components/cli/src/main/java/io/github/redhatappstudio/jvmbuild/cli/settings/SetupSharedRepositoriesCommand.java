@@ -1,6 +1,8 @@
 package io.github.redhatappstudio.jvmbuild.cli.settings;
 
 import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 
@@ -9,7 +11,6 @@ import org.apache.commons.lang3.StringUtils;
 import com.redhat.hacbs.resources.model.v1alpha1.JBSConfig;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigspec.SharedRegistries;
-import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import picocli.CommandLine;
@@ -64,12 +65,20 @@ public class SetupSharedRepositoriesCommand {
         JBSConfig config = resource.get();
         if (config != null) {
             var registries = config.getSpec().getSharedRegistries();
-            SharedRegistries ir = group.getImageRegistry();
-            if (registries.contains(ir)) {
-                System.out.println("Removing shared repo " + group.repository);
-                registries.remove(ir);
-                config.getSpec().setSharedRegistries(registries);
-                resource.patch(config);
+            if (registries != null) {
+                SharedRegistries ir = group.getImageRegistry();
+                Optional<SharedRegistries> found = registries.stream().filter(r -> Objects.equals(ir.getHost(), r.getHost()) &&
+                        Objects.equals(ir.getPort(), r.getPort()) &&
+                        Objects.equals(ir.getOwner(), r.getOwner()) &&
+                        Objects.equals(ir.getRepository(), r.getRepository()) &&
+                        Objects.equals(ir.getInsecure(), r.getInsecure()) &&
+                        Objects.equals(ir.getPrependTag(), r.getPrependTag())).findFirst();
+                if (found.isPresent()) {
+                    System.out.println("Removing shared repo " + group.repository);
+                    registries.remove(found.get());
+                    config.getSpec().setSharedRegistries(registries);
+                    resource.patch(config);
+                }
             }
         }
     }
