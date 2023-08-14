@@ -24,7 +24,6 @@ import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
@@ -53,7 +52,7 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(required = true, names = "--path")
     Path deploymentPath;
 
-    @CommandLine.Option(required = false, names = "--task-run")
+    @CommandLine.Option(required = false, names = "--task-run-name")
     String taskRun;
 
     @CommandLine.Option(required = false, names = "--source-path")
@@ -116,7 +115,7 @@ public class DeployCommand implements Runnable {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                         String name = deploymentPath.relativize(file).toString();
-                        Optional<Gav> gav = getGav(name, prependTag);
+                        Optional<Gav> gav = getGav(name);
                         gav.ifPresent(
                                 gav1 -> gavs.add(gav1.getGroupId() + ":" + gav1.getArtifactId() + ":" + gav1.getVersion()));
                         Log.debugf("Checking %s for contaminants", name);
@@ -124,7 +123,6 @@ public class DeployCommand implements Runnable {
                         var info = ClassFileTracker.readTrackingDataFromFile(Files.newInputStream(file), name);
                         for (var i : info) {
                             if (!allowedSources.contains(i.source)) {
-                                //Set<String> result = new HashSet<>(info.stream().map(a -> a.gav).toList());
                                 Log.errorf("%s was contaminated by %s from %s", name, i.gav, i.source);
                                 gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav,
                                         s -> new HashSet<>())
@@ -235,7 +233,7 @@ public class DeployCommand implements Runnable {
                         contaminates.setGav(i.getKey());
                         newContaminates.add(contaminates);
                     }
-                    String serialisedContaminants = new ObjectMapper().writeValueAsString(newContaminates);
+                    String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
                     Log.infof("Updating results %s with contaminants %s and deployed resources %s",
                             taskRun, serialisedContaminants, gavs);
                     resultsUpdater.updateResults(taskRun, Map.of(
@@ -325,7 +323,7 @@ public class DeployCommand implements Runnable {
         System.out.flush();
     }
 
-    private Optional<Gav> getGav(String entryName, String prependTag) {
+    private Optional<Gav> getGav(String entryName) {
         if (entryName.startsWith("./")) {
             entryName = entryName.substring(2);
         }

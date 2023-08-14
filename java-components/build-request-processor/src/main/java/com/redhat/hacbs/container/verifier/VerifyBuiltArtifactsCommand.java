@@ -39,8 +39,6 @@ import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.repository.RemoteRepository.Builder;
 import org.jboss.logging.Logger;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
@@ -188,17 +186,10 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 }
             }
             if (taskRunName != null) {
-
-                ObjectMapper objectMapper = new ObjectMapper();
-                try {
-                    var json = objectMapper.writer().writeValueAsString(verificationResults);
-                    io.quarkus.logging.Log.infof("Writing verification results %s", json);
-                    resultsUpdater.get().updateResults(taskRunName, Map.of("VERIFICATION_RESULTS", json));
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
+                var json = ResultsUpdater.MAPPER.writeValueAsString(verificationResults);
+                io.quarkus.logging.Log.infof("Writing verification results %s", json);
+                resultsUpdater.get().updateResults(taskRunName, Map.of("VERIFICATION_RESULTS", json));
             }
-
             return (failed && !reportOnly ? 1 : 0);
         } catch (Exception e) {
             Log.errorf("%s", e.getMessage(), e);

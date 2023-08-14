@@ -52,8 +52,7 @@ const (
 	PipelineResultImage          = "IMAGE_URL"
 	PipelineResultImageDigest    = "IMAGE_DIGEST"
 
-	BuildInfoPipelineResultMessage   = "message"
-	BuildInfoPipelineResultBuildInfo = "build-info"
+	BuildInfoPipelineResultBuildInfo = "BUILD_INFO"
 
 	PipelineTypeLabel     = "jvmbuildservice.io/pipeline-type"
 	PipelineTypeBuildInfo = "build-info"
@@ -284,19 +283,15 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 	}
 
 	var buildInfo string
-	var message string
 	//we grab the results here and put them on the ABR
 	for _, res := range pr.Status.PipelineResults {
 		switch res.Name {
 		case BuildInfoPipelineResultBuildInfo:
 			buildInfo = res.Value.StringVal
-		case BuildInfoPipelineResultMessage:
-			message = res.Value.StringVal
 		}
 	}
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
-	if !success || len(buildInfo) == 0 {
-
+	if !success {
 		if (db.Annotations == nil || db.Annotations[RetryDueToMemoryAnnotation] != "true") && r.failedDueToMemory(ctx, log, pr) {
 			err := r.client.Delete(ctx, pr)
 			if err != nil {
@@ -309,7 +304,7 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 			return r.handleStateNew(ctx, log, &db)
 		} else {
 			db.Status.State = v1alpha1.DependencyBuildStateFailed
-			db.Status.Message = message
+			db.Status.Message = buildInfo
 		}
 
 	} else {
@@ -1072,10 +1067,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		build.ScmInfo.CommitHash,
 		"--version",
 		build.Version,
-		"--message",
-		"$(results." + BuildInfoPipelineResultMessage + ".path)",
-		"--build-info",
-		"$(results." + BuildInfoPipelineResultBuildInfo + ".path)",
+		"--task-run-name=$(context.taskRun.name)",
 	}
 	if len(path) > 0 {
 		args = append(args, "--context", path)
@@ -1108,7 +1100,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	memory := fmt.Sprintf("%dMi", 512+additionalMemory)
 	return &pipelinev1beta1.PipelineSpec{
 		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
-		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineResultMessage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultMessage + ")"}}, {Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultBuildInfo + ")"}}},
+		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultBuildInfo + ")"}}},
 		Tasks: []pipelinev1beta1.PipelineTask{
 			{
 				Name:       "task",
@@ -1116,7 +1108,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 				TaskSpec: &pipelinev1beta1.EmbeddedTask{
 					TaskSpec: pipelinev1beta1.TaskSpec{
 						Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: "tls"}},
-						Results:    []pipelinev1beta1.TaskResult{{Name: BuildInfoPipelineResultMessage}, {Name: BuildInfoPipelineResultBuildInfo}},
+						Results:    []pipelinev1beta1.TaskResult{{Name: BuildInfoPipelineResultBuildInfo}},
 						Steps: []pipelinev1beta1.Step{
 							{
 								Name:            "process-build-requests",
