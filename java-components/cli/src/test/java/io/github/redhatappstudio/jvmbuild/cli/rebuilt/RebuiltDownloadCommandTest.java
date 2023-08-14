@@ -16,7 +16,7 @@ import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -31,11 +31,9 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 public class RebuiltDownloadCommandTest {
 
-    @ConfigProperty(name = "store.rebuilt.registry")
-    String registry;
-
     @Test
     public void testImage(@TempDir Path dir) throws IOException {
+        var registry = ConfigProvider.getConfig().getValue("store.rebuilt.registry", String.class);
         RebuiltArtifactSpec spec = new RebuiltArtifactSpec();
         spec.setGav("org.foo:foobar:1.0");
         spec.setImage(registry + "/hacbs/artifact-deployments:" + ContainerRegistryStorageTest.VERSION);

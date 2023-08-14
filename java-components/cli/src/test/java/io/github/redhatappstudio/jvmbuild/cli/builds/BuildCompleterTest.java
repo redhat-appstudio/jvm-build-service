@@ -10,12 +10,9 @@ import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.github.redhatappstudio.jvmbuild.cli.TestComponentManager;
-import io.github.redhatappstudio.jvmbuild.cli.TestResourceManager;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
-@QuarkusTestResource(value = TestResourceManager.class, restrictToAnnotatedClass = true)
 public class BuildCompleterTest extends TestComponentManager {
 
     @Test
