@@ -1,8 +1,5 @@
 package io.github.redhatappstudio.jvmbuild.cli.settings;
 
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-
 import jakarta.inject.Inject;
 
 import com.redhat.hacbs.resources.model.v1alpha1.JBSConfig;
@@ -39,7 +36,6 @@ public class SetupRebuildsCommand implements Runnable {
             config.getSpec().setRequireArtifactVerification(true);
             client.resource(config).create();
         }
-        CompletableFuture<Object> latch = new CompletableFuture<Object>();
         long timeout = System.currentTimeMillis() + 10000;
         while (System.currentTimeMillis() < timeout) {
             try {
@@ -48,7 +44,11 @@ public class SetupRebuildsCommand implements Runnable {
                 throw new RuntimeException(e);
             }
             var obj = client.resources(JBSConfig.class).withName(ModelConstants.JBS_CONFIG_NAME).get();
-            System.out.println(Objects.toString(obj.getStatus().getMessage(), "Working..."));
+            if (obj.getStatus() == null || obj.getStatus().getMessage() == null) {
+                System.out.println("Working...");
+            } else {
+                System.out.println(obj.getStatus().getMessage());
+            }
             if (Boolean.TRUE.equals(obj.getStatus().getRebuildsPossible())) {
                 System.out.println("Rebuilds setup successfully");
                 return;
