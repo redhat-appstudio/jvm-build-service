@@ -229,6 +229,12 @@
                 <artifactId>picocli-shell-jline2</artifactId>
                 <version>4.7.4</version>
             </dependency>
+            <dependency>
+                <groupId>com.github.stefanbirkner</groupId>
+                <artifactId>system-lambda</artifactId>
+                <version>1.2.1</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

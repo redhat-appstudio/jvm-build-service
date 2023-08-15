@@ -2,14 +2,16 @@ package io.github.redhatappstudio.jvmbuild.cli.builds;
 
 import java.util.TreeMap;
 
+import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
+
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "list", mixinStandardHelpOptions = true, description = "Lists the builds")
 public class BuildListCommand implements Runnable {
 
-    @CommandLine.Option(names = "--failed")
+    @CommandLine.Option(names = "--failed", description = "List only failed")
     boolean failed;
-    @CommandLine.Option(names = "--building")
+    @CommandLine.Option(names = "--building", description = "List only building")
     boolean building;
 
     @Override
@@ -24,11 +26,11 @@ public class BuildListCommand implements Runnable {
         while (it.hasNext()) {
             var e = it.next();
             String state = e.getValue().getStatus().getState();
-            boolean buildFailed = state.equals("DependencyBuildStateFailed")
-                    || state.equals("DependencyBuildStateContaminated");
+            boolean buildFailed = state.equals(ModelConstants.DEPENDENCY_BUILD_FAILED)
+                    || state.equals(ModelConstants.DEPENDENCY_BUILD_CONTAMINATED);
             if (failed && !buildFailed) {
                 it.remove();
-            } else if (building && (buildFailed || state.equals("DependencyBuildStateComplete"))) {
+            } else if (building && (buildFailed || state.equals(ModelConstants.DEPENDENCY_BUILD_COMPLETE))) {
                 it.remove();
             } else {
                 nameLongest = Math.max(nameLongest, e.getKey().length());
