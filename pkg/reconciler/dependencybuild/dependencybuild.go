@@ -702,6 +702,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		run.Succeeded = pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 
 		if !run.Succeeded {
+			log.Info(fmt.Sprintf("build %s failed", pr.Name))
 
 			//if there was a cache issue we want to retry the build
 			//we check and see if there is a cache pod newer than the build
