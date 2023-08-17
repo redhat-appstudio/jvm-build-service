@@ -95,23 +95,16 @@ func NewManager(cfg *rest.Config, options ctrl.Options, quayClient *quay.QuayCli
 		&appsv1.Deployment{},
 	}
 
-	//we only want to watch the runs we create
-	ourPipelines := labels.NewSelector()
-	requirement, lerr := labels.NewRequirement(artifactbuild.PipelineRunLabel, selection.Exists, []string{})
-	if lerr != nil {
-		return nil, lerr
-	}
-	ourPipelines.Add(*requirement)
-	//we only want to watch the runs we create
+	//we only want to watch our cache pods
 	cachePods := labels.NewSelector()
 	cacheRequirement, lerr := labels.NewRequirement("app", selection.Equals, []string{v1alpha1.CacheDeploymentName})
 	if lerr != nil {
 		return nil, lerr
 	}
-	cachePods.Add(*cacheRequirement)
+	cachePods = cachePods.Add(*cacheRequirement)
 	options.NewCache = cache.BuilderWithOptions(cache.Options{
 		SelectorsByObject: cache.SelectorsByObject{
-			&pipelinev1beta1.PipelineRun{}: {Label: ourPipelines},
+			&pipelinev1beta1.PipelineRun{}: {},
 			&v1alpha1.DependencyBuild{}:    {},
 			&v1alpha1.ArtifactBuild{}:      {},
 			&v1alpha1.RebuiltArtifact{}:    {},
