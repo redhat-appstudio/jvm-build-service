@@ -777,7 +777,7 @@ func (r *ReconcilerJBSConfig) generateImageRepository(log logr.Logger, component
 		return nil, nil, err
 	}
 
-	err = r.quayClient.AddWritePermissionsToRobotAccount(r.quayOrgName, repo.Name, robotAccountName)
+	err = r.quayClient.AddPermissionsForRepositoryToRobotAccount(r.quayOrgName, repo.Name, robotAccountName, true)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to add permissions to robot account %s for image repository %s and organisation %s", robotAccountName, imageRepositoryName, r.quayOrgName))
 		return nil, nil, err

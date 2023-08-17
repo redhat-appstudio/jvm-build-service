@@ -462,8 +462,8 @@ github.com/prometheus/procfs v0.10.1 h1:kYK1Va/YMlutzCGazswoHKo//tZVlFpKYh+Pymzi
 github.com/prometheus/procfs v0.10.1/go.mod h1:nwNm2aOCAYw8uTR/9bWRREkZFxAUcWzPHWJq+XBB/FM=
 github.com/prometheus/statsd_exporter v0.21.0 h1:hA05Q5RFeIjgwKIYEdFd59xu5Wwaznf33yKI+pyX6T8=
 github.com/prometheus/statsd_exporter v0.21.0/go.mod h1:rbT83sZq2V+p73lHhPZfMc3MLCHmSHelCh9hSGYNLTQ=
-github.com/redhat-appstudio/image-controller v0.0.0-20230619094421-a6d78d062948 h1:jDmXnFVxmbhqPDk5LFBh+QTLR7n0nqwQodc00OtTi3g=
-github.com/redhat-appstudio/image-controller v0.0.0-20230619094421-a6d78d062948/go.mod h1:5jVUQSgHYjzfZtWC7aJv2zhP7tyH6k47FdLGC2FaA4M=
+github.com/redhat-appstudio/image-controller v0.0.0-20230816131033-9e9021e17ad9 h1:RJEMaCPWkRLqVYIZTVkGrwteNt1gJuKcVW1tWNGD4qE=
+github.com/redhat-appstudio/image-controller v0.0.0-20230816131033-9e9021e17ad9/go.mod h1:Ta5j95tfMJZpoU/MtEuJJ5RUk3jX3ZzyDIs3FFyquNw=
 github.com/redhat-appstudio/remote-secret v0.0.0-20230713072146-a6094c712436 h1:6XYknDslXDSVpNqEKnI+gKj3Uu4afK2S+IIH3KogX1E=
 github.com/redhat-appstudio/remote-secret v0.0.0-20230713072146-a6094c712436/go.mod h1:QlcxNg0q63QFGr9ceI3dH7a7vO6gGh+2TJrbTiMf9DE=
 github.com/redhat-appstudio/service-provider-integration-operator v0.2023.22-0.20230713080056-eae17aa8c172 h1:Zibq2RBTzcoDgZcTfM5k2o1qrKuix3YPtYQ/NuP039Y=
@@ -471,7 +471,6 @@ github.com/redhat-appstudio/service-provider-integration-operator v0.2023.22-0.2
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDNXVBh4M=
-github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUzkipdSkR5nkCZA=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
