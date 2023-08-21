@@ -53,7 +53,7 @@
         <assertj.version>3.24.2</assertj.version>
         <aws-java-sdk-s3.version>1.12.528</aws-java-sdk-s3.version>
         <quarkus-jgit.version>3.0.2</quarkus-jgit.version>
-        <gradle-tooling-api.version>7.5</gradle-tooling-api.version>
+        <gradle-tooling-api.version>8.3</gradle-tooling-api.version>
         <quarkus-github-api.version>1.315.0</quarkus-github-api.version>
         <cyclonedx-core-java.version>7.3.2</cyclonedx-core-java.version>
         <asm.version>9.5</asm.version>
