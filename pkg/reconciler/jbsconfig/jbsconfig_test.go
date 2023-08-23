@@ -7,7 +7,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	spi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -21,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
+	imagecontroller "github.com/redhat-appstudio/image-controller/api/v1alpha1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -33,7 +33,7 @@ func setupClientAndReconciler(includeSpi bool, objs ...runtimeclient.Object) (ru
 	_ = corev1.AddToScheme(scheme)
 	_ = rbacv1.AddToScheme(scheme)
 	if includeSpi {
-		_ = spi.AddToScheme(scheme)
+		_ = imagecontroller.AddToScheme(scheme)
 	}
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcilerJBSConfig{
@@ -50,7 +50,7 @@ func setupSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: metav1.NamespaceDefault,
-			Name:      v1alpha1.ImageSecretName,
+			Name:      v1alpha1.DefaultImageSecretName,
 		},
 		Data: map[string][]byte{
 			v1alpha1.ImageSecretTokenKey: []byte("foo"),
@@ -228,17 +228,19 @@ func TestCacheCreatedAndDeleted(t *testing.T) {
 func TestMissingRegistrySecretWithSpi(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ctx := context.TODO()
-	jbsConfig := setupJBSConfig()
+	jbsConfig := v1alpha1.JBSConfig{}
+	jbsConfig.Namespace = metav1.NamespaceDefault
+	jbsConfig.Name = v1alpha1.JBSConfigName
 	jbsConfig.Spec.EnableRebuilds = true
-	objs := []runtimeclient.Object{jbsConfig, setupSystemConfig()}
+	objs := []runtimeclient.Object{&jbsConfig, setupSystemConfig()}
 	client, reconciler := setupClientAndReconciler(true, objs...)
 	_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
 	g.Expect(err).To(BeNil()) //no error to prevent requeue
 
-	binding := spi.SPIAccessTokenBinding{}
-	err = client.Get(context.TODO(), types.NamespacedName{Namespace: jbsConfig.Namespace, Name: v1alpha1.ImageSecretName}, &binding)
+	binding := imagecontroller.ImageRepository{}
+	err = client.Get(context.TODO(), types.NamespacedName{Namespace: jbsConfig.Namespace, Name: v1alpha1.DefaultImageSecretName}, &binding)
 	g.Expect(err).To(BeNil())
-	g.Expect(binding.Spec.RepoUrl).To(Equal("https://quay.io/tests/artifact-deployments"))
+	g.Expect(binding.Spec.Image.Visibility).To(Equal(imagecontroller.ImageVisibilityPublic))
 
 }
 

@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redhat-appstudio/image-controller/pkg/quay"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/metrics"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 
+	imagecontroller "github.com/redhat-appstudio/image-controller/api/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	spi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -36,7 +35,7 @@ var (
 	controllerLog = ctrl.Log.WithName("controller")
 )
 
-func NewManager(cfg *rest.Config, options ctrl.Options, quayClient *quay.QuayClient, quayOrgName string) (ctrl.Manager, error) {
+func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 
 	// we have seen in e2e testing that this path can get invoked prior to the TaskRun CRD getting generated,
 	// and controller-runtime does not retry on missing CRDs.
@@ -56,10 +55,10 @@ func NewManager(cfg *rest.Config, options ctrl.Options, quayClient *quay.QuayCli
 	}
 
 	//check for the SPI to be present
-	spiPresent := true
-	_, err := apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "spiaccesstokenbindings.appstudio.redhat.com", metav1.GetOptions{})
+	imageSpiPresent := true
+	_, err := apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "imagerepositories.appstudio.redhat.com", metav1.GetOptions{})
 	if err != nil {
-		spiPresent = false
+		imageSpiPresent = false
 	}
 
 	options.Scheme = runtime.NewScheme()
@@ -77,8 +76,8 @@ func NewManager(cfg *rest.Config, options ctrl.Options, quayClient *quay.QuayCli
 		return nil, err
 	}
 
-	if spiPresent {
-		if err := spi.AddToScheme(options.Scheme); err != nil {
+	if imageSpiPresent {
+		if err := imagecontroller.AddToScheme(options.Scheme); err != nil {
 			return nil, err
 		}
 	}
@@ -129,7 +128,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options, quayClient *quay.QuayCli
 		return nil, err
 	}
 
-	if err := jbsconfig.SetupNewReconcilerWithManager(mgr, spiPresent, quayClient, quayOrgName); err != nil {
+	if err := jbsconfig.SetupNewReconcilerWithManager(mgr, imageSpiPresent); err != nil {
 		return nil, err
 	}
 

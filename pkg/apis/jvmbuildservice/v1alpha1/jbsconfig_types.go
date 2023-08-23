@@ -8,7 +8,7 @@ type HermeticBuildType string
 
 const (
 	JBSConfigName                           = "jvm-build-config"
-	ImageSecretName                         = "jvm-build-image-secrets" //#nosec
+	DefaultImageSecretName                  = "jvm-build-image-secrets" //#nosec
 	GitSecretName                           = "jvm-build-git-secrets"   //#nosec
 	TlsSecretName                           = "jvm-build-tls-secrets"   //#nosec
 	TlsConfigMapName                        = "jvm-build-tls-ca"        //#nosec
@@ -86,6 +86,7 @@ type ImageRegistry struct {
 	Repository string `json:"repository,omitempty"` // Defaults to artifact-deployments in ImageRegistry()
 	Insecure   bool   `json:"insecure,omitempty"`
 	PrependTag string `json:"prependTag,omitempty"`
+	SecretName string `json:"secretName,omitempty"`
 }
 
 type RelocationPatternElement struct {
@@ -148,6 +149,9 @@ func (in *JBSConfig) ImageRegistry() ImageRegistry {
 	}
 	if in.Status.ImageRegistry.Insecure {
 		ret.Insecure = true
+	}
+	if in.Status.ImageRegistry.SecretName != "" {
+		ret.SecretName = in.Status.ImageRegistry.SecretName
 	}
 	return ret
 }

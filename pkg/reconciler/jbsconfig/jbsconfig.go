@@ -2,18 +2,16 @@ package jbsconfig
 
 import (
 	"context"
-	"encoding/base64"
 	errors2 "errors"
 	"fmt"
+	imagecontroller "github.com/redhat-appstudio/image-controller/api/v1alpha1"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/redhat-appstudio/image-controller/pkg/quay"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	"github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,7 +28,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	rs "github.com/redhat-appstudio/remote-secret/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -39,7 +36,6 @@ import (
 const (
 	TlsServiceName                      = v1alpha1.CacheDeploymentName + "-tls"
 	TestRegistry                        = "jvmbuildservice.io/test-registry"
-	ImageRepositoryFinalizer            = "jvmbuildservice.io/quay-repository-finalizer"
 	DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
 	UploadSecretName                    = "jvm-build-service-temp-upload-secret" //#nosec
 )
@@ -59,18 +55,14 @@ type ReconcilerJBSConfig struct {
 	eventRecorder        record.EventRecorder
 	configuredCacheImage string
 	spiPresent           bool
-	quayClient           *quay.QuayClient
-	quayOrgName          string
 }
 
-func newReconciler(mgr ctrl.Manager, spiPresent bool, quayClient *quay.QuayClient, quayOrgName string) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, spiPresent bool) reconcile.Reconciler {
 	ret := &ReconcilerJBSConfig{
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("JBSConfig"),
 		spiPresent:    spiPresent,
-		quayClient:    quayClient,
-		quayOrgName:   quayOrgName,
 	}
 	return ret
 }
@@ -85,10 +77,6 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
 		return reconcile.Result{}, err
-	}
-	if !jbsConfig.DeletionTimestamp.IsZero() {
-		// The object is being deleted.
-		return reconcile.Result{}, r.handlePossibleRepositoryCleanup(ctx, &jbsConfig, log)
 	}
 	err, done := r.handleDeprecatedRegistryDefinition(ctx, &jbsConfig)
 	if done || err != nil {
@@ -157,41 +145,6 @@ func (r *ReconcilerJBSConfig) handleDeprecatedRegistryDefinition(ctx context.Con
 	return nil, false
 }
 
-func (r *ReconcilerJBSConfig) handlePossibleRepositoryCleanup(ctx context.Context, jbsConfig *v1alpha1.JBSConfig, log logr.Logger) error {
-	if controllerutil.ContainsFinalizer(jbsConfig, ImageRepositoryFinalizer) {
-		robotAccountName := generateRobotAccountName(jbsConfig)
-		isDeleted, err := r.quayClient.DeleteRobotAccount(r.quayOrgName, robotAccountName)
-		if err != nil {
-			log.Error(err, "failed to delete robot account")
-			// Do not block Component deletion if failed to delete robot account
-		}
-		if isDeleted {
-			log.Info(fmt.Sprintf("Deleted robot account %s", robotAccountName))
-		}
-
-		if val, exists := jbsConfig.Annotations[DeleteImageRepositoryAnnotationName]; exists && val == "true" {
-			imageRepo := generateRepositoryName(jbsConfig)
-			isRepoDeleted, err := r.quayClient.DeleteRepository(r.quayOrgName, imageRepo)
-			if err != nil {
-				log.Error(err, "failed to delete image repository")
-				// Do not block Component deletion if failed to delete image repository
-			}
-			if isRepoDeleted {
-				log.Info(fmt.Sprintf("Deleted image repository %s", imageRepo))
-			}
-		}
-
-		controllerutil.RemoveFinalizer(jbsConfig, ImageRepositoryFinalizer)
-		if err := r.client.Update(ctx, jbsConfig); err != nil {
-			log.Error(err, "failed to remove image repository finalizer")
-			return err
-		}
-		log.Info("Image repository finalizer removed from the JBSConfig")
-		return err
-	}
-	return nil
-}
-
 func settingOrDefault(setting, def string) string {
 	if len(strings.TrimSpace(setting)) == 0 {
 		return def
@@ -199,15 +152,6 @@ func settingOrDefault(setting, def string) string {
 	return setting
 }
 
-func generateRobotAccountName(component *v1alpha1.JBSConfig) string {
-	robotAccountName := component.Namespace + component.Name
-	robotAccountName = strings.Replace(robotAccountName, "-", "_", -1)
-	return robotAccountName
-}
-
-func generateRepositoryName(component *v1alpha1.JBSConfig) string {
-	return component.Namespace + "/jvm-build-service-artifacts"
-}
 func setEnvVarValue(field, envName string, cache *appsv1.Deployment) *appsv1.Deployment {
 	envVar := corev1.EnvVar{
 		Name:  envName,
@@ -272,30 +216,34 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	}
 
 	registrySecret := &corev1.Secret{}
+	secretName := jbsConfig.ImageRegistry().SecretName
+	if secretName == "" {
+		//this we be updated below in the status if the secret is present
+		secretName = v1alpha1.DefaultImageSecretName
+	}
 	// our client is wired to not cache secrets / establish informers for secrets
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: v1alpha1.ImageSecretName}, registrySecret)
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: secretName}, registrySecret)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if r.spiPresent {
-				return r.handleNoImageSecretFound(ctx, jbsConfig)
-			} else {
-				return errors2.New("secret jvm-build-image-secrets not found, and SPI not installed. Rebuilds not possible")
-			}
-
+			return errors2.New("secret jvm-build-image-secrets not found, and explicit repository configured or image controller not installed, rebuilds not possible")
 		}
 		return err
 	}
 	_, keyPresent1 := registrySecret.Data[v1alpha1.ImageSecretTokenKey]
 	_, keyPresent2 := registrySecret.StringData[v1alpha1.ImageSecretTokenKey]
 	if !keyPresent1 && !keyPresent2 {
-		err := fmt.Errorf("need image registry token set at key %s in secret %s to enable rebuilds", v1alpha1.ImageSecretTokenKey, v1alpha1.ImageSecretName)
+		err := fmt.Errorf("need image registry token set at key %s in secret %s to enable rebuilds", v1alpha1.ImageSecretTokenKey, v1alpha1.DefaultImageSecretName)
 		return err
 	}
 	message := fmt.Sprintf("found %s secret with appropriate token keys in namespace %s, rebuilds are possible", v1alpha1.ImageSecretTokenKey, request.Namespace)
 	log.Info(message)
-	if jbsConfig.Status.Message != message || !jbsConfig.Status.RebuildsPossible {
+	if jbsConfig.Status.Message != message || !jbsConfig.Status.RebuildsPossible || jbsConfig.ImageRegistry().SecretName != secretName {
 		jbsConfig.Status.RebuildsPossible = true
 		jbsConfig.Status.Message = message
+		if jbsConfig.Status.ImageRegistry == nil {
+			jbsConfig.Status.ImageRegistry = &v1alpha1.ImageRegistry{}
+		}
+		jbsConfig.Status.ImageRegistry.SecretName = secretName
 		err2 := r.client.Status().Update(ctx, jbsConfig)
 		if err2 != nil {
 			return err2
@@ -556,7 +504,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		cache = setEnvVarValue(imageRegistry.PrependTag, "REGISTRY_PREPEND_TAG", cache)
 		cache = setEnvVar(corev1.EnvVar{
 			Name:      "REGISTRY_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}},
+			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}},
 		}, cache)
 		cache = setEnvVar(corev1.EnvVar{
 			Name:      "GIT_TOKEN",
@@ -645,187 +593,42 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	}
 }
 
-func (r *ReconcilerJBSConfig) handleNoImageSecretFound(ctx context.Context, config *v1alpha1.JBSConfig) error {
-	binding := v1beta1.SPIAccessTokenBinding{}
-	err := r.client.Get(ctx, types.NamespacedName{Name: v1alpha1.ImageSecretName, Namespace: config.Namespace}, &binding)
+func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log logr.Logger, config *v1alpha1.JBSConfig) error {
+
+	repo := imagecontroller.ImageRepository{}
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: config.Namespace, Name: v1alpha1.DefaultImageSecretName}, &repo)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			binding.Name = v1alpha1.ImageSecretName
-			binding.Namespace = config.Namespace
-			imageRegistry := config.ImageRegistry()
-			url := "https://"
-			url += imageRegistry.Host
-			url += "/" + imageRegistry.Owner + "/"
-			url += imageRegistry.Repository
-			binding.Spec.RepoUrl = url
-			binding.Spec.Lifetime = "-1"
-			binding.Spec.Permissions = v1beta1.Permissions{Required: []v1beta1.Permission{{Type: v1beta1.PermissionTypeReadWrite, Area: v1beta1.PermissionAreaRegistry}}}
-			binding.Spec.Secret = v1beta1.SecretSpec{
-				LinkableSecretSpec: rs.LinkableSecretSpec{
-					Name: v1alpha1.ImageSecretName,
-					Type: corev1.SecretTypeDockerConfigJson,
-				},
-			}
-			err = controllerutil.SetOwnerReference(config, &binding, r.scheme)
+			repo.Name = v1alpha1.DefaultImageSecretName
+			repo.Namespace = config.Namespace
+			repo.Spec.Image.Visibility = imagecontroller.ImageVisibilityPublic
+			err := controllerutil.SetOwnerReference(config, &repo, r.scheme)
 			if err != nil {
 				return err
 			}
-			//we just return
-			err := r.client.Create(ctx, &binding)
-			if err != nil {
-				return err
-			}
-			return errors2.New("created SPIAccessTokenBinding, waiting for secret to be injected")
+			return r.client.Create(ctx, &repo)
 		} else {
 			return err
 		}
 	}
-	switch binding.Status.Phase {
-	case v1beta1.SPIAccessTokenBindingPhaseError:
-		return errors2.New(binding.Status.ErrorMessage)
-	case v1beta1.SPIAccessTokenBindingPhaseInjected:
-		return errors2.New("unexpected error, SPIAccessTokenBinding claims to be injected but secret was not found")
+	if repo.Status.State == imagecontroller.ImageRepositoryStateFailed {
+		return errors2.New(repo.Status.Message)
 	}
-	return errors2.New("created SPIAccessTokenBinding, waiting for secret to be injected")
-}
+	if repo.Status.State != imagecontroller.ImageRepositoryStateReady {
+		return errors2.New("image repository not ready yet")
+	}
+	url := strings.Split(repo.Status.Image.URL, "/")
+	host := url[0]
+	owner := url[1]
+	repository := strings.Join(url[2:], "/")
 
-func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log logr.Logger, config *v1alpha1.JBSConfig) error {
-	if r.quayClient == nil || r.quayOrgName == "" {
-		log.Info(fmt.Sprintf("No Quay organisation specified ('%#v') and automatic repo creation is disabled with client %#v",
-			r.quayOrgName, r.quayClient))
-		return errors2.New("no Quay organisation specified and automatic repo creation is disabled")
-	}
-
-	//remove the existing secret if preset
-	registrySecret := &corev1.Secret{}
-	// our client is wired to not cache secrets / establish informers for secrets
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: config.Namespace, Name: v1alpha1.ImageSecretName}, registrySecret)
-	if err == nil {
-		err := r.client.Delete(ctx, registrySecret)
-		if err != nil {
-			return err
-		}
-	}
-	repo, robotAccount, err := r.generateImageRepository(log, config)
-	if err != nil {
-		return err
-	}
-	if repo == nil || robotAccount == nil {
-		return errors2.New("unknown error in the repository generation process")
-	}
-	controllerutil.AddFinalizer(config, ImageRepositoryFinalizer)
-	err = r.client.Update(ctx, config)
-	if err != nil {
-		return err
-	}
 	config.Status.ImageRegistry = &v1alpha1.ImageRegistry{
-		Owner:      r.quayOrgName,
-		Host:       "quay.io",
-		Repository: repo.Name,
+		Host:       host,
+		Owner:      owner,
+		Repository: repository,
+		SecretName: repo.Status.Credentials.PushSecretName,
 	}
-	err = r.client.Status().Update(ctx, config)
-	if err != nil {
-		return err
-	}
-
-	// Create secret with the repository credentials
-	imageURL := fmt.Sprintf("quay.io/%s/%s", r.quayOrgName, repo.Name)
-	robotAccountSecret := generateSecret(config, *robotAccount, imageURL, false) //don't use the SPI for now until it is working with plain secrets
-
-	robotAccountSecretKey := types.NamespacedName{Namespace: config.Namespace, Name: v1alpha1.ImageSecretName}
-	existingRobotAccountSecret := &corev1.Secret{}
-	if err := r.client.Get(ctx, robotAccountSecretKey, existingRobotAccountSecret); err == nil {
-		if err := r.client.Delete(ctx, existingRobotAccountSecret); err != nil {
-			log.Error(err, fmt.Sprintf("failed to delete robot account secret %v", robotAccountSecretKey), Action, ActionDelete)
-			return err
-		} else {
-			log.Info(fmt.Sprintf("Deleted old robot account secret %v", robotAccountSecretKey), Action, ActionDelete)
-		}
-	} else if !errors.IsNotFound(err) {
-		log.Error(err, fmt.Sprintf("failed to read robot account secret %v", robotAccountSecretKey), Action, ActionView)
-		return err
-	}
-
-	if err := r.client.Create(ctx, &robotAccountSecret); err != nil {
-		log.Error(err, fmt.Sprintf("error writing robot account token into Secret: %v", robotAccountSecretKey), Action, ActionAdd)
-		return err
-	}
-	log.Info(fmt.Sprintf("Created image registry secret %s", robotAccountSecretKey.Name), Action, ActionAdd)
-
-	return nil
-}
-
-func (r *ReconcilerJBSConfig) generateImageRepository(log logr.Logger, component *v1alpha1.JBSConfig) (*quay.Repository, *quay.RobotAccount, error) {
-
-	imageRepositoryName := generateRepositoryName(component)
-	repo, err := r.quayClient.CreateRepository(quay.RepositoryRequest{
-		Namespace:   r.quayOrgName,
-		Visibility:  "public",
-		Description: "JVM Build Service repository for the user",
-		Repository:  imageRepositoryName,
-	})
-	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to create image repository %s", imageRepositoryName))
-		return nil, nil, err
-	}
-
-	robotAccountName := generateRobotAccountName(component)
-	_, _ = r.quayClient.DeleteRobotAccount(r.quayOrgName, robotAccountName)
-	robotAccount, err := r.quayClient.CreateRobotAccount(r.quayOrgName, robotAccountName)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to create robot account %s for image repository %s and organisation %s", robotAccountName, imageRepositoryName, r.quayOrgName))
-		return nil, nil, err
-	}
-
-	err = r.quayClient.AddPermissionsForRepositoryToRobotAccount(r.quayOrgName, repo.Name, robotAccountName, true)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to add permissions to robot account %s for image repository %s and organisation %s", robotAccountName, imageRepositoryName, r.quayOrgName))
-		return nil, nil, err
-	}
-
-	return repo, robotAccount, nil
-}
-
-// generateSecret dumps the robot account token into a Secret for future consumption.
-func generateSecret(c *v1alpha1.JBSConfig, r quay.RobotAccount, imageURL string, spiPresent bool) corev1.Secret {
-	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: c.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Name:       c.Name,
-					APIVersion: c.APIVersion,
-					Kind:       c.Kind,
-					UID:        c.UID,
-				},
-			},
-		},
-	}
-	if spiPresent {
-		//create a secret to upload this to the SPI
-		secret.Labels = map[string]string{"spi.appstudio.redhat.com/upload-secret": "token"}
-		secret.Name = UploadSecretName
-		secret.Type = corev1.SecretTypeOpaque
-		secretData := map[string]string{}
-		secretData["spiTokenName"] = v1alpha1.ImageSecretName
-		secretData["providerUrl"] = "https://" + imageURL
-		secretData["userName"] = r.Name
-		secretData["tokenData"] = r.Token
-		secret.StringData = secretData
-		return secret
-	} else {
-		secret.Name = v1alpha1.ImageSecretName
-		secret.Type = corev1.SecretTypeDockerConfigJson
-		secretData := map[string]string{}
-		authString := fmt.Sprintf("%s:%s", r.Name, r.Token)
-		secretData[corev1.DockerConfigJsonKey] = fmt.Sprintf(`{"auths":{"%s":{"auth":"%s"}}}`,
-			imageURL,
-			base64.StdEncoding.EncodeToString([]byte(authString)),
-		)
-
-		secret.StringData = secretData
-		return secret
-	}
+	return r.client.Status().Update(ctx, config)
 }
 
 func ImageRegistriesToString(log logr.Logger, sharedRegistries []v1alpha1.ImageRegistry) string {

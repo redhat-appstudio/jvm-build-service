@@ -24,9 +24,7 @@ require (
 require (
 	github.com/CycloneDX/cyclonedx-go v0.7.1
 	github.com/google/go-containerregistry v0.15.2
-	github.com/redhat-appstudio/image-controller v0.0.0-20230816131033-9e9021e17ad9
-	github.com/redhat-appstudio/remote-secret v0.0.0-20230713072146-a6094c712436
-	github.com/redhat-appstudio/service-provider-integration-operator v0.2023.22-0.20230713080056-eae17aa8c172
+	github.com/redhat-appstudio/image-controller v0.0.0-20230831131151-75d3928646d2
 	go.uber.org/zap v1.24.0
 	sigs.k8s.io/yaml v1.3.0
 )
