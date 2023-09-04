@@ -18,6 +18,8 @@ spec:
           secret:
             optional: false
             secretName: quaytoken
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: hacbs-jvm-operator
           image: hacbs-jvm-operator
@@ -39,4 +41,6 @@ spec:
             - mountPath: "/workspace"
               name: quaytoken
               readOnly: true
+          securityContext:
+            readOnlyRootFilesystem: true
       serviceAccountName: hacbs-jvm-operator
