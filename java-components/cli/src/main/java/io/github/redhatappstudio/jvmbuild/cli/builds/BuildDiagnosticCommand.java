@@ -75,6 +75,10 @@ public class BuildDiagnosticCommand
                         theBuild.getSpec().getVersion() + '\n');
 
         var builds = theBuild.getStatus().getBuildAttempts();
+        if (builds == null) {
+            System.out.println("No build attempts have been made");
+            return;
+        }
         try {
             for (var i : builds) {
                 String fileName;
