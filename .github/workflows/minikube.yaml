@@ -42,7 +42,7 @@ jobs:
           sudo echo '{ "insecure-registries": ["172.16.1.1:5000"] }' | sudo tee  /etc/docker/daemon.json
 
       - name: Start minikube
-        uses: medyagh/setup-minikube@eefe3e32b8e0cbd99330ebb68c5fc2d0c2a5e68c
+        uses: medyagh/setup-minikube@e0505489c98496aff6ed17db0ba68bf7ecadf730 # v0.0.14
         with:
           cpus: max
           memory: max
@@ -91,7 +91,7 @@ jobs:
           docker run -d -p 5000:5000 --restart=always  registry:2
           sudo echo '{ "insecure-registries": ["172.16.1.1:5000"] }' | sudo tee  /etc/docker/daemon.json
       - name: Start minikube
-        uses: medyagh/setup-minikube@eefe3e32b8e0cbd99330ebb68c5fc2d0c2a5e68c
+        uses: medyagh/setup-minikube@e0505489c98496aff6ed17db0ba68bf7ecadf730 # v0.0.14
         with:
           cpus: max
           memory: max
