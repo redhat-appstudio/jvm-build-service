@@ -692,7 +692,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 			//we still need to check for tekton results updates though
 			if r.handleTektonResults(db, pr) {
-				return reconcile.Result{}, r.client.Update(ctx, db)
+				return reconcile.Result{}, r.client.Status().Update(ctx, db)
 			}
 
 			return reconcile.Result{}, nil
