@@ -414,10 +414,20 @@ public class LookupBuildInfoCommand implements Runnable {
                 repos.add(i.getUrl());
             }
         }
+        if (model.getPluginRepositories() != null) {
+            for (var i : model.getPluginRepositories()) {
+                repos.add(i.getUrl());
+            }
+        }
         if (model.getProfiles() != null) {
             for (var profile : model.getProfiles()) {
                 if (profile.getRepositories() != null) {
                     for (var i : profile.getRepositories()) {
+                        repos.add(i.getUrl());
+                    }
+                }
+                if (profile.getPluginRepositories() != null) {
+                    for (var i : profile.getPluginRepositories()) {
                         repos.add(i.getUrl());
                     }
                 }
