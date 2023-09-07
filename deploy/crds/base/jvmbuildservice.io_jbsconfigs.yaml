@@ -117,6 +117,8 @@ spec:
                     type: string
                   repository:
                     type: string
+                  secretName:
+                    type: string
                 type: object
               relocationPatterns:
                 items:
@@ -154,6 +156,8 @@ spec:
                   verification fails otherwise deploy will happen as normal, but a
                   field will be set on the DependencyBuild
                 type: boolean
+              secretName:
+                type: string
               sharedRegistries:
                 items:
                   properties:
@@ -168,6 +172,8 @@ spec:
                     prependTag:
                       type: string
                     repository:
+                      type: string
+                    secretName:
                       type: string
                   type: object
                 type: array
@@ -187,6 +193,8 @@ spec:
                   prependTag:
                     type: string
                   repository:
+                    type: string
+                  secretName:
                     type: string
                 type: object
               message:

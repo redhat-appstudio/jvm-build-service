@@ -1,0 +1,8 @@
+apiVersion: appstudio.redhat.com/v1beta1
+kind: ImageRepository
+metadata:
+  name: imagerepository-sample
+spec:
+  image:
+    name: my-image-name
+    visibility: public

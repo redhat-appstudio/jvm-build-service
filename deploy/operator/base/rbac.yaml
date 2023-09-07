@@ -213,7 +213,7 @@ rules:
   - apiGroups:
       - appstudio.redhat.com
     resources:
-      - spiaccesstokenbindings
+      - imagerepositories
     verbs:
       - create
       - get

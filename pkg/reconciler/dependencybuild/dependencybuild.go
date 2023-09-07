@@ -1099,6 +1099,13 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		}
 	}
 	memory := fmt.Sprintf("%dMi", 512+additionalMemory)
+	envVars := []v1.EnvVar{
+		{Name: "JAVA_OPTS", Value: "-XX:+CrashOnOutOfMemoryError"},
+		{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
+	}
+	if jbsConfig.ImageRegistry().SecretName != "" {
+		envVars = append(envVars, v1.EnvVar{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}}})
+	}
 	return &pipelinev1beta1.PipelineSpec{
 		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
 		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultBuildInfo + ")"}}},
@@ -1122,11 +1129,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 									Requests: v1.ResourceList{"memory": resource.MustParse(memory), "cpu": resource.MustParse("10m")},
 									Limits:   v1.ResourceList{"memory": resource.MustParse(memory)},
 								},
-								Env: []v1.EnvVar{
-									{Name: "JAVA_OPTS", Value: "-XX:+CrashOnOutOfMemoryError"},
-									{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
-									{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.ImageSecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}}},
-								},
+								Env: envVars,
 							},
 						},
 					},

@@ -4,7 +4,7 @@ metadata:
   name: pipeline-anyuid-role
 rules:
   - apiGroups: ["security.openshift.io"]
-    resourceNames: ["anyuid"]
+    resourceNames: ["anyuid", "appstudio-pipelines-scc"]
     resources: ["securitycontextconstraints"]
     verbs: ["use"]
 

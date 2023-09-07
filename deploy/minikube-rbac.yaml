@@ -43,7 +43,7 @@ roleRef:
   name: pipeline
 subjects:
   - kind: ServiceAccount
-    name: pipeline
+    name: appstudio-pipeline
     namespace: test-jvm-namespace
 ---
 apiVersion: v1
