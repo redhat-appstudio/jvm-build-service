@@ -61,7 +61,6 @@ import com.redhat.hacbs.recipies.util.GitCredentials;
 import com.redhat.hacbs.resources.model.v1alpha1.Util;
 import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
-import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.quarkus.logging.Log;
 import io.vertx.core.json.JsonObject;
 import picocli.CommandLine;
@@ -131,6 +130,7 @@ public class LookupBuildInfoCommand implements Runnable {
             Log.errorf(e, "Failed to process build info for " + scmUrl);
             resultsUpdater.get().updateResults(taskRun, Map.of(
                     "BUILD_INFO", "Failed to analyse build for " + scmUrl + ". Failure reason: " + e.getMessage()));
+            System.exit(1);
         }
     }
 
@@ -393,7 +393,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         // Tried to pull image manifest for <...>:975ea3800099190263d38f051c1a188a but failed
                         //    because: unknown error code: TAG_EXPIRED
                         if (!e.getMessage().contains("TAG_EXPIRED")) {
-                            throw new KubernetesClientException(e.toString());
+                            throw new RuntimeException(e);
                         }
                         Log.errorf("Registry tag expired - " + e.getMessage());
                     }
