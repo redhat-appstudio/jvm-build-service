@@ -45,14 +45,21 @@ type JBSConfigSpec struct {
 
 	MavenBaseLocations map[string]string `json:"mavenBaseLocations,omitempty"`
 
-	SharedRegistries []ImageRegistry `json:"sharedRegistries,omitempty"`
-	Registry         ImageRegistry   `json:"registry,omitempty"`
-	MavenDeployment  MavenDeployment `json:"mavenDeployment,omitempty"`
+	SharedRegistries []ImageRegistry   `json:"sharedRegistries,omitempty"`
+	Registry         ImageRegistrySpec `json:"registry,omitempty"`
+	MavenDeployment  MavenDeployment   `json:"mavenDeployment,omitempty"`
 	// Deprecated: Replaced by explicit declaration of Registry above.
 	ImageRegistry      `json:",inline,omitempty"`
 	CacheSettings      CacheSettings              `json:"cacheSettings,omitempty"`
 	BuildSettings      BuildSettings              `json:"buildSettings,omitempty"`
 	RelocationPatterns []RelocationPatternElement `json:"relocationPatterns,omitempty"`
+}
+
+type ImageRegistrySpec struct {
+	ImageRegistry `json:",inline,omitempty"`
+
+	//if this is true and we are automatically creating registries then we will make it private
+	Private *bool `json:"private,omitempty"`
 }
 
 type JBSConfigStatus struct {
@@ -134,7 +141,7 @@ type JBSConfig struct {
 }
 
 func (in *JBSConfig) ImageRegistry() ImageRegistry {
-	ret := in.Spec.Registry
+	ret := in.Spec.Registry.ImageRegistry
 	if ret.Host == "" {
 		ret.Host = "quay.io"
 	}

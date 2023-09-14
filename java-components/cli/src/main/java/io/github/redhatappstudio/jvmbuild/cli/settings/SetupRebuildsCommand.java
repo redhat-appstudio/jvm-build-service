@@ -15,6 +15,9 @@ public class SetupRebuildsCommand implements Runnable {
     @Inject
     KubernetesClient client;
 
+    @CommandLine.Option(names = "--private-repo")
+    boolean privateRepo;
+
     @Override
     public void run() {
 
@@ -27,6 +30,7 @@ public class SetupRebuildsCommand implements Runnable {
             }
             config.getSpec().setEnableRebuilds(true);
             config.getSpec().setRequireArtifactVerification(true);
+            config.getSpec().getRegistry().set_private(privateRepo);
             resource.patch(config);
         } else {
             config = new JBSConfig();
@@ -34,6 +38,7 @@ public class SetupRebuildsCommand implements Runnable {
             config.getMetadata().setName(ModelConstants.JBS_CONFIG_NAME);
             config.getSpec().setEnableRebuilds(true);
             config.getSpec().setRequireArtifactVerification(true);
+            config.getSpec().getRegistry().set_private(privateRepo);
             client.resource(config).create();
         }
         long timeout = System.currentTimeMillis() + 10000;

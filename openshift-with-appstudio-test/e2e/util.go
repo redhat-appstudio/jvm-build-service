@@ -296,11 +296,13 @@ func setupConfig(t *testing.T, namespace string, hermetic bool) *testArgs {
 				WorkerThreads: "100",
 				RequestCPU:    "10m",
 			},
-			Registry: v1alpha1.ImageRegistry{
-				Host:       "quay.io",
-				Owner:      owner,
-				Repository: "test-images",
-				PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
+			Registry: v1alpha1.ImageRegistrySpec{
+				ImageRegistry: v1alpha1.ImageRegistry{
+					Host:       "quay.io",
+					Owner:      owner,
+					Repository: "test-images",
+					PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
+				},
 			},
 			RelocationPatterns: []v1alpha1.RelocationPatternElement{
 				{
@@ -897,13 +899,15 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 				DisableTLS:    true,
 				Storage:       "756Mi",
 			},
-			Registry: v1alpha1.ImageRegistry{
-				Host:       devIp,
-				Owner:      owner,
-				Repository: "test-images",
-				Port:       "5000",
-				Insecure:   true,
-				PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
+			Registry: v1alpha1.ImageRegistrySpec{
+				ImageRegistry: v1alpha1.ImageRegistry{
+					Host:       devIp,
+					Owner:      owner,
+					Repository: "test-images",
+					Port:       "5000",
+					Insecure:   true,
+					PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
+				},
 			},
 		},
 		Status: v1alpha1.JBSConfigStatus{},

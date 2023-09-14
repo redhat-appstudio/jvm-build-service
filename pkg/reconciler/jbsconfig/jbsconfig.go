@@ -598,13 +598,17 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 
 func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log logr.Logger, config *v1alpha1.JBSConfig) error {
 
+	vis := imagecontroller.ImageVisibilityPublic
+	if config.Spec.Registry.Private != nil && *config.Spec.Registry.Private {
+		vis = imagecontroller.ImageVisibilityPrivate
+	}
 	repo := imagecontroller.ImageRepository{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: config.Namespace, Name: v1alpha1.DefaultImageSecretName}, &repo)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			repo.Name = v1alpha1.DefaultImageSecretName
 			repo.Namespace = config.Namespace
-			repo.Spec.Image.Visibility = imagecontroller.ImageVisibilityPublic
+			repo.Spec.Image.Visibility = vis
 			err := controllerutil.SetOwnerReference(config, &repo, r.scheme)
 			if err != nil {
 				return err
