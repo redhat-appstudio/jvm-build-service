@@ -8,6 +8,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.ImageReference;
+import com.google.cloud.tools.jib.api.RegistryException;
 import com.google.cloud.tools.jib.event.EventHandlers;
 import com.google.cloud.tools.jib.frontend.CredentialRetrieverFactory;
 import com.google.cloud.tools.jib.http.FailoverHttpClient;
@@ -22,13 +23,11 @@ public class ContainerUtil {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public static RegistryClient getRegistryClient(ImageReference imageReference, Credential credential, boolean insecure)
-            throws CredentialRetrievalException {
+            throws CredentialRetrievalException, RegistryException {
         if (insecure) {
             System.setProperty("sendCredentialsOverHttp", "true");
         }
-        CredentialRetrieverFactory credentialRetrieverFactory = CredentialRetrieverFactory.forImage(imageReference,
-                s -> Log.info(
-                        s.getMessage()));
+
         RegistryClient.Factory factory = RegistryClient.factory(new EventHandlers.Builder().build(),
                 imageReference.getRegistry(),
                 imageReference.getRepository(), new FailoverHttpClient(insecure, insecure, s -> Log.info(
@@ -37,10 +36,22 @@ public class ContainerUtil {
         if (credential != null) {
             factory.setCredential(credential);
         } else {
+            CredentialRetrieverFactory credentialRetrieverFactory = CredentialRetrieverFactory.forImage(imageReference,
+                    s -> Log.info(
+                            s.getMessage()));
             Optional<Credential> optionalCredential = credentialRetrieverFactory.dockerConfig().retrieve();
             optionalCredential.ifPresent(factory::setCredential);
         }
-        return factory.newRegistryClient();
+        RegistryClient registryClient = factory.newRegistryClient();
+        //this is quay specific possibly?
+        //unfortunately we can't get the actual header
+        if (imageReference.getRegistry().equals("quay.io") && credential != null) {
+            String wwwAuthenticate = "Bearer realm=\"https://" + imageReference.getRegistry() + "/v2/auth\",service=\""
+                    + imageReference.getRegistry()
+                    + "\",scope=\"repository:" + imageReference.getRepository() + ":pull\"";
+            registryClient.authPullByWwwAuthenticate(wwwAuthenticate);
+        }
+        return registryClient;
     }
 
     public static Credential processToken(String fullName, String token) {
