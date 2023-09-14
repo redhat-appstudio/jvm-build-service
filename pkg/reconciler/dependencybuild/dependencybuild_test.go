@@ -124,6 +124,9 @@ func TestStateNew(t *testing.T) {
 }
 
 func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context, success bool) {
+	runBuildDiscoveryPipelineForResult(db, g, reconciler, client, ctx, success, `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"javaVersion":null,"repositories":["jboss","gradle"]}`)
+}
+func runBuildDiscoveryPipelineForResult(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context, success bool, result string) {
 	var pr *pipelinev1beta1.PipelineRun
 	trList := &pipelinev1beta1.PipelineRunList{}
 	g.Expect(client.List(ctx, trList))
@@ -137,7 +140,7 @@ func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler
 	g.Expect(len(pr.Finalizers)).Should(Equal(1))
 	pr.Namespace = metav1.NamespaceDefault
 	if success {
-		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"javaVersion":null,"repositories":["jboss","gradle"]}`}}}
+		pr.Status.PipelineResults = []pipelinev1beta1.PipelineRunResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: result}}}
 		pr.Status.SetCondition(&apis.Condition{
 			Type:               apis.ConditionSucceeded,
 			Status:             "True",
@@ -252,6 +255,13 @@ func TestStateDetect(t *testing.T) {
 		runBuildDiscoveryPipeline(db, g, reconciler, client, ctx, false)
 		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
 		g.Expect(getBuild(client, g).Status.Message).Should(Equal("build info missing"))
+	})
+	t.Run("Test reconcile build info discovery invalid result", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		db, client, reconciler, ctx := setup(g)
+		runBuildDiscoveryPipelineForResult(db, g, reconciler, client, ctx, true, "invalid json")
+		g.Expect(getBuild(client, g).Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
+		g.Expect(getBuild(client, g).Status.Message).Should(ContainSubstring("invalid json"))
 	})
 }
 
