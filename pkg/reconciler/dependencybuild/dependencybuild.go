@@ -312,7 +312,10 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 
 		if err := json.Unmarshal([]byte(buildInfo), &unmarshalled); err != nil {
 			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
-			return reconcile.Result{}, err
+
+			db.Status.State = v1alpha1.DependencyBuildStateFailed
+			db.Status.Message = "failed to unmarshal json build info: " + err.Error() + ": " + buildInfo
+			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 		}
 
 		//read our builder images from the config
