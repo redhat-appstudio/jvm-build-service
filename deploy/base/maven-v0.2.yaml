@@ -159,6 +159,13 @@ spec:
 
     - name: mvn-goals
       image: $(params.MAVEN_IMAGE)
+      resources:
+        limits:
+          memory: 4Gi
+          cpu: 2
+        requests:
+          memory: 4Gi
+          cpu: 250m
       securityContext:
         runAsUser: 0
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
