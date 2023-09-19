@@ -19,7 +19,7 @@ oc apply -k $DIR/operator/config
 find $DIR -name ci-final -exec rm -r {} \;
 find $DIR -name ci-template -exec cp -r {} {}/../ci-final \;
 # copy deployment yaml, but change the image placeholder, as we employ a simpler/basic substution via env vars in openshift ci
-sed 's/image: hacbs-jvm-operator/image: jvm-build-service-image/' $DIR/operator/base/deployment.yaml > $DIR/operator/overlays/ci-final/base-deployment.yaml
+sed 's/image: hacbs-jvm-operator:next/image: jvm-build-service-image/' $DIR/operator/base/deployment.yaml > $DIR/operator/overlays/ci-final/base-deployment.yaml
 find $DIR -path \*ci-final\*.yaml -exec sed -i s%jvm-build-service-image%${JVM_BUILD_SERVICE_IMAGE}% {} \;
 find $DIR -path \*ci-final\*.yaml -exec sed -i s%jvm-build-service-reqprocessor-image%${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}% {} \;
 find $DIR -path \*ci-final\*.yaml -exec sed -i s/ci-template/ci-final/ {} \;
