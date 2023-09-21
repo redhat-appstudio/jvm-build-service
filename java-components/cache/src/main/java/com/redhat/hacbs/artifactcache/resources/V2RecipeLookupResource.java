@@ -84,4 +84,17 @@ public class V2RecipeLookupResource {
             return Response.status(500).entity(e.getMessage()).build();
         }
     }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("build-tool-info")
+    public Response lookupBuildToolInfo(@QueryParam("name") String name)
+        throws IOException {
+        try {
+            return Response.ok(recipeManager.getBuildToolInfo(name)).build();
+        } catch (Exception e) {
+            Log.errorf(e, "Failed to lookup build tool info for %s", name);
+            return Response.status(500).entity(e.getMessage()).build();
+        }
+    }
 }

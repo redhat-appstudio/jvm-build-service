@@ -7,11 +7,15 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
+import com.redhat.hacbs.recipies.tools.BuildToolInfo;
+import com.redhat.hacbs.recipies.tools.BuildToolInfoManager;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
@@ -107,6 +111,24 @@ public class RecipeManager {
             }
         }
         return ret;
+    }
+
+    public List<BuildToolInfo> getBuildToolInfo(String name) {
+        TreeMap<String, BuildToolInfo> results = new TreeMap<>();
+        for (var i : recipeDirs) {
+            var path = i.getBuildToolInfo(name);
+            if (path.isPresent()) {
+                try {
+                    for (var b : BuildToolInfoManager.INSTANCE.parse(path.get())) {
+                        results.put(b.getVersion(), b);
+
+                    }
+                } catch (IOException e) {
+                    Log.errorf(e, "Failed to parse build tool info file %s", path);
+                }
+            }
+        }
+        return new ArrayList<>(results.values());
     }
 
     public BuildRecipeInfo resolveBuildInfo(String scmUrl, String version) throws IOException {

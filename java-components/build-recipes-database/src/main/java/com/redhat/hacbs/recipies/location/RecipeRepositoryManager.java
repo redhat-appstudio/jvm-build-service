@@ -21,6 +21,7 @@ import com.redhat.hacbs.recipies.util.GitCredentials;
 public class RecipeRepositoryManager implements RecipeDirectory {
     public static final String SCM_INFO = "scm-info";
     public static final String BUILD_INFO = "build-info";
+    public static final String BUILD_TOOL_INFO = "build-tool-info";
     public static final String REPOSITORY_INFO = "repository-info";
     private final Git git;
     private final String remote;
@@ -112,6 +113,12 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     public List<Path> getAllRepositoryPaths() {
         doUpdate();
         return recipeLayoutManager.getAllRepositoryPaths();
+    }
+
+    @Override
+    public Optional<Path> getBuildToolInfo(String name) {
+        doUpdate();
+        return recipeLayoutManager.getBuildToolInfo(name);
     }
 
     @Override
