@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#
+# From https://github.com/tektoncd/operator/blob/main/config/crs/kubernetes/result/operator_v1alpha1_result_cr.yaml
+#
+
 apiVersion: operator.tekton.dev/v1alpha1
 kind: TektonResult
 metadata:

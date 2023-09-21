@@ -1,0 +1,29 @@
+#
+# Based on https://github.com/openshift-pipelines/pipeline-service/blob/main/operator/gitops/argocd/pipeline-service/tekton-results/api-route.yaml
+#
+
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: tekton-results
+  namespace: openshift-pipelines
+  labels:
+    app.kubernetes.io/part-of: openshift-pipelines
+  annotations:
+    openshift.io/host.generated: "true"
+    haproxy.router.openshift.io/hsts_header: "max-age=63072000"
+    # https://issues.redhat.com/browse/OCPBUGS-16375
+    router.openshift.io/haproxy.health.check.interval: "86400s"
+    haproxy.router.openshift.io/timeout: "86410s"
+spec:
+  to:
+    kind: Service
+    name: tekton-results-api-service
+    weight: 100
+  port:
+    # tekton-results now supports both REST and gRPC traffic on same port
+    targetPort: 8080
+  tls:
+    termination: passthrough
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

@@ -147,6 +147,12 @@
                 <version>${quarkus-github-api.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.quarkiverse.openapi.generator</groupId>
+                <artifactId>quarkus-openapi-generator</artifactId>
+                <version>2.2.10</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.cyclonedx</groupId>
                 <artifactId>cyclonedx-core-java</artifactId>
                 <version>${cyclonedx-core-java.version}</version>
