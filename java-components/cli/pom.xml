@@ -107,6 +107,10 @@
             <groupId>com.github.stefanbirkner</groupId>
             <artifactId>system-lambda</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

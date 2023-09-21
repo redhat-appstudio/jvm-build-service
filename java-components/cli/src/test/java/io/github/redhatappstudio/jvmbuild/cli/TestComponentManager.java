@@ -22,6 +22,9 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.api.model.PodStatusBuilder;
 import io.fabric8.kubernetes.client.server.mock.KubernetesServer;
+import io.fabric8.openshift.api.model.Route;
+import io.fabric8.openshift.api.model.RouteBuilder;
+import io.fabric8.openshift.api.model.RouteSpecBuilder;
 import io.fabric8.tekton.pipeline.v1beta1.ChildStatusReferenceBuilder;
 import io.fabric8.tekton.pipeline.v1beta1.PipelineRun;
 import io.fabric8.tekton.pipeline.v1beta1.PipelineRunStatusBuilder;
@@ -122,5 +125,10 @@ abstract public class TestComponentManager {
                 .endMetadata()
                 .withStatus(new PodStatusBuilder().withContainerStatuses(containerStatus).build())
                 .build();
+    }
+
+    protected Route createRoute() {
+        return new RouteBuilder().withMetadata(new ObjectMetaBuilder().withName("tekton-results").build())
+                .withSpec(new RouteSpecBuilder().withHost("localhost").build()).build();
     }
 }

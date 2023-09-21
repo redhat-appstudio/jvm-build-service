@@ -58,6 +58,9 @@ public class BuildLogsCommand implements Runnable {
     @CommandLine.Option(names = "-l", description = "Use legacy retrieval")
     boolean legacyRetrieval = false;
 
+    // Normally this will always be 443 but this allows the test to override and setup a wiremock on another port.
+    int defaultPort = 443;
+
     @Override
     public void run() {
         var client = Arc.container().instance(OpenShiftClient.class).get();
@@ -197,10 +200,10 @@ public class BuildLogsCommand implements Runnable {
 
             RouteSpec routeSpec = client.routes().inNamespace("openshift-pipelines").withName("tekton-results").get().getSpec();
             LogsApi logsApi = QuarkusRestClientBuilder.newBuilder()
-                    .baseUri(URI.create("https://" + routeSpec.getHost() + "/apis/results.tekton.dev"))
+                    .baseUri(URI.create("https://" + routeSpec.getHost() + ":" + defaultPort + "/apis/results.tekton.dev"))
                     .build(LogsApi.class);
 
-            System.out.println("Route: " + routeSpec.getHost());
+            System.out.println("Route: " + routeSpec.getHost() + ":" + defaultPort);
 
             StringBuilder allLog = new StringBuilder();
 
@@ -222,34 +225,13 @@ public class BuildLogsCommand implements Runnable {
                 // tokenize the string itself.
                 try (JsonParser jp = JSON_FACTORY.createParser(log)) {
                     Iterator<Result> value = MAPPER.readValues(jp, Result.class);
-                    value.forEachRemaining((r) -> {
-                        // According to the spec its meant to be a Base64 encoded chunk. However, it appears
-                        // to be implicitly decoded
-                        allLog.append(new String(r.result.getData(), StandardCharsets.UTF_8));
-                    });
+                    value.forEachRemaining((r) ->
+                    // According to the spec its meant to be a Base64 encoded chunk. However, it appears
+                    // to be implicitly decoded
+                    allLog.append(new String(r.result.getData(), StandardCharsets.UTF_8)));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-
-                //                // When its too big it returns a sequence of JSON documents.
-                //                // System.out.println("### About to parse: '" + log + "'");
-                //                String[] logs = log.split("((?<=[}][}]))");
-                //
-                //                for (String l : logs) {
-                //                    if (isNotBlank(l)) {
-                //                        Result parsedLog;
-                //                        try {
-                //                            parsedLog = MAPPER.readValue(l, Result.class);
-                //                        } catch (JsonProcessingException e) {
-                //                            throw new RuntimeException(e);
-                //                        }
-                //                        //                        System.out.println("### For log " + parsedLog.result.getName());
-                //                        // According to the spec its meant to be a Base64 encoded chunk. However, it appears
-                //                        // to be implicitly decoded
-                //                        allLog.append(new String(parsedLog.result.getData(), StandardCharsets.UTF_8));
-                //                    }
-                //                }
-
             }
             System.out.println();
             System.out.println(allLog);
