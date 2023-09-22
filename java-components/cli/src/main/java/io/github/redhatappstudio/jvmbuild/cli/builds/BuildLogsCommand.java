@@ -23,6 +23,7 @@ import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 
 import io.fabric8.kubernetes.api.model.ContainerStatus;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.openshift.api.model.RouteSpec;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.fabric8.tekton.pipeline.v1beta1.PipelineRun;
@@ -43,6 +44,10 @@ public class BuildLogsCommand implements Runnable {
 
     private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
+    private static final String DEV_PATH = "/apis/results.tekton.dev/";
+
+    private static final String PROD_PATH = "/k8s/plugins/tekton-results/workspaces/";
+
     @CommandLine.Option(names = "-g", description = "The build to view, specified by GAV", completionCandidates = GavCompleter.class)
     String gav;
 
@@ -57,6 +62,9 @@ public class BuildLogsCommand implements Runnable {
 
     @CommandLine.Option(names = "-l", description = "Use legacy retrieval")
     boolean legacyRetrieval = false;
+
+    @CommandLine.Option(names = "-u", description = "URL for Tekton-Results")
+    String tektonUrl = "https://console.redhat.com/";
 
     // Normally this will always be 443 but this allows the test to override and setup a wiremock on another port.
     int defaultPort = 443;
@@ -198,12 +206,22 @@ public class BuildLogsCommand implements Runnable {
 
         } else {
 
-            RouteSpec routeSpec = client.routes().inNamespace("openshift-pipelines").withName("tekton-results").get().getSpec();
-            LogsApi logsApi = QuarkusRestClientBuilder.newBuilder()
-                    .baseUri(URI.create("https://" + routeSpec.getHost() + ":" + defaultPort + "/apis/results.tekton.dev"))
-                    .build(LogsApi.class);
+            String host;
+            String restPath;
+            try {
+                RouteSpec routeSpec = client.routes().inNamespace("openshift-pipelines").withName("tekton-results").get()
+                        .getSpec();
+                host = routeSpec.getHost();
+                restPath = DEV_PATH;
+            } catch (KubernetesClientException ignore) {
+                restPath = PROD_PATH + client.currentUser().getMetadata().getName() + DEV_PATH;
+                host = tektonUrl;
+            }
+            System.out.println("REST path: " + host + ":" + defaultPort + restPath);
 
-            System.out.println("Route: " + routeSpec.getHost() + ":" + defaultPort);
+            LogsApi logsApi = QuarkusRestClientBuilder.newBuilder()
+                    .baseUri(URI.create("https://" + host + ":" + defaultPort + restPath))
+                    .build(LogsApi.class);
 
             StringBuilder allLog = new StringBuilder();
 
