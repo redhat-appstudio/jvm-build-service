@@ -29,6 +29,4 @@ kubectl create secret tls -n ${NAMESPACE} tekton-results-tls \
 --cert=/tmp/cert.pem \
 --key=/tmp/key.pem
 
-kubectl apply -f pvc.yaml
-kubectl apply -f tekton_operator_v1alpha1_result_cr.yaml
-kubectl apply -f tekton_route.yaml
+kubectl apply -k operator/tekton-results
