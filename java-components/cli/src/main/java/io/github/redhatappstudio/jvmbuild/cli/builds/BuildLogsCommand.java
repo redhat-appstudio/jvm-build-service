@@ -10,10 +10,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import com.fasterxml.jackson.core.JsonFactory;
@@ -47,7 +49,7 @@ public class BuildLogsCommand implements Runnable {
 
     private static final String DEV_PATH = "/apis/results.tekton.dev/";
 
-    private static final String PROD_PATH = "/k8s/plugins/tekton-results/workspaces/";
+    private static final String PROD_PATH = "/api/k8s/plugins/tekton-results/workspaces/";
 
     @CommandLine.Option(names = "-g", description = "The build to view, specified by GAV", completionCandidates = GavCompleter.class)
     String gav;
@@ -65,7 +67,7 @@ public class BuildLogsCommand implements Runnable {
     boolean legacyRetrieval = false;
 
     @CommandLine.Option(names = "-u", description = "URL for Tekton-Results")
-    String tektonUrl = "https://console.redhat.com/";
+    String tektonUrl = "console.redhat.com";
 
     // Normally this will always be 443 but this allows the test to override and setup a wiremock on another port.
     int defaultPort = 443;
@@ -105,7 +107,7 @@ public class BuildLogsCommand implements Runnable {
             throw new RuntimeException("Build not found");
         }
 
-        List<Integer> buildNumbers = new ArrayList<>();
+        LinkedHashSet<Integer> buildNumbers = new LinkedHashSet<>();
         if (buildNo >= 0) {
             buildNumbers.add(buildNo);
         } else {
@@ -115,6 +117,9 @@ public class BuildLogsCommand implements Runnable {
                 if (pr == null || pr.get() == null) {
                     break;
                 }
+                buildNumbers.add(i);
+            }
+            for (int i = 0; i < theBuild.getStatus().getBuildAttempts().size(); ++i) {
                 buildNumbers.add(i);
             }
         }
@@ -138,7 +143,12 @@ public class BuildLogsCommand implements Runnable {
                 host = routeSpec.getHost();
                 restPath = DEV_PATH;
             } catch (KubernetesClientException ignore) {
-                restPath = PROD_PATH + client.currentUser().getMetadata().getName() + DEV_PATH;
+
+                String namespace = client.getNamespace();
+                if (namespace.endsWith("-tenant")) {
+                    namespace = namespace.substring(0, namespace.length() - "-tenant".length());
+                }
+                restPath = PROD_PATH + namespace + DEV_PATH;
                 host = tektonUrl;
             }
             System.out.println("REST path: " + host + ":" + defaultPort + restPath);
@@ -180,7 +190,7 @@ public class BuildLogsCommand implements Runnable {
         }
     }
 
-    private void legacyLogRetrieval(OpenShiftClient client, List<Integer> buildNumbers, DependencyBuild theBuild) {
+    private void legacyLogRetrieval(OpenShiftClient client, Set<Integer> buildNumbers, DependencyBuild theBuild) {
         for (var buildNo : buildNumbers) {
             var pr = client.resources(PipelineRun.class)
                     .withName(theBuild.getMetadata().getName() + "-build-" + buildNo);
