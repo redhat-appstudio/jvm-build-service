@@ -18,6 +18,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import jakarta.ws.rs.client.ClientRequestFilter;
+import jakarta.ws.rs.core.HttpHeaders;
+
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,7 +50,7 @@ public class BuildLogsCommand implements Runnable {
 
     private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
-    private static final String DEV_PATH = "/apis/results.tekton.dev/";
+    private static final String DEV_PATH = "/apis/results.tekton.dev";
 
     private static final String PROD_PATH = "/api/k8s/plugins/tekton-results/workspaces/";
 
@@ -154,6 +157,8 @@ public class BuildLogsCommand implements Runnable {
             System.out.println("REST path: " + host + ":" + defaultPort + restPath);
 
             LogsApi logsApi = QuarkusRestClientBuilder.newBuilder()
+                    .register(((ClientRequestFilter) context -> context.getHeaders().add(HttpHeaders.AUTHORIZATION,
+                            String.format("Bearer %s", client.getConfiguration().getAutoOAuthToken()))))
                     .baseUri(URI.create("https://" + host + ":" + defaultPort + restPath))
                     .build(LogsApi.class);
 
@@ -170,6 +175,9 @@ public class BuildLogsCommand implements Runnable {
                         .split("/");
                 System.out.println("Log information: " + Arrays.toString(split));
 
+                // Equivalent to using this Quarkus API would be to call the client raw method.
+                // client.raw("https://" + host + ":" + defaultPort + restPath + "/v1alpha2/parents/" + split[0]
+                //          + "/results/" + split[2] + "/logs/" + split[4]);
                 String log = logsApi.getLogByUid(split[0], UUID.fromString(split[2]), UUID.fromString(split[4]));
 
                 // When the log is too big it returns a sequence of JSON documents. While a string

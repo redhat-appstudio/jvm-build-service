@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 
 # From https://github.com/tektoncd/operator/blob/main/docs/TektonResult.md
 
@@ -29,4 +29,4 @@ kubectl create secret tls -n ${NAMESPACE} tekton-results-tls \
 --cert=/tmp/cert.pem \
 --key=/tmp/key.pem
 
-kubectl apply -k operator/tekton-results
+kubectl apply -k `dirname $0`/operator/tekton-results

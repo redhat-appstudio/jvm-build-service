@@ -3,5 +3,5 @@ kind: Kustomization
 
 resources:
   - pvc.yaml
-  - operator_v1_alpha1_result_cr.yaml
+  - operator_v1alpha1_result_cr.yaml
   - route.yaml
