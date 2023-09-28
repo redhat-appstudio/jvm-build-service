@@ -6,14 +6,14 @@ metadata:
 spec:
   builders:
     jdk8:
-      image: quay.io/redhat-appstudio/hacbs-jdk8-builder:081c833ec3ed3baa85b88cc5b2209fba208565b0
+      image: quay.io/redhat-appstudio/hacbs-jdk8-builder:f0c0dbbd5926e7a38af245b4e48a38ddd2d17359
       priority: 3000
     jdk11:
-      image: quay.io/redhat-appstudio/hacbs-jdk11-builder:081c833ec3ed3baa85b88cc5b2209fba208565b0
+      image: quay.io/redhat-appstudio/hacbs-jdk11-builder:f0c0dbbd5926e7a38af245b4e48a38ddd2d17359
       priority: 2000
     jdk17:
-      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:081c833ec3ed3baa85b88cc5b2209fba208565b0
+      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:f0c0dbbd5926e7a38af245b4e48a38ddd2d17359
       priority: 1000
     jdk7:
-      image: quay.io/redhat-appstudio/hacbs-jdk7-builder:081c833ec3ed3baa85b88cc5b2209fba208565b0
+      image: quay.io/redhat-appstudio/hacbs-jdk7-builder:f0c0dbbd5926e7a38af245b4e48a38ddd2d17359
       priority: 500
