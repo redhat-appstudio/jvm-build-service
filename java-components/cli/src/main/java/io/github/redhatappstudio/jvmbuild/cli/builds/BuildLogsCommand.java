@@ -1,31 +1,58 @@
 package io.github.redhatappstudio.jvmbuild.cli.builds;
 
 import java.io.IOException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
+import jakarta.ws.rs.client.ClientRequestFilter;
+import jakarta.ws.rs.core.HttpHeaders;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 
 import io.fabric8.kubernetes.api.model.ContainerStatus;
-import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.openshift.api.model.Route;
+import io.fabric8.openshift.api.model.RouteSpec;
+import io.fabric8.openshift.client.OpenShiftClient;
 import io.fabric8.tekton.pipeline.v1beta1.PipelineRun;
 import io.fabric8.tekton.pipeline.v1beta1.TaskRun;
+import io.github.redhatappstudio.jvmbuild.cli.api.LogsApi;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.ArtifactBuildCompleter;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.GavCompleter;
 import io.github.redhatappstudio.jvmbuild.cli.util.BuildConverter;
+import io.github.redhatappstudio.jvmbuild.cli.util.Result;
 import io.quarkus.arc.Arc;
+import io.quarkus.rest.client.reactive.QuarkusRestClientBuilder;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "logs", mixinStandardHelpOptions = true, description = "Displays the logs for the build")
 public class BuildLogsCommand implements Runnable {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static final JsonFactory JSON_FACTORY = new JsonFactory();
+
+    private static final String DEV_PATH = "/apis/results.tekton.dev";
+
+    private static final String PROD_PATH = "/api/k8s/plugins/tekton-results/workspaces/";
 
     @CommandLine.Option(names = "-g", description = "The build to view, specified by GAV", completionCandidates = GavCompleter.class)
     String gav;
@@ -39,10 +66,19 @@ public class BuildLogsCommand implements Runnable {
     @CommandLine.Option(names = "-n", description = "The build number", defaultValue = "-1")
     int buildNo;
 
+    @CommandLine.Option(names = "-l", description = "Use legacy retrieval")
+    boolean legacyRetrieval = false;
+
+    @CommandLine.Option(names = "-u", description = "URL for Tekton-Results")
+    String tektonUrl = "console.redhat.com";
+
+    // Normally this will always be 443 but this allows the test to override and setup a wiremock on another port.
+    int defaultPort = 443;
+
     @Override
     public void run() {
-        var client = Arc.container().instance(KubernetesClient.class).get();
-        DependencyBuild theBuild = null;
+        var client = Arc.container().instance(OpenShiftClient.class).get();
+        DependencyBuild theBuild;
         if (build != null) {
             if (artifact != null || gav != null) {
                 throwUnspecified();
@@ -74,7 +110,7 @@ public class BuildLogsCommand implements Runnable {
             throw new RuntimeException("Build not found");
         }
 
-        List<Integer> buildNumbers = new ArrayList<>();
+        LinkedHashSet<Integer> buildNumbers = new LinkedHashSet<>();
         if (buildNo >= 0) {
             buildNumbers.add(buildNo);
         } else {
@@ -86,12 +122,86 @@ public class BuildLogsCommand implements Runnable {
                 }
                 buildNumbers.add(i);
             }
+            for (int i = 0; i < theBuild.getStatus().getBuildAttempts().size(); ++i) {
+                buildNumbers.add(i);
+            }
         }
 
         System.out.println("Selected build: " + theBuild.getMetadata().getName());
 
+        if (legacyRetrieval) {
+            legacyLogRetrieval(client, buildNumbers, theBuild);
+        } else {
+            String host;
+            String restPath;
+            try {
+                Route route = client.routes().inNamespace("openshift-pipelines").withName("tekton-results").get();
+                if (route == null) {
+                    System.err.println(
+                            "No Tekton-Results found in namespace openshift-pipelines ; falling back to legacy retrieval");
+                    legacyLogRetrieval(client, buildNumbers, theBuild);
+                    return;
+                }
+                RouteSpec routeSpec = route.getSpec();
+                host = routeSpec.getHost();
+                restPath = DEV_PATH;
+            } catch (KubernetesClientException ignore) {
+
+                String namespace = client.getNamespace();
+                if (namespace.endsWith("-tenant")) {
+                    namespace = namespace.substring(0, namespace.length() - "-tenant".length());
+                }
+                restPath = PROD_PATH + namespace + DEV_PATH;
+                host = tektonUrl;
+            }
+            System.out.println("REST path: " + host + ":" + defaultPort + restPath);
+
+            LogsApi logsApi = QuarkusRestClientBuilder.newBuilder()
+                    .register(((ClientRequestFilter) context -> context.getHeaders().add(HttpHeaders.AUTHORIZATION,
+                            String.format("Bearer %s", client.getConfiguration().getAutoOAuthToken()))))
+                    .baseUri(URI.create("https://" + host + ":" + defaultPort + restPath))
+                    .build(LogsApi.class);
+
+            StringBuilder allLog = new StringBuilder();
+
+            for (Integer buildCount : buildNumbers) {
+                String[] split = theBuild.getStatus()
+                        .getBuildAttempts()
+                        .get(buildCount)
+                        .getBuild()
+                        .getResults()
+                        .getPipelineResults()
+                        .getLogs()
+                        .split("/");
+                System.out.println("Log information: " + Arrays.toString(split));
+
+                // Equivalent to using this Quarkus API would be to call the client raw method.
+                // client.raw("https://" + host + ":" + defaultPort + restPath + "/v1alpha2/parents/" + split[0]
+                //          + "/results/" + split[2] + "/logs/" + split[4]);
+                String log = logsApi.getLogByUid(split[0], UUID.fromString(split[2]), UUID.fromString(split[4]));
+
+                // When the log is too big it returns a sequence of JSON documents. While a string
+                // split "((?<=[}][}]))" around the separator would work a JsonParser can parse and
+                // tokenize the string itself.
+                try (JsonParser jp = JSON_FACTORY.createParser(log)) {
+                    Iterator<Result> value = MAPPER.readValues(jp, Result.class);
+                    value.forEachRemaining((r) ->
+                    // According to the spec its meant to be a Base64 encoded chunk. However, it appears
+                    // to be implicitly decoded
+                    allLog.append(new String(r.result.getData(), StandardCharsets.UTF_8)));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            System.out.println();
+            System.out.println(allLog);
+        }
+    }
+
+    private void legacyLogRetrieval(OpenShiftClient client, Set<Integer> buildNumbers, DependencyBuild theBuild) {
         for (var buildNo : buildNumbers) {
-            var pr = client.resources(PipelineRun.class).withName(theBuild.getMetadata().getName() + "-build-" + buildNo);
+            var pr = client.resources(PipelineRun.class)
+                    .withName(theBuild.getMetadata().getName() + "-build-" + buildNo);
             if (pr == null || pr.get() == null) {
                 System.out.println("PipelineRun not found so unable to extract logs.");
                 return;
@@ -128,7 +238,8 @@ public class BuildLogsCommand implements Runnable {
             }
             DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
-            taskRuns.sort(Comparator.comparing(t -> OffsetDateTime.parse(t.getStatus().getStartTime(), formatter)));
+            taskRuns.sort(
+                    Comparator.comparing(t -> OffsetDateTime.parse(t.getStatus().getStartTime(), formatter)));
 
             OffsetDateTime startTime = OffsetDateTime.parse(pipelineRun.getStatus().getStartTime(), formatter);
             System.out.println("\n\n#####################################################");
@@ -136,19 +247,18 @@ public class BuildLogsCommand implements Runnable {
 
                 var pod = client.pods().withName(tr.getMetadata().getName() + "-pod");
                 if (pod == null || pod.get() == null) {
-                    System.out.println("Pod not found for task  " + tr.getMetadata().getName() + " so unable to extract logs.");
+                    System.out.println(
+                            "Pod not found for task  " + tr.getMetadata().getName() + " so unable to extract logs.");
                     continue;
                 }
 
                 List<ContainerStatus> containerStatuses = new ArrayList<>(pod.get().getStatus().getContainerStatuses());
-                containerStatuses.sort(
-                        Comparator
-                                .comparing(t -> OffsetDateTime.parse(t.getState().getTerminated().getFinishedAt(), formatter)));
+                containerStatuses.sort(Comparator.comparing(
+                        t -> OffsetDateTime.parse(t.getState().getTerminated().getFinishedAt(), formatter)));
                 for (var i : containerStatuses) {
                     var p = pod.inContainer(i.getName());
 
-                    System.out.println(
-                            "### Logs for container " + i.getName());
+                    System.out.println("### Logs for container " + i.getName());
                     System.out.println("#####################################################\n\n");
                     try (var w = p.watchLog(); var in = w.getOutput()) {
                         int r;
@@ -171,7 +281,6 @@ public class BuildLogsCommand implements Runnable {
             }
             System.out.println("#####################################################\n\n");
         }
-
     }
 
     private void throwUnspecified() {
