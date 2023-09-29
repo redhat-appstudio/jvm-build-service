@@ -7,7 +7,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: './go.mod'
@@ -24,7 +24,7 @@ jobs:
         with:
           go-version: 1.19.x
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Check go mod status
         run: |
           go mod tidy
@@ -61,7 +61,7 @@ jobs:
         with:
           go-version: 1.19.x
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build
         run: make build
       - name: Test
@@ -72,7 +72,7 @@ jobs:
     name: Security scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version-file: './go.mod'

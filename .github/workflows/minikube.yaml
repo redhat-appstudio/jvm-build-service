@@ -42,7 +42,7 @@ jobs:
           docker-images: false
           large-packages: false
           swap-storage: false
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Registry
         run: |
           export DEV_IP=172.16.1.1
@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Minikube GAV Matrix
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Registry
         run: |
           export DEV_IP=172.16.1.1
