@@ -112,7 +112,7 @@ spec:
       image: "registry.access.redhat.com/ubi8/ubi:8.5"
       securityContext:
         runAsUser: 0
-      resources:
+      computeResources:
         requests:
           memory: "128Mi"
           cpu: "10m"
