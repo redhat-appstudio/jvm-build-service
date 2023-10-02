@@ -58,7 +58,7 @@
         <cyclonedx-core-java.version>7.3.2</cyclonedx-core-java.version>
         <asm.version>9.6</asm.version>
         <maven-indexer.version>7.0.3</maven-indexer.version>
-        <maven-resolver.version>1.9.15</maven-resolver.version>
+        <maven-resolver.version>1.9.16</maven-resolver.version>
     </properties>
 
     <modules>
