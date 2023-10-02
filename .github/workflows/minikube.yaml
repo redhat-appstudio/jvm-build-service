@@ -34,7 +34,7 @@ jobs:
     name: Minikube Test Sample Project
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@76866dbe54312617f00798d1762df7f43def6e5c # v1.2.0
+        uses: jlumbroso/free-disk-space@f68fdb76e2ea636224182cfb7377ff9a1708f9b8 # v1.3.0
         with:
           android: true
           dotnet: true
@@ -93,7 +93,7 @@ jobs:
     name: Minikube GAV Matrix
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@76866dbe54312617f00798d1762df7f43def6e5c # v1.2.0
+        uses: jlumbroso/free-disk-space@f68fdb76e2ea636224182cfb7377ff9a1708f9b8 # v1.3.0
         with:
           android: true
           dotnet: true
