@@ -31,11 +31,13 @@ import com.redhat.hacbs.classfile.tracker.NoCloseInputStream;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
 
+import io.quarkus.arc.Unremovable;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "image")
 @Singleton
+@Unremovable
 public class AnalyseImage extends AnalyserBase {
 
     @CommandLine.Parameters(index = "0")

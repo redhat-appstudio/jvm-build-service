@@ -13,11 +13,13 @@ import jakarta.inject.Singleton;
 
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 
+import io.quarkus.arc.Unremovable;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "path")
 @Singleton
+@Unremovable
 public class AnalysePath extends AnalyserBase implements Runnable {
 
     @CommandLine.Parameters
