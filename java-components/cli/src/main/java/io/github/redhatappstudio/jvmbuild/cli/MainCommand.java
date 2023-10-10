@@ -18,7 +18,8 @@ import picocli.CommandLine.Spec;
         BuildCommand.class,
         ArtifactCommand.class,
         RebuiltCommand.class,
-        SetupCommand.class
+        SetupCommand.class,
+        DiagnosticCommand.class
 })
 @Vetoed
 public class MainCommand {
