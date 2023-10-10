@@ -12,7 +12,7 @@ import picocli.CommandLine;
 
 @CommandLine.Command(name = "diagnostic", mixinStandardHelpOptions = true, description = "Print diagnostic information")
 public class DiagnosticCommand {
-    @CommandLine.Command(mixinStandardHelpOptions = true, description = "Dump class tracking information")
+    @CommandLine.Command(name = "print-class-tracking-data", mixinStandardHelpOptions = true, description = "Print class tracking information")
     public void classdump(@CommandLine.Parameters() Path fileName) {
         String name = fileName.toString();
         try {
