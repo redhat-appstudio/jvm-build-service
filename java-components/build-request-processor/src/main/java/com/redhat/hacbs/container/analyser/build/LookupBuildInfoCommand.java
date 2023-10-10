@@ -2,10 +2,8 @@ package com.redhat.hacbs.container.analyser.build;
 
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.ANT;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
-import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.SBT;
-import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.GOOGLE_JAVA_FORMAT_PLUGIN;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.eclipse.jgit.api.ResetCommand.ResetType.HARD;
@@ -20,7 +18,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +26,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import com.redhat.hacbs.container.analyser.build.maven.MavanJavaVersionDiscovery;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
@@ -51,9 +50,7 @@ import com.google.cloud.tools.jib.registry.ManifestAndDigest;
 import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.redhat.hacbs.container.analyser.build.ant.AntUtils;
 import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
-import com.redhat.hacbs.container.analyser.build.maven.MavenDiscoveryTask;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
-import com.redhat.hacbs.container.analyser.location.VersionRange;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.scm.ScmInfo;
@@ -99,8 +96,8 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--task-run-name")
     String taskRun;
 
-    @Inject
-    Instance<MavenDiscoveryTask> mavenDiscoveryTasks;
+    @CommandLine.Option(names = "--tool-versions", description = "Available Tool Versions")
+    String toolVersions;
 
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
@@ -134,9 +131,22 @@ public class LookupBuildInfoCommand implements Runnable {
         }
     }
 
+    private Map<String, List<String>> parseToolVersions() {
+        Map<String, List<String>> ret = new HashMap<>();
+        for (var toolString : toolVersions.split(",")) {
+            var parts = toolString.split(":");
+            var tool = parts[0];
+            var versions = parts[1].split(";");
+            ret.put(tool, Arrays.asList(versions));
+        }
+        return ret;
+    }
+
     private void doBuildAnalysis(String scmUrl, String scmTag, String context, BuildRecipeInfo buildRecipeInfo,
             boolean privateRepo, CacheBuildInfoLocator buildInfoLocator)
             throws Exception {
+        Map<String, List<String>> availableTools = parseToolVersions();
+        InvocationBuilder builder = new InvocationBuilder(buildRecipeInfo, availableTools, version);
         boolean versionCorrect = false;
         var path = Files.createTempDirectory("checkout");
         try (var clone = Git.cloneRepository()
@@ -153,8 +163,8 @@ public class LookupBuildInfoCommand implements Runnable {
             if (isNotBlank(context)) {
                 path = path.resolve(context);
             }
-            BuildInfo info = new BuildInfo();
-            info.commitTime = time;
+
+            builder.setCommitTime(time);
             Path pomFile = null;
             if (buildRecipeInfo != null && buildRecipeInfo.getAdditionalArgs() != null) {
                 try {
@@ -183,40 +193,21 @@ public class LookupBuildInfoCommand implements Runnable {
                     MavenXpp3Reader reader = new MavenXpp3Reader();
                     Model model = reader.read(pomReader);
                     //TODO: we should do discovery on the whole tree
-                    List<DiscoveryResult> results = new ArrayList<>();
                     if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
                         //not tagged properly, deal with it automatically
-                        info.enforceVersion = version;
+                        builder.enforceVersion(version);
                     } else if (model.getVersion() == null || Objects.equals(version, model.getVersion())) {
                         //if the version is null we can't run enforce version at this point
                         //version is correct, don't run enforce version as it can fail on things
                         //that are tagged correctly
+                        builder.versionCorrect();
                         versionCorrect = true;
                     }
-                    results.add(new DiscoveryResult(
-                            Map.of(JDK, new VersionRange("7", "17", "11"), MAVEN, new VersionRange("3.8", "3.8", "3.8")),
-                            Integer.MIN_VALUE));
-                    for (var i : mavenDiscoveryTasks) {
-                        try {
-                            var result = i.discover(model, path);
-                            if (result != null) {
-                                results.add(result);
-                            }
-                        } catch (Throwable t) {
-                            Log.errorf(t, "Failed to run analysis step %s", i);
-                        }
-                    }
+                    MavanJavaVersionDiscovery.filterJavaVersions(model, builder);
 
                     //look for repositories
                     for (var repo : handleRepositories(model, buildInfoLocator)) {
-                        if (!info.repositories.contains(repo)) {
-                            info.repositories.add(repo);
-                        }
-                    }
-
-                    Collections.sort(results);
-                    for (var i : results) {
-                        info.tools.putAll(i.toolVersions);
+                        builder.addRepository(repo);
                     }
                     var invocations = new ArrayList<>(
                             List.of(MAVEN, "install", "-Denforcer.skip", "-Dcheckstyle.skip",
@@ -228,13 +219,16 @@ public class LookupBuildInfoCommand implements Runnable {
                         //this can be controller via additional args if you still want to skip them
                         invocations.add("-DskipTests");
                     }
-                    info.invocations.add(invocations);
+                    builder.addToolInvocation(MAVEN, invocations);
                 }
             }
             if (GradleUtils.isGradleBuild(path)) {
                 Log.infof("Detected Gradle build in %s", path);
                 var optionalGradleVersion = GradleUtils
                         .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(path));
+                if (optionalGradleVersion.isPresent()) {
+                    builder.discoveredToolVersion(GRADLE, optionalGradleVersion.get());
+                }
                 var detectedGradleVersion = optionalGradleVersion.orElse("7");
                 Log.infof("Detected Gradle version %s",
                         optionalGradleVersion.isPresent() ? detectedGradleVersion : "none");
@@ -243,21 +237,10 @@ public class LookupBuildInfoCommand implements Runnable {
                 var specifiedJavaVersion = GradleUtils.getSpecifiedJavaVersion(path);
 
                 if (!specifiedJavaVersion.isEmpty()) {
+                    builder.minJavaVersion(new JavaVersion(specifiedJavaVersion));
                     javaVersion = specifiedJavaVersion;
-                    Log.infof("Chose Java version %s based on specified Java version", javaVersion);
-                } else {
-                    javaVersion = GradleUtils.getSupportedJavaVersion(detectedGradleVersion);
-                    Log.infof("Chose Java version %s based on Gradle version detected", javaVersion);
+                    Log.infof("Chose min Java version %s based on specified Java version", javaVersion);
                 }
-
-                if (GradleUtils.isInBuildGradle(path, GOOGLE_JAVA_FORMAT_PLUGIN)) {
-                    javaVersion = "11";
-                    Log.infof("Detected %s in build files and set Java version to %s", GOOGLE_JAVA_FORMAT_PLUGIN,
-                            javaVersion);
-                }
-
-                info.tools.put(JDK, new VersionRange("8", "17", javaVersion));
-                info.tools.put(GRADLE, new VersionRange(detectedGradleVersion, detectedGradleVersion, detectedGradleVersion));
                 ArrayList<String> inv = new ArrayList<>();
                 inv.add(GRADLE);
                 inv.addAll(GradleUtils.getGradleArgs(path));
@@ -265,65 +248,36 @@ public class LookupBuildInfoCommand implements Runnable {
                     inv.add("-x");
                     inv.add("test");
                 }
-                info.invocations.add(inv);
-                info.toolVersion = detectedGradleVersion;
+                builder.addToolInvocation(GRADLE, inv);
             }
             if (Files.exists(path.resolve("build.sbt"))) {
                 //TODO: initial SBT support, needs more work
                 Log.infof("Detected SBT build in %s", path);
-                info.tools.put(JDK, new VersionRange("7", "17", "8"));
-                info.tools.put(SBT, new VersionRange("1.8.0", "1.8.0", "1.8.0"));
-                info.toolVersion = "1.8.0";
-                info.invocations.add(new ArrayList<>(
-                        List.of(SBT, "--no-colors", "+publish"))); //the plus tells it to deploy for every scala version
+                builder.addToolInvocation(SBT,List.of(SBT, "--no-colors", "+publish"));
             }
             if (AntUtils.isAntBuild(path)) {
+                //TODO: this needs work, too much hard coded stuff, just try all and builds
                 // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
                 Log.infof("Detected Ant build in %s", path);
-                var specifiedJavaVersion = AntUtils.getJavaVersion(path);
-                Log.infof("Detected Java version %s", !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "none");
-                var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
-                var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
-                Log.infof("Chose Ant version %s", antVersion);
-                //this should really be specific to the invocation
-                info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
-                if (!info.tools.containsKey(JDK)) {
-                    info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
-                }
+//                var specifiedJavaVersion = AntUtils.getJavaVersion(path);
+//                Log.infof("Detected Java version %s", !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "none");
+//                var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
+//                var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
+//                Log.infof("Chose Ant version %s", antVersion);
+//                //this should really be specific to the invocation
+//                info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
+//                if (!info.tools.containsKey(JDK)) {
+//                    info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
+//                }
                 ArrayList<String> inv = new ArrayList<>();
                 inv.add(ANT);
                 inv.addAll(AntUtils.getAntArgs());
-                info.invocations.add(inv);
-                info.toolVersion = antVersion;
+                builder.addToolInvocation(ANT, inv);
+            }
+            if (versionCorrect) {
+                builder.versionCorrect();
             }
             if (buildRecipeInfo != null) {
-                if (buildRecipeInfo.getJavaVersion() != null) {
-                    info.tools.put(JDK, new VersionRange(buildRecipeInfo.getJavaVersion(), buildRecipeInfo.getJavaVersion(),
-                            buildRecipeInfo.getJavaVersion()));
-                }
-                if (buildRecipeInfo.getAlternativeArgs() != null && !buildRecipeInfo.getAlternativeArgs().isEmpty()) {
-                    for (var i : info.invocations) {
-                        var tool = i.get(0);
-                        i.clear();
-                        i.add(tool);
-                        i.addAll(buildRecipeInfo.getAlternativeArgs());
-                    }
-                }
-                if (buildRecipeInfo.getAdditionalArgs() != null) {
-                    for (var i : info.invocations) {
-                        i.addAll(buildRecipeInfo.getAdditionalArgs());
-                    }
-                }
-                if (buildRecipeInfo.isEnforceVersion() && !versionCorrect) {
-                    info.enforceVersion = version;
-                }
-                info.setRepositories(buildRecipeInfo.getRepositories());
-                info.disableSubmodules = buildRecipeInfo.isDisableSubmodules();
-                info.preBuildScript = buildRecipeInfo.getPreBuildScript();
-                info.postBuildScript = buildRecipeInfo.getPostBuildScript();
-                info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
-                info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
-                info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
                 Log.infof("Got build recipe info %s", buildRecipeInfo);
             }
             if (registries != null) {
@@ -380,9 +334,7 @@ public class LookupBuildInfoCommand implements Runnable {
                                 Arrays.stream(labels.getString("artifactId").split(","))
                                         .forEach(a -> gavList.add(g + ":" + a + ":" + v));
                             }
-                            info.setGavs(gavList);
-                            info.setImage(fullName);
-                            info.setDigest(manifestAndDigest.get().getDigest().toString());
+                            builder.existingBuild(gavList, fullName, manifestAndDigest.get().getDigest().toString());
                             Log.infof(
                                     "Found GAVs " + gavList + " and digest " + manifestAndDigest.get()
                                             .getDigest());
@@ -400,6 +352,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
             }
             if (taskRun != null) {
+                var info = builder.build();
                 Log.infof("Writing %s", info);
                 resultsUpdater.get().updateResults(taskRun, Map.of("BUILD_INFO",
                         ResultsUpdater.MAPPER.writeValueAsString(info)));

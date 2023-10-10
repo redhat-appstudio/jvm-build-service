@@ -1,9 +1,7 @@
 package com.redhat.hacbs.container.analyser.build.maven;
 
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -15,13 +13,11 @@ import org.codehaus.plexus.interpolation.PrefixedObjectValueSource;
 import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
 import org.codehaus.plexus.interpolation.StringSearchInterpolator;
 
-import com.redhat.hacbs.container.analyser.build.BuildInfo;
-import com.redhat.hacbs.container.analyser.build.DiscoveryResult;
+import com.redhat.hacbs.container.analyser.build.InvocationBuilder;
 import com.redhat.hacbs.container.analyser.build.JavaVersion;
-import com.redhat.hacbs.container.analyser.location.VersionRange;
 
 @ApplicationScoped
-public class JavaVersionDiscovery implements MavenDiscoveryTask {
+public class MavanJavaVersionDiscovery {
 
     public static String interpolate(String value, Model model) {
         if (value != null && value.contains("${")) {
@@ -40,8 +36,7 @@ public class JavaVersionDiscovery implements MavenDiscoveryTask {
         return value;
     }
 
-    @Override
-    public DiscoveryResult discover(Model model, Path checkout) {
+    public static void filterJavaVersions(Model model, InvocationBuilder invocationBuilder) {
         String target = model.getProperties().getProperty("maven.compiler.target");
         if (target == null) {
             target = model.getProperties().getProperty("maven.compile.target"); //old property name
@@ -63,22 +58,14 @@ public class JavaVersionDiscovery implements MavenDiscoveryTask {
             }
         }
         if (javaVersion > 0) {
-            if (javaVersion < 7) {
-                //JDK5 and lower are JDK8 only
-                //JDK6 you can use JDK11, but the build is way more likely to work with JDK8
-                if (javaVersion == 6) {
-                    return new DiscoveryResult(
-                            Map.of(BuildInfo.JDK, new VersionRange("7", "11", "8")), 1);
-                } else {
-                    return new DiscoveryResult(
-                            Map.of(BuildInfo.JDK, new VersionRange("7", "8", "8")), 1);
-                }
+            if (javaVersion <= 5) {
+                invocationBuilder.maxJavaVersion(new JavaVersion("8"));
+            } else if (javaVersion == 6) {
+                invocationBuilder.maxJavaVersion(new JavaVersion("11"));
+            } else {
+                invocationBuilder.minJavaVersion(new JavaVersion(Integer.toString(javaVersion)));
             }
-            return new DiscoveryResult(
-                    Map.of(BuildInfo.JDK, new VersionRange(Integer.toString(javaVersion), null, Integer.toString(javaVersion))),
-                    1);
         }
-        return null;
     }
 
 }

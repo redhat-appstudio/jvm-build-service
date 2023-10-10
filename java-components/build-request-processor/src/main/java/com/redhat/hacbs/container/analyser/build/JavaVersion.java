@@ -1,6 +1,6 @@
 package com.redhat.hacbs.container.analyser.build;
 
-public record JavaVersion(String version, int intVersion) {
+public record JavaVersion(String version, int intVersion) implements Comparable<JavaVersion>{
     public JavaVersion(String version) {
         this(version, toVersion(version));
     }
@@ -10,5 +10,10 @@ public record JavaVersion(String version, int intVersion) {
             version = version.substring(2);
         }
         return Integer.parseInt(version);
+    }
+
+    @Override
+    public int compareTo(JavaVersion o) {
+        return Integer.compare(intVersion, o.intVersion);
     }
 }

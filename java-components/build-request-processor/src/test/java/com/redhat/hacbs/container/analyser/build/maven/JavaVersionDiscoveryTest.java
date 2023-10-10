@@ -1,7 +1,5 @@
 package com.redhat.hacbs.container.analyser.build.maven;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,7 +22,7 @@ class JavaVersionDiscoveryTest {
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(pomReader);
 
-            JavaVersionDiscovery jvd = new JavaVersionDiscovery();
+            MavanJavaVersionDiscovery jvd = new MavanJavaVersionDiscovery();
             DiscoveryResult dr = jvd.discover(model, Path.of(""));
 
             assertEquals("8", dr.getToolVersions().get("jdk").getPreferred());

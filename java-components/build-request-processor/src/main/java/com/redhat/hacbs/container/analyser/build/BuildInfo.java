@@ -16,14 +16,10 @@ public class BuildInfo {
     public static final String SBT = "sbt";
     public static final String ANT = "ant";
     /**
-     * Possible build tools, including the JDK. This is represented
-     */
-    Map<String, VersionRange> tools = new HashMap<>();
-    /**
      * List of commands to try. Normally there is only one, but if there is both maven, gradle, sbt, ant
      * present then we might try to invoke them all.
      */
-    List<List<String>> invocations = new ArrayList<>();
+    List<Invocation> invocations = new ArrayList<>();
 
     /**
      * Additional repositories to use in the rebuild.
@@ -31,15 +27,6 @@ public class BuildInfo {
     List<String> repositories = new ArrayList<>();
 
     String enforceVersion;
-
-    public Map<String, VersionRange> getTools() {
-        return tools;
-    }
-
-    /**
-     * Version of the build tool.
-     */
-    String toolVersion;
 
     long commitTime;
 
@@ -57,20 +44,6 @@ public class BuildInfo {
     String digest;
 
     String image;
-
-    public BuildInfo setTools(Map<String, VersionRange> tools) {
-        this.tools = tools;
-        return this;
-    }
-
-    public List<List<String>> getInvocations() {
-        return invocations;
-    }
-
-    public BuildInfo setInvocations(List<List<String>> invocations) {
-        this.invocations = invocations;
-        return this;
-    }
 
     public String getPreBuildScript() {
         return preBuildScript;
@@ -96,15 +69,6 @@ public class BuildInfo {
 
     public BuildInfo setEnforceVersion(String enforceVersion) {
         this.enforceVersion = enforceVersion;
-        return this;
-    }
-
-    public String getToolVersion() {
-        return toolVersion;
-    }
-
-    public BuildInfo setToolVersion(String toolVersion) {
-        this.toolVersion = toolVersion;
         return this;
     }
 
@@ -192,11 +156,9 @@ public class BuildInfo {
     @Override
     public String toString() {
         return "BuildInfo{" +
-                "tools=" + tools +
                 ", invocations=" + invocations +
                 ", repositories=" + repositories +
                 ", enforceVersion='" + enforceVersion + '\'' +
-                ", toolVersion='" + toolVersion + '\'' +
                 ", commitTime=" + commitTime +
                 ", preBuildScript='" + preBuildScript + '\'' +
                 ", postBuildScript='" + postBuildScript + '\'' +

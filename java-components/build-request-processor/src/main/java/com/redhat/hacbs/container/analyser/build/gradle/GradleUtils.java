@@ -17,10 +17,6 @@ import io.quarkus.logging.Log;
  * Utility class for Gradle.
  */
 public final class GradleUtils {
-    /**
-     * Identifier for the plugin {@code com.github.sherter.google-java-format}.
-     */
-    public static final String GOOGLE_JAVA_FORMAT_PLUGIN = Pattern.quote("com.github.sherter.google-java-format");
 
     /**
      * Format for applying plugins.
