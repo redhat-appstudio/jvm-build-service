@@ -235,6 +235,8 @@ github.com/openshift/client-go/quota/clientset/versioned/typed/quota/v1
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
+## explicit
 # github.com/prometheus/client_golang v1.16.0
 ## explicit; go 1.17
 github.com/prometheus/client_golang/prometheus
@@ -258,7 +260,7 @@ github.com/prometheus/procfs/internal/util
 ## explicit; go 1.13
 github.com/prometheus/statsd_exporter/pkg/mapper
 github.com/prometheus/statsd_exporter/pkg/mapper/fsm
-# github.com/redhat-appstudio/image-controller v0.0.0-20230831131151-75d3928646d2
+# github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
 ## explicit; go 1.19
 github.com/redhat-appstudio/image-controller/api/v1alpha1
 # github.com/sirupsen/logrus v1.9.0
@@ -267,6 +269,8 @@ github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 # github.com/tektoncd/pipeline v0.47.3
 ## explicit; go 1.19
 github.com/tektoncd/pipeline/config
