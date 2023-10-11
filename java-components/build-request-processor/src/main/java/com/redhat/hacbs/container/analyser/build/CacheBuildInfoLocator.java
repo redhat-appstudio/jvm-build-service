@@ -3,12 +3,14 @@ package com.redhat.hacbs.container.analyser.build;
 import java.util.List;
 import java.util.Set;
 
+import com.redhat.hacbs.recipies.tools.BuildToolInfo;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
@@ -25,4 +27,9 @@ public interface CacheBuildInfoLocator {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("repository-info")
     List<String> findRepositories(@QueryParam("repositories") Set<String> repositories);
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("build-tool-info")
+    public List<BuildToolInfo> lookupBuildToolInfo(@QueryParam("name") String name);
 }

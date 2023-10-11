@@ -10,6 +10,8 @@ public class Invocation {
     private List<String> commands = new ArrayList<>();
     private Map<String, String> toolVersion = new HashMap<>();
 
+    private String jdkVersion;
+
     public List<String> getCommands() {
         return commands;
     }
@@ -28,11 +30,20 @@ public class Invocation {
         return this;
     }
 
+    public String getJdkVersion() {
+        return jdkVersion;
+    }
+
+    public Invocation setJdkVersion(String jdkVersion) {
+        this.jdkVersion = jdkVersion;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "Invocation{" +
-            "commands=" + commands +
-            ", toolVersion=" + toolVersion +
-            '}';
+                "commands=" + commands +
+                ", toolVersion=" + toolVersion +
+                '}';
     }
 }
