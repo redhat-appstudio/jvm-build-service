@@ -480,6 +480,10 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 	if err != nil {
 		panic(err)
 	}
+	taskRunList, err := pipelineClient.TektonV1().TaskRuns(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
 	artifact := ArtifactReportData{}
 	dependency := DependencyReportData{}
 	dependencyBuildClient := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(namespace)
@@ -646,6 +650,20 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 							instance.Logs = append(instance.Logs, localPart)
 						}
 					}
+				}
+			}
+		}
+		for _, taskRun := range taskRunList.Items {
+			if strings.HasPrefix(taskRun.Name, db.Name) {
+				t := taskRun
+				yaml := encodeToYaml(&t)
+				localPart := localDir + "-" + "taskrun-" + t.Name
+				target := directory + "/" + localPart
+				err := os.WriteFile(target, []byte(yaml), 0644) //#nosec G306)
+				if err != nil {
+					print(fmt.Sprintf("Failed to write taskrun file %s: %s", target, err))
+				} else {
+					instance.Logs = append(instance.Logs, localPart)
 				}
 			}
 		}
