@@ -89,7 +89,7 @@ public class V2RecipeLookupResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("build-tool-info")
     public Response lookupBuildToolInfo(@QueryParam("name") String name)
-        throws IOException {
+            throws IOException {
         try {
             return Response.ok(recipeManager.getBuildToolInfo(name)).build();
         } catch (Exception e) {

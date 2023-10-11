@@ -1,7 +1,5 @@
 package com.redhat.hacbs.container.analyser.build;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,7 +13,6 @@ import java.util.Set;
 
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.tools.BuildToolInfo;
-import io.quarkus.logging.Log;
 
 /**
  * Contains the logic around merging build information and discovery results
@@ -24,20 +21,20 @@ public class InvocationBuilder {
 
     final BuildRecipeInfo buildRecipeInfo;
     final Map<String, List<String>> availableTools;
-     final String version;
+    final String version;
 
-     final Map<String, String> discoveredToolVersions = new HashMap<>();
+    final Map<String, String> discoveredToolVersions = new HashMap<>();
 
-     final Map<String, Set<List<String>>> toolInvocations = new LinkedHashMap<>();
+    final Map<String, Set<List<String>>> toolInvocations = new LinkedHashMap<>();
 
-     JavaVersion minJavaVersion;
-     JavaVersion maxJavaVersion;
+    JavaVersion minJavaVersion;
+    JavaVersion maxJavaVersion;
 
-     BuildInfo info = new BuildInfo();
+    BuildInfo info = new BuildInfo();
     /**
      * If the version is correct we never enforce version
      */
-     boolean versionCorrect;
+    boolean versionCorrect;
 
     public InvocationBuilder(BuildRecipeInfo buildInfo, Map<String, List<String>> availableTools, String version) {
         this.buildRecipeInfo = buildInfo;
@@ -57,12 +54,9 @@ public class InvocationBuilder {
     }
 
     public void addToolInvocation(String tool, List<String> invocation) {
-        if (buildRecipeInfo != null && buildRecipeInfo.getAlternativeArgs() != null) {
-            var toolCommand = invocation.get(0);
-            List<String> replacement = new ArrayList<>();
-            replacement.add(toolCommand);
-            replacement.addAll(buildRecipeInfo.getAlternativeArgs());
-            toolInvocations.computeIfAbsent(tool, (k) -> new HashSet<>()).add(replacement);
+        if (buildRecipeInfo != null && buildRecipeInfo.getAlternativeArgs() != null
+                && !buildRecipeInfo.getAlternativeArgs().isEmpty()) {
+            toolInvocations.computeIfAbsent(tool, (k) -> new HashSet<>()).add(buildRecipeInfo.getAlternativeArgs());
         } else if (buildRecipeInfo != null && buildRecipeInfo.getAdditionalArgs() != null
                 && buildRecipeInfo.getAdditionalArgs().size() > 0) {
             List<String> replacement = new ArrayList<>(invocation);
@@ -220,7 +214,7 @@ public class InvocationBuilder {
         }
 
         //now map tool versions to java versions
-        for (var invocationSet: toolInvocations.entrySet()) {
+        for (var invocationSet : toolInvocations.entrySet()) {
             for (var javaVersion : javaVersions) {
                 for (var perm : allToolPermutations) {
                     boolean ignore = false;
@@ -231,7 +225,8 @@ public class InvocationBuilder {
                             if (toolInfo != null) {
                                 if (new JavaVersion(toolInfo.getMaxJdkVersion()).intVersion() < javaVersion.intVersion()) {
                                     ignore = true;
-                                } else if (new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion.intVersion()) {
+                                } else if (new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
+                                        .intVersion()) {
                                     ignore = true;
                                 }
                             }
@@ -240,9 +235,11 @@ public class InvocationBuilder {
                     if (!ignore) {
                         for (var invocation : invocationSet.getValue()) {
                             Invocation result = new Invocation();
-                            result.setToolVersion(perm);
+                            HashMap<String, String> toolVersion = new HashMap<>(perm);
+                            toolVersion.put(BuildInfo.JDK, javaVersion.version());
+                            result.setToolVersion(toolVersion);
                             result.setCommands(invocation);
-                            result.setJdkVersion(javaVersion.version());
+                            result.setTool(invocationSet.getKey());
                             info.invocations.add(result);
                         }
                     }

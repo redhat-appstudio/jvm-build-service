@@ -3,17 +3,16 @@ package com.redhat.hacbs.container.analyser.build;
 import java.util.List;
 import java.util.Set;
 
-import com.redhat.hacbs.recipies.tools.BuildToolInfo;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipies.tools.BuildToolInfo;
 
 @RegisterRestClient()
 @Path("/v2/recipe-lookup")

@@ -7,15 +7,12 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.redhat.hacbs.recipies.tools.BuildToolInfo;
-import com.redhat.hacbs.recipies.tools.BuildToolInfoManager;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
@@ -33,6 +30,8 @@ import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipies.mavenrepo.MavenRepositoryInfo;
 import com.redhat.hacbs.recipies.mavenrepo.MavenRepositoryInfoManager;
 import com.redhat.hacbs.recipies.scm.GitScmLocator;
+import com.redhat.hacbs.recipies.tools.BuildToolInfo;
+import com.redhat.hacbs.recipies.tools.BuildToolInfoManager;
 import com.redhat.hacbs.recipies.util.FileUtil;
 
 import io.quarkus.logging.Log;

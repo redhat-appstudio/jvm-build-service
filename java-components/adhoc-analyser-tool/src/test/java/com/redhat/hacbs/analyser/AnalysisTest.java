@@ -11,7 +11,6 @@ import com.redhat.hacbs.analyser.maven.MavenModule;
 
 public class AnalysisTest {
 
-
     @Test
     public void testLayoutAnalysis() {
         Path currentPom = Paths.get("pom.xml").toAbsolutePath();

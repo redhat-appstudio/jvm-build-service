@@ -11,15 +11,16 @@ public class Invocation {
     private List<String> commands = new ArrayList<>();
     private Map<String, String> toolVersion = new HashMap<>();
 
-    private String jdkVersion;
+    private String tool;
 
     public Invocation() {
 
     }
-    public Invocation(List<String> commands, Map<String, String> toolVersion, String jdkVersion) {
+
+    public Invocation(List<String> commands, Map<String, String> toolVersion, String tool) {
         this.commands = commands;
         this.toolVersion = toolVersion;
-        this.jdkVersion = jdkVersion;
+        this.tool = tool;
     }
 
     public List<String> getCommands() {
@@ -40,12 +41,12 @@ public class Invocation {
         return this;
     }
 
-    public String getJdkVersion() {
-        return jdkVersion;
+    public String getTool() {
+        return tool;
     }
 
-    public Invocation setJdkVersion(String jdkVersion) {
-        this.jdkVersion = jdkVersion;
+    public Invocation setTool(String tool) {
+        this.tool = tool;
         return this;
     }
 
@@ -54,19 +55,23 @@ public class Invocation {
         return "Invocation{" +
                 "commands=" + commands +
                 ", toolVersion=" + toolVersion +
+                ", tool='" + tool + '\'' +
                 '}';
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Invocation that = (Invocation) o;
-        return Objects.equals(commands, that.commands) && Objects.equals(toolVersion, that.toolVersion) && Objects.equals(jdkVersion, that.jdkVersion);
+        return Objects.equals(commands, that.commands) && Objects.equals(toolVersion, that.toolVersion)
+                && Objects.equals(tool, that.tool);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(commands, toolVersion, jdkVersion);
+        return Objects.hash(commands, toolVersion, tool);
     }
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
+	"k8s.io/utils/strings/slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -206,7 +207,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		//should be enough for the build lookup task
 		additionalMemory = 1024
 	}
-	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, jbsConfig, additionalMemory)
+	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, jbsConfig, additionalMemory, &systemConfig)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -320,7 +321,6 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 
 		//read our builder images from the config
 		var allBuilderImages []BuilderImage
-		var selectedImages []BuilderImage
 		allBuilderImages, err = r.processBuilderImages(ctx, log)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -328,102 +328,35 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 		// for now we are ignoring the tool versions
 		// and just using the supplied invocations
 		buildRecipes := []*v1alpha1.BuildRecipe{}
-		java := unmarshalled.Tools["jdk"]
 		db.Status.CommitTime = unmarshalled.CommitTime
-
-		for _, image := range allBuilderImages {
-			//we only have one JDK version in the builder at the moment
-			//other tools will potentially have multiple versions
-			//we only want to use builder images that have java versions that the analyser
-			//detected might be appropriate
-			for _, imageJava := range image.Tools["jdk"] {
-				if java.Min != "" {
-					versionResult, err := compareVersions(imageJava, java.Min)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Min))
-						return reconcile.Result{}, err
-					}
-					if versionResult < 0 {
-						log.Info(fmt.Sprintf("Not building with %s because of min java version %s (image version %s)", image.Image, java.Min, imageJava))
-						continue
-					}
-				}
-				if java.Max != "" {
-					versionResult, err := compareVersions(imageJava, java.Max)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Failed to compare versions %s and %s", imageJava, java.Max))
-						return reconcile.Result{}, err
-					}
-					if versionResult > 0 {
-						log.Info(fmt.Sprintf("Not building with %s because of max java version %s (image version %s)", image.Image, java.Min, imageJava))
-						continue
-					}
-				}
-				newImage := image
-				newImage.Tools["jdk"] = []string{imageJava}
-				selectedImages = append(selectedImages, newImage)
-			}
-		}
 
 		if len(unmarshalled.Invocations) == 0 {
 			log.Error(nil, "Unable to determine build tool", "info", unmarshalled)
 			db.Status.State = v1alpha1.DependencyBuildStateFailed
 			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 		}
-		seenToolJavaCombos := map[string]bool{}
-		for _, image := range selectedImages {
-			imageJava := image.Tools["jdk"][0]
-			for _, command := range unmarshalled.Invocations {
-				//invocations list the relevant tool at the start
-				//if the image has this tool then we
-				tool := command[0]
-				command = command[1:]
-				var toolVersions []string
-				if tool == "maven" {
-					//TODO: maven version selection
-					//for now we just fake it
-					toolVersions = []string{"3.8.1"}
-				} else if tool == "gradle" {
-					//gradle has an explicit tool version, but we need to map it to what is in the image
-					gradleVersionsInImage := image.Tools["gradle"]
-					for _, i := range gradleVersionsInImage {
-						if sameMajorVersion(i, unmarshalled.ToolVersion) {
-							toolVersions = append(toolVersions, i)
-						}
+		for _, command := range unmarshalled.Invocations {
+			//loop through the builder images to find one that meets all the requirements
+			//if there is no match then we ignore the combo
+			for _, image := range allBuilderImages {
+				imageOk := true
+				for tool, version := range command.ToolVersion {
+					versions, exists := image.Tools[tool]
+					if !exists {
+						imageOk = false
+						break
 					}
-				} else if tool == "sbt" {
-					//sbt has an explicit tool version, but we need to map it to what is in the image
-					sbtVersionsInImage := image.Tools["sbt"]
-					for _, i := range sbtVersionsInImage {
-						if sameMajorVersion(i, unmarshalled.ToolVersion) {
-							toolVersions = append(toolVersions, i)
-						}
+					if !slices.Contains(versions, version) {
+						imageOk = false
+						break
 					}
-
-				} else if tool == "ant" {
-					antVersionsInImage := image.Tools["ant"]
-					for _, i := range antVersionsInImage {
-						if sameMajorVersion(i, unmarshalled.ToolVersion) {
-							toolVersions = append(toolVersions, i)
-						}
-					}
-					tool = "ant"
-				} else {
-					log.Error(nil, "Unknown tool ", "tool", tool)
-					db.Status.State = v1alpha1.DependencyBuildStateFailed
-					return reconcile.Result{}, r.client.Status().Update(ctx, &db)
 				}
-				_, hasTool := image.Tools[tool]
-				if hasTool {
-					for _, tv := range toolVersions {
-						combo := tool + tv + imageJava
-						if !seenToolJavaCombos[combo] {
-							buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: tv, JavaVersion: imageJava, Tool: tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories, AllowedDifferences: unmarshalled.AllowedDifferences})
-							seenToolJavaCombos[combo] = true
-						}
-					}
+				if imageOk {
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command.Commands, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: command.ToolVersion[command.Tool], ToolVersions: command.ToolVersion, JavaVersion: command.ToolVersion["jdk"], Tool: command.Tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories, AllowedDifferences: unmarshalled.AllowedDifferences})
+					break
 				}
 			}
+
 		}
 
 		db.Status.PotentialBuildRecipes = buildRecipes
@@ -451,11 +384,9 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 }
 
 type marshalledBuildInfo struct {
-	Tools               map[string]toolInfo
-	Invocations         [][]string
+	Invocations         []invocation
 	EnforceVersion      string
 	AdditionalDownloads []v1alpha1.AdditionalDownload
-	ToolVersion         string
 	CommitTime          int64
 	PreBuildScript      string
 	PostBuildScript     string
@@ -468,48 +399,10 @@ type marshalledBuildInfo struct {
 	Gavs                []string
 }
 
-type toolInfo struct {
-	Min       string
-	Max       string
-	Preferred string
-}
-
-// compares versions, returns 0 if versions
-// are equivalent, -1 if v1 < v2 and 1 if v2 < v1
-// this is looking for functional equivilence, so 3.6 is considered the same as 3.6.7
-func compareVersions(v1 string, v2 string) (int, error) {
-	v1p := strings.Split(v1, ".")
-	v2p := strings.Split(v2, ".")
-	for i := range v1p {
-		if len(v2p) == i {
-			//we are considering them equal, as the important parts have matched
-			return 0, nil
-		}
-		v1segment, err := strconv.ParseInt(v1p[i], 10, 64)
-		if err != nil {
-			return 0, err
-		}
-		v2segment, err := strconv.ParseInt(v2p[i], 10, 64)
-		if err != nil {
-			return 0, err
-		}
-		if v1segment < v2segment {
-			return -1, nil
-		}
-		if v1segment > v2segment {
-			return 1, nil
-		}
-	}
-	return 0, nil
-}
-
-// compares versions, returns 0 if versions
-// are equivalent, -1 if v1 < v2 and 1 if v2 < v1
-// this is looking for functional equivilence, so 3.6 is considered the same as 3.6.7
-func sameMajorVersion(v1 string, v2 string) bool {
-	v1p := strings.Split(v1, ".")
-	v2p := strings.Split(v2, ".")
-	return v2p[0] == v1p[0]
+type invocation struct {
+	Tool        string
+	Commands    []string
+	ToolVersion map[string]string
 }
 
 func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log logr.Logger) ([]BuilderImage, error) {
@@ -1045,7 +938,7 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 	return true, nil
 }
 
-func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, jbsConfig *v1alpha1.JBSConfig, additionalMemory int) (*pipelinev1beta1.PipelineSpec, error) {
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
 	image, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return nil, err
@@ -1072,6 +965,8 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		"--version",
 		build.Version,
 		"--task-run-name=$(context.taskRun.name)",
+		"--tool-versions",
+		r.createToolVersionString(systemConfig),
 	}
 	if len(path) > 0 {
 		args = append(args, "--context", path)
@@ -1140,6 +1035,44 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 			},
 		},
 	}, nil
+}
+
+// returns a string containing all builder image tools
+func (r *ReconcileDependencyBuild) createToolVersionString(config *v1alpha1.SystemConfig) string {
+	tools := map[string][]string{}
+	for _, i := range config.Spec.Builders {
+		tags := r.processBuilderImageTags(i.Tag)
+		for k, v := range tags {
+			_, exists := tools[k]
+			if exists {
+				for _, newVersion := range v {
+					if !slices.Contains(tools[k], newVersion) {
+						tools[k] = append(tools[k], newVersion)
+					}
+				}
+			} else {
+				tools[k] = v
+			}
+		}
+	}
+	ret := ""
+	for tool, versions := range tools {
+		if ret != "" {
+			ret = ret + ","
+		}
+		ret += tool
+		ret += ":"
+		first := true
+		for _, version := range versions {
+			if !first {
+				ret += ";"
+			} else {
+				first = false
+			}
+			ret += version
+		}
+	}
+	return ret
 }
 
 func (r *ReconcileDependencyBuild) failedDueToMemory(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) bool {

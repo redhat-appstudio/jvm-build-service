@@ -34,7 +34,7 @@ func TestValidSystemConfig(t *testing.T) {
 
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.JavaVersionInfo{
+			Builders: map[string]v1alpha1.BuilderImageInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "foo",
 					Tag:   "bar",
@@ -77,7 +77,7 @@ func TestSystemConfigMissingImage(t *testing.T) {
 
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.JavaVersionInfo{
+			Builders: map[string]v1alpha1.BuilderImageInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "foo",
 					Tag:   "bar",
@@ -119,7 +119,7 @@ func TestSystemConfigMissingTag(t *testing.T) {
 
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.JavaVersionInfo{
+			Builders: map[string]v1alpha1.BuilderImageInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "foo",
 					Tag:   "bar",
@@ -161,7 +161,7 @@ func TestMissing7SystemConfig(t *testing.T) {
 
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.JavaVersionInfo{
+			Builders: map[string]v1alpha1.BuilderImageInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "foo",
 					Tag:   "bar",
@@ -200,7 +200,7 @@ func TestMissing8SystemConfig(t *testing.T) {
 
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.JavaVersionInfo{
+			Builders: map[string]v1alpha1.BuilderImageInfo{
 				v1alpha1.JDK11Builder: {
 					Image: "foo",
 					Tag:   "bar",
@@ -239,7 +239,7 @@ func TestMissing11SystemConfig(t *testing.T) {
 
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.JavaVersionInfo{
+			Builders: map[string]v1alpha1.BuilderImageInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "foo",
 					Tag:   "bar",
@@ -278,7 +278,7 @@ func TestMissing17SystemConfig(t *testing.T) {
 
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.JavaVersionInfo{
+			Builders: map[string]v1alpha1.BuilderImageInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "foo",
 					Tag:   "bar",

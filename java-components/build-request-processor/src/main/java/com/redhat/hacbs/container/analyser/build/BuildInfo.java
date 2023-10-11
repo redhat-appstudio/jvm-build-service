@@ -1,11 +1,8 @@
 package com.redhat.hacbs.container.analyser.build;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import com.redhat.hacbs.container.analyser.location.VersionRange;
 import com.redhat.hacbs.recipies.build.AdditionalDownload;
 
 public class BuildInfo {
@@ -51,6 +48,15 @@ public class BuildInfo {
 
     public BuildInfo setPreBuildScript(String preBuildScript) {
         this.preBuildScript = preBuildScript;
+        return this;
+    }
+
+    public List<Invocation> getInvocations() {
+        return invocations;
+    }
+
+    public BuildInfo setInvocations(List<Invocation> invocations) {
+        this.invocations = invocations;
         return this;
     }
 

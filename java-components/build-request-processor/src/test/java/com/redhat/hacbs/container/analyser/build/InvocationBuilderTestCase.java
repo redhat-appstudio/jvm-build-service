@@ -1,6 +1,7 @@
 package com.redhat.hacbs.container.analyser.build;
 
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
+import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.InvocationBuilder.findClosestVersions;
 
@@ -44,21 +45,26 @@ public class InvocationBuilderTestCase {
     @Test
     public void testInvocationMapping() {
         InvocationBuilder builder = newBuilder();
-        builder.addToolInvocation(MAVEN, List.of("mvn", "install"));
+        builder.addToolInvocation(MAVEN, List.of("install"));
         var result = builder.build(buildInfoLocator);
         Assertions.assertEquals(3, result.invocations.size());
-        Assertions.assertTrue(result.invocations.contains(new Invocation(List.of("mvn","install"),Map.of(MAVEN,"3.8.0"),"11")));
+        Assertions.assertTrue(
+                result.invocations
+                        .contains(new Invocation(List.of("install"), Map.of(MAVEN, "3.8.0", JDK, "11"), "maven")));
 
         builder = newBuilder();
-        builder.addToolInvocation(MAVEN, List.of("mvn", "install"));
-        builder.addToolInvocation(GRADLE, List.of("gradle", "build"));
+        builder.addToolInvocation(MAVEN, List.of("install"));
+        builder.addToolInvocation(GRADLE, List.of("build"));
         builder.minJavaVersion(new JavaVersion("11"));
         builder.maxJavaVersion(new JavaVersion("11"));
         result = builder.build(buildInfoLocator);
         Assertions.assertEquals(4, result.invocations.size());
-        Assertions.assertTrue(result.invocations.contains(new Invocation(List.of("mvn","install"),Map.of(MAVEN,"3.8.0", GRADLE, "5.4"),"11")));
-        Assertions.assertTrue(result.invocations.contains(new Invocation(List.of("gradle","build"),Map.of(MAVEN,"3.8.0", GRADLE, "5.4"),"11")));
-
+        Assertions.assertTrue(result.invocations
+                .contains(
+                        new Invocation(List.of("install"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), "maven")));
+        Assertions.assertTrue(result.invocations
+                .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"),
+                        "gradle")));
 
         builder = newBuilder();
         builder.addToolInvocation(MAVEN, List.of("mvn", "install"));
@@ -68,15 +74,19 @@ public class InvocationBuilderTestCase {
         builder.discoveredToolVersion(GRADLE, "5.2");
         result = builder.build(buildInfoLocator);
         Assertions.assertEquals(2, result.invocations.size());
-        Assertions.assertTrue(result.invocations.contains(new Invocation(List.of("mvn","install"),Map.of(MAVEN,"3.8.0", GRADLE, "5.4"),"11")));
-        Assertions.assertTrue(result.invocations.contains(new Invocation(List.of("gradle","build"),Map.of(MAVEN,"3.8.0", GRADLE, "5.4"),"11")));
+        Assertions.assertTrue(result.invocations
+                .contains(
+                        new Invocation(List.of("mvn", "install"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), "maven")));
+        Assertions.assertTrue(result.invocations
+                .contains(new Invocation(List.of("gradle", "build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"),
+                        "gradle")));
 
     }
 
     private InvocationBuilder newBuilder() {
         return new InvocationBuilder(null, Map.of(
-            MAVEN, List.of("3.8.0"),
-            GRADLE, List.of("5.4", "6.1"),
-            BuildInfo.JDK, List.of("8", "11", "17")), "1");
+                MAVEN, List.of("3.8.0"),
+                GRADLE, List.of("5.4", "6.1"),
+                BuildInfo.JDK, List.of("8", "11", "17")), "1");
     }
 }

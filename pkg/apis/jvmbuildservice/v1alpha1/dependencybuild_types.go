@@ -132,6 +132,7 @@ type BuildRecipe struct {
 	CommandLine         []string             `json:"commandLine,omitempty"`
 	EnforceVersion      string               `json:"enforceVersion,omitempty"`
 	ToolVersion         string               `json:"toolVersion,omitempty"`
+	ToolVersions        map[string]string    `json:"toolVersions,omitempty"`
 	JavaVersion         string               `json:"javaVersion,omitempty"`
 	PreBuildScript      string               `json:"preBuildScript,omitempty"`
 	PostBuildScript     string               `json:"postBuildScript,omitempty"`

@@ -48,7 +48,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		ObjectMeta: metav1.ObjectMeta{Name: systemconfig.SystemConfigKey},
 		Spec: v1alpha1.SystemConfigSpec{
 			MaxAdditionalMemory: MaxAdditionalMemory,
-			Builders: map[string]v1alpha1.JavaVersionInfo{
+			Builders: map[string]v1alpha1.BuilderImageInfo{
 				v1alpha1.JDK8Builder: {
 					Image: "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
 					Tag:   "jdk:8,maven:3.8,gradle:8.0.2;7.4.2;6.9.2;5.6.4;4.10.3",
@@ -124,7 +124,7 @@ func TestStateNew(t *testing.T) {
 }
 
 func runBuildDiscoveryPipeline(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context, success bool) {
-	runBuildDiscoveryPipelineForResult(db, g, reconciler, client, ctx, success, `{"tools":{"jdk":{"min":"8","max":"17","preferred":"11"},"maven":{"min":"3.8","max":"3.8","preferred":"3.8"}},"invocations":[["maven","testgoal"]],"enforceVersion":null,"javaVersion":null,"repositories":["jboss","gradle"]}`)
+	runBuildDiscoveryPipelineForResult(db, g, reconciler, client, ctx, success, `{"invocations":[{"commands":["maven","testgoal"],"toolVersion":{"maven":"3.8", "jdk": "11"},"tool": "maven"}],"enforceVersion":null,"repositories":["jboss","gradle"]}`)
 }
 func runBuildDiscoveryPipelineForResult(db v1alpha1.DependencyBuild, g *WithT, reconciler *ReconcileDependencyBuild, client runtimeclient.Client, ctx context.Context, success bool, result string) {
 	var pr *pipelinev1beta1.PipelineRun
@@ -244,7 +244,7 @@ func TestStateDetect(t *testing.T) {
 				case PipelineParamEnforceVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
 				case PipelineParamToolVersion:
-					g.Expect(param.Value.StringVal).Should(Equal("3.8.1"))
+					g.Expect(param.Value.StringVal).Should(Equal("3.8"))
 				}
 			}
 		}
@@ -529,7 +529,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 	t.Run("Test build info discovery for gradle build", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "4.9", Tools: map[string]toolInfo{"gradle": {Min: "4.9", Max: "4.9", Preferred: "4.9"}, "jdk": {Min: "8", Max: "17", Preferred: "11"}}, Invocations: [][]string{{"gradle"}}})
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{Invocations: []invocation{{Tool: "gradle", Commands: []string{"gradle"}, ToolVersion: map[string]string{"gradle": "4.10.3", "jdk": "11"}}}})
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
@@ -544,25 +544,21 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
-		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(2))
+		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(1))
 		find11 := false
-		find8 := false
 		for _, recipe := range db.Status.PotentialBuildRecipes {
 			switch recipe.Image {
 			case "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest":
 				find11 = true
-			case "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest":
-				find8 = true
 			}
 		}
 		g.Expect(find11).To(BeTrue())
-		g.Expect(find8).To(BeTrue())
 	})
 
 	t.Run("Test build info discovery for gradle build 2", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "5.8.7", Tools: map[string]toolInfo{"gradle": {}}, Invocations: [][]string{{"gradle"}}})
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{Invocations: []invocation{{Tool: "gradle", Commands: []string{"gradle"}, ToolVersion: map[string]string{"gradle": "5.6.4", "jdk": "11"}}, {Tool: "gradle", Commands: []string{"gradle"}, ToolVersion: map[string]string{"gradle": "5.6.4", "jdk": "8"}}}})
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
@@ -595,7 +591,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 	t.Run("Test build info discovery with shared registry", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
-		buildInfoJson, err := json.Marshal(marshalledBuildInfo{ToolVersion: "5.8.7", Tools: map[string]toolInfo{"gradle": {}}, Invocations: [][]string{{"gradle"}}, Image: "quay.io/dummy-namespace/jvm-build-service-artifacts:4f8a8179ceadcde76e4cbc037dd7c9fd",
+		buildInfoJson, err := json.Marshal(marshalledBuildInfo{Invocations: []invocation{{Tool: "gradle", Commands: []string{"gradle"}, ToolVersion: map[string]string{"gradle": "5.6.4", "jdk": "11"}}}, Image: "quay.io/dummy-namespace/jvm-build-service-artifacts:4f8a8179ceadcde76e4cbc037dd7c9fd",
 			Digest: "sha256:0a959a76264f7a34f1d6793ce3fb0d37b8a12768483f075cd644265b258477e3", Gavs: []string{"commons-lang:commons-lang:2.6"}})
 		g.Expect(err).Should(BeNil())
 		pr := getBuildInfoPipeline(client, g)
@@ -614,7 +610,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "commons.lang.2.6-82c211d5"}, &ra)).Should(BeNil())
 
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
-		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(2))
+		g.Expect(len(db.Status.PotentialBuildRecipes)).Should(Equal(1))
 		g.Expect(ra.Spec.GAV).Should(Equal("commons-lang:commons-lang:2.6"))
 		g.Expect(ra.Spec.Digest).Should(Equal("sha256:0a959a76264f7a34f1d6793ce3fb0d37b8a12768483f075cd644265b258477e3"))
 		g.Expect(ra.Spec.Image).Should(Equal("quay.io/dummy-namespace/jvm-build-service-artifacts:4f8a8179ceadcde76e4cbc037dd7c9fd"))

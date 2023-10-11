@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
@@ -50,6 +49,7 @@ import com.google.cloud.tools.jib.registry.ManifestAndDigest;
 import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.redhat.hacbs.container.analyser.build.ant.AntUtils;
 import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
+import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
@@ -210,7 +210,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         builder.addRepository(repo);
                     }
                     var invocations = new ArrayList<>(
-                            List.of(MAVEN, "install", "-Denforcer.skip", "-Dcheckstyle.skip",
+                            List.of("install", "-Denforcer.skip", "-Dcheckstyle.skip",
                                     "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
                                     "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false", "-Dcobertura.skip=true"));
                     if (skipTests) {
@@ -242,7 +242,6 @@ public class LookupBuildInfoCommand implements Runnable {
                     Log.infof("Chose min Java version %s based on specified Java version", javaVersion);
                 }
                 ArrayList<String> inv = new ArrayList<>();
-                inv.add(GRADLE);
                 inv.addAll(GradleUtils.getGradleArgs(path));
                 if (skipTests) {
                     inv.add("-x");
@@ -253,24 +252,23 @@ public class LookupBuildInfoCommand implements Runnable {
             if (Files.exists(path.resolve("build.sbt"))) {
                 //TODO: initial SBT support, needs more work
                 Log.infof("Detected SBT build in %s", path);
-                builder.addToolInvocation(SBT,List.of(SBT, "--no-colors", "+publish"));
+                builder.addToolInvocation(SBT, List.of("--no-colors", "+publish"));
             }
             if (AntUtils.isAntBuild(path)) {
                 //TODO: this needs work, too much hard coded stuff, just try all and builds
                 // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
                 Log.infof("Detected Ant build in %s", path);
-//                var specifiedJavaVersion = AntUtils.getJavaVersion(path);
-//                Log.infof("Detected Java version %s", !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "none");
-//                var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
-//                var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
-//                Log.infof("Chose Ant version %s", antVersion);
-//                //this should really be specific to the invocation
-//                info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
-//                if (!info.tools.containsKey(JDK)) {
-//                    info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
-//                }
+                //                var specifiedJavaVersion = AntUtils.getJavaVersion(path);
+                //                Log.infof("Detected Java version %s", !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "none");
+                //                var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
+                //                var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
+                //                Log.infof("Chose Ant version %s", antVersion);
+                //                //this should really be specific to the invocation
+                //                info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
+                //                if (!info.tools.containsKey(JDK)) {
+                //                    info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
+                //                }
                 ArrayList<String> inv = new ArrayList<>();
-                inv.add(ANT);
                 inv.addAll(AntUtils.getAntArgs());
                 builder.addToolInvocation(ANT, inv);
             }

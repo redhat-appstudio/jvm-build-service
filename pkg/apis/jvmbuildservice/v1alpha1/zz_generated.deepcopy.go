@@ -216,6 +216,13 @@ func (in *BuildRecipe) DeepCopyInto(out *BuildRecipe) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.ToolVersions != nil {
+		in, out := &in.ToolVersions, &out.ToolVersions
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.AdditionalDownloads != nil {
 		in, out := &in.AdditionalDownloads, &out.AdditionalDownloads
 		*out = make([]AdditionalDownload, len(*in))

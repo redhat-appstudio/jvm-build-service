@@ -7,14 +7,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 
-import com.redhat.hacbs.container.analyser.build.InvocationBuilder;
-import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery;
 
 class JavaVersionDiscoveryTest {
     @Test

@@ -100,7 +100,6 @@ class GradleUtilsTest {
         assertThat(GradleUtils.getSupportedJavaVersion("8.0")).isEqualTo("17");
     }
 
-
     @Test
     void testFindMavenPlugin(@TempDir Path basedir) throws IOException {
         Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE);
