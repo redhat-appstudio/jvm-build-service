@@ -17,7 +17,7 @@ import com.redhat.hacbs.container.analyser.build.InvocationBuilder;
 import com.redhat.hacbs.container.analyser.build.JavaVersion;
 
 @ApplicationScoped
-public class MavanJavaVersionDiscovery {
+public class MavenJavaVersionDiscovery {
 
     public static String interpolate(String value, Model model) {
         if (value != null && value.contains("${")) {

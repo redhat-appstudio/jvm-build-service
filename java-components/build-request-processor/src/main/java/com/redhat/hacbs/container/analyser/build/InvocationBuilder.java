@@ -1,9 +1,12 @@
 package com.redhat.hacbs.container.analyser.build;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,28 +15,29 @@ import java.util.Set;
 
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.tools.BuildToolInfo;
+import io.quarkus.logging.Log;
 
 /**
  * Contains the logic around merging build information and discovery results
  */
 public class InvocationBuilder {
 
-    private final BuildRecipeInfo buildRecipeInfo;
-    private final Map<String, List<String>> availableTools;
-    private final String version;
+    final BuildRecipeInfo buildRecipeInfo;
+    final Map<String, List<String>> availableTools;
+     final String version;
 
-    private final Map<String, String> discoveredToolVersions = new HashMap<>();
+     final Map<String, String> discoveredToolVersions = new HashMap<>();
 
-    private final Map<String, Set<List<String>>> toolInvocations = new HashMap<>();
+     final Map<String, Set<List<String>>> toolInvocations = new LinkedHashMap<>();
 
-    private JavaVersion minJavaVersion;
-    private JavaVersion maxJavaVersion;
+     JavaVersion minJavaVersion;
+     JavaVersion maxJavaVersion;
 
-    private BuildInfo info = new BuildInfo();
+     BuildInfo info = new BuildInfo();
     /**
      * If the version is correct we never enforce version
      */
-    private boolean versionCorrect;
+     boolean versionCorrect;
 
     public InvocationBuilder(BuildRecipeInfo buildInfo, Map<String, List<String>> availableTools, String version) {
         this.buildRecipeInfo = buildInfo;
@@ -138,7 +142,7 @@ public class InvocationBuilder {
         var javaVersions = new ArrayList<>(
                 availableTools.getOrDefault("jdk", List.of()).stream().map(JavaVersion::new).filter(j -> {
                     if (minJavaVersion != null) {
-                        if (minJavaVersion.intVersion() > minJavaVersion.intVersion()) {
+                        if (minJavaVersion.intVersion() > j.intVersion()) {
                             return false;
                         }
                     }

@@ -1,17 +1,20 @@
-package com.redhat.hacbs.container.analyser.build.maven;
+package com.redhat.hacbs.container.analyser.build;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 
+import com.redhat.hacbs.container.analyser.build.InvocationBuilder;
+import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import com.redhat.hacbs.container.analyser.build.DiscoveryResult;
 
 class JavaVersionDiscoveryTest {
     @Test
@@ -22,10 +25,10 @@ class JavaVersionDiscoveryTest {
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(pomReader);
 
-            MavanJavaVersionDiscovery jvd = new MavanJavaVersionDiscovery();
-            DiscoveryResult dr = jvd.discover(model, Path.of(""));
+            InvocationBuilder invocationBuilder = new InvocationBuilder(null, new HashMap<>(), "1");
+            MavenJavaVersionDiscovery.filterJavaVersions(model, invocationBuilder);
 
-            assertEquals("8", dr.getToolVersions().get("jdk").getPreferred());
+            Assertions.assertEquals("8", invocationBuilder.maxJavaVersion.version());
         }
     }
 }

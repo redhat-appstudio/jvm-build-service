@@ -26,7 +26,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import com.redhat.hacbs.container.analyser.build.maven.MavanJavaVersionDiscovery;
+import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
@@ -203,7 +203,7 @@ public class LookupBuildInfoCommand implements Runnable {
                         builder.versionCorrect();
                         versionCorrect = true;
                     }
-                    MavanJavaVersionDiscovery.filterJavaVersions(model, builder);
+                    MavenJavaVersionDiscovery.filterJavaVersions(model, builder);
 
                     //look for repositories
                     for (var repo : handleRepositories(model, buildInfoLocator)) {
@@ -352,7 +352,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
             }
             if (taskRun != null) {
-                var info = builder.build();
+                var info = builder.build(buildInfoLocator);
                 Log.infof("Writing %s", info);
                 resultsUpdater.get().updateResults(taskRun, Map.of("BUILD_INFO",
                         ResultsUpdater.MAPPER.writeValueAsString(info)));
