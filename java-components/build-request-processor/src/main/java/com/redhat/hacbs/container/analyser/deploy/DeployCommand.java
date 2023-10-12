@@ -103,154 +103,146 @@ public class DeployCommand implements Runnable {
 
     public void run() {
         try {
-            java.nio.file.Path modified = Files.createTempFile("deployment", ".tar.gz");
-            try {
+            Set<String> gavs = new HashSet<>();
 
-                Set<String> gavs = new HashSet<>();
+            Map<String, Set<String>> contaminatedPaths = new HashMap<>();
+            Map<String, Set<String>> contaminatedGavs = new HashMap<>();
+            // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
+            // contaminated then none of the artifacts will be deployed.
+            Set<Path> toRemove = new HashSet<>();
+            Map<Path, Gav> jarFiles = new HashMap<>();
+            Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    String name = deploymentPath.relativize(file).toString();
+                    Optional<Gav> gav = getGav(name);
+                    gav.ifPresent(
+                            gav1 -> gavs.add(gav1.getGroupId() + ":" + gav1.getArtifactId() + ":" + gav1.getVersion()));
+                    Log.debugf("Checking %s for contaminants with GAV %s", name, gav);
+                    //we check every file as we also want to catch .tar.gz etc
+                    var info = ClassFileTracker.readTrackingDataFromFile(Files.newInputStream(file), name);
+                    for (var i : info) {
+                        if (!allowedSources.contains(i.source)) {
+                            Log.errorf("%s was contaminated by %s from %s", name, i.gav, i.source);
+                            if (ALLOWED_CONTAMINANTS.stream().noneMatch(a -> file.getFileName().toString().endsWith(a))) {
+                                gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav, s -> new HashSet<>())
+                                        .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
+                                int index = name.lastIndexOf("/");
+                                if (index != -1) {
+                                    contaminatedPaths.computeIfAbsent(name.substring(0, index),
+                                            s -> new HashSet<>()).add(i.gav);
+                                } else {
+                                    contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
+                                }
+                                toRemove.add(file.getParent());
+                            } else {
+                                Log.debugf("Ignoring contaminant for %s", file.getFileName());
+                            }
+                        }
+                    }
+                    if (gav.isPresent()) {
+                        //now add our own tracking data
+                        if (name.endsWith(".jar") && !name.endsWith("-sources.jar") && !name.endsWith("-javadoc.jar")) {
+                            jarFiles.put(file, gav.get());
+                        }
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            for (var e : jarFiles.entrySet()) {
+                Path file = e.getKey();
+                Gav gav = e.getValue();
+                try {
+                    String fileName = file.getFileName().toString();
+                    Path temp = file.getParent().resolve(fileName + ".temp");
+                    ClassFileTracker.addTrackingDataToJar(Files.newInputStream(file),
+                            new TrackingData(
+                                    gav.getGroupId() + ":" + gav.getArtifactId() + ":"
+                                            + gav.getVersion(),
+                                    "rebuilt",
+                                    Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
+                                            Boolean.toString(hermetic))),
+                            Files.newOutputStream(temp), false);
+                    Files.delete(file);
+                    Files.move(temp, file);
+                    try (Stream<Path> pathStream = Files.list(file.getParent())) {
+                        pathStream.filter(s -> s.getFileName().toString().startsWith(fileName + "."))
+                                .forEach(f -> {
+                                    try {
+                                        Files.delete(f);
+                                    } catch (IOException ex) {
+                                        throw new RuntimeException(ex);
+                                    }
+                                });
+                    }
 
-                Map<String, Set<String>> contaminatedPaths = new HashMap<>();
-                Map<String, Set<String>> contaminatedGavs = new HashMap<>();
-                // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
-                // contaminated then none of the artifacts will be deployed.
-                Set<Path> toRemove = new HashSet<>();
-                Map<Path, Gav> jarFiles = new HashMap<>();
+                    Files.writeString(file.getParent().resolve(fileName + ".md5"),
+                            HashUtil.md5(Files.newInputStream(file)));
+                    Files.writeString(file.getParent().resolve(fileName + ".sha1"),
+                            HashUtil.sha1(Files.newInputStream(file)));
+                } catch (Exception ex) {
+                    Log.errorf(ex, "Failed to instrument %s", file);
+                }
+            }
+            for (var i : toRemove) {
+                Log.errorf("Removing %s as it is contaminated", i);
+                FileUtil.deleteRecursive(i);
+            }
+
+            //update the DB with contaminant information
+            Log.infof("Contaminants: %s", contaminatedPaths);
+            Log.infof("Contaminated GAVS: %s", contaminatedGavs);
+            Log.infof("GAVs to deploy: %s", gavs);
+            if (gavs.isEmpty()) {
+                Log.errorf("No content to deploy found in deploy directory");
+
                 Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
                     @Override
                     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                        String name = deploymentPath.relativize(file).toString();
-                        Optional<Gav> gav = getGav(name);
-                        gav.ifPresent(
-                                gav1 -> gavs.add(gav1.getGroupId() + ":" + gav1.getArtifactId() + ":" + gav1.getVersion()));
-                        Log.debugf("Checking %s for contaminants with GAV %s", name, gav);
-                        //we check every file as we also want to catch .tar.gz etc
-                        var info = ClassFileTracker.readTrackingDataFromFile(Files.newInputStream(file), name);
-                        for (var i : info) {
-                            if (!allowedSources.contains(i.source)) {
-                                Log.errorf("%s was contaminated by %s from %s", name, i.gav, i.source);
-                                if (ALLOWED_CONTAMINANTS.stream().noneMatch(a -> file.getFileName().toString().endsWith(a))) {
-                                    gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav, s -> new HashSet<>())
-                                            .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
-                                    int index = name.lastIndexOf("/");
-                                    if (index != -1) {
-                                        contaminatedPaths.computeIfAbsent(name.substring(0, index),
-                                                s -> new HashSet<>()).add(i.gav);
-                                    } else {
-                                        contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
-                                    }
-                                    toRemove.add(file.getParent());
-                                } else {
-                                    Log.debugf("Ignoring contaminant for %s", file.getFileName());
-                                }
-                            }
-                        }
-                        if (gav.isPresent()) {
-                            //now add our own tracking data
-                            if (name.endsWith(".jar") && !name.endsWith("-sources.jar") && !name.endsWith("-javadoc.jar")) {
-                                jarFiles.put(file, gav.get());
-                            }
-                        }
+                        Log.errorf("Contents: %s", file);
                         return FileVisitResult.CONTINUE;
                     }
                 });
-                for (var e : jarFiles.entrySet()) {
-                    Path file = e.getKey();
-                    Gav gav = e.getValue();
-                    try {
-                        String fileName = file.getFileName().toString();
-                        Path temp = file.getParent().resolve(fileName + ".temp");
-                        ClassFileTracker.addTrackingDataToJar(Files.newInputStream(file),
-                                new TrackingData(
-                                        gav.getGroupId() + ":" + gav.getArtifactId() + ":"
-                                                + gav.getVersion(),
-                                        "rebuilt",
-                                        Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
-                                                Boolean.toString(hermetic))),
-                                Files.newOutputStream(temp), false);
-                        Files.delete(file);
-                        Files.move(temp, file);
-                        try (Stream<Path> pathStream = Files.list(file.getParent())) {
-                            pathStream.filter(s -> s.getFileName().toString().startsWith(fileName + "."))
-                                    .forEach(f -> {
-                                        try {
-                                            Files.delete(f);
-                                        } catch (IOException ex) {
-                                            throw new RuntimeException(ex);
-                                        }
-                                    });
-                        }
+                throw new RuntimeException("deploy failed");
+            }
+            //we still deploy, but without the contaminates
+            java.nio.file.Path deployFile = deploymentPath;
+            // This means the build failed to produce any deployable output.
+            // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
+            for (var i : contaminatedGavs.entrySet()) {
+                gavs.removeAll(i.getValue());
+            }
+            generateBuildSbom();
 
-                        Files.writeString(file.getParent().resolve(fileName + ".md5"),
-                                HashUtil.md5(Files.newInputStream(file)));
-                        Files.writeString(file.getParent().resolve(fileName + ".sha1"),
-                                HashUtil.sha1(Files.newInputStream(file)));
-                    } catch (Exception ex) {
-                        Log.errorf(ex, "Failed to instrument %s", file);
-                    }
+            if (!gavs.isEmpty()) {
+                try {
+                    cleanBrokenSymlinks(sourcePath);
+                    doDeployment(deployFile, sourcePath, logsPath, gavs);
+                } catch (Throwable t) {
+                    Log.error("Deployment failed", t);
+                    flushLogs();
+                    throw t;
                 }
-                for (var i : toRemove) {
-                    Log.errorf("Removing %s as it is contaminated", i);
-                    FileUtil.deleteRecursive(i);
-                }
+            } else {
+                Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
+            }
+            if (taskRun != null) {
 
-                //update the DB with contaminant information
-                Log.infof("Contaminants: %s", contaminatedPaths);
-                Log.infof("Contaminated GAVS: %s", contaminatedGavs);
-                Log.infof("GAVs to deploy: %s", gavs);
-                if (gavs.isEmpty()) {
-                    Log.errorf("No content to deploy found in deploy directory");
-
-                    Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
-                        @Override
-                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                            Log.errorf("Contents: %s", file);
-                            return FileVisitResult.CONTINUE;
-                        }
-                    });
-                    throw new RuntimeException("deploy failed");
-                }
-                //we still deploy, but without the contaminates
-                java.nio.file.Path deployFile = deploymentPath;
-                // This means the build failed to produce any deployable output.
-                // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
+                List<Contaminates> newContaminates = new ArrayList<>();
                 for (var i : contaminatedGavs.entrySet()) {
-                    gavs.removeAll(i.getValue());
+                    Contaminates contaminates = new Contaminates();
+                    contaminates.setContaminatedArtifacts(new ArrayList<>(i.getValue()));
+                    contaminates.setGav(i.getKey());
+                    newContaminates.add(contaminates);
                 }
-                generateBuildSbom();
-
-                if (!gavs.isEmpty()) {
-                    try {
-                        cleanBrokenSymlinks(sourcePath);
-                        doDeployment(deployFile, sourcePath, logsPath, gavs);
-                    } catch (Throwable t) {
-                        Log.error("Deployment failed", t);
-                        flushLogs();
-                        throw t;
-                    }
-                } else {
-                    Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
-                }
-                if (taskRun != null) {
-
-                    List<Contaminates> newContaminates = new ArrayList<>();
-                    for (var i : contaminatedGavs.entrySet()) {
-                        Contaminates contaminates = new Contaminates();
-                        contaminates.setContaminatedArtifacts(new ArrayList<>(i.getValue()));
-                        contaminates.setGav(i.getKey());
-                        newContaminates.add(contaminates);
-                    }
-                    String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
-                    Log.infof("Updating results %s with contaminants %s and deployed resources %s",
-                            taskRun, serialisedContaminants, gavs);
-                    resultsUpdater.updateResults(taskRun, Map.of(
-                            "CONTAMINANTS", serialisedContaminants,
-                            "DEPLOYED_RESOURCES", String.join(",", gavs),
-                            "IMAGE_URL", imageName == null ? "" : imageName,
-                            "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest));
-                }
-            } finally {
-                if (Files.exists(modified)) {
-                    Files.delete(modified);
-                }
+                String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
+                Log.infof("Updating results %s with contaminants %s and deployed resources %s",
+                        taskRun, serialisedContaminants, gavs);
+                resultsUpdater.updateResults(taskRun, Map.of(
+                        "CONTAMINANTS", serialisedContaminants,
+                        "DEPLOYED_RESOURCES", String.join(",", gavs),
+                        "IMAGE_URL", imageName == null ? "" : imageName,
+                        "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest));
             }
         } catch (Exception e) {
             Log.error("Deployment failed", e);
