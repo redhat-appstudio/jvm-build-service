@@ -1,5 +1,7 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
+import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +21,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 import jakarta.enterprise.inject.spi.BeanManager;
+import jakarta.inject.Inject;
 
 import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
@@ -28,14 +31,17 @@ import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
+import com.redhat.hacbs.container.analyser.deploy.mavenrepository.MavenRepositoryDeployer;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipies.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
 import com.redhat.hacbs.resources.util.HashUtil;
 
+import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
+@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 @CommandLine.Command(name = "deploy")
 public class DeployCommand implements Runnable {
 
@@ -47,22 +53,22 @@ public class DeployCommand implements Runnable {
     final BeanManager beanManager;
     final ResultsUpdater resultsUpdater;
 
-    @CommandLine.Option(required = false, names = "--allowed-sources", defaultValue = "redhat,rebuilt", split = ",")
+    @CommandLine.Option(names = "--allowed-sources", defaultValue = "redhat,rebuilt", split = ",")
     Set<String> allowedSources;
 
     @CommandLine.Option(required = true, names = "--path")
     Path deploymentPath;
 
-    @CommandLine.Option(required = false, names = "--task-run-name")
+    @CommandLine.Option(names = "--task-run-name")
     String taskRun;
 
     @CommandLine.Option(required = true, names = "--source-path")
     Path sourcePath;
 
-    @CommandLine.Option(required = false, names = "--logs-path")
+    @CommandLine.Option(names = "--logs-path")
     Path logsPath;
 
-    @CommandLine.Option(required = false, names = "--build-info-path")
+    @CommandLine.Option(names = "--build-info-path")
     Path buildInfoPath;
 
     @CommandLine.Option(required = true, names = "--scm-uri")
@@ -78,7 +84,7 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--registry-owner", defaultValue = "hacbs")
     String owner;
     @ConfigProperty(name = "registry.token")
-    Optional<String> token;
+    Optional<String> token = Optional.empty();
     @CommandLine.Option(names = "--registry-repository", defaultValue = "artifact-deployments")
     String repository;
     @CommandLine.Option(names = "--registry-insecure", defaultValue = "false")
@@ -92,8 +98,25 @@ public class DeployCommand implements Runnable {
 
     @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
     String prependTag;
+
+    // Maven Repo Deployment specification
+    @CommandLine.Option(names = "--mvn-username")
+    String mvnUser;
+
+    @ConfigProperty(name = "maven.password")
+    Optional<String> mvnPassword = Optional.empty();
+
+    @CommandLine.Option(names = "--mvn-repo")
+    String mvnRepo;
+
+    // Testing only ; used to disable image deployment
+    protected boolean imageDeployment = true;
+
     protected String imageName;
     protected String imageDigest;
+
+    @Inject
+    BootstrapMavenContext mvnCtx;
 
     public DeployCommand(BeanManager beanManager,
             ResultsUpdater resultsUpdater) {
@@ -198,7 +221,7 @@ public class DeployCommand implements Runnable {
 
                 Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
                     @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                         Log.errorf("Contents: %s", file);
                         return FileVisitResult.CONTINUE;
                     }
@@ -206,7 +229,6 @@ public class DeployCommand implements Runnable {
                 throw new RuntimeException("deploy failed");
             }
             //we still deploy, but without the contaminates
-            java.nio.file.Path deployFile = deploymentPath;
             // This means the build failed to produce any deployable output.
             // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
             for (var i : contaminatedGavs.entrySet()) {
@@ -217,7 +239,7 @@ public class DeployCommand implements Runnable {
             if (!gavs.isEmpty()) {
                 try {
                     cleanBrokenSymlinks(sourcePath);
-                    doDeployment(deployFile, sourcePath, logsPath, gavs);
+                    doDeployment(sourcePath, logsPath, gavs);
                 } catch (Throwable t) {
                     Log.error("Deployment failed", t);
                     flushLogs();
@@ -301,18 +323,26 @@ public class DeployCommand implements Runnable {
 
     }
 
-    protected void doDeployment(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
-
-        ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
-                insecure,
-                prependTag, imageId);
-        deployer.deployArchive(deployDir, sourcePath, logsPath, gavs, new BiConsumer<String, String>() {
-            @Override
-            public void accept(String s, String hash) {
-                imageName = s;
-                imageDigest = hash;
-            }
-        });
+    protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+        // TODO: Putting mvn deployment first as image deployment deletes the file tree
+        if (isNotEmpty(mvnRepo)) {
+            // Maven Repo Deployment
+            MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo,
+                    deploymentPath);
+            deployer.deploy();
+        }
+        if (imageDeployment) {
+            ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
+                    insecure, prependTag,
+                    imageId);
+            deployer.deployArchive(deploymentPath, sourcePath, logsPath, gavs, new BiConsumer<String, String>() {
+                @Override
+                public void accept(String s, String hash) {
+                    imageName = s;
+                    imageDigest = hash;
+                }
+            });
+        }
     }
 
     private void flushLogs() {

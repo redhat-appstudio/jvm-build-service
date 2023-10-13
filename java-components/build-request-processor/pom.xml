@@ -10,29 +10,18 @@
     <artifactId>hacbs-build-request-processor</artifactId>
     <dependencies>
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkiverse.amazonservices</groupId>
-            <artifactId>quarkus-amazon-s3</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>url-connection-client</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
             <artifactId>hacbs-classfile-tracker</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.cyclonedx</groupId>
-            <artifactId>cyclonedx-core-java</artifactId>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-build-recipies-database</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-compress</artifactId>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-resource-model</artifactId>
         </dependency>
+
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-client-reactive-jackson</artifactId>
@@ -46,10 +35,6 @@
             <artifactId>quarkus-container-image-jib</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-resource-model</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-picocli</artifactId>
         </dependency>
@@ -58,29 +43,40 @@
             <artifactId>quarkus-jgit</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-build-recipies-database</artifactId>
+            <groupId>io.quarkiverse.mavenresolver</groupId>
+            <artifactId>quarkus-maven-resolver</artifactId>
         </dependency>
+
         <dependency>
             <groupId>com.google.cloud.tools</groupId>
             <artifactId>jib-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-text</artifactId>
+            <groupId>org.cyclonedx</groupId>
+            <artifactId>cyclonedx-core-java</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm-tree</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.gradle</groupId>
             <artifactId>gradle-tooling-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-embedder</artifactId>
+            <groupId>org.apache.maven.indexer</groupId>
+            <artifactId>indexer-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-model</artifactId>
+            <groupId>org.apache.ant</groupId>
+            <artifactId>ant</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.apache.ivy</groupId>
+            <artifactId>ivy</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
@@ -92,52 +88,14 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>localstack</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-s3</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven.indexer</groupId>
-            <artifactId>indexer-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven.resolver</groupId>
-            <artifactId>maven-resolver-connector-basic</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven.resolver</groupId>
-            <artifactId>maven-resolver-transport-file</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven.resolver</groupId>
-            <artifactId>maven-resolver-transport-http</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.ow2.asm</groupId>
-            <artifactId>asm-tree</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.ant</groupId>
-            <artifactId>ant</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.ivy</groupId>
-            <artifactId>ivy</artifactId>
         </dependency>
     </dependencies>
     <build>

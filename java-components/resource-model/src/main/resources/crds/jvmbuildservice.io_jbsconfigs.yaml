@@ -97,6 +97,13 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              mavenDeployment:
+                properties:
+                  repository:
+                    type: string
+                  username:
+                    type: string
+                type: object
               owner:
                 type: string
               port:

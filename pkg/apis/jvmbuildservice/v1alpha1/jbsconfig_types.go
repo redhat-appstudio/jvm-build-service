@@ -8,12 +8,14 @@ type HermeticBuildType string
 
 const (
 	JBSConfigName                           = "jvm-build-config"
-	DefaultImageSecretName                  = "jvm-build-image-secrets" //#nosec
-	GitSecretName                           = "jvm-build-git-secrets"   //#nosec
-	TlsSecretName                           = "jvm-build-tls-secrets"   //#nosec
-	TlsConfigMapName                        = "jvm-build-tls-ca"        //#nosec
-	ImageSecretTokenKey                     = ".dockerconfigjson"       //#nosec
-	GitSecretTokenKey                       = ".git-credentials"        //#nosec
+	DefaultImageSecretName                  = "jvm-build-image-secrets"      //#nosec
+	GitSecretName                           = "jvm-build-git-secrets"        //#nosec
+	TlsSecretName                           = "jvm-build-tls-secrets"        //#nosec
+	TlsConfigMapName                        = "jvm-build-tls-ca"             //#nosec
+	ImageSecretTokenKey                     = ".dockerconfigjson"            //#nosec
+	GitSecretTokenKey                       = ".git-credentials"             //#nosec
+	MavenSecretKey                          = "mavenpassword"                //#nosec
+	MavenSecretName                         = "jvm-build-maven-repo-secrets" //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
 	ConfigArtifactCacheRequestMemoryDefault = "512Mi"
 	ConfigArtifactCacheRequestCPUDefault    = "1"
@@ -41,6 +43,7 @@ type JBSConfigSpec struct {
 
 	SharedRegistries []ImageRegistry `json:"sharedRegistries,omitempty"`
 	Registry         ImageRegistry   `json:"registry,omitempty"`
+	MavenDeployment  MavenDeployment `json:"mavenDeployment,omitempty"`
 	// Deprecated: Replaced by explicit declaration of Registry above.
 	ImageRegistry      `json:",inline,omitempty"`
 	CacheSettings      CacheSettings              `json:"cacheSettings,omitempty"`
@@ -87,6 +90,11 @@ type ImageRegistry struct {
 	Insecure   bool   `json:"insecure,omitempty"`
 	PrependTag string `json:"prependTag,omitempty"`
 	SecretName string `json:"secretName,omitempty"`
+}
+
+type MavenDeployment struct {
+	Username   string `json:"username,omitempty"`
+	Repository string `json:"repository,omitempty"`
 }
 
 type RelocationPatternElement struct {

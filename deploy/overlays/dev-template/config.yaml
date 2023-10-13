@@ -4,7 +4,11 @@ kind: JBSConfig
 metadata:
   name: jvm-build-config
 spec:
-  owner: QUAY_USERNAME
+  registry:
+    owner: QUAY_USERNAME
+  mavenDeployment:
+    username: MAVEN_USERNAME
+    repository: MAVEN_REPOSITORY
   relocationPatterns:
     - relocationPattern:
         buildPolicy: "default"

@@ -2,7 +2,6 @@ package com.redhat.hacbs.container.verifier;
 
 import static com.redhat.hacbs.container.verifier.MavenUtils.newAuthenticationSelector;
 import static com.redhat.hacbs.container.verifier.MavenUtils.newMirrorSelector;
-import static com.redhat.hacbs.container.verifier.MavenUtils.newRepositorySystem;
 import static com.redhat.hacbs.container.verifier.MavenUtils.newSettings;
 import static com.redhat.hacbs.container.verifier.MavenUtils.pathToCoords;
 import static com.redhat.hacbs.container.verifier.MavenUtils.resolveArtifact;
@@ -42,6 +41,8 @@ import org.jboss.logging.Logger;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
+import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
+import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -111,6 +112,9 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
+
+    @Inject
+    BootstrapMavenContext mvnCtx;
 
     public VerifyBuiltArtifactsCommand() {
 
@@ -232,14 +236,15 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
         return newExcludes;
     }
 
-    private void initMaven(Path globalSettingsFile, Path settingsFile) throws IOException {
+    private void initMaven(Path globalSettingsFile, Path settingsFile)
+            throws IOException, BootstrapMavenException {
         session = newSession();
         var settings = newSettings(globalSettingsFile, settingsFile);
         var mirrorSelector = newMirrorSelector(settings);
         session.setMirrorSelector(mirrorSelector);
         var authenticationSelector = newAuthenticationSelector(settings);
         session.setAuthenticationSelector(authenticationSelector);
-        system = newRepositorySystem();
+        system = mvnCtx.getRepositorySystem();
         var localRepositoryDirectory = Files.createTempDirectory("verify-built-artifacts-");
         var localRepository = new LocalRepository(localRepositoryDirectory.toFile());
         var manager = system.newLocalRepositoryManager(session, localRepository);
