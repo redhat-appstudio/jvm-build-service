@@ -51,7 +51,7 @@
         <kubernetes-client.version>6.9.0</kubernetes-client.version>
 
         <assertj.version>3.24.2</assertj.version>
-        <aws-java-sdk-s3.version>1.12.560</aws-java-sdk-s3.version>
+        <aws-java-sdk-s3.version>1.12.569</aws-java-sdk-s3.version>
         <quarkus-jgit.version>3.0.5</quarkus-jgit.version>
         <gradle-tooling-api.version>8.4</gradle-tooling-api.version>
         <quarkus-github-api.version>1.316.0</quarkus-github-api.version>
