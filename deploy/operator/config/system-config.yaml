@@ -5,11 +5,9 @@ metadata:
   name: cluster
 spec:
   builders:
-    ubi8:
-      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:f0c0dbbd5926e7a38af245b4e48a38ddd2d17359
-      tag: jdk:8;11;17,maven:3.8,gradle:8.0.2;7.4.2;6.9.2;5.6.4;4.10.3,sbt:1.8.0,ant:1.10.13
+    jdk17:
+      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:bd8e505b3082a03c030b36868a3753df9db15f97
+      priority: 2000
+    jdk7:
+      image: quay.io/redhat-appstudio/hacbs-jdk7-builder:bd8e505b3082a03c030b36868a3753df9db15f97
       priority: 1000
-    ubi7:
-      image: quay.io/redhat-appstudio/hacbs-jdk7-builder:f0c0dbbd5926e7a38af245b4e48a38ddd2d17359
-      tag: jdk:7;8;11,maven:3.8,ant:1.9.16
-      priority: 500

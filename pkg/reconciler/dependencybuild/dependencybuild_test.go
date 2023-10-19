@@ -49,19 +49,19 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		Spec: v1alpha1.SystemConfigSpec{
 			MaxAdditionalMemory: MaxAdditionalMemory,
 			Builders: map[string]v1alpha1.BuilderImageInfo{
-				v1alpha1.JDK8Builder: {
+				"jdk8": {
 					Image: "quay.io/redhat-appstudio/hacbs-jdk8-builder:latest",
 					Tag:   "jdk:8,maven:3.8,gradle:8.0.2;7.4.2;6.9.2;5.6.4;4.10.3",
 				},
-				v1alpha1.JDK11Builder: {
+				"jdk11": {
 					Image: "quay.io/redhat-appstudio/hacbs-jdk11-builder:latest",
 					Tag:   "jdk:11,maven:3.8,gradle:8.0.2;7.4.2;6.9.2;5.6.4;4.10.3",
 				},
-				v1alpha1.JDK17Builder: {
+				"jdk17": {
 					Image: "quay.io/redhat-appstudio/hacbs-jdk17-builder:latest",
 					Tag:   "jdk:17,maven:3.8,gradle:8.0.2;7.4.2;6.9.2",
 				},
-				v1alpha1.JDK7Builder: {
+				"jdk7": {
 					Image: "quay.io/redhat-appstudio/hacbs-jdk7-builder:latest",
 					Tag:   "jdk:7,maven:3.8",
 				},

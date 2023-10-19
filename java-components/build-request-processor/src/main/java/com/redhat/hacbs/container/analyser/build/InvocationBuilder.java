@@ -223,10 +223,12 @@ public class InvocationBuilder {
                         if (info != null) {
                             var toolInfo = info.get(tool.getValue());
                             if (toolInfo != null) {
-                                if (new JavaVersion(toolInfo.getMaxJdkVersion()).intVersion() < javaVersion.intVersion()) {
+                                if (toolInfo.getMaxJdkVersion() != null && new JavaVersion(toolInfo.getMaxJdkVersion())
+                                        .intVersion() < javaVersion.intVersion()) {
                                     ignore = true;
-                                } else if (new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
-                                        .intVersion()) {
+                                } else if (toolInfo.getMinJdkVersion() != null
+                                        && new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
+                                                .intVersion()) {
                                     ignore = true;
                                 }
                             }
