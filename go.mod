@@ -24,7 +24,7 @@ require (
 require (
 	github.com/CycloneDX/cyclonedx-go v0.7.1
 	github.com/google/go-containerregistry v0.15.2
-	github.com/redhat-appstudio/image-controller v0.0.0-20230831131151-75d3928646d2
+	github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
 	go.uber.org/zap v1.24.0
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -76,11 +76,13 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/prometheus/statsd_exporter v0.21.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect

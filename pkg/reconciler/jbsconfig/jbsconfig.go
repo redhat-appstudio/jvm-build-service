@@ -209,6 +209,9 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	}
 
 	if jbsConfig.ImageRegistry().Owner == "" {
+		if !r.spiPresent {
+			return fmt.Errorf("image repository not configured")
+		}
 		err := r.handleNoOwnerSpecified(ctx, log, jbsConfig)
 		if err != nil {
 			return err
