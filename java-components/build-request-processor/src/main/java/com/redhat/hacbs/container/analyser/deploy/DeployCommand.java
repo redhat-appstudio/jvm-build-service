@@ -43,6 +43,7 @@ public class DeployCommand implements Runnable {
     private static final String DOT_JAR = ".jar";
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";
+    private static final Set<String> ALLOWED_CONTAMINANTS = Set.of("-tests.jar");
     final BeanManager beanManager;
     final ResultsUpdater resultsUpdater;
 
@@ -55,7 +56,7 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(required = false, names = "--task-run-name")
     String taskRun;
 
-    @CommandLine.Option(required = false, names = "--source-path")
+    @CommandLine.Option(required = true, names = "--source-path")
     Path sourcePath;
 
     @CommandLine.Option(required = false, names = "--logs-path")
@@ -64,10 +65,10 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(required = false, names = "--build-info-path")
     Path buildInfoPath;
 
-    @CommandLine.Option(required = false, names = "--scm-uri")
+    @CommandLine.Option(required = true, names = "--scm-uri")
     String scmUri;
 
-    @CommandLine.Option(required = false, names = "--scm-commit")
+    @CommandLine.Option(required = true, names = "--scm-commit")
     String commit;
 
     @CommandLine.Option(names = "--registry-host", defaultValue = "quay.io")
@@ -109,6 +110,8 @@ public class DeployCommand implements Runnable {
 
                 Map<String, Set<String>> contaminatedPaths = new HashMap<>();
                 Map<String, Set<String>> contaminatedGavs = new HashMap<>();
+                // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
+                // contaminated then none of the artifacts will be deployed.
                 Set<Path> toRemove = new HashSet<>();
                 Map<Path, Gav> jarFiles = new HashMap<>();
                 Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
@@ -118,26 +121,27 @@ public class DeployCommand implements Runnable {
                         Optional<Gav> gav = getGav(name);
                         gav.ifPresent(
                                 gav1 -> gavs.add(gav1.getGroupId() + ":" + gav1.getArtifactId() + ":" + gav1.getVersion()));
-                        Log.debugf("Checking %s for contaminants", name);
+                        Log.debugf("Checking %s for contaminants with GAV %s", name, gav);
                         //we check every file as we also want to catch .tar.gz etc
                         var info = ClassFileTracker.readTrackingDataFromFile(Files.newInputStream(file), name);
                         for (var i : info) {
                             if (!allowedSources.contains(i.source)) {
                                 Log.errorf("%s was contaminated by %s from %s", name, i.gav, i.source);
-                                gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav,
-                                        s -> new HashSet<>())
-                                        .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
-                                int index = name.lastIndexOf("/");
-                                if (index != -1) {
-                                    contaminatedPaths
-                                            .computeIfAbsent(name.substring(0, index), s -> new HashSet<>())
-                                            .add(i.gav);
+                                if (ALLOWED_CONTAMINANTS.stream().noneMatch(a -> file.getFileName().toString().endsWith(a))) {
+                                    gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav, s -> new HashSet<>())
+                                            .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
+                                    int index = name.lastIndexOf("/");
+                                    if (index != -1) {
+                                        contaminatedPaths.computeIfAbsent(name.substring(0, index),
+                                                s -> new HashSet<>()).add(i.gav);
+                                    } else {
+                                        contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
+                                    }
+                                    toRemove.add(file.getParent());
                                 } else {
-                                    contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
+                                    Log.debugf("Ignoring contaminant for %s", file.getFileName());
                                 }
-                                toRemove.add(file.getParent());
                             }
-
                         }
                         if (gav.isPresent()) {
                             //now add our own tracking data
@@ -188,6 +192,9 @@ public class DeployCommand implements Runnable {
                     FileUtil.deleteRecursive(i);
                 }
 
+                //update the DB with contaminant information
+                Log.infof("Contaminants: %s", contaminatedPaths);
+                Log.infof("Contaminated GAVS: %s", contaminatedGavs);
                 Log.infof("GAVs to deploy: %s", gavs);
                 if (gavs.isEmpty()) {
                     Log.errorf("No content to deploy found in deploy directory");
@@ -203,10 +210,8 @@ public class DeployCommand implements Runnable {
                 }
                 //we still deploy, but without the contaminates
                 java.nio.file.Path deployFile = deploymentPath;
-                Log.infof("Contaminants: %s", contaminatedPaths);
-                Log.infof("Contaminated GAVS: %s", contaminatedGavs);
-                //update the DB with contaminant information
-
+                // This means the build failed to produce any deployable output.
+                // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
                 for (var i : contaminatedGavs.entrySet()) {
                     gavs.removeAll(i.getValue());
                 }

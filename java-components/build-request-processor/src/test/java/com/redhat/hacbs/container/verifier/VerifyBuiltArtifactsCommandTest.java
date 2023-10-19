@@ -19,7 +19,6 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import picocli.CommandLine;
 
-//@QuarkusTest
 public class VerifyBuiltArtifactsCommandTest {
     private Properties properties;
 

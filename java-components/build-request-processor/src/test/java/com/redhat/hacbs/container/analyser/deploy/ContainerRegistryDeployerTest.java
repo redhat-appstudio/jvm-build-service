@@ -6,12 +6,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +17,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
+
+import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
 import io.quarkus.test.junit.main.QuarkusMainTest;
@@ -136,7 +135,7 @@ public class ContainerRegistryDeployerTest {
                 Files.createFile(shaFile);
             }
 
-            String sha1 = sha1(testContent);
+            String sha1 = HashUtil.sha1(testContent);
             Files.writeString(shaFile, sha1);
         }
 
@@ -182,24 +181,6 @@ public class ContainerRegistryDeployerTest {
 
     private URL getRegistryURL(String path) throws IOException {
         return new URL("http://" + this.container.getHost() + ":" + port + "/v2/" + path);
-    }
-
-    private String sha1(String value) {
-        return sha1(value.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String sha1(byte[] value) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-1");
-            byte[] digest = md.digest(value);
-            StringBuilder sb = new StringBuilder(40);
-            for (int i = 0; i < digest.length; ++i) {
-                sb.append(Integer.toHexString((digest[i] & 0xFF) | 0x100).substring(1, 3));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     class ContainerRegistryDetails {

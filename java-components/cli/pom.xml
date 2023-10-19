@@ -37,6 +37,10 @@
             <artifactId>hacbs-resource-model</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-classfile-tracker</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-picocli</artifactId>
         </dependency>
