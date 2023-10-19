@@ -22,6 +22,8 @@ public interface RecipeDirectory {
 
     Optional<Path> getRepositoryPaths(String name);
 
+    Optional<Path> getBuildToolInfo(String name);
+
     List<Path> getAllRepositoryPaths();
 
     default <T> void writeArtifactData(AddRecipeRequest<T> data) {

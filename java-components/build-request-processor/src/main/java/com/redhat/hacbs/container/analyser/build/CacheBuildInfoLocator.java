@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipies.tools.BuildToolInfo;
 
 @RegisterRestClient()
 @Path("/v2/recipe-lookup")
@@ -25,4 +26,9 @@ public interface CacheBuildInfoLocator {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("repository-info")
     List<String> findRepositories(@QueryParam("repositories") Set<String> repositories);
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("build-tool-info")
+    public List<BuildToolInfo> lookupBuildToolInfo(@QueryParam("name") String name);
 }

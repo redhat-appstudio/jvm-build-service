@@ -26,6 +26,7 @@ require (
 	github.com/google/go-containerregistry v0.15.2
 	github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
 	go.uber.org/zap v1.24.0
+	k8s.io/utils v0.0.0-20230209194617-a36077c30491
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -112,7 +113,6 @@ require (
 	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/gengo v0.0.0-20221011193443-fad74ee6edd9 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
-	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )

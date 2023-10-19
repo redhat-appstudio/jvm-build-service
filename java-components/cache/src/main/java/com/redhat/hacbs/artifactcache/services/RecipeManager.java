@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -29,6 +30,8 @@ import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipies.mavenrepo.MavenRepositoryInfo;
 import com.redhat.hacbs.recipies.mavenrepo.MavenRepositoryInfoManager;
 import com.redhat.hacbs.recipies.scm.GitScmLocator;
+import com.redhat.hacbs.recipies.tools.BuildToolInfo;
+import com.redhat.hacbs.recipies.tools.BuildToolInfoManager;
 import com.redhat.hacbs.recipies.util.FileUtil;
 
 import io.quarkus.logging.Log;
@@ -107,6 +110,24 @@ public class RecipeManager {
             }
         }
         return ret;
+    }
+
+    public List<BuildToolInfo> getBuildToolInfo(String name) {
+        TreeMap<String, BuildToolInfo> results = new TreeMap<>();
+        for (var i : recipeDirs) {
+            var path = i.getBuildToolInfo(name);
+            if (path.isPresent()) {
+                try {
+                    for (var b : BuildToolInfoManager.INSTANCE.parse(path.get())) {
+                        results.put(b.getVersion(), b);
+
+                    }
+                } catch (IOException e) {
+                    Log.errorf(e, "Failed to parse build tool info file %s", path);
+                }
+            }
+        }
+        return new ArrayList<>(results.values());
     }
 
     public BuildRecipeInfo resolveBuildInfo(String scmUrl, String version) throws IOException {

@@ -13,14 +13,14 @@ const (
 type QuotaImpl string
 
 type SystemConfigSpec struct {
-	Builders            map[string]JavaVersionInfo `json:"builders,omitempty"`
-	MaxAdditionalMemory int                        `json:"maxAdditionalMemory,omitempty"`
+	Builders            map[string]BuilderImageInfo `json:"builders,omitempty"`
+	MaxAdditionalMemory int                         `json:"maxAdditionalMemory,omitempty"`
 	//DEPRECATED
 	Quota          QuotaImpl `json:"quota,omitempty"`
 	RecipeDatabase string    `json:"recipeDatabase,omitempty"`
 }
 
-type JavaVersionInfo struct {
+type BuilderImageInfo struct {
 	Image    string `json:"image,omitempty"`
 	Tag      string `json:"tag,omitempty"`
 	Priority int    `json:"priority,omitempty"`
