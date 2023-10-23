@@ -1,7 +1,10 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -18,6 +21,8 @@ public class DeployPreBuildImageCommand implements Runnable {
     String builderImage;
     @CommandLine.Option(names = "--source-path", required = true)
     Path sourcePath;
+    @CommandLine.Option(names = "--image-hash", required = true)
+    Path imageHash;
 
     @CommandLine.Option(names = "--image-source-path", required = true)
     String imageSourcePath;
@@ -45,7 +50,17 @@ public class DeployPreBuildImageCommand implements Runnable {
                 insecure,
                 prependTag, "");
         try {
-            deployer.deployPreBuildImage(builderImage, sourcePath, imageSourcePath, imageName);
+            deployer.deployPreBuildImage(builderImage, sourcePath, imageSourcePath, imageName,
+                    new BiConsumer<String, String>() {
+                        @Override
+                        public void accept(String name, String hash) {
+                            try {
+                                Files.writeString(imageHash, name.substring(0, name.lastIndexOf(":")) + "@sha256:" + hash);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    });
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

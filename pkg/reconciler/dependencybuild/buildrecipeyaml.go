@@ -15,11 +15,13 @@ import (
 )
 
 const (
-	WorkspaceBuildSettings = "build-settings"
-	WorkspaceSource        = "source"
-	WorkspaceTls           = "tls"
-	OriginalContentPath    = "/original-content"
-	MavenArtifactsPath     = "/maven-artifacts"
+	WorkspaceBuildSettings      = "build-settings"
+	WorkspaceSource             = "source"
+	WorkspaceTls                = "tls"
+	OriginalContentPath         = "/original-content"
+	MavenArtifactsPath          = "/maven-artifacts"
+	PreBuildImageDigest         = "PRE_BUILD_IMAGE_DIGEST"
+	HermeticPreBuildImageDigest = "HERMETIC_PRE_BUILD_IMAGE_DIGEST"
 )
 
 //go:embed scripts/maven-build.sh
@@ -60,7 +62,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha12.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 
-	preBuildImageName, hermeticPreBuildImageName, preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired)
+	preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired)
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
 
@@ -178,6 +180,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params:     pipelineParams,
+		Results:    []pipelinev1beta1.TaskResult{{Name: PreBuildImageDigest, Type: pipelinev1beta1.ResultsTypeString}},
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "git-clone-and-settings",
@@ -225,26 +228,28 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 
 	var buildTaskScript string
+	hermeticResults := []pipelinev1beta1.TaskResult{}
 	if hermeticBuildRequired {
 		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs, createHermeticImageArgs)
+		hermeticResults = []pipelinev1beta1.TaskResult{{Name: HermeticPreBuildImageDigest}}
 	} else {
 		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
 	}
 	buildTask := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
-		Params:     pipelineParams,
-		Results: []pipelinev1beta1.TaskResult{
+		Params:     append(pipelineParams, pipelinev1beta1.ParamSpec{Name: PreBuildImageDigest, Type: pipelinev1beta1.ParamTypeString}),
+		Results: append(hermeticResults, []pipelinev1beta1.TaskResult{
 			{Name: artifactbuild.PipelineResultContaminants},
 			{Name: artifactbuild.PipelineResultDeployedResources},
 			{Name: PipelineResultImage},
 			{Name: PipelineResultImageDigest},
 			{Name: artifactbuild.PipelineResultPassedVerification},
 			{Name: artifactbuild.PipelineResultVerificationResult},
-		},
+		}...),
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "build",
-				Image:           preBuildImageName,
+				Image:           "$(params." + PreBuildImageDigest + ")",
 				ImagePullPolicy: v1.PullAlways,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
@@ -279,7 +284,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 
 	hermeticBuildTask := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
-		Params:     pipelineParams,
+		Params:     append(pipelineParams, pipelinev1beta1.ParamSpec{Name: HermeticPreBuildImageDigest, Type: pipelinev1beta1.ParamTypeString}),
 		Results: []pipelinev1beta1.TaskResult{
 			{Name: artifactbuild.PipelineResultContaminants},
 			{Name: artifactbuild.PipelineResultDeployedResources},
@@ -291,7 +296,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "hermetic-build",
-				Image:           hermeticPreBuildImageName,
+				Image:           "$(params." + HermeticPreBuildImageDigest + ")",
 				ImagePullPolicy: v1.PullAlways,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
@@ -320,7 +325,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, hermeticDeployArgs, createHermeticImageArgs),
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, hermeticDeployArgs),
 			},
 		},
 	}
@@ -355,7 +360,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			TaskSpec: hermeticBuildTask,
 		},
 
-		Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
+		Params: []pipelinev1beta1.Param{{Name: HermeticPreBuildImageDigest, Value: pipelinev1beta1.ParamValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + HermeticPreBuildImageDigest + ")"}}},
+		Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
 			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 			{Name: WorkspaceSource, Workspace: WorkspaceSource},
 			{Name: WorkspaceTls, Workspace: WorkspaceTls},
@@ -393,7 +399,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				TaskSpec: &pipelinev1beta1.EmbeddedTask{
 					TaskSpec: buildTask,
 				},
-				Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
+				Params: []pipelinev1beta1.Param{{Name: PreBuildImageDigest, Value: pipelinev1beta1.ParamValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks." + artifactbuild.PreBuildTaskName + ".results." + PreBuildImageDigest + ")"}}},
+				Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
 					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 					{Name: WorkspaceSource, Workspace: WorkspaceSource},
 					{Name: WorkspaceTls, Workspace: WorkspaceTls},
@@ -579,8 +586,8 @@ func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig, hermeticBuild bool) (string, string, []string, []string, []string, []string, []string) {
-	preBuildImageName := ""
+func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig, hermeticBuild bool) ([]string, []string, []string, []string, []string) {
+
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
 		"deploy-pre-build-image",
@@ -588,6 +595,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--source-path=$(workspaces.source.path)",
 		"--image-source-path=" + OriginalContentPath,
 		"--image-name=" + preBuildImageTag,
+		"--image-hash=$(results." + PreBuildImageDigest + ".path)",
 	}
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
 	hermeticImageId := imageId + "-hermetic"
@@ -603,9 +611,8 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
 	hermeticDeployArgs := append([]string{}, deployArgs...)
-
-	deployArgs = append(deployArgs, "--image-id="+imageId)
 	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
+	deployArgs = append(deployArgs, "--image-id="+imageId)
 
 	var imageIdToTag string
 	if hermeticBuild {
@@ -616,40 +623,28 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 
 	tagArgs := []string{
 		"tag-container",
-		"--image-id=" + imageIdToTag,
+		"--image-id=" + imageIdToTag, //TODO: hash
 	}
 	imageRegistry := jbsConfig.ImageRegistry()
 	registryArgs := make([]string, 0)
 	if imageRegistry.Host != "" {
 		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
-		preBuildImageName += imageRegistry.Host
-	} else {
-		preBuildImageName += "quay.io"
 	}
 	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
 		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
-		preBuildImageName += ":" + imageRegistry.Port
 	}
 	if imageRegistry.Owner != "" {
 		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
-		preBuildImageName += "/" + imageRegistry.Owner
 	}
 	if imageRegistry.Repository != "" {
 		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
-		preBuildImageName += "/" + imageRegistry.Repository
-	} else {
-		preBuildImageName += "/artifact-deployments"
 	}
 
-	hermeticPreBuildImageName := preBuildImageName + ":" + hermeticPreBuildImageTag
-	preBuildImageName += ":" + preBuildImageTag
 	if imageRegistry.Insecure {
 		registryArgs = append(registryArgs, "--registry-insecure")
 	}
 	if imageRegistry.PrependTag != "" {
 		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
-		preBuildImageName = prependTagToImage(preBuildImageName, imageRegistry.PrependTag)
-		hermeticPreBuildImageName = prependTagToImage(hermeticPreBuildImageName, imageRegistry.PrependTag)
 	}
 	deployArgs = append(deployArgs, registryArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
@@ -674,15 +669,16 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 
 	hermeticPreBuildImageArgs := []string{
 		"deploy-hermetic-pre-build-image",
-		"--source-image=" + preBuildImageName,
+		"--source-image=$(params." + PreBuildImageDigest + ")",
 		"--image-name=" + hermeticPreBuildImageTag,
 		"--build-artifact-path=$(workspaces.source.path)/artifacts",
 		"--image-source-path=" + MavenArtifactsPath,
 		"--repository-path=$(workspaces.source.path)/build-info/",
+		"--image-hash=$(results." + HermeticPreBuildImageDigest + ".path)",
 	}
 	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
-	return preBuildImageName, hermeticPreBuildImageName, preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, hermeticPreBuildImageArgs
+	return preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, hermeticPreBuildImageArgs
 }
 
 // This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
