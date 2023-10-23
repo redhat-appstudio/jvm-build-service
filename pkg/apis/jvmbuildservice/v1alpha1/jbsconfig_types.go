@@ -8,14 +8,18 @@ type HermeticBuildType string
 
 const (
 	JBSConfigName                           = "jvm-build-config"
-	DefaultImageSecretName                  = "jvm-build-image-secrets"      //#nosec
-	GitSecretName                           = "jvm-build-git-secrets"        //#nosec
-	TlsSecretName                           = "jvm-build-tls-secrets"        //#nosec
-	TlsConfigMapName                        = "jvm-build-tls-ca"             //#nosec
-	ImageSecretTokenKey                     = ".dockerconfigjson"            //#nosec
-	GitSecretTokenKey                       = ".git-credentials"             //#nosec
-	MavenSecretKey                          = "mavenpassword"                //#nosec
-	MavenSecretName                         = "jvm-build-maven-repo-secrets" //#nosec
+	DefaultImageSecretName                  = "jvm-build-image-secrets"          //#nosec
+	GitSecretName                           = "jvm-build-git-secrets"            //#nosec
+	TlsSecretName                           = "jvm-build-tls-secrets"            //#nosec
+	TlsConfigMapName                        = "jvm-build-tls-ca"                 //#nosec
+	ImageSecretTokenKey                     = ".dockerconfigjson"                //#nosec
+	GitSecretTokenKey                       = ".git-credentials"                 //#nosec
+	MavenSecretKey                          = "mavenpassword"                    //#nosec
+	MavenSecretName                         = "jvm-build-maven-repo-secrets"     //#nosec
+	AWSAccessID                             = "awsaccesskey"                     //#nosec
+	AWSSecretKey                            = "awssecretkey"                     //#nosec
+	AWSProfile                              = "awsprofile"                       //#nosec
+	AWSSecretName                           = "jvm-build-maven-repo-aws-secrets" //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
 	ConfigArtifactCacheRequestMemoryDefault = "512Mi"
 	ConfigArtifactCacheRequestCPUDefault    = "1"

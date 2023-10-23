@@ -155,6 +155,10 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	if jbsConfig.Spec.MavenDeployment.Repository != "" {
 		registryToken = append(registryToken, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.MavenSecretName}, Key: v1alpha12.MavenSecretKey, Optional: &trueBool}}})
+
+		registryToken = append(registryToken, v1.EnvVar{Name: "AWS_ACCESS_KEY_ID", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSAccessID, Optional: &trueBool}}})
+		registryToken = append(registryToken, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSSecretKey, Optional: &trueBool}}})
+		registryToken = append(registryToken, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSProfile, Optional: &trueBool}}})
 	}
 
 	buildSetup := pipelinev1beta1.TaskSpec{
