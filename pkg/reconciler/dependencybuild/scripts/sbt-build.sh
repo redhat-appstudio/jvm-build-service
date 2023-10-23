@@ -2,16 +2,11 @@
 
 mkdir -p "${HOME}/.sbt"
 cp -r /maven-artifacts/* "$HOME/.sbt/*" || true
-TOOL_VERSION="$(params.TOOL_VERSION)"
-export SBT_DIST="/opt/sbt/${TOOL_VERSION}"
-echo "SBT_DIST=${SBT_DIST}"
 
 if [ ! -d "${SBT_DIST}" ]; then
     echo "SBT home directory not found at ${SBT_DIST}" >&2
     exit 1
 fi
-
-export PATH="${SBT_DIST}/bin:${PATH}"
 
 
 mkdir -p "$HOME/.sbt/1.0/"

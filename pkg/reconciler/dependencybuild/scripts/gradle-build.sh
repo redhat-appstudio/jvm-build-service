@@ -63,13 +63,10 @@ settingsEvaluated { settings ->
 }
 EOF
 
-
-
 #if we run out of memory we want the JVM to die with error code 134
 export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
 
 export PATH="${JAVA_HOME}/bin:${PATH}"
-
 
 #some gradle builds get the version from the tag
 #the git init task does not fetch tags
@@ -85,21 +82,11 @@ else
   git tag -m $(params.ENFORCE_VERSION) -a $(params.ENFORCE_VERSION) || true
 fi
 
-if [ -z "$(params.TOOL_VERSION)" ]; then
-    echo "TOOL_VERSION has not been set" >&2
-    exit 1
-fi
-
-TOOL_VERSION="$(params.TOOL_VERSION)"
-export GRADLE_HOME="/opt/gradle/${TOOL_VERSION}"
-echo "GRADLE_HOME=${GRADLE_HOME}"
-
 if [ ! -d "${GRADLE_HOME}" ]; then
     echo "Gradle home directory not found at ${GRADLE_HOME}" >&2
     exit 1
 fi
 
-export PATH="${GRADLE_HOME}/bin:${PATH}"
 case "${TOOL_VERSION}" in
     [78].*)
         sed -i -e 's|//allowInsecureProtocol|allowInsecureProtocol|g' ${GRADLE_USER_HOME}/init.gradle

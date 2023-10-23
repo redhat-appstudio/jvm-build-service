@@ -178,6 +178,16 @@ public class InvocationBuilder {
                 }
             }
         }
+        if (!selectedToolVersions.containsKey(BuildInfo.MAVEN)) {
+            //we always add a maven version
+            //some builds like ant may need it to deploy
+            //its not actually explictly invoked though, but MAVEN_HOME will be set
+            var toolVersions = availableTools.getOrDefault(BuildInfo.MAVEN, List.of());
+            if (!toolVersions.isEmpty()) {
+                //todo: make sure the selected version is stable
+                selectedToolVersions.put(BuildInfo.MAVEN, Set.of(toolVersions.get(0)));
+            }
+        }
         //now figure out all possible permuations
         Set<Map<String, String>> allToolPermutations = new HashSet<>();
         String[][] versions = new String[selectedToolVersions.size()][];
