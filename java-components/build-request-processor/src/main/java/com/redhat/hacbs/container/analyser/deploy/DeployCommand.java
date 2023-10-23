@@ -1,9 +1,11 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
+import static org.apache.commons.lang3.ObjectUtils.isEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -27,6 +29,12 @@ import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.codeartifact.AWSCodeArtifactClientBuilder;
+import com.amazonaws.services.codeartifact.model.GetAuthorizationTokenRequest;
+import com.amazonaws.util.AwsHostNameUtils;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
@@ -105,6 +113,9 @@ public class DeployCommand implements Runnable {
 
     @ConfigProperty(name = "maven.password")
     Optional<String> mvnPassword = Optional.empty();
+
+    @ConfigProperty(name = "aws.profile")
+    Optional<String> awsProfile = Optional.empty();
 
     @CommandLine.Option(names = "--mvn-repo")
     String mvnRepo;
@@ -236,6 +247,33 @@ public class DeployCommand implements Runnable {
             }
             generateBuildSbom();
 
+            if (isNotEmpty(mvnRepo) && mvnPassword.isEmpty()) {
+                Log.infof("Maven repository specified as %s and no password specified", mvnRepo);
+                URL url = new URL(mvnRepo);
+                String repo = url.getHost();
+                // This is special handling for AWS CodeArtifact. It will automatically retrieve a token
+                // (which normally only last up to 12 hours). Token information will be retrieved from
+                // the AWS configuration which will utilise the configuration file and/or scan environment
+                // variables such as AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_PROFILE
+                if (repo.endsWith(".amazonaws.com")) {
+                    if (isEmpty(mvnUser)) {
+                        Log.warnf("Username for deployment is empty");
+                    }
+                    int firstDash = repo.indexOf("-");
+                    String parsedRegion = AwsHostNameUtils.parseRegion(repo, null);
+                    String domain = repo.substring(0, firstDash);
+                    String domainOwner = repo.substring(firstDash + 1, repo.indexOf("."));
+                    Log.infof("Generating AWS token for domain %s, owner %s, region %s", domain, domainOwner, parsedRegion);
+
+                    var awsClient = AWSCodeArtifactClientBuilder.standard()
+                            .withCredentials(awsProfile.isEmpty() ? DefaultAWSCredentialsProviderChain.getInstance()
+                                    : new ProfileCredentialsProvider(awsProfile.get()))
+                            .withRegion(Regions.fromName(parsedRegion)).build();
+                    mvnPassword = Optional.of(awsClient.getAuthorizationToken(
+                            new GetAuthorizationTokenRequest().withDomain(domain).withDomainOwner(domainOwner))
+                            .getAuthorizationToken());
+                }
+            }
             if (!gavs.isEmpty()) {
                 try {
                     cleanBrokenSymlinks(sourcePath);
@@ -324,13 +362,6 @@ public class DeployCommand implements Runnable {
     }
 
     protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
-        // TODO: Putting mvn deployment first as image deployment deletes the file tree
-        if (isNotEmpty(mvnRepo)) {
-            // Maven Repo Deployment
-            MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo,
-                    deploymentPath);
-            deployer.deploy();
-        }
         if (imageDeployment) {
             ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                     insecure, prependTag,
@@ -342,6 +373,12 @@ public class DeployCommand implements Runnable {
                     imageDigest = hash;
                 }
             });
+        }
+        if (isNotEmpty(mvnRepo)) {
+            // Maven Repo Deployment
+            MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo,
+                    deploymentPath);
+            deployer.deploy();
         }
     }
 
