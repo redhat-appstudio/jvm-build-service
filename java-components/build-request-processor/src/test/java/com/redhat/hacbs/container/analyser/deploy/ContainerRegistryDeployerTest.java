@@ -60,9 +60,7 @@ public class ContainerRegistryDeployerTest {
 
         container.start();
 
-        Integer port = container.getMappedPort(5000);
-
-        return port;
+        return container.getMappedPort(5000);
     }
 
     @AfterAll
@@ -113,7 +111,8 @@ public class ContainerRegistryDeployerTest {
     }
 
     private Path createDeploymentRepo() throws IOException {
-        Path artifacts = Paths.get("target/test-data/artifacts").toAbsolutePath();
+        Path testData = Files.createTempDirectory("test-data");
+        Path artifacts = Paths.get(testData.toString(), "artifacts").toAbsolutePath();
         Files.createDirectories(artifacts);
 
         // Add data to artifacts folder
@@ -180,7 +179,7 @@ public class ContainerRegistryDeployerTest {
     }
 
     private URL getRegistryURL(String path) throws IOException {
-        return new URL("http://" + this.container.getHost() + ":" + port + "/v2/" + path);
+        return new URL("http://" + container.getHost() + ":" + port + "/v2/" + path);
     }
 
     class ContainerRegistryDetails {

@@ -20,7 +20,6 @@ import java.util.logging.LogRecord;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.inject.Inject;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +56,8 @@ public class DeployContaminateTest {
 
     @Test
     public void testDeployOnlyContaminated() throws IOException, URISyntaxException {
-        Path onDiskRepo = Paths.get("target/test-data/artifacts").toAbsolutePath();
+        Path testData = Files.createTempDirectory("test-data");
+        Path onDiskRepo = Paths.get(testData.toString(), "artifacts").toAbsolutePath();
         onDiskRepo.toFile().mkdirs();
         Path source = Files.createTempDirectory("hacbs");
         Files.writeString(source.resolve("pom.xml"), "");
@@ -110,8 +110,8 @@ public class DeployContaminateTest {
 
     private Path createDeploymentRepo()
             throws IOException, URISyntaxException {
-        Path artifacts = Paths.get("target/test-data/artifacts").toAbsolutePath();
-        FileUtils.deleteDirectory(artifacts.toFile());
+        Path testData = Files.createTempDirectory("test-data");
+        Path artifacts = Paths.get(testData.toString(), "artifacts").toAbsolutePath();
         Files.createDirectories(artifacts);
 
         // Add data to artifacts folder
@@ -152,9 +152,9 @@ public class DeployContaminateTest {
         }
 
         @Override
-        protected void doDeployment(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs)
+        protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs)
                 throws Exception {
-            System.out.println("Skipping doDeployment for " + deployDir + " from " + sourcePath);
+            System.out.println("Skipping doDeployment for " + deploymentPath + " from " + sourcePath);
         }
     }
 }

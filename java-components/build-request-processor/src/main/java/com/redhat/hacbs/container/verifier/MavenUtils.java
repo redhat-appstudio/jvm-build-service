@@ -3,7 +3,6 @@ package com.redhat.hacbs.container.verifier;
 import static org.apache.commons.io.FilenameUtils.normalize;
 import static org.apache.maven.cli.configuration.SettingsXmlConfigurationProcessor.DEFAULT_GLOBAL_SETTINGS_FILE;
 import static org.apache.maven.cli.configuration.SettingsXmlConfigurationProcessor.DEFAULT_USER_SETTINGS_FILE;
-import static org.apache.maven.repository.internal.MavenRepositorySystemUtils.*;
 import static org.apache.maven.settings.MavenSettingsBuilder.ALT_GLOBAL_SETTINGS_XML_LOCATION;
 import static org.apache.maven.settings.MavenSettingsBuilder.ALT_USER_SETTINGS_XML_LOCATION;
 
@@ -21,16 +20,11 @@ import org.apache.maven.settings.building.SettingsBuildingException;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.DefaultArtifact;
-import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory;
 import org.eclipse.aether.repository.AuthenticationSelector;
 import org.eclipse.aether.repository.MirrorSelector;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
-import org.eclipse.aether.spi.connector.transport.TransporterFactory;
-import org.eclipse.aether.transport.file.FileTransporterFactory;
-import org.eclipse.aether.transport.http.HttpTransporterFactory;
 import org.eclipse.aether.util.repository.AuthenticationBuilder;
 import org.eclipse.aether.util.repository.DefaultAuthenticationSelector;
 import org.eclipse.aether.util.repository.DefaultMirrorSelector;
@@ -38,14 +32,6 @@ import org.jboss.logging.Logger;
 
 public class MavenUtils {
     private static final Logger Log = Logger.getLogger(MavenUtils.class);
-
-    public static RepositorySystem newRepositorySystem() {
-        var locator = newServiceLocator();
-        locator.addService(RepositoryConnectorFactory.class, BasicRepositoryConnectorFactory.class);
-        locator.addService(TransporterFactory.class, FileTransporterFactory.class);
-        locator.addService(TransporterFactory.class, HttpTransporterFactory.class);
-        return locator.getService(RepositorySystem.class);
-    }
 
     public static Settings newSettings(Path globalSettingsFile, Path settingsFile) {
         try {

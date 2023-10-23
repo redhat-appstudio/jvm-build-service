@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import picocli.CommandLine;
 
 public class VerifyBuiltArtifactsCommandTest {
@@ -57,7 +58,9 @@ public class VerifyBuiltArtifactsCommandTest {
         var file = Path.of(uri);
         System.setProperty(ALT_USER_SETTINGS_XML_LOCATION, file.toAbsolutePath().toString());
         var args = new String[] { "-r", "https://repo1.maven.org/maven2", "--deploy-path", tempMavenRepo.toString() };
-        var exitCode = new CommandLine(new VerifyBuiltArtifactsCommand()).execute(args);
+        VerifyBuiltArtifactsCommand verifyBuiltArtifactsCommand = new VerifyBuiltArtifactsCommand();
+        verifyBuiltArtifactsCommand.mvnCtx = new BootstrapMavenContext();
+        var exitCode = new CommandLine(verifyBuiltArtifactsCommand).execute(args);
         assertThat(exitCode).isZero();
 
         //now modify junit and add an extra class
@@ -80,14 +83,14 @@ public class VerifyBuiltArtifactsCommandTest {
         }
 
         args = new String[] { "-r", "https://repo1.maven.org/maven2", "--deploy-path", tempMavenRepo.toString() };
-        exitCode = new CommandLine(new VerifyBuiltArtifactsCommand()).execute(args);
+        exitCode = new CommandLine(verifyBuiltArtifactsCommand).execute(args);
         assertThat(exitCode).isNotZero();
 
         //now try with excludes
 
         args = new String[] { "-r", "https://repo1.maven.org/maven2", "--deploy-path", tempMavenRepo.toString(), "--excludes",
                 "+:.*[^:]:class:" + VerifyBuiltArtifactsCommandTest.class.getName().replace(".", "/") };
-        exitCode = new CommandLine(new VerifyBuiltArtifactsCommand()).execute(args);
+        exitCode = new CommandLine(verifyBuiltArtifactsCommand).execute(args);
         assertThat(exitCode).isZero();
 
     }

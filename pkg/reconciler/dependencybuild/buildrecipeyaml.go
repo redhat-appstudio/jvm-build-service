@@ -147,12 +147,16 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
 		{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 	}
-	registryToken := []v1.EnvVar{}
+	registryToken := make([]v1.EnvVar, 0)
 	if jbsConfig.ImageRegistry().SecretName != "" {
 		registryToken = []v1.EnvVar{
 			{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
 		}
 	}
+	if jbsConfig.Spec.MavenDeployment.Repository != "" {
+		registryToken = append(registryToken, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.MavenSecretName}, Key: v1alpha12.MavenSecretKey, Optional: &trueBool}}})
+	}
+
 	buildSetup := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params:     pipelineParams,
@@ -597,7 +601,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--image-id=" + imageIdToTag,
 	}
 	imageRegistry := jbsConfig.ImageRegistry()
-	registryArgs := []string{}
+	registryArgs := make([]string, 0)
 	if imageRegistry.Host != "" {
 		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
 		preBuildImageName += imageRegistry.Host
@@ -634,6 +638,15 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
 	tagArgs = append(tagArgs, registryArgs...)
 	tagArgs = append(tagArgs, "$(params.GAVS)")
+
+	mavenArgs := make([]string, 0)
+	if jbsConfig.Spec.MavenDeployment.Repository != "" {
+		mavenArgs = append(mavenArgs, "--mvn-repo="+jbsConfig.Spec.MavenDeployment.Repository)
+	}
+	if jbsConfig.Spec.MavenDeployment.Username != "" {
+		mavenArgs = append(mavenArgs, "--mvn-username="+jbsConfig.Spec.MavenDeployment.Username)
+	}
+	deployArgs = append(deployArgs, mavenArgs...)
 
 	hermeticPreBuildImageArgs := []string{
 		"deploy-hermetic-pre-build-image",

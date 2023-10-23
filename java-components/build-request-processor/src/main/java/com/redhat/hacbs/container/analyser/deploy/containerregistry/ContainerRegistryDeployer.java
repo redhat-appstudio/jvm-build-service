@@ -33,7 +33,6 @@ import com.google.cloud.tools.jib.api.buildplan.FilePermissionsProvider;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
 import com.redhat.hacbs.container.analyser.deploy.DeployData;
 import com.redhat.hacbs.container.analyser.deploy.Gav;
-import com.redhat.hacbs.recipies.util.FileUtil;
 
 import io.quarkus.logging.Log;
 
@@ -93,13 +92,8 @@ public class ContainerRegistryDeployer {
         // Read the tar to get the gavs and files
         DeployData imageData = new DeployData(deployDir, gavs);
 
-        try {
-            // Create the image layers
-            createImages(imageData, sourcePath, logsPath, imageNameHashCallback);
-
-        } finally {
-            FileUtil.deleteRecursive(imageData.getArtifactsPath());
-        }
+        // Create the image layers
+        createImages(imageData, sourcePath, logsPath, imageNameHashCallback);
     }
 
     public void tagArchive(List<String> gavNames) throws Exception {
@@ -131,8 +125,7 @@ public class ContainerRegistryDeployer {
             containerizer = containerizer.withAdditionalTag(gav.getTag());
         }
         containerBuilder.addLabel("io.jvmbuildservice.gavs", String.join(",", gavNames));
-
-        var result = containerBuilder.containerize(containerizer);
+        containerBuilder.containerize(containerizer);
     }
 
     public void deployPreBuildImage(String baseImage, Path sourcePath, String imageSourcePath, String tag)
@@ -172,7 +165,7 @@ public class ContainerRegistryDeployer {
 
             containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
             Log.debugf("Image %s created", imageName);
-            var result = containerBuilder.containerize(containerizer);
+            containerBuilder.containerize(containerizer);
         }
     }
 
@@ -211,7 +204,7 @@ public class ContainerRegistryDeployer {
         });
         containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
         Log.debugf("Image %s created", imageName);
-        var result = containerBuilder.containerize(containerizer);
+        containerBuilder.containerize(containerizer);
     }
 
     private void createImages(DeployData imageData, Path sourcePath, Path logsPath,

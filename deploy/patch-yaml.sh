@@ -25,6 +25,14 @@ find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-cache-ima
 find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-reqprocessor-image%${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}% {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s/dev-template/development/ {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s/QUAY_TOKEN/${QUAY_TOKEN}/ {} \;
+if [ -z "${MAVEN_USERNAME}" ]; then
+    MAVEN_USERNAME=""
+fi
+if [ -z "${MAVEN_REPOSITORY}" ]; then
+    MAVEN_REPOSITORY=""
+fi
+find $DIR -path \*development\*.yaml -exec $SED -i s/MAVEN_USERNAME/${MAVEN_USERNAME}/ {} \;
+find $DIR -path \*development\*.yaml -exec $SED -i s%MAVEN_REPOSITORY%${MAVEN_REPOSITORY}% {} \;
 if [ -n "$QUAY_TOKEN" ]; then
     $SED -i '/owner: QUAY_USERNAME/d' $DIR/overlays/development/config.yaml
 fi
