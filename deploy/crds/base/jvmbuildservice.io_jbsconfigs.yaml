@@ -122,6 +122,10 @@ spec:
                     type: string
                   prependTag:
                     type: string
+                  private:
+                    description: if this is true and we are automatically creating
+                      registries then we will make it private
+                    type: boolean
                   repository:
                     type: string
                   secretName:
