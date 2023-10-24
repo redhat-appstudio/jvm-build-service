@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
 
-
-TOOL_VERSION="$(params.TOOL_VERSION)"
-export ANT_HOME="/opt/ant/${TOOL_VERSION}"
-echo "ANT_HOME=${ANT_HOME}"
-
 if [ ! -d "${ANT_HOME}" ]; then
     echo "Ant home directory not found at ${ANT_HOME}" >&2
     exit 1
 fi
-
-export PATH="${ANT_HOME}/bin:${PATH}"
 
 # XXX: It's possible that build.xml is not in the root directory
 cat > ivysettings.xml << EOF

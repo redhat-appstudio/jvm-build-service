@@ -3,10 +3,6 @@ package v1alpha1
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 const (
-	JDK7Builder           = "jdk7"
-	JDK8Builder           = "jdk8"
-	JDK11Builder          = "jdk11"
-	JDK17Builder          = "jdk17"
 	DefaultRecipeDatabase = "https://github.com/redhat-appstudio/jvm-build-data"
 )
 

@@ -60,6 +60,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	if err != nil {
 		imageSpiPresent = false
 	}
+	controllerLog.Info(fmt.Sprintf("ImageRepositories SPI Present: %t", imageSpiPresent))
 
 	options.Scheme = runtime.NewScheme()
 

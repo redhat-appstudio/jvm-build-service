@@ -73,6 +73,20 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"$(params.CACHE_URL)",
 		"$(workspaces." + WorkspaceSource + ".path)/workspace",
 	}
+	toolEnv := []v1.EnvVar{}
+	if recipe.ToolVersions["maven"] != "" {
+		toolEnv = append(toolEnv, v1.EnvVar{Name: "MAVEN_HOME", Value: "/opt/maven/" + recipe.ToolVersions["maven"]})
+	}
+	if recipe.ToolVersions["gradle"] != "" {
+		toolEnv = append(toolEnv, v1.EnvVar{Name: "GRADLE_HOME", Value: "/opt/gradle/" + recipe.ToolVersions["gradle"]})
+	}
+	if recipe.ToolVersions["ant"] != "" {
+		toolEnv = append(toolEnv, v1.EnvVar{Name: "ANT_HOME", Value: "/opt/ant/" + recipe.ToolVersions["ant"]})
+	}
+	if recipe.ToolVersions["sbt"] != "" {
+		toolEnv = append(toolEnv, v1.EnvVar{Name: "SBT_DIST", Value: "/opt/sbt/" + recipe.ToolVersions["sbt"]})
+	}
+	toolEnv = append(toolEnv, v1.EnvVar{Name: "TOOL_VERSION", Value: recipe.ToolVersion})
 
 	additionalMemory := recipe.AdditionalMemory
 	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
@@ -234,11 +248,11 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				ImagePullPolicy: v1.PullAlways,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env: []v1.EnvVar{
+				Env: append(toolEnv, []v1.EnvVar{
 					{Name: JavaHome, Value: javaHome},
 					{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 					{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"},
-				},
+				}...),
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
@@ -281,11 +295,11 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				ImagePullPolicy: v1.PullAlways,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
-				Env: []v1.EnvVar{
+				Env: append(toolEnv, []v1.EnvVar{
 					{Name: JavaHome, Value: javaHome},
 					{Name: PipelineParamCacheUrl, Value: "file://" + MavenArtifactsPath},
 					{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"},
-				},
+				}...),
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},

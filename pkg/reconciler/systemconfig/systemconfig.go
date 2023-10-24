@@ -47,41 +47,15 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, err
 	}
 	if systemConfig.Name == SystemConfigKey {
-		foundJDK7 := false
-		foundJDK8 := false
-		foundJDK11 := false
-		foundJDK17 := false
 		logMsg := ""
 		logChunk := "jvm-build-service 'cluster' instance of its system config has incorrect builder related information %s\n"
 		for key, bldr := range systemConfig.Spec.Builders {
-			switch key {
-			case v1alpha1.JDK7Builder:
-				foundJDK7 = true
-			case v1alpha1.JDK8Builder:
-				foundJDK8 = true
-			case v1alpha1.JDK11Builder:
-				foundJDK11 = true
-			case v1alpha1.JDK17Builder:
-				foundJDK17 = true
-			default:
-				logMsg = logMsg + fmt.Sprintf(logChunk, "unrecognized builder "+key+"\n")
-			}
 			if len(strings.TrimSpace(bldr.Image)) == 0 {
 				logMsg = logMsg + fmt.Sprintf(logChunk, key+" has missing image\n")
 			}
 			if len(strings.TrimSpace(bldr.Tag)) == 0 {
 				logMsg = logMsg + fmt.Sprintf(logChunk, key+" has missing tags\n")
 			}
-		}
-		switch {
-		case !foundJDK7:
-			logMsg = logMsg + v1alpha1.JDK7Builder + " builder is missing\n"
-		case !foundJDK8:
-			logMsg = logMsg + v1alpha1.JDK8Builder + " builder is missing\n"
-		case !foundJDK11:
-			logMsg = logMsg + v1alpha1.JDK11Builder + " builder is missing\n"
-		case !foundJDK17:
-			logMsg = logMsg + v1alpha1.JDK17Builder + " builder is missing\n"
 		}
 		if len(logMsg) > 1 {
 			return reconcile.Result{}, fmt.Errorf(logMsg)

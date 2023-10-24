@@ -35,19 +35,11 @@ func TestValidSystemConfig(t *testing.T) {
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
 			Builders: map[string]v1alpha1.BuilderImageInfo{
-				v1alpha1.JDK8Builder: {
+				"ubi7": {
 					Image: "foo",
 					Tag:   "bar",
 				},
-				v1alpha1.JDK11Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK17Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK7Builder: {
+				"ubi8": {
 					Image: "foo",
 					Tag:   "bar",
 				},
@@ -78,20 +70,12 @@ func TestSystemConfigMissingImage(t *testing.T) {
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
 			Builders: map[string]v1alpha1.BuilderImageInfo{
-				v1alpha1.JDK8Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK11Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK17Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK7Builder: {
+				"ubi7": {
 					Tag: "bar",
+				},
+				"ubi8": {
+					Image: "foo",
+					Tag:   "bar",
 				},
 			},
 		},
@@ -120,174 +104,10 @@ func TestSystemConfigMissingTag(t *testing.T) {
 	validCfg := v1alpha1.SystemConfig{
 		Spec: v1alpha1.SystemConfigSpec{
 			Builders: map[string]v1alpha1.BuilderImageInfo{
-				v1alpha1.JDK8Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK11Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK17Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK7Builder: {
+				"ubi7": {
 					Image: "foo",
 				},
-			},
-		},
-	}
-	validCfg.Namespace = metav1.NamespaceDefault
-	validCfg.Name = SystemConfigKey
-
-	ctx := context.TODO()
-	err := client.Create(ctx, &validCfg)
-	g.Expect(err).NotTo(HaveOccurred())
-	var result reconcile.Result
-	result, err = reconciler.Reconcile(ctx, reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: validCfg.Namespace,
-			Name:      validCfg.Name,
-		},
-	})
-	g.Expect(err).To(HaveOccurred())
-	g.Expect(result).NotTo(BeNil())
-}
-
-func TestMissing7SystemConfig(t *testing.T) {
-	g := NewGomegaWithT(t)
-	client, reconciler := setupClientAndReconciler()
-
-	validCfg := v1alpha1.SystemConfig{
-		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.BuilderImageInfo{
-				v1alpha1.JDK8Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK11Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK17Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-			},
-		},
-	}
-	validCfg.Namespace = metav1.NamespaceDefault
-	validCfg.Name = SystemConfigKey
-
-	ctx := context.TODO()
-	err := client.Create(ctx, &validCfg)
-	g.Expect(err).NotTo(HaveOccurred())
-	var result reconcile.Result
-	result, err = reconciler.Reconcile(ctx, reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: validCfg.Namespace,
-			Name:      validCfg.Name,
-		},
-	})
-	g.Expect(err).To(HaveOccurred())
-	g.Expect(result).NotTo(BeNil())
-}
-
-func TestMissing8SystemConfig(t *testing.T) {
-	g := NewGomegaWithT(t)
-	client, reconciler := setupClientAndReconciler()
-
-	validCfg := v1alpha1.SystemConfig{
-		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.BuilderImageInfo{
-				v1alpha1.JDK11Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK17Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK7Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-			},
-		},
-	}
-	validCfg.Namespace = metav1.NamespaceDefault
-	validCfg.Name = SystemConfigKey
-
-	ctx := context.TODO()
-	err := client.Create(ctx, &validCfg)
-	g.Expect(err).NotTo(HaveOccurred())
-	var result reconcile.Result
-	result, err = reconciler.Reconcile(ctx, reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: validCfg.Namespace,
-			Name:      validCfg.Name,
-		},
-	})
-	g.Expect(err).To(HaveOccurred())
-	g.Expect(result).NotTo(BeNil())
-}
-
-func TestMissing11SystemConfig(t *testing.T) {
-	g := NewGomegaWithT(t)
-	client, reconciler := setupClientAndReconciler()
-
-	validCfg := v1alpha1.SystemConfig{
-		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.BuilderImageInfo{
-				v1alpha1.JDK8Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK17Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK7Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-			},
-		},
-	}
-	validCfg.Namespace = metav1.NamespaceDefault
-	validCfg.Name = SystemConfigKey
-
-	ctx := context.TODO()
-	err := client.Create(ctx, &validCfg)
-	g.Expect(err).NotTo(HaveOccurred())
-	var result reconcile.Result
-	result, err = reconciler.Reconcile(ctx, reconcile.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: validCfg.Namespace,
-			Name:      validCfg.Name,
-		},
-	})
-	g.Expect(err).To(HaveOccurred())
-	g.Expect(result).NotTo(BeNil())
-}
-
-func TestMissing17SystemConfig(t *testing.T) {
-	g := NewGomegaWithT(t)
-	client, reconciler := setupClientAndReconciler()
-
-	validCfg := v1alpha1.SystemConfig{
-		Spec: v1alpha1.SystemConfigSpec{
-			Builders: map[string]v1alpha1.BuilderImageInfo{
-				v1alpha1.JDK8Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK11Builder: {
-					Image: "foo",
-					Tag:   "bar",
-				},
-				v1alpha1.JDK7Builder: {
+				"ubi8": {
 					Image: "foo",
 					Tag:   "bar",
 				},
