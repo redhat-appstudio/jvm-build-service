@@ -17,7 +17,7 @@ fi
 DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml
 kubectl config set-context --current --namespace=test-jvm-namespace
-kubectl delete --ignore-not-found secret jvm-build-image-secrets jvm-build-git-secrets jvm-build-maven-repo-secrets jvm-build-maven-repo-aws-secrets
+kubectl delete --ignore-not-found secret jvm-build-image-secrets jvm-build-git-secrets jvm-build-maven-repo-secrets jvm-build-maven-repo-aws-secrets jvm-build-s3-secrets
 
 if [ -n "$QUAY_ORG" ] && [ -n "$QUAY_TOKEN" ]; then
     kubectl delete --ignore-not-found secret  -n image-controller quaytoken
@@ -36,6 +36,8 @@ if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
         PROFILE="--from-literal awsprofile=$AWS_PROFILE"
     fi
     kubectl create secret generic jvm-build-maven-repo-aws-secrets --from-literal=awsaccesskey=$AWS_ACCESS_KEY_ID --from-literal awssecretkey="$AWS_SECRET_ACCESS_KEY" $PROFILE
+    kubectl create secret generic jvm-build-s3-secrets --from-literal=awsaccesskey=$AWS_ACCESS_KEY_ID --from-literal awssecretkey="$AWS_SECRET_ACCESS_KEY" --from-literal awsregion=us-east-1
+
 fi
 JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller \
 JVM_BUILD_SERVICE_CACHE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-cache \

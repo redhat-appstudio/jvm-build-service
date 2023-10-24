@@ -15,6 +15,16 @@ patches:
    target:
      kind: Task
      name: maven
+ - patch: |-
+     - op: add
+       path: "/spec/template/spec/containers/0/env"
+       value:
+         - name: S3_SYNC_ENABLED
+           value: "true"
+   target:
+     kind: Deployment
+     name: hacbs-jvm-operator
+
 
 patchesStrategicMerge:
   - config.yaml

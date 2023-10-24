@@ -527,11 +527,11 @@ func (r *ReconcileArtifactBuild) handleCommunityDependencies(ctx context.Context
 			continue
 		}
 		name := CreateABRName(gav)
-		log.Info("Found community dependency, creating ArtifactBuild", "gav", gav, "artifactbuild", name, "action", "ADD")
 		abr := v1alpha1.ArtifactBuild{}
 		err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &abr)
 		if err != nil {
 			if errors.IsNotFound(err) {
+				log.Info("Found community dependency, creating ArtifactBuild", "gav", gav, "artifactbuild", name, "action", "ADD")
 				abr.Spec.GAV = gav
 				abr.Name = name
 				abr.Namespace = namespace
