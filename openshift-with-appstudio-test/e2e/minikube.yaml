@@ -7,3 +7,4 @@ build-systems:
   - "org.lz4:lz4-pure-java:1.8.0"
 test-repos:
   - "io.github.jvm-build-service-test-data.maven-version-from-parent-enforce-version:maven-version-from-parent-enforce-version:1.0"
+  - "io.github.jvm-build-service-test-data:maven-symlink-in-repo:1.0"
