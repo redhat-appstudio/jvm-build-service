@@ -40,6 +40,10 @@ public class InvocationBuilderTestCase {
         Assertions.assertEquals(Set.of("1.1.2"), findClosestVersions(List.of("1.0.1", "1.1.2", "1.3.3"), "1.1"));
         Assertions.assertEquals(Set.of("1.0.1", "1.1.2", "1.3.3"),
                 findClosestVersions(List.of("1.0.1", "1.1.2", "1.3.3"), "1"));
+        Assertions.assertEquals(Set.of("3.1"), findClosestVersions(List.of("3.1", "4.2"), "1.1"));
+        Assertions.assertEquals(Set.of("4.2"), findClosestVersions(List.of("3.1", "4.2"), "6.1"));
+        Assertions.assertEquals(Set.of("3.1", "5.2"), findClosestVersions(List.of("3.1", "5.2", "6.7"), "4.1"));
+
     }
 
     @Test
