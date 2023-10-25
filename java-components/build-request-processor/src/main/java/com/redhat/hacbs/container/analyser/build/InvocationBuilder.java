@@ -14,6 +14,8 @@ import java.util.Set;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.tools.BuildToolInfo;
 
+import io.quarkus.logging.Log;
+
 /**
  * Contains the logic around merging build information and discovery results
  */
@@ -269,7 +271,7 @@ public class InvocationBuilder {
         Set<String> ret = new HashSet<>();
         //split the version into parts
         String[] disParts = discovered.split("\\.");
-        for (var comparePos = disParts.length; comparePos >= 0; comparePos--) {
+        for (var comparePos = disParts.length - 1; comparePos >= 0; comparePos--) {
             //look for matches, first on minor then major
             for (var i : toolVersions) {
                 String[] verParts = i.split("\\.");
@@ -277,7 +279,7 @@ public class InvocationBuilder {
                     continue;
                 }
                 var ok = true;
-                for (var j = 0; j < comparePos; ++j) {
+                for (var j = 0; j <= comparePos; ++j) {
                     if (!Objects.equals(disParts[j], verParts[j])) {
                         ok = false;
                         break;
@@ -291,7 +293,46 @@ public class InvocationBuilder {
                 return ret;
             }
         }
-        //no match, just return everything
+        int seekingMajor = -1;
+        try {
+            seekingMajor = Integer.parseInt(disParts[0]);
+        } catch (Exception e) {
+            //return everything
+            Log.errorf(e, "failed to parse discovered version: %s", discovered);
+            return new LinkedHashSet<>(toolVersions);
+        }
+        //no match, just return the closest we have
+        //look for matches, first on minor then major
+        int highest = -1;
+        int lowest = -1;
+        String highestVer = "";
+        String lowestVer = "";
+        for (var i : toolVersions) {
+            String toolMajor = i.split("\\.")[0];
+            try {
+                int toolVer = Integer.parseInt(toolMajor);
+                if (toolVer > seekingMajor) {
+                    if (lowest == -1 || toolVer < lowest) {
+                        lowest = toolVer;
+                        lowestVer = i;
+                    }
+                } else if (toolVer < seekingMajor) {
+                    if (highest == -1 || toolVer > highest) {
+                        highest = toolVer;
+                        highestVer = i;
+                    }
+                }
+            } catch (NumberFormatException e) {
+                Log.errorf(e, "failed to parse version: %s", i);
+            }
+        }
+        if (highest != -1 && lowest != -1) {
+            return Set.of(highestVer, lowestVer);
+        } else if (highest != -1) {
+            return Set.of(highestVer);
+        } else if (lowest != -1) {
+            return Set.of(lowestVer);
+        }
         return new LinkedHashSet<>(toolVersions);
     }
 
