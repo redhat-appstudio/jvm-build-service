@@ -209,6 +209,7 @@ public class LookupBuildInfoCommand implements Runnable {
                     for (var repo : handleRepositories(model, buildInfoLocator)) {
                         builder.addRepository(repo);
                     }
+
                     var invocations = new ArrayList<>(
                             List.of("install", "-Denforcer.skip", "-Dcheckstyle.skip",
                                     "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
@@ -218,6 +219,13 @@ public class LookupBuildInfoCommand implements Runnable {
                         //so we should run the tests
                         //this can be controller via additional args if you still want to skip them
                         invocations.add("-DskipTests");
+                    }
+                    if (model.getProfiles() != null) {
+                        for (var profile : model.getProfiles()) {
+                            if (Objects.equals(profile.getId(), "release")) {
+                                invocations.add("-Prelease");
+                            }
+                        }
                     }
                     builder.addToolInvocation(MAVEN, invocations);
                 }
