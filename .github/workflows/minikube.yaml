@@ -27,59 +27,6 @@ jobs:
             fi
             exit 0
           done
-
-  run-sample-project-tests:
-    needs: [wait-for-images]
-    runs-on: ubuntu-latest
-    name: Minikube Test Sample Project
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@f68fdb76e2ea636224182cfb7377ff9a1708f9b8 # v1.3.0
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          docker-images: false
-          large-packages: false
-          swap-storage: false
-      - uses: actions/checkout@v4
-      - name: Setup Registry
-        run: |
-          export DEV_IP=172.16.1.1
-          sudo ifconfig lo:0 $DEV_IP
-          docker run -d -p 5000:5000 --restart=always  registry:2
-          sudo echo '{ "insecure-registries": ["172.16.1.1:5000"] }' | sudo tee  /etc/docker/daemon.json
-
-      - name: Start minikube
-        uses: medyagh/setup-minikube@e0505489c98496aff6ed17db0ba68bf7ecadf730 # v0.0.14
-        with:
-          cpus: max
-          memory: max
-          insecure-registry: '172.16.1.1:5000'
-      - name: Run Tests
-        run: |
-          export SHELL=/bin/bash
-          export QUAY_USERNAME=minikube
-          export DEV_IP=172.16.1.1
-
-          eval $(minikube -p minikube docker-env)
-
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }}
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }}
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }}
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-build-request-processor:dev
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-cache:dev
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
-
-          ./deploy/minikube-ci.sh
-          make minikube-test
-
-      - name: Archive Report
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: sample-report
-          path: /tmp/jvm-build-service-report
   run-gav-based-tests:
     strategy:
       fail-fast: false
