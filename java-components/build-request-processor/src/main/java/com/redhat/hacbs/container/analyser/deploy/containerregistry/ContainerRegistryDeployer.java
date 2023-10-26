@@ -3,6 +3,7 @@ package com.redhat.hacbs.container.analyser.deploy.containerregistry;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -155,7 +156,8 @@ public class ContainerRegistryDeployer {
                             @Override
                             public FilePermissions get(Path sourcePath, AbsoluteUnixPath destinationPath) {
                                 try {
-                                    return FilePermissions.fromPosixFilePermissions(Files.getPosixFilePermissions(sourcePath));
+                                    return FilePermissions.fromPosixFilePermissions(
+                                            Files.getPosixFilePermissions(sourcePath, LinkOption.NOFOLLOW_LINKS));
                                 } catch (IOException e) {
                                     throw new RuntimeException(e);
                                 }
@@ -198,7 +200,8 @@ public class ContainerRegistryDeployer {
                     return FileVisitResult.CONTINUE;
                 }
                 layerConfigurationBuilder.addEntry(file, pathInContainer.resolve(relative),
-                        FilePermissions.fromPosixFilePermissions(Files.getPosixFilePermissions(file)));
+                        FilePermissions
+                                .fromPosixFilePermissions(Files.getPosixFilePermissions(file, LinkOption.NOFOLLOW_LINKS)));
                 return FileVisitResult.CONTINUE;
             }
         });
