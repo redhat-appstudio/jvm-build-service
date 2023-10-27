@@ -17,7 +17,7 @@ fi
 DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml
 kubectl config set-context --current --namespace=test-jvm-namespace
-kubectl delete --ignore-not-found secret jvm-build-image-secrets jvm-build-git-secrets jvm-build-maven-repo-secrets jvm-build-maven-repo-aws-secrets jvm-build-s3-secrets
+kubectl delete --ignore-not-found secret jvm-build-image-secrets jvm-build-git-secrets jvm-build-maven-repo-secrets jvm-build-maven-repo-aws-secrets jvm-build-s3-secrets jvm-build-git-repo-secrets
 
 if [ -n "$QUAY_ORG" ] && [ -n "$QUAY_TOKEN" ]; then
     kubectl delete --ignore-not-found secret  -n image-controller quaytoken
@@ -28,6 +28,9 @@ kubectl create secret generic jvm-build-git-secrets --from-literal .git-credenti
 https://$GITHUB_E2E_ORGANIZATION:$GITHUB_TOKEN@github.com
 https://test:test@gitlab.com
 "
+if [ -n "$GIT_DEPLOY_TOKEN" ]; then
+    kubectl create secret generic jvm-build-git-repo-secrets --from-literal gitdeploytoken="$GIT_DEPLOY_TOKEN"
+fi
 if [ -n "$MAVEN_PASSWORD" ]; then
     kubectl create secret generic jvm-build-maven-repo-secrets --from-literal mavenpassword="$MAVEN_PASSWORD"
 fi
