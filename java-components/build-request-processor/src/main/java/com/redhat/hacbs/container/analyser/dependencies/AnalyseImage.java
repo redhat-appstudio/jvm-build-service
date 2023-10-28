@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -45,9 +44,6 @@ public class AnalyseImage extends AnalyserBase {
 
     @CommandLine.Option(names = { "--base-image", "-b" }, required = false)
     Optional<String> baseImage;
-
-    @Inject
-    RebuildService rebuild;
 
     void doAnalysis(Set<String> gavs, Set<TrackingData> trackingData) throws Exception {
         Set<DescriptorDigest> layersToProcess = new HashSet<>();

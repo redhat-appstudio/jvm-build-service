@@ -77,6 +77,7 @@ public class MavenDeployTest {
         deployCommand.imageDeployment = false;
         deployCommand.mvnRepo = "file://" + deployment.toAbsolutePath();
         deployCommand.mvnCtx = mvnContext;
+        deployCommand.buildId = "some-id";
 
         deployCommand.run();
         List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();

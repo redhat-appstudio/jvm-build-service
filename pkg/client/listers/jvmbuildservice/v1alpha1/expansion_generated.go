@@ -41,6 +41,14 @@ type JBSConfigListerExpansion interface{}
 // JBSConfigNamespaceLister.
 type JBSConfigNamespaceListerExpansion interface{}
 
+// JvmImageScanListerExpansion allows custom methods to be added to
+// JvmImageScanLister.
+type JvmImageScanListerExpansion interface{}
+
+// JvmImageScanNamespaceListerExpansion allows custom methods to be added to
+// JvmImageScanNamespaceLister.
+type JvmImageScanNamespaceListerExpansion interface{}
+
 // RebuiltArtifactListerExpansion allows custom methods to be added to
 // RebuiltArtifactLister.
 type RebuiltArtifactListerExpansion interface{}

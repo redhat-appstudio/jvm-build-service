@@ -18,6 +18,8 @@ rules:
       - systemconfigs/status
       - jbsconfigs
       - jbsconfigs/status
+      - jvmimagescans
+      - jvmimagescans/status
     verbs:
       - create
       - delete

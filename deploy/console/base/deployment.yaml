@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hacbs-jvm-console
+  namespace: jvm-build-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hacbs-jvm-console
+  template:
+    metadata:
+      labels:
+        app: hacbs-jvm-console
+    spec:
+      containers:
+        - name: hacbs-jvm-console
+          image: hacbs-jvm-console:next
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              memory: "1024Mi"
+              cpu: "50m"
+            limits:
+              memory: "1024Mi"
+              cpu: "500m"
+      serviceAccountName: hacbs-jvm-console

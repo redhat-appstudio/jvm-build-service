@@ -39,6 +39,10 @@ func (c *FakeJvmbuildserviceV1alpha1) JBSConfigs(namespace string) v1alpha1.JBSC
 	return &FakeJBSConfigs{c, namespace}
 }
 
+func (c *FakeJvmbuildserviceV1alpha1) JvmImageScans(namespace string) v1alpha1.JvmImageScanInterface {
+	return &FakeJvmImageScans{c, namespace}
+}
+
 func (c *FakeJvmbuildserviceV1alpha1) RebuiltArtifacts(namespace string) v1alpha1.RebuiltArtifactInterface {
 	return &FakeRebuiltArtifacts{c, namespace}
 }

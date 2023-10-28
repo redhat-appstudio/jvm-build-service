@@ -163,6 +163,8 @@ public class DeployCommand implements Runnable {
             Set<String> gavs = new HashSet<>();
             Map<String, Set<String>> contaminatedPaths = new HashMap<>();
             Map<String, Set<String>> contaminatedGavs = new HashMap<>();
+            Map<String, Set<String>> allowedContaminatedPaths = new HashMap<>();
+            Map<String, Set<String>> allowedContaminatedGavs = new HashMap<>();
             // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
             // contaminated then none of the artifacts will be deployed.
             Set<Path> toRemove = new HashSet<>();
@@ -194,6 +196,8 @@ public class DeployCommand implements Runnable {
                             } else {
                                 Log.debugf("Ignoring contaminant for %s", file.getFileName());
                             }
+                        } else {
+
                         }
                     }
                     if (gav.isPresent()) {
