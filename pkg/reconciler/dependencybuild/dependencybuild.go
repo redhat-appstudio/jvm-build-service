@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
 	"sort"
 	"strconv"
@@ -71,10 +72,12 @@ type ReconcileDependencyBuild struct {
 	client        client.Client
 	scheme        *runtime.Scheme
 	eventRecorder record.EventRecorder
+	clientSet     *kubernetes.Clientset
 }
 
-func newReconciler(mgr ctrl.Manager) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, clientset *kubernetes.Clientset) reconcile.Reconciler {
 	return &ReconcileDependencyBuild{
+		clientSet:     clientset,
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
 		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
@@ -113,11 +116,15 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 
 	switch {
 	case dberr == nil:
+		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
 		err, done := r.handleDeprecatedFields(ctx, db)
 		if done || err != nil {
 			return reconcile.Result{}, err
 		}
-		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
+		done, err = r.handleS3SyncDependencyBuild(ctx, &db, log)
+		if done || err != nil {
+			return reconcile.Result{}, err
+		}
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
 			return r.handleStateNew(ctx, log, &db)
@@ -130,10 +137,15 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		case v1alpha1.DependencyBuildStateContaminated:
 			return r.handleStateContaminated(ctx, &db)
 		case v1alpha1.DependencyBuildStateComplete:
-			return r.handleStateCompleted(ctx, &db, log)
+			return reconcile.Result{}, nil
 		}
 
 	case trerr == nil:
+
+		done, err := r.handleS3SyncPipelineRun(ctx, log, &pr)
+		if done || err != nil {
+			return reconcile.Result{}, err
+		}
 		if pr.DeletionTimestamp != nil {
 			//always remove the finalizer if it is deleted
 			//but continue with the method
@@ -724,7 +736,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				//most likely shaded in
 				//we don't need to update the status here, it will be handled by the handleStateComplete method
 				//even though there are contaminates they may not be in artifacts we care about
-				_, err := r.handleStateCompleted(ctx, db, log)
+				err := r.handleBuildCompletedWithContaminants(ctx, db, log)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
@@ -819,14 +831,11 @@ func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Con
 // no actual request for these artifacts. This can change if new artifacts are requested, so even when complete
 // we still need to verify that hte build is ok
 // this method will always update the status if it does not return an error
-func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger) error {
 
 	ownerGavs := map[string]bool{}
 	db.Status.State = v1alpha1.DependencyBuildStateComplete
-	if len(db.Status.Contaminants) == 0 {
-		return reconcile.Result{}, r.client.Status().Update(ctx, db)
-	}
-	l.Info("Resolving contaminates for build", "build", db.Name)
+	l.Info("Build was contaminated, attempting to rebuild contaminants if required", "build", db.Name)
 	//get all the owning artifact builds
 	//if any of these are contaminated
 	for _, ownerRef := range db.OwnerReferences {
@@ -836,11 +845,11 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 			if err != nil {
 				l.Info(fmt.Sprintf("Unable to find owner %s to to mark as affected by contamination from %s", ownerRef.Name, db.Name), "action", "UPDATE")
 				if !errors.IsNotFound(err) {
-					return reconcile.Result{}, err
+					return err
 				}
 				//on not found we don't return the error
 				//no need to retry it would just result in an infinite loop
-				return reconcile.Result{}, nil
+				return nil
 			}
 			ownerGavs[ab.Spec.GAV] = true
 		}
@@ -866,7 +875,7 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 					abr.Annotations[artifactbuild.DependencyBuildContaminatedByAnnotation+suffix] = db.Name
 					err := r.client.Create(ctx, &abr)
 					if err != nil {
-						return reconcile.Result{}, err
+						return err
 					}
 				} else {
 					abr.Annotations = map[string]string{}
@@ -874,14 +883,19 @@ func (r *ReconcileDependencyBuild) handleStateCompleted(ctx context.Context, db 
 					l.Info("Marking ArtifactBuild %s as a contaminant of %s", abr.Name, db.Name, "action", "ADD")
 					err := r.client.Update(ctx, &abr)
 					if err != nil {
-						return reconcile.Result{}, err
+						return err
 					}
 				}
 				break
 			}
 		}
 	}
-	return reconcile.Result{}, r.client.Status().Update(ctx, db)
+	if db.Status.State == v1alpha1.DependencyBuildStateContaminated {
+		l.Info("build was marked as contaminated as some required artifacts were contaminated", "build", db.Name)
+	} else {
+		l.Info("build was marked as complete as no contaminated artifacts were requested", "build", db.Name)
+	}
+	return r.client.Status().Update(ctx, db)
 }
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	contaminants := db.Status.Contaminants

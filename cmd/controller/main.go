@@ -63,6 +63,9 @@ func main() {
 
 	util.ImageTag = os.Getenv("IMAGE_TAG")
 	util.ImageRepo = os.Getenv("IMAGE_REPO")
+	if os.Getenv("S3_SYNC_ENABLED") == "true" {
+		util.S3Enabled = true
+	}
 
 	mgr, err := controller.NewManager(restConfig, mopts)
 	if err != nil {

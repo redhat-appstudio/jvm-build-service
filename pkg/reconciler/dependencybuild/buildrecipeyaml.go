@@ -64,9 +64,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
 
-	println("PREBUILD IMAGE: " + preBuildImageName)
-	println("HERMETIC IMAGE: " + hermeticPreBuildImageName)
-
 	preprocessorArgs := []string{
 		"maven-prepare",
 		"-r",

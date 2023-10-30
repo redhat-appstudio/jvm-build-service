@@ -23,6 +23,7 @@ require (
 
 require (
 	github.com/CycloneDX/cyclonedx-go v0.7.1
+	github.com/aws/aws-sdk-go v1.46.2
 	github.com/google/go-containerregistry v0.15.2
 	github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
 	go.uber.org/zap v1.24.0
@@ -64,6 +65,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect

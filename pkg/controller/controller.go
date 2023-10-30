@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	"time"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/metrics"
@@ -102,13 +103,18 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, lerr
 	}
 	cachePods = cachePods.Add(*cacheRequirement)
+	cacheSelector := cache.ObjectSelector{Label: cachePods}
+	if util.S3Enabled {
+		//if we are synching to S3 we need to be able to read all pod logs
+		cacheSelector = cache.ObjectSelector{}
+	}
 	options.NewCache = cache.BuilderWithOptions(cache.Options{
 		SelectorsByObject: cache.SelectorsByObject{
 			&pipelinev1.PipelineRun{}:   {},
 			&v1alpha1.DependencyBuild{}: {},
 			&v1alpha1.ArtifactBuild{}:   {},
 			&v1alpha1.RebuiltArtifact{}: {},
-			&v1.Pod{}:                   {Label: cachePods},
+			&v1.Pod{}:                   cacheSelector,
 		}})
 
 	mgr, err = ctrl.NewManager(cfg, options)

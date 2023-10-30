@@ -33,7 +33,7 @@ if [ -z "${MAVEN_REPOSITORY}" ]; then
 fi
 find $DIR -path \*development\*.yaml -exec $SED -i s/MAVEN_USERNAME/${MAVEN_USERNAME}/ {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s%MAVEN_REPOSITORY%${MAVEN_REPOSITORY}% {} \;
-if [ -n "$QUAY_TOKEN" ]; then
-    $SED -i '/owner: QUAY_USERNAME/d' $DIR/overlays/development/config.yaml
-fi
+#if [ -n "$QUAY_TOKEN" ]; then
+#    $SED -i '/owner: QUAY_USERNAME/d' $DIR/overlays/development/config.yaml
+#fi
 find $DIR -path \*development\*.yaml -exec $SED -i s/QUAY_USERNAME/${QUAY_USERNAME}/ {} \;

@@ -19,6 +19,7 @@ const (
 	AWSAccessID                             = "awsaccesskey"                     //#nosec
 	AWSSecretKey                            = "awssecretkey"                     //#nosec
 	AWSProfile                              = "awsprofile"                       //#nosec
+	AWSRegion                               = "awsregion"                        //#nosec
 	AWSSecretName                           = "jvm-build-maven-repo-aws-secrets" //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
 	ConfigArtifactCacheRequestMemoryDefault = "512Mi"
