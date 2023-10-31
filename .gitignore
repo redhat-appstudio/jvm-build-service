@@ -1,5 +1,5 @@
 .DS_Store
-target
+java-components/**/target/**
 *.iml
 .idea
 .settings

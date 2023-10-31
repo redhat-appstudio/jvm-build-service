@@ -3,7 +3,6 @@ package dependencybuild
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -11,6 +10,9 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
+	"github.com/tektoncd/cli/pkg/cli"
+	tknlogs "github.com/tektoncd/cli/pkg/log"
+	"github.com/tektoncd/cli/pkg/options"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"io"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/printers"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strings"
@@ -104,6 +107,9 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 	}
 	log.Info("attempting to sync PipelineRun to S3")
 
+	if err != nil {
+		return false, err
+	}
 	//lets grab the credentials
 	sess := r.createS3Session(ctx, log, namespace)
 	if sess == nil {
@@ -141,8 +147,62 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 	if err != nil {
 		return false, err
 	}
-	log.Info(fmt.Sprintf("pod count: %d", len(pods.Items)))
-	podClient := r.clientSet.CoreV1().Pods(pr.Namespace)
+
+	tektonParams := *r.logReaderParams
+	tektonParams.SetNamespace(pr.Namespace)
+	tektonParams.SetNoColour(true)
+	reader, err := tknlogs.NewReader(tknlogs.LogTypePipeline, &options.LogOptions{PipelineRunName: pr.Name, Params: &tektonParams})
+	if err != nil {
+		log.Error(err, "failed to create log reader")
+	} else {
+		pipereader, pipewriter := io.Pipe()
+		defer func(pipereader *io.PipeReader) {
+			_ = pipereader.Close()
+		}(pipereader)
+		defer func(pipewriter *io.PipeWriter) {
+			_ = pipewriter.Close()
+		}(pipewriter)
+		writer := tknlogs.NewWriter(tknlogs.LogTypePipeline, true)
+		logs, errors, err := reader.Read()
+		if err != nil {
+			log.Error(err, "failed to create log reader")
+		}
+		stream := cli.Stream{
+			Out: pipewriter,
+			Err: pipewriter,
+			In:  os.Stdin,
+		}
+
+		go func() {
+			writer.Write(&stream, logs, errors)
+			err := pipewriter.Close()
+			if err != nil {
+				log.Error(err, "error closing pipe")
+			}
+		}()
+
+		logsPath := dep.Name + "/" + Pipelines + "/" + pr.Name + "/" + Logs + "/build.log"
+		log.Info("attempting to upload logs to S3", "path", logsPath)
+		_, err = uploader.Upload(&s3manager.UploadInput{
+
+			Bucket:      aws.String(bucketName),
+			Key:         aws.String(logsPath),
+			Body:        pipereader,
+			ContentType: aws.String("text/plain"),
+			Metadata: map[string]*string{
+				"dependency-build": aws.String(dep.Name),
+				"type":             aws.String("pipeline-logs"),
+				"scm-uri":          aws.String(dep.Spec.ScmInfo.SCMURL),
+				"scm-tag":          aws.String(dep.Spec.ScmInfo.Tag),
+				"scm-commit":       aws.String(dep.Spec.ScmInfo.CommitHash),
+				"scm-path":         aws.String(dep.Spec.ScmInfo.Path),
+			},
+		})
+		if err != nil {
+			log.Error(err, "failed to upload task logs to s3")
+		}
+
+	}
 	for _, tr := range taskRuns.Items {
 		found := false
 		for _, owner := range tr.OwnerReferences {
@@ -173,53 +233,6 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 		if err != nil {
 			log.Error(err, "failed to upload task to s3")
 		}
-		for _, pod := range pods.Items {
-			if strings.Contains(pod.Name, tr.Name) {
-
-				for _, container := range pod.Spec.Containers {
-
-					req := podClient.GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
-					var readCloser io.ReadCloser
-					var err error
-					readCloser, err = req.Stream(context.TODO())
-					if err != nil {
-						log.Error(err, fmt.Sprintf("error getting pod logs for container %s", container.Name))
-						continue
-					}
-					defer func(readCloser io.ReadCloser) {
-						err := readCloser.Close()
-						if err != nil {
-							log.Error(err, fmt.Sprintf("failed to close ReadCloser reading pod logs for container %s", container.Name))
-						}
-					}(readCloser)
-
-					logsPath := dep.Name + "/" + Pipelines + "/" + pr.Name + "/" + Tasks + "/" + tr.Name + "/" + Logs + "/" + container.Name
-					log.Info("attempting to upload logs to S3", "path", logsPath)
-					_, err = uploader.Upload(&s3manager.UploadInput{
-						Bucket:      aws.String(bucketName),
-						Key:         aws.String(logsPath),
-						Body:        readCloser,
-						ContentType: aws.String("text/plain"),
-						Metadata: map[string]*string{
-							"dependency-build": aws.String(dep.Name),
-							"type":             aws.String("task-run-logs"),
-							"scm-uri":          aws.String(dep.Spec.ScmInfo.SCMURL),
-							"scm-tag":          aws.String(dep.Spec.ScmInfo.Tag),
-							"scm-commit":       aws.String(dep.Spec.ScmInfo.CommitHash),
-							"scm-path":         aws.String(dep.Spec.ScmInfo.Path),
-						},
-					})
-					if err != nil {
-						log.Error(err, "failed to upload task logs to s3")
-					}
-
-				}
-				if err != nil {
-					log.Error(err, "failed to upload task to s3")
-				}
-			}
-		}
-
 	}
 
 	controllerutil.RemoveFinalizer(pr, S3Finalizer)
