@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
+	"github.com/tektoncd/cli/pkg/cli"
 	"time"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/metrics"
@@ -104,9 +105,15 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	}
 	cachePods = cachePods.Add(*cacheRequirement)
 	cacheSelector := cache.ObjectSelector{Label: cachePods}
+	var logReaderParams *cli.TektonParams
 	if util.S3Enabled {
-		//if we are synching to S3 we need to be able to read all pod logs
-		cacheSelector = cache.ObjectSelector{}
+		//if we are synching to S3 we need init the log reader
+		//this uses tekton CLI code
+		logReaderParams = &cli.TektonParams{}
+		_, err := logReaderParams.Clients(cfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 	options.NewCache = cache.BuilderWithOptions(cache.Options{
 		SelectorsByObject: cache.SelectorsByObject{
@@ -127,7 +134,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
-	if err := dependencybuild.SetupNewReconcilerWithManager(mgr); err != nil {
+	if err := dependencybuild.SetupNewReconcilerWithManager(mgr, logReaderParams); err != nil {
 		return nil, err
 	}
 

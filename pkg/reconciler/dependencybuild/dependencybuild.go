@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
+	"github.com/tektoncd/cli/pkg/cli"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
 	"sort"
@@ -69,18 +70,20 @@ const (
 )
 
 type ReconcileDependencyBuild struct {
-	client        client.Client
-	scheme        *runtime.Scheme
-	eventRecorder record.EventRecorder
-	clientSet     *kubernetes.Clientset
+	client          client.Client
+	scheme          *runtime.Scheme
+	eventRecorder   record.EventRecorder
+	clientSet       *kubernetes.Clientset
+	logReaderParams *cli.TektonParams
 }
 
-func newReconciler(mgr ctrl.Manager, clientset *kubernetes.Clientset) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, clientset *kubernetes.Clientset, logReaderParams *cli.TektonParams) reconcile.Reconciler {
 	return &ReconcileDependencyBuild{
-		clientSet:     clientset,
-		client:        mgr.GetClient(),
-		scheme:        mgr.GetScheme(),
-		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
+		clientSet:       clientset,
+		client:          mgr.GetClient(),
+		scheme:          mgr.GetScheme(),
+		eventRecorder:   mgr.GetEventRecorderFor("DependencyBuild"),
+		logReaderParams: logReaderParams,
 	}
 }
 
