@@ -79,10 +79,10 @@ public class GitHub extends Git {
     }
 
     @Override
-    public void add(Path path, String commit) {
+    public void add(Path path, String commit, String imageId) {
         if (repository == null) {
             throw new RuntimeException("Call create first");
         }
-        pushRepository(path, repository.getHttpTransportUrl(), commit);
+        pushRepository(path, repository.getHttpTransportUrl(), commit, imageId);
     }
 }

@@ -154,7 +154,7 @@ public class DeployCommand implements Runnable {
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get());
                 git.create(scmUri);
-                git.add(sourcePath, commit);
+                git.add(sourcePath, commit, imageId);
             }
 
             Set<String> gavs = new HashSet<>();

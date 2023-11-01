@@ -55,11 +55,11 @@ public class GitLab extends Git {
     }
 
     @Override
-    public void add(Path path, String commit)
+    public void add(Path path, String commit, String imageId)
             throws IOException {
         if (project == null) {
             throw new RuntimeException("Call create first");
         }
-        pushRepository(path, project.getHttpUrlToRepo(), commit);
+        pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
     }
 }

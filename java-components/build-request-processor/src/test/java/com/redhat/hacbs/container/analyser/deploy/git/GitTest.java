@@ -65,10 +65,14 @@ public class GitTest {
                 }
 
                 @Override
-                public void add(Path path, String commit) {
+                public void add(Path path, String commit, String imageId) {
                 }
             };
-            test.pushRepository(initialRepo, testRepoURI, "c396268fb90335bde5c9272b9a194c3d4302bf24");
+            test.pushRepository(
+                    initialRepo,
+                    testRepoURI,
+                    "c396268fb90335bde5c9272b9a194c3d4302bf24",
+                    "75ecd81c7a2b384151c990975eb1dd10");
 
             List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
 
@@ -80,7 +84,9 @@ public class GitTest {
                     .anyMatch(
                             r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
 
-            assertTrue(testRepository.tagList().call().stream().anyMatch(r -> r.getName().equals("refs/tags/0.1")));
+            assertEquals(2, testRepository.tagList().call().size());
+            assertTrue(testRepository.tagList().call().stream()
+                    .anyMatch(r -> r.getName().equals("refs/tags/0.1-75ecd81c7a2b384151c990975eb1dd10")));
         }
     }
 
