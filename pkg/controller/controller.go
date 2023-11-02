@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	"github.com/tektoncd/cli/pkg/cli"
+	"os"
 	"time"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/metrics"
@@ -43,6 +44,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	// and controller-runtime does not retry on missing CRDs.
 	// so we are going to wait on the CRDs existing before moving forward.
 	apiextensionsClient := apiextensionsclient.NewForConfigOrDie(cfg)
+
 	if err := wait.PollUntilContextTimeout(context.TODO(), time.Second*5, time.Minute*5, true, func(ctx context.Context) (done bool, err error) {
 		_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "taskruns.tekton.dev", metav1.GetOptions{})
 		if err != nil {
@@ -55,14 +57,25 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		controllerLog.Error(err, "timed out waiting for taskrun CRD to be created")
 		return nil, err
 	}
+	imageSpiPresent := false
 
-	//check for the SPI to be present
-	imageSpiPresent := true
-	_, err := apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "imagerepositories.appstudio.redhat.com", metav1.GetOptions{})
-	if err != nil {
-		imageSpiPresent = false
+	if os.Getenv("USE_IMAGE_SPI") == "true" {
+		//check for the SPI to be present
+		imageSpiPresent = true
+		if err := wait.PollUntilContextTimeout(context.TODO(), time.Second*5, time.Minute*5, true, func(ctx context.Context) (done bool, err error) {
+			_, err = apiextensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "imagerepositories.appstudio.redhat.com", metav1.GetOptions{})
+			if err != nil {
+				controllerLog.Info(fmt.Sprintf("get of imagerepositories CRD failed with: %s", err.Error()))
+				return false, nil
+			}
+			controllerLog.Info("get of imagerepositories CRD returned successfully")
+			return true, nil
+		}); err != nil {
+			controllerLog.Error(err, "timed out waiting for imagerepositories CRD to be created")
+			return nil, err
+		}
+		controllerLog.Info("ImageRepositories SPI Present")
 	}
-	controllerLog.Info(fmt.Sprintf("ImageRepositories SPI Present: %t", imageSpiPresent))
 
 	options.Scheme = runtime.NewScheme()
 
@@ -124,7 +137,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 			&v1.Pod{}:                   cacheSelector,
 		}})
 
-	mgr, err = ctrl.NewManager(cfg, options)
+	mgr, err := ctrl.NewManager(cfg, options)
 
 	if err != nil {
 		return nil, err
