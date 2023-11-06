@@ -36,6 +36,7 @@ import (
 const (
 	TlsServiceName                      = v1alpha1.CacheDeploymentName + "-tls"
 	TestRegistry                        = "jvmbuildservice.io/test-registry"
+	RetryTimeAnnotations                = "jvmbuildservice.io/retry-time"
 	DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
 	UploadSecretName                    = "jvm-build-service-temp-upload-secret" //#nosec
 )
@@ -100,10 +101,34 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 					return reconcile.Result{}, err2
 				}
 			}
-			//TODO: temp fix, we should not be requeuing here but it causes CI issues
-			//need to investigate how to fix
-			log.Error(err, fmt.Sprintf("Unable to enable rebuilds for namespace %s", jbsConfig.Namespace))
-			return reconcile.Result{}, nil
+			if r.spiPresent && jbsConfig.Spec.Registry.ImageRegistry.Owner == "" {
+				//this is due to https://issues.redhat.com/browse/RHTAPBUGS-937
+				//we should not need the retry if this is fixed in the image controller
+				if jbsConfig.Annotations == nil {
+					jbsConfig.Annotations = map[string]string{}
+				}
+				existing := jbsConfig.Annotations[RetryTimeAnnotations]
+				if existing == "" {
+					existing = "1"
+				}
+				var existingSeconds int64
+				secs, err := strconv.Atoi(existing)
+				existingSeconds = int64(secs)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to enable rebuilds for namespace %s, failed to parse retry timeout", jbsConfig.Namespace))
+					return reconcile.Result{}, nil
+				}
+				jbsConfig.Annotations[RetryTimeAnnotations] = strconv.Itoa(secs * 2)
+				err = r.client.Update(ctx, &jbsConfig)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{RequeueAfter: time.Second * time.Duration(existingSeconds)}, nil
+			} else {
+				log.Error(err, fmt.Sprintf("Unable to enable rebuilds for namespace %s", jbsConfig.Namespace))
+				return reconcile.Result{}, nil
+
+			}
 		}
 
 		err = r.deploymentSupportObjects(ctx, request, &jbsConfig)
@@ -228,7 +253,7 @@ func (r *ReconcilerJBSConfig) validations(ctx context.Context, log logr.Logger, 
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: secretName}, registrySecret)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return errors2.New("secret jvm-build-image-secrets not found, and explicit repository configured or image controller not installed, rebuilds not possible")
+			return fmt.Errorf("secret %s not found, and explicit repository configured or image controller not installed, rebuilds not possible", secretName)
 		}
 		return err
 	}
