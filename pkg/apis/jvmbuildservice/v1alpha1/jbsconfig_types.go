@@ -51,7 +51,7 @@ type JBSConfigSpec struct {
 	SharedRegistries []ImageRegistry   `json:"sharedRegistries,omitempty"`
 	Registry         ImageRegistrySpec `json:"registry,omitempty"`
 	MavenDeployment  MavenDeployment   `json:"mavenDeployment,omitempty"`
-	GitDeployment    GitDeployment     `json:"gitDeployment,omitempty"`
+	GitSourceArchive GitSourceArchive  `json:"gitSourceArchive,omitempty"`
 	// Deprecated: Replaced by explicit declaration of Registry above.
 	ImageRegistry      `json:",inline,omitempty"`
 	CacheSettings      CacheSettings              `json:"cacheSettings,omitempty"`
@@ -112,7 +112,7 @@ type MavenDeployment struct {
 	Repository string `json:"repository,omitempty"`
 }
 
-type GitDeployment struct {
+type GitSourceArchive struct {
 	Identity string `json:"identity,omitempty"`
 	URL      string `json:"url,omitempty"`
 }

@@ -87,7 +87,7 @@ spec:
                 type: object
               enableRebuilds:
                 type: boolean
-              gitDeployment:
+              gitSourceArchive:
                 properties:
                   identity:
                     type: string

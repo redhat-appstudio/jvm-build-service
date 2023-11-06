@@ -171,7 +171,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSSecretKey, Optional: &trueBool}}})
 		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSProfile, Optional: &trueBool}}})
 	}
-	if jbsConfig.Spec.GitDeployment.Identity != "" {
+	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
 		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitRepoSecretName}, Key: v1alpha12.GitRepoSecretKey, Optional: &trueBool}}})
 	}
 
@@ -664,11 +664,11 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	if jbsConfig.Spec.MavenDeployment.Username != "" {
 		mavenArgs = append(mavenArgs, "--mvn-username="+jbsConfig.Spec.MavenDeployment.Username)
 	}
-	if jbsConfig.Spec.GitDeployment.Identity != "" {
-		mavenArgs = append(mavenArgs, "--git-identity="+jbsConfig.Spec.GitDeployment.Identity)
+	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
+		mavenArgs = append(mavenArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
 	}
-	if jbsConfig.Spec.GitDeployment.URL != "" {
-		mavenArgs = append(mavenArgs, "--git-url="+jbsConfig.Spec.GitDeployment.URL)
+	if jbsConfig.Spec.GitSourceArchive.URL != "" {
+		mavenArgs = append(mavenArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
 	}
 	deployArgs = append(deployArgs, mavenArgs...)
 
