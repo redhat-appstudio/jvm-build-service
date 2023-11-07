@@ -158,18 +158,21 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		{Name: PipelineParamEnforceVersion, Type: pipelinev1beta1.ParamTypeString},
 		{Name: PipelineParamCacheUrl, Type: pipelinev1beta1.ParamTypeString, Default: &pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 	}
-	registryToken := make([]v1.EnvVar, 0)
+	secretVariables := make([]v1.EnvVar, 0)
 	if jbsConfig.ImageRegistry().SecretName != "" {
-		registryToken = []v1.EnvVar{
+		secretVariables = []v1.EnvVar{
 			{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
 		}
 	}
 	if jbsConfig.Spec.MavenDeployment.Repository != "" {
-		registryToken = append(registryToken, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.MavenSecretName}, Key: v1alpha12.MavenSecretKey, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.MavenSecretName}, Key: v1alpha12.MavenSecretKey, Optional: &trueBool}}})
 
-		registryToken = append(registryToken, v1.EnvVar{Name: "AWS_ACCESS_KEY_ID", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSAccessID, Optional: &trueBool}}})
-		registryToken = append(registryToken, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSSecretKey, Optional: &trueBool}}})
-		registryToken = append(registryToken, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSProfile, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_ACCESS_KEY_ID", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSAccessID, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSSecretKey, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSProfile, Optional: &trueBool}}})
+	}
+	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitRepoSecretName}, Key: v1alpha12.GitRepoSecretKey, Optional: &trueBool}}})
 	}
 
 	buildSetup := pipelinev1beta1.TaskSpec{
@@ -210,7 +213,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Image:           buildRequestProcessorImage,
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             registryToken,
+				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
@@ -263,7 +266,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Image:           buildRequestProcessorImage,
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             registryToken,
+				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
@@ -311,7 +314,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Image:           buildRequestProcessorImage,
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             registryToken,
+				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
@@ -330,7 +333,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				Image:           buildRequestProcessorImage,
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             registryToken,
+				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
@@ -660,6 +663,12 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	}
 	if jbsConfig.Spec.MavenDeployment.Username != "" {
 		mavenArgs = append(mavenArgs, "--mvn-username="+jbsConfig.Spec.MavenDeployment.Username)
+	}
+	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
+		mavenArgs = append(mavenArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
+	}
+	if jbsConfig.Spec.GitSourceArchive.URL != "" {
+		mavenArgs = append(mavenArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
 	}
 	deployArgs = append(deployArgs, mavenArgs...)
 

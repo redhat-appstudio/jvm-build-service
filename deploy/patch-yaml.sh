@@ -37,3 +37,12 @@ find $DIR -path \*development\*.yaml -exec $SED -i s%MAVEN_REPOSITORY%${MAVEN_RE
 #    $SED -i '/owner: QUAY_USERNAME/d' $DIR/overlays/development/config.yaml
 #fi
 find $DIR -path \*development\*.yaml -exec $SED -i s/QUAY_USERNAME/${QUAY_USERNAME}/ {} \;
+
+if [ -z "${GIT_DEPLOY_URL}" ]; then
+    GIT_DEPLOY_URL=""
+fi
+if [ -z "${GIT_DEPLOY_IDENTITY}" ]; then
+    GIT_DEPLOY_IDENTITY=""
+fi
+find $DIR -path \*development\*.yaml -exec $SED -i s/GIT_DEPLOY_URL/${GIT_DEPLOY_URL}/ {} \;
+find $DIR -path \*development\*.yaml -exec $SED -i s%GIT_DEPLOY_IDENTITY%${GIT_DEPLOY_IDENTITY}% {} \;

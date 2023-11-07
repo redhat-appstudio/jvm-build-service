@@ -87,6 +87,13 @@ spec:
                 type: object
               enableRebuilds:
                 type: boolean
+              gitSourceArchive:
+                properties:
+                  identity:
+                    type: string
+                  url:
+                    type: string
+                type: object
               hermeticBuilds:
                 type: string
               host:

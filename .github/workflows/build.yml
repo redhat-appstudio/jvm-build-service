@@ -17,6 +17,3 @@ jobs:
       - name: Build with Maven
         working-directory: java-components
         run: mvn -V -B package -Dvalidate-format
-      - name: Run unit tests
-        working-directory: java-components
-        run: mvn -V test

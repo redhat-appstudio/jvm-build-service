@@ -39,6 +39,7 @@ import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
+import com.redhat.hacbs.container.analyser.deploy.git.Git;
 import com.redhat.hacbs.container.analyser.deploy.mavenrepository.MavenRepositoryDeployer;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipies.util.FileUtil;
@@ -120,6 +121,18 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--mvn-repo")
     String mvnRepo;
 
+    @ConfigProperty(name = "git.deploy.token")
+    Optional<String> gitToken = Optional.empty();
+
+    // If endpoint is null then default GitHub API endpoint is used. Otherwise:
+    // for GitHub, endpoint like https://api.github.com
+    // for GitLib, endpoint like https://gitlab.com
+    @CommandLine.Option(names = "--git-url")
+    String gitURL;
+
+    @CommandLine.Option(names = "--git-identity")
+    String gitIdentity;
+
     // Testing only ; used to disable image deployment
     protected boolean imageDeployment = true;
 
@@ -137,8 +150,14 @@ public class DeployCommand implements Runnable {
 
     public void run() {
         try {
-            Set<String> gavs = new HashSet<>();
+            // Save the source first regardless of deployment checks
+            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
+                var git = Git.builder(gitURL, gitIdentity, gitToken.get());
+                git.create(scmUri);
+                git.add(sourcePath, commit, imageId);
+            }
 
+            Set<String> gavs = new HashSet<>();
             Map<String, Set<String>> contaminatedPaths = new HashMap<>();
             Map<String, Set<String>> contaminatedGavs = new HashMap<>();
             // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is

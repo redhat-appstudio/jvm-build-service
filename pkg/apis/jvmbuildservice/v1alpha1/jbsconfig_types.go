@@ -16,6 +16,8 @@ const (
 	GitSecretTokenKey                       = ".git-credentials"                 //#nosec
 	MavenSecretKey                          = "mavenpassword"                    //#nosec
 	MavenSecretName                         = "jvm-build-maven-repo-secrets"     //#nosec
+	GitRepoSecretKey                        = "gitdeploytoken"                   //#nosec
+	GitRepoSecretName                       = "jvm-build-git-repo-secrets"       //#nosec
 	AWSAccessID                             = "awsaccesskey"                     //#nosec
 	AWSSecretKey                            = "awssecretkey"                     //#nosec
 	AWSProfile                              = "awsprofile"                       //#nosec
@@ -49,6 +51,7 @@ type JBSConfigSpec struct {
 	SharedRegistries []ImageRegistry   `json:"sharedRegistries,omitempty"`
 	Registry         ImageRegistrySpec `json:"registry,omitempty"`
 	MavenDeployment  MavenDeployment   `json:"mavenDeployment,omitempty"`
+	GitSourceArchive GitSourceArchive  `json:"gitSourceArchive,omitempty"`
 	// Deprecated: Replaced by explicit declaration of Registry above.
 	ImageRegistry      `json:",inline,omitempty"`
 	CacheSettings      CacheSettings              `json:"cacheSettings,omitempty"`
@@ -107,6 +110,11 @@ type ImageRegistry struct {
 type MavenDeployment struct {
 	Username   string `json:"username,omitempty"`
 	Repository string `json:"repository,omitempty"`
+}
+
+type GitSourceArchive struct {
+	Identity string `json:"identity,omitempty"`
+	URL      string `json:"url,omitempty"`
 }
 
 type RelocationPatternElement struct {
