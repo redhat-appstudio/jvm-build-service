@@ -21,11 +21,4 @@ patches:
   target:
     kind: Deployment
     name: hacbs-jvm-operator
-- patch: |-
-    - op: replace
-      path: /spec/template/spec/volumes/0/secret/optional
-      value: true
-  target:
-    kind: Deployment
-    name: hacbs-jvm-operator
 - path: namespace.yaml
