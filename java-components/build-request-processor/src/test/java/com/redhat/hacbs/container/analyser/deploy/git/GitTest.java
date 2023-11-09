@@ -16,6 +16,7 @@ import java.util.logging.LogRecord;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.transport.TagOpt;
+import org.eclipse.jgit.transport.URIish;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -56,7 +57,12 @@ public class GitTest {
                     .getParent().getParent();
             FileUtils.copyDirectory(new File(repoRoot.toFile(), ".git"), new File(initialRepo.toFile(), ".git"));
             if (initialRepository.tagList().call().stream().noneMatch(r -> r.getName().equals("refs/tags/0.1"))) {
-                initialRepository.fetch().setTagOpt(TagOpt.FETCH_TAGS).call();
+                // Don't have the tag and cannot guarantee a fork will have it so fetch from primary repository.
+                initialRepository.remoteAdd()
+                        .setUri(new URIish("https://github.com/redhat-appstudio/jvm-build-service.git")).setName("upstream")
+                        .call();
+                initialRepository.fetch().setRefSpecs("refs/tags/0.1:refs/tags/0.1").setTagOpt(TagOpt.NO_TAGS)
+                        .setRemote("upstream").call();
             }
 
             Git test = new Git() {
