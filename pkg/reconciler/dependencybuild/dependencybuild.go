@@ -674,6 +674,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			var image string
 			var digest string
 			var passedVerification bool
+			var verificationResults string
 			var gavs []string
 			var hermeticBuildImage string
 			for _, i := range pr.Status.Results {
@@ -695,14 +696,17 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				} else if i.Name == artifactbuild.PipelineResultGavs {
 					deployed := strings.Split(i.Value.StringVal, ",")
 					db.Status.DeployedArtifacts = deployed
+				} else if i.Name == artifactbuild.PipelineResultVerificationResult {
+					verificationResults = i.Value.StringVal
 				}
 			}
 			run.Results = &v1alpha1.BuildPipelineRunResults{
-				Image:              image,
-				ImageDigest:        digest,
-				Verified:           passedVerification,
-				Gavs:               gavs,
-				HermeticBuildImage: hermeticBuildImage,
+				Image:               image,
+				ImageDigest:         digest,
+				Verified:            passedVerification,
+				VerificationResults: verificationResults,
+				Gavs:                gavs,
+				HermeticBuildImage:  hermeticBuildImage,
 			}
 
 			for _, i := range pr.Status.Results {

@@ -97,7 +97,8 @@ type BuildPipelineRunResults struct {
 	Image       string `json:"image,omitempty"`
 	ImageDigest string `json:"imageDigest"`
 	//If the resulting image was verified
-	Verified bool `json:"verified,omitempty"`
+	Verified            bool   `json:"verified,omitempty"`
+	VerificationResults string `json:"verificationFailures,omitempty"`
 	// The produced GAVs
 	Gavs []string `json:"gavs,omitempty"`
 	// The hermetic build image produced by the build

@@ -105,6 +105,8 @@ spec:
                                 result:
                                   type: string
                               type: object
+                            verificationFailures:
+                              type: string
                             verified:
                               description: If the resulting image was verified
                               type: boolean
