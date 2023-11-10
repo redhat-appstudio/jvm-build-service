@@ -608,10 +608,11 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 			}
 		}
 		for _, pipelineRun := range pipelineList.Items {
+			println(fmt.Sprintf("pipelinerun %s for DB %s", pipelineRun.Name, db.Name))
 			if strings.HasPrefix(pipelineRun.Name, db.Name) {
 				t := pipelineRun
 				yaml := encodeToYaml(&t)
-				localPart := localDir + "-" + "pipeline-" + t.Name
+				localPart := localDir + "-" + t.Name + "-pipelinerun.yaml"
 				target := directory + "/" + localPart
 				err := os.WriteFile(target, []byte(yaml), 0644) //#nosec G306)
 				if err != nil {
@@ -656,11 +657,13 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 			}
 		}
 		for _, taskRun := range taskRunList.Items {
+			println(fmt.Sprintf("taskrun %s for DB %s", taskRun.Name, db.Name))
 			if strings.HasPrefix(taskRun.Name, db.Name) {
 				t := taskRun
 				yaml := encodeToYaml(&t)
-				localPart := localDir + "-" + "taskrun-" + t.Name
+				localPart := localDir + "-" + t.Name + "-taskrun.yaml"
 				target := directory + "/" + localPart
+				println(fmt.Sprintf("writing taskrun %s to %s", taskRun.Name, target))
 				err := os.WriteFile(target, []byte(yaml), 0644) //#nosec G306)
 				if err != nil {
 					print(fmt.Sprintf("Failed to write taskrun file %s: %s", target, err))
