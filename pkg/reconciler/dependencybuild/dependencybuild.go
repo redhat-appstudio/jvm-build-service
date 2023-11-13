@@ -222,7 +222,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		//should be enough for the build lookup task
 		additionalMemory = 1024
 	}
-	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, &db.Spec, jbsConfig, additionalMemory, &systemConfig)
+	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, db, jbsConfig, additionalMemory, &systemConfig)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -959,11 +959,12 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 	return true, nil
 }
 
-func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, build *v1alpha1.DependencyBuildSpec, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
 	image, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return nil, err
 	}
+	build := db.Spec
 	path := build.ScmInfo.Path
 	zero := int64(0)
 	cacheUrl := "https://jvm-build-workspace-artifact-cache-tls." + jbsConfig.Namespace + ".svc.cluster.local"
@@ -993,13 +994,18 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		args = append(args, "--context", path)
 	}
 
-	// Search not only the configured shared registries but the main registry as well.
-	if registries == "" {
-		registries = jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())
-	} else {
-		registries += ";" + jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())
+	//don't look for existing artifacts on a rebuild
+	if db.Annotations == nil || db.Annotations[artifactbuild.RebuiltAnnotation] != "true" {
+		// Search not only the configured shared registries but the main registry as well.
+		if registries == "" {
+			registries = jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())
+		} else {
+			registries += ";" + jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())
+		}
 	}
-	args = append(args, "--registries", registries)
+	if registries != "" {
+		args = append(args, "--registries", registries)
+	}
 
 	if build.ScmInfo.Private {
 		args = append(args, "--private-repo")
