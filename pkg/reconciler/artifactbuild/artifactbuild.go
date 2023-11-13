@@ -56,6 +56,8 @@ const (
 	PipelineResultGavs                      = "GAVS"
 
 	RebuildAnnotation = "jvmbuildservice.io/rebuild"
+	//annotation that is applied after a rebuild, it will affect the dependencybuild behaviour
+	RebuiltAnnotation = "jvmbuildservice.io/rebuilt"
 )
 
 type ReconcileArtifactBuild struct {
@@ -147,6 +149,7 @@ func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context
 			return r.handleRebuild(log, ctx, &abr)
 		} else {
 			delete(abr.Annotations, RebuildAnnotation)
+			abr.Annotations[RebuiltAnnotation] = "true"
 			return reconcile.Result{}, r.client.Update(ctx, &abr)
 		}
 	} else if abr.Annotations[RebuildAnnotation] == "failed" {
@@ -278,6 +281,12 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 			if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 				return reconcile.Result{}, err
 			}
+			if abr.Annotations != nil && abr.Annotations[RebuiltAnnotation] == "true" {
+				if db.Annotations == nil {
+					db.Annotations = map[string]string{}
+				}
+				db.Annotations[RebuiltAnnotation] = "true"
+			}
 			if err := r.client.Update(ctx, db); err != nil {
 				return reconcile.Result{}, err
 			}
@@ -296,6 +305,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 	case errors.IsNotFound(err):
 		//no existing build object found, lets create one
 		db := &v1alpha1.DependencyBuild{}
+		db.Annotations = map[string]string{}
 		db.Namespace = abr.Namespace
 		//TODO: do we in fact need to put depId through GenerateName sanitation algorithm for the name? label value restrictions are more stringent than obj name
 		db.Name = depId
@@ -311,6 +321,9 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 			Private:    abr.Status.SCMInfo.Private,
 		}, Version: abr.Spec.GAV[strings.LastIndex(abr.Spec.GAV, ":")+1:]}
 
+		if abr.Annotations != nil && abr.Annotations[RebuiltAnnotation] == "true" {
+			db.Annotations[RebuiltAnnotation] = "true"
+		}
 		//move the state to building
 		if err := r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateBuilding); err != nil {
 			return reconcile.Result{}, err
