@@ -1,7 +1,10 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -17,6 +20,9 @@ public class DeployHermeticPreBuildImageCommand implements Runnable {
     String builderImage;
     @CommandLine.Option(names = "--image-name")
     String imageName;
+
+    @CommandLine.Option(names = "--image-hash", required = true)
+    Path imageHash;
     @CommandLine.Option(names = "--build-artifact-path", required = true)
     Path buildArtifactsPath;
 
@@ -45,7 +51,17 @@ public class DeployHermeticPreBuildImageCommand implements Runnable {
                 insecure,
                 prependTag, "");
         try {
-            deployer.deployHermeticPreBuildImage(builderImage, buildArtifactsPath, repositoryPath, imageSourcePath, imageName);
+            deployer.deployHermeticPreBuildImage(builderImage, buildArtifactsPath, repositoryPath, imageSourcePath, imageName,
+                    new BiConsumer<String, String>() {
+                        @Override
+                        public void accept(String name, String hash) {
+                            try {
+                                Files.writeString(imageHash, name.substring(0, name.lastIndexOf(":")) + "@sha256:" + hash);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    });
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

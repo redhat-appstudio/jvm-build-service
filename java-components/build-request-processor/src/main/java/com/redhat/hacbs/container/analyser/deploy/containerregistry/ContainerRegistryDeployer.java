@@ -129,7 +129,8 @@ public class ContainerRegistryDeployer {
         containerBuilder.containerize(containerizer);
     }
 
-    public void deployPreBuildImage(String baseImage, Path sourcePath, String imageSourcePath, String tag)
+    public void deployPreBuildImage(String baseImage, Path sourcePath, String imageSourcePath, String tag,
+            BiConsumer<String, String> imageNameHashCallback)
             throws Exception {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
         String imageName = createImageName(tag);
@@ -167,12 +168,17 @@ public class ContainerRegistryDeployer {
 
             containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
             Log.debugf("Image %s created", imageName);
-            containerBuilder.containerize(containerizer);
+            var result = containerBuilder.containerize(containerizer);
+
+            if (imageNameHashCallback != null) {
+                imageNameHashCallback.accept(imageName, result.getDigest().getHash());
+            }
         }
     }
 
     public void deployHermeticPreBuildImage(String baseImage, Path buildArtifactsPath, Path repositoryPath,
-            String imageSourcePath, String tag) throws Exception {
+            String imageSourcePath, String tag,
+            BiConsumer<String, String> imageNameHashCallback) throws Exception {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
         String imageName = createImageName(tag);
         RegistryImage registryImage = RegistryImage.named(imageName);
@@ -207,7 +213,11 @@ public class ContainerRegistryDeployer {
         });
         containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
         Log.debugf("Image %s created", imageName);
-        containerBuilder.containerize(containerizer);
+        var result = containerBuilder.containerize(containerizer);
+
+        if (imageNameHashCallback != null) {
+            imageNameHashCallback.accept(imageName, result.getDigest().getHash());
+        }
     }
 
     private void createImages(DeployData imageData, Path sourcePath, Path logsPath,
