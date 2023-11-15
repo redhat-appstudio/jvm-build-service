@@ -31,4 +31,9 @@ public interface CacheBuildInfoLocator {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("build-tool-info")
     public List<BuildToolInfo> lookupBuildToolInfo(@QueryParam("name") String name);
+
+    //@GET
+    //@Produces(MediaType.APPLICATION_JSON)
+    //@Path("plugin-info")
+    //List<String> lookupPluginInfo(@QueryParam("name") String name);
 }

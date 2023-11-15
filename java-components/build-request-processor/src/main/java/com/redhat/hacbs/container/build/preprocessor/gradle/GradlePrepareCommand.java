@@ -59,6 +59,11 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
             var init = initDir.resolve(initScript);
             try (var in = getClass().getClassLoader().getResourceAsStream("gradle/" + initScript)) {
                 Files.copy(in, init);
+
+                if ("disable-plugins.gradle".equals(init.getFileName().toString())) {
+                    Files.writeString(init, Files.readString(init).replace("@DISABLED_PLUGINS@", disabledPlugins));
+                }
+
                 Log.infof("Wrote init script to %s", init.toAbsolutePath());
             }
         }

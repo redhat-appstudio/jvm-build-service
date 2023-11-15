@@ -23,6 +23,7 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     public static final String BUILD_INFO = "build-info";
     public static final String BUILD_TOOL_INFO = "build-tool-info";
     public static final String REPOSITORY_INFO = "repository-info";
+    public static final String PLUGIN_INFO = "plugin-info";
     private final Git git;
     private final String remote;
     private final Path local;
@@ -119,6 +120,12 @@ public class RecipeRepositoryManager implements RecipeDirectory {
     public Optional<Path> getBuildToolInfo(String name) {
         doUpdate();
         return recipeLayoutManager.getBuildToolInfo(name);
+    }
+
+    @Override
+    public Optional<Path> getDisabledPluginInfo(String name) {
+        doUpdate();
+        return recipeLayoutManager.getDisabledPluginInfo(name);
     }
 
     @Override

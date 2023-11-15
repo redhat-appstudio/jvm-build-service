@@ -97,4 +97,17 @@ public class V2RecipeLookupResource {
             return Response.status(500).entity(e.getMessage()).build();
         }
     }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("plugin-info")
+    public Response lookupDisabledPluginInfo(@QueryParam("name") String name)
+            throws IOException {
+        try {
+            return Response.ok(recipeManager.getDisabledPluginInfo(name)).build();
+        } catch (Exception e) {
+            Log.errorf(e, "Failed to lookup disabled plugin info for %s", name);
+            return Response.status(500).entity(e.getMessage()).build();
+        }
+    }
 }

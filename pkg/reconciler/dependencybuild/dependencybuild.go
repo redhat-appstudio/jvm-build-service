@@ -367,7 +367,7 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 					}
 				}
 				if imageOk {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command.Commands, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: command.ToolVersion[command.Tool], ToolVersions: command.ToolVersion, JavaVersion: command.ToolVersion["jdk"], Tool: command.Tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories, AllowedDifferences: unmarshalled.AllowedDifferences})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command.Commands, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: command.ToolVersion[command.Tool], ToolVersions: command.ToolVersion, JavaVersion: command.ToolVersion["jdk"], Tool: command.Tool, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories, AllowedDifferences: unmarshalled.AllowedDifferences, DisabledPlugins: unmarshalled.DisabledPlugins})
 					break
 				}
 			}
@@ -412,6 +412,7 @@ type marshalledBuildInfo struct {
 	Image               string
 	Digest              string
 	Gavs                []string
+	DisabledPlugins     string
 }
 
 type invocation struct {

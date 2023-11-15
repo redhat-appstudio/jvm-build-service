@@ -42,12 +42,14 @@ public class RecipeLayoutManager implements RecipeDirectory {
     private final Path buildInfoDirectory;
     private final Path repositoryInfoDirectory;
     private final Path buildToolInfoDirectory;
+    private final Path pluginInfoDirectory;
 
     public RecipeLayoutManager(Path baseDirectory) {
         this.scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
         this.buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
         this.repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
         this.buildToolInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_TOOL_INFO);
+        this.pluginInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.PLUGIN_INFO);
     }
 
     /**
@@ -113,6 +115,15 @@ public class RecipeLayoutManager implements RecipeDirectory {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public Optional<Path> getDisabledPluginInfo(String name) {
+        Path target = pluginInfoDirectory.resolve(name + ".yaml");
+        if (Files.exists(target)) {
+            return Optional.of(target);
+        }
+        return Optional.empty();
     }
 
     private Optional<Path> resolveVersion(Path target, String version) {

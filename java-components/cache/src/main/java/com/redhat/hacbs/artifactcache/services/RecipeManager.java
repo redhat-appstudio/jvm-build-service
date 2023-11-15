@@ -139,4 +139,17 @@ public class RecipeManager {
         }
         return BuildRecipe.BUILD.getHandler().parse(path);
     }
+
+    public List<String> getDisabledPluginInfo(String name) {
+        List<String> results = new ArrayList<>();
+
+        for (var i : recipeDirs) {
+            var path = i.getDisabledPluginInfo(name);
+
+            if (path.isPresent()) {
+                // TODO
+            }
+        }
+        return results;
+    }
 }

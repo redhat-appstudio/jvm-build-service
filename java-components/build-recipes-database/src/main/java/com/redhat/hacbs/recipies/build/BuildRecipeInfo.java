@@ -37,6 +37,8 @@ public class BuildRecipeInfo {
 
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
 
+    List<String> disabledPlugins = new ArrayList<>();
+
     boolean runTests;
 
     /**
@@ -174,6 +176,15 @@ public class BuildRecipeInfo {
         return this;
     }
 
+    public List<String> getDisabledPlugins() {
+        return disabledPlugins;
+    }
+
+    public BuildRecipeInfo setDisabledPlugins(List<String> disabledPlugins) {
+        this.disabledPlugins = disabledPlugins;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildRecipeInfo{" +
@@ -190,6 +201,7 @@ public class BuildRecipeInfo {
                 ", additionalDownloads=" + additionalDownloads +
                 ", additionalBuilds=" + additionalBuilds +
                 ", allowedDifferences=" + allowedDifferences +
+                ", disabledPlugins=" + disabledPlugins +
                 '}';
     }
 }

@@ -142,6 +142,7 @@ type BuildRecipe struct {
 	AdditionalMemory    int                  `json:"additionalMemory,omitempty"`
 	Repositories        []string             `json:"repositories,omitempty"`
 	AllowedDifferences  []string             `json:"allowedDifferences,omitempty"`
+	DisabledPlugins     string               `json:"disabledPlugins,omitempty"`
 }
 type Contaminant struct {
 	GAV                   string   `json:"gav,omitempty"`

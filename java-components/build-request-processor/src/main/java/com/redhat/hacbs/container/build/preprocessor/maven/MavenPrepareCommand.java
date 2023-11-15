@@ -1,5 +1,8 @@
 package com.redhat.hacbs.container.build.preprocessor.maven;
 
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.redhat.hacbs.recipies.location.RecipeRepositoryManager.PLUGIN_INFO;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -7,9 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
@@ -17,7 +20,11 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
+import com.redhat.hacbs.recipies.BuildRecipe;
+import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
@@ -30,12 +37,7 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "maven-prepare")
 public class MavenPrepareCommand extends AbstractPreprocessor {
 
-    static final Set<PluginInfo> TO_REMOVE = Set.of(
-            new PluginInfo("org.glassfish.copyright", "glassfish-copyright-maven-plugin"),
-            new PluginInfo("org.sonatype.plugins", "nexus-staging-maven-plugin"),
-            new PluginInfo("com.mycila", "license-maven-plugin"),
-            new PluginInfo("org.codehaus.mojo", "findbugs-maven-plugin"), //older version of this will break the build on our version of maven
-            new PluginInfo("de.jjohannes", "gradle-module-metadata-maven-plugin"));
+    static final ObjectMapper MAPPER = new YAMLMapper().configure(FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
     public void run() {
@@ -43,7 +45,7 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
             Files.walkFileTree(buildRoot, new SimpleFileVisitor<>() {
 
                 @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     String fileName = file.getFileName().toString();
                     if (fileName.equals("pom.xml")) {
                         try {
@@ -62,7 +64,7 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
 
     }
 
-    private void handleBuild(Path file, boolean topLevel) throws IOException {
+    private void handleBuild(Path file, boolean topLevel) {
         try (BufferedReader pomReader = Files.newBufferedReader(file)) {
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(pomReader);
@@ -87,12 +89,26 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
         }
     }
 
-    private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel) {
+    private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel) throws IOException {
         boolean modified = false;
+        BuildRecipeInfo info = BuildRecipe.BUILD.getHandler().parse(Path.of(PLUGIN_INFO + "/maven.yaml"));
+        List<String> disabledPlugins = info.getDisabledPlugins();
+        List<PluginInfo> toRemove = new ArrayList<>();
+
+        for (String s : disabledPlugins) {
+            String[] ga = s.split(":");
+
+            if (ga.length != 2) {
+                throw new IOException("Error parsing groupId/artifactId in " + s);
+            }
+
+            toRemove.add(new PluginInfo(ga[0], ga[1]));
+        }
+
         for (Iterator<Plugin> iterator = plugins.iterator(); iterator.hasNext();) {
             Plugin i = iterator.next();
             PluginInfo p = new PluginInfo(i.getGroupId(), i.getArtifactId());
-            if (TO_REMOVE.contains(p)) {
+            if (toRemove.contains(p)) {
                 iterator.remove();
                 modified = true;
             } else if (i.getArtifactId().equals("maven-deploy-plugin")) {

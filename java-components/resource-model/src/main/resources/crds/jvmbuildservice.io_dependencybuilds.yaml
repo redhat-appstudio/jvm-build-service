@@ -152,6 +152,8 @@ spec:
                           type: array
                         disableSubmodules:
                           type: boolean
+                        disabledPlugins:
+                          type: string
                         enforceVersion:
                           type: string
                         image:
@@ -302,6 +304,8 @@ spec:
                     type: array
                   disableSubmodules:
                     type: boolean
+                  disabledPlugins:
+                    type: string
                   enforceVersion:
                     type: string
                   image:
@@ -384,6 +388,8 @@ spec:
                       type: array
                     disableSubmodules:
                       type: boolean
+                    disabledPlugins:
+                      type: string
                     enforceVersion:
                       type: string
                     image:
@@ -457,6 +463,8 @@ spec:
                       type: array
                     disableSubmodules:
                       type: boolean
+                    disabledPlugins:
+                      type: string
                     enforceVersion:
                       type: string
                     image:

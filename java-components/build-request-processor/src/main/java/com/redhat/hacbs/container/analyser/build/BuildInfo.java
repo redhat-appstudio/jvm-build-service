@@ -38,6 +38,8 @@ public class BuildInfo {
 
     List<String> gavs = new ArrayList<>();
 
+    List<String> disabledPlugins = new ArrayList<>();
+
     String digest;
 
     String image;
@@ -159,6 +161,15 @@ public class BuildInfo {
         return this;
     }
 
+    public List<String> getDisabledPlugins() {
+        return disabledPlugins;
+    }
+
+    public BuildInfo setDisabledPlugins(List<String> disabledPlugins) {
+        this.disabledPlugins = disabledPlugins;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "BuildInfo{" +
@@ -173,6 +184,7 @@ public class BuildInfo {
                 ", additionalMemory=" + additionalMemory +
                 ", allowedDifferences=" + allowedDifferences +
                 ", image=" + image +
+                ", disabledPlugins=" + disabledPlugins +
                 ", digest=" + digest +
                 ", gavs=" + gavs +
                 '}';
