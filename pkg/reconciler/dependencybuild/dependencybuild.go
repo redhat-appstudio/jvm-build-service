@@ -412,7 +412,7 @@ type marshalledBuildInfo struct {
 	Image               string
 	Digest              string
 	Gavs                []string
-	DisabledPlugins     string
+	DisabledPlugins     []string
 }
 
 type invocation struct {

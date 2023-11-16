@@ -61,7 +61,8 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
                 Files.copy(in, init);
 
                 if ("disable-plugins.gradle".equals(init.getFileName().toString())) {
-                    Files.writeString(init, Files.readString(init).replace("@DISABLED_PLUGINS@", disabledPlugins));
+                    Files.writeString(init,
+                            Files.readString(init).replace("@DISABLED_PLUGINS@", String.join(",", disabledPlugins)));
                 }
 
                 Log.infof("Wrote init script to %s", init.toAbsolutePath());

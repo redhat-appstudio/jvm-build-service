@@ -1,6 +1,7 @@
 package com.redhat.hacbs.container.build.preprocessor;
 
 import java.nio.file.Path;
+import java.util.List;
 
 import picocli.CommandLine;
 
@@ -16,7 +17,7 @@ public abstract class AbstractPreprocessor implements Runnable {
     protected Path buildRoot;
 
     @CommandLine.Option(names = "-dp", required = false, description = "The comma-separated list of plugins to disable", defaultValue = "")
-    protected String disabledPlugins;
+    protected List<String> disabledPlugins;
 
     @CommandLine.Option(names = "-r", required = false, description = "The repository URL")
     protected String repositoryUrl;

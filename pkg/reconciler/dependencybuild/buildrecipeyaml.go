@@ -72,8 +72,10 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		"$(params.CACHE_URL)",
 		"$(workspaces." + WorkspaceSource + ".path)/workspace",
 	}
-	if recipe.DisabledPlugins != "" {
-		preprocessorArgs = append(preprocessorArgs, "-dp "+recipe.DisabledPlugins)
+	if len(recipe.DisabledPlugins) > 0 {
+		for _, i := range recipe.DisabledPlugins {
+			preprocessorArgs = append(preprocessorArgs, "-dp "+i)
+		}
 	}
 
 	toolEnv := []v1.EnvVar{}
@@ -107,8 +109,10 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			"$(params.CACHE_URL)",
 			"$(workspaces." + WorkspaceSource + ".path)/workspace",
 		}
-		if recipe.DisabledPlugins != "" {
-			preprocessorArgs = append(preprocessorArgs, "-dp "+recipe.DisabledPlugins)
+		if len(recipe.DisabledPlugins) > 0 {
+			for _, i := range recipe.DisabledPlugins {
+				preprocessorArgs = append(preprocessorArgs, "-dp "+i)
+			}
 		}
 	} else if tool == "sbt" {
 		buildToolSection = sbtBuild
