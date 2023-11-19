@@ -55,7 +55,7 @@
         <quarkus-jgit.version>3.0.5</quarkus-jgit.version>
         <gradle-tooling-api.version>8.4</gradle-tooling-api.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
-        <github-api.version>1.316</github-api.version>
+        <github-api.version>1.317</github-api.version>
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
         <cyclonedx-core-java.version>8.0.3</cyclonedx-core-java.version>
         <asm.version>9.6</asm.version>
