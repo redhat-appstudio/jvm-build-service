@@ -59,6 +59,7 @@ public class DeployCommand implements Runnable {
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";
     private static final Set<String> ALLOWED_CONTAMINANTS = Set.of("-tests.jar");
+    public static final String IMAGE_DIGEST_OUTPUT = "Image Digest: ";
     final BeanManager beanManager;
     final ResultsUpdater resultsUpdater;
 
@@ -133,6 +134,8 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--git-identity")
     String gitIdentity;
 
+    @CommandLine.Option(names = "--build-id")
+    String buildId;
     // Testing only ; used to disable image deployment
     protected boolean imageDeployment = true;
 
@@ -214,7 +217,7 @@ public class DeployCommand implements Runnable {
                                             + gav.getVersion(),
                                     "rebuilt",
                                     Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
-                                            Boolean.toString(hermetic))),
+                                            Boolean.toString(hermetic), "build-id", buildId)),
                             Files.newOutputStream(temp), false);
                     Files.delete(file);
                     Files.move(temp, file);
@@ -305,6 +308,9 @@ public class DeployCommand implements Runnable {
             } else {
                 Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
             }
+            if (imageDigest != null) {
+                System.out.println(IMAGE_DIGEST_OUTPUT + "sha256:" + imageDigest);
+            }
             if (taskRun != null) {
 
                 List<Contaminates> newContaminates = new ArrayList<>();
@@ -383,15 +389,15 @@ public class DeployCommand implements Runnable {
     protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
         if (imageDeployment) {
             ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
-                    insecure, prependTag,
-                    imageId);
-            deployer.deployArchive(deploymentPath, sourcePath, logsPath, gavs, new BiConsumer<String, String>() {
-                @Override
-                public void accept(String s, String hash) {
-                    imageName = s;
-                    imageDigest = hash;
-                }
-            });
+                    insecure, prependTag);
+            deployer.deployArchive(deploymentPath, sourcePath, logsPath, gavs, imageId, buildId,
+                    new BiConsumer<String, String>() {
+                        @Override
+                        public void accept(String s, String hash) {
+                            imageName = s;
+                            imageDigest = hash;
+                        }
+                    });
         }
         if (isNotEmpty(mvnRepo)) {
             // Maven Repo Deployment

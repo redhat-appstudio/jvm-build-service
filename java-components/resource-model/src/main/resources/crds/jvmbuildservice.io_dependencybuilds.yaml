@@ -119,6 +119,8 @@ spec:
                       - complete
                       - pipelineName
                       type: object
+                    buildId:
+                      type: string
                     buildRecipe:
                       properties:
                         additionalDownloads:
