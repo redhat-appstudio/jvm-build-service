@@ -32,6 +32,11 @@ public class InvocationBuilderTestCase {
         public List<BuildToolInfo> lookupBuildToolInfo(String name) {
             return List.of();
         }
+
+        @Override
+        public List<String> lookupPluginInfo(String name) {
+            return List.of();
+        }
     };
 
     @Test
