@@ -1,9 +1,12 @@
 package com.redhat.hacbs.container.build.preprocessor.maven;
 
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,9 +21,11 @@ import org.apache.maven.model.Plugin;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.redhat.hacbs.container.analyser.build.CacheBuildInfoLocator;
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
 import io.quarkus.logging.Log;
@@ -86,9 +91,14 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
         }
     }
 
-    private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel) throws IOException {
+    private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel)
+            throws IOException, URISyntaxException {
         boolean modified = false;
         List<PluginInfo> toRemove = new ArrayList<>();
+        var buildInfoLocator = RestClientBuilder.newBuilder().baseUri(new URI(repositoryUrl))
+                .build(CacheBuildInfoLocator.class);
+        var defaultPlugins = buildInfoLocator.lookupPluginInfo(MAVEN);
+        disabledPlugins.addAll(defaultPlugins);
 
         for (String s : disabledPlugins) {
             String[] ga = s.split(":");

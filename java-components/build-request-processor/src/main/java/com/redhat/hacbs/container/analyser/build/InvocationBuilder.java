@@ -132,6 +132,7 @@ public class InvocationBuilder {
             info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
             info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
             info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
+            info.setDisabledPlugins(buildRecipeInfo.getDisabledPlugins());
         }
         //now we need to figure out what possible build recipes we can try
         //we work through from lowest Java version to highest

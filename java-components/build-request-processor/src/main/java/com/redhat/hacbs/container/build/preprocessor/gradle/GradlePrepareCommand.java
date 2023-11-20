@@ -1,12 +1,19 @@
 package com.redhat.hacbs.container.build.preprocessor.gradle;
 
+import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
+
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
+
+import com.redhat.hacbs.container.analyser.build.CacheBuildInfoLocator;
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
 import io.quarkus.logging.Log;
@@ -46,13 +53,13 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
                 }
 
             });
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
 
     }
 
-    private void setupInitScripts() throws IOException {
+    private void setupInitScripts() throws IOException, URISyntaxException {
         var initDir = buildRoot.resolve(".hacbs-init");
         Files.createDirectories(initDir);
         for (var initScript : INIT_SCRIPTS) {
@@ -61,6 +68,10 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
                 Files.copy(in, init);
 
                 if ("disable-plugins.gradle".equals(init.getFileName().toString())) {
+                    var buildInfoLocator = RestClientBuilder.newBuilder().baseUri(new URI(repositoryUrl))
+                            .build(CacheBuildInfoLocator.class);
+                    var defaultPlugins = buildInfoLocator.lookupPluginInfo(GRADLE);
+                    disabledPlugins.addAll(defaultPlugins);
                     Files.writeString(init,
                             Files.readString(init).replace("@DISABLED_PLUGINS@", String.join(",", disabledPlugins)));
                 }
