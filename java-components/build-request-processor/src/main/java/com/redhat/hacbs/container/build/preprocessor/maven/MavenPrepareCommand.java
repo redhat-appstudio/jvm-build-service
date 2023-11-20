@@ -1,7 +1,6 @@
 package com.redhat.hacbs.container.build.preprocessor.maven;
 
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
-import static com.redhat.hacbs.recipies.location.RecipeRepositoryManager.PLUGIN_INFO;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -23,8 +22,6 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
@@ -91,8 +88,6 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
 
     private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel) throws IOException {
         boolean modified = false;
-        BuildRecipeInfo info = BuildRecipe.BUILD.getHandler().parse(Path.of(PLUGIN_INFO + "/maven.yaml"));
-        List<String> disabledPlugins = info.getDisabledPlugins();
         List<PluginInfo> toRemove = new ArrayList<>();
 
         for (String s : disabledPlugins) {
