@@ -35,7 +35,15 @@ public class InvocationBuilderTestCase {
 
         @Override
         public List<String> lookupPluginInfo(String name) {
-            return List.of();
+            return switch (name) {
+                case MAVEN -> List.of("org.glassfish.copyright:glassfish-copyright-maven-plugin",
+                        "org.sonatype.plugins:nexus-staging-maven-plugin",
+                        "com.mycila:license-maven-plugin",
+                        "org.codehaus.mojo:findbugs-maven-plugin", // older version of this will break the build on our version of maven
+                        "de.jjohannes:gradle-module-metadata-maven-plugin");
+                case GRADLE -> List.of("kotlin.gradle.targets.js", "org.jetbrains.dokka");
+                default -> List.of();
+            };
         }
     };
 
