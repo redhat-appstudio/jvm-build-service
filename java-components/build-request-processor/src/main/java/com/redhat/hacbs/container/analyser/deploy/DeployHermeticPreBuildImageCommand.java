@@ -49,7 +49,7 @@ public class DeployHermeticPreBuildImageCommand implements Runnable {
     public void run() {
         ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                 insecure,
-                prependTag, "");
+                prependTag);
         try {
             deployer.deployHermeticPreBuildImage(builderImage, buildArtifactsPath, repositoryPath, imageSourcePath, imageName,
                     new BiConsumer<String, String>() {

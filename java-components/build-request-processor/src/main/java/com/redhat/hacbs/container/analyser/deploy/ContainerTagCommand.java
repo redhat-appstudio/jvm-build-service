@@ -27,8 +27,8 @@ public class ContainerTagCommand implements Runnable {
     @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
     String prependTag;
 
-    @CommandLine.Option(names = "--image-id", required = true)
-    String imageId;
+    @CommandLine.Option(names = "--image-digest", required = true)
+    String imageDigest;
 
     @CommandLine.Parameters(split = ",")
     List<String> gavs;
@@ -41,9 +41,9 @@ public class ContainerTagCommand implements Runnable {
 
         ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                 insecure,
-                prependTag, imageId);
+                prependTag);
         try {
-            deployer.tagArchive(gavs);
+            deployer.tagArchive(imageDigest, gavs);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

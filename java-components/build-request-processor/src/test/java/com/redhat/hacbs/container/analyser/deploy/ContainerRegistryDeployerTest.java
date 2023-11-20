@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -81,6 +83,7 @@ public class ContainerRegistryDeployerTest {
                 "--image-id=test-image",
                 "--registry-host=" + container.getHost(),
                 "--registry-port=" + port,
+                "--build-id=test-id",
                 "--registry-owner=" + OWNER,
                 "--registry-repository=" + REPOSITORY,
                 "--source-path=" + source.toAbsolutePath().toString(),
@@ -92,18 +95,24 @@ public class ContainerRegistryDeployerTest {
         Assertions.assertEquals(0, result.exitCode());
         // Now we validate that the image and tags exist in the registry
         ContainerRegistryDetails containerRegistryDetails = getContainerRegistryDetails();
-
         Assertions.assertTrue(containerRegistryDetails.repoName.startsWith(OWNER + "/" + REPOSITORY));
         Assertions.assertTrue(containerRegistryDetails.tags.contains("test-image"));
+        Assertions.assertTrue(containerRegistryDetails.tags.contains("test-id"));
         Assertions.assertFalse(containerRegistryDetails.tags.contains(EXPECTED_TAG_1));
         Assertions.assertFalse(containerRegistryDetails.tags.contains(EXPECTED_TAG_2));
+        System.out.println(result.getOutput());
+        Pattern p = Pattern.compile(DeployCommand.IMAGE_DIGEST_OUTPUT + "(.*)");
+        Matcher matcher = p.matcher(result.getOutput());
+        Assertions.assertTrue(matcher.find());
+        String digest = matcher.group(1);
+
         result = launcher.launch("tag-container",
                 "--registry-host=" + container.getHost(),
                 "--registry-port=" + port,
                 "--registry-owner=" + OWNER,
                 "--registry-repository=" + REPOSITORY,
                 "--registry-insecure",
-                "--image-id=test-image",
+                "--image-digest=" + digest,
                 GROUP + ":" + FOO_BAR + ":" + VERSION + "," + GROUP + ":" + FOO_BAZ + ":" + VERSION);
         containerRegistryDetails = getContainerRegistryDetails();
         Assertions.assertTrue(containerRegistryDetails.tags.contains(EXPECTED_TAG_1));
@@ -184,6 +193,7 @@ public class ContainerRegistryDeployerTest {
 
     class ContainerRegistryDetails {
         String repoName;
+        String digest;
         List<String> tags;
     }
 }
