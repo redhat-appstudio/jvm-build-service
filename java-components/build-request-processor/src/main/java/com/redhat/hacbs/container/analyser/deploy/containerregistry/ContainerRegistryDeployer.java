@@ -12,7 +12,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -56,8 +55,6 @@ public class ContainerRegistryDeployer {
 
     private final Credential credential;
 
-    final String imageId;
-
     public ContainerRegistryDeployer(
             String host,
             int port,
@@ -65,7 +62,7 @@ public class ContainerRegistryDeployer {
             String token,
             String repository,
             boolean insecure,
-            String prependTag, String imageId) {
+            String prependTag) {
         if (insecure) {
             System.setProperty("sendCredentialsOverHttp", "true");
         }
@@ -76,7 +73,6 @@ public class ContainerRegistryDeployer {
         this.repository = repository;
         this.insecure = insecure;
         this.prependTag = prependTag;
-        this.imageId = imageId;
         String fullName = host + (port == 443 ? "" : ":" + port) + "/" + owner + "/" + repository;
         this.credential = ContainerUtil.processToken(fullName, token);
 
@@ -86,7 +82,7 @@ public class ContainerRegistryDeployer {
         Log.infof("Prepend tag is %s", prependTag);
     }
 
-    public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs,
+    public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs, String imageId, String buildId,
             BiConsumer<String, String> imageNameHashCallback) throws Exception {
         Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
 
@@ -94,10 +90,10 @@ public class ContainerRegistryDeployer {
         DeployData imageData = new DeployData(deployDir, gavs);
 
         // Create the image layers
-        createImages(imageData, sourcePath, logsPath, imageNameHashCallback);
+        createImages(imageData, sourcePath, logsPath, imageId, buildId, imageNameHashCallback);
     }
 
-    public void tagArchive(List<String> gavNames) throws Exception {
+    public void tagArchive(String imageDigest, List<String> gavNames) throws Exception {
         if (gavNames.isEmpty()) {
             throw new RuntimeException("Empty GAV list");
         }
@@ -107,7 +103,7 @@ public class ContainerRegistryDeployer {
             gavs.push(Gav.parse(i));
         }
         Gav first = gavs.pop();
-        String existingImage = createImageName(imageId);
+        String existingImage = createImageNameFromDigest(imageDigest);
         RegistryImage existingRegistryImage = RegistryImage.named(existingImage);
         RegistryImage registryImage = RegistryImage.named(createImageName(first.getTag()));
         if (credential != null) {
@@ -221,17 +217,18 @@ public class ContainerRegistryDeployer {
     }
 
     private void createImages(DeployData imageData, Path sourcePath, Path logsPath,
-            BiConsumer<String, String> imageNameHashCallback)
+            String imageId, String buildId, BiConsumer<String, String> imageNameHashCallback)
             throws InvalidImageReferenceException, InterruptedException, RegistryException, IOException,
             CacheDirectoryCreationException, ExecutionException {
 
-        String imageName = createImageName();
+        String imageName = createImageName(buildId);
         RegistryImage registryImage = RegistryImage.named(imageName);
         if (credential != null) {
             registryImage = registryImage.addCredentialRetriever(() -> Optional.of(credential));
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
+                .withAdditionalTag(imageId)
                 .setAllowInsecureRegistries(insecure);
         Log.infof("Deploying base image %s", imageName);
 
@@ -260,11 +257,6 @@ public class ContainerRegistryDeployer {
         }
     }
 
-    private String createImageName() {
-        String tag = imageId == null ? UUID.randomUUID().toString() : imageId;
-        return createImageName(tag);
-    }
-
     private String createImageName(String tag) {
         // As the tests utilise prependTag for uniqueness so check for that
         // here to avoid reusing images when we want differentiation.
@@ -282,6 +274,15 @@ public class ContainerRegistryDeployer {
         }
         return host + ":" + port + "/" + owner + "/" + repository
                 + ":" + tag;
+    }
+
+    private String createImageNameFromDigest(String digest) {
+        if (port == 443) {
+            return host + "/" + owner + "/" + repository
+                    + "@" + digest;
+        }
+        return host + ":" + port + "/" + owner + "/" + repository
+                + "@" + digest;
     }
 
     private List<Path> getLayers(Path artifacts, Path source, Path logs) {

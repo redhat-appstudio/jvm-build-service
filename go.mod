@@ -25,6 +25,7 @@ require (
 	github.com/CycloneDX/cyclonedx-go v0.7.1
 	github.com/aws/aws-sdk-go v1.46.2
 	github.com/google/go-containerregistry v0.15.2
+	github.com/google/uuid v1.3.0
 	github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
 	github.com/tektoncd/cli v0.31.1
 	go.uber.org/zap v1.24.0
@@ -70,7 +71,6 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2 // indirect
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b // indirect

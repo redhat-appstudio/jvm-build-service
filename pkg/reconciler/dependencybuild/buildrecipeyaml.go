@@ -22,6 +22,7 @@ const (
 	MavenArtifactsPath          = "/maven-artifacts"
 	PreBuildImageDigest         = "PRE_BUILD_IMAGE_DIGEST"
 	HermeticPreBuildImageDigest = "HERMETIC_PRE_BUILD_IMAGE_DIGEST"
+	DeployedImageDigest         = "DEPLOYED_IMAGE_DIGEST"
 )
 
 //go:embed scripts/maven-build.sh
@@ -53,7 +54,7 @@ var buildEntryScript string
 //go:embed scripts/hermetic-entry.sh
 var hermeticBuildEntryScript string
 
-func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string) (*pipelinev1beta1.PipelineSpec, string, error) {
+func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []pipelinev1beta1.Param, buildRequestProcessorImage string, buildId string) (*pipelinev1beta1.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
 	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
@@ -62,7 +63,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha12.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 
-	preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired)
+	preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired, buildId)
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
 
@@ -347,7 +348,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	tagTask := pipelinev1beta1.TaskSpec{
 		Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
-		Params:     []pipelinev1beta1.ParamSpec{{Name: "GAVS", Type: pipelinev1beta1.ParamTypeString}},
+		Params:     []pipelinev1beta1.ParamSpec{{Name: "GAVS", Type: pipelinev1beta1.ParamTypeString}, {Name: DeployedImageDigest, Type: pipelinev1beta1.ParamTypeString}},
 		Steps: []pipelinev1beta1.Step{
 			{
 				Name:            "tag",
@@ -366,8 +367,10 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 
 	tagDepends := artifactbuild.BuildTaskName
+	tagDigest := "$(tasks." + artifactbuild.BuildTaskName + ".results." + PipelineResultImageDigest + ")"
 	if hermeticBuildRequired {
 		tagDepends = artifactbuild.HermeticBuildTaskName
+		tagDigest = "$(tasks." + artifactbuild.HermeticBuildTaskName + ".results." + PipelineResultImageDigest + ")"
 	}
 	hermeticBuildPipelineTask := pipelinev1beta1.PipelineTask{
 		Name:     artifactbuild.HermeticBuildTaskName,
@@ -389,7 +392,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		TaskSpec: &pipelinev1beta1.EmbeddedTask{
 			TaskSpec: tagTask,
 		},
-		Params: []pipelinev1beta1.Param{}, Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
+		Params: []pipelinev1beta1.Param{{Name: DeployedImageDigest, Value: pipelinev1beta1.ParamValue{Type: pipelinev1beta1.ParamTypeString, StringVal: tagDigest}}},
+		Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{
 			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 			{Name: WorkspaceSource, Workspace: WorkspaceSource},
 			{Name: WorkspaceTls, Workspace: WorkspaceTls},
@@ -602,7 +606,7 @@ func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig, hermeticBuild bool) ([]string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig, hermeticBuild bool, buildId string) ([]string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -623,6 +627,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 		"--build-info-path=$(workspaces.source.path)/build-info",
 		"--source-path=$(workspaces.source.path)/source",
 		"--task-run-name=$(context.taskRun.name)",
+		"--build-id=" + buildId,
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
@@ -630,16 +635,9 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
 	deployArgs = append(deployArgs, "--image-id="+imageId)
 
-	var imageIdToTag string
-	if hermeticBuild {
-		imageIdToTag = hermeticImageId
-	} else {
-		imageIdToTag = imageId
-	}
-
 	tagArgs := []string{
 		"tag-container",
-		"--image-id=" + imageIdToTag, //TODO: hash
+		"--image-digest=$(params." + DeployedImageDigest + ")",
 	}
 	imageRegistry := jbsConfig.ImageRegistry()
 	registryArgs := make([]string, 0)

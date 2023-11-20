@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"github.com/tektoncd/cli/pkg/cli"
 	"k8s.io/client-go/kubernetes"
@@ -469,6 +470,7 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 		return reconcile.Result{}, r.client.Status().Update(ctx, db)
 	}
 	ba := v1alpha1.BuildAttempt{}
+	ba.BuildId = uuid.New().String()
 	ba.Recipe = db.Status.PotentialBuildRecipes[0]
 	pipelineName := currentDependencyBuildPipelineName(db)
 	ba.Build = &v1alpha1.BuildPipelineRun{
@@ -546,7 +548,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 	diagnostic := ""
 	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
-	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage)
+	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

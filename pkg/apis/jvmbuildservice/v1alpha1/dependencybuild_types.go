@@ -80,8 +80,9 @@ type DependencyBuildList struct {
 }
 
 type BuildAttempt struct {
-	Recipe *BuildRecipe      `json:"buildRecipe,omitempty"`
-	Build  *BuildPipelineRun `json:"build,omitempty"`
+	BuildId string            `json:"buildId,omitempty"`
+	Recipe  *BuildRecipe      `json:"buildRecipe,omitempty"`
+	Build   *BuildPipelineRun `json:"build,omitempty"`
 }
 
 type BuildPipelineRun struct {
