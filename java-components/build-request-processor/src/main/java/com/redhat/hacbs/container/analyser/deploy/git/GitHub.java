@@ -49,6 +49,11 @@ public class GitHub extends Git {
         Log.infof("Type %s", type);
     }
 
+    GitHub() {
+        owner = null;
+        github = null;
+    }
+
     @Override
     public void create(String scmUri)
             throws IOException, URISyntaxException {
@@ -84,5 +89,10 @@ public class GitHub extends Git {
             throw new RuntimeException("Call create first");
         }
         pushRepository(path, repository.getHttpTransportUrl(), commit, imageId);
+    }
+
+    @Override
+    String groupSplit() {
+        return "--";
     }
 }

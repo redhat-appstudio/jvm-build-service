@@ -24,12 +24,20 @@ public class GitLab extends Git {
         gitLabApi = new GitLabApi(endpoint, token);
         owner = identity;
         credentialsProvider = new UsernamePasswordCredentialsProvider("", token);
+
+        gitLabApi.setIgnoreCertificateErrors(true);
+    }
+
+    GitLab() {
+        owner = null;
+        gitLabApi = null;
     }
 
     @Override
     public void create(String scmUri)
             throws URISyntaxException {
         String name = parseScmURI(scmUri);
+        Log.infof("Creating repository with name %s", name);
         try {
             project = gitLabApi.getProjectApi().getUserProjectsStream(owner, new ProjectFilter().withSearch(name))
                     .filter(p -> p.getName().equals(name))
@@ -61,5 +69,10 @@ public class GitLab extends Git {
             throw new RuntimeException("Call create first");
         }
         pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
+    }
+
+    @Override
+    String groupSplit() {
+        return "-";
     }
 }

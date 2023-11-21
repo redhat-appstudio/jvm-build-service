@@ -155,6 +155,7 @@ public class DeployCommand implements Runnable {
         try {
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
+                Log.infof("Git credentials are identity '%s' and URL '%s'", gitIdentity, gitURL);
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get());
                 git.create(scmUri);
                 git.add(sourcePath, commit, imageId);

@@ -61,6 +61,7 @@ public abstract class Git {
             Log.infof("Updating current origin of %s to %s", jConfig.getString("remote", "origin", "url"),
                     httpTransportUrl);
             jConfig.setString("remote", "origin", "url", httpTransportUrl);
+            jConfig.setBoolean("http", null, "sslVerify", false);
             jConfig.save();
             Log.infof("Pushing to %s with content from %s (branch %s, commit %s, tag %s)", httpTransportUrl, path,
                     jRepo.getBranch(), commit, tagName);
@@ -97,11 +98,13 @@ public abstract class Git {
      * @return a reformatted name to use as the new repository name.
      * @throws URISyntaxException if an error occurs.
      */
-    protected static String parseScmURI(String scmUri)
+    protected String parseScmURI(String scmUri)
             throws URISyntaxException {
         String path = new URI(scmUri).getPath().substring(1);
         String group = path.substring(0, path.lastIndexOf("/"));
         String name = (path.endsWith(".git") ? path.substring(0, path.length() - 4) : path).substring(group.length() + 1);
-        return group + "--" + name;
+        return group + groupSplit() + name;
     }
+
+    abstract String groupSplit();
 }

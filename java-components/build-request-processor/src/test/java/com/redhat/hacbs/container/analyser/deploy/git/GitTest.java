@@ -37,12 +37,15 @@ public class GitTest {
     @Test
     public void parseScmURI()
             throws URISyntaxException {
-        String result = Git.parseScmURI("https://github.com/apache/commons-codec.git");
+
+        String result = new GitHub().parseScmURI("https://github.com/apache/commons-codec.git");
         assertEquals("apache--commons-codec", result);
-        result = Git.parseScmURI("https://gitlab.com/rnc/testRepo");
+        result = new GitHub().parseScmURI("https://gitlab.com/rnc/testRepo");
         assertEquals("rnc--testRepo", result);
-        result = Git.parseScmURI("file:///rnc/testRepo");
+        result = new GitHub().parseScmURI("file:///rnc/testRepo");
         assertEquals("rnc--testRepo", result);
+        result = new GitLab().parseScmURI("https://gitlab.com/rnc/testRepo");
+        assertEquals("rnc-testRepo", result);
     }
 
     @Test
@@ -72,6 +75,11 @@ public class GitTest {
 
                 @Override
                 public void add(Path path, String commit, String imageId) {
+                }
+
+                @Override
+                public String groupSplit() {
+                    return null;
                 }
             };
             test.pushRepository(
