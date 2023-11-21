@@ -1,5 +1,6 @@
 package com.redhat.hacbs.resources.util;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -35,6 +36,10 @@ public final class HashUtil {
 
     public static String md5(InputStream value) {
         return hashStream(value, "MD5");
+    }
+
+    public static String md5(String value) {
+        return md5(new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8)));
     }
 
     public static String hashStream(InputStream value, String algo) {

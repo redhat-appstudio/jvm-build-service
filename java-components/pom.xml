@@ -71,6 +71,7 @@
         <module>resource-model</module>
         <module>build-request-processor</module>
         <module>cli</module>
+        <module>management-console</module>
     </modules>
 
     <dependencyManagement>

@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+
+resources:
+  - "../../base"
+
+images:
+  - name: hacbs-jvm-console
+    newName: jvm-build-service-console-image
+    newTag: dev
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Always
+    target:
+      kind: Deployment
+      name: hacbs-jvm-console
+

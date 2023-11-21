@@ -1,0 +1,24 @@
+FROM registry.access.redhat.com/ubi8/openjdk-17 AS builder
+USER 0
+WORKDIR /work
+COPY ./ .
+
+RUN mkdir -p /work/cache/target/classes
+
+RUN mvn -V -B package -pl cache -am -Dmaven.test.skip
+
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime
+USER 0
+WORKDIR /work/
+
+COPY --from=builder /work/cache/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=builder /work/cache/target/quarkus-app/*.jar /deployments/
+COPY --from=builder /work/cache/target/quarkus-app/app/ /deployments/app/
+COPY --from=builder /work/cache/target/quarkus-app/quarkus/ /deployments/quarkus/
+
+EXPOSE 8080
+USER 185
+
+ENV AB_JOLOKIA_OFF=""
+ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"

@@ -23,4 +23,7 @@ public class ResourceNameUtils {
         return newName.toString();
     }
 
+    public static String dependencyBuildName(String url, String tag, String path) {
+        return HashUtil.md5(url + tag + (path == null ? "" : path));
+    }
 }

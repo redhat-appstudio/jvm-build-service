@@ -161,6 +161,7 @@ spec:
                         javaVersion:
                           type: string
                         pipeline:
+                          description: Deprecated
                           type: string
                         postBuildScript:
                           type: string
@@ -311,6 +312,7 @@ spec:
                   javaVersion:
                     type: string
                   pipeline:
+                    description: Deprecated
                     type: string
                   postBuildScript:
                     type: string
@@ -393,6 +395,7 @@ spec:
                     javaVersion:
                       type: string
                     pipeline:
+                      description: Deprecated
                       type: string
                     postBuildScript:
                       type: string
@@ -466,6 +469,7 @@ spec:
                     javaVersion:
                       type: string
                     pipeline:
+                      description: Deprecated
                       type: string
                     postBuildScript:
                       type: string

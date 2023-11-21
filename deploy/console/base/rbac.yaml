@@ -1,0 +1,142 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hacbs-jvm-console
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups:
+      - jvmbuildservice.io
+    resources:
+      - artifactbuilds
+      - artifactbuilds/status
+      - dependencybuilds
+      - dependencybuilds/status
+      - rebuiltartifacts
+      - rebuiltartifacts/status
+      - systemconfigs
+      - systemconfigs/status
+      - jbsconfigs
+      - jbsconfigs/status
+      - jvmimagescans
+      - jvmimagescans/status
+    verbs:
+      - create
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - pipelineruns
+      - pipelineruns/status
+      - taskruns
+      - taskruns/status
+    verbs:
+      - create
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ''
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "apps"
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+  - apiGroups:
+    - "apps"
+    resources:
+      - deployments
+    verbs:
+      - delete
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - jvm-build-tls-ca
+    verbs:
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - get
+      - create
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hacbs-jvm-console
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: hacbs-jvm-console
+subjects:
+  - kind: ServiceAccount
+    name: hacbs-jvm-console
+    namespace: jvm-build-service
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hacbs-jvm-console-view
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+  - apiGroups:
+      - jvmbuildservice.io
+    resources:
+      - artifactbuilds
+      - artifactbuilds/status
+      - dependencybuilds
+      - dependencybuilds/status
+      - systemconfigs
+      - systemconfigs/status
+      - jbsconfigs
+      - jbsconfigs/status
+    verbs:
+      - get
+      - list
+      - watch

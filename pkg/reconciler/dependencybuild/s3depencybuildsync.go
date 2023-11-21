@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
@@ -23,37 +21,33 @@ import (
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
 )
 
 const (
-	S3BucketNameAnnotation = "jvmbuildservice.io/s3-bucket-name"
-	S3SyncStateAnnotation  = "jvmbuildservice.io/s3-sync-state"
-	S3Finalizer            = "jvmbuildservice.io/s3-finalizer"
-
 	S3StateSyncRequired = "required"
 	S3StateSyncDisable  = "disabled"
 	S3StateSyncComplete = "complete"
-	SecretName          = "jvm-build-s3-secrets" //#nosec
 
 	Tasks     = "tasks"
 	Pipelines = "pipelines"
 	Logs      = "logs"
 )
 
-func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (bool, error) {
+func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (*reconcile.Result, error) {
 	if !util.S3Enabled {
-		return false, nil
+		return nil, nil
 	}
 	if pr.GetDeletionTimestamp() != nil {
 		//we use finalizers to handle pipeline runs that have been cleaned
-		if controllerutil.ContainsFinalizer(pr, S3Finalizer) {
-			controllerutil.RemoveFinalizer(pr, S3Finalizer)
-			ann := pr.Annotations[S3SyncStateAnnotation]
+		if controllerutil.ContainsFinalizer(pr, util.S3Finalizer) {
+			controllerutil.RemoveFinalizer(pr, util.S3Finalizer)
+			ann := pr.Annotations[util.S3SyncStateAnnotation]
 			defer func(client client.Client, ctx context.Context, obj client.Object) {
 				//if we did not update the object then make sure we remove the finalizer
 				//we always change this annotation on update
-				if ann == pr.Annotations[S3SyncStateAnnotation] {
+				if ann == pr.Annotations[util.S3SyncStateAnnotation] {
 					_ = client.Update(ctx, obj)
 				}
 			}(r.client, ctx, pr)
@@ -64,7 +58,7 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 	}
 	dep, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
 	if err != nil || dep == nil {
-		return false, err
+		return nil, err
 	}
 	namespace := pr.Namespace
 	if !pr.IsDone() {
@@ -73,106 +67,107 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 		}
 		//add a marker to indicate if sync is required of not
 		//if it is already synced we remove this marker as its state has changed
-		if pr.Annotations[S3SyncStateAnnotation] == "" || pr.Annotations[S3SyncStateAnnotation] == S3StateSyncComplete {
+		if pr.Annotations[util.S3SyncStateAnnotation] == "" || pr.Annotations[util.S3SyncStateAnnotation] == S3StateSyncComplete {
 			jbsConfig := &v1alpha1.JBSConfig{}
 			err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 			if err != nil && !errors.IsNotFound(err) {
-				return false, err
+				return nil, err
 			} else if err != nil {
-				return false, nil
+				return nil, nil
 			}
-			if jbsConfig.Annotations != nil && jbsConfig.Annotations[S3BucketNameAnnotation] != "" {
+			if jbsConfig.Annotations != nil && jbsConfig.Annotations[util.S3BucketNameAnnotation] != "" {
 				log.Info("marking PipelineRun as requiring S3 sync")
-				pr.Annotations[S3SyncStateAnnotation] = S3StateSyncRequired
-				controllerutil.AddFinalizer(pr, S3Finalizer)
+				pr.Annotations[util.S3SyncStateAnnotation] = S3StateSyncRequired
+				controllerutil.AddFinalizer(pr, util.S3Finalizer)
 			} else {
 				log.Info("marking PipelineRun as S3 sync disabled")
-				pr.Annotations[S3SyncStateAnnotation] = S3StateSyncDisable
+				pr.Annotations[util.S3SyncStateAnnotation] = S3StateSyncDisable
 			}
-			return true, r.client.Update(ctx, pr)
+			return &reconcile.Result{}, r.client.Update(ctx, pr)
 		}
-		return false, nil
+		return nil, nil
 	}
-	if pr.Annotations[S3SyncStateAnnotation] != "" && pr.Annotations[S3SyncStateAnnotation] != S3StateSyncRequired {
+	if pr.Annotations[util.S3SyncStateAnnotation] != "" && pr.Annotations[util.S3SyncStateAnnotation] != S3StateSyncRequired {
 		//no sync required
-		return false, nil
+		return nil, nil
 	}
-	bucketName, err := r.bucketName(ctx, namespace)
+	bucketName, err := util.BucketName(r.client, ctx, namespace)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	if bucketName == "" {
-		pr.Annotations[S3SyncStateAnnotation] = S3StateSyncDisable
-		return true, r.client.Update(ctx, pr)
+		pr.Annotations[util.S3SyncStateAnnotation] = S3StateSyncDisable
+		return &reconcile.Result{}, r.client.Update(ctx, pr)
 	}
 	log.Info("attempting to sync PipelineRun to S3")
 
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	//lets grab the credentials
-	sess := r.createS3Session(ctx, log, namespace)
+	sess := util.CreateS3Session(r.client, ctx, log, namespace)
 	if sess == nil {
-		return false, nil
+		return nil, nil
 	}
 
 	uploader := s3manager.NewUploader(sess)
 	encodedPipeline := encodeToYaml(pr)
 	_, err = uploader.Upload(&s3manager.UploadInput{
 		Bucket:      aws.String(bucketName),
-		Key:         aws.String(dep.Name + "/" + Pipelines + "/" + pr.Name + "/" + "pipeline.yaml"),
+		Key:         aws.String("build-pipelines/" + dep.Name + "/" + string(dep.UID) + "/" + pr.Name + ".yaml"),
 		Body:        strings.NewReader(encodedPipeline),
 		ContentType: aws.String("text/yaml"),
 		Metadata: map[string]*string{
-			"dependency-build": aws.String(dep.Name),
-			"type":             aws.String("pipeline-run-yaml"),
-			"scm-uri":          aws.String(dep.Spec.ScmInfo.SCMURL),
-			"scm-tag":          aws.String(dep.Spec.ScmInfo.Tag),
-			"scm-commit":       aws.String(dep.Spec.ScmInfo.CommitHash),
-			"scm-path":         aws.String(dep.Spec.ScmInfo.Path),
+			"dependency-build":     aws.String(dep.Name),
+			"dependency-build-uid": aws.String(string(dep.UID)),
+			"type":                 aws.String("pipeline-run-yaml"),
+			"scm-uri":              aws.String(dep.Spec.ScmInfo.SCMURL),
+			"scm-tag":              aws.String(dep.Spec.ScmInfo.Tag),
+			"scm-commit":           aws.String(dep.Spec.ScmInfo.CommitHash),
+			"scm-path":             aws.String(dep.Spec.ScmInfo.Path),
 		},
 	})
 	if err != nil {
 		log.Error(err, "failed to upload to s3, make sure credentials are correct")
-		return false, nil
+		return nil, nil
 	}
 
 	taskRuns := pipelinev1beta1.TaskRunList{}
 	err = r.client.List(ctx, &taskRuns, client.InNamespace(pr.Namespace))
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	pods := corev1.PodList{}
 	err = r.client.List(ctx, &pods, client.InNamespace(pr.Namespace))
 	if err != nil {
-		return false, err
+		return nil, err
+	}
+
+	pipereader, pipewriter := io.Pipe()
+	defer func(pipereader *io.PipeReader) {
+		_ = pipereader.Close()
+	}(pipereader)
+	defer func(pipewriter *io.PipeWriter) {
+		_ = pipewriter.Close()
+	}(pipewriter)
+	stream := cli.Stream{
+		Out: pipewriter,
+		Err: pipewriter,
+		In:  os.Stdin,
 	}
 
 	tektonParams := *r.logReaderParams
 	tektonParams.SetNamespace(pr.Namespace)
 	tektonParams.SetNoColour(true)
-	reader, err := tknlogs.NewReader(tknlogs.LogTypePipeline, &options.LogOptions{PipelineRunName: pr.Name, Params: &tektonParams})
+	reader, err := tknlogs.NewReader(tknlogs.LogTypePipeline, &options.LogOptions{PipelineRunName: pr.Name, Params: &tektonParams, Stream: &stream, Follow: true, AllSteps: true})
 	if err != nil {
 		log.Error(err, "failed to create log reader")
 	} else {
-		pipereader, pipewriter := io.Pipe()
-		defer func(pipereader *io.PipeReader) {
-			_ = pipereader.Close()
-		}(pipereader)
-		defer func(pipewriter *io.PipeWriter) {
-			_ = pipewriter.Close()
-		}(pipewriter)
 		writer := tknlogs.NewWriter(tknlogs.LogTypePipeline, true)
 		logs, errors, err := reader.Read()
 		if err != nil {
 			log.Error(err, "failed to create log reader")
 		}
-		stream := cli.Stream{
-			Out: pipewriter,
-			Err: pipewriter,
-			In:  os.Stdin,
-		}
-
 		go func() {
 			writer.Write(&stream, logs, errors)
 			err := pipewriter.Close()
@@ -181,7 +176,7 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 			}
 		}()
 
-		logsPath := dep.Name + "/" + Pipelines + "/" + pr.Name + "/" + Logs + "/build.log"
+		logsPath := "build-logs/" + dep.Name + "/" + string(dep.UID) + "/" + pr.Name + ".log"
 		log.Info("attempting to upload logs to S3", "path", logsPath)
 		_, err = uploader.Upload(&s3manager.UploadInput{
 
@@ -190,12 +185,13 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 			Body:        pipereader,
 			ContentType: aws.String("text/plain"),
 			Metadata: map[string]*string{
-				"dependency-build": aws.String(dep.Name),
-				"type":             aws.String("pipeline-logs"),
-				"scm-uri":          aws.String(dep.Spec.ScmInfo.SCMURL),
-				"scm-tag":          aws.String(dep.Spec.ScmInfo.Tag),
-				"scm-commit":       aws.String(dep.Spec.ScmInfo.CommitHash),
-				"scm-path":         aws.String(dep.Spec.ScmInfo.Path),
+				"dependency-build":     aws.String(dep.Name),
+				"dependency-build-uid": aws.String(string(dep.UID)),
+				"type":                 aws.String("pipeline-logs"),
+				"scm-uri":              aws.String(dep.Spec.ScmInfo.SCMURL),
+				"scm-tag":              aws.String(dep.Spec.ScmInfo.Tag),
+				"scm-commit":           aws.String(dep.Spec.ScmInfo.CommitHash),
+				"scm-path":             aws.String(dep.Spec.ScmInfo.Path),
 			},
 		})
 		if err != nil {
@@ -213,7 +209,7 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 		if !found {
 			continue
 		}
-		taskPath := dep.Name + "/" + Pipelines + "/" + pr.Name + "/" + Tasks + "/" + tr.Name + "/task.yaml"
+		taskPath := "tasks/" + dep.Name + "/" + string(dep.UID) + "/" + pr.Name + "/" + tr.Name + ".yaml"
 		log.Info("attempting to upload TaskRun to s3", "path", taskPath)
 		encodeableTr := tr
 		_, err = uploader.Upload(&s3manager.UploadInput{
@@ -222,12 +218,13 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 			Body:        strings.NewReader(encodeToYaml(&encodeableTr)),
 			ContentType: aws.String("text/yaml"),
 			Metadata: map[string]*string{
-				"dependency-build": aws.String(dep.Name),
-				"type":             aws.String("task-run-yaml"),
-				"scm-uri":          aws.String(dep.Spec.ScmInfo.SCMURL),
-				"scm-tag":          aws.String(dep.Spec.ScmInfo.Tag),
-				"scm-commit":       aws.String(dep.Spec.ScmInfo.CommitHash),
-				"scm-path":         aws.String(dep.Spec.ScmInfo.Path),
+				"dependency-build":     aws.String(dep.Name),
+				"dependency-build-uid": aws.String(string(dep.UID)),
+				"type":                 aws.String("task-run-yaml"),
+				"scm-uri":              aws.String(dep.Spec.ScmInfo.SCMURL),
+				"scm-tag":              aws.String(dep.Spec.ScmInfo.Tag),
+				"scm-commit":           aws.String(dep.Spec.ScmInfo.CommitHash),
+				"scm-path":             aws.String(dep.Spec.ScmInfo.Path),
 			},
 		})
 		if err != nil {
@@ -235,47 +232,9 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 		}
 	}
 
-	controllerutil.RemoveFinalizer(pr, S3Finalizer)
-	pr.Annotations[S3SyncStateAnnotation] = S3StateSyncComplete
-	return true, r.client.Update(ctx, pr)
-}
-
-func (r *ReconcileDependencyBuild) createS3Session(ctx context.Context, log logr.Logger, namespace string) *session.Session {
-
-	awsSecret := &corev1.Secret{}
-	// our client is wired to not cache secrets / establish informers for secrets
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: SecretName}, awsSecret)
-	if err != nil {
-		log.Info("S3 Failed to sync due to missing secret")
-		//no secret we just return
-		return nil
-	}
-	//now lets do the sync
-	sess, err := session.NewSession(&aws.Config{
-		Credentials: credentials.NewStaticCredentials(string(awsSecret.Data[v1alpha1.AWSAccessID]), string(awsSecret.Data[v1alpha1.AWSSecretKey]), ""),
-		Region:      aws.String(string(awsSecret.Data[v1alpha1.AWSRegion]))},
-	)
-	if err != nil {
-		log.Error(err, "failed to create S3 session, make sure credentials are correct")
-		//no secret we just return
-		return nil
-	}
-	return sess
-}
-
-func (r *ReconcileDependencyBuild) bucketName(ctx context.Context, namespace string) (string, error) {
-	jbsConfig := &v1alpha1.JBSConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
-	if err != nil && !errors.IsNotFound(err) {
-		return "", err
-	} else if err != nil {
-		return "", nil
-	}
-	bucketName := ""
-	if jbsConfig.Annotations != nil {
-		bucketName = jbsConfig.Annotations[S3BucketNameAnnotation]
-	}
-	return bucketName, nil
+	controllerutil.RemoveFinalizer(pr, util.S3Finalizer)
+	pr.Annotations[util.S3SyncStateAnnotation] = S3StateSyncComplete
+	return &reconcile.Result{}, r.client.Update(ctx, pr)
 }
 
 func (r *ReconcileDependencyBuild) handleS3SyncDependencyBuild(ctx context.Context, db *v1alpha1.DependencyBuild, log logr.Logger) (bool, error) {
@@ -293,7 +252,7 @@ func (r *ReconcileDependencyBuild) handleS3SyncDependencyBuild(ctx context.Conte
 		}
 		//add a marker to indicate if sync is required of not
 		//if it is already synced we remove this marker as its state has changed
-		if db.Annotations[S3SyncStateAnnotation] == "" || db.Annotations[S3SyncStateAnnotation] == S3StateSyncComplete {
+		if db.Annotations[util.S3SyncStateAnnotation] == "" || db.Annotations[util.S3SyncStateAnnotation] == S3StateSyncComplete {
 			jbsConfig := &v1alpha1.JBSConfig{}
 			err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 			if err != nil && !errors.IsNotFound(err) {
@@ -301,34 +260,29 @@ func (r *ReconcileDependencyBuild) handleS3SyncDependencyBuild(ctx context.Conte
 			} else if err != nil {
 				return false, nil
 			}
-			if jbsConfig.Annotations != nil && jbsConfig.Annotations[S3BucketNameAnnotation] != "" {
+			if jbsConfig.Annotations != nil && jbsConfig.Annotations[util.S3BucketNameAnnotation] != "" {
 				log.Info("marking DependencyBuild as requiring S3 sync")
-				db.Annotations[S3SyncStateAnnotation] = S3StateSyncRequired
+				db.Annotations[util.S3SyncStateAnnotation] = S3StateSyncRequired
 			} else {
 				log.Info("marking DependencyBuild as S3 sync disabled")
-				db.Annotations[S3SyncStateAnnotation] = S3StateSyncDisable
+				db.Annotations[util.S3SyncStateAnnotation] = S3StateSyncDisable
 			}
 			return true, r.client.Update(ctx, db)
 		}
 		return false, nil
 	}
-	if db.Annotations[S3SyncStateAnnotation] != "" && db.Annotations[S3SyncStateAnnotation] != S3StateSyncRequired {
+	if db.Annotations[util.S3SyncStateAnnotation] != "" && db.Annotations[util.S3SyncStateAnnotation] != S3StateSyncRequired {
 		//no sync required
 		return false, nil
 	}
-	jbsConfig := &v1alpha1.JBSConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
+	bucketName, err := util.BucketName(r.client, ctx, db.Namespace)
 	if err != nil && !errors.IsNotFound(err) {
 		return false, err
 	} else if err != nil {
 		return false, nil
 	}
-	bucketName := ""
-	if jbsConfig.Annotations != nil {
-		bucketName = jbsConfig.Annotations[S3BucketNameAnnotation]
-	}
 	if bucketName == "" {
-		db.Annotations[S3SyncStateAnnotation] = S3StateSyncDisable
+		db.Annotations[util.S3SyncStateAnnotation] = S3StateSyncDisable
 		return true, r.client.Update(ctx, db)
 	}
 	log.Info("attempting to sync DependencyBuild to S3")
@@ -336,29 +290,30 @@ func (r *ReconcileDependencyBuild) handleS3SyncDependencyBuild(ctx context.Conte
 	//lets grab the credentials
 
 	//now lets do the sync
-	sess := r.createS3Session(ctx, log, db.Namespace)
+	sess := util.CreateS3Session(r.client, ctx, log, db.Namespace)
 
 	uploader := s3manager.NewUploader(sess)
 	encodedDb := encodeToYaml(db)
 	_, err = uploader.Upload(&s3manager.UploadInput{
 		Bucket:      aws.String(bucketName),
-		Key:         aws.String(db.Name + "/DependencyBuild.yaml"),
+		Key:         aws.String("builds/" + db.Name + "/" + string(db.UID) + ".yaml"),
 		Body:        strings.NewReader(encodedDb),
 		ContentType: aws.String("text/yaml"),
 		Metadata: map[string]*string{
-			"dependency-build": aws.String(db.Name),
-			"type":             aws.String("dependency-build-yaml"),
-			"scm-uri":          aws.String(db.Spec.ScmInfo.SCMURL),
-			"scm-tag":          aws.String(db.Spec.ScmInfo.Tag),
-			"scm-commit":       aws.String(db.Spec.ScmInfo.CommitHash),
-			"scm-path":         aws.String(db.Spec.ScmInfo.Path),
+			"dependency-build":     aws.String(db.Name),
+			"dependency-build-uid": aws.String(string(db.UID)),
+			"type":                 aws.String("dependency-build-yaml"),
+			"scm-uri":              aws.String(db.Spec.ScmInfo.SCMURL),
+			"scm-tag":              aws.String(db.Spec.ScmInfo.Tag),
+			"scm-commit":           aws.String(db.Spec.ScmInfo.CommitHash),
+			"scm-path":             aws.String(db.Spec.ScmInfo.Path),
 		},
 	})
 	if err != nil {
 		log.Error(err, "failed to upload to s3, make sure credentials are correct")
 		return false, nil
 	}
-	db.Annotations[S3SyncStateAnnotation] = S3StateSyncComplete
+	db.Annotations[util.S3SyncStateAnnotation] = S3StateSyncComplete
 	return true, r.client.Update(ctx, db)
 }
 

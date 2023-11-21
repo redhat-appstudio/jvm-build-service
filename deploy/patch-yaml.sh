@@ -11,6 +11,8 @@ echo "jvm build service jvm cache image:"
 echo ${JVM_BUILD_SERVICE_CACHE_IMAGE}
 echo "jvm build service jvm reqprocessor image:"
 echo ${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}
+echo "jvm build service jvm console image:"
+echo ${JVM_BUILD_SERVICE_CONSOLE_IMAGE}
 
 SED=sed
 if [ "$(uname)" = "Darwin" ]; then
@@ -18,19 +20,26 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 DIR=`dirname $0`
-rm -rf $DIR/operator/overlays/development $DIR/overlays/development
+rm -rf $DIR/operator/overlays/development $DIR/overlays/development $DIR/console/overlays/development
 find $DIR -name dev-template -exec cp -r {} {}/../development \;
 find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-image%${JVM_BUILD_SERVICE_IMAGE}% {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-cache-image%${JVM_BUILD_SERVICE_CACHE_IMAGE}% {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-reqprocessor-image%${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}% {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s/dev-template/development/ {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s/QUAY_TOKEN/${QUAY_TOKEN}/ {} \;
+
+if [ ! -z "${JVM_BUILD_SERVICE_CONSOLE_IMAGE}" ]; then
+    find $DIR -path \*development\*.yaml -exec $SED -i s%jvm-build-service-console-image%${JVM_BUILD_SERVICE_CONSOLE_IMAGE}% {} \;
+fi
+
+
 if [ -z "${MAVEN_USERNAME}" ]; then
     MAVEN_USERNAME=""
 fi
 if [ -z "${MAVEN_REPOSITORY}" ]; then
     MAVEN_REPOSITORY=""
 fi
+
 find $DIR -path \*development\*.yaml -exec $SED -i s/MAVEN_USERNAME/${MAVEN_USERNAME}/ {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s%MAVEN_REPOSITORY%${MAVEN_REPOSITORY}% {} \;
 #if [ -n "$QUAY_TOKEN" ]; then

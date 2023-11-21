@@ -146,8 +146,11 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 
 	case trerr == nil:
 
-		done, err := r.handleS3SyncPipelineRun(ctx, log, &pr)
-		if done || err != nil {
+		result, err := r.handleS3SyncPipelineRun(ctx, log, &pr)
+		if result != nil || err != nil {
+			if result != nil {
+				return *result, nil
+			}
 			return reconcile.Result{}, err
 		}
 		if pr.DeletionTimestamp != nil {
