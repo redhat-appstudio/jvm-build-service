@@ -120,10 +120,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
     @Override
     public Optional<Path> getDisabledPluginInfo(String name) {
         Path target = pluginInfoDirectory.resolve(name + ".yaml");
-        if (Files.exists(target)) {
-            return Optional.of(target);
-        }
-        return Optional.empty();
+        return Files.isReadable(target) ? Optional.of(target) : Optional.empty();
     }
 
     private Optional<Path> resolveVersion(Path target, String version) {

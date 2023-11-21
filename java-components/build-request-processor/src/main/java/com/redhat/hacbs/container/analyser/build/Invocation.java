@@ -9,18 +9,22 @@ import java.util.Objects;
 public class Invocation {
 
     private List<String> commands = new ArrayList<>();
+
     private Map<String, String> toolVersion = new HashMap<>();
 
     private String tool;
+
+    private List<String> disabledPlugins;
 
     public Invocation() {
 
     }
 
-    public Invocation(List<String> commands, Map<String, String> toolVersion, String tool) {
+    public Invocation(List<String> commands, Map<String, String> toolVersion, String tool, List<String> disabledPlugins) {
         this.commands = commands;
         this.toolVersion = toolVersion;
         this.tool = tool;
+        this.disabledPlugins = disabledPlugins;
     }
 
     public List<String> getCommands() {
@@ -50,12 +54,22 @@ public class Invocation {
         return this;
     }
 
+    public List<String> getDisabledPlugins() {
+        return disabledPlugins;
+    }
+
+    public Invocation setDisabledPlugins(List<String> disabledPlugins) {
+        this.disabledPlugins = disabledPlugins;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "Invocation{" +
                 "commands=" + commands +
                 ", toolVersion=" + toolVersion +
                 ", tool='" + tool + '\'' +
+                ", disabledPlugins='" + disabledPlugins + '\'' +
                 '}';
     }
 
@@ -67,11 +81,11 @@ public class Invocation {
             return false;
         Invocation that = (Invocation) o;
         return Objects.equals(commands, that.commands) && Objects.equals(toolVersion, that.toolVersion)
-                && Objects.equals(tool, that.tool);
+                && Objects.equals(tool, that.tool) && Objects.equals(disabledPlugins, that.disabledPlugins);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(commands, toolVersion, tool);
+        return Objects.hash(commands, toolVersion, tool, disabledPlugins);
     }
 }

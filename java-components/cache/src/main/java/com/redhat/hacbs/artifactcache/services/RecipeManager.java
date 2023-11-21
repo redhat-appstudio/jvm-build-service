@@ -131,7 +131,6 @@ public class RecipeManager {
     }
 
     public BuildRecipeInfo resolveBuildInfo(String scmUrl, String version) throws IOException {
-
         var ret = recipeGroupManager.requestBuildInformation(new BuildInfoRequest(scmUrl, version, Set.of(BuildRecipe.BUILD)));
         Path path = ret.getData().get(BuildRecipe.BUILD);
         if (path == null) {
@@ -147,7 +146,11 @@ public class RecipeManager {
             var path = i.getDisabledPluginInfo(name);
 
             if (path.isPresent()) {
-                // TODO
+                try {
+                    results.addAll(BuildRecipe.BUILD.getHandler().parse(path.get()).getDisabledPlugins());
+                } catch (IOException e) {
+                    Log.errorf(e, "Failed to parse plugin info file %s", path);
+                }
             }
         }
         return results;

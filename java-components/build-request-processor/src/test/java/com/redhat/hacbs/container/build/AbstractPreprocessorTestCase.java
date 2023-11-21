@@ -1,5 +1,8 @@
 package com.redhat.hacbs.container.build;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -14,7 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -72,14 +74,16 @@ public abstract class AbstractPreprocessorTestCase {
         }
     }
 
-    public abstract String getCommand();
+    public abstract List<String> getCommand();
 
     @ParameterizedTest()
     @MethodSource("factory")
     public void testPreprocessor(Path path, QuarkusMainLauncher launcher) throws IOException {
         System.out.println(path);
-        var result = launcher.launch(getCommand(), path.toString(), "-r", "http://localhost:8080/maven2");
-        Assertions.assertEquals(0, result.exitCode());
+        var command = new ArrayList<>(getCommand());
+        command.add(path.toString());
+        var result = launcher.launch(command.toArray(new String[0]));
+        assertThat(result.exitCode()).isZero();
         AtomicInteger count = new AtomicInteger();
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
             @Override
@@ -88,11 +92,11 @@ public abstract class AbstractPreprocessorTestCase {
                 if (name.endsWith(EXPECTED)) {
                     count.incrementAndGet();
                     Path modified = file.getParent().resolve(name.substring(0, name.length() - EXPECTED.length()));
-                    Assertions.assertEquals(Files.readString(file), Files.readString(modified));
+                    assertThat(modified).hasSameTextualContentAs(file, UTF_8);
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-        Assertions.assertTrue(count.get() > 0);
+        assertThat(count).hasPositiveValue();
     }
 }

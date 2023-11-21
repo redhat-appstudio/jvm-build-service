@@ -37,7 +37,7 @@ public class BuildRecipeInfo {
 
     List<AdditionalDownload> additionalDownloads = new ArrayList<>();
 
-    List<String> disabledPlugins = new ArrayList<>();
+    List<String> disabledPlugins;
 
     boolean runTests;
 
