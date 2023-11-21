@@ -47,7 +47,7 @@ public class MavenArtifact extends PanacheEntity {
             ret = new MavenArtifact();
             ret.identifier = artifactIdentifier;
             ret.version = version;
-            ret.persist();
+            ret.persistAndFlush();
         }
         return ret;
     }
