@@ -6,7 +6,9 @@
 export type Dependency = {
     gav: string;
     source: string;
-    buildId?: string;
-    attributes?: Record<string, string>;
+    build?: number;
+    inQueue: boolean;
+    buildSuccess: boolean;
+    attributes: Record<string, string>;
 };
 

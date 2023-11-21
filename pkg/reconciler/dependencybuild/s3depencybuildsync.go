@@ -109,12 +109,16 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 	if sess == nil {
 		return nil, nil
 	}
+	name := pr.Name
+	if pr.Labels[PipelineTypeLabel] == PipelineTypeBuildInfo {
+		name = "build-discovery"
+	}
 
 	uploader := s3manager.NewUploader(sess)
 	encodedPipeline := encodeToYaml(pr)
 	_, err = uploader.Upload(&s3manager.UploadInput{
 		Bucket:      aws.String(bucketName),
-		Key:         aws.String("build-pipelines/" + dep.Name + "/" + string(dep.UID) + "/" + pr.Name + ".yaml"),
+		Key:         aws.String("build-pipelines/" + dep.Name + "/" + string(dep.UID) + "/" + name + ".yaml"),
 		Body:        strings.NewReader(encodedPipeline),
 		ContentType: aws.String("text/yaml"),
 		Metadata: map[string]*string{

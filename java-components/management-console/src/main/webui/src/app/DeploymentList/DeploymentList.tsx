@@ -18,18 +18,21 @@ import {
   EmptyStateIcon,
   Label,
   MenuToggle,
-  MenuToggleElement, Progress, ProgressVariant,
+  MenuToggleElement, Progress, ProgressVariant, Title,
 } from '@patternfly/react-core';
 import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
-import {BuildListDTO, DeploymentDTO, DeploymentResourceService} from "../../services/openapi";
+import {BuildListDTO, Dependency, DeploymentDTO, DeploymentResourceService} from "../../services/openapi";
 import {
+  AttentionBellIcon,
   CheckCircleIcon,
-  CodeBranchIcon,
+  CodeBranchIcon, ContainerNodeIcon,
   EllipsisVIcon,
-  ErrorCircleOIcon,
+  ErrorCircleOIcon, ExclamationIcon,
   IceCreamIcon,
-  InProgressIcon
+  InProgressIcon, LineIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
 } from "@patternfly/react-icons";
+import {ChartBullet, ChartDonut} from "@patternfly/react-charts";
+import {Link} from "react-router-dom";
 
 
 const DeploymentList: React.FunctionComponent = () => {
@@ -104,11 +107,6 @@ const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild):
     event?.stopPropagation();
     setActionsExpanded(!actionsExpanded);
   };
-  const onImagesClick = (event: React.MouseEvent<Element, MouseEvent> | undefined) => {
-    event?.stopPropagation();
-    setImagesExpanded(!imagesExpanded);
-  };
-
 
   const health = function (deployment: DeploymentDTO) {
     if (!deployment.analysisComplete) {
@@ -118,11 +116,47 @@ const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild):
     }
     let untrusted = 0
     let total = 0
-    deployment.images.map((i) => {total += i.totalDependencies; untrusted += i.untrustedDependencies})
+    let available = 0
+    deployment.images.map((i) => {total += i.totalDependencies; untrusted += i.untrustedDependencies; available += i.availableBuilds})
+    let trusted = total - untrusted
     if (total == 0) {
-      return "No Java"
+      return <Label color="blue" icon={<StickyNoteIcon />}>
+        No Java
+      </Label>
     }
-    return <Progress value={untrusted / total}  title="Title" variant={ProgressVariant.danger} />
+    return <>
+      {untrusted > 0 && <Label color="red" icon={<WarningTriangleIcon />}>{untrusted} Untrusted Dependencies</Label>}
+      {trusted > 0 && <Label color="green" icon={<OkIcon />}>{trusted} Rebuilt Dependencies</Label>}
+      {available > 0 && <Label color="orange" icon={<ListIcon />}>{available} Available Rebuilt Dependencies</Label>}
+
+    </>
+  }
+
+  const dependencyRow = function (dep : Dependency) {
+
+    return <DataListItem>
+      <DataListItemRow>
+        <DataListItemCells
+          dataListCells={[
+            <DataListCell isIcon key="icon">
+              {dep.source === 'rebuilt' && <OkIcon color={"green"}></OkIcon>}
+              {dep.source === 'redhat' && <RedhatIcon color={"red"}></RedhatIcon>}
+              {(dep.source !== 'redhat' && dep.source != 'rebuilt') && <WarningTriangleIcon color={"orange"}></WarningTriangleIcon>}
+            </DataListCell>,
+            <DataListCell key="primary content">
+              {dep.build != undefined && <Link to={`/builds/build/${dep.build}`}>{dep.gav}</Link>}
+              {dep.build == undefined && <div id="gav">{dep.gav}</div>}
+            </DataListCell>,
+            <DataListCell key="primary content">
+              {dep.inQueue && <Label color="blue" icon={<IceCreamIcon />}> In Build Queue</Label>}
+              {(dep.source !== 'redhat' && dep.source != 'rebuilt' && dep.buildSuccess) && <Label color="orange" icon={<AttentionBellIcon />}>Rebuilt Artifact Available, Image Rebuild Required</Label>}
+              {(dep.source !== 'redhat' && dep.source != 'rebuilt' && !dep.buildSuccess && dep.build != undefined) && <Label color="red" icon={<OutlinedAngryIcon />}>Rebuild Failed</Label>}
+
+            </DataListCell>,
+          ]}
+        />
+      </DataListItemRow>
+    </DataListItem>
   }
 
   return <DataListItem aria-labelledby="ex-item1" isExpanded={imagesExpanded}>
@@ -136,7 +170,7 @@ const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild):
       <DataListItemCells
         dataListCells={[
           <DataListCell isIcon key="icon">
-            <CodeBranchIcon/>
+            <ContainerNodeIcon/>
           </DataListCell>,
           <DataListCell key="primary content">
             <div id="ex-item1">{deployment.namespace}/{deployment.name}</div>
@@ -146,55 +180,18 @@ const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild):
           </DataListCell>
         ]}
       />
-      <DataListAction
-        aria-labelledby="ex-item1 ex-action1"
-        id="ex-action1"
-        aria-label="Actions"
-        isPlainButtonAction
-      >
-        <Dropdown
-          popperProps={{position: 'right'}}
-          onSelect={toggleActions}
-          toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-            <MenuToggle
-              ref={toggleRef}
-              isExpanded={actionsExpanded}
-              onClick={onActionsClick}
-              variant="plain"
-              aria-label="Data list exapndable example kebaby toggle 1"
-            >
-              <EllipsisVIcon aria-hidden="true"/>
-            </MenuToggle>
-          )}
-          isOpen={actionsExpanded}
-          onOpenChange={(isOpen: boolean) => setActionsExpanded(isOpen)}
-        >
-          <DropdownList>
-            <DropdownItem key="action">Action</DropdownItem>
-            {/* Prevent default onClick functionality for example
-                  purposes */}
-            <DropdownItem key="link" to="#" onClick={(event: any) => event.preventDefault()}>
-              Link
-            </DropdownItem>
-            <DropdownItem key="disabled action" isDisabled>
-              Disabled Action
-            </DropdownItem>
-            <DropdownItem key="disabled link" isDisabled to="#" onClick={(event: any) => event.preventDefault()}>
-              Disabled Link
-            </DropdownItem>
-          </DropdownList>
-        </Dropdown>
-      </DataListAction>
     </DataListItemRow>
     <DataListContent
       aria-label="First expandable content details"
       id="ex-expand1"
       isHidden={!imagesExpanded}
     >
-      Foo {deployment.images.length}
       {deployment.images.map((s) => (
-        <>{s.string}
-          {s.dependencies?.map(d => (<div id="ex-item1">{d.gav}</div>))}
+        <><Title headingLevel={"h2"}>Image: {s.string}</Title>
+
+        <DataList aria-label="Dependencies">
+          {s.dependencies?.map(d => (dependencyRow(d)))}
+        </DataList>
         </>
 
     ))}

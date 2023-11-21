@@ -11,5 +11,7 @@ export type Image = {
     dependencies?: Array<Dependency>;
     totalDependencies: number;
     untrustedDependencies: number;
+    trustedDependencies: number;
+    availableBuilds: number;
 };
 

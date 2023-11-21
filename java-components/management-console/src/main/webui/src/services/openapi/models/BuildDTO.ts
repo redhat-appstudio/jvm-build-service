@@ -17,5 +17,6 @@ export type BuildDTO = {
     artifacts?: Array<string>;
     successfulBuild?: BuildAttemptDTO;
     buildAttempts?: Array<BuildAttemptDTO>;
+    inQueue?: boolean;
 };
 
