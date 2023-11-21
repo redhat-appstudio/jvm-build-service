@@ -30,6 +30,7 @@ type JvmbuildserviceV1alpha1Interface interface {
 	ArtifactBuildsGetter
 	DependencyBuildsGetter
 	JBSConfigsGetter
+	JvmImageScansGetter
 	RebuiltArtifactsGetter
 	SystemConfigsGetter
 }
@@ -49,6 +50,10 @@ func (c *JvmbuildserviceV1alpha1Client) DependencyBuilds(namespace string) Depen
 
 func (c *JvmbuildserviceV1alpha1Client) JBSConfigs(namespace string) JBSConfigInterface {
 	return newJBSConfigs(c, namespace)
+}
+
+func (c *JvmbuildserviceV1alpha1Client) JvmImageScans(namespace string) JvmImageScanInterface {
+	return newJvmImageScans(c, namespace)
 }
 
 func (c *JvmbuildserviceV1alpha1Client) RebuiltArtifacts(namespace string) RebuiltArtifactInterface {

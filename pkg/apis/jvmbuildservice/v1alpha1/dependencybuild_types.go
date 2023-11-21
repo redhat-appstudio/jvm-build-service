@@ -128,6 +128,7 @@ func (r *DependencyBuildStatus) CurrentBuildAttempt() *BuildAttempt {
 }
 
 type BuildRecipe struct {
+	//Deprecated
 	Pipeline            string               `json:"pipeline,omitempty"`
 	Tool                string               `json:"tool,omitempty"`
 	Image               string               `json:"image,omitempty"`

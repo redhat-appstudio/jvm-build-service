@@ -6,6 +6,7 @@ bases:
  - "../../base"
  - "../../operator/config"
  - "../../operator/overlays/dev-template"
+# - "../../console/overlays/dev-template"
 
 patches:
  - patch: |-
