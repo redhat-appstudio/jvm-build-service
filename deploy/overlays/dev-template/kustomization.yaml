@@ -17,6 +17,13 @@ patches:
     kind: Task
     name: maven
 - patch: |-
+    - op: replace
+      path: /spec/steps/2/image
+      value: jvm-build-service-reqprocessor-image
+  target:
+    kind: Task
+    name: gradle
+- patch: |-
     - op: add
       path: "/spec/template/spec/containers/0/env"
       value:
