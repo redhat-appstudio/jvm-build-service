@@ -53,5 +53,9 @@ fi
 if [ -z "${GIT_DEPLOY_IDENTITY}" ]; then
     GIT_DEPLOY_IDENTITY=""
 fi
+if [ -z "${GIT_DISABLE_SSL_VERIFICATION}" ]; then
+    GIT_DISABLE_SSL_VERIFICATION="false"
+fi
 find $DIR -path \*development\*.yaml -exec $SED -i s/GIT_DEPLOY_URL/${GIT_DEPLOY_URL}/ {} \;
 find $DIR -path \*development\*.yaml -exec $SED -i s%GIT_DEPLOY_IDENTITY%${GIT_DEPLOY_IDENTITY}% {} \;
+find $DIR -path \*development\*.yaml -exec $SED -i s%GIT_DISABLE_SSL_VERIFICATION%${GIT_DISABLE_SSL_VERIFICATION}% {} \;

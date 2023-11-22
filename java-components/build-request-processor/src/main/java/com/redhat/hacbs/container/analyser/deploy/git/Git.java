@@ -19,6 +19,8 @@ public abstract class Git {
 
     protected CredentialsProvider credentialsProvider;
 
+    protected boolean disableSSLVerification;
+
     public abstract void create(String name)
             throws IOException, URISyntaxException;
 
@@ -35,14 +37,28 @@ public abstract class Git {
      */
     public static Git builder(String endpoint, String identity, String token)
             throws IOException {
+        return builder(endpoint, identity, token, true);
+    }
+
+    /**
+     *
+     * @param endpoint URL of the GitHub or GitLab instance.
+     * @param identity Might be user or organisation name.
+     * @param token Authorisation token.
+     * @param disableSSLVerification Whether to enable SSLVerification (Default: true).
+     * @return Valid Git instance
+     * @throws IOException if an error occurs
+     */
+    public static Git builder(String endpoint, String identity, String token, boolean disableSSLVerification)
+            throws IOException {
         // TODO: This could be a bit presumptuous to assume
         //    an on-premise installation will always contain some determinable
         //    information. Alternative would be forcing the user to configure
         //    endpoint, token, AND type [gitlab|github]
         if (endpoint != null && endpoint.contains("gitlab")) {
-            return new GitLab(endpoint, identity, token);
+            return new GitLab(endpoint, identity, token, disableSSLVerification);
         } else {
-            return new GitHub(endpoint, identity, token);
+            return new GitHub(endpoint, identity, token, disableSSLVerification);
         }
     }
 
@@ -61,7 +77,9 @@ public abstract class Git {
             Log.infof("Updating current origin of %s to %s", jConfig.getString("remote", "origin", "url"),
                     httpTransportUrl);
             jConfig.setString("remote", "origin", "url", httpTransportUrl);
-            jConfig.setBoolean("http", null, "sslVerify", false);
+            if (disableSSLVerification) {
+                jConfig.setBoolean("http", null, "sslVerify", false);
+            }
             jConfig.save();
             Log.infof("Pushing to %s with content from %s (branch %s, commit %s, tag %s)", httpTransportUrl, path,
                     jRepo.getBranch(), commit, tagName);

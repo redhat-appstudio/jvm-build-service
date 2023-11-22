@@ -106,11 +106,11 @@ public class GitTest {
 
     @Test
     public void testIdentity() throws IOException {
-        new GitHub(null, "cekit", null);
+        new GitHub(null, "cekit", null, true);
         List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
         assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r).matches("Type ORGANISATION")));
         LogCollectingTestResource.current().clear();
-        new GitHub(null, "rnc", null);
+        new GitHub(null, "rnc", null, true);
         logRecords = LogCollectingTestResource.current().getRecords();
         assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r).matches("Type USER")));
     }

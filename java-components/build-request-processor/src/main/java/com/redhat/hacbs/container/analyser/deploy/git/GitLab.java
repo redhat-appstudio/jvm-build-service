@@ -20,12 +20,15 @@ public class GitLab extends Git {
 
     private Project project;
 
-    public GitLab(String endpoint, String identity, String token) {
+    public GitLab(String endpoint, String identity, String token, boolean ssl) {
         gitLabApi = new GitLabApi(endpoint, token);
         owner = identity;
         credentialsProvider = new UsernamePasswordCredentialsProvider("", token);
+        disableSSLVerification = ssl;
 
-        gitLabApi.setIgnoreCertificateErrors(true);
+        if (disableSSLVerification) {
+            gitLabApi.setIgnoreCertificateErrors(true);
+        }
     }
 
     GitLab() {

@@ -89,6 +89,8 @@ spec:
                 type: boolean
               gitSourceArchive:
                 properties:
+                  disableSSLVerification:
+                    type: string
                   identity:
                     type: string
                   url:

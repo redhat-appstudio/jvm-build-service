@@ -29,7 +29,7 @@ public class GitHub extends Git {
 
     private GHRepository repository;
 
-    public GitHub(String endpoint, String identity, String token)
+    public GitHub(String endpoint, String identity, String token, boolean ssl)
             throws IOException {
         if (isNotEmpty(token)) {
             github = new GitHubBuilder().withEndpoint(endpoint == null ? GITHUB_URL : endpoint)
@@ -41,6 +41,7 @@ public class GitHub extends Git {
         }
         owner = identity;
         credentialsProvider = new UsernamePasswordCredentialsProvider(token, "");
+        disableSSLVerification = ssl;
 
         switch (github.getUser(identity).getType()) {
             case "User" -> type = Type.USER;
