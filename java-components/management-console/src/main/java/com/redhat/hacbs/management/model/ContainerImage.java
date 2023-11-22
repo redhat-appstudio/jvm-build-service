@@ -66,7 +66,7 @@ public class ContainerImage extends PanacheEntity {
             containerImage.tag = tag;
             containerImage.image = imagePart;
             containerImage.digest = digest;
-            containerImage.persist();
+            containerImage.persistAndFlush();
         }
         return containerImage;
     }

@@ -39,7 +39,6 @@ public class BuildAttemptResource {
                     .key(path);
         });
         return Response.ok(stream, MediaType.TEXT_PLAIN_TYPE).build();
-
     }
 
 }

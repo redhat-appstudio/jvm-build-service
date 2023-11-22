@@ -1,11 +1,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-commonLabels:
-  app: hacbs-jvm-operator
 resources:
-  - system-config.yaml
+- system-config.yaml
 
-patchesStrategicMerge:
-  #note that when updating the ref here you must also update system-config.yaml
-  - https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/bd8e505b3082a03c030b36868a3753df9db15f97/image-config.yaml
+labels:
+- includeSelectors: true
+  pairs:
+    app: hacbs-jvm-operator
+
+#note that when updating the ref here you must also update system-config.yaml
+patches:
+- path: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/bd8e505b3082a03c030b36868a3753df9db15f97/image-config.yaml

@@ -39,6 +39,7 @@ public class StoredDependencyBuild extends PanacheEntity {
 
     public boolean contaminated;
 
+    public String buildDiscoveryUrl;
     @OneToMany
     public List<ShadingDetails> shadingDetails;
 

@@ -4,8 +4,10 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"strings"
+	"time"
 
 	v1alpha12 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
@@ -261,6 +263,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		}...),
 		Steps: []pipelinev1beta1.Step{
 			{
+				Timeout:         &v12.Duration{Duration: time.Hour * 3},
 				Name:            "build",
 				Image:           "$(params." + PreBuildImageDigest + ")",
 				ImagePullPolicy: v1.PullAlways,
