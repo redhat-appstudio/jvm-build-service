@@ -10,6 +10,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import org.hibernate.exception.ConstraintViolationException;
+
 import com.redhat.hacbs.management.model.BuildQueue;
 import com.redhat.hacbs.management.model.ContainerImage;
 import com.redhat.hacbs.management.model.ImageDependency;
@@ -43,7 +45,20 @@ public class JvmImageScanWatcher {
         client.resources(JvmImageScan.class).inAnyNamespace().inform(new ResourceEventHandler<JvmImageScan>() {
             @Override
             public void onAdd(JvmImageScan obj) {
-                ExecutorRecorder.getCurrent().execute(() -> handleImage(obj));
+                ContainerImage image = ensureImageExists(obj);
+                if (image != null) {
+                    ExecutorRecorder.getCurrent().execute(() -> {
+                        for (var i = 0; i < 3; ++i) {
+                            try {
+                                //TODO: this can be a bit racey, multiple things happening at once can add the same artifact to the DB
+                                handleImage(obj, image.id);
+                                return;
+                            } catch (ConstraintViolationException e) {
+                                Log.errorf(e, "Failed to import");
+                            }
+                        }
+                    });
+                }
             }
 
             @Override
@@ -60,35 +75,41 @@ public class JvmImageScanWatcher {
     }
 
     @Transactional
-    void handleImage(JvmImageScan resource) {
+    ContainerImage ensureImageExists(JvmImageScan resource) {
         var image = resource.getSpec().getImage();
         if (!image.contains("@")) {
             Log.errorf("image %s has no digest, not saving scan result", image);
             client.resource(resource).delete();
-            return;
+            return null;
         }
         Log.infof("Processing image scan %s", resource.getMetadata().getName());
         if (resource.getStatus() == null) {
-            return;
+            return null;
         }
         if (Objects.equals(resource.getStatus().getState(), "JvmImageScanFailed")) {
-
             ContainerImage containerImage = ContainerImage.getOrCreate(image);
             containerImage.analysisComplete = true;
             containerImage.analysisFailed = true;
             containerImage.persist();
-            return;
+            return null;
         }
         if (!Objects.equals(resource.getStatus().getState(), "JvmImageScanComplete")) {
-            return;
+            return null;
         }
-        ContainerImage containerImage = ContainerImage.getOrCreate(image);
+        return ContainerImage.getOrCreate(image);
+    }
+
+    @Transactional
+    void handleImage(JvmImageScan resource, long imageId) {
+        ContainerImage containerImage = ContainerImage.findById(imageId);
         if (containerImage.analysisComplete) {
             return;
         }
         Map<String, ImageDependency> existing = new HashMap<>();
-        for (var i : containerImage.imageDependencies) {
-            existing.put(i.mavenArtifact.gav(), i);
+        if (containerImage.imageDependencies != null) {
+            for (var i : containerImage.imageDependencies) {
+                existing.put(i.mavenArtifact.gav(), i);
+            }
         }
         List<Results> results = resource.getStatus().getResults();
         if (results != null) {

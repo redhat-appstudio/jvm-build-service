@@ -5,7 +5,7 @@ import {
   BuildAttemptDTO,
   BuildAttemptResourceService,
   BuildDTO,
-  BuildHistoryResourceService
+  BuildHistoryResourceService, BuildQueueResourceService
 } from "../../services/openapi";
 import {RouteComponentProps} from "react-router-dom";
 import {
@@ -26,7 +26,7 @@ import {
   MenuToggle,
   MenuToggleElement
 } from "@patternfly/react-core";
-import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon} from "@patternfly/react-icons";
+import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, IceCreamIcon} from "@patternfly/react-icons";
 
 
 const columnNames = {
@@ -51,6 +51,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
   const [build, setBuild] = useState(initial);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = React.useState<boolean>(false);
 
   useEffect(() => {
     setState('loading');
@@ -90,12 +91,56 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
     </Label>
   }
 
+  const rebuild = (event: React.SyntheticEvent<HTMLLIElement>) => {
+    BuildQueueResourceService.postApiBuildsQueue(build.name)
+      .then(() => {
+        const copy = Object.assign({}, build);
+        copy.inQueue = true
+        setBuild(copy)
+      })
+  };
+
+  const dropdownItems = (
+    <>
+      {/* Prevent default onClick functionality for example purposes */}
+      <DropdownItem key="rebuild" onSelect={rebuild}  onClick={rebuild}>
+        Rebuild
+      </DropdownItem>
+      <DropdownItem key="discovery-logs" to={"/api/builds/history/discovery-logs/" + build.id} target="_blank" >
+        Build Discovery Logs
+      </DropdownItem>
+    </>
+  );
+
+  const headerActions = (
+    <>
+      <Dropdown key="actions-dropdown"
+        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+          <MenuToggle
+            ref={toggleRef}
+            isExpanded={isMenuOpen}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            variant="plain"
+            aria-label="Actions"
+          >
+            <EllipsisVIcon aria-hidden="true"/>
+          </MenuToggle>
+        )}
+        isOpen={isMenuOpen}
+        onOpenChange={(isOpen: boolean) => setIsMenuOpen(isOpen)}
+      >
+        <DropdownList>{dropdownItems}</DropdownList>
+      </Dropdown>
+    </>
+  );
+
   return (
     <Flex>
       <FlexItem>
         <Card>
-          <CardHeader>
-            <CardTitle>Build {build.scmRepo}@{build.tag}{statusIcon(build)}</CardTitle>
+          <CardHeader actions={{ actions: headerActions }}>
+            <CardTitle>Build {build.scmRepo}@{build.tag}{statusIcon(build)} {build.inQueue && <Label color="blue" icon={<IceCreamIcon />}>In Build Queue</Label>}</CardTitle>
+
           </CardHeader>
           <CardBody>
             <DescriptionList

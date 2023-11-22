@@ -84,6 +84,12 @@ public class DependencyBuildImporter {
         }
         storedBuild.buildAttempts = new ArrayList<>();
 
+        if (s3Bucket != null) {
+            //todo we just assume the logs are present
+            storedBuild.buildDiscoveryUrl = "s3://" + s3Bucket + "/build-logs/" + dependencyBuild.getMetadata().getName() + "/"
+                    + dependencyBuild.getMetadata().getUid()
+                    + "/build-discovery.log";
+        }
         if (dependencyBuild.getStatus().getBuildAttempts() != null) {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {
                 BuildAttempt attempt = new BuildAttempt();
@@ -94,6 +100,7 @@ public class DependencyBuildImporter {
                 attempt.gradleVersion = i.getBuildRecipe().getToolVersions().get("gradle");
                 attempt.sbtVersion = i.getBuildRecipe().getToolVersions().get("sbt");
                 attempt.antVersion = i.getBuildRecipe().getToolVersions().get("ant");
+                attempt.buildId = i.getBuildId();
                 attempt.tool = i.getBuildRecipe().getTool();
                 attempt.builderImage = i.getBuildRecipe().getImage();
                 attempt.commandLine(i.getBuildRecipe().getCommandLine());

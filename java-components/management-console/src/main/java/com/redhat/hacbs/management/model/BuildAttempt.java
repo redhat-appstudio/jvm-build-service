@@ -23,6 +23,8 @@ public class BuildAttempt extends PanacheEntity {
     public String sbtVersion;
     public String antVersion;
     public String tool;
+
+    public String buildId;
     @Column(length = -1)
     public String builderImage;
     @Column(length = -1)

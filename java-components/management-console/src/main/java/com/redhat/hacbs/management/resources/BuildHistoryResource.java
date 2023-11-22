@@ -1,5 +1,7 @@
 package com.redhat.hacbs.management.resources;
 
+import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -11,6 +13,8 @@ import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 
@@ -20,11 +24,16 @@ import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
+import io.quarkus.logging.Log;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
+import software.amazon.awssdk.services.s3.S3Client;
 
 @Path("/builds/history")
 public class BuildHistoryResource {
+
+    @Inject
+    S3Client s3Client;
 
     @Inject
     EntityManager entityManager;
@@ -66,4 +75,22 @@ public class BuildHistoryResource {
         return BuildDTO.of(build);
     }
 
+    @GET
+    @Path("/discover-logs/{id}")
+    public Response logs(@PathParam("id") int id) {
+        StoredDependencyBuild attempt = StoredDependencyBuild.findById(id);
+        if (attempt == null) {
+            throw new NotFoundException();
+        }
+        URI uri = URI.create(attempt.buildDiscoveryUrl);
+
+        InputStream stream = s3Client.getObject(b -> {
+            String path = uri.getPath().substring(1);
+            String bucket = uri.getHost();
+            Log.infof("requesting logs %s from bucket %s", path, bucket);
+            b.bucket(bucket)
+                    .key(path);
+        });
+        return Response.ok(stream, MediaType.TEXT_PLAIN_TYPE).build();
+    }
 }

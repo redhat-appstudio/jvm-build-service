@@ -31,12 +31,26 @@ public class DeploymentDTO {
             return dependencies.stream()
                     .filter(s -> !(Objects.equals(s.source, "rebuild") || Objects.equals(s.source, "redhat"))).count();
         }
+
+        @Schema(required = true)
+        public long getTrustedDependencies() {
+            return dependencies.stream()
+                    .filter(s -> Objects.equals(s.source, "rebuild") || Objects.equals(s.source, "redhat")).count();
+        }
+
+        @Schema(required = true)
+        public long getAvailableBuilds() {
+            return dependencies.stream()
+                    .filter(s -> !(Objects.equals(s.source, "rebuild") || Objects.equals(s.source, "redhat")))
+                    .filter(s -> s.buildSuccess).count();
+        }
     }
 
     public record Dependency(
             @Schema(required = true) String gav,
-            @Schema(required = true) String source, String buildId,
-            Map<String, String> attributes) implements Comparable<Dependency> {
+            @Schema(required = true) String source, Long build, @Schema(required = true) boolean inQueue,
+            @Schema(required = true) boolean buildSuccess,
+            @Schema(required = true) Map<String, String> attributes) implements Comparable<Dependency> {
 
         @Override
         public int compareTo(Dependency o) {

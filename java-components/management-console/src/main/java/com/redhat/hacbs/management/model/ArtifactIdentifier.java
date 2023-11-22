@@ -21,8 +21,7 @@ public class ArtifactIdentifier extends PanacheEntity {
             ret = new ArtifactIdentifier();
             ret.artifact = artifact;
             ret.group = group;
-            ret.persist();
-
+            ret.persistAndFlush();
         }
         return ret;
     }
