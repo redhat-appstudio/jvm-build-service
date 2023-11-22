@@ -69,8 +69,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 
 	preprocessorArgs := []string{
 		"maven-prepare",
-		"-r",
-		"$(params.CACHE_URL)",
 		"$(workspaces." + WorkspaceSource + ".path)/workspace",
 	}
 	if len(recipe.DisabledPlugins) > 0 {
@@ -106,8 +104,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		buildToolSection = gradleBuild
 		preprocessorArgs = []string{
 			"gradle-prepare",
-			"-r",
-			"$(params.CACHE_URL)",
 			"$(workspaces." + WorkspaceSource + ".path)/workspace",
 		}
 		if len(recipe.DisabledPlugins) > 0 {

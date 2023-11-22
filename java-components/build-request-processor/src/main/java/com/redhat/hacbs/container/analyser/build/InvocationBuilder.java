@@ -67,7 +67,6 @@ public class InvocationBuilder {
         } else {
             toolInvocations.computeIfAbsent(tool, (k) -> new HashSet<>()).add(invocation);
         }
-
     }
 
     /**

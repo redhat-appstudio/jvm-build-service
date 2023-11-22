@@ -38,7 +38,7 @@ public class BuildInfo {
 
     List<String> gavs = new ArrayList<>();
 
-    List<String> disabledPlugins = new ArrayList<>();
+    List<String> disabledPlugins;
 
     String digest;
 

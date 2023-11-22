@@ -1,7 +1,5 @@
 package com.redhat.hacbs.container.build.preprocessor.maven;
 
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -19,8 +17,6 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
 import io.quarkus.logging.Log;
@@ -33,8 +29,6 @@ import picocli.CommandLine;
  */
 @CommandLine.Command(name = "maven-prepare")
 public class MavenPrepareCommand extends AbstractPreprocessor {
-
-    static final ObjectMapper MAPPER = new YAMLMapper().configure(FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
     public void run() {
@@ -89,7 +83,7 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
     private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel)
             throws IOException {
         boolean modified = false;
-        List<MavenPrepareCommand.PluginInfo> toRemove = new ArrayList<>();
+        List<PluginInfo> toRemove = new ArrayList<>();
 
         if (disabledPlugins != null) {
             for (String s : disabledPlugins) {
