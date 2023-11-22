@@ -121,11 +121,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	switch {
 	case dberr == nil:
 		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
-		err, done := r.handleDeprecatedFields(ctx, db)
-		if done || err != nil {
-			return reconcile.Result{}, err
-		}
-		done, err = r.handleS3SyncDependencyBuild(ctx, &db, log)
+		done, err := r.handleS3SyncDependencyBuild(ctx, &db, log)
 		if done || err != nil {
 			return reconcile.Result{}, err
 		}
@@ -175,30 +171,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func (r *ReconcileDependencyBuild) handleDeprecatedFields(ctx context.Context, db v1alpha1.DependencyBuild) (error, bool) {
-	deprecatedInfoRemoved := false
-	if db.Status.DeprecatedCurrentBuildRecipe != nil {
-		db.Status.DeprecatedCurrentBuildRecipe = nil
-		deprecatedInfoRemoved = true
-	}
-	if db.Status.DeprecatedDiagnosticDockerFiles != nil {
-		db.Status.DeprecatedDiagnosticDockerFiles = nil
-		deprecatedInfoRemoved = true
-	}
-	if db.Status.DeprecatedFailedBuildRecipes != nil {
-		db.Status.DeprecatedFailedBuildRecipes = nil
-		deprecatedInfoRemoved = true
-	}
-	if db.Status.DeprecatedLastCompletedBuildPipelineRun != "" {
-		db.Status.DeprecatedLastCompletedBuildPipelineRun = ""
-		deprecatedInfoRemoved = true
-	}
-	if deprecatedInfoRemoved {
-		return r.client.Status().Update(ctx, &db), true
-	}
-	return nil, false
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {

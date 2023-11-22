@@ -415,11 +415,6 @@ func (in *DependencyBuildStatus) DeepCopyInto(out *DependencyBuildStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.DeprecatedCurrentBuildRecipe != nil {
-		in, out := &in.DeprecatedCurrentBuildRecipe, &out.DeprecatedCurrentBuildRecipe
-		*out = new(BuildRecipe)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.PotentialBuildRecipes != nil {
 		in, out := &in.PotentialBuildRecipes, &out.PotentialBuildRecipes
 		*out = make([]*BuildRecipe, len(*in))
@@ -431,24 +426,8 @@ func (in *DependencyBuildStatus) DeepCopyInto(out *DependencyBuildStatus) {
 			}
 		}
 	}
-	if in.DeprecatedFailedBuildRecipes != nil {
-		in, out := &in.DeprecatedFailedBuildRecipes, &out.DeprecatedFailedBuildRecipes
-		*out = make([]*BuildRecipe, len(*in))
-		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(BuildRecipe)
-				(*in).DeepCopyInto(*out)
-			}
-		}
-	}
 	if in.DeployedArtifacts != nil {
 		in, out := &in.DeployedArtifacts, &out.DeployedArtifacts
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
-	if in.DeprecatedDiagnosticDockerFiles != nil {
-		in, out := &in.DeprecatedDiagnosticDockerFiles, &out.DeprecatedDiagnosticDockerFiles
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
@@ -619,7 +598,6 @@ func (in *JBSConfigSpec) DeepCopyInto(out *JBSConfigSpec) {
 	in.Registry.DeepCopyInto(&out.Registry)
 	out.MavenDeployment = in.MavenDeployment
 	out.GitSourceArchive = in.GitSourceArchive
-	out.ImageRegistry = in.ImageRegistry
 	out.CacheSettings = in.CacheSettings
 	out.BuildSettings = in.BuildSettings
 	if in.RelocationPatterns != nil {

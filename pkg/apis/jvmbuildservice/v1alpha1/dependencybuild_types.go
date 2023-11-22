@@ -29,27 +29,15 @@ type DependencyBuildStatus struct {
 	State        string             `json:"state,omitempty"`
 	Message      string             `json:"message,omitempty"`
 	Contaminants []Contaminant      `json:"contaminates,omitempty"`
-	//BuildRecipe the current build recipe. If build is done then this recipe was used
-	//to get to the current state
-	// Deprecated
-	DeprecatedCurrentBuildRecipe *BuildRecipe `json:"currentBuildRecipe,omitempty"`
 	// PotentialBuildRecipes additional recipes to try if the current recipe fails
-	PotentialBuildRecipes []*BuildRecipe `json:"potentialBuildRecipes,omitempty"`
-	//FailedBuildRecipes recipes that resulted in a failure
-	//if the current state is failed this may include the current BuildRecipe
-	//Deprecated
-	DeprecatedFailedBuildRecipes []*BuildRecipe `json:"failedBuildRecipes,omitempty"`
-	//Deprecated
-	DeprecatedLastCompletedBuildPipelineRun string   `json:"lastCompletedBuildPipelineRun,omitempty"`
-	CommitTime                              int64    `json:"commitTime,omitempty"`
-	DeployedArtifacts                       []string `json:"deployedArtifacts,omitempty"`
-	FailedVerification                      bool     `json:"failedVerification,omitempty"`
-	Hermetic                                bool     `json:"hermetic,omitempty"`
-	// Deprecated
-	DeprecatedDiagnosticDockerFiles []string         `json:"diagnosticDockerFiles,omitempty"`
-	PipelineRetries                 int              `json:"pipelineRetries,omitempty"`
-	BuildAttempts                   []*BuildAttempt  `json:"buildAttempts,omitempty"`
-	DiscoveryPipelineResults        *PipelineResults `json:"discoveryPipelineResults,omitempty"`
+	PotentialBuildRecipes    []*BuildRecipe   `json:"potentialBuildRecipes,omitempty"`
+	CommitTime               int64            `json:"commitTime,omitempty"`
+	DeployedArtifacts        []string         `json:"deployedArtifacts,omitempty"`
+	FailedVerification       bool             `json:"failedVerification,omitempty"`
+	Hermetic                 bool             `json:"hermetic,omitempty"`
+	PipelineRetries          int              `json:"pipelineRetries,omitempty"`
+	BuildAttempts            []*BuildAttempt  `json:"buildAttempts,omitempty"`
+	DiscoveryPipelineResults *PipelineResults `json:"discoveryPipelineResults,omitempty"`
 }
 
 // +genclient

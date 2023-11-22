@@ -1,6 +1,5 @@
 package com.redhat.hacbs.analyser.kube;
 
-import java.util.Collections;
 import java.util.List;
 
 import jakarta.inject.Inject;
@@ -33,14 +32,14 @@ public class ResetDependencyBuildsCommand implements Runnable {
             if (!build.isEmpty()) {
                 DependencyBuild item = client.withName(build).get();
                 item.getStatus().setState("");
-                item.getStatus().setFailedBuildRecipes(Collections.emptyList());
+                //                item.getStatus().setFailedBuildRecipes(Collections.emptyList());
                 client.updateStatus(item);
             } else {
                 List<DependencyBuild> items = client.list().getItems();
                 for (var request : items) {
                     if (!failedOnly || request.getStatus().getState().equals("DependencyBuildStateFailed")) {
                         request.getStatus().setState("");
-                        request.getStatus().setFailedBuildRecipes(Collections.emptyList());
+                        //                        request.getStatus().setFailedBuildRecipes(Collections.emptyList());
                         client.updateStatus(request);
                     }
                 }
