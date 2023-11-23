@@ -48,12 +48,10 @@ type JBSConfigSpec struct {
 
 	MavenBaseLocations map[string]string `json:"mavenBaseLocations,omitempty"`
 
-	SharedRegistries []ImageRegistry   `json:"sharedRegistries,omitempty"`
-	Registry         ImageRegistrySpec `json:"registry,omitempty"`
-	MavenDeployment  MavenDeployment   `json:"mavenDeployment,omitempty"`
-	GitSourceArchive GitSourceArchive  `json:"gitSourceArchive,omitempty"`
-	// Deprecated: Replaced by explicit declaration of Registry above.
-	ImageRegistry      `json:",inline,omitempty"`
+	SharedRegistries   []ImageRegistry            `json:"sharedRegistries,omitempty"`
+	Registry           ImageRegistrySpec          `json:"registry,omitempty"`
+	MavenDeployment    MavenDeployment            `json:"mavenDeployment,omitempty"`
+	GitSourceArchive   GitSourceArchive           `json:"gitSourceArchive,omitempty"`
 	CacheSettings      CacheSettings              `json:"cacheSettings,omitempty"`
 	BuildSettings      BuildSettings              `json:"buildSettings,omitempty"`
 	RelocationPatterns []RelocationPatternElement `json:"relocationPatterns,omitempty"`
