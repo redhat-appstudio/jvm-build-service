@@ -3,6 +3,7 @@ package com.redhat.hacbs.container.analyser.deploy.git;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.Map;
 
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.gitlab4j.api.GitLabApi;
@@ -49,6 +50,7 @@ public class GitLab extends Git {
                 Log.warnf("Repository %s already exists", name);
             } else {
                 // Can't set public visibility after creation for some reason with this API.
+                Log.infof("Creating repository with name %s", name);
                 project = gitLabApi.getProjectApi().createProject(name,
                         null,
                         null,
@@ -66,12 +68,12 @@ public class GitLab extends Git {
     }
 
     @Override
-    public void add(Path path, String commit, String imageId)
+    public Map<String, String> add(Path path, String commit, String imageId)
             throws IOException {
         if (project == null) {
             throw new RuntimeException("Call create first");
         }
-        pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
+        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
     }
 
     @Override

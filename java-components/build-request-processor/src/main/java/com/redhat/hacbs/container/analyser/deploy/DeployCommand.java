@@ -157,17 +157,19 @@ public class DeployCommand implements Runnable {
 
     public void run() {
         try {
+            Set<String> gavs = new HashSet<>();
+            Map<String, Set<String>> contaminatedPaths = new HashMap<>();
+            Map<String, Set<String>> contaminatedGavs = new HashMap<>();
+            Map<String, String> archivedSourceTags = new HashMap<>();
+
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
                 Log.infof("Git credentials are identity '%s' and URL '%s'", gitIdentity, gitURL);
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
                 git.create(scmUri);
-                git.add(sourcePath, commit, imageId);
+                archivedSourceTags = git.add(sourcePath, commit, imageId);
             }
 
-            Set<String> gavs = new HashSet<>();
-            Map<String, Set<String>> contaminatedPaths = new HashMap<>();
-            Map<String, Contaminates> contaminatedGavs = new HashMap<>();
             // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
             // contaminated then none of the artifacts will be deployed.
             Set<Path> toRemove = new HashSet<>();
@@ -337,13 +339,15 @@ public class DeployCommand implements Runnable {
                     newContaminates.add(i.getValue());
                 }
                 String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
+                String serialisedGitArchive = ResultsUpdater.MAPPER.writeValueAsString(archivedSourceTags);
                 Log.infof("Updating results %s with contaminants %s and deployed resources %s",
                         taskRun, serialisedContaminants, gavs);
                 resultsUpdater.updateResults(taskRun, Map.of(
                         "CONTAMINANTS", serialisedContaminants,
                         "DEPLOYED_RESOURCES", String.join(",", gavs),
                         "IMAGE_URL", imageName == null ? "" : imageName,
-                        "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest));
+                        "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest,
+                        "GIT_ARCHIVE", serialisedGitArchive));
             }
         } catch (Exception e) {
             Log.error("Deployment failed", e);

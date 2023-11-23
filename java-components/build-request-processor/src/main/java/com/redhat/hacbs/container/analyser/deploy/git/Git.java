@@ -4,10 +4,13 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
 
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.PushResult;
@@ -24,7 +27,7 @@ public abstract class Git {
     public abstract void create(String name)
             throws IOException, URISyntaxException;
 
-    public abstract void add(Path path, String commit, String imageId)
+    public abstract Map<String, String> add(Path path, String commit, String imageId)
             throws IOException;
 
     /**
@@ -62,7 +65,7 @@ public abstract class Git {
         }
     }
 
-    protected void pushRepository(Path path, String httpTransportUrl, String commit, String imageId) {
+    protected Map<String, String> pushRepository(Path path, String httpTransportUrl, String commit, String imageId) {
         try (var jGit = org.eclipse.jgit.api.Git.init().setDirectory(path.toFile()).call()) {
             // Find the tag name associated with the commit. Then append the unique imageId. This is from the Go code
             // and is a hash of abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path
@@ -87,6 +90,7 @@ public abstract class Git {
             Ref tagRefStable = jGit.tag().setAnnotated(true).setName(tagName + "-" + imageId).setForceUpdate(true).call();
             Ref tagRefUnique = jGit.tag().setAnnotated(true).setName(tagName + "-" + UUID.randomUUID()).setForceUpdate(true)
                     .call();
+
             Iterable<PushResult> results = jGit.push().setForce(true).setRemote("origin")
                     .add(jRepo.getBranch()) // Push the default branch else GitHub doesn't show the code.
                     .add(tagRefStable)
@@ -95,7 +99,8 @@ public abstract class Git {
 
             for (PushResult result : results) {
                 result.getRemoteUpdates().forEach(r -> {
-                    if (!r.getStatus().equals(RemoteRefUpdate.Status.OK)) {
+                    if (!r.getStatus().equals(RemoteRefUpdate.Status.OK)
+                            && !r.getStatus().equals(RemoteRefUpdate.Status.UP_TO_DATE)) {
                         Log.errorf("Push failure " + r);
                         throw new RuntimeException("Failed to push updates due to " + r.getMessage());
                     }
@@ -103,6 +108,10 @@ public abstract class Git {
                 Log.debugf("Pushed " + result.getMessages() + " " + result.getURI() + " updates: "
                         + result.getRemoteUpdates());
             }
+
+            return Collections.singletonMap(Repository.shortenRefName(tagRefUnique.getName()),
+                    jRepo.getRefDatabase().peel(tagRefUnique).getPeeledObjectId().getName());
+
         } catch (GitAPIException | IOException e) {
             throw new RuntimeException(e);
         }

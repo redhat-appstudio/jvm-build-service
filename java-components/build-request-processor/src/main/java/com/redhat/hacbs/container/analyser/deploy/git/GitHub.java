@@ -5,6 +5,7 @@ import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.Map;
 
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.kohsuke.github.GHRepository;
@@ -62,6 +63,7 @@ public class GitHub extends Git {
         if (type == Type.USER) {
             repository = github.getUser(owner).getRepository(name);
             if (repository == null) {
+                Log.infof("Creating repository with name %s", name);
                 repository = github.createRepository(name)
                         .wiki(false)
                         .defaultBranch("main")
@@ -73,6 +75,7 @@ public class GitHub extends Git {
         } else {
             repository = github.getOrganization(owner).getRepository(name);
             if (repository == null) {
+                Log.infof("Creating repository with name %s", name);
                 repository = github.getOrganization(owner).createRepository(name)
                         .wiki(false)
                         .defaultBranch("main")
@@ -85,11 +88,11 @@ public class GitHub extends Git {
     }
 
     @Override
-    public void add(Path path, String commit, String imageId) {
+    public Map<String, String> add(Path path, String commit, String imageId) {
         if (repository == null) {
             throw new RuntimeException("Call create first");
         }
-        pushRepository(path, repository.getHttpTransportUrl(), commit, imageId);
+        return pushRepository(path, repository.getHttpTransportUrl(), commit, imageId);
     }
 
     @Override
