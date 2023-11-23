@@ -666,6 +666,9 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	if jbsConfig.Spec.GitSourceArchive.URL != "" {
 		mavenArgs = append(mavenArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
 	}
+	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
+		mavenArgs = append(mavenArgs, "--git-disable-ssl-verification")
+	}
 	deployArgs = append(deployArgs, mavenArgs...)
 
 	hermeticPreBuildImageArgs := []string{

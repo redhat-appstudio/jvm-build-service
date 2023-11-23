@@ -134,6 +134,9 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--git-identity")
     String gitIdentity;
 
+    @CommandLine.Option(names = "--git-disable-ssl-verification")
+    boolean gitDisableSSLVerification;
+
     @CommandLine.Option(names = "--build-id")
     String buildId;
     // Testing only ; used to disable image deployment
@@ -155,7 +158,8 @@ public class DeployCommand implements Runnable {
         try {
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-                var git = Git.builder(gitURL, gitIdentity, gitToken.get());
+                Log.infof("Git credentials are identity '%s' and URL '%s'", gitIdentity, gitURL);
+                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
                 git.create(scmUri);
                 git.add(sourcePath, commit, imageId);
             }

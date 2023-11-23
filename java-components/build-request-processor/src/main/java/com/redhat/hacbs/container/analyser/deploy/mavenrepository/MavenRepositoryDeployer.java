@@ -49,6 +49,8 @@ public class MavenRepositoryDeployer {
         this.system = mvnCtx.getRepositorySystem();
         this.session = MavenRepositorySystemUtils.newSession();
 
+        Log.infof("Maven credentials are username '%s' and repository '%s'", username, repository);
+
         // https://maven.apache.org/resolver/third-party-integrations.html states a local repository manager should be added.
         session.setLocalRepositoryManager(system.newLocalRepositoryManager(session, new LocalRepository(artifacts.toFile())));
     }

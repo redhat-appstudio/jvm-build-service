@@ -16,6 +16,7 @@ spec:
   gitSourceArchive:
     identity: GIT_DEPLOY_IDENTITY
     url: GIT_DEPLOY_URL
+    disableSSLVerification: GIT_DISABLE_SSL_VERIFICATION
   relocationPatterns:
     - relocationPattern:
         buildPolicy: "default"
