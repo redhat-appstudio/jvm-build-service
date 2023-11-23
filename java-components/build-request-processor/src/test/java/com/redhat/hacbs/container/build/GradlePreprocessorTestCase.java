@@ -19,7 +19,7 @@ public class GradlePreprocessorTestCase extends AbstractPreprocessorTestCase {
 
     @Override
     public List<String> getCommand() {
-        var args = buildInfoLocator.lookupPluginInfo(GRADLE);
+        var args = buildInfoLocator.lookupDisabledPlugins(GRADLE);
         var command = new ArrayList<String>(1 + 2 * args.size());
         command.add("gradle-prepare");
         args.forEach(arg -> {

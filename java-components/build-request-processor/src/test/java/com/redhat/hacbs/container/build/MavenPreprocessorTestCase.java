@@ -19,7 +19,7 @@ public class MavenPreprocessorTestCase extends AbstractPreprocessorTestCase {
 
     @Override
     public List<String> getCommand() {
-        var args = buildInfoLocator.lookupPluginInfo(MAVEN);
+        var args = buildInfoLocator.lookupDisabledPlugins(MAVEN);
         var command = new ArrayList<String>(1 + 2 * args.size());
         command.add("maven-prepare");
         args.forEach(arg -> {

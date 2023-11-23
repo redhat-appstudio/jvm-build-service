@@ -49,7 +49,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
         this.buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
         this.repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
         this.buildToolInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_TOOL_INFO);
-        this.pluginInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.PLUGIN_INFO);
+        this.pluginInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.DISABLED_PLUGINS);
     }
 
     /**
@@ -118,8 +118,8 @@ public class RecipeLayoutManager implements RecipeDirectory {
     }
 
     @Override
-    public Optional<Path> getDisabledPluginInfo(String name) {
-        Path target = pluginInfoDirectory.resolve(name + ".yaml");
+    public Optional<Path> getDisabledPlugins(String tool) {
+        Path target = pluginInfoDirectory.resolve(tool + ".yaml");
         return Files.isReadable(target) ? Optional.of(target) : Optional.empty();
     }
 

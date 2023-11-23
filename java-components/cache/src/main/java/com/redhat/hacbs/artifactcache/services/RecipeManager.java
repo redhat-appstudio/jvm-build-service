@@ -22,6 +22,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
+import com.redhat.hacbs.recipies.DisabledPluginsManager;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipies.location.BuildInfoRequest;
 import com.redhat.hacbs.recipies.location.RecipeDirectory;
@@ -139,15 +140,15 @@ public class RecipeManager {
         return BuildRecipe.BUILD.getHandler().parse(path);
     }
 
-    public List<String> getDisabledPluginInfo(String name) {
+    public List<String> getDisabledPlugins(String name) {
         List<String> results = new ArrayList<>();
 
         for (var i : recipeDirs) {
-            var path = i.getDisabledPluginInfo(name);
+            var path = i.getDisabledPlugins(name);
 
             if (path.isPresent()) {
                 try {
-                    results.addAll(BuildRecipe.BUILD.getHandler().parse(path.get()).getDisabledPlugins());
+                    return DisabledPluginsManager.INSTANCE.parse(path.get()).getDisabledPlugins();
                 } catch (IOException e) {
                     Log.errorf(e, "Failed to parse plugin info file %s", path);
                 }

@@ -34,8 +34,8 @@ public class InvocationBuilderTestCase {
         }
 
         @Override
-        public List<String> lookupPluginInfo(String name) {
-            return switch (name) {
+        public List<String> lookupDisabledPlugins(String tool) {
+            return switch (tool) {
                 case MAVEN -> List.of("org.glassfish.copyright:glassfish-copyright-maven-plugin",
                         "org.sonatype.plugins:nexus-staging-maven-plugin",
                         "com.mycila:license-maven-plugin",
@@ -68,7 +68,7 @@ public class InvocationBuilderTestCase {
         Assertions.assertTrue(
                 result.invocations
                         .contains(new Invocation(List.of("install"), Map.of(MAVEN, "3.8.0", JDK, "11"), MAVEN,
-                                buildInfoLocator.lookupPluginInfo(MAVEN))));
+                                buildInfoLocator.lookupDisabledPlugins(MAVEN))));
 
         builder = newBuilder();
         builder.addToolInvocation(MAVEN, List.of("install"));
@@ -80,10 +80,10 @@ public class InvocationBuilderTestCase {
         Assertions.assertTrue(result.invocations
                 .contains(
                         new Invocation(List.of("install"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), MAVEN,
-                                buildInfoLocator.lookupPluginInfo(MAVEN))));
+                                buildInfoLocator.lookupDisabledPlugins(MAVEN))));
         Assertions.assertTrue(result.invocations
                 .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"),
-                        GRADLE, buildInfoLocator.lookupPluginInfo(GRADLE))));
+                        GRADLE, buildInfoLocator.lookupDisabledPlugins(GRADLE))));
 
         builder = newBuilder();
         builder.addToolInvocation(MAVEN, List.of("mvn", "install"));
@@ -96,10 +96,10 @@ public class InvocationBuilderTestCase {
         Assertions.assertTrue(result.invocations
                 .contains(
                         new Invocation(List.of("mvn", "install"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), MAVEN,
-                                buildInfoLocator.lookupPluginInfo(MAVEN))));
+                                buildInfoLocator.lookupDisabledPlugins(MAVEN))));
         Assertions.assertTrue(result.invocations
                 .contains(new Invocation(List.of("gradle", "build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"),
-                        GRADLE, buildInfoLocator.lookupPluginInfo(GRADLE))));
+                        GRADLE, buildInfoLocator.lookupDisabledPlugins(GRADLE))));
 
     }
 

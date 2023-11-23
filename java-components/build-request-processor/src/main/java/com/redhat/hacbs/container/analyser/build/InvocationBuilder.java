@@ -258,7 +258,7 @@ public class InvocationBuilder {
                             result.setTool(tool);
                             result.setDisabledPlugins(buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
                                     ? buildRecipeInfo.getDisabledPlugins()
-                                    : buildInfoLocator.lookupPluginInfo(tool));
+                                    : buildInfoLocator.lookupDisabledPlugins(tool));
                             info.invocations.add(result);
                         }
                     }
