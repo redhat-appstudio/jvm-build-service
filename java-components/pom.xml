@@ -61,6 +61,10 @@
         <asm.version>9.6</asm.version>
         <maven-indexer.version>7.1.0</maven-indexer.version>
         <maven-resolver.version>1.9.16</maven-resolver.version>
+
+        <!-- Sonar Cloud Configuration -->
+        <sonar.organization>redhat-appstudio-1</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
     <modules>
