@@ -90,7 +90,7 @@ spec:
               gitSourceArchive:
                 properties:
                   disableSSLVerification:
-                    type: string
+                    type: boolean
                   identity:
                     type: string
                   url:
