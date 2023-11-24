@@ -1,4 +1,4 @@
-name: Check Kubernetes YAMLs with kube-linter
+name: Validate Kubernetes YAMLs
 
 on:
   pull_request:
@@ -7,7 +7,6 @@ on:
       - 'deploy/crds/base/**.ya?ml'
       - 'deploy/operator/base/**.ya?ml'
       - 'deploy/operator/config/**.ya?ml'
-
 jobs:
   kube-linter:
     name: Kube linter
