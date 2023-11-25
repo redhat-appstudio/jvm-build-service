@@ -10,12 +10,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.builder.DiffResult;
-import org.jboss.logging.Logger;
 
 import com.redhat.hacbs.container.verifier.asm.AsmDiffable;
 
 public class DiffUtils {
-    private static final Logger Log = Logger.getLogger(DiffUtils.class);
 
     public record DiffResults(Set<String> shared, Set<String> added, Set<String> deleted,
             Map<String, DiffResult<?>> diffResults,

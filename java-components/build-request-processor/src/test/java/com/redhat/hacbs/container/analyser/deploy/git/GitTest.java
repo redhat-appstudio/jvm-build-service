@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.logging.LogRecord;
 
@@ -78,7 +77,7 @@ public class GitTest {
                 }
 
                 @Override
-                public Map<String, String> add(Path path, String commit, String imageId) {
+                public GitStatus add(Path path, String commit, String imageId) {
                     return null;
                 }
 
@@ -87,7 +86,7 @@ public class GitTest {
                     return null;
                 }
             };
-            Map<String, String> tagResults = test.pushRepository(
+            Git.GitStatus tagResults = test.pushRepository(
                     initialRepo,
                     testRepoURI,
                     "c396268fb90335bde5c9272b9a194c3d4302bf24",
@@ -105,23 +104,16 @@ public class GitTest {
 
             List<Ref> tags = testRepository.tagList().call();
             assertEquals(2, tags.size());
-            assertEquals(1, tagResults.size());
-
             assertTrue(tags.stream().anyMatch(r -> r.getName().equals("refs/tags/0.1-75ecd81c7a2b384151c990975eb1dd10")));
 
-            tagResults.forEach((k, v) -> {
-                var found = tags.stream().filter(t -> Repository.shortenRefName(t.getName()).matches(k)).findFirst();
-                assertTrue(found.isPresent());
-                try {
-                    assertTrue(v.matches(testRepository.getRepository()
-                            .getRefDatabase()
-                            .peel(found.get())
-                            .getPeeledObjectId()
-                            .getName()));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            var found = tags.stream().filter(t -> Repository.shortenRefName(t.getName()).matches(tagResults.tag)).findFirst();
+            assertTrue(found.isPresent());
+            assertTrue(tagResults.url.contains(testRepoURI));
+            assertTrue(tagResults.sha.matches(testRepository.getRepository()
+                    .getRefDatabase()
+                    .peel(found.get())
+                    .getPeeledObjectId()
+                    .getName()));
         }
     }
 

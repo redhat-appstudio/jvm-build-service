@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.Map;
 import java.util.UUID;
 
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -27,7 +25,7 @@ public abstract class Git {
     public abstract void create(String name)
             throws IOException, URISyntaxException;
 
-    public abstract Map<String, String> add(Path path, String commit, String imageId)
+    public abstract GitStatus add(Path path, String commit, String imageId)
             throws IOException;
 
     /**
@@ -65,7 +63,7 @@ public abstract class Git {
         }
     }
 
-    protected Map<String, String> pushRepository(Path path, String httpTransportUrl, String commit, String imageId) {
+    protected GitStatus pushRepository(Path path, String httpTransportUrl, String commit, String imageId) {
         try (var jGit = org.eclipse.jgit.api.Git.init().setDirectory(path.toFile()).call()) {
             // Find the tag name associated with the commit. Then append the unique imageId. This is from the Go code
             // and is a hash of abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path
@@ -109,9 +107,8 @@ public abstract class Git {
                         + result.getRemoteUpdates());
             }
 
-            return Collections.singletonMap(Repository.shortenRefName(tagRefUnique.getName()),
+            return new GitStatus(httpTransportUrl, Repository.shortenRefName(tagRefUnique.getName()),
                     jRepo.getRefDatabase().peel(tagRefUnique).getPeeledObjectId().getName());
-
         } catch (GitAPIException | IOException e) {
             throw new RuntimeException(e);
         }
@@ -134,4 +131,24 @@ public abstract class Git {
     }
 
     abstract String groupSplit();
+
+    public static class GitStatus {
+        public String url;
+        public String tag;
+        public String sha;
+
+        public GitStatus() {
+        }
+
+        public GitStatus(String url, String tag, String sha) {
+            this.url = url;
+            this.tag = tag;
+            this.sha = sha;
+        }
+
+        @Override
+        public String toString() {
+            return "GitStatus{url='" + url + "', tag='" + tag + "', sha='" + sha + "'}";
+        }
+    }
 }

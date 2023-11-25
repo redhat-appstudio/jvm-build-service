@@ -652,6 +652,8 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			var verificationResults string
 			var hermeticBuildImage string
 			var deployed []string
+			var gitArchive v1alpha1.GitArchive
+
 			for _, i := range pr.Status.Results {
 				if i.Name == PipelineResultImage {
 					image = i.Value.StringVal
@@ -668,8 +670,13 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
 					passedVerification = !parseBool
 				} else if i.Name == artifactbuild.PipelineResultVerificationResult {
+					// Note: The TaskRun stores this as
+					// 		VERIFICATION_RESULTS	{"commons-lang:commons-lang:jar:2.5":[]}
+					// 	But this is now stored as
+					// 		"verificationFailures": "{\"commons-lang:commons-lang:jar:2.5\":[]}"
 					verificationResults = i.Value.StringVal
 				} else if i.Name == artifactbuild.PipelineResultGavs {
+					// TODO: What is the difference between this and PipelineResultDeployedResources?
 					deployed := strings.Split(i.Value.StringVal, ",")
 					db.Status.DeployedArtifacts = deployed
 				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
@@ -677,6 +684,11 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					deployed = strings.Split(i.Value.StringVal, ",")
 				} else if i.Name == artifactbuild.PipelineResultHermeticBuildImage {
 					hermeticBuildImage = i.Value.StringVal
+				} else if i.Name == artifactbuild.PipelineResultGitArchive {
+					err := json.Unmarshal([]byte(i.Value.StringVal), &gitArchive)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
 				}
 			}
 			err = r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
@@ -690,8 +702,10 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				Verified:            passedVerification,
 				VerificationResults: verificationResults,
 				Gavs:                deployed,
+				GitArchive:          gitArchive,
 				HermeticBuildImage:  hermeticBuildImage,
 			}
+
 			problemContaminates := db.Status.ProblemContaminates()
 			if len(problemContaminates) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete

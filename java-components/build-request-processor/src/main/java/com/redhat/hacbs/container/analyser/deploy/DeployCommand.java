@@ -159,8 +159,8 @@ public class DeployCommand implements Runnable {
         try {
             Set<String> gavs = new HashSet<>();
             Map<String, Set<String>> contaminatedPaths = new HashMap<>();
-            Map<String, Set<String>> contaminatedGavs = new HashMap<>();
-            Map<String, String> archivedSourceTags = new HashMap<>();
+            Map<String, Contaminates> contaminatedGavs = new HashMap<>();
+            Git.GitStatus archivedSourceTags = new Git.GitStatus();
 
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {

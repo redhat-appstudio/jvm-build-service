@@ -5,7 +5,6 @@ import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.util.Map;
 
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.kohsuke.github.GHRepository;
@@ -88,7 +87,7 @@ public class GitHub extends Git {
     }
 
     @Override
-    public Map<String, String> add(Path path, String commit, String imageId) {
+    public GitStatus add(Path path, String commit, String imageId) {
         if (repository == null) {
             throw new RuntimeException("Call create first");
         }
