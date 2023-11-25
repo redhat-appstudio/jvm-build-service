@@ -410,9 +410,13 @@ func (in *DependencyBuildStatus) DeepCopyInto(out *DependencyBuildStatus) {
 	}
 	if in.Contaminants != nil {
 		in, out := &in.Contaminants, &out.Contaminants
-		*out = make([]Contaminant, len(*in))
+		*out = make([]*Contaminant, len(*in))
 		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(Contaminant)
+				(*in).DeepCopyInto(*out)
+			}
 		}
 	}
 	if in.PotentialBuildRecipes != nil {

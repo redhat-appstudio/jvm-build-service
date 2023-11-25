@@ -491,7 +491,7 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(client.Update(ctx, pr)).Should(BeNil())
 		db := getBuild(client, g)
 		g.Expect(controllerutil.SetOwnerReference(&ab, db, reconciler.scheme)).Should(BeNil())
-		db.Status.Contaminants = []v1alpha1.Contaminant{{GAV: "com.acme:foo:1.0", ContaminatedArtifacts: []string{TestArtifact}}}
+		db.Status.Contaminants = []*v1alpha1.Contaminant{{GAV: "com.acme:foo:1.0", ContaminatedArtifacts: []string{TestArtifact}}}
 		g.Expect(client.Update(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
