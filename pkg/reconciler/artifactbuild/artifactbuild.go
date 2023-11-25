@@ -383,15 +383,17 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log lo
 			if db.Status.State != v1alpha1.DependencyBuildStateContaminated {
 				continue
 			}
-			var newContaminates []v1alpha1.Contaminant
-			for _, contaminant := range db.Status.Contaminants {
-				if contaminant.GAV != abr.Spec.GAV {
-					newContaminates = append(newContaminates, contaminant)
+			allOk := true
+			for i := range db.Status.Contaminants {
+				contaminant := db.Status.Contaminants[i]
+				if contaminant.GAV == abr.Spec.GAV {
+					contaminant.RebuildAvailable = true
+				} else if !contaminant.Allowed && !contaminant.RebuildAvailable {
+					allOk = false
 				}
 			}
-			log.Info("Attempting to resolve contamination for dependencybuild", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag, "old", db.Status.Contaminants, "new", newContaminates)
-			db.Status.Contaminants = newContaminates
-			if len(db.Status.Contaminants) == 0 {
+			if allOk {
+				log.Info("Attempting to resolve contamination for dependencybuild as all contaminates are ready", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag)
 				//TODO: we could have a situation where there are still some contamination, but not for artifacts that we care about
 				//kick off the build again
 				log.Info("Contamination resolved, moving to state new", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag)

@@ -661,7 +661,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					digest = i.Value.StringVal
 				} else if i.Name == artifactbuild.PipelineResultContaminants {
 
-					db.Status.Contaminants = []v1alpha1.Contaminant{}
+					db.Status.Contaminants = []*v1alpha1.Contaminant{}
 					//unmarshal directly into the contaminants field
 					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
 					if err != nil {
@@ -689,7 +689,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			for _, i := range pr.Status.Results {
 				if i.Name == artifactbuild.PipelineResultContaminants {
 
-					db.Status.Contaminants = []v1alpha1.Contaminant{}
+					db.Status.Contaminants = []*v1alpha1.Contaminant{}
 					//unmarshal directly into the contaminants field
 					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
 					if err != nil {
@@ -712,7 +712,8 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				}
 			}
 
-			if len(db.Status.Contaminants) == 0 {
+			problemContaminates := db.Status.ProblemContaminates()
+			if len(problemContaminates) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
 				r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
@@ -720,7 +721,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				//most likely shaded in
 				//we don't need to update the status here, it will be handled by the handleStateComplete method
 				//even though there are contaminates they may not be in artifacts we care about
-				err := r.handleBuildCompletedWithContaminants(ctx, db, log)
+				err := r.handleBuildCompletedWithContaminants(ctx, db, log, problemContaminates)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
@@ -815,7 +816,7 @@ func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Con
 // no actual request for these artifacts. This can change if new artifacts are requested, so even when complete
 // we still need to verify that hte build is ok
 // this method will always update the status if it does not return an error
-func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger) error {
+func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger, problemContaminates []*v1alpha1.Contaminant) error {
 
 	ownerGavs := map[string]bool{}
 	db.Status.State = v1alpha1.DependencyBuildStateComplete
@@ -838,7 +839,7 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 			ownerGavs[ab.Spec.GAV] = true
 		}
 	}
-	for _, contaminant := range db.Status.Contaminants {
+	for _, contaminant := range problemContaminates {
 		for _, artifact := range contaminant.ContaminatedArtifacts {
 			if ownerGavs[artifact] {
 				db.Status.State = v1alpha1.DependencyBuildStateContaminated
@@ -883,7 +884,14 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 }
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	contaminants := db.Status.Contaminants
-	if len(contaminants) == 0 {
+	allOk := true
+	for _, i := range contaminants {
+		if !i.Allowed && !i.RebuildAvailable {
+			allOk = false
+			break
+		}
+	}
+	if allOk {
 		//all fixed, just set the state back to building and try again
 		//this is triggered when contaminants are removed by the ABR controller
 		//setting it back to building should re-try the recipe that actually worked

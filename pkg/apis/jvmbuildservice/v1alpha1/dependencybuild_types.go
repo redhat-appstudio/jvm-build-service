@@ -28,7 +28,7 @@ type DependencyBuildStatus struct {
 	Conditions   []metav1.Condition `json:"conditions,omitempty"`
 	State        string             `json:"state,omitempty"`
 	Message      string             `json:"message,omitempty"`
-	Contaminants []Contaminant      `json:"contaminates,omitempty"`
+	Contaminants []*Contaminant     `json:"contaminates,omitempty"`
 	// PotentialBuildRecipes additional recipes to try if the current recipe fails
 	PotentialBuildRecipes    []*BuildRecipe   `json:"potentialBuildRecipes,omitempty"`
 	CommitTime               int64            `json:"commitTime,omitempty"`
@@ -115,6 +115,16 @@ func (r *DependencyBuildStatus) CurrentBuildAttempt() *BuildAttempt {
 	return r.BuildAttempts[len(r.BuildAttempts)-1]
 }
 
+func (r *DependencyBuildStatus) ProblemContaminates() []*Contaminant {
+	problemContaminates := []*Contaminant{}
+	for _, i := range r.Contaminants {
+		if !i.Allowed {
+			problemContaminates = append(problemContaminates, i)
+		}
+	}
+	return problemContaminates
+}
+
 type BuildRecipe struct {
 	//Deprecated
 	Pipeline            string               `json:"pipeline,omitempty"`
@@ -136,6 +146,10 @@ type BuildRecipe struct {
 type Contaminant struct {
 	GAV                   string   `json:"gav,omitempty"`
 	ContaminatedArtifacts []string `json:"contaminatedArtifacts,omitempty"`
+	BuildId               string   `json:"buildId,omitempty"`
+	Source                string   `json:"source,omitempty"`
+	Allowed               bool     `json:"allowed,omitempty"`
+	RebuildAvailable      bool     `json:"rebuildAvailable,omitempty"`
 }
 type AdditionalDownload struct {
 	Uri         string `json:"uri,omitempty"`
