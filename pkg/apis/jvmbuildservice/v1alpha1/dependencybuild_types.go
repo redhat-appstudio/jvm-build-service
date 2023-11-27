@@ -28,28 +28,16 @@ type DependencyBuildStatus struct {
 	Conditions   []metav1.Condition `json:"conditions,omitempty"`
 	State        string             `json:"state,omitempty"`
 	Message      string             `json:"message,omitempty"`
-	Contaminants []Contaminant      `json:"contaminates,omitempty"`
-	//BuildRecipe the current build recipe. If build is done then this recipe was used
-	//to get to the current state
-	// Deprecated
-	DeprecatedCurrentBuildRecipe *BuildRecipe `json:"currentBuildRecipe,omitempty"`
+	Contaminants []*Contaminant     `json:"contaminates,omitempty"`
 	// PotentialBuildRecipes additional recipes to try if the current recipe fails
-	PotentialBuildRecipes []*BuildRecipe `json:"potentialBuildRecipes,omitempty"`
-	//FailedBuildRecipes recipes that resulted in a failure
-	//if the current state is failed this may include the current BuildRecipe
-	//Deprecated
-	DeprecatedFailedBuildRecipes []*BuildRecipe `json:"failedBuildRecipes,omitempty"`
-	//Deprecated
-	DeprecatedLastCompletedBuildPipelineRun string   `json:"lastCompletedBuildPipelineRun,omitempty"`
-	CommitTime                              int64    `json:"commitTime,omitempty"`
-	DeployedArtifacts                       []string `json:"deployedArtifacts,omitempty"`
-	FailedVerification                      bool     `json:"failedVerification,omitempty"`
-	Hermetic                                bool     `json:"hermetic,omitempty"`
-	// Deprecated
-	DeprecatedDiagnosticDockerFiles []string         `json:"diagnosticDockerFiles,omitempty"`
-	PipelineRetries                 int              `json:"pipelineRetries,omitempty"`
-	BuildAttempts                   []*BuildAttempt  `json:"buildAttempts,omitempty"`
-	DiscoveryPipelineResults        *PipelineResults `json:"discoveryPipelineResults,omitempty"`
+	PotentialBuildRecipes    []*BuildRecipe   `json:"potentialBuildRecipes,omitempty"`
+	CommitTime               int64            `json:"commitTime,omitempty"`
+	DeployedArtifacts        []string         `json:"deployedArtifacts,omitempty"`
+	FailedVerification       bool             `json:"failedVerification,omitempty"`
+	Hermetic                 bool             `json:"hermetic,omitempty"`
+	PipelineRetries          int              `json:"pipelineRetries,omitempty"`
+	BuildAttempts            []*BuildAttempt  `json:"buildAttempts,omitempty"`
+	DiscoveryPipelineResults *PipelineResults `json:"discoveryPipelineResults,omitempty"`
 }
 
 // +genclient
@@ -127,6 +115,16 @@ func (r *DependencyBuildStatus) CurrentBuildAttempt() *BuildAttempt {
 	return r.BuildAttempts[len(r.BuildAttempts)-1]
 }
 
+func (r *DependencyBuildStatus) ProblemContaminates() []*Contaminant {
+	problemContaminates := []*Contaminant{}
+	for _, i := range r.Contaminants {
+		if !i.Allowed {
+			problemContaminates = append(problemContaminates, i)
+		}
+	}
+	return problemContaminates
+}
+
 type BuildRecipe struct {
 	//Deprecated
 	Pipeline            string               `json:"pipeline,omitempty"`
@@ -149,6 +147,10 @@ type BuildRecipe struct {
 type Contaminant struct {
 	GAV                   string   `json:"gav,omitempty"`
 	ContaminatedArtifacts []string `json:"contaminatedArtifacts,omitempty"`
+	BuildId               string   `json:"buildId,omitempty"`
+	Source                string   `json:"source,omitempty"`
+	Allowed               bool     `json:"allowed,omitempty"`
+	RebuildAvailable      bool     `json:"rebuildAvailable,omitempty"`
 }
 type AdditionalDownload struct {
 	Uri         string `json:"uri,omitempty"`

@@ -79,10 +79,6 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	err, done := r.handleDeprecatedRegistryDefinition(ctx, &jbsConfig)
-	if done || err != nil {
-		return reconcile.Result{}, err
-	}
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
@@ -142,32 +138,6 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		}
 	}
 	return reconcile.Result{}, nil
-}
-
-func (r *ReconcilerJBSConfig) handleDeprecatedRegistryDefinition(ctx context.Context, config *v1alpha1.JBSConfig) (error, bool) {
-	// If anything is set in the deprecated anonymous struct, copy it over to the new one.
-	// Note that e.g. config.Spec.ImageRegistry.Host is equivalent to config.Spec.Host due to the anonymous definition
-	// and is only explicit here for clarity.
-	if config.Spec.ImageRegistry.Host != "" || config.Spec.ImageRegistry.Port != "" ||
-		config.Spec.ImageRegistry.Owner != "" || config.Spec.ImageRegistry.Repository != "" || config.Spec.PrependTag != "" {
-
-		config.Spec.Registry.Host = config.Spec.ImageRegistry.Host
-		config.Spec.Registry.Port = config.Spec.ImageRegistry.Port
-		config.Spec.Registry.Owner = config.Spec.ImageRegistry.Owner
-		config.Spec.Registry.Repository = config.Spec.ImageRegistry.Repository
-		config.Spec.Registry.Insecure = config.Spec.ImageRegistry.Insecure
-		config.Spec.Registry.PrependTag = config.Spec.ImageRegistry.PrependTag
-
-		// Clear the old one
-		config.Spec.ImageRegistry.Host = ""
-		config.Spec.ImageRegistry.Port = ""
-		config.Spec.ImageRegistry.Owner = ""
-		config.Spec.ImageRegistry.Repository = ""
-		config.Spec.ImageRegistry.PrependTag = ""
-
-		return r.client.Update(ctx, config), true
-	}
-	return nil, false
 }
 
 func settingOrDefault(setting, def string) string {

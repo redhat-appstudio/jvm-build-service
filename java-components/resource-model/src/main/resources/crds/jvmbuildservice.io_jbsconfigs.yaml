@@ -89,6 +89,8 @@ spec:
                 type: boolean
               gitSourceArchive:
                 properties:
+                  disableSSLVerification:
+                    type: boolean
                   identity:
                     type: string
                   url:
@@ -96,10 +98,6 @@ spec:
                 type: object
               hermeticBuilds:
                 type: string
-              host:
-                type: string
-              insecure:
-                type: boolean
               mavenBaseLocations:
                 additionalProperties:
                   type: string
@@ -111,12 +109,6 @@ spec:
                   username:
                     type: string
                 type: object
-              owner:
-                type: string
-              port:
-                type: string
-              prependTag:
-                type: string
               registry:
                 properties:
                   host:
@@ -167,15 +159,11 @@ spec:
                   - relocationPattern
                   type: object
                 type: array
-              repository:
-                type: string
               requireArtifactVerification:
                 description: If this is true then the build will fail if artifact
                   verification fails otherwise deploy will happen as normal, but a
                   field will be set on the DependencyBuild
                 type: boolean
-              secretName:
-                type: string
               sharedRegistries:
                 items:
                   properties:

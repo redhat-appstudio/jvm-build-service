@@ -311,7 +311,7 @@ func TestStateBuilding(t *testing.T) {
 				Labels:    map[string]string{DependencyBuildIdLabel: util.HashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
-			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []v1alpha1.Contaminant{{GAV: "com.test:test:1.0", ContaminatedArtifacts: []string{"a:b:1"}}}},
+			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []*v1alpha1.Contaminant{{GAV: "com.test:test:1.0", ContaminatedArtifacts: []string{"a:b:1"}}}},
 		}
 		g.Expect(controllerutil.SetOwnerReference(abr, db, reconciler.scheme))
 		g.Expect(client.Create(ctx, db))
@@ -357,7 +357,7 @@ func TestStateCompleteFixingContamination(t *testing.T) {
 				Labels:    map[string]string{DependencyBuildIdLabel: util.HashString("")},
 			},
 			Spec:   v1alpha1.DependencyBuildSpec{},
-			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []v1alpha1.Contaminant{{GAV: "com.test:test:1.0", ContaminatedArtifacts: []string{"a:b:1"}}}},
+			Status: v1alpha1.DependencyBuildStatus{State: v1alpha1.DependencyBuildStateContaminated, Contaminants: []*v1alpha1.Contaminant{{GAV: "com.test:test:1.0", ContaminatedArtifacts: []string{"a:b:1"}}}},
 		}
 		client, reconciler = setupClientAndReconciler(abr, contaiminated)
 	}
@@ -367,6 +367,12 @@ func TestStateCompleteFixingContamination(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		db := v1alpha1.DependencyBuild{}
 		g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: contaminatedName}, &db))
-		g.Expect(db.Status.Contaminants).Should(BeEmpty())
+		allOk := true
+		for _, i := range db.Status.Contaminants {
+			if !i.Allowed && !i.RebuildAvailable {
+				allOk = false
+			}
+		}
+		g.Expect(allOk).Should(BeTrue())
 	})
 }
