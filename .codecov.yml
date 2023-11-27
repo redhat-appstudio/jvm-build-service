@@ -1,4 +1,3 @@
-comment: off
 coverage:
   status:
     project:
@@ -6,7 +5,7 @@ coverage:
         target: auto
         threshold: 1%
         removed_code_behavior: adjust_base
-      patch:
+    patch:
       default:
         informational: true
         target: auto

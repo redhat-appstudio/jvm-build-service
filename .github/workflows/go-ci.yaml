@@ -1,4 +1,4 @@
-name: Validate PR - golang CI
+name: GoLang CI
 on:
   pull_request:
     branches: [ main ]
@@ -19,12 +19,12 @@ jobs:
     name: Check sources
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19.x
-      - name: Check out code
-        uses: actions/checkout@v4
+          go-version-file: './go.mod'
       - name: Check go mod status
         run: |
           go mod tidy
@@ -56,12 +56,12 @@ jobs:
     name: Golang Unit tests
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19.x
-      - name: Check out code
-        uses: actions/checkout@v4
+          go-version-file: './go.mod'
       - name: Build
         run: make build
       - name: Test

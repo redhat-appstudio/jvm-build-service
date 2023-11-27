@@ -1,4 +1,4 @@
-name: Validate PR - Minikube Tests
+name: Minikube Tests
 on:
   pull_request:
     branches: [ main ]

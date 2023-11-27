@@ -267,6 +267,14 @@
         </dependencies>
     </dependencyManagement>
 
+    <dependencies>
+       <dependency>
+          <groupId>io.quarkus</groupId>
+          <artifactId>quarkus-jacoco</artifactId>
+          <scope>test</scope>
+       </dependency>
+    </dependencies>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -310,6 +318,27 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+          <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.10</version>
+                <executions>
+                   <execution>
+                      <id>default-prepare-agent</id>
+                      <goals>
+                           <goal>prepare-agent</goal>
+                      </goals>
+                      <configuration>
+                        <exclClassLoaders>*QuarkusClassLoader</exclClassLoaders>
+                        <destFile>${project.build.directory}/jacoco-quarkus.exec</destFile>
+                        <append>true</append>
+                      </configuration>
+                   </execution>
+                </executions>
+          </plugin>
+        </plugins>
     </build>
 
     <repositories>
