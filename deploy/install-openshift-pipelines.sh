@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DIR=`dirname $0`
-oc apply -f ${DIR}/openshift-pipelines-subscription.yaml
+oc apply -f ${DIR}/base/pipelines/openshift-pipelines-subscription.yaml
 timeout=600 #10 minutes in seconds
 endTime=$(( $(date +%s) + timeout ))
 

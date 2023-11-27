@@ -28,7 +28,9 @@ sleep 2
 kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
 kubectl delete --ignore-not-found deployments.apps jvm-build-workspace-artifact-cache
 
-kubectl apply -f $DIR/namespace.yaml
+export JBS_WORKER_NAMESPACE=test-jvm-namespace
+export JBS_QUAY_IMAGE=redhat-appstudio
+cat $DIR/base/namespace/namespace.yaml | envsubst '${JBS_WORKER_NAMESPACE}' | kubectl apply -f -
 kubectl config set-context --current --namespace=test-jvm-namespace
 
 JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller \
@@ -39,8 +41,9 @@ $DIR/patch-yaml.sh
 #huge hack to deal with minikube local images, make sure they are never pulled
 find $DIR -path \*development\*.yaml -exec sed -i s/Always/Never/ {} \;
 
-kubectl apply -k $DIR/overlays/development
+kustomize build $DIR/overlays/development | envsubst '${AWS_ACCESS_KEY_ID},${AWS_PROFILE},${AWS_SECRET_ACCESS_KEY},${GIT_DEPLOY_IDENTITY},${GIT_DEPLOY_TOKEN},${GIT_DEPLOY_URL},${GIT_DISABLE_SSL_VERIFICATION},${JBS_QUAY_IMAGE},${JBS_BUILD_IMAGE_SECRET},${JBS_GIT_CREDENTIALS},${JBS_WORKER_NAMESPACE},${MAVEN_PASSWORD},${MAVEN_USERNAME},${MAVEN_REPOSITORY},${QUAY_USERNAME}' | kubectl apply -f -
 
+echo "Completed overlays"
 #this tells JBS we are in test mode and won't have a secure registry
 kubectl annotate --overwrite jbsconfigs.jvmbuildservice.io --all jvmbuildservice.io/test-registry=true
 

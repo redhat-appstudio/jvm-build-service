@@ -21,4 +21,10 @@ patches:
   target:
     kind: Deployment
     name: hacbs-jvm-operator
-- path: namespace.yaml
+- patch: |-
+    - op: add
+      path: /metadata/labels
+      value: {openshift.io/cluster-monitoring: "true"}
+  target:
+    kind: Namespace
+    name: jvm-build-service

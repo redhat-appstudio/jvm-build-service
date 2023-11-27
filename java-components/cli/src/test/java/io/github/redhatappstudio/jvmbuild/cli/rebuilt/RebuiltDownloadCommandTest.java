@@ -58,8 +58,8 @@ public class RebuiltDownloadCommandTest {
         try (InputStream is = Files.newInputStream(Paths.get(targetDirectory.toString(), "logs", "pom.xml"))) {
             assertEquals(pomDigest, DigestUtils.md5Hex(is));
         }
-        String adocDigest = DigestUtils.md5Hex(Files.newInputStream(Paths.get("..", "..", "readme.adoc").toAbsolutePath()));
-        try (InputStream is = Files.newInputStream(Paths.get(targetDirectory.toString(), "source", "readme.adoc"))) {
+        String adocDigest = DigestUtils.md5Hex(Files.newInputStream(Paths.get("..", "..", "README.adoc").toAbsolutePath()));
+        try (InputStream is = Files.newInputStream(Paths.get(targetDirectory.toString(), "source", "README.adoc"))) {
             assertEquals(adocDigest, DigestUtils.md5Hex(is));
         }
     }
