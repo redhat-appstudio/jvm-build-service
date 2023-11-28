@@ -36,14 +36,6 @@ const (
 	DependencyBuildIdLabel                  = "jvmbuildservice.io/dependencybuild-id"
 	PipelineRunLabel                        = "jvmbuildservice.io/pipelinerun"
 
-	PipelineResultScmUrl      = "scm-url"
-	PipelineResultScmTag      = "scm-tag"
-	PipelineResultScmHash     = "scm-hash"
-	PipelineResultScmType     = "scm-type"
-	PipelineResultContextPath = "context"
-	PipelineResultMessage     = "message"
-	PipelineResultPrivate     = "private"
-
 	PreBuildTaskName                        = "pre-build"
 	BuildTaskName                           = "build"
 	HermeticBuildTaskName                   = "hermetic-build"
@@ -54,12 +46,13 @@ const (
 	PipelineResultVerificationResult        = "VERIFICATION_RESULTS"
 	PipelineResultPassedVerification        = "PASSED_VERIFICATION" //#nosec
 	PipelineResultHermeticBuildImage        = "HERMETIC_BUILD_IMAGE"
+	PipelineResultGitArchive                = "GIT_ARCHIVE"
 	PipelineResultGavs                      = "GAVS"
 
 	RebuildAnnotation = "jvmbuildservice.io/rebuild"
-	//annotation that is applied after a rebuild, it will affect the dependencybuild behaviour
+	// RebuiltAnnotation annotation that is applied after a rebuild, it will affect the dependencybuild behaviour
 	RebuiltAnnotation = "jvmbuildservice.io/rebuilt"
-	//if this annotation is present it will be deleted after a set time to live
+	// HoursToLive if this annotation is present it will be deleted after a set time to live
 	//useful when doing builds that are being deployed to maven, and you don't want to accumulate them in the cluster
 	HoursToLive = "jvmbuildservice.io/hours-to-live"
 )

@@ -92,9 +92,17 @@ type BuildPipelineRunResults struct {
 	Gavs []string `json:"gavs,omitempty"`
 	// The hermetic build image produced by the build
 	HermeticBuildImage string `json:"hermeticBuildImage,omitempty"`
+	// The git archive source information
+	GitArchive GitArchive `json:"gitArchive,omitempty"`
 
 	// The Tekton results
 	PipelineResults *PipelineResults `json:"pipelineResults,omitempty"`
+}
+
+type GitArchive struct {
+	URL string `json:"url,omitempty"`
+	Tag string `json:"tag,omitempty"`
+	SHA string `json:"sha,omitempty"`
 }
 
 func (r *DependencyBuildStatus) GetBuildPipelineRun(pipeline string) *BuildAttempt {

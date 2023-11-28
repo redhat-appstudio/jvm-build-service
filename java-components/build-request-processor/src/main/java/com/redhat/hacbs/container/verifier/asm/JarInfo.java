@@ -16,15 +16,14 @@ import java.util.jar.JarInputStream;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jboss.logging.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 
 import com.redhat.hacbs.container.verifier.DiffUtils;
 
-public record JarInfo(String name, Map<String, ClassInfo> classes) implements AsmDiffable<JarInfo> {
+import io.quarkus.logging.Log;
 
-    private static final Logger Log = Logger.getLogger(JarInfo.class);
+public record JarInfo(String name, Map<String, ClassInfo> classes) implements AsmDiffable<JarInfo> {
 
     // diffClass excluding name
 
