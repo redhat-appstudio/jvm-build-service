@@ -22,8 +22,8 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.DisabledPluginsManager;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipies.disabledplugins.DisabledPluginsManager;
 import com.redhat.hacbs.recipies.location.BuildInfoRequest;
 import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;

@@ -3,7 +3,7 @@ apply plugin: DisablePluginsPlugin
 
 class DisablePluginsPlugin implements Plugin<Gradle> {
 
-    def PLUGINS =  "@DISABLED_PLUGINS@".split(",")
+    def PLUGINS =  "@DISABLED_PLUGINS@".tokenize(",")
 
     void apply(Gradle gradle) {
         gradle.allprojects {

@@ -1,9 +1,17 @@
-package com.redhat.hacbs.recipies;
+package com.redhat.hacbs.recipies.disabledplugins;
 
 import java.util.List;
 
 public class DisabledPlugins {
     private List<String> disabledPlugins;
+
+    public DisabledPlugins() {
+
+    }
+
+    public DisabledPlugins(String... disabledPlugins) {
+        this.disabledPlugins = List.of(disabledPlugins);
+    }
 
     public List<String> getDisabledPlugins() {
         return disabledPlugins;
