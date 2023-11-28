@@ -355,11 +355,9 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 		if len(unmarshalled.Image) > 0 {
 			log.Info(fmt.Sprintf("Found preexisting shared build with deployed GAVs %#v from image %#v", unmarshalled.Gavs, unmarshalled.Image))
 			db.Status.State = v1alpha1.DependencyBuildStateComplete
-			con, err := r.createRebuiltArtifacts(ctx, log, pr, &db, unmarshalled.Image, unmarshalled.Digest, unmarshalled.Gavs)
+			err := r.createRebuiltArtifacts(ctx, log, pr, &db, unmarshalled.Image, unmarshalled.Digest, unmarshalled.Gavs)
 			if err != nil {
 				return reconcile.Result{}, err
-			} else if !con {
-				return reconcile.Result{}, nil
 			}
 		} else {
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
@@ -654,15 +652,14 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			var digest string
 			var passedVerification bool
 			var verificationResults string
-			var gavs []string
 			var hermeticBuildImage string
+			var deployed []string
 			for _, i := range pr.Status.Results {
 				if i.Name == PipelineResultImage {
 					image = i.Value.StringVal
 				} else if i.Name == PipelineResultImageDigest {
 					digest = i.Value.StringVal
 				} else if i.Name == artifactbuild.PipelineResultContaminants {
-
 					db.Status.Contaminants = []*v1alpha1.Contaminant{}
 					//unmarshal directly into the contaminants field
 					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
@@ -672,48 +669,31 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
 					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
 					passedVerification = !parseBool
+				} else if i.Name == artifactbuild.PipelineResultVerificationResult {
+					verificationResults = i.Value.StringVal
 				} else if i.Name == artifactbuild.PipelineResultGavs {
 					deployed := strings.Split(i.Value.StringVal, ",")
 					db.Status.DeployedArtifacts = deployed
-				} else if i.Name == artifactbuild.PipelineResultVerificationResult {
-					verificationResults = i.Value.StringVal
+				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
+					//we need to create 'DeployedArtifact' resources for the objects that were deployed
+					deployed = strings.Split(i.Value.StringVal, ",")
+				} else if i.Name == artifactbuild.PipelineResultHermeticBuildImage {
+					hermeticBuildImage = i.Value.StringVal
 				}
 			}
+			err = r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
 			run.Results = &v1alpha1.BuildPipelineRunResults{
 				Image:               image,
 				ImageDigest:         digest,
 				Verified:            passedVerification,
 				VerificationResults: verificationResults,
-				Gavs:                gavs,
+				Gavs:                deployed,
 				HermeticBuildImage:  hermeticBuildImage,
 			}
-
-			for _, i := range pr.Status.Results {
-				if i.Name == artifactbuild.PipelineResultContaminants {
-
-					db.Status.Contaminants = []*v1alpha1.Contaminant{}
-					//unmarshal directly into the contaminants field
-					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
-					if err != nil {
-						return reconcile.Result{}, err
-					}
-				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
-					//we need to create 'DeployedArtifact' resources for the objects that were deployed
-					deployed := strings.Split(i.Value.StringVal, ",")
-
-					con, err := r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
-
-					if err != nil {
-						return reconcile.Result{}, err
-					} else if !con {
-						return reconcile.Result{}, nil
-					}
-				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
-					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
-					db.Status.FailedVerification = !parseBool
-				}
-			}
-
 			problemContaminates := db.Status.ProblemContaminates()
 			if len(problemContaminates) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
@@ -904,7 +884,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 }
 
 func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun, db *v1alpha1.DependencyBuild,
-	image string, digest string, deployed []string) (bool, error) {
+	image string, digest string, deployed []string) error {
 	db.Status.DeployedArtifacts = deployed
 
 	for _, i := range deployed {
@@ -913,7 +893,7 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 		ra.Namespace = pr.Namespace
 		ra.Name = artifactbuild.CreateABRName(i)
 		if err := controllerutil.SetOwnerReference(db, &ra, r.scheme); err != nil {
-			return false, err
+			return err
 		}
 		ra.Spec.GAV = i
 		ra.Spec.Image = image
@@ -921,29 +901,24 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 		err := r.client.Create(ctx, &ra)
 		if err != nil {
 			if !errors.IsAlreadyExists(err) {
-				return false, err
+				return err
 			} else {
 				//if it already exists we update the image field
-				err := r.client.Get(ctx, types.NamespacedName{Namespace: ra.Namespace, Name: ra.Name}, &ra)
+				err = r.client.Get(ctx, types.NamespacedName{Namespace: ra.Namespace, Name: ra.Name}, &ra)
 				if err != nil {
-					if !errors.IsNotFound(err) {
-						return false, err
-					}
-					//on not found we don't return the error
-					//no need to retry it would just result in an infinite loop
-					return false, nil
+					return err
 				}
 				ra.Spec.Image = image
 				ra.Spec.Digest = digest
 				log.Info(fmt.Sprintf("Updating existing RebuiltArtifact %s to reference image %s", ra.Name, ra.Spec.Image), "action", "UPDATE")
 				err = r.client.Update(ctx, &ra)
 				if err != nil {
-					return false, err
+					return err
 				}
 			}
 		}
 	}
-	return true, nil
+	return nil
 }
 
 func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
