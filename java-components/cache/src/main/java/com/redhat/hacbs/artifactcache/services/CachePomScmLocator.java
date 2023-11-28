@@ -9,14 +9,14 @@ import jakarta.inject.Inject;
 
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.jboss.logging.Logger;
 
 import com.redhat.hacbs.recipies.scm.AbstractPomScmLocator;
+
+import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class CachePomScmLocator extends AbstractPomScmLocator {
 
-    private static final Logger log = Logger.getLogger(CachePomScmLocator.class);
     @Inject
     CacheFacade cache;
 
@@ -27,7 +27,7 @@ public class CachePomScmLocator extends AbstractPomScmLocator {
             public Optional<Model> getPom(String group, String artifact, String version) {
                 var response = cache.getArtifactFile("default", group.replace(".", "/"), artifact, version, artifact
                         + "-" + version + ".pom", false);
-                if (!response.isPresent()) {
+                if (response.isEmpty()) {
                     return Optional.empty();
                 }
                 try {
@@ -38,7 +38,7 @@ public class CachePomScmLocator extends AbstractPomScmLocator {
                     }
 
                 } catch (Exception e) {
-                    log.errorf(e, "Failed to get pom for %s:%s:%s", group, artifact, version);
+                    Log.errorf(e, "Failed to get pom for %s:%s:%s", group, artifact, version);
                     return Optional.empty();
                 } finally {
                     try {

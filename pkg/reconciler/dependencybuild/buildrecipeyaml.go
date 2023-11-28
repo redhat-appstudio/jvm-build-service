@@ -248,6 +248,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineResultImageDigest},
 			{Name: artifactbuild.PipelineResultPassedVerification},
 			{Name: artifactbuild.PipelineResultVerificationResult},
+			{Name: artifactbuild.PipelineResultGitArchive},
 		}...),
 		Steps: []pipelinev1beta1.Step{
 			{
@@ -296,6 +297,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineResultImageDigest},
 			{Name: artifactbuild.PipelineResultPassedVerification},
 			{Name: artifactbuild.PipelineResultVerificationResult},
+			{Name: artifactbuild.PipelineResultGitArchive},
 		},
 		Steps: []pipelinev1beta1.Step{
 			{

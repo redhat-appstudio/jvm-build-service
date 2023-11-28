@@ -15,6 +15,8 @@ import java.util.logging.LogRecord;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.TagOpt;
 import org.eclipse.jgit.transport.URIish;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +56,7 @@ public class GitTest {
         Path initialRepo = Files.createTempDirectory("initial-repo");
         Path testRepo = Files.createTempDirectory("test-repo");
         String testRepoURI = "file://" + testRepo;
+        String imageID = "75ecd81c7a2b384151c990975eb1dd10";
         try (var testRepository = org.eclipse.jgit.api.Git.init().setDirectory(testRepo.toFile()).call();
                 var initialRepository = org.eclipse.jgit.api.Git.init().setDirectory(initialRepo.toFile()).call()) {
             Path repoRoot = Paths.get(Objects.requireNonNull(getClass().getResource("/")).toURI()).getParent().getParent()
@@ -74,7 +77,8 @@ public class GitTest {
                 }
 
                 @Override
-                public void add(Path path, String commit, String imageId) {
+                public GitStatus add(Path path, String commit, String imageId) {
+                    return null;
                 }
 
                 @Override
@@ -82,11 +86,11 @@ public class GitTest {
                     return null;
                 }
             };
-            test.pushRepository(
+            Git.GitStatus tagResults = test.pushRepository(
                     initialRepo,
                     testRepoURI,
                     "c396268fb90335bde5c9272b9a194c3d4302bf24",
-                    "75ecd81c7a2b384151c990975eb1dd10");
+                    imageID);
 
             List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
 
@@ -98,9 +102,18 @@ public class GitTest {
                     .anyMatch(
                             r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
 
-            assertEquals(2, testRepository.tagList().call().size());
-            assertTrue(testRepository.tagList().call().stream()
-                    .anyMatch(r -> r.getName().equals("refs/tags/0.1-75ecd81c7a2b384151c990975eb1dd10")));
+            List<Ref> tags = testRepository.tagList().call();
+            assertEquals(2, tags.size());
+            assertTrue(tags.stream().anyMatch(r -> r.getName().equals("refs/tags/0.1-75ecd81c7a2b384151c990975eb1dd10")));
+
+            var found = tags.stream().filter(t -> Repository.shortenRefName(t.getName()).matches(tagResults.tag)).findFirst();
+            assertTrue(found.isPresent());
+            assertTrue(tagResults.url.contains(testRepoURI));
+            assertTrue(tagResults.sha.matches(testRepository.getRepository()
+                    .getRefDatabase()
+                    .peel(found.get())
+                    .getPeeledObjectId()
+                    .getName()));
         }
     }
 

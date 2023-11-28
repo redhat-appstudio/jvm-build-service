@@ -40,7 +40,6 @@ public class GitLab extends Git {
     public void create(String scmUri)
             throws URISyntaxException {
         String name = parseScmURI(scmUri);
-        Log.infof("Creating repository with name %s", name);
         try {
             project = gitLabApi.getProjectApi().getUserProjectsStream(owner, new ProjectFilter().withSearch(name))
                     .filter(p -> p.getName().equals(name))
@@ -49,6 +48,7 @@ public class GitLab extends Git {
                 Log.warnf("Repository %s already exists", name);
             } else {
                 // Can't set public visibility after creation for some reason with this API.
+                Log.infof("Creating repository with name %s", name);
                 project = gitLabApi.getProjectApi().createProject(name,
                         null,
                         null,
@@ -66,12 +66,12 @@ public class GitLab extends Git {
     }
 
     @Override
-    public void add(Path path, String commit, String imageId)
+    public GitStatus add(Path path, String commit, String imageId)
             throws IOException {
         if (project == null) {
             throw new RuntimeException("Call create first");
         }
-        pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
+        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
     }
 
     @Override
