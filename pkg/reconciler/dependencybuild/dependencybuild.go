@@ -650,7 +650,6 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			var digest string
 			var passedVerification bool
 			var verificationResults string
-			var gavs []string
 			var hermeticBuildImage string
 			var deployed []string
 			for _, i := range pr.Status.Results {
@@ -676,6 +675,8 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed = strings.Split(i.Value.StringVal, ",")
+				} else if i.Name == artifactbuild.PipelineResultHermeticBuildImage {
+					hermeticBuildImage = i.Value.StringVal
 				}
 			}
 			err = r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
@@ -688,7 +689,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				ImageDigest:         digest,
 				Verified:            passedVerification,
 				VerificationResults: verificationResults,
-				Gavs:                gavs,
+				Gavs:                deployed,
 				HermeticBuildImage:  hermeticBuildImage,
 			}
 			problemContaminates := db.Status.ProblemContaminates()
