@@ -248,6 +248,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineResultImageDigest},
 			{Name: artifactbuild.PipelineResultPassedVerification},
 			{Name: artifactbuild.PipelineResultVerificationResult},
+			{Name: artifactbuild.PipelineResultGitArchive},
 		}...),
 		Steps: []pipelinev1beta1.Step{
 			{
@@ -296,6 +297,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			{Name: PipelineResultImageDigest},
 			{Name: artifactbuild.PipelineResultPassedVerification},
 			{Name: artifactbuild.PipelineResultVerificationResult},
+			{Name: artifactbuild.PipelineResultGitArchive},
 		},
 		Steps: []pipelinev1beta1.Step{
 			{
@@ -665,6 +667,9 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	}
 	if jbsConfig.Spec.GitSourceArchive.URL != "" {
 		mavenArgs = append(mavenArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
+	}
+	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
+		mavenArgs = append(mavenArgs, "--git-disable-ssl-verification")
 	}
 	deployArgs = append(deployArgs, mavenArgs...)
 

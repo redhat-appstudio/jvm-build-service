@@ -18,11 +18,6 @@ DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml
 kubectl config set-context --current --namespace=test-jvm-namespace
 
-if [ -n "$QUAY_ORG" ] && [ -n "$QUAY_TOKEN" ]; then
-    kubectl delete --ignore-not-found secret  -n image-controller quaytoken
-    kubectl create secret generic -n image-controller quaytoken --from-literal "quaytoken=$QUAY_TOKEN" --from-literal "organization=$QUAY_ORG"
-fi
-
 echo -e "\033[0;32mSecrets...\033[0m"
 kubectl create --dry-run=client -o=yaml secret generic jvm-build-image-secrets --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson | kubectl apply -f -
 kubectl create --dry-run=client -o=yaml secret generic jvm-build-git-secrets --from-literal .git-credentials="

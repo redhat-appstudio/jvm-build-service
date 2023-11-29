@@ -13,11 +13,6 @@ spec:
       labels:
         app: hacbs-jvm-operator
     spec:
-      volumes:
-        - name: quaytoken
-          secret:
-            optional: false
-            secretName: quaytoken
       securityContext:
         runAsNonRoot: true
       containers:
@@ -37,10 +32,6 @@ spec:
             limits:
               memory: "1024Mi"
               cpu: "500m"
-          volumeMounts:
-            - mountPath: "/workspace"
-              name: quaytoken
-              readOnly: true
           securityContext:
             readOnlyRootFilesystem: true
       serviceAccountName: hacbs-jvm-operator

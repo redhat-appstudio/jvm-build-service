@@ -111,8 +111,9 @@ type MavenDeployment struct {
 }
 
 type GitSourceArchive struct {
-	Identity string `json:"identity,omitempty"`
-	URL      string `json:"url,omitempty"`
+	Identity               string `json:"identity,omitempty"`
+	URL                    string `json:"url,omitempty"`
+	DisableSSLVerification bool   `json:"disableSSLVerification,omitempty"`
 }
 
 type RelocationPatternElement struct {

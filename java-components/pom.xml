@@ -42,7 +42,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.5.2</quarkus.platform.version>
+        <quarkus.platform.version>3.5.3</quarkus.platform.version>
 
         <!-- Plugin Versions-->
         <surefire-plugin.version>3.2.2</surefire-plugin.version>
@@ -51,16 +51,17 @@
         <kubernetes-client.version>6.9.2</kubernetes-client.version>
 
         <assertj.version>3.24.2</assertj.version>
-        <aws-java-sdk.version>1.12.592</aws-java-sdk.version>
+        <aws-java-sdk.version>1.12.598</aws-java-sdk.version>
         <quarkus-jgit.version>3.0.5</quarkus-jgit.version>
         <gradle-tooling-api.version>8.4</gradle-tooling-api.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
-        <github-api.version>1.316</github-api.version>
+        <github-api.version>1.318</github-api.version>
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
         <cyclonedx-core-java.version>8.0.3</cyclonedx-core-java.version>
         <asm.version>9.6</asm.version>
         <maven-indexer.version>7.1.0</maven-indexer.version>
-        <maven-resolver.version>1.9.16</maven-resolver.version>
+
+        <maven-resolver.version>1.9.18</maven-resolver.version>
 
         <!-- Sonar Cloud Configuration -->
         <sonar.organization>redhat-appstudio-1</sonar.organization>
@@ -271,6 +272,14 @@
         </dependencies>
     </dependencyManagement>
 
+    <dependencies>
+       <dependency>
+          <groupId>io.quarkus</groupId>
+          <artifactId>quarkus-jacoco</artifactId>
+          <scope>test</scope>
+       </dependency>
+    </dependencies>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -314,6 +323,27 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+          <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.10</version>
+                <executions>
+                   <execution>
+                      <id>default-prepare-agent</id>
+                      <goals>
+                           <goal>prepare-agent</goal>
+                      </goals>
+                      <configuration>
+                        <exclClassLoaders>*QuarkusClassLoader</exclClassLoaders>
+                        <destFile>${project.build.directory}/jacoco-quarkus.exec</destFile>
+                        <append>true</append>
+                      </configuration>
+                   </execution>
+                </executions>
+          </plugin>
+        </plugins>
     </build>
 
     <repositories>

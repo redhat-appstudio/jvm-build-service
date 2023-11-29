@@ -355,11 +355,9 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 		if len(unmarshalled.Image) > 0 {
 			log.Info(fmt.Sprintf("Found preexisting shared build with deployed GAVs %#v from image %#v", unmarshalled.Gavs, unmarshalled.Image))
 			db.Status.State = v1alpha1.DependencyBuildStateComplete
-			con, err := r.createRebuiltArtifacts(ctx, log, pr, &db, unmarshalled.Image, unmarshalled.Digest, unmarshalled.Gavs)
+			err := r.createRebuiltArtifacts(ctx, log, pr, &db, unmarshalled.Image, unmarshalled.Digest, unmarshalled.Gavs)
 			if err != nil {
 				return reconcile.Result{}, err
-			} else if !con {
-				return reconcile.Result{}, nil
 			}
 		} else {
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
@@ -652,16 +650,17 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			var digest string
 			var passedVerification bool
 			var verificationResults string
-			var gavs []string
 			var hermeticBuildImage string
+			var deployed []string
+			var gitArchive v1alpha1.GitArchive
+
 			for _, i := range pr.Status.Results {
 				if i.Name == PipelineResultImage {
 					image = i.Value.StringVal
 				} else if i.Name == PipelineResultImageDigest {
 					digest = i.Value.StringVal
 				} else if i.Name == artifactbuild.PipelineResultContaminants {
-
-					db.Status.Contaminants = []v1alpha1.Contaminant{}
+					db.Status.Contaminants = []*v1alpha1.Contaminant{}
 					//unmarshal directly into the contaminants field
 					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
 					if err != nil {
@@ -670,49 +669,45 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
 					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
 					passedVerification = !parseBool
+				} else if i.Name == artifactbuild.PipelineResultVerificationResult {
+					// Note: The TaskRun stores this as
+					// 		VERIFICATION_RESULTS	{"commons-lang:commons-lang:jar:2.5":[]}
+					// 	But this is now stored as
+					// 		"verificationFailures": "{\"commons-lang:commons-lang:jar:2.5\":[]}"
+					verificationResults = i.Value.StringVal
 				} else if i.Name == artifactbuild.PipelineResultGavs {
+					// TODO: What is the difference between this and PipelineResultDeployedResources?
 					deployed := strings.Split(i.Value.StringVal, ",")
 					db.Status.DeployedArtifacts = deployed
-				} else if i.Name == artifactbuild.PipelineResultVerificationResult {
-					verificationResults = i.Value.StringVal
+				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
+					//we need to create 'DeployedArtifact' resources for the objects that were deployed
+					deployed = strings.Split(i.Value.StringVal, ",")
+				} else if i.Name == artifactbuild.PipelineResultHermeticBuildImage {
+					hermeticBuildImage = i.Value.StringVal
+				} else if i.Name == artifactbuild.PipelineResultGitArchive {
+					err := json.Unmarshal([]byte(i.Value.StringVal), &gitArchive)
+					if err != nil {
+						return reconcile.Result{}, err
+					}
 				}
 			}
+			err = r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
 			run.Results = &v1alpha1.BuildPipelineRunResults{
 				Image:               image,
 				ImageDigest:         digest,
 				Verified:            passedVerification,
 				VerificationResults: verificationResults,
-				Gavs:                gavs,
+				Gavs:                deployed,
+				GitArchive:          gitArchive,
 				HermeticBuildImage:  hermeticBuildImage,
 			}
 
-			for _, i := range pr.Status.Results {
-				if i.Name == artifactbuild.PipelineResultContaminants {
-
-					db.Status.Contaminants = []v1alpha1.Contaminant{}
-					//unmarshal directly into the contaminants field
-					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
-					if err != nil {
-						return reconcile.Result{}, err
-					}
-				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
-					//we need to create 'DeployedArtifact' resources for the objects that were deployed
-					deployed := strings.Split(i.Value.StringVal, ",")
-
-					con, err := r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
-
-					if err != nil {
-						return reconcile.Result{}, err
-					} else if !con {
-						return reconcile.Result{}, nil
-					}
-				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
-					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
-					db.Status.FailedVerification = !parseBool
-				}
-			}
-
-			if len(db.Status.Contaminants) == 0 {
+			problemContaminates := db.Status.ProblemContaminates()
+			if len(problemContaminates) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
 				r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
@@ -720,7 +715,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				//most likely shaded in
 				//we don't need to update the status here, it will be handled by the handleStateComplete method
 				//even though there are contaminates they may not be in artifacts we care about
-				err := r.handleBuildCompletedWithContaminants(ctx, db, log)
+				err := r.handleBuildCompletedWithContaminants(ctx, db, log, problemContaminates)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
@@ -815,7 +810,7 @@ func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Con
 // no actual request for these artifacts. This can change if new artifacts are requested, so even when complete
 // we still need to verify that hte build is ok
 // this method will always update the status if it does not return an error
-func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger) error {
+func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger, problemContaminates []*v1alpha1.Contaminant) error {
 
 	ownerGavs := map[string]bool{}
 	db.Status.State = v1alpha1.DependencyBuildStateComplete
@@ -838,7 +833,7 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 			ownerGavs[ab.Spec.GAV] = true
 		}
 	}
-	for _, contaminant := range db.Status.Contaminants {
+	for _, contaminant := range problemContaminates {
 		for _, artifact := range contaminant.ContaminatedArtifacts {
 			if ownerGavs[artifact] {
 				db.Status.State = v1alpha1.DependencyBuildStateContaminated
@@ -883,7 +878,14 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 }
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	contaminants := db.Status.Contaminants
-	if len(contaminants) == 0 {
+	allOk := true
+	for _, i := range contaminants {
+		if !i.Allowed && !i.RebuildAvailable {
+			allOk = false
+			break
+		}
+	}
+	if allOk {
 		//all fixed, just set the state back to building and try again
 		//this is triggered when contaminants are removed by the ABR controller
 		//setting it back to building should re-try the recipe that actually worked
@@ -894,7 +896,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 }
 
 func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun, db *v1alpha1.DependencyBuild,
-	image string, digest string, deployed []string) (bool, error) {
+	image string, digest string, deployed []string) error {
 	db.Status.DeployedArtifacts = deployed
 
 	for _, i := range deployed {
@@ -903,7 +905,7 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 		ra.Namespace = pr.Namespace
 		ra.Name = artifactbuild.CreateABRName(i)
 		if err := controllerutil.SetOwnerReference(db, &ra, r.scheme); err != nil {
-			return false, err
+			return err
 		}
 		ra.Spec.GAV = i
 		ra.Spec.Image = image
@@ -911,29 +913,24 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 		err := r.client.Create(ctx, &ra)
 		if err != nil {
 			if !errors.IsAlreadyExists(err) {
-				return false, err
+				return err
 			} else {
 				//if it already exists we update the image field
-				err := r.client.Get(ctx, types.NamespacedName{Namespace: ra.Namespace, Name: ra.Name}, &ra)
+				err = r.client.Get(ctx, types.NamespacedName{Namespace: ra.Namespace, Name: ra.Name}, &ra)
 				if err != nil {
-					if !errors.IsNotFound(err) {
-						return false, err
-					}
-					//on not found we don't return the error
-					//no need to retry it would just result in an infinite loop
-					return false, nil
+					return err
 				}
 				ra.Spec.Image = image
 				ra.Spec.Digest = digest
 				log.Info(fmt.Sprintf("Updating existing RebuiltArtifact %s to reference image %s", ra.Name, ra.Spec.Image), "action", "UPDATE")
 				err = r.client.Update(ctx, &ra)
 				if err != nil {
-					return false, err
+					return err
 				}
 			}
 		}
 	}
-	return true, nil
+	return nil
 }
 
 func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {

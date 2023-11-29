@@ -36,20 +36,19 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.repository.RemoteRepository.Builder;
-import org.jboss.logging.Logger;
 
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
+import io.quarkus.logging.Log;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 @Command(name = "verify-built-artifacts")
 public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
-    private static final Logger Log = Logger.getLogger(VerifyBuiltArtifactsCommand.class);
 
     static class LocalOptions {
         @Option(required = true, names = { "-of", "--original-file" })
@@ -139,7 +138,6 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 session.setReadOnly();
             }
 
-            Log.debugf("Deploy path: %s", options.mavenOptions.deployPath);
             var futureResults = new HashMap<String, Future<List<String>>>();
 
             Files.walkFileTree(options.mavenOptions.deployPath, new SimpleFileVisitor<>() {
@@ -191,7 +189,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
             }
             if (taskRunName != null) {
                 var json = ResultsUpdater.MAPPER.writeValueAsString(verificationResults);
-                io.quarkus.logging.Log.infof("Writing verification results %s", json);
+                Log.infof("Writing verification results %s", json);
                 resultsUpdater.get().updateResults(taskRunName, Map.of("VERIFICATION_RESULTS", json));
             }
             return (failed && !reportOnly ? 1 : 0);

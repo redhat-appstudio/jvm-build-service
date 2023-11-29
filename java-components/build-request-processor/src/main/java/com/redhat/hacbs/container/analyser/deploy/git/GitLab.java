@@ -20,10 +20,20 @@ public class GitLab extends Git {
 
     private Project project;
 
-    public GitLab(String endpoint, String identity, String token) {
+    public GitLab(String endpoint, String identity, String token, boolean ssl) {
         gitLabApi = new GitLabApi(endpoint, token);
         owner = identity;
         credentialsProvider = new UsernamePasswordCredentialsProvider("", token);
+        disableSSLVerification = ssl;
+
+        if (disableSSLVerification) {
+            gitLabApi.setIgnoreCertificateErrors(true);
+        }
+    }
+
+    GitLab() {
+        owner = null;
+        gitLabApi = null;
     }
 
     @Override
@@ -38,6 +48,7 @@ public class GitLab extends Git {
                 Log.warnf("Repository %s already exists", name);
             } else {
                 // Can't set public visibility after creation for some reason with this API.
+                Log.infof("Creating repository with name %s", name);
                 project = gitLabApi.getProjectApi().createProject(name,
                         null,
                         null,
@@ -55,11 +66,16 @@ public class GitLab extends Git {
     }
 
     @Override
-    public void add(Path path, String commit, String imageId)
+    public GitStatus add(Path path, String commit, String imageId)
             throws IOException {
         if (project == null) {
             throw new RuntimeException("Call create first");
         }
-        pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
+        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
+    }
+
+    @Override
+    String groupSplit() {
+        return "-";
     }
 }

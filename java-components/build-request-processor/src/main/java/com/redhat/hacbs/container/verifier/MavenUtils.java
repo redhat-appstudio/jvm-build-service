@@ -28,10 +28,10 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.util.repository.AuthenticationBuilder;
 import org.eclipse.aether.util.repository.DefaultAuthenticationSelector;
 import org.eclipse.aether.util.repository.DefaultMirrorSelector;
-import org.jboss.logging.Logger;
+
+import io.quarkus.logging.Log;
 
 public class MavenUtils {
-    private static final Logger Log = Logger.getLogger(MavenUtils.class);
 
     public static Settings newSettings(Path globalSettingsFile, Path settingsFile) {
         try {

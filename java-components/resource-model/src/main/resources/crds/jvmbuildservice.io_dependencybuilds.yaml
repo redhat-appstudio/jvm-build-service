@@ -86,6 +86,16 @@ spec:
                               items:
                                 type: string
                               type: array
+                            gitArchive:
+                              description: The git archive source information
+                              properties:
+                                sha:
+                                  type: string
+                                tag:
+                                  type: string
+                                url:
+                                  type: string
+                              type: object
                             hermeticBuildImage:
                               description: The hermetic build image produced by the
                                 build
@@ -262,11 +272,19 @@ spec:
               contaminates:
                 items:
                   properties:
+                    allowed:
+                      type: boolean
+                    buildId:
+                      type: string
                     contaminatedArtifacts:
                       items:
                         type: string
                       type: array
                     gav:
+                      type: string
+                    rebuildAvailable:
+                      type: boolean
+                    source:
                       type: string
                   type: object
                 type: array

@@ -60,6 +60,7 @@ public class DeployCommand implements Runnable {
     private static final String DOT = ".";
     private static final Set<String> ALLOWED_CONTAMINANTS = Set.of("-tests.jar");
     public static final String IMAGE_DIGEST_OUTPUT = "Image Digest: ";
+    public static final String BUILD_ID = "build-id";
     final BeanManager beanManager;
     final ResultsUpdater resultsUpdater;
 
@@ -134,6 +135,9 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--git-identity")
     String gitIdentity;
 
+    @CommandLine.Option(names = "--git-disable-ssl-verification")
+    boolean gitDisableSSLVerification;
+
     @CommandLine.Option(names = "--build-id")
     String buildId;
     // Testing only ; used to disable image deployment
@@ -153,18 +157,19 @@ public class DeployCommand implements Runnable {
 
     public void run() {
         try {
-            // Save the source first regardless of deployment checks
-            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-                var git = Git.builder(gitURL, gitIdentity, gitToken.get());
-                git.create(scmUri);
-                git.add(sourcePath, commit, imageId);
-            }
-
             Set<String> gavs = new HashSet<>();
             Map<String, Set<String>> contaminatedPaths = new HashMap<>();
-            Map<String, Set<String>> contaminatedGavs = new HashMap<>();
-            Map<String, Set<String>> allowedContaminatedPaths = new HashMap<>();
-            Map<String, Set<String>> allowedContaminatedGavs = new HashMap<>();
+            Map<String, Contaminates> contaminatedGavs = new HashMap<>();
+            Git.GitStatus archivedSourceTags = new Git.GitStatus();
+
+            // Save the source first regardless of deployment checks
+            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
+                Log.infof("Git credentials are identity '%s' and URL '%s'", gitIdentity, gitURL);
+                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
+                git.create(scmUri);
+                archivedSourceTags = git.add(sourcePath, commit, imageId);
+            }
+
             // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
             // contaminated then none of the artifacts will be deployed.
             Set<Path> toRemove = new HashSet<>();
@@ -180,12 +185,11 @@ public class DeployCommand implements Runnable {
                     //we check every file as we also want to catch .tar.gz etc
                     var info = ClassFileTracker.readTrackingDataFromFile(Files.newInputStream(file), name);
                     for (var i : info) {
-                        if (!allowedSources.contains(i.source)) {
-                            Log.errorf("%s was contaminated by %s from %s", name, i.gav, i.source);
-                            if (ALLOWED_CONTAMINANTS.stream().noneMatch(a -> file.getFileName().toString().endsWith(a))) {
-                                gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav, s -> new HashSet<>())
-                                        .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
-                                int index = name.lastIndexOf("/");
+                        Log.errorf("%s was contaminated by %s from %s", name, i.gav, i.source);
+                        if (ALLOWED_CONTAMINANTS.stream().noneMatch(a -> file.getFileName().toString().endsWith(a))) {
+                            int index = name.lastIndexOf("/");
+                            boolean allowed = allowedSources.contains(i.source);
+                            if (!allowed) {
                                 if (index != -1) {
                                     contaminatedPaths.computeIfAbsent(name.substring(0, index),
                                             s -> new HashSet<>()).add(i.gav);
@@ -193,12 +197,23 @@ public class DeployCommand implements Runnable {
                                     contaminatedPaths.computeIfAbsent("", s -> new HashSet<>()).add(i.gav);
                                 }
                                 toRemove.add(file.getParent());
-                            } else {
-                                Log.debugf("Ignoring contaminant for %s", file.getFileName());
                             }
-                        } else {
+                            gav.ifPresent(g -> contaminatedGavs.computeIfAbsent(i.gav, s -> {
+                                Contaminates contaminates = new Contaminates();
+                                contaminates.setGav(i.gav);
+                                contaminates.setAllowed(allowed);
+                                contaminates.setSource(i.source);
+                                contaminates.setBuildId(i.getAttributes().get(BUILD_ID));
+                                contaminates.setContaminatedArtifacts(new ArrayList<>());
+                                return contaminates;
+                            })
+                                    .getContaminatedArtifacts()
+                                    .add(g.getGroupId() + ":" + g.getArtifactId() + ":" + g.getVersion()));
 
+                        } else {
+                            Log.debugf("Ignoring contaminant for %s", file.getFileName());
                         }
+
                     }
                     if (gav.isPresent()) {
                         //now add our own tracking data
@@ -221,7 +236,7 @@ public class DeployCommand implements Runnable {
                                             + gav.getVersion(),
                                     "rebuilt",
                                     Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
-                                            Boolean.toString(hermetic), "build-id", buildId)),
+                                            Boolean.toString(hermetic), BUILD_ID, buildId)),
                             Files.newOutputStream(temp), false);
                     Files.delete(file);
                     Files.move(temp, file);
@@ -265,14 +280,12 @@ public class DeployCommand implements Runnable {
                 });
                 throw new RuntimeException("deploy failed");
             }
-            //we still deploy, but without the contaminates
-            // This means the build failed to produce any deployable output.
-            // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
             for (var i : contaminatedGavs.entrySet()) {
-                gavs.removeAll(i.getValue());
+                if (!i.getValue().getAllowed()) {
+                    gavs.removeAll(i.getValue().getContaminatedArtifacts());
+                }
             }
             generateBuildSbom();
-
             if (isNotEmpty(mvnRepo) && mvnPassword.isEmpty()) {
                 Log.infof("Maven repository specified as %s and no password specified", mvnRepo);
                 URL url = new URL(mvnRepo);
@@ -300,6 +313,10 @@ public class DeployCommand implements Runnable {
                             .getAuthorizationToken());
                 }
             }
+
+            //we still deploy, but without the contaminates
+            // This means the build failed to produce any deployable output.
+            // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
             if (!gavs.isEmpty()) {
                 try {
                     cleanBrokenSymlinks(sourcePath);
@@ -319,19 +336,18 @@ public class DeployCommand implements Runnable {
 
                 List<Contaminates> newContaminates = new ArrayList<>();
                 for (var i : contaminatedGavs.entrySet()) {
-                    Contaminates contaminates = new Contaminates();
-                    contaminates.setContaminatedArtifacts(new ArrayList<>(i.getValue()));
-                    contaminates.setGav(i.getKey());
-                    newContaminates.add(contaminates);
+                    newContaminates.add(i.getValue());
                 }
                 String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
+                String serialisedGitArchive = ResultsUpdater.MAPPER.writeValueAsString(archivedSourceTags);
                 Log.infof("Updating results %s with contaminants %s and deployed resources %s",
                         taskRun, serialisedContaminants, gavs);
                 resultsUpdater.updateResults(taskRun, Map.of(
                         "CONTAMINANTS", serialisedContaminants,
                         "DEPLOYED_RESOURCES", String.join(",", gavs),
                         "IMAGE_URL", imageName == null ? "" : imageName,
-                        "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest));
+                        "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest,
+                        "GIT_ARCHIVE", serialisedGitArchive));
             }
         } catch (Exception e) {
             Log.error("Deployment failed", e);
