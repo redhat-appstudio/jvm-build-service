@@ -23,7 +23,7 @@ const ArtifactSummaryPieChart: React.FunctionComponent<ArtifactStatusParamsType>
                 setState('error');
                 setError(err);
             });
-    }, []);
+    }, [params]);
 
     if (state === 'error')
         return (

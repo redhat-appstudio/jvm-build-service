@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {BuildStatusPieChart} from "@app/BuildStatusPieChart/BuildStatusPieChart";
 import {ArtifactSummaryPieChart} from "@app/ArtifactSummaryPieChart/ArtifactSummaryPieChart";
+
 import {
   Card,
   CardBody,
@@ -15,6 +16,7 @@ import {
   ArtifactLabelResourceService,
 } from "../../services/openapi";
 import {useEffect, useState} from "react";
+
 
 const Dashboard: React.FunctionComponent = () => {
   const [labels, setLabels] = useState(Array<ArtifactLabelName>);

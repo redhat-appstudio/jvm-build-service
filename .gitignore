@@ -40,6 +40,8 @@ nb-configuration.xml
 .sdkmanrc
 .envrc
 *.out
+.env
+.quinoa
 
 # Kustomize overlays for development, openshift ci
 deploy/**/development/**

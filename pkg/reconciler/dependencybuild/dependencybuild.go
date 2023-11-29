@@ -670,7 +670,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					}
 				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
 					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
-					passedVerification = !parseBool
+					passedVerification = parseBool
 				} else if i.Name == artifactbuild.PipelineResultVerificationResult {
 					// Note: The TaskRun stores this as
 					// 		VERIFICATION_RESULTS	{"commons-lang:commons-lang:jar:2.5":[]}

@@ -1,11 +1,10 @@
 package com.redhat.hacbs.management.model;
 
-import java.util.List;
-
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
@@ -23,8 +22,9 @@ public class ContainerImage extends PanacheEntity {
     @Column(nullable = false)
     public String digest;
 
-    @OneToMany(fetch = FetchType.EAGER, mappedBy = "image")
-    public List<ImageDependency> imageDependencies;
+    @JoinColumn
+    @OneToOne(cascade = CascadeType.ALL)
+    public DependencySet dependencySet;
 
     public boolean analysisComplete;
     public boolean analysisFailed;
@@ -36,10 +36,8 @@ public class ContainerImage extends PanacheEntity {
         }
         String digest = image.substring(index + 1);
         String imagePart = image.substring(0, index);
-        String tag = "";
         int tagIndex = imagePart.indexOf(":");
         if (tagIndex > 0) {
-            tag = image.substring(tagIndex);
             imagePart = imagePart.substring(0, tagIndex);
         }
         ContainerImage containerImage = find("digest=:digest and image=:image",
@@ -63,9 +61,12 @@ public class ContainerImage extends PanacheEntity {
                 .firstResult();
         if (containerImage == null) {
             containerImage = new ContainerImage();
+            containerImage.dependencySet = new DependencySet();
             containerImage.tag = tag;
             containerImage.image = imagePart;
             containerImage.digest = digest;
+            containerImage.dependencySet.identifier = image;
+            containerImage.dependencySet.type = "container-image";
             containerImage.persistAndFlush();
         }
         return containerImage;

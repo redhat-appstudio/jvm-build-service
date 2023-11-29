@@ -28,7 +28,7 @@ export type BuildAttemptDTO = {
     buildPipelineUrl?: string;
     successful?: boolean;
     passedVerification?: boolean;
-    upstreamDifferences?: string;
+    upstreamDifferences: Record<string, Array<string>>;
     gitArchiveSha?: string;
     gitArchiveTag?: string;
     gitArchiveUrl?: string;

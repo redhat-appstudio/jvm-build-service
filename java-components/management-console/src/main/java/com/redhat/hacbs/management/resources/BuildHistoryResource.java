@@ -76,7 +76,7 @@ public class BuildHistoryResource {
     }
 
     @GET
-    @Path("/discover-logs/{id}")
+    @Path("/discovery-logs/{id}")
     public Response logs(@PathParam("id") int id) {
         StoredDependencyBuild attempt = StoredDependencyBuild.findById(id);
         if (attempt == null) {

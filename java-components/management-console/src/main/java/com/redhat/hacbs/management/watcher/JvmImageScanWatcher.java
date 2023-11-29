@@ -13,7 +13,12 @@ import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.exception.ConstraintViolationException;
 
-import com.redhat.hacbs.management.model.*;
+import com.redhat.hacbs.management.model.BuildQueue;
+import com.redhat.hacbs.management.model.ContainerImage;
+import com.redhat.hacbs.management.model.DependencySet;
+import com.redhat.hacbs.management.model.IdentifiedDependency;
+import com.redhat.hacbs.management.model.MavenArtifact;
+import com.redhat.hacbs.management.model.MavenArtifactLabel;
 import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
 import com.redhat.hacbs.resources.model.v1alpha1.jvmimagescanstatus.Results;
 
@@ -110,21 +115,27 @@ public class JvmImageScanWatcher {
         if (containerImage.analysisComplete) {
             return;
         }
-        Map<String, ImageDependency> existing = new HashMap<>();
-        if (containerImage.imageDependencies != null) {
-            for (var i : containerImage.imageDependencies) {
+        Map<String, IdentifiedDependency> existing = new HashMap<>();
+        if (containerImage.dependencySet != null && containerImage.dependencySet.dependencies != null) {
+            for (var i : containerImage.dependencySet.dependencies) {
                 existing.put(i.mavenArtifact.gav(), i);
             }
+        }
+        if (containerImage.dependencySet == null) {
+            containerImage.dependencySet = new DependencySet();
+            containerImage.dependencySet.identifier = containerImage.image + "@" + containerImage.digest;
+            containerImage.dependencySet.type = "container-image";
+            containerImage.persistAndFlush();
         }
         List<Results> results = resource.getStatus().getResults();
         if (results != null) {
             for (var i : results) {
-                ImageDependency id;
+                IdentifiedDependency id;
                 if (existing.containsKey(i.getGav())) {
                     id = existing.get(i.getGav());
                 } else {
-                    id = new ImageDependency();
-                    id.image = containerImage;
+                    id = new IdentifiedDependency();
+                    id.dependencySet = containerImage.dependencySet;
                     id.mavenArtifact = MavenArtifact.forGav(i.getGav());
                 }
                 MavenArtifactLabel.getOrCreate(id.mavenArtifact, "From Deployment");

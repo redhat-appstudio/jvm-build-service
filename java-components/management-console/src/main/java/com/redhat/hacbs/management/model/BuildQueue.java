@@ -25,9 +25,12 @@ public class BuildQueue extends PanacheEntity {
     @ManyToOne
     public MavenArtifact mavenArtifact;
 
-    public static void create(String gav, boolean priority) {
+    public static void create(String gav, boolean priority, String... labels) {
         MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
         create(mavenArtifact, priority);
+        for (var i : labels) {
+            MavenArtifactLabel.getOrCreate(mavenArtifact, i);
+        }
     }
 
     public static void create(MavenArtifact mavenArtifact, boolean priority) {

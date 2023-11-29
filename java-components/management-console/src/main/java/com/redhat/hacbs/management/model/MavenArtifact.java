@@ -40,6 +40,10 @@ public class MavenArtifact extends PanacheEntity {
         var group = parts[0];
         var artifact = parts[1];
         var version = parts[2];
+        return forGav(group, artifact, version);
+    }
+
+    public static MavenArtifact forGav(String group, String artifact, String version) {
         ArtifactIdentifier artifactIdentifier = ArtifactIdentifier.findORCreate(group, artifact);
         MavenArtifact ret = find("identifier = :identifier and version = :version",
                 Parameters.with("identifier", artifactIdentifier).and("version", version)).firstResult();
@@ -51,5 +55,4 @@ public class MavenArtifact extends PanacheEntity {
         }
         return ret;
     }
-
 }

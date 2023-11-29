@@ -1,5 +1,7 @@
 package com.redhat.hacbs.management.model;
 
+import java.util.Objects;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
@@ -7,10 +9,10 @@ import jakarta.persistence.ManyToOne;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 
 @Entity
-public class ImageDependency extends PanacheEntity {
+public class IdentifiedDependency extends PanacheEntity {
 
     @ManyToOne
-    public ContainerImage image;
+    public DependencySet dependencySet;
 
     @ManyToOne(cascade = CascadeType.PERSIST)
     public MavenArtifact mavenArtifact;
@@ -20,4 +22,12 @@ public class ImageDependency extends PanacheEntity {
     public String source;
 
     public String attributes;
+
+    public boolean buildComplete;
+    public boolean buildSuccessful;
+
+    public boolean isTrusted() {
+        //TODO: better defintion of trust
+        return (buildId != null && !buildId.isEmpty()) || Objects.equals(source, "redhat") || Objects.equals(source, "rebuilt");
+    }
 }

@@ -35,9 +35,9 @@ public class DeploymentWatcher {
     @Inject
     KubernetesClient client;
 
-    private final TreeMap<NamespacedName, List<String>> deployments = new TreeMap<>();
+    private final TreeMap<NamespacedName, DeploymentInfo> deployments = new TreeMap<>();
 
-    public Map<NamespacedName, List<String>> getDeployments() {
+    public Map<NamespacedName, DeploymentInfo> getDeployments() {
         synchronized (deployments) {
             return new TreeMap<>(deployments);
         }
@@ -58,7 +58,10 @@ public class DeploymentWatcher {
                 client.resources(Pod.class).inAnyNamespace().inform(new ResourceEventHandler<Pod>() {
                     @Override
                     public void onAdd(Pod resource) {
-                        Log.infof("Processing pod %s", resource.getMetadata().getName());
+                        if (resource.getMetadata().getName().contains("jvm-build-workspace-artifact-cache")
+                                || resource.getMetadata().getName().contains("hacbs-jvm-console")) {
+                            return;
+                        }
                         if (resource.getMetadata().getLabels() == null) {
                             return;
                         }
@@ -66,7 +69,16 @@ public class DeploymentWatcher {
                         if (app == null) {
                             return;
                         }
+                        Log.infof("Processing pod %s", resource.getMetadata().getName());
                         synchronized (deployments) {
+                            NamespacedName key = new NamespacedName(resource.getMetadata().getNamespace(), app);
+                            var existing = deployments.get(key);
+                            Instant creationTime = Instant.parse(resource.getMetadata().getCreationTimestamp());
+                            if (existing != null) {
+                                if (existing.lastModified.isAfter(creationTime)) {
+                                    return;
+                                }
+                            }
                             List<String> images = new ArrayList<>();
                             for (var i : resource.getStatus().getContainerStatuses()) {
                                 if (i.getImageID().contains("registry.redhat")
@@ -78,13 +90,14 @@ public class DeploymentWatcher {
                                 handleImage(i.getImageID(), app);
                             }
                             images.sort(Comparator.naturalOrder());
-                            deployments.put(new NamespacedName(resource.getMetadata().getNamespace(), app),
-                                    Collections.unmodifiableList(images));
+                            deployments.put(key, new DeploymentInfo(Collections.unmodifiableList(images), creationTime));
                         }
+
                     }
 
                     @Override
                     public void onUpdate(Pod oldObj, Pod newObj) {
+                        onAdd(newObj);
                     }
 
                     @Override
@@ -155,6 +168,17 @@ public class DeploymentWatcher {
                 return res;
             }
             return name.compareTo(o.name);
+        }
+    }
+
+    public record DeploymentInfo(List<String> images, Instant lastModified) {
+
+        public List<String> getImages() {
+            return images;
+        }
+
+        public Instant getLastModified() {
+            return lastModified;
         }
     }
 
