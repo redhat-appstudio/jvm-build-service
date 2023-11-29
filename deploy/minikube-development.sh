@@ -26,6 +26,7 @@ echo -e "\033[0;32mTekton controller is running\033[0m"
 kubectl apply -k $DIR/crds/base
 #Load missing CRD
 kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.69.1/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
 sleep 2
 
 $DIR/base-development.sh  $1
@@ -40,4 +41,3 @@ kubectl create --dry-run=client -o=yaml secret docker-registry minikube-pull-sec
 kubectl patch serviceaccount pipeline -p '{"imagePullSecrets": [{"name": "minikube-pull-secret"}]}'
 kubectl patch serviceaccount default -p '{"imagePullSecrets": [{"name": "minikube-pull-secret"}]}'
 kubectl patch --type=merge jbsconfigs.jvmbuildservice.io jvm-build-config -p '{"spec":{"cacheSettings":{"disableTLS": true}}}'
-kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml

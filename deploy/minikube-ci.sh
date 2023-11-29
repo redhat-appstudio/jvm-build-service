@@ -23,6 +23,7 @@ echo "Tekton controller is running"
 
 #CRDS are sometimes racey
 kubectl apply -k $DIR/crds/base
+kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
 sleep 2
 
 kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
@@ -50,5 +51,4 @@ kubectl annotate --overwrite jbsconfigs.jvmbuildservice.io --all jvmbuildservice
 kubectl create sa pipeline
 kubectl apply -f $DIR/minikube-rbac.yaml
 
-kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
 kubectl delete namespace test-jvm-namespace
