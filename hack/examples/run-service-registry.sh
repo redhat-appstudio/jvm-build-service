@@ -9,9 +9,7 @@ echo
 echo "👉 Registering sample pipeline:"
 echo
 
-kubectl apply -f $DIR/pipeline.yaml
-
-kubectl apply -f $DIR/openshift-specific-rbac.yaml || true
+kustomize build $DIR | envsubst '${QUAY_USERNAME}' | kubectl apply -f -
 
 echo
 echo "👉 Running the pipeline with a sample project:"

@@ -294,7 +294,7 @@ spec:
       securityContext:
         runAsUser: 0
 
-      image: quay.io/replaced-image:bogus
+      image: quay.io/${QUAY_USERNAME}/hacbs-jvm-build-request-processor:dev
       args:
         - path
         - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)

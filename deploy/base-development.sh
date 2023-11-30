@@ -1,5 +1,14 @@
 #!/bin/sh
 
+if ! command -v kubectl &> /dev/null; then
+    echo "Install kubectl from https://kubernetes.io/docs/tasks/tools/install-kubectl-linux"
+    exit 1
+fi
+if ! command -v kustomize &> /dev/null; then
+    echo "Install kustomize from https://kubectl.docs.kubernetes.io/installation/kustomize/binaries"
+    exit 1
+fi
+
 if [ -z "$JBS_QUAY_IMAGE" ]; then
     export JBS_QUAY_IMAGE=redhat-appstudio
 fi
@@ -27,26 +36,6 @@ kubectl config set-context --current --namespace=$JBS_WORKER_NAMESPACE
 
 
 DIR=`dirname $0`
-
-#echo -e "\033[0;32mSecrets...\033[0m"
-# kubectl create --dry-run=client -o=yaml secret generic jvm-build-image-secrets --from-file=.dockerconfigjson=$HOME/.docker/config.json --type=kubernetes.io/dockerconfigjson | kubectl apply -f -
-# kubectl create --dry-run=client -o=yaml secret generic jvm-build-git-secrets --from-literal .git-credentials="
-# https://$GITHUB_E2E_ORGANIZATION:$GITHUB_TOKEN@github.com
-# https://test:test@gitlab.com
-# " | kubectl apply -f -
-# if [ -n "$GIT_DEPLOY_TOKEN" ]; then
-#     kubectl create --dry-run=client -o=yaml secret generic jvm-build-git-repo-secrets --from-literal gitdeploytoken="$GIT_DEPLOY_TOKEN" | kubectl apply -f -
-# fi
-# if [ -n "$MAVEN_PASSWORD" ]; then
-#     kubectl create --dry-run=client -o=yaml secret generic jvm-build-maven-repo-secrets --from-literal mavenpassword="$MAVEN_PASSWORD" | kubectl apply -f -
-# fi
-# if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
-#     if [ -n "$AWS_PROFILE" ]; then
-#         PROFILE="--from-literal awsprofile=$AWS_PROFILE"
-#     fi
-#     kubectl create --dry-run=client -o=yaml secret generic jvm-build-maven-repo-aws-secrets --from-literal=awsaccesskey=$AWS_ACCESS_KEY_ID --from-literal awssecretkey="$AWS_SECRET_ACCESS_KEY" $PROFILE | kubectl apply -f -
-#     kubectl create --dry-run=client -o=yaml secret generic jvm-build-s3-secrets --from-literal=awsaccesskey=$AWS_ACCESS_KEY_ID --from-literal awssecretkey="$AWS_SECRET_ACCESS_KEY" --from-literal awsregion=us-east-1 | kubectl apply -f -
-# fi
 
 echo -e "\033[0;32mPatching...\033[0m"
 JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller \
