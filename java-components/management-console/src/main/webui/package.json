@@ -85,7 +85,7 @@
     "@patternfly/react-icons": "^5.0.0",
     "@patternfly/react-styles": "^5.0.0",
     "@patternfly/react-table": "^5.1.1",
-    "@storybook/builder-webpack5": "^7.0.27",
+    "@storybook/builder-webpack5": "^7.1.0",
     "react": "^18",
     "react-dom": "^18",
     "sirv-cli": "^2.0.2"
