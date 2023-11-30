@@ -62,6 +62,8 @@ type ImageRegistrySpec struct {
 
 	//if this is true and we are automatically creating registries then we will make it private
 	Private *bool `json:"private,omitempty"`
+
+	DontReuseExisting *bool `json:"dontReuseExisting,omitempty"`
 }
 
 type JBSConfigStatus struct {

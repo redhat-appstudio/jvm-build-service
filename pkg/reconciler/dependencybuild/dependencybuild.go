@@ -969,7 +969,8 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	}
 
 	//don't look for existing artifacts on a rebuild
-	if db.Annotations == nil || db.Annotations[artifactbuild.RebuiltAnnotation] != "true" {
+	if (db.Annotations == nil || db.Annotations[artifactbuild.RebuiltAnnotation] != "true") &&
+		(jbsConfig.Spec.Registry.DontReuseExisting == nil || !*jbsConfig.Spec.Registry.DontReuseExisting) {
 		// Search not only the configured shared registries but the main registry as well.
 		if registries == "" {
 			registries = jbsconfig.ImageRegistryToString(jbsConfig.ImageRegistry())

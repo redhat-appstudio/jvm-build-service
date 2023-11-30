@@ -111,6 +111,8 @@ spec:
                 type: object
               registry:
                 properties:
+                  dontReuseExisting:
+                    type: boolean
                   host:
                     type: string
                   insecure:
