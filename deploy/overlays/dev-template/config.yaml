@@ -8,6 +8,7 @@ metadata:
 spec:
   registry:
     owner: QUAY_USERNAME
+    dontReuseExisting: true
   cacheSettings:
     storage:  "60Gi"
   mavenDeployment:
