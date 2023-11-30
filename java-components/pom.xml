@@ -53,7 +53,7 @@
         <assertj.version>3.24.2</assertj.version>
         <aws-java-sdk.version>1.12.598</aws-java-sdk.version>
         <quarkus-jgit.version>3.0.5</quarkus-jgit.version>
-        <gradle-tooling-api.version>8.4</gradle-tooling-api.version>
+        <gradle-tooling-api.version>8.5</gradle-tooling-api.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
         <github-api.version>1.318</github-api.version>
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
