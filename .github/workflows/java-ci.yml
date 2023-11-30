@@ -22,6 +22,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4.5
+        with:
+          maven-version: 3.9.5
       - name: Build with Maven
         working-directory: java-components
         run: mvn -V -B package -Dvalidate-format
