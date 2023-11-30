@@ -18,12 +18,7 @@ while ! oc get pods -n tekton-pipelines | grep tekton-pipelines-webhook | grep "
     fi
 done
 #we need to make sure the tekton webhook has its rules installed
-while ! kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io webhook.pipeline.tekton.dev -o yaml | grep rules; do
-    sleep 1
-    if [ $(date +%s) -gt $endTime ]; then
-            exit 1
-    fi
-done
+kubectl wait --for=jsonpath='{.webhooks[0].rules}' --timeout=300s mutatingwebhookconfigurations.admissionregistration.k8s.io webhook.pipeline.tekton.dev
 echo "Tekton controller is running"
 
 #CRDS are sometimes racey
@@ -33,7 +28,6 @@ sleep 2
 kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
 kubectl delete --ignore-not-found deployments.apps jvm-build-workspace-artifact-cache
 
-DIR=`dirname $0`
 kubectl apply -f $DIR/namespace.yaml
 kubectl config set-context --current --namespace=test-jvm-namespace
 
@@ -50,8 +44,6 @@ kubectl apply -k $DIR/overlays/development
 #this tells JBS we are in test mode and won't have a secure registry
 kubectl annotate --overwrite jbsconfigs.jvmbuildservice.io --all jvmbuildservice.io/test-registry=true
 
-
-# base-development.sh switches to the test-jvm-namespace namespace
 kubectl create sa pipeline
 kubectl apply -f $DIR/minikube-rbac.yaml
 
