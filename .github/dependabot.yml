@@ -13,3 +13,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/java-component/management-console/src/main/webui"
+    schedule:
+      interval: "weekly"
