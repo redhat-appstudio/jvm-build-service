@@ -51,7 +51,7 @@
         <kubernetes-client.version>6.9.2</kubernetes-client.version>
 
         <assertj.version>3.24.2</assertj.version>
-        <aws-java-sdk.version>1.12.598</aws-java-sdk.version>
+        <aws-java-sdk.version>1.12.603</aws-java-sdk.version>
         <quarkus-jgit.version>3.0.5</quarkus-jgit.version>
         <gradle-tooling-api.version>8.5</gradle-tooling-api.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
