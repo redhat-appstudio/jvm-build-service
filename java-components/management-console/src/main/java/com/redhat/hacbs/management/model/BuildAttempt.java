@@ -66,6 +66,12 @@ public class BuildAttempt extends PanacheEntity {
     @Column(length = -1)
     public String upstreamDifferences;
 
+    public String gitArchiveSha;
+    @Column(length = -1)
+    public String gitArchiveTag;
+    @Column(length = -1)
+    public String gitArchiveUrl;
+
     //this is pretty yuck, but we don't want a whole new table to store a List<String>
     public void commandLine(List<String> commandLine) {
         var mapper = Arc.container().instance(ObjectMapper.class);

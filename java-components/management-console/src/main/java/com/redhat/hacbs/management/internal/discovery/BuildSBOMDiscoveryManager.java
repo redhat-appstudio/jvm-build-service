@@ -96,26 +96,28 @@ public class BuildSBOMDiscoveryManager {
         try {
             Bom bom = locateSbom(attempt.outputImage);
             StringBuilder gavs = new StringBuilder();
-            for (var comp : bom.getComponents()) {
-                String gav = comp.getGroup() + ":" + comp.getName() + ":" + comp.getVersion();
-                MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
-                BuildQueue existing = BuildQueue.find("mavenArtifact", mavenArtifact).firstResult();
-                if (existing == null) {
-                    List<StoredDependencyBuild> existingBuild = entityManager
-                            .createQuery(
-                                    "select a from StoredDependencyBuild a join a.producedArtifacts s where s=:artifact")
-                            .setParameter("artifact", mavenArtifact)
-                            .getResultList();
-                    if (existingBuild.isEmpty()) {
-                        BuildQueue queue = new BuildQueue();
-                        queue.mavenArtifact = mavenArtifact;
-                        queue.persistAndFlush();
+            if (bom.getComponents() != null) {
+                for (var comp : bom.getComponents()) {
+                    String gav = comp.getGroup() + ":" + comp.getName() + ":" + comp.getVersion();
+                    MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
+                    BuildQueue existing = BuildQueue.find("mavenArtifact", mavenArtifact).firstResult();
+                    if (existing == null) {
+                        List<StoredDependencyBuild> existingBuild = entityManager
+                                .createQuery(
+                                        "select a from StoredDependencyBuild a join a.producedArtifacts s where s=:artifact")
+                                .setParameter("artifact", mavenArtifact)
+                                .getResultList();
+                        if (existingBuild.isEmpty()) {
+                            BuildQueue queue = new BuildQueue();
+                            queue.mavenArtifact = mavenArtifact;
+                            queue.persistAndFlush();
+                        }
                     }
+                    if (gavs.length() != 0) {
+                        gavs.append(",");
+                    }
+                    gavs.append(gav);
                 }
-                if (gavs.length() != 0) {
-                    gavs.append(",");
-                }
-                gavs.append(gav);
             }
 
             BuildSBOMDiscoveryInfo queue = new BuildSBOMDiscoveryInfo();

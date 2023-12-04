@@ -14,9 +14,9 @@ import io.quarkus.arc.Arc;
 public record BuildDTO(
         @Schema(required = true) long id,
         @Schema(required = true) String name,
-        String scmRepo,
-        String tag,
-        String commit,
+        @Schema(required = true) String scmRepo,
+        @Schema(required = true) String tag,
+        @Schema(required = true) String commit,
         String contextPath,
         boolean succeeded,
         boolean contaminated,

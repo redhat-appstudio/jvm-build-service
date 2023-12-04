@@ -8,9 +8,9 @@ import type { BuildAttemptDTO } from './BuildAttemptDTO';
 export type BuildDTO = {
     id: number;
     name: string;
-    scmRepo?: string;
-    tag?: string;
-    commit?: string;
+    scmRepo: string;
+    tag: string;
+    commit: string;
     contextPath?: string;
     succeeded?: boolean;
     contaminated?: boolean;

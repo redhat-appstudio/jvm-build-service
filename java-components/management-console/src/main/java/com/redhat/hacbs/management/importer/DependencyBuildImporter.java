@@ -142,6 +142,12 @@ public class DependencyBuildImporter {
                     attempt.outputImageDigest = i.getBuild().getResults().getImageDigest();
                     attempt.passedVerification = Boolean.TRUE.equals(i.getBuild().getResults().getVerified());
                     attempt.hermeticBuilderImage = i.getBuild().getResults().getHermeticBuildImage();
+                    attempt.upstreamDifferences = i.getBuild().getResults().getVerificationFailures();
+                    if (i.getBuild().getResults().getGitArchive() != null) {
+                        attempt.gitArchiveTag = i.getBuild().getResults().getGitArchive().getTag();
+                        attempt.gitArchiveUrl = i.getBuild().getResults().getGitArchive().getUrl();
+                        attempt.gitArchiveSha = i.getBuild().getResults().getGitArchive().getSha();
+                    }
                 }
             }
         }

@@ -402,7 +402,7 @@ public class GitScmLocator implements ScmLocator {
         tagsToHash = new HashMap<>(tags.size());
         for (var tag : tags) {
             var name = tag.getName().replace("refs/tags/", "");
-            tagsToHash.put(name, tag.getObjectId().name());
+            tagsToHash.put(name, tag.getPeeledObjectId() == null ? tag.getObjectId().name() : tag.getPeeledObjectId().name());
         }
 
         return tagsToHash;
