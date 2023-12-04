@@ -54,10 +54,6 @@
             <artifactId>quarkus-jgit</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-bootstrap-maven-resolver</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.quarkiverse.mavenresolver</groupId>
             <artifactId>quarkus-maven-resolver</artifactId>
         </dependency>
