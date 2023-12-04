@@ -92,10 +92,10 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 			if jbsConfig.Status.Message != err.Error() || jbsConfig.Status.RebuildsPossible {
 				jbsConfig.Status.Message = err.Error()
 				jbsConfig.Status.RebuildsPossible = false
+				//this should trigger a requeue, which will then fall through to the retry code
+				log.Error(err, fmt.Sprintf("Unable to enable rebuilds for namespace %s", jbsConfig.Namespace))
 				err2 := r.client.Status().Update(ctx, &jbsConfig)
-				if err2 != nil {
-					return reconcile.Result{}, err2
-				}
+				return reconcile.Result{}, err2
 			}
 			if r.spiPresent && jbsConfig.Spec.Registry.ImageRegistry.Owner == "" {
 				//this is due to https://issues.redhat.com/browse/RHTAPBUGS-937
