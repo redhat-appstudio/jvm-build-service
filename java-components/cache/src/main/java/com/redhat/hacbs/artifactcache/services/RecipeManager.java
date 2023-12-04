@@ -23,6 +23,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.recipies.BuildRecipe;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipies.disabledplugins.DisabledPluginsManager;
 import com.redhat.hacbs.recipies.location.BuildInfoRequest;
 import com.redhat.hacbs.recipies.location.RecipeDirectory;
 import com.redhat.hacbs.recipies.location.RecipeGroupManager;
@@ -131,12 +132,28 @@ public class RecipeManager {
     }
 
     public BuildRecipeInfo resolveBuildInfo(String scmUrl, String version) throws IOException {
-
         var ret = recipeGroupManager.requestBuildInformation(new BuildInfoRequest(scmUrl, version, Set.of(BuildRecipe.BUILD)));
         Path path = ret.getData().get(BuildRecipe.BUILD);
         if (path == null) {
             return null;
         }
         return BuildRecipe.BUILD.getHandler().parse(path);
+    }
+
+    public List<String> getDisabledPlugins(String name) {
+        List<String> results = new ArrayList<>();
+
+        for (var i : recipeDirs) {
+            var path = i.getDisabledPlugins(name);
+
+            if (path.isPresent()) {
+                try {
+                    return DisabledPluginsManager.INSTANCE.parse(path.get()).getDisabledPlugins();
+                } catch (IOException e) {
+                    Log.errorf(e, "Failed to parse plugin info file %s", path);
+                }
+            }
+        }
+        return results;
     }
 }

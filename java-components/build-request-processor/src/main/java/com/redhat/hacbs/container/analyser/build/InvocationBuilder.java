@@ -132,6 +132,7 @@ public class InvocationBuilder {
             info.setAdditionalDownloads(buildRecipeInfo.getAdditionalDownloads());
             info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
             info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
+            info.setDisabledPlugins(buildRecipeInfo.getDisabledPlugins());
         }
         //now we need to figure out what possible build recipes we can try
         //we work through from lowest Java version to highest
@@ -249,11 +250,15 @@ public class InvocationBuilder {
                     if (!ignore) {
                         for (var invocation : invocationSet.getValue()) {
                             Invocation result = new Invocation();
-                            HashMap<String, String> toolVersion = new HashMap<>(perm);
+                            Map<String, String> toolVersion = new HashMap<>(perm);
                             toolVersion.put(BuildInfo.JDK, javaVersion.version());
                             result.setToolVersion(toolVersion);
                             result.setCommands(invocation);
-                            result.setTool(invocationSet.getKey());
+                            String tool = invocationSet.getKey();
+                            result.setTool(tool);
+                            result.setDisabledPlugins(buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
+                                    ? buildRecipeInfo.getDisabledPlugins()
+                                    : buildInfoLocator.lookupDisabledPlugins(tool));
                             info.invocations.add(result);
                         }
                     }

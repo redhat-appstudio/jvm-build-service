@@ -3,7 +3,7 @@ apply plugin: DisablePluginsPlugin
 
 class DisablePluginsPlugin implements Plugin<Gradle> {
 
-    def PLUGINS = ["kotlin.gradle.targets.js", "org.jetbrains.dokka"]
+    def PLUGINS =  "@DISABLED_PLUGINS@".tokenize(",")
 
     void apply(Gradle gradle) {
         gradle.allprojects {

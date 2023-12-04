@@ -71,10 +71,14 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 
 	preprocessorArgs := []string{
 		"maven-prepare",
-		"-r",
-		"$(params.CACHE_URL)",
 		"$(workspaces." + WorkspaceSource + ".path)/workspace",
 	}
+	if len(recipe.DisabledPlugins) > 0 {
+		for _, i := range recipe.DisabledPlugins {
+			preprocessorArgs = append(preprocessorArgs, "-dp "+i)
+		}
+	}
+
 	toolEnv := []v1.EnvVar{}
 	if recipe.ToolVersions["maven"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "MAVEN_HOME", Value: "/opt/maven/" + recipe.ToolVersions["maven"]})
@@ -100,7 +104,15 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		buildToolSection = mavenSettings + "\n" + mavenBuild
 	} else if tool == "gradle" {
 		buildToolSection = gradleBuild
-		preprocessorArgs[0] = "gradle-prepare"
+		preprocessorArgs = []string{
+			"gradle-prepare",
+			"$(workspaces." + WorkspaceSource + ".path)/workspace",
+		}
+		if len(recipe.DisabledPlugins) > 0 {
+			for _, i := range recipe.DisabledPlugins {
+				preprocessorArgs = append(preprocessorArgs, "-dp "+i)
+			}
+		}
 	} else if tool == "sbt" {
 		buildToolSection = sbtBuild
 		preprocessorArgs[0] = "sbt-prepare"

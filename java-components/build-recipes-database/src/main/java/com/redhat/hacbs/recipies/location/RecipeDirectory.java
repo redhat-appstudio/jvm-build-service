@@ -26,6 +26,8 @@ public interface RecipeDirectory {
 
     List<Path> getAllRepositoryPaths();
 
+    Optional<Path> getDisabledPlugins(String tool);
+
     default <T> void writeArtifactData(AddRecipeRequest<T> data) {
         throw new IllegalStateException("Not implemented");
     }

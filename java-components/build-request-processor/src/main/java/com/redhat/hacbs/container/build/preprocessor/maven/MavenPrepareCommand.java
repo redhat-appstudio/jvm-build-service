@@ -7,9 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
@@ -30,20 +30,13 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "maven-prepare")
 public class MavenPrepareCommand extends AbstractPreprocessor {
 
-    static final Set<PluginInfo> TO_REMOVE = Set.of(
-            new PluginInfo("org.glassfish.copyright", "glassfish-copyright-maven-plugin"),
-            new PluginInfo("org.sonatype.plugins", "nexus-staging-maven-plugin"),
-            new PluginInfo("com.mycila", "license-maven-plugin"),
-            new PluginInfo("org.codehaus.mojo", "findbugs-maven-plugin"), //older version of this will break the build on our version of maven
-            new PluginInfo("de.jjohannes", "gradle-module-metadata-maven-plugin"));
-
     @Override
     public void run() {
         try {
             Files.walkFileTree(buildRoot, new SimpleFileVisitor<>() {
 
                 @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     String fileName = file.getFileName().toString();
                     if (fileName.equals("pom.xml")) {
                         try {
@@ -62,7 +55,7 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
 
     }
 
-    private void handleBuild(Path file, boolean topLevel) throws IOException {
+    private void handleBuild(Path file, boolean topLevel) {
         try (BufferedReader pomReader = Files.newBufferedReader(file)) {
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(pomReader);
@@ -87,12 +80,27 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
         }
     }
 
-    private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel) {
+    private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel)
+            throws IOException {
         boolean modified = false;
+        List<PluginInfo> toRemove = new ArrayList<>();
+
+        if (disabledPlugins != null) {
+            for (String s : disabledPlugins) {
+                String[] ga = s.split(":");
+
+                if (ga.length != 2) {
+                    throw new IOException("Error parsing groupId/artifactId:  " + s);
+                }
+
+                toRemove.add(new PluginInfo(ga[0], ga[1]));
+            }
+        }
+
         for (Iterator<Plugin> iterator = plugins.iterator(); iterator.hasNext();) {
             Plugin i = iterator.next();
             PluginInfo p = new PluginInfo(i.getGroupId(), i.getArtifactId());
-            if (TO_REMOVE.contains(p)) {
+            if (toRemove.contains(p)) {
                 iterator.remove();
                 modified = true;
             } else if (i.getArtifactId().equals("maven-deploy-plugin")) {

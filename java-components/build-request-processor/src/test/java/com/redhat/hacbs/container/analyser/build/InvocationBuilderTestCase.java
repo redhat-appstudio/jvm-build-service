@@ -17,7 +17,7 @@ import com.redhat.hacbs.recipies.tools.BuildToolInfo;
 
 public class InvocationBuilderTestCase {
 
-    CacheBuildInfoLocator buildInfoLocator = new CacheBuildInfoLocator() {
+    public static CacheBuildInfoLocator buildInfoLocator = new CacheBuildInfoLocator() {
         @Override
         public BuildRecipeInfo resolveBuildInfo(String scmUrl, String version) {
             return null;
@@ -31,6 +31,19 @@ public class InvocationBuilderTestCase {
         @Override
         public List<BuildToolInfo> lookupBuildToolInfo(String name) {
             return List.of();
+        }
+
+        @Override
+        public List<String> lookupDisabledPlugins(String tool) {
+            return switch (tool) {
+                case MAVEN -> List.of("org.glassfish.copyright:glassfish-copyright-maven-plugin",
+                        "org.sonatype.plugins:nexus-staging-maven-plugin",
+                        "com.mycila:license-maven-plugin",
+                        "org.codehaus.mojo:findbugs-maven-plugin", // older version of this will break the build on our version of maven
+                        "de.jjohannes:gradle-module-metadata-maven-plugin");
+                case GRADLE -> List.of("kotlin.gradle.targets.js", "org.jetbrains.dokka");
+                default -> List.of();
+            };
         }
     };
 
@@ -54,7 +67,8 @@ public class InvocationBuilderTestCase {
         Assertions.assertEquals(3, result.invocations.size());
         Assertions.assertTrue(
                 result.invocations
-                        .contains(new Invocation(List.of("install"), Map.of(MAVEN, "3.8.0", JDK, "11"), "maven")));
+                        .contains(new Invocation(List.of("install"), Map.of(MAVEN, "3.8.0", JDK, "11"), MAVEN,
+                                buildInfoLocator.lookupDisabledPlugins(MAVEN))));
 
         builder = newBuilder();
         builder.addToolInvocation(MAVEN, List.of("install"));
@@ -65,10 +79,11 @@ public class InvocationBuilderTestCase {
         Assertions.assertEquals(4, result.invocations.size());
         Assertions.assertTrue(result.invocations
                 .contains(
-                        new Invocation(List.of("install"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), "maven")));
+                        new Invocation(List.of("install"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), MAVEN,
+                                buildInfoLocator.lookupDisabledPlugins(MAVEN))));
         Assertions.assertTrue(result.invocations
                 .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"),
-                        "gradle")));
+                        GRADLE, buildInfoLocator.lookupDisabledPlugins(GRADLE))));
 
         builder = newBuilder();
         builder.addToolInvocation(MAVEN, List.of("mvn", "install"));
@@ -80,10 +95,11 @@ public class InvocationBuilderTestCase {
         Assertions.assertEquals(2, result.invocations.size());
         Assertions.assertTrue(result.invocations
                 .contains(
-                        new Invocation(List.of("mvn", "install"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), "maven")));
+                        new Invocation(List.of("mvn", "install"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), MAVEN,
+                                buildInfoLocator.lookupDisabledPlugins(MAVEN))));
         Assertions.assertTrue(result.invocations
                 .contains(new Invocation(List.of("gradle", "build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"),
-                        "gradle")));
+                        GRADLE, buildInfoLocator.lookupDisabledPlugins(GRADLE))));
 
     }
 

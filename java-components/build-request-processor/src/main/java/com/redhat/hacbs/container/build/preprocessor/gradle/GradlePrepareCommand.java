@@ -1,11 +1,13 @@
 package com.redhat.hacbs.container.build.preprocessor.gradle;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
 
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
@@ -46,19 +48,26 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
                 }
 
             });
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
 
     }
 
-    private void setupInitScripts() throws IOException {
+    private void setupInitScripts() throws IOException, URISyntaxException {
         var initDir = buildRoot.resolve(".hacbs-init");
         Files.createDirectories(initDir);
         for (var initScript : INIT_SCRIPTS) {
             var init = initDir.resolve(initScript);
             try (var in = getClass().getClassLoader().getResourceAsStream("gradle/" + initScript)) {
                 Files.copy(in, init);
+
+                if ("disable-plugins.gradle".equals(init.getFileName().toString())) {
+                    Files.writeString(init,
+                            Files.readString(init).replace("@DISABLED_PLUGINS@",
+                                    String.join(",", disabledPlugins != null ? disabledPlugins : List.of())));
+                }
+
                 Log.infof("Wrote init script to %s", init.toAbsolutePath());
             }
         }

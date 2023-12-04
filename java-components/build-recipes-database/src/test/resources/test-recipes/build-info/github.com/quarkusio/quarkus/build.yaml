@@ -3,3 +3,5 @@ additionalArgs:
   - "-DskipDocs=true"
 allowedDifferences:
   - ".:.*-javadoc\\.jar:.*"
+disabledPlugins:
+  - "foo:bar"
