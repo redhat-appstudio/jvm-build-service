@@ -2,6 +2,7 @@ package com.redhat.hacbs.management.model;
 
 import java.util.List;
 
+import io.quarkus.logging.Log;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ManyToOne;

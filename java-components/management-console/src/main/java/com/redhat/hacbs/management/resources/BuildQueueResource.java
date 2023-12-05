@@ -44,7 +44,6 @@ public class BuildQueueResource {
     @Transactional
     @Consumes(MediaType.TEXT_PLAIN)
     public void queueBuild(String buildName) {
-
         List<BuildQueue> existing = (List<BuildQueue>) entityManager.createQuery(
                 "select b from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier.dependencyBuildName=:b")
                 .setParameter("b", buildName).getResultList();
@@ -64,5 +63,13 @@ public class BuildQueueResource {
         b.rebuild = true;
         b.mavenArtifact = n.get().mavenArtifact;
         b.persistAndFlush();
+    }
+
+    @POST
+    @Transactional
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Path("add")
+    public void addBuild(String gav) {
+        BuildQueue.create(gav, true);
     }
 }
