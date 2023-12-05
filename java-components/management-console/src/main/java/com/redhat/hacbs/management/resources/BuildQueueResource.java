@@ -18,6 +18,8 @@ import jakarta.ws.rs.core.MediaType;
 import com.redhat.hacbs.management.dto.BuildQueueListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.BuildQueue;
+import com.redhat.hacbs.management.model.MavenArtifact;
+import com.redhat.hacbs.management.model.MavenArtifactLabel;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 
 import io.quarkus.panache.common.Page;
@@ -70,6 +72,8 @@ public class BuildQueueResource {
     @Consumes(MediaType.TEXT_PLAIN)
     @Path("add")
     public void addBuild(String gav) {
-        BuildQueue.create(gav, true);
+        MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
+        MavenArtifactLabel.getOrCreate(mavenArtifact, "From ArtifactEntry");
+        BuildQueue.create(mavenArtifact, true);
     }
 }
