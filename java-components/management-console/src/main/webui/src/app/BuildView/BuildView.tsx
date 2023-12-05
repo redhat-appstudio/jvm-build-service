@@ -3,11 +3,10 @@ import {useEffect, useState} from 'react';
 
 import {
   BuildAttemptDTO,
-  BuildAttemptResourceService,
   BuildDTO,
   BuildHistoryResourceService, BuildQueueResourceService
 } from "../../services/openapi";
-import {RouteComponentProps} from "react-router-dom";
+import {Link, RouteComponentProps} from "react-router-dom";
 import {
   Card,
   CardBody,
@@ -28,15 +27,6 @@ import {
 } from "@patternfly/react-core";
 import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, IceCreamIcon} from "@patternfly/react-icons";
 
-
-const columnNames = {
-  name: 'Build ID',
-  repo: 'Repo',
-  tag: 'Tag',
-  artifacts: 'Artifacts',
-  actions: 'Actions',
-};
-
 interface RouteParams {
   id: string
 }
@@ -47,7 +37,7 @@ interface BuildView extends RouteComponentProps<RouteParams> {
 const BuildView: React.FunctionComponent<BuildView> = (props) => {
 
   const id = props.match.params.id
-  const initial: BuildDTO = {id: 0, name: ""}
+  const initial: BuildDTO = {id: 0, name: "", scmRepo: "", tag: "", commit: ""}
   const [build, setBuild] = useState(initial);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
@@ -134,6 +124,19 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
     </>
   );
 
+  const gitUri = (url: string, tag :string, commit:string) => {
+    if (url == undefined) {
+      return <></>
+    }
+    if (url.endsWith(".git")) {
+      url = url.substring(0, url.length - 4)
+    }
+    if (url.startsWith("https://github.com")) {
+      return <a target={'_blank'}  href={url + "/tree/" + commit + build.contextPath} rel="noreferrer">{tag}</a>
+    }
+    return <a target={'_blank'}  href={url + "/-/tree/" + commit + build.contextPath} rel="noreferrer">{tag}</a>
+  }
+
   return (
     <Flex>
       <FlexItem>
@@ -149,27 +152,24 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               }}>
               <DescriptionListGroup>
                 <DescriptionListTerm>External Repository</DescriptionListTerm>
-                <DescriptionListDescription>{build.scmRepo}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Context Path</DescriptionListTerm>
-                <DescriptionListDescription>{build.contextPath}</DescriptionListDescription>
-              </DescriptionListGroup>
-              <DescriptionListGroup>
-                <DescriptionListTerm>Tag</DescriptionListTerm>
-                <DescriptionListDescription>{build.tag}</DescriptionListDescription>
+                <DescriptionListDescription>{gitUri(build.scmRepo, build.tag, build.commit)}</DescriptionListDescription>
               </DescriptionListGroup>
               <DescriptionListGroup>
                 <DescriptionListTerm>Commit Hash</DescriptionListTerm>
                 <DescriptionListDescription>{build.commit}</DescriptionListDescription>
               </DescriptionListGroup>
+              {build.successfulBuild != undefined ? build.successfulBuild.gitArchiveUrl != undefined && build.successfulBuild.gitArchiveSha != undefined  && build.successfulBuild.gitArchiveTag != undefined  ? <DescriptionListGroup>
+                <DescriptionListTerm>Internal Archive</DescriptionListTerm>
+                <DescriptionListDescription>{gitUri(build.successfulBuild.gitArchiveUrl, build.successfulBuild.gitArchiveTag, build.successfulBuild.gitArchiveSha)}</DescriptionListDescription>
+              </DescriptionListGroup> :'' :''}
+
             </DescriptionList>
           </CardBody>
         </Card>
         {build.successfulBuild == undefined ? '' :
           <BuildAttempt attempt={build.successfulBuild} expanded={true}></BuildAttempt>}
         {build.buildAttempts == undefined ? '' : build.buildAttempts.map((build) => (
-          <BuildAttempt attempt={build} expanded={false}></BuildAttempt>
+          <BuildAttempt key={build.id} attempt={build} expanded={false}></BuildAttempt>
         ))}
       </FlexItem>
     </Flex>);

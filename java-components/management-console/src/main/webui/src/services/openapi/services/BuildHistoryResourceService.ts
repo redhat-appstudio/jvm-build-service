@@ -33,6 +33,23 @@ export class BuildHistoryResourceService {
 
     /**
      * @param id
+     * @returns any OK
+     * @throws ApiError
+     */
+    public static getApiBuildsHistoryDiscoverLogs(
+        id: number,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/builds/history/discover-logs/{id}',
+            path: {
+                'id': id,
+            },
+        });
+    }
+
+    /**
+     * @param id
      * @returns BuildDTO OK
      * @throws ApiError
      */

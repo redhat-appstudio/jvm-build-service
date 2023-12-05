@@ -38,7 +38,10 @@ public record BuildAttemptDTO(
         //StoredDependencyBuild dependencyBuild,
 
         //List<BuildFile> storedBuildResults,
-        String upstreamDifferences) {
+        String upstreamDifferences,
+        String gitArchiveSha,
+        String gitArchiveTag,
+        String gitArchiveUrl) {
 
     public static BuildAttemptDTO of(BuildAttempt i) {
         return new BuildAttemptDTO(
@@ -66,6 +69,9 @@ public record BuildAttemptDTO(
                 i.buildPipelineUrl,
                 i.successful,
                 i.passedVerification,
-                i.upstreamDifferences);
+                i.upstreamDifferences,
+                i.gitArchiveSha,
+                i.gitArchiveTag,
+                i.gitArchiveUrl);
     }
 }

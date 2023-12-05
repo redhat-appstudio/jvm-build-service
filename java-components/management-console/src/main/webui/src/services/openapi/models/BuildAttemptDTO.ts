@@ -29,5 +29,8 @@ export type BuildAttemptDTO = {
     successful?: boolean;
     passedVerification?: boolean;
     upstreamDifferences?: string;
+    gitArchiveSha?: string;
+    gitArchiveTag?: string;
+    gitArchiveUrl?: string;
 };
 
