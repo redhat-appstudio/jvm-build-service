@@ -2,28 +2,22 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ArtifactSummaryDTO } from '../models/ArtifactSummaryDTO';
+import type { ArtifactLabelName } from '../models/ArtifactLabelName';
 
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 
-export class ArtifactSummaryResourceService {
+export class ArtifactLabelResourceService {
 
     /**
-     * @param label
-     * @returns ArtifactSummaryDTO OK
+     * @returns ArtifactLabelName OK
      * @throws ApiError
      */
-    public static getApiArtifactSummary(
-        label?: string,
-    ): CancelablePromise<ArtifactSummaryDTO> {
+    public static getApiArtifactLabels(): CancelablePromise<Array<ArtifactLabelName>> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/artifact/summary',
-            query: {
-                'label': label,
-            },
+            url: '/api/artifact-labels',
         });
     }
 

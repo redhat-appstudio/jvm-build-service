@@ -3,7 +3,10 @@ import {useEffect, useState} from 'react';
 import {BuildSummaryDTO, BuildSummaryResourceService} from "../../services/openapi";
 import {ChartDonut} from '@patternfly/react-charts';
 
-const BuildStatusPieChart: React.FunctionComponent = () => {
+type BuildStatusParamsType = {
+  label: string,
+};
+const BuildStatusPieChart: React.FunctionComponent<BuildStatusParamsType> = (params): JSX.Element => {
     const initial: BuildSummaryDTO = {contaminatedBuilds: 0, totalBuilds: 0, runningBuilds: 0, failingBuilds: 0, successfulBuilds: 0}
     const [status, setStatus] = useState(initial);
     const [error, setError] = useState(false);
@@ -11,7 +14,7 @@ const BuildStatusPieChart: React.FunctionComponent = () => {
 
     useEffect(() => {
         setState('loading');
-        BuildSummaryResourceService.getApiBuildsStatus().then()
+        BuildSummaryResourceService.getApiBuildsStatus(params.label).then()
             .then((res) => {
                 setState('success');
                 setStatus(res);

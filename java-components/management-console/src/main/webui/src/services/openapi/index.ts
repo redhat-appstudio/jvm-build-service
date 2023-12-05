@@ -7,6 +7,7 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { ArtifactLabelName } from './models/ArtifactLabelName';
 export type { ArtifactSummaryDTO } from './models/ArtifactSummaryDTO';
 export type { BuildAttemptDTO } from './models/BuildAttemptDTO';
 export type { BuildDTO } from './models/BuildDTO';
@@ -19,6 +20,7 @@ export type { Image } from './models/Image';
 export type { PageParametersBuildListDTO } from './models/PageParametersBuildListDTO';
 export type { PageParametersBuildQueueListDTO } from './models/PageParametersBuildQueueListDTO';
 
+export { ArtifactLabelResourceService } from './services/ArtifactLabelResourceService';
 export { ArtifactSummaryResourceService } from './services/ArtifactSummaryResourceService';
 export { BuildAttemptResourceService } from './services/BuildAttemptResourceService';
 export { BuildHistoryResourceService } from './services/BuildHistoryResourceService';

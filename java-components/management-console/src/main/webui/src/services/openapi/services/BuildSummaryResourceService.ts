@@ -11,21 +11,18 @@ import { request as __request } from '../core/request';
 export class BuildSummaryResourceService {
 
     /**
-     * @param page
-     * @param perPage
+     * @param label
      * @returns BuildSummaryDTO OK
      * @throws ApiError
      */
     public static getApiBuildsStatus(
-        page?: number,
-        perPage?: number,
+        label?: string,
     ): CancelablePromise<BuildSummaryDTO> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/builds/status',
             query: {
-                'page': page,
-                'perPage': perPage,
+                'label': label,
             },
         });
     }

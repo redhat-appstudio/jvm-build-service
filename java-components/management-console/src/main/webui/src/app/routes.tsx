@@ -1,9 +1,6 @@
 import * as React from 'react';
 import { Route, RouteComponentProps, Switch, useLocation } from 'react-router-dom';
 import { Dashboard } from '@app/Dashboard/Dashboard';
-import { Support } from '@app/Support/Support';
-import { GeneralSettings } from '@app/Settings/General/GeneralSettings';
-import { ProfileSettings } from '@app/Settings/Profile/ProfileSettings';
 import { NotFound } from '@app/NotFound/NotFound';
 import { useDocumentTitle } from '@app/utils/useDocumentTitle';
 import {BuildStatusPieChart} from "@app/BuildStatusPieChart/BuildStatusPieChart";
@@ -42,13 +39,6 @@ const routes: AppRouteConfig[] = [
   {
     label: 'Builds',
     routes: [
-      {
-        component: BuildStatusPieChart,
-        exact: true,
-        label: 'Status',
-        path: '/builds/status',
-        title: 'JVM Build Service | Build Status',
-      },
       {
         component: BuildList,
         exact: true,
