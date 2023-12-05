@@ -2,8 +2,10 @@ import * as React from 'react';
 import {useEffect, useState} from 'react';
 import {ArtifactSummaryDTO, ArtifactSummaryResourceService} from "../../services/openapi";
 import {ChartDonut} from '@patternfly/react-charts';
-
-const ArtifactSummaryPieChart: React.FunctionComponent = () => {
+type ArtifactStatusParamsType = {
+  label: string,
+};
+const ArtifactSummaryPieChart: React.FunctionComponent<ArtifactStatusParamsType> = (params): JSX.Element => {
     const initial: ArtifactSummaryDTO = {missing:0, failed:0,built:0,total:0}
     const [status, setStatus] = useState(initial);
     const [error, setError] = useState(false);
@@ -11,7 +13,7 @@ const ArtifactSummaryPieChart: React.FunctionComponent = () => {
 
     useEffect(() => {
         setState('loading');
-        ArtifactSummaryResourceService.getApiArtifactSummary().then()
+        ArtifactSummaryResourceService.getApiArtifactSummary(params.label).then()
             .then((res) => {
                 setState('success');
                 setStatus(res);

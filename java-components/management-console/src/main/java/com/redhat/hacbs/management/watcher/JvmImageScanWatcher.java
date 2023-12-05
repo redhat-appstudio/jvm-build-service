@@ -12,10 +12,7 @@ import jakarta.transaction.Transactional;
 
 import org.hibernate.exception.ConstraintViolationException;
 
-import com.redhat.hacbs.management.model.BuildQueue;
-import com.redhat.hacbs.management.model.ContainerImage;
-import com.redhat.hacbs.management.model.ImageDependency;
-import com.redhat.hacbs.management.model.MavenArtifact;
+import com.redhat.hacbs.management.model.*;
 import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
 import com.redhat.hacbs.resources.model.v1alpha1.jvmimagescanstatus.Results;
 
@@ -122,6 +119,7 @@ public class JvmImageScanWatcher {
                     id.image = containerImage;
                     id.mavenArtifact = MavenArtifact.forGav(i.getGav());
                 }
+                MavenArtifactLabel.getOrCreate(id.mavenArtifact, "From Deployment");
                 id.source = i.getSource();
                 if (Objects.equals(id.source, "unknown")) {
                     BuildQueue.create(id.mavenArtifact, true);

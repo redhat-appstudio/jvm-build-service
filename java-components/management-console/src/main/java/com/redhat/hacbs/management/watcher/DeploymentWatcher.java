@@ -24,6 +24,7 @@ import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.ExecutorRecorder;
 import io.quarkus.runtime.LaunchMode;
 import io.quarkus.runtime.Startup;
 
@@ -50,67 +51,74 @@ public class DeploymentWatcher {
             Log.warnf("Kubernetes client disabled so unable to initiate Deployment  importer");
             return;
         }
-        client.resources(Pod.class).inAnyNamespace().inform(new ResourceEventHandler<Pod>() {
+        ExecutorRecorder.getCurrent().execute(new Runnable() {
             @Override
-            public void onAdd(Pod resource) {
-                Log.infof("Processing pod %s", resource.getMetadata().getName());
-                if (resource.getMetadata().getLabels() == null) {
-                    return;
-                }
-                String app = resource.getMetadata().getLabels().get("app");
-                if (app == null) {
-                    return;
-                }
-                synchronized (deployments) {
-                    List<String> images = new ArrayList<>();
-                    for (var i : resource.getStatus().getContainerStatuses()) {
-                        if (i.getImageID().contains("registry.redhat")
-                                || i.getImageID().contains("quay.io/openshift-release-dev")) {
-                            //HACK: we don't want to report on internals
+            public void run() {
+
+                client.resources(Pod.class).inAnyNamespace().inform(new ResourceEventHandler<Pod>() {
+                    @Override
+                    public void onAdd(Pod resource) {
+                        Log.infof("Processing pod %s", resource.getMetadata().getName());
+                        if (resource.getMetadata().getLabels() == null) {
                             return;
                         }
-                        images.add(i.getImageID());
-                        handleImage(i.getImageID(), app);
-                    }
-                    images.sort(Comparator.naturalOrder());
-                    deployments.put(new NamespacedName(resource.getMetadata().getNamespace(), app),
-                            Collections.unmodifiableList(images));
-                }
-            }
-
-            @Override
-            public void onUpdate(Pod oldObj, Pod newObj) {
-            }
-
-            @Override
-            public void onDelete(Pod resource, boolean deletedFinalStateUnknown) {
-                Log.infof("Processing pod deletion %s", resource.getMetadata().getName());
-                if (resource.getMetadata().getLabels() == null) {
-                    return;
-                }
-                String app = resource.getMetadata().getLabels().get("app");
-                if (app == null) {
-                    return;
-                }
-                synchronized (deployments) {
-                    ListOptions listOptions = new ListOptions();
-                    listOptions.setLabelSelector("app=" + app);
-
-                    List<Pod> pods = client.resources(Pod.class).inNamespace(resource.getMetadata().getNamespace())
-                            .list(listOptions).getItems();
-                    for (var pod : pods) {
-                        if (Objects.equals(pod.getMetadata().getUid(), resource.getMetadata().getUid())) {
-                            continue;
-                        }
-                        //we only want to act on this if it is the most recent pod
-                        if (Instant.parse(pod.getMetadata().getCreationTimestamp())
-                                .isAfter(Instant.parse(resource.getMetadata().getCreationTimestamp()))) {
+                        String app = resource.getMetadata().getLabels().get("app");
+                        if (app == null) {
                             return;
                         }
+                        synchronized (deployments) {
+                            List<String> images = new ArrayList<>();
+                            for (var i : resource.getStatus().getContainerStatuses()) {
+                                if (i.getImageID().contains("registry.redhat")
+                                        || i.getImageID().contains("quay.io/openshift-release-dev")) {
+                                    //HACK: we don't want to report on internals
+                                    return;
+                                }
+                                images.add(i.getImageID());
+                                handleImage(i.getImageID(), app);
+                            }
+                            images.sort(Comparator.naturalOrder());
+                            deployments.put(new NamespacedName(resource.getMetadata().getNamespace(), app),
+                                    Collections.unmodifiableList(images));
+                        }
                     }
-                    deployments.remove(
-                            new NamespacedName(resource.getMetadata().getNamespace(), resource.getMetadata().getName()));
-                }
+
+                    @Override
+                    public void onUpdate(Pod oldObj, Pod newObj) {
+                    }
+
+                    @Override
+                    public void onDelete(Pod resource, boolean deletedFinalStateUnknown) {
+                        Log.infof("Processing pod deletion %s", resource.getMetadata().getName());
+                        if (resource.getMetadata().getLabels() == null) {
+                            return;
+                        }
+                        String app = resource.getMetadata().getLabels().get("app");
+                        if (app == null) {
+                            return;
+                        }
+                        synchronized (deployments) {
+                            ListOptions listOptions = new ListOptions();
+                            listOptions.setLabelSelector("app=" + app);
+
+                            List<Pod> pods = client.resources(Pod.class).inNamespace(resource.getMetadata().getNamespace())
+                                    .list(listOptions).getItems();
+                            for (var pod : pods) {
+                                if (Objects.equals(pod.getMetadata().getUid(), resource.getMetadata().getUid())) {
+                                    continue;
+                                }
+                                //we only want to act on this if it is the most recent pod
+                                if (Instant.parse(pod.getMetadata().getCreationTimestamp())
+                                        .isAfter(Instant.parse(resource.getMetadata().getCreationTimestamp()))) {
+                                    return;
+                                }
+                            }
+                            deployments.remove(
+                                    new NamespacedName(resource.getMetadata().getNamespace(),
+                                            resource.getMetadata().getName()));
+                        }
+                    }
+                });
             }
         });
 
