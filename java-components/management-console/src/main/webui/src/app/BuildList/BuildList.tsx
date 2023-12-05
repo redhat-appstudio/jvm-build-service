@@ -1,20 +1,26 @@
 import * as React from 'react';
+import {useEffect, useState} from 'react';
 import {
+  ActionListItem,
+  Bullseye,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
+  EmptyState,
+  EmptyStateBody,
+  EmptyStateHeader,
+  EmptyStateIcon,
+  Label,
+  MenuToggle,
+  MenuToggleElement,
+  Pagination,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
-  Pagination,
-  EmptyState,
-  EmptyStateHeader,
-  EmptyStateBody,
-  Bullseye,
-  EmptyStateIcon, ActionListItem, Dropdown, MenuToggle, MenuToggleElement, DropdownList, DropdownItem,
 } from '@patternfly/react-core';
-import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
-import { Label } from '@patternfly/react-core';
 import {BuildHistoryResourceService, BuildListDTO, BuildQueueResourceService} from "../../services/openapi";
-import {Dispatch, ReactEventHandler, SetStateAction, SyntheticEvent, useEffect, useState} from "react";
 import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, IceCreamIcon} from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
 

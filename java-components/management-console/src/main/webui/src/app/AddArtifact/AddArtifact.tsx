@@ -12,6 +12,7 @@ import {
 import {BuildQueueResourceService} from "../../services/openapi";
 
 export const AddArtifact: React.FunctionComponent = () => {
+  const formId = "submitGAV"
   const [txtValue, setInput] = React.useState('');
 
   const handleChange = (event) => {
@@ -28,19 +29,19 @@ export const AddArtifact: React.FunctionComponent = () => {
         console.log("Creating build for " + gav)
         BuildQueueResourceService.postApiBuildsQueueAdd(gav).then(() => {
         })
-        setInput("")
       }
+      setInput("")
     }
   }
 
   return <React.Fragment>
-    <Form onSubmit={handleSubmit} isWidthLimited={true}>
+    <Form id={formId} onSubmit={handleSubmit} isWidthLimited={true}>
       <FormHelperText>
         <HelperText>
-          <HelperTextItem><br/>Enter comma separated GAVs</HelperTextItem>
+          <HelperTextItem><br/>Enter a list of comma separated "group:artifact:version"</HelperTextItem>
         </HelperText>
       </FormHelperText>
-      <FormGroup>
+      <FormGroup label="GAVs" fieldId="horizontal-form-exp">
         <TextArea
             value={txtValue}
             onChange={handleChange}
@@ -49,7 +50,7 @@ export const AddArtifact: React.FunctionComponent = () => {
         />
       </FormGroup>
       <ActionGroup>
-        <Button variant="primary" ouiaId="Primary">Submit</Button>
+        <Button variant="primary" ouiaId="Primary" form={formId} type="submit">Submit</Button>
       </ActionGroup>
     </Form>
   </React.Fragment>
