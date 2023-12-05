@@ -46,4 +46,20 @@ export class BuildQueueResourceService {
         });
     }
 
+    /**
+     * @param requestBody
+     * @returns any Created
+     * @throws ApiError
+     */
+    public static postApiBuildsQueueAdd(
+        requestBody?: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/builds/queue/add',
+            body: requestBody,
+            mediaType: 'text/plain',
+        });
+    }
+
 }

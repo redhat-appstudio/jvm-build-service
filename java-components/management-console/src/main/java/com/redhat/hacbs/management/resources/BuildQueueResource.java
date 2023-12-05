@@ -18,6 +18,8 @@ import jakarta.ws.rs.core.MediaType;
 import com.redhat.hacbs.management.dto.BuildQueueListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.BuildQueue;
+import com.redhat.hacbs.management.model.MavenArtifact;
+import com.redhat.hacbs.management.model.MavenArtifactLabel;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 
 import io.quarkus.panache.common.Page;
@@ -44,7 +46,6 @@ public class BuildQueueResource {
     @Transactional
     @Consumes(MediaType.TEXT_PLAIN)
     public void queueBuild(String buildName) {
-
         List<BuildQueue> existing = (List<BuildQueue>) entityManager.createQuery(
                 "select b from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier.dependencyBuildName=:b")
                 .setParameter("b", buildName).getResultList();
@@ -64,5 +65,15 @@ public class BuildQueueResource {
         b.rebuild = true;
         b.mavenArtifact = n.get().mavenArtifact;
         b.persistAndFlush();
+    }
+
+    @POST
+    @Transactional
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Path("add")
+    public void addBuild(String gav) {
+        MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
+        MavenArtifactLabel.getOrCreate(mavenArtifact, "From ArtifactEntry");
+        BuildQueue.create(mavenArtifact, true);
     }
 }
