@@ -9,6 +9,7 @@ import jakarta.ws.rs.QueryParam;
 import com.redhat.hacbs.management.dto.ArtifactSummaryDTO;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
+import jakarta.ws.rs.QueryParam;
 
 @Path("/artifact/summary")
 public class ArtifactSummaryResource {
