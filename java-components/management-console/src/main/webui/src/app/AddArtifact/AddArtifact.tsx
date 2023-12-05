@@ -1,5 +1,14 @@
 import * as React from 'react';
-import {HelperText, HelperTextItem, TextArea,} from '@patternfly/react-core';
+import {
+  ActionGroup,
+  Button,
+  Form,
+  FormGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
+  TextArea,
+} from '@patternfly/react-core';
 import {BuildQueueResourceService} from "../../services/openapi";
 
 export const AddArtifact: React.FunctionComponent = () => {
@@ -25,13 +34,23 @@ export const AddArtifact: React.FunctionComponent = () => {
   }
 
   return <React.Fragment>
-    <HelperText>
-      <HelperTextItem><br/>Enter comma separated GAVs</HelperTextItem>
-    </HelperText>
-    <form method="post" onSubmit={handleSubmit}>
-      <TextArea value={txtValue} onChange={handleChange} aria-label="AddArtifact" />
-      <br/>
-      <input type="submit" value={"Submit"}/>
-    </form>
+    <Form onSubmit={handleSubmit} isWidthLimited={true}>
+      <FormHelperText>
+        <HelperText>
+          <HelperTextItem><br/>Enter comma separated GAVs</HelperTextItem>
+        </HelperText>
+      </FormHelperText>
+      <FormGroup>
+        <TextArea
+            value={txtValue}
+            onChange={handleChange}
+            id="horizontal-form-exp"
+            name="horizontal-form-exp"
+        />
+      </FormGroup>
+      <ActionGroup>
+        <Button variant="primary" ouiaId="Primary">Submit</Button>
+      </ActionGroup>
+    </Form>
   </React.Fragment>
 };
