@@ -6,6 +6,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.UUID;
 
+import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -21,6 +22,8 @@ public abstract class Git {
     protected CredentialsProvider credentialsProvider;
 
     protected boolean disableSSLVerification;
+
+    protected boolean newGitHubRepository = false;
 
     public abstract void create(String name)
             throws IOException, URISyntaxException;
@@ -89,11 +92,17 @@ public abstract class Git {
             Ref tagRefUnique = jGit.tag().setAnnotated(true).setName(tagName + "-" + UUID.randomUUID()).setForceUpdate(true)
                     .call();
 
-            Iterable<PushResult> results = jGit.push().setForce(true).setRemote("origin")
-                    .add(jRepo.getBranch()) // Push the default branch else GitHub doesn't show the code.
+            PushCommand pushCommand = jGit.push().setForce(true).setRemote("origin")
                     .add(tagRefStable)
                     .add(tagRefUnique)
-                    .setCredentialsProvider(credentialsProvider).call();
+                    .setCredentialsProvider(credentialsProvider);
+            // If we're using GitHub, and it is a new repository we should push
+            // the default branch else it doesn't show the code
+            if (newGitHubRepository) {
+                pushCommand.add(jRepo.getBranch());
+            }
+
+            Iterable<PushResult> results = pushCommand.call();
 
             for (PushResult result : results) {
                 result.getRemoteUpdates().forEach(r -> {
