@@ -213,7 +213,8 @@ public class LookupBuildInfoCommand implements Runnable {
                     var invocations = new ArrayList<>(
                             List.of("install", "-Denforcer.skip", "-Dcheckstyle.skip",
                                     "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
-                                    "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false", "-Dcobertura.skip=true"));
+                                    "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false", "-Dcobertura.skip=true",
+                                    "-Dpgpverify.skip"));
                     if (skipTests) {
                         //we assume private repos are essentially fresh tags we have control of
                         //so we should run the tests
