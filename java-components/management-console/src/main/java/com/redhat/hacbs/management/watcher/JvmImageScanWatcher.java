@@ -10,6 +10,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.exception.ConstraintViolationException;
 
 import com.redhat.hacbs.management.model.*;
@@ -31,12 +32,19 @@ public class JvmImageScanWatcher {
     @Inject
     KubernetesClient client;
 
+    @ConfigProperty(name = "image-scan.enabled", defaultValue = "true")
+    boolean enabled;
+
     @PostConstruct
     public void setup() {
         if ((LaunchMode.current() == LaunchMode.TEST
                 && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test"))) {
             //don't start in tests, as kube might not be present
             Log.warnf("Kubernetes client disabled so unable to initiate image scan importer");
+            return;
+        }
+        if (!enabled) {
+            Log.warnf("image scan importer disabled");
             return;
         }
         client.resources(JvmImageScan.class).inAnyNamespace().inform(new ResourceEventHandler<JvmImageScan>() {

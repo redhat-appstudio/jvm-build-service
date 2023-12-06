@@ -51,7 +51,7 @@ public class BuildSBOMDiscoveryManager {
     EntityManager entityManager;
 
     @ConfigProperty(name = "sbom-discovery.enabled", defaultValue = "false")
-    boolean enaabled;
+    boolean enabled;
 
     void importComplete(@Observes InitialKubeImportCompleteEvent importComplete) {
         buildSbomDiscovery();
@@ -63,7 +63,7 @@ public class BuildSBOMDiscoveryManager {
     }
 
     public void buildSbomDiscovery() {
-        if (!enaabled) {
+        if (!enabled) {
             return;
         }
         List<StoredDependencyBuild> results = entityManager
