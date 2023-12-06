@@ -122,8 +122,10 @@ public class BuildLogsCommand implements Runnable {
                 }
                 buildNumbers.add(i);
             }
-            for (int i = 0; i < theBuild.getStatus().getBuildAttempts().size(); ++i) {
-                buildNumbers.add(i);
+            if (theBuild.getStatus().getBuildAttempts() != null) {
+                for (int i = 0; i < theBuild.getStatus().getBuildAttempts().size(); ++i) {
+                    buildNumbers.add(i);
+                }
             }
         }
 
