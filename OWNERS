@@ -2,7 +2,8 @@
 
 approvers:
 - stuartwdouglas
-- mmorhun
-- psturc
 - dwalluck
 
+emeritus_approvers:
+- mmorhun
+- psturc
