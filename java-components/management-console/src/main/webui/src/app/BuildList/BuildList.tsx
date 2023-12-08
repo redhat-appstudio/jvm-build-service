@@ -126,7 +126,10 @@ const BuildList: React.FunctionComponent = () => {
         </Thead>
         <Tbody>
           {builds.length > 0 &&
-            builds.map((build, index) => (
+            builds.sort((a,b) => {
+              let left = a.scmRepo ?? "";
+              let right = b.scmRepo ?? "";
+              return left.localeCompare(right)}).map((build, index) => (
                   <BuildRow build={build}></BuildRow>
             ))}
           {builds.length === 0 && (

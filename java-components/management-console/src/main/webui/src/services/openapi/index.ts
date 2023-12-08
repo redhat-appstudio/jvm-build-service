@@ -8,6 +8,7 @@ export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { ArtifactLabelName } from './models/ArtifactLabelName';
+export type { ArtifactListDTO } from './models/ArtifactListDTO';
 export type { ArtifactSummaryDTO } from './models/ArtifactSummaryDTO';
 export type { BuildAttemptDTO } from './models/BuildAttemptDTO';
 export type { BuildDTO } from './models/BuildDTO';
@@ -17,9 +18,11 @@ export type { BuildSummaryDTO } from './models/BuildSummaryDTO';
 export type { Dependency } from './models/Dependency';
 export type { DeploymentDTO } from './models/DeploymentDTO';
 export type { Image } from './models/Image';
+export type { PageParametersArtifactListDTO } from './models/PageParametersArtifactListDTO';
 export type { PageParametersBuildListDTO } from './models/PageParametersBuildListDTO';
 export type { PageParametersBuildQueueListDTO } from './models/PageParametersBuildQueueListDTO';
 
+export { ArtifactHistoryResourceService } from './services/ArtifactHistoryResourceService';
 export { ArtifactLabelResourceService } from './services/ArtifactLabelResourceService';
 export { ArtifactSummaryResourceService } from './services/ArtifactSummaryResourceService';
 export { BuildAttemptResourceService } from './services/BuildAttemptResourceService';
