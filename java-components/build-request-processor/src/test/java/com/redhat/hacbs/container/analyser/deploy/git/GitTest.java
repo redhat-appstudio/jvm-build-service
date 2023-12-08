@@ -48,6 +48,8 @@ public class GitTest {
         assertEquals("rnc--testRepo", result);
         result = new GitLab().parseScmURI("https://gitlab.com/rnc/testRepo");
         assertEquals("rnc-testRepo", result);
+        result = new GitLab().parseScmURI("https://git.eclipse.org/r/jgit/jgit");
+        assertEquals("jgit-jgit", result);
     }
 
     @Test

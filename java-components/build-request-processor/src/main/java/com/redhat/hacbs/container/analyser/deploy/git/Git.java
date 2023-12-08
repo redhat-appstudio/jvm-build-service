@@ -135,7 +135,11 @@ public abstract class Git {
             throws URISyntaxException {
         String path = new URI(scmUri).getPath().substring(1);
         String group = path.substring(0, path.lastIndexOf("/"));
+        int nonGroupPathIndex = group.indexOf("/");
         String name = (path.endsWith(".git") ? path.substring(0, path.length() - 4) : path).substring(group.length() + 1);
+        if (nonGroupPathIndex != -1) {
+            group = group.substring(nonGroupPathIndex + 1);
+        }
         return group + groupSplit() + name;
     }
 
