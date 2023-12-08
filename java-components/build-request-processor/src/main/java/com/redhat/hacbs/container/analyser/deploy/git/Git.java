@@ -133,17 +133,27 @@ public abstract class Git {
      */
     protected String parseScmURI(String scmUri)
             throws URISyntaxException {
-        String path = new URI(scmUri).getPath().substring(1);
+        URI uri = new URI(scmUri);
+        String host = uri.getHost();
+        if (host != null) {
+            host = host.substring(0, host.lastIndexOf("."));
+            int subdomain = host.indexOf(".");
+            if (subdomain != -1) {
+                host = host.substring(subdomain + 1);
+            }
+        }
+        String path = uri.getPath().substring(1);
         String group = path.substring(0, path.lastIndexOf("/"));
         int nonGroupPathIndex = group.indexOf("/");
         String name = (path.endsWith(".git") ? path.substring(0, path.length() - 4) : path).substring(group.length() + 1);
         if (nonGroupPathIndex != -1) {
             group = group.substring(nonGroupPathIndex + 1);
         }
-        return group + groupSplit() + name;
+        System.err.println((host == null ? "" : host + split()) + group + split() + name);
+        return (host == null ? "" : host + split()) + group + split() + name;
     }
 
-    abstract String groupSplit();
+    abstract String split();
 
     public static class GitStatus {
         public String url;

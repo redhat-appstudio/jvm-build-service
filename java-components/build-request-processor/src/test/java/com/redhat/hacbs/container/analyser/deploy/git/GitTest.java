@@ -41,15 +41,17 @@ public class GitTest {
             throws URISyntaxException {
 
         String result = new GitHub().parseScmURI("https://github.com/apache/commons-codec.git");
-        assertEquals("apache--commons-codec", result);
-        result = new GitHub().parseScmURI("https://gitlab.com/rnc/testRepo");
-        assertEquals("rnc--testRepo", result);
+        assertEquals("github--apache--commons-codec", result);
+        result = new GitHub().parseScmURI("https://github.com/rnc/testRepo");
+        assertEquals("github--rnc--testRepo", result);
         result = new GitHub().parseScmURI("file:///rnc/testRepo");
         assertEquals("rnc--testRepo", result);
         result = new GitLab().parseScmURI("https://gitlab.com/rnc/testRepo");
-        assertEquals("rnc-testRepo", result);
+        assertEquals("gitlab-rnc-testRepo", result);
+        result = new GitLab().parseScmURI("https://www.gitlab.com/rnc/testRepo");
+        assertEquals("gitlab-rnc-testRepo", result);
         result = new GitLab().parseScmURI("https://git.eclipse.org/r/jgit/jgit");
-        assertEquals("jgit-jgit", result);
+        assertEquals("eclipse-jgit-jgit", result);
     }
 
     @Test
@@ -84,7 +86,7 @@ public class GitTest {
                 }
 
                 @Override
-                public String groupSplit() {
+                public String split() {
                     return null;
                 }
             };

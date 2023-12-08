@@ -75,7 +75,7 @@ public class GitLab extends Git {
     }
 
     @Override
-    String groupSplit() {
+    String split() {
         return "-";
     }
 }
