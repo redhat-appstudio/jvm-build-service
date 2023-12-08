@@ -112,13 +112,14 @@ public abstract class Git {
                         throw new RuntimeException("Failed to push updates due to " + r.getMessage());
                     }
                 });
-                Log.debugf("Pushed " + result.getMessages() + " " + result.getURI() + " updates: "
+                Log.infof("Pushed " + result.getMessages() + " " + result.getURI() + " updates: "
                         + result.getRemoteUpdates());
             }
 
             return new GitStatus(httpTransportUrl, Repository.shortenRefName(tagRefUnique.getName()),
                     jRepo.getRefDatabase().peel(tagRefUnique).getPeeledObjectId().getName());
         } catch (GitAPIException | IOException e) {
+            Log.errorf("Caught JGit problems processing the push", e);
             throw new RuntimeException(e);
         }
     }
