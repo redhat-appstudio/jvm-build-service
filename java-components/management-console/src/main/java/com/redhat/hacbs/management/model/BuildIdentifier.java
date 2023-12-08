@@ -1,13 +1,8 @@
 package com.redhat.hacbs.management.model;
 
-import java.util.List;
-
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
@@ -33,10 +28,6 @@ public class BuildIdentifier extends PanacheEntity {
     @Column(nullable = false, unique = true)
     public String dependencyBuildName;
 
-    @ManyToMany(cascade = CascadeType.ALL)
-    @OrderBy("creationTime desc")
-    public List<StoredDependencyBuild> storedDependencyBuilds;
-
     public static BuildIdentifier findORCreate(String repoUrl, String tag, String hash, String contextPath,
             String dependencyBuildName) {
         ScmRepository scmRepository = ScmRepository.findORCreate(repoUrl);
@@ -44,9 +35,7 @@ public class BuildIdentifier extends PanacheEntity {
             contextPath = "";
         }
         BuildIdentifier ret = find(
-                "repository=:repository and tag = :tag and hash = :hash and contextPath=:contextPath and dependencyBuildName=:dependencyBuildName",
-                Parameters.with("repository", scmRepository).and("tag", tag).and("hash", hash).and("contextPath", contextPath)
-                        .and("dependencyBuildName", dependencyBuildName))
+                "dependencyBuildName=:dependencyBuildName", Parameters.with("dependencyBuildName", dependencyBuildName))
                 .firstResult();
         if (ret == null) {
             ret = new BuildIdentifier();
