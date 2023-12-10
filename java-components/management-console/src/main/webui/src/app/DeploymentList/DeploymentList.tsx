@@ -2,36 +2,33 @@ import * as React from 'react';
 import {useEffect, useState} from 'react';
 import {
   DataList,
-  DataListAction,
   DataListCell,
   DataListContent,
   DataListItem,
   DataListItemCells,
   DataListItemRow,
   DataListToggle,
-  Dropdown,
-  DropdownItem,
-  DropdownList,
   EmptyState,
   EmptyStateBody,
   EmptyStateHeader,
   EmptyStateIcon,
   Label,
-  MenuToggle,
-  MenuToggleElement, Progress, ProgressVariant, Title,
+  Title,
 } from '@patternfly/react-core';
 import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
-import {BuildListDTO, Dependency, DeploymentDTO, DeploymentResourceService} from "../../services/openapi";
+import {Dependency, DeploymentDTO, DeploymentResourceService} from "../../services/openapi";
 import {
   AttentionBellIcon,
-  CheckCircleIcon,
-  CodeBranchIcon, ContainerNodeIcon,
-  EllipsisVIcon,
-  ErrorCircleOIcon, ExclamationIcon,
+  ContainerNodeIcon,
   IceCreamIcon,
-  InProgressIcon, LineIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
+  InProgressIcon,
+  ListIcon,
+  OkIcon,
+  OutlinedAngryIcon,
+  RedhatIcon,
+  StickyNoteIcon,
+  WarningTriangleIcon
 } from "@patternfly/react-icons";
-import {ChartBullet, ChartDonut} from "@patternfly/react-charts";
 import {Link} from "react-router-dom";
 
 
