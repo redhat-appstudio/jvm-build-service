@@ -340,8 +340,8 @@ public class DeployCommand implements Runnable {
                 }
                 String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
                 String serialisedGitArchive = ResultsUpdater.MAPPER.writeValueAsString(archivedSourceTags);
-                Log.infof("Updating results %s with contaminants %s and deployed resources %s",
-                        taskRun, serialisedContaminants, gavs);
+                Log.infof("Updating results %s for deployed resources %s with contaminants %s and gitArchiveTags %s",
+                        taskRun, gavs, serialisedContaminants, serialisedGitArchive);
                 resultsUpdater.updateResults(taskRun, Map.of(
                         "CONTAMINANTS", serialisedContaminants,
                         "DEPLOYED_RESOURCES", String.join(",", gavs),
@@ -380,7 +380,7 @@ public class DeployCommand implements Runnable {
             var sbom = SBomGenerator.generateSBom(data, null);
             var json = BomGeneratorFactory.createJson(CycloneDxSchema.Version.VERSION_12, sbom);
             String sbomStr = json.toJsonString();
-            Log.infof("Build Sbom \n%s", sbomStr);
+            Log.debugf("Build Sbom \n%s", sbomStr);
             Files.writeString(logsPath.resolve("build-sbom.json"), sbomStr, StandardCharsets.UTF_8);
         } catch (IOException e) {
             Log.errorf(e, "Failed to generate build sbom");
