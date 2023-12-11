@@ -48,9 +48,6 @@ spec:
                 type: object
               maxAdditionalMemory:
                 type: integer
-              quota:
-                description: DEPRECATED
-                type: string
               recipeDatabase:
                 type: string
             type: object

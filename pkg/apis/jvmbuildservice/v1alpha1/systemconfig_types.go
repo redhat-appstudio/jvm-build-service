@@ -6,14 +6,10 @@ const (
 	DefaultRecipeDatabase = "https://github.com/redhat-appstudio/jvm-build-data"
 )
 
-type QuotaImpl string
-
 type SystemConfigSpec struct {
 	Builders            map[string]BuilderImageInfo `json:"builders,omitempty"`
 	MaxAdditionalMemory int                         `json:"maxAdditionalMemory,omitempty"`
-	//DEPRECATED
-	Quota          QuotaImpl `json:"quota,omitempty"`
-	RecipeDatabase string    `json:"recipeDatabase,omitempty"`
+	RecipeDatabase      string                      `json:"recipeDatabase,omitempty"`
 }
 
 type BuilderImageInfo struct {
