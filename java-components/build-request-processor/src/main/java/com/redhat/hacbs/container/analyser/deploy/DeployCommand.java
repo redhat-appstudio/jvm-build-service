@@ -266,7 +266,6 @@ public class DeployCommand implements Runnable {
 
             //update the DB with contaminant information
             Log.infof("Contaminants: %s", contaminatedPaths);
-            Log.infof("Contaminated GAVS: %s", contaminatedGavs);
             Log.infof("GAVs to deploy: %s", gavs);
             if (gavs.isEmpty()) {
                 Log.errorf("No content to deploy found in deploy directory");

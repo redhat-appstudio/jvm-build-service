@@ -121,7 +121,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
             }
 
-            Log.infof("Cloning commit %s (tag %s) for path %s", commit, tag, context);
+            Log.infof("Cloning commit %s (tag %s)" + (context == null ? "" : " for path " + context), commit, tag);
             doBuildAnalysis(info.getUriWithoutFragment(), commit, context, buildRecipeInfo, privateRepo, buildInfoLocator);
         } catch (Exception e) {
             Log.errorf(e, "Failed to process build info for " + scmUrl);
