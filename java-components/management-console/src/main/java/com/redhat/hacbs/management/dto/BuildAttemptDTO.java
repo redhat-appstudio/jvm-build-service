@@ -1,8 +1,17 @@
 package com.redhat.hacbs.management.dto;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.redhat.hacbs.management.model.BuildAttempt;
+
+import io.quarkus.arc.Arc;
 
 public record BuildAttemptDTO(
         @Schema(required = true) long id,
@@ -38,7 +47,7 @@ public record BuildAttemptDTO(
         //StoredDependencyBuild dependencyBuild,
 
         //List<BuildFile> storedBuildResults,
-        String upstreamDifferences,
+        @Schema(required = true) Map<String, List<String>> upstreamDifferences,
         String gitArchiveSha,
         String gitArchiveTag,
         String gitArchiveUrl) {
@@ -69,9 +78,30 @@ public record BuildAttemptDTO(
                 i.buildPipelineUrl,
                 i.successful,
                 i.passedVerification,
-                i.upstreamDifferences,
+                mapDifferences(i.upstreamDifferences),
                 i.gitArchiveSha,
                 i.gitArchiveTag,
                 i.gitArchiveUrl);
+    }
+
+    private static Map<String, List<String>> mapDifferences(String upstreamDifferences) {
+        if (upstreamDifferences == null) {
+            return Map.of();
+        }
+        ObjectMapper mapper = Arc.container().instance(ObjectMapper.class).get();
+        Map<String, List<String>> ret = null;
+        try {
+            ret = mapper.readValue(upstreamDifferences,
+                    TypeFactory.defaultInstance().constructMapType(HashMap.class, String.class, List.class));
+            var it = ret.entrySet().iterator();
+            while (it.hasNext()) {
+                if (it.next().getValue().isEmpty()) {
+                    it.remove();
+                }
+            }
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        return ret;
     }
 }

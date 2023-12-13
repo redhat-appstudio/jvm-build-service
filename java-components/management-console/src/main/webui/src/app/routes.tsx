@@ -3,13 +3,14 @@ import { Route, RouteComponentProps, Switch, useLocation } from 'react-router-do
 import { Dashboard } from '@app/Dashboard/Dashboard';
 import { NotFound } from '@app/NotFound/NotFound';
 import { useDocumentTitle } from '@app/utils/useDocumentTitle';
-import {BuildStatusPieChart} from "@app/BuildStatusPieChart/BuildStatusPieChart";
-import {BuildList} from "@app/BuildList/BuildList";
+import {GithubBuildList} from "@app/GithubBuildList/GithubBuildList";
 import {BuildQueueList} from "@app/BuildQueueList/BuildQueueList";
 import {BuildView} from "@app/BuildView/BuildView";
 import {DeploymentList} from "@app/DeploymentList/DeploymentList";
 import {AddArtifact} from "@app/AddArtifact/AddArtifact";
 import {ArtifactList} from "@app/ArtifactList/ArtifactList";
+import {BuildList} from "@app/BuildList/BuildList";
+import {RunningBuildList} from "@app/RunningBuildList/RunningBuildList";
 
 let routeFocusTimer: number;
 export interface IAppRoute {
@@ -55,6 +56,13 @@ const routes: AppRouteConfig[] = [
         title: 'JVM Build Service | Build',
       },
       {
+        component: RunningBuildList,
+        exact: true,
+        label: 'Running Builds',
+        path: '/builds/running',
+        title: 'JVM Build Service | Running Build List',
+      },
+      {
         component: BuildQueueList,
         exact: true,
         label: 'Build Queue',
@@ -91,6 +99,18 @@ const routes: AppRouteConfig[] = [
         label: 'All Deployments',
         path: '/deployments/all',
         title: 'JVM Build Service | Deployment List',
+      },
+    ],
+  },
+  {
+    label: 'CI',
+    routes: [
+      {
+        component: GithubBuildList,
+        exact: true,
+        label: 'Github Actions',
+        path: '/builds/github/all',
+        title: 'JVM Build Service | Github Actions Builds',
       },
     ],
   },

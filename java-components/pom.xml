@@ -61,6 +61,8 @@
         <asm.version>9.6</asm.version>
         <maven-indexer.version>7.1.0</maven-indexer.version>
         <maven-resolver.version>1.9.18</maven-resolver.version>
+        <quarkus-github-app.version>2.1.0</quarkus-github-app.version>
+        <quarkus-quinoa.version>2.2.1</quarkus-quinoa.version>
     </properties>
 
     <modules>
@@ -125,6 +127,17 @@
                 <artifactId>hacbs-cache</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.quarkiverse.quinoa</groupId>
+                <artifactId>quarkus-quinoa</artifactId>
+                <version>${quarkus-quinoa.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkiverse.githubapp</groupId>
+                <artifactId>quarkus-github-app</artifactId>
+                <version>${quarkus-github-app.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.amazonaws</groupId>

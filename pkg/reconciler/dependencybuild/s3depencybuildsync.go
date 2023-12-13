@@ -180,7 +180,7 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 			}
 		}()
 
-		logsPath := "build-logs/" + dep.Name + "/" + string(dep.UID) + "/" + pr.Name + ".log"
+		logsPath := "build-logs/" + dep.Name + "/" + string(dep.UID) + "/" + name + ".log"
 		log.Info("attempting to upload logs to S3", "path", logsPath)
 		_, err = uploader.Upload(&s3manager.UploadInput{
 

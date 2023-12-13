@@ -8,10 +8,19 @@ import {
   DataListItemCells,
   DataListItemRow,
   DataListToggle,
-  Label,
-  Title,
+  EmptyState,
+  EmptyStateBody,
+  EmptyStateHeader,
+  EmptyStateIcon,
+  Label, Pagination, Title, Toolbar, ToolbarContent, ToolbarItem,
 } from '@patternfly/react-core';
-import {DeploymentDTO, DeploymentResourceService, IdentifiedDependencyDTO} from "../../services/openapi";
+import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
+import {
+  IdentifiedDependencyDTO,
+  DeploymentDTO,
+  DeploymentResourceService,
+  GithubBuildDTO, GithubBuildsResourceService
+} from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
 import {
   AttentionBellIcon,ContainerNodeIcon,
@@ -20,26 +29,30 @@ import {
 } from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
 
-const DeploymentList: React.FunctionComponent = () => {
-  const [deployments, setDeployments] = useState(Array<DeploymentDTO>);
+const GithubBuildList: React.FunctionComponent = () => {
+  const [builds, setBuilds] = useState(Array<GithubBuildDTO>);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
 
+  const [count, setCount] = React.useState(0);
+  const [page, setPage] = React.useState(1);
+  const [perPage, setPerPage] = React.useState(20);
 
   useEffect(() => {
     setState('loading');
-    DeploymentResourceService.getApiDeployment().then()
+    GithubBuildsResourceService.getApiBuildsGithub(page, perPage).then()
       .then((res) => {
         console.log(res);
         setState('success');
-        setDeployments(res);
+        setBuilds(res.items);
+        setCount(res.count)
       })
       .catch((err) => {
         console.error('Error:', err);
         setState('error');
         setError(err);
       });
-  }, []);
+  }, [perPage, page])
 
   if (state === 'error')
     return (
@@ -52,42 +65,77 @@ const DeploymentList: React.FunctionComponent = () => {
       <h1>Loading...</h1>
     )
 
+  const onSetPage = (_event: React.MouseEvent | React.KeyboardEvent | MouseEvent, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const onPerPageSelect = (
+    _event: React.MouseEvent | React.KeyboardEvent | MouseEvent,
+    newPerPage: number,
+    newPage: number
+  ) => {
+    setPerPage(newPerPage);
+    setPage(newPage);
+  };
+  const toolbarPagination = (
+    <Pagination
+      titles={{ paginationAriaLabel: 'Search filter pagination' }}
+      itemCount={count}
+      widgetId="search-input-mock-pagination"
+      perPage={perPage}
+      page={page}
+      onPerPageSelect={onPerPageSelect}
+      onSetPage={onSetPage}
+      isCompact
+    />
+  );
+
+  const toolbar = (
+    <Toolbar id="search-input-filter-toolbar">
+      <ToolbarContent>
+        <ToolbarItem variant="pagination">{toolbarPagination}</ToolbarItem>
+      </ToolbarContent>
+    </Toolbar>
+  );
   return (
     <React.Fragment>
-
+      {toolbar}
       <DataList aria-label="Information">
-      {deployments.map((build, index) => (
-          <BuildRow key={index} deployment={build}></BuildRow>
+      {builds.map((build, index) => (
+          <BuildRow key={index} build={build}></BuildRow>
         ))}
-        {deployments.length === 0 && <EmptyTable></EmptyTable>}
+        {builds.length === 0 && <EmptyTable></EmptyTable>}
       </DataList>
     </React.Fragment>
   );
 };
 
 type DeploymentActionsType = {
-  deployment: DeploymentDTO,
+  build: GithubBuildDTO,
 };
 
 const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild): JSX.Element => {
 
-  const [imagesExpanded, setImagesExpanded] = React.useState(false);
+  const [build, setBuild] = useState(initialBuild.build);
 
+  const [imagesExpanded, setImagesExpanded] = React.useState(false);
+  const [actionsExpanded, setActionsExpanded] = React.useState(false);
+  const toggleActions = () => {
+    setActionsExpanded(!actionsExpanded);
+  };
   const toggleImages = () => {
     setImagesExpanded(!imagesExpanded);
   };
+  const onActionsClick = (event: React.MouseEvent<Element, MouseEvent> | undefined) => {
+    event?.stopPropagation();
+    setActionsExpanded(!actionsExpanded);
+  };
 
-  const health = function (deployment: DeploymentDTO) {
-    if (!deployment.analysisComplete) {
-      return <Label color="blue" icon={<InProgressIcon />}>
-        Image Analysis in Progress
-      </Label>
-    }
-    let untrusted = 0
-    let total = 0
-    let available = 0
-    deployment.images.map((i) => {total += i.totalDependencies; untrusted += i.untrustedDependencies; available += i.availableBuilds})
-    const trusted = total - untrusted
+  const health = function (deployment: GithubBuildDTO) {
+    let untrusted = deployment.untrustedDependencies
+    let total = deployment.totalDependencies
+    let available = deployment.availableBuilds
+    let trusted = total - untrusted
     if (total == 0) {
       return <Label color="blue" icon={<StickyNoteIcon />}>
         No Java
@@ -141,10 +189,10 @@ const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild):
             <ContainerNodeIcon/>
           </DataListCell>,
           <DataListCell key="primary content">
-            <div id="ex-item1">{initialBuild.deployment.namespace}/{initialBuild.deployment.name}</div>
+            <div id="ex-item1">{build.name}</div>
           </DataListCell>,
           <DataListCell key="health">
-            {health(initialBuild.deployment)}
+            {health(build)}
           </DataListCell>
         ]}
       />
@@ -154,15 +202,14 @@ const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild):
       id="ex-expand1"
       isHidden={!imagesExpanded}
     >
-      {initialBuild.deployment.images.map((s) => (
-        <><Title headingLevel={"h2"}>Image: {s.string}</Title>
+        <><Title headingLevel={"h2"}>Build: {build.name}</Title>
 
         <DataList aria-label="Dependencies">
-          {s.dependencies?.map(d => (dependencyRow(d)))}
+          {build.dependencies?.map(d => (dependencyRow(d)))}
         </DataList>
-        </>))}
+        </>
     </DataListContent>
   </DataListItem>
 
 }
-export {DeploymentList};
+export {GithubBuildList};

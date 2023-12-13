@@ -113,6 +113,7 @@ public abstract class AnalyserBase implements Runnable {
                 if (i.getProperties() != null) {
                     for (var attr : i.getProperties()) {
                         if (attr.getName().startsWith("java:")) {
+                            result.append(";");
                             result.append(attr.getName().substring(5)).append("=").append(attr.getValue());
                         }
                     }
@@ -174,6 +175,7 @@ public abstract class AnalyserBase implements Runnable {
         trackingData.addAll(jarData);
         for (var data : jarData) {
             if (data != null) {
+                Log.infof("found %s", data.gav);
                 if (!allowedSources.contains(data.source)) {
                     Log.debugf("Found GAV %s in %s", data.gav, fileName);
                     gavs.add(data.gav);

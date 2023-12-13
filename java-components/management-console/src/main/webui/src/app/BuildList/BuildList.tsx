@@ -127,10 +127,10 @@ const BuildList: React.FunctionComponent = () => {
         <Tbody>
           {builds.length > 0 &&
             builds.sort((a,b) => {
-              let left = a.scmRepo ?? "";
-              let right = b.scmRepo ?? "";
+              const left = a.scmRepo ?? "";
+              const right = b.scmRepo ?? "";
               return left.localeCompare(right)}).map((build, index) => (
-                  <BuildRow build={build}></BuildRow>
+                  <BuildRow build={build} key={index}></BuildRow>
             ))}
           {builds.length === 0 && (
             <Tr>
@@ -165,28 +165,28 @@ const BuildRow: React.FunctionComponent<BuildActionsType> = (initialBuild):JSX.E
 
   const rebuild = (event: React.SyntheticEvent<HTMLLIElement>) => {
     BuildQueueResourceService.postApiBuildsQueue(build.name)
-        .then(() => {
-          const copy = Object.assign({}, build);
-          copy.inQueue = true
-          setBuild(copy)
-        })
+      .then(() => {
+        const copy = Object.assign({}, build);
+        copy.inQueue = true
+        setBuild(copy)
+      })
   };
 
   const dropdownItems = (
-      <>
-        <DropdownItem key="rebuild" onSelect={rebuild} onClick={rebuild}>
-          Rebuild
-        </DropdownItem>
-      </>
+    <>
+      <DropdownItem key="rebuild" onSelect={rebuild} onClick={rebuild}>
+        Rebuild
+      </DropdownItem>
+    </>
   );
 
   const icon= function (build: BuildListDTO) {
     if (build.inQueue) {
       return <>
         {statusIcon(build)}
-       <Label color="blue" icon={<IceCreamIcon />}>
-        In Build Queue
-      </Label>
+        <Label color="blue" icon={<IceCreamIcon />}>
+          In Build Queue
+        </Label>
       </>
     }
     return statusIcon(build)
@@ -225,20 +225,20 @@ const BuildRow: React.FunctionComponent<BuildActionsType> = (initialBuild):JSX.E
     <Td>
       <ActionListItem>
         <Dropdown
-            onSelect={onSelect}
-            toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                <MenuToggle
-                    ref={toggleRef}
-                    onClick={onToggle}
-                    variant="plain"
-                    isExpanded={isOpen}
-                    aria-label="Action list single group kebab"
-                >
-                  <EllipsisVIcon />
-                </MenuToggle>
-            )}
-            isOpen={isOpen}
-            onOpenChange={(isOpen: boolean) => setIsOpen(isOpen)}
+          onSelect={onSelect}
+          toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+            <MenuToggle
+              ref={toggleRef}
+              onClick={onToggle}
+              variant="plain"
+              isExpanded={isOpen}
+              aria-label="Action list single group kebab"
+            >
+              <EllipsisVIcon />
+            </MenuToggle>
+          )}
+          isOpen={isOpen}
+          onOpenChange={(isOpen: boolean) => setIsOpen(isOpen)}
         >
           <DropdownList>{dropdownItems}</DropdownList>
         </Dropdown>

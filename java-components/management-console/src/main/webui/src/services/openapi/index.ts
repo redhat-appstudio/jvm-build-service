@@ -15,12 +15,19 @@ export type { BuildDTO } from './models/BuildDTO';
 export type { BuildListDTO } from './models/BuildListDTO';
 export type { BuildQueueListDTO } from './models/BuildQueueListDTO';
 export type { BuildSummaryDTO } from './models/BuildSummaryDTO';
-export type { Dependency } from './models/Dependency';
 export type { DeploymentDTO } from './models/DeploymentDTO';
+export type { GithubBuildDTO } from './models/GithubBuildDTO';
+export type { GitHubEvent } from './models/GitHubEvent';
+export type { IdentifiedDependencyDTO } from './models/IdentifiedDependencyDTO';
 export type { Image } from './models/Image';
 export type { PageParametersArtifactListDTO } from './models/PageParametersArtifactListDTO';
+export type { Instant } from './models/Instant';
+export type { JsonObject } from './models/JsonObject';
 export type { PageParametersBuildListDTO } from './models/PageParametersBuildListDTO';
 export type { PageParametersBuildQueueListDTO } from './models/PageParametersBuildQueueListDTO';
+export type { PageParametersGithubBuildDTO } from './models/PageParametersGithubBuildDTO';
+export type { ReplayEvent } from './models/ReplayEvent';
+export type { RunningBuildDTO } from './models/RunningBuildDTO';
 
 export { ArtifactHistoryResourceService } from './services/ArtifactHistoryResourceService';
 export { ArtifactLabelResourceService } from './services/ArtifactLabelResourceService';
@@ -29,4 +36,7 @@ export { BuildAttemptResourceService } from './services/BuildAttemptResourceServ
 export { BuildHistoryResourceService } from './services/BuildHistoryResourceService';
 export { BuildQueueResourceService } from './services/BuildQueueResourceService';
 export { BuildSummaryResourceService } from './services/BuildSummaryResourceService';
+export { DefaultService } from './services/DefaultService';
 export { DeploymentResourceService } from './services/DeploymentResourceService';
+export { GithubBuildsResourceService } from './services/GithubBuildsResourceService';
+export { RunningBuildsResourceService } from './services/RunningBuildsResourceService';

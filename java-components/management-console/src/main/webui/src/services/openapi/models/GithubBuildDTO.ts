@@ -5,9 +5,9 @@
 
 import type { IdentifiedDependencyDTO } from './IdentifiedDependencyDTO';
 
-export type Image = {
-    string: string;
-    analysisComplete: boolean;
+export type GithubBuildDTO = {
+    name: string;
+    buildsComponent: boolean;
     dependencies?: Array<IdentifiedDependencyDTO>;
     totalDependencies: number;
     untrustedDependencies: number;

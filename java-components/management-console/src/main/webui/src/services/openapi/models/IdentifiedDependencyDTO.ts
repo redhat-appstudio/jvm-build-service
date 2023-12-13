@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 
-export type Dependency = {
+export type IdentifiedDependencyDTO = {
     gav: string;
     source: string;
     build?: number;

@@ -1,5 +1,7 @@
 package com.redhat.hacbs.management.watcher;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -14,6 +16,7 @@ import jakarta.transaction.Transactional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.redhat.hacbs.management.dto.RunningBuildDTO;
 import com.redhat.hacbs.management.model.BuildQueue;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildSpec;
@@ -47,6 +50,7 @@ public class BuildOrchestrator {
     final int concurrentBuilds;
 
     volatile int runningBuilds;
+    volatile List<RunningBuildDTO> runningBuildList = List.of();
 
     private final Lock lock = new ReentrantLock();
 
@@ -121,6 +125,7 @@ public class BuildOrchestrator {
             var dbs = client.resources(DependencyBuild.class).list();
             var abrs = client.resources(ArtifactBuild.class).list();
             int count = 0;
+            List<RunningBuildDTO> rbl = new ArrayList<>();
             for (var i : dbs.getItems()) {
                 if (i.getStatus() == null || i.getStatus().getState() == null ||
                         Objects.equals(i.getStatus().getState(), ModelConstants.DEPENDENCY_BUILD_COMPLETE) ||
@@ -129,6 +134,9 @@ public class BuildOrchestrator {
                     continue;
                 }
                 count++;
+                rbl.add(new RunningBuildDTO(i.getSpec().getScm().getScmURL() + "@" + i.getSpec().getScm().getTag(),
+                        i.getStatus() == null ? "" : i.getStatus().getState(),
+                        Instant.parse(i.getMetadata().getCreationTimestamp())));
             }
             for (var i : abrs.getItems()) {
                 if (i.getStatus() == null ||
@@ -137,6 +145,8 @@ public class BuildOrchestrator {
                         Objects.equals(i.getStatus().getState(), ModelConstants.ARTIFACT_BUILD_DISCOVERING) ||
                         Objects.equals(i.getStatus().getState(), "")) {
                     count++; //we also count new ABRs
+                    rbl.add(new RunningBuildDTO(i.getSpec().getGav(), i.getStatus() == null ? "" : i.getStatus().getState(),
+                            Instant.parse(i.getMetadata().getCreationTimestamp())));
                 }
             }
             Log.infof("%s currently running jobs", count);
@@ -148,6 +158,7 @@ public class BuildOrchestrator {
                 count++;
             }
             runningBuilds = count;
+            runningBuildList = rbl;
         } finally {
             lock.unlock();
         }
@@ -209,5 +220,9 @@ public class BuildOrchestrator {
      */
     public int getRunningBuilds() {
         return runningBuilds;
+    }
+
+    public List<RunningBuildDTO> getRunningBuildList() {
+        return runningBuildList;
     }
 }

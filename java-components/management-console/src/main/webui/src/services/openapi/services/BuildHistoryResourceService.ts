@@ -36,12 +36,12 @@ export class BuildHistoryResourceService {
      * @returns any OK
      * @throws ApiError
      */
-    public static getApiBuildsHistoryDiscoverLogs(
+    public static getApiBuildsHistoryDiscoveryLogs(
         id: number,
     ): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/builds/history/discover-logs/{id}',
+            url: '/api/builds/history/discovery-logs/{id}',
             path: {
                 'id': id,
             },

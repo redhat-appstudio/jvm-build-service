@@ -13,6 +13,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 
 import com.redhat.hacbs.management.dto.DeploymentDTO;
+import com.redhat.hacbs.management.dto.IdentifiedDependencyDTO;
 import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.ContainerImage;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
@@ -34,16 +35,19 @@ public class DeploymentResource {
             DeploymentDTO info = new DeploymentDTO();
             info.namespace = i.getKey().namespace();
             info.name = i.getKey().name();
-            for (var image : i.getValue()) {
+            for (var image : i.getValue().getImages()) {
                 var existing = ContainerImage.findImage(image);
                 if (existing == null) {
                     info.analysisComplete = false;
                 } else {
-                    List<DeploymentDTO.Dependency> depList = new ArrayList<>();
+                    List<IdentifiedDependencyDTO> depList = new ArrayList<>();
                     info.analysisComplete = existing.analysisComplete;
+                    if (existing.dependencySet.dependencies.isEmpty()) {
+                        continue;
+                    }
 
                     //TODO: this is slow as hell
-                    for (var dep : existing.imageDependencies) {
+                    for (var dep : existing.dependencySet.dependencies) {
                         Map<String, String> attributes = new HashMap<>();
                         if (dep.attributes != null) {
                             for (var s : dep.attributes.split(";")) {
@@ -79,7 +83,7 @@ public class DeploymentResource {
                         if (n > 0) {
                             inQueue = true;
                         }
-                        DeploymentDTO.Dependency d = new DeploymentDTO.Dependency(dep.mavenArtifact.gav(), dep.source,
+                        IdentifiedDependencyDTO d = new IdentifiedDependencyDTO(dep.mavenArtifact.gav(), dep.source,
                                 buildId, inQueue, buildSuccess, attributes);
                         depList.add(d);
                     }
@@ -87,7 +91,9 @@ public class DeploymentResource {
                     info.images.add(new DeploymentDTO.Image(image, existing.analysisComplete, depList));
                 }
             }
-            ret.add(info);
+            if (!info.images.isEmpty()) {
+                ret.add(info);
+            }
         }
         return ret;
     }
