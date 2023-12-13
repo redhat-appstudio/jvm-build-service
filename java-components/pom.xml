@@ -31,36 +31,41 @@
         <developer>
             <name>Gabe Montero</name>
         </developer>
+        <developer>
+            <name>Nick Cross</name>
+        </developer>
     </developers>
 
     <properties>
-        <compiler-plugin.version>3.11.0</compiler-plugin.version>
-        <jar-plugin.version>3.3.0</jar-plugin.version>
-        <failsafe.useModulePath>false</failsafe.useModulePath>
-        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <maven.compiler.release>17</maven.compiler.release>
+
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.6.1</quarkus.platform.version>
 
         <!-- Plugin Versions-->
+        <compiler-plugin.version>3.11.0</compiler-plugin.version>
+        <jar-plugin.version>3.3.0</jar-plugin.version>
         <surefire-plugin.version>3.2.2</surefire-plugin.version>
         <formatter-maven-plugin.version>2.23.0</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.9.0</impsort-maven-plugin.version>
         <kubernetes-client.version>6.9.2</kubernetes-client.version>
 
+        <!-- Dependencies -->
+        <asm.version>9.6</asm.version>
         <assertj.version>3.24.2</assertj.version>
         <aws-java-sdk.version>1.12.609</aws-java-sdk.version>
-        <quarkus-jgit.version>3.0.6</quarkus-jgit.version>
+        <cyclonedx-core-java.version>8.0.3</cyclonedx-core-java.version>
         <gradle-tooling-api.version>8.5</gradle-tooling-api.version>
+        <maven-indexer.version>7.1.0</maven-indexer.version>
+        <maven-resolver.version>1.9.18</maven-resolver.version>
+        <quarkus-jgit.version>3.0.6</quarkus-jgit.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
         <github-api.version>1.318</github-api.version>
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
-        <cyclonedx-core-java.version>8.0.3</cyclonedx-core-java.version>
-        <asm.version>9.6</asm.version>
-        <maven-indexer.version>7.1.0</maven-indexer.version>
-        <maven-resolver.version>1.9.18</maven-resolver.version>
         <quarkus-github-app.version>2.1.0</quarkus-github-app.version>
         <quarkus-quinoa.version>2.2.1</quarkus-quinoa.version>
     </properties>
