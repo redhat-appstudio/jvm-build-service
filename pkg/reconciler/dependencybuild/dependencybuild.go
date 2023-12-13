@@ -343,13 +343,28 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 					}
 				}
 				if imageOk {
-					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{Image: image.Image, CommandLine: command.Commands, EnforceVersion: unmarshalled.EnforceVersion, ToolVersion: command.ToolVersion[command.Tool], ToolVersions: command.ToolVersion, JavaVersion: command.ToolVersion["jdk"], Tool: command.Tool, DisabledPlugins: command.DisabledPlugins, PreBuildScript: unmarshalled.PreBuildScript, PostBuildScript: unmarshalled.PostBuildScript, AdditionalDownloads: unmarshalled.AdditionalDownloads, DisableSubmodules: unmarshalled.DisableSubmodules, AdditionalMemory: unmarshalled.AdditionalMemory, Repositories: unmarshalled.Repositories, AllowedDifferences: unmarshalled.AllowedDifferences})
+					buildRecipes = append(buildRecipes, &v1alpha1.BuildRecipe{
+						Image:               image.Image,
+						CommandLine:         command.Commands,
+						EnforceVersion:      unmarshalled.EnforceVersion,
+						ToolVersion:         command.ToolVersion[command.Tool],
+						ToolVersions:        command.ToolVersion,
+						JavaVersion:         command.ToolVersion["jdk"],
+						Tool:                command.Tool,
+						DisabledPlugins:     command.DisabledPlugins,
+						PreBuildScript:      unmarshalled.PreBuildScript,
+						PostBuildScript:     unmarshalled.PostBuildScript,
+						AdditionalDownloads: unmarshalled.AdditionalDownloads,
+						DisableSubmodules:   unmarshalled.DisableSubmodules,
+						AdditionalMemory:    unmarshalled.AdditionalMemory,
+						Repositories:        unmarshalled.Repositories,
+						AllowedDifferences:  unmarshalled.AllowedDifferences,
+						ContextPath:         unmarshalled.ContextPath})
 					break
 				}
 			}
 
 		}
-
 		db.Status.PotentialBuildRecipes = buildRecipes
 
 		if len(unmarshalled.Image) > 0 {
@@ -385,6 +400,7 @@ type marshalledBuildInfo struct {
 	AllowedDifferences  []string
 	Image               string
 	Digest              string
+	ContextPath         string
 	Gavs                []string
 	DisabledPlugins     []string
 }
@@ -496,6 +512,11 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 	pr.Spec.PipelineRef = nil
 
+	contextDir := db.Spec.ScmInfo.Path
+	if attempt.Recipe.ContextPath != "" {
+		contextDir = attempt.Recipe.ContextPath
+	}
+
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -507,7 +528,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineParamScmHash, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
 		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
-		{Name: PipelineParamPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Path}},
+		{Name: PipelineParamPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: contextDir}},
 		{Name: PipelineParamImage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.Image}},
 		{Name: PipelineParamGoals, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
 		{Name: PipelineParamEnforceVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.EnforceVersion}},

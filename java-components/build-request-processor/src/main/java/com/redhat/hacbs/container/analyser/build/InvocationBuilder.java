@@ -38,6 +38,8 @@ public class InvocationBuilder {
      */
     boolean versionCorrect;
 
+    private String contextPath;
+
     public InvocationBuilder(BuildRecipeInfo buildInfo, Map<String, List<String>> availableTools, String version) {
         this.buildRecipeInfo = buildInfo;
         this.availableTools = availableTools;
@@ -71,7 +73,7 @@ public class InvocationBuilder {
 
     /**
      * Sets the minimum Java version.
-     *
+     * <br>
      * Multiple invocations of the method are allowed, and the highest version is used.
      *
      */
@@ -86,7 +88,7 @@ public class InvocationBuilder {
 
     /**
      * Sets the max Java version.
-     *
+     * <br>
      * Multiple invocations of the method are allowed, and the lowest version is used.
      *
      */
@@ -265,7 +267,9 @@ public class InvocationBuilder {
                 }
             }
         }
-
+        if (contextPath != null) {
+            info.setContextPath(contextPath);
+        }
         return info;
     }
 
@@ -341,4 +345,7 @@ public class InvocationBuilder {
         return new LinkedHashSet<>(toolVersions);
     }
 
+    public void setContextPath(String contextPath) {
+        this.contextPath = contextPath;
+    }
 }
