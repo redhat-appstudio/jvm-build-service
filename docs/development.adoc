@@ -1,9 +1,12 @@
 = Development
+:icons: font
+:toc:
+:toclevels: 5
+:toc-title:
 
 == Requirements
 
 * Kubernetes cluster (link:https://kubernetes.io/docs/tasks/tools/#minikube[minikube] is fine!)
-* link:https://kubernetes.io/docs/tasks/tools/#kubectl[kubectl] CLI tool
 * link:https://tekton.dev/docs/cli/[Tekton CLI]
 
 == Local Development
@@ -12,14 +15,7 @@ The repository has been setup to make it easy to test your changes locally with 
 
 NOTE: You need to be logged in to registry.redhat.com to be able to pull some required images. If you are using minikube you can do this via `docker login registry.redhat.io`.  If you are running against an openshift cluster, the `pipeline` SA and all TaskRuns/PipelineRuns running under the `pipeline` SA have the credentials to `registry.redhat.io` available via the cluster install pull secret.
 
-First set the QUAY_USERNAME env variable to your quay username:
-
-----
-export QUAY_USERNAME=<<your username>>
-----
-
-You will also need to have quay.io authentication configured. In the Account
-section of Quay you should see an options to generate an encrypted CLI password. Select this option and create a `~/.docker/config.json` by following the prompts.
+Ensure the environment variables (especially `QUAY_USERNAME`) have been configured as per the installation instructions.
 
 Now run the following command to build the relevant images and deploy them to kube:
 
@@ -110,3 +106,52 @@ Config changes can be made in the deploy directly and applied by running:
 ./deployment/development.sh
 ----
 
+
+== Testing
+
+=== Running Option Tests Against PRs
+
+You can trigger the following optional tests on a pull request:
+
+Apicurio Registry::
+
+`/test jvm-build-service-in-repo-apicurio-e2e`
+
+Self Build of the JVM Build Service::
+
+`/test jvm-build-service-in-repo-jbs-e2e`
+
+RHTAP Quickstarts::
+
+`/test jvm-build-service-in-repo-quickstarts-e2e`
+
+WildFly::
+
+`/test jvm-build-service-in-repo-wildfly-e2e`
+
+=== Test JVM Build Service on an OpenShift cluster
+
+The OpenShift E2E test is programmed to run a test with following steps:
+
+. Create a new project in targeted OpenShift cluster and run the build pipeline which contains a link:
+./hack/examples/maven-v0.2.yaml[Maven] task from this repo to build the link:./hack/examples/run-e2e-shaded-app
+.yaml[simple java test project]
+. Make sure the pipeline succeeds and all related artifactbuilds and dependecybuilds (triggered after pipeline completion) finish successfully
+. Check that all "contaminated" builds are resolved
+. Verify that triggering a second build accesses dependencies that are cached from a previous build
+. Verify that the correct JDK version is identified in dependencybuilds
+. Check that maven/gradle logs/sources are found in rebuilt artifacts
+
+Before running the test, you need to export couple of env vars that reference container images for the operator, cache and reqprocessor. Some existing images can be found at link:https://quay.io/organization/redhat-appstudio[redhat-appstudio quay.io org] (search for keyword "jvm")
+
+Also you need to specify your quay.io username that will be used for pushing rebuilt dependencies in a format: `quay.io/$QUAY_USERNAME/test-images`. Make sure the repo "test-images" exists in your account and is publicly available.
+
+[source,bash]
+----
+export QUAY_USERNAME=<your-quay-io-account-username>
+export JVM_BUILD_SERVICE_IMAGE=
+export JVM_BUILD_SERVICE_CACHE_IMAGE=
+export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=
+./deploy/openshift-ci.sh
+make openshift-e2e
+----
