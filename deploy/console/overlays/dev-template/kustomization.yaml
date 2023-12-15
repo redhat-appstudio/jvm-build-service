@@ -7,7 +7,7 @@ resources:
 
 images:
   - name: hacbs-jvm-console
-    newName: jvm-build-service-console-image
+    newName: quay.io/${JBS_QUAY_IMAGE}/jbs-management-console
     newTag: dev
 
 patches:
