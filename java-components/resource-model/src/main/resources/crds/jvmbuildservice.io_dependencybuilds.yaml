@@ -162,6 +162,8 @@ spec:
                           items:
                             type: string
                           type: array
+                        contextPath:
+                          type: string
                         disableSubmodules:
                           type: boolean
                         disabledPlugins:
@@ -349,6 +351,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    contextPath:
+                      type: string
                     disableSubmodules:
                       type: boolean
                     disabledPlugins:

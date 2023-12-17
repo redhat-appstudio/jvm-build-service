@@ -44,6 +44,8 @@ public class BuildInfo {
 
     String image;
 
+    String contextPath;
+
     public String getPreBuildScript() {
         return preBuildScript;
     }
@@ -168,6 +170,14 @@ public class BuildInfo {
     public BuildInfo setDisabledPlugins(List<String> disabledPlugins) {
         this.disabledPlugins = disabledPlugins;
         return this;
+    }
+
+    public String getContextPath() {
+        return contextPath;
+    }
+
+    public void setContextPath(String contextPath) {
+        this.contextPath = contextPath;
     }
 
     @Override

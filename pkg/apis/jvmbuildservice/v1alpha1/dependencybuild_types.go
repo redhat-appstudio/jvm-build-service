@@ -138,6 +138,7 @@ type BuildRecipe struct {
 	Pipeline            string               `json:"pipeline,omitempty"`
 	Tool                string               `json:"tool,omitempty"`
 	Image               string               `json:"image,omitempty"`
+	ContextPath         string               `json:"contextPath,omitempty"`
 	CommandLine         []string             `json:"commandLine,omitempty"`
 	EnforceVersion      string               `json:"enforceVersion,omitempty"`
 	ToolVersion         string               `json:"toolVersion,omitempty"`
