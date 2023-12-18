@@ -48,7 +48,7 @@ public class DependencyBuildImporterTest {
         Assertions.assertEquals("4.2.1", checkout.version);
         Assertions.assertEquals("4.2.1", checkout.buildIdentifier.tag);
         Assertions.assertEquals("89edb4eac9bf57dabe59963f22549be682c33d38", checkout.buildIdentifier.hash);
-        Assertions.assertEquals("2023-10-24T22:25:31Z", checkout.creationTime.toString());
+        Assertions.assertEquals("2023-10-24T22:25:31Z", checkout.creationTimestamp.toString());
         Assertions.assertEquals(9, checkout.producedArtifacts.size());
         for (var i : checkout.producedArtifacts) {
             Assertions.assertTrue(GAVS.contains(i.gav()));

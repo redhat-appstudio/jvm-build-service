@@ -59,7 +59,7 @@ public class GithubBuildsResource {
                 if (dep.buildId == null) {
                     try {
                         StoredDependencyBuild db = (StoredDependencyBuild) entityManager.createQuery(
-                                "select b from StoredArtifactBuild s inner join StoredDependencyBuild b on b.buildIdentifier=s.buildIdentifier where s.mavenArtifact = :artifact order by b.creationTime desc")
+                                "select b from StoredArtifactBuild s inner join StoredDependencyBuild b on b.buildIdentifier=s.buildIdentifier where s.mavenArtifact = :artifact order by b.creationTimestamp desc")
                                 .setParameter("artifact", dep.mavenArtifact)
                                 .setMaxResults(1)
                                 .getSingleResult();
