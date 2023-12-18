@@ -29,7 +29,7 @@ public class StoredArtifactBuild extends PanacheEntity {
     public Instant creationTimestamp;
 
     @Column(nullable = false)
-    public String status;
+    public String state;
 
     @Column(length = -1)
     public String message;

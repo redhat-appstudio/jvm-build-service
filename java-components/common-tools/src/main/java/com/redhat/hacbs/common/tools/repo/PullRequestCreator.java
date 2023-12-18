@@ -1,4 +1,4 @@
-package io.github.redhatappstudio.jvmbuild.cli.repo;
+package com.redhat.hacbs.common.tools.repo;
 
 import java.nio.file.Path;
 

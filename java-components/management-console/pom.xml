@@ -11,6 +11,10 @@
     <artifactId>management-console</artifactId>
     <dependencies>
         <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>common-tools</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.quarkiverse.quinoa</groupId>
             <artifactId>quarkus-quinoa</artifactId>
         </dependency>

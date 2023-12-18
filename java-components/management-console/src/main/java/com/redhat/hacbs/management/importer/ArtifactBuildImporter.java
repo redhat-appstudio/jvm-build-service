@@ -45,7 +45,7 @@ public class ArtifactBuildImporter {
             storedBuild.mavenArtifact = artifact;
             storedBuild.creationTimestamp = Instant.parse(artifactBuild.getMetadata().getCreationTimestamp());
         }
-        storedBuild.status = artifactBuild.getStatus().getState();
+        storedBuild.state = artifactBuild.getStatus().getState();
         storedBuild.message = artifactBuild.getStatus().getMessage();
         if (artifactBuild.getStatus().getScm() != null &&
                 artifactBuild.getStatus().getScm().getScmURL() != null) {

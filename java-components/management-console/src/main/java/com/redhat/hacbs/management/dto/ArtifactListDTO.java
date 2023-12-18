@@ -4,6 +4,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 public record ArtifactListDTO(
         @Schema(required = true) String gav,
-        boolean succeeded) {
+        boolean succeeded, boolean missing, String message) {
 
 }

@@ -79,6 +79,7 @@
         <module>build-request-processor</module>
         <module>cli</module>
         <module>management-console</module>
+        <module>common-tools</module>
     </modules>
 
     <dependencyManagement>
@@ -131,6 +132,11 @@
                 <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
                 <artifactId>hacbs-cache</artifactId>
                 <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+                <artifactId>common-tools</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
