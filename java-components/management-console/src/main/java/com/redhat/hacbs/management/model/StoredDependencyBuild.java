@@ -29,7 +29,7 @@ public class StoredDependencyBuild extends PanacheEntity {
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(nullable = false)
-    public Instant creationTime;
+    public Instant creationTimestamp;
 
     public String version;
 

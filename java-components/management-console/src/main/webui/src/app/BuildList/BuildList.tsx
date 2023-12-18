@@ -13,7 +13,7 @@ import {
   Label,
   MenuToggle,
   MenuToggleElement,
-  Pagination,
+  Pagination, SearchInput,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -21,7 +21,13 @@ import {
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
 import {BuildHistoryResourceService, BuildListDTO, BuildQueueResourceService} from "../../services/openapi";
-import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, IceCreamIcon} from "@patternfly/react-icons";
+import {
+  CheckCircleIcon,
+  EllipsisVIcon,
+  ErrorCircleOIcon,
+  IceCreamIcon,
+  WarningTriangleIcon
+} from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
 
 
@@ -42,10 +48,15 @@ const BuildList: React.FunctionComponent = () => {
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(20);
 
+  const [stateFilter, setStateFilter] = useState('');
+  const [gavFilter, setGavFilter] = useState('');
+  const [dropDownOpen, setDropDownOpen] = useState(false);
+
+  let transientGav = ''
 
   useEffect(() => {
     setState('loading');
-    BuildHistoryResourceService.getApiBuildsHistory(page, perPage).then()
+    BuildHistoryResourceService.getApiBuildsHistory(gavFilter, page, perPage, stateFilter).then()
       .then((res) => {
         console.log(res);
         setState('success');
@@ -57,7 +68,7 @@ const BuildList: React.FunctionComponent = () => {
         setState('error');
         setError(err);
       });
-  }, [perPage, page]);
+  }, [perPage, page, gavFilter, stateFilter]);
 
   if (state === 'error')
     return (
@@ -94,9 +105,63 @@ const BuildList: React.FunctionComponent = () => {
     />
   );
 
+  const doSearch = (event) => {
+    if (event.key === 'Enter') {
+      setGavFilter(transientGav)
+    }
+  }
+  const dropDownLabel = (state: string) => {
+    switch (state) {
+      case '':
+        return "All";
+      case'complete':
+        return <><CheckCircleIcon color="green" />Successful</>
+      case 'contaminated':
+        return <><WarningTriangleIcon color="orange" />Contaminated</>
+      case 'failed':
+        return <><ErrorCircleOIcon color="red" />Failed</>
+    }
+    return state
+  }
   const toolbar = (
     <Toolbar id="search-input-filter-toolbar">
       <ToolbarContent>
+
+        <ToolbarItem variant="search-filter"><SearchInput aria-label="Search by GAV" value={gavFilter} onKeyDown={doSearch} onBlur={() => setGavFilter(transientGav)} onChange={(e, v) => {transientGav = v}} /></ToolbarItem>
+
+        <ToolbarItem variant="search-filter">
+          <Dropdown
+            isOpen={dropDownOpen}
+            onOpenChange={(isOpen) => setDropDownOpen(isOpen)}
+            onOpenChangeKeys={['Escape']}
+            toggle={(toggleRef) => (
+              <MenuToggle ref={toggleRef} onClick={() => setDropDownOpen(!dropDownOpen)} isExpanded={dropDownOpen}>
+                {dropDownLabel(stateFilter)}
+              </MenuToggle>
+            )}
+            id="context-selector"
+            onSelect={(e,v) => {setStateFilter(typeof v === 'string'? v :''); setDropDownOpen(false);}}
+            isScrollable
+          >
+            <DropdownList>
+              <DropdownItem itemId={''} key={'allitems'} onSelect={() => setStateFilter('')} >All</DropdownItem>
+              <DropdownItem itemId={'complete'} key={'complete'} onSelect={() => setStateFilter('complete')} >
+                <Label color="green" icon={<CheckCircleIcon/>}>
+                  Successful
+                </Label></DropdownItem>
+              <DropdownItem itemId={'contaminated'} key={'contaminated'} onSelect={() => setStateFilter('contaminated')} >
+                <Label color="orange" icon={<WarningTriangleIcon/>}>
+                  Contaminated
+                </Label>
+              </DropdownItem>
+              <DropdownItem itemId={'failed'} key={'failed'} onSelect={() => setStateFilter('failed')} >
+                <Label color="red" icon={<ErrorCircleOIcon/>}>
+                  Failed
+                </Label>
+              </DropdownItem>
+            </DropdownList>
+          </Dropdown>
+        </ToolbarItem>
         <ToolbarItem variant="pagination">{toolbarPagination}</ToolbarItem>
       </ToolbarContent>
     </Toolbar>

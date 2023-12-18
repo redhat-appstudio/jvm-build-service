@@ -70,7 +70,7 @@ public class BuildOrchestratorTestCase {
         for (int i = 0; i < 5; ++i) {
             StoredDependencyBuild bd = new StoredDependencyBuild();
             bd.uid = UUID.randomUUID().toString();
-            bd.creationTime = Instant.now();
+            bd.creationTimestamp = Instant.now();
             bd.buildIdentifier = BuildIdentifier.findORCreate("http://github.com/foo", "foo" + i, "sdfsdajklfdskl", "",
                     "somename" + i);
             bd.producedArtifacts = new ArrayList<>();

@@ -4,10 +4,12 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
@@ -25,8 +27,7 @@ import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
 import io.quarkus.logging.Log;
-import io.quarkus.panache.common.Page;
-import io.quarkus.panache.common.Sort;
+import io.quarkus.panache.common.Parameters;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @Path("/builds/history")
@@ -39,18 +40,61 @@ public class BuildHistoryResource {
     EntityManager entityManager;
 
     @GET
-    public PageParameters<BuildListDTO> all(@QueryParam("page") int page, @QueryParam("perPage") int perPage) {
+    public PageParameters<BuildListDTO> all(@QueryParam("page") int page, @QueryParam("perPage") int perPage,
+            @QueryParam("state") String state, @QueryParam("gav") String gav) {
         if (perPage <= 0) {
             perPage = 20;
         }
 
-        var list = StoredDependencyBuild.<StoredDependencyBuild> find("", Sort.descending("creationTime"))
-                .page(Page.of(page - 1, perPage)).list();
+        Parameters parameters = new Parameters();
+        StringBuilder query = new StringBuilder();
+        if (state != null && !state.isEmpty()) {
+            if (Objects.equals(state, "contaminated")) {
+                query.append(" WHERE s.contaminated");
+            } else if (Objects.equals(state, "complete")) {
+                query.append(" WHERE s.succeeded");
+            } else if (Objects.equals(state, "failed")) {
+                query.append(" WHERE NOT s.succeeded");
+            }
+        }
+        //TODO: this can only find passing builds
+        if (gav != null && !gav.isEmpty()) {
+            if (!query.isEmpty()) {
+                query.append(" and ");
+            } else {
+                query.append(" WHERE ");
+            }
+            var parts = gav.split(":");
+            if (parts.length == 1) {
+                query.append(
+                        " s.buildIdentifier in (select a.buildIdentifier from StoredArtifactBuild a inner join a.mavenArtifact m where m.version like :gav or m.identifier.group like :gav or m.identifier.artifact like :gav) or s.buildIdentifier.repository.url like :gav");
+                parameters.and("gav", "%" + gav + "%");
+            } else if (parts.length == 2) {
+                query.append(
+                        " s.buildIdentifier in (select a.buildIdentifier from StoredArtifactBuild a inner join a.mavenArtifact m where (m.identifier.group like :p1 and m.identifier.artifact like :p2) or (m.identifier.artifact like :p1 and m.version like :p2) )");
+                parameters.and("p1", "%" + parts[0] + "%");
+                parameters.and("p2", "%" + parts[1] + "%");
+            } else if (parts.length == 3) {
+                query.append(
+                        " s.buildIdentifier in (select a.buildIdentifier from StoredArtifactBuild a inner join a.mavenArtifact m where m.version like :version and m.identifier.group like :group and m.identifier.artifact like :artifact)");
+                parameters.and("group", "%" + parts[0] + "%");
+                parameters.and("artifact", "%" + parts[1] + "%");
+                parameters.and("version", "%" + parts[2] + "%");
+            }
+        }
+        Query q = entityManager
+                .createQuery("select s from StoredDependencyBuild s " + query.toString() + " order by s.creationTimestamp desc")
+                .setFirstResult(perPage * (page - 1))
+                .setMaxResults(perPage);
+        for (var p : parameters.map().entrySet()) {
+            q.setParameter(p.getKey(), p.getValue());
+        }
+        List<StoredDependencyBuild> list = q.getResultList();
         List<BuildListDTO> ret = new ArrayList<>();
         for (var build : list) {
             var inQueue = false;
             Long n = (Long) entityManager.createQuery(
-                    "select count(*) from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier=:b")
+                    "select count(a) from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier=:b")
                     .setParameter("b", build.buildIdentifier).getSingleResult();
             if (n > 0) {
                 inQueue = true;
@@ -61,7 +105,14 @@ public class BuildHistoryResource {
                     build.buildIdentifier.tag, build.succeeded, build.contaminated, artifactList, inQueue));
         }
 
-        return new PageParameters<>(ret, StoredDependencyBuild.count(), page, perPage);
+        q = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query.toString())
+                .setFirstResult(perPage * (page - 1))
+                .setMaxResults(perPage);
+        for (var p : parameters.map().entrySet()) {
+            q.setParameter(p.getKey(), p.getValue());
+        }
+        long count = (long) q.getSingleResult();
+        return new PageParameters<>(ret, count, page, perPage);
     }
 
     @GET

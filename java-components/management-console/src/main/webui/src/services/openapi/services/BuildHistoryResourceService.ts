@@ -12,21 +12,27 @@ import { request as __request } from '../core/request';
 export class BuildHistoryResourceService {
 
     /**
+     * @param gav
      * @param page
      * @param perPage
+     * @param state
      * @returns PageParametersBuildListDTO OK
      * @throws ApiError
      */
     public static getApiBuildsHistory(
+        gav?: string,
         page?: number,
         perPage?: number,
+        state?: string,
     ): CancelablePromise<PageParametersBuildListDTO> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/builds/history',
             query: {
+                'gav': gav,
                 'page': page,
                 'perPage': perPage,
+                'state': state,
             },
         });
     }

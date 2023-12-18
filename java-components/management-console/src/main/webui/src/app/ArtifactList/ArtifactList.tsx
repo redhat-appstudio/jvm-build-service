@@ -116,17 +116,11 @@ const ArtifactList: React.FunctionComponent = () => {
       case '':
         return "All";
       case'complete':
-          return <Label color="green" icon={<CheckCircleIcon/>}>
-            Successful
-          </Label>
+          return <><CheckCircleIcon color="green"/>Successful</>
       case 'missing':
-          return <Label color="orange" icon={<WarningTriangleIcon/>}>
-            Missing
-          </Label>
+          return <><WarningTriangleIcon color="orange"/>Missing</>
       case 'failed':
-          return <Label color="red" icon={<ErrorCircleOIcon/>}>
-            Failed
-          </Label>
+          return <><ErrorCircleOIcon color="red"/>Failed</>
     }
     return state
   }

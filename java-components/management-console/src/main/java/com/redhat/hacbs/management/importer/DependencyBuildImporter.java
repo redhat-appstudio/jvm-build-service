@@ -75,7 +75,7 @@ public class DependencyBuildImporter {
         storedBuild.succeeded = !failed;
         storedBuild.contaminated = contaminated;
         storedBuild.version = spec.getVersion();
-        storedBuild.creationTime = Instant.parse(dependencyBuild.getMetadata().getCreationTimestamp());
+        storedBuild.creationTimestamp = Instant.parse(dependencyBuild.getMetadata().getCreationTimestamp());
         storedBuild.producedArtifacts = new ArrayList<>();
         if (dependencyBuild.getStatus().getDeployedArtifacts() != null) {
             for (var i : dependencyBuild.getStatus().getDeployedArtifacts()) {
