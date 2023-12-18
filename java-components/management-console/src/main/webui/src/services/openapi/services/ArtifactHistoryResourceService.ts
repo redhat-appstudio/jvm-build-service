@@ -11,21 +11,27 @@ import { request as __request } from '../core/request';
 export class ArtifactHistoryResourceService {
 
     /**
+     * @param gav
      * @param page
      * @param perPage
+     * @param state
      * @returns PageParametersArtifactListDTO OK
      * @throws ApiError
      */
     public static getApiArtifactsHistory(
+        gav?: string,
         page?: number,
         perPage?: number,
+        state?: string,
     ): CancelablePromise<PageParametersArtifactListDTO> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/artifacts/history',
             query: {
+                'gav': gav,
                 'page': page,
                 'perPage': perPage,
+                'state': state,
             },
         });
     }

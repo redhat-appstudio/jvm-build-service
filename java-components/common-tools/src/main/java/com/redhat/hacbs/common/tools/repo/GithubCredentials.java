@@ -1,4 +1,4 @@
-package io.github.redhatappstudio.jvmbuild.cli.util;
+package com.redhat.hacbs.common.tools.repo;
 
 import java.io.File;
 import java.io.FileInputStream;

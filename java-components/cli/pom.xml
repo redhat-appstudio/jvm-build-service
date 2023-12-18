@@ -13,6 +13,10 @@
     </description>
     <dependencies>
         <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>common-tools</artifactId>
+        </dependency>
+        <dependency>
             <groupId>info.picocli</groupId>
             <artifactId>picocli-shell-jline2</artifactId>
         </dependency>

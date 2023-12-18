@@ -1,20 +1,16 @@
 package io.github.redhatappstudio.jvmbuild.cli.builds;
 
 import java.util.Map;
-import java.util.Set;
+import java.util.function.Function;
 
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.build.AddBuildRecipeRequest;
+import com.redhat.hacbs.common.tools.recipes.ModifyBuildRecipeCommand;
 import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipies.location.BuildInfoRequest;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
-import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuildSpec;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.ArtifactBuildCompleter;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.GavCompleter;
-import io.github.redhatappstudio.jvmbuild.cli.repo.RepositoryChange;
 import io.github.redhatappstudio.jvmbuild.cli.util.BuildConverter;
 import io.quarkus.arc.Arc;
 import picocli.CommandLine;
@@ -82,33 +78,20 @@ public class BuildFixCommand implements Runnable {
             throw new RuntimeException("--enforce-version is the only flag supported at the moment");
         }
 
-        DependencyBuildSpec buildSpec = theBuild.getSpec();
-        String branchName = "branch-" + System.currentTimeMillis(); //TODO: better branch names
-        String message = "Updated build-info for " + buildSpec.getScm().getScmURL();
-
-        RepositoryChange.createPullRequest(branchName, message, (repositoryRoot, groupManager, recipeLayoutManager) -> {
-            var existing = groupManager
-                    .requestBuildInformation(new BuildInfoRequest(buildSpec.getScm().getScmURL(), buildSpec.getVersion(),
-                            Set.of(BuildRecipe.BUILD)));
-            BuildRecipeInfo buildRecipe = null;
-            if (existing != null && existing.getData().containsKey(BuildRecipe.BUILD)) {
-                buildRecipe = BuildRecipe.BUILD.getHandler().parse(existing.getData().get(BuildRecipe.BUILD));
-            } else {
-                buildRecipe = new BuildRecipeInfo();
-            }
-            if (enforceVersion != null) {
-                buildRecipe.setEnforceVersion(enforceVersion);
-            }
-            if (addRepository != null) {
-                if (recipeLayoutManager.getRepositoryPaths(addRepository).isEmpty()) {
-                    throw new IllegalArgumentException("Unknown repository " + addRepository);
+        new ModifyBuildRecipeCommand(theBuild, new Function<BuildRecipeInfo, BuildRecipeInfo>() {
+            @Override
+            public BuildRecipeInfo apply(BuildRecipeInfo buildRecipe) {
+                if (enforceVersion != null) {
+                    buildRecipe.setEnforceVersion(enforceVersion);
                 }
-                buildRecipe.getRepositories().add(addRepository);
+                if (addRepository != null) {
+                    buildRecipe.getRepositories().add(addRepository);
+                }
+                return buildRecipe;
             }
-
-            recipeLayoutManager.writeBuildData(new AddBuildRecipeRequest<>(BuildRecipe.BUILD, buildRecipe,
-                    buildSpec.getScm().getScmURL(), versionSpecific ? buildSpec.getVersion() : null));
-        });
+        })
+                .setVersionSpecific(versionSpecific)
+                .run();
 
     }
 

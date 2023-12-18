@@ -40,7 +40,7 @@ public class BuildSummaryResource {
             //need to lookup artifacts directly
             long failedArtifacts = (long) entityManager
                     .createQuery(
-                            "select count(*) from StoredDependencyBuild b where b.buildIdentifier in (select a.buildIdentifier from StoredArtifactBuild a inner join MavenArtifactLabel l on l.artifact=a.mavenArtifact inner join ArtifactLabelName n on l.name=n where n.name=:name and a.status=:status)")
+                            "select count(*) from StoredDependencyBuild b where b.buildIdentifier in (select a.buildIdentifier from StoredArtifactBuild a inner join MavenArtifactLabel l on l.artifact=a.mavenArtifact inner join ArtifactLabelName n on l.name=n where n.name=:name and a.state=:status)")
                     .setParameter("status", ModelConstants.ARTIFACT_BUILD_FAILED)
                     .setParameter("name", label).getSingleResult();
             long failing = all - successful - contaminated + failedArtifacts;

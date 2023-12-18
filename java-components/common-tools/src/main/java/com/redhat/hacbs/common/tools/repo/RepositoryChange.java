@@ -1,4 +1,4 @@
-package io.github.redhatappstudio.jvmbuild.cli.repo;
+package com.redhat.hacbs.common.tools.repo;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -15,20 +15,19 @@ import com.redhat.hacbs.recipies.location.RecipeGroupManager;
 import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
 import com.redhat.hacbs.recipies.util.FileUtil;
 
-import io.github.redhatappstudio.jvmbuild.cli.util.GithubCredentials;
+import io.quarkus.logging.Log;
 
 /**
  * Utility class that can create a pull request against the build recipe repository
  */
 public class RepositoryChange {
 
-    public static void createPullRequest(String branchName, String commitMessage, PullRequestCreator creator) {
+    public static String createPullRequest(String branchName, String commitMessage, PullRequestCreator creator) {
         File homeDir = new File(System.getProperty("user.home"));
         File propertyFile = new File(homeDir, ".github");
         if (!propertyFile.exists()) {
-            System.err.println(
+            throw new RuntimeException(
                     "You must create a .github file as specified at https://github-api.kohsuke.org/ to be able to modify the build recipes.");
-            return;
         }
         //TODO: should not be hard coded
         try {
@@ -72,8 +71,10 @@ public class RepositoryChange {
                 String head = me + ":" + branchName;
                 System.out.println("head:" + head);
                 var pr = mainRepo.createPullRequest(commitMessage, head, "main", "");
-                System.out.println("Created Pull Request: "
-                        + pr.getIssueUrl().toExternalForm().replace("https://api.github.com/repos", "https://github.com"));
+                String prUrl = pr.getIssueUrl().toExternalForm().replace("https://api.github.com/repos", "https://github.com");
+                Log.infof("Created Pull Request: " + prUrl);
+                return prUrl;
+            } finally {
                 FileUtil.deleteRecursive(checkoutPath);
             }
         } catch (Exception e) {

@@ -33,7 +33,19 @@ public class BuildQueue extends PanacheEntity {
         }
     }
 
+    public static void rebuild(String gav, boolean priority, String... labels) {
+        MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
+        create(mavenArtifact, priority, true);
+        for (var i : labels) {
+            MavenArtifactLabel.getOrCreate(mavenArtifact, i);
+        }
+    }
+
     public static void create(MavenArtifact mavenArtifact, boolean priority) {
+        create(mavenArtifact, false, false);
+    }
+
+    public static void create(MavenArtifact mavenArtifact, boolean priority, boolean rebuild) {
         BuildQueue existing = BuildQueue.find("mavenArtifact", mavenArtifact).firstResult();
         if (existing == null) {
             EntityManager entityManager = Arc.container().instance(EntityManager.class).get();
@@ -42,7 +54,7 @@ public class BuildQueue extends PanacheEntity {
                             "select a from StoredDependencyBuild a join a.producedArtifacts s where s=:artifact")
                     .setParameter("artifact", mavenArtifact)
                     .getResultList();
-            if (existingBuild.isEmpty()) {
+            if (existingBuild.isEmpty() || rebuild) {
                 BuildQueue queue = new BuildQueue();
                 queue.mavenArtifact = mavenArtifact;
                 queue.priority = priority;
@@ -50,6 +62,7 @@ public class BuildQueue extends PanacheEntity {
             }
         } else if (priority) {
             existing.priority = true;
+            existing.rebuild |= rebuild;
         }
     }
 }
