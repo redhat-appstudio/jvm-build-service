@@ -5,7 +5,7 @@ commonLabels:
   app: hacbs-jvm-operator
 resources:
   - deployment.yaml
-  - sa.yaml
   - namespace.yaml
+  - sa.yaml
   - rbac.yaml
   - metricservice.yaml

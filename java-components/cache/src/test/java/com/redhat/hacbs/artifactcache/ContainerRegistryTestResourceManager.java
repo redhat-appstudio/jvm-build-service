@@ -121,8 +121,8 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
                 Paths.get(layer2Path.toString(), "pom.xml"),
                 StandardCopyOption.REPLACE_EXISTING);
         // Place a known file as 'source' to make testing easier
-        Files.copy(Paths.get(testDataRoot.toString(), "..", "..", "..", "..", "readme.adoc"),
-                Paths.get(layer1Path.toString(), "readme.adoc"),
+        Files.copy(Paths.get(testDataRoot.toString(), "..", "..", "..", "..", "README.adoc"),
+                Paths.get(layer1Path.toString(), "README.adoc"),
                 StandardCopyOption.REPLACE_EXISTING);
 
         System.out.println("\n Test container details:\n"

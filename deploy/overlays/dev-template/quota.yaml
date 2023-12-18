@@ -1,14 +1,14 @@
 apiVersion: quota.openshift.io/v1
 kind: ClusterResourceQuota
 metadata:
-  name: for-test-jvm-namespace-deployments
+  name: for-jvm-namespace-deployments
 spec:
   quota:
     hard:
-      count/deployments.apps: "30"
       count/deploymentconfigs.apps: "30"
+      count/deployments.apps: "30"
       count/pods: "20"
   selector:
     annotations:
-      openshift.io/requester: test-jvm-namespace
+      openshift.io/requester: ${JBS_WORKER_NAMESPACE}
     labels: null

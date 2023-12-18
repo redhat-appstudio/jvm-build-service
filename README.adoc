@@ -1,0 +1,59 @@
+= HACBS JVM Build Service
+:icons: font
+:toc:
+:toclevels: 5
+:toc-title:
+
+:img-build-status: https://codecov.io/gh/redhat-appstudio/jvm-build-service/branch/main/graph/badge.svg
+:uri-build-status: https://codecov.io/gh/redhat-appstudio/jvm-build-service
+image:{img-build-status}[Build Status Badge,link={uri-build-status}]
+
+
+This repository contains components used to deploy the HACBS JVM build service.
+
+See each component's directory for specific documentation. There is further documentation available within the docs
+directory.
+
+== Requirements
+
+* OpenShift/Kubernetes cluster
+* link:https://kubernetes.io/docs/tasks/tools/#kubectl[kubectl] CLI tool
+* link:https://kubectl.docs.kubernetes.io/installation/kustomize/binaries[kustomize] CLI tool
+
+== Installation
+
+The following environment variables are configurable and may be set by the user prior to deploying this depending upon which features are to be enabled.
+
+|=======================
+| AWS_ACCESS_KEY_ID | AWS Access Key used for S3 and CodeArtfact Access
+| AWS_PROFILE | AWS Region used for CodeArtifact deployment
+| AWS_SECRET_ACCESS_KEY | AWS Secret Access Key used for S3 and CodeArtfact Access
+| GIT_DEPLOY_IDENTITY | Username/organisation name for the Git service
+| GIT_DEPLOY_TOKEN | Authentication token
+| GIT_DEPLOY_URL | The URL for the Git service (GitHub/GitLab are supported) to archive the sources
+| MAVEN_PASSWORD | Password for the Maven repository
+| MAVEN_REPOSITORY | The URL for the external Maven repository to deploy to
+| MAVEN_USERNAME | Username for the Maven repository
+| QUAY_USERNAME | Quay.io registry to use
+|=======================
+
+The `$HOME/.docker/config.json` must contain a suitable authentication token to Quay.io. In the Account
+section of Quay you should see an options to generate an encrypted CLI password. Select this option and create a `~/
+.docker/config.json` by following the prompts. It is recommended to configure this secret as:
+
+```
+export JBS_BUILD_IMAGE_SECRET=$(cat $HOME/.docker/config.json | base64 -w 0)
+```
+
+To support private repositories set:
+```
+export JBS_GIT_CREDENTIALS='https://$GITHUB_E2E_ORGANIZATION:$GITHUB_TOKEN@github.com'
+```
+By default, the JBS images are pulled from the redhat-appstudio organization. This may be overridden by setting `JBS_QUAY_IMAGE`.
+
+The 'worker' namespace (`test-jvm-namespace`) may be customized by setting `JBS_WORKER_NAMESPACE`.
+
+
+== Documentation
+
+See link:docs/index.adoc[User Guide]

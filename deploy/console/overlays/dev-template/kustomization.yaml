@@ -18,4 +18,3 @@ patches:
     target:
       kind: Deployment
       name: hacbs-jvm-console
-

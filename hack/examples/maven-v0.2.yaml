@@ -184,7 +184,7 @@ spec:
     - name: analyse-dependencies
       securityContext:
         runAsUser: 0
-      image: quay.io/replaced-image:bogus
+      image: quay.io/${QUAY_USERNAME}/hacbs-jvm-build-request-processor:dev
       imagePullPolicy: Always
       script: |
         /opt/jboss/container/java/run/run-java.sh analyse-dependencies path $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH) \

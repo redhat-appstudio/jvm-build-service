@@ -189,7 +189,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 		debugAndFailTest(ta, err.Error())
 	}
 
-	mavenYamlPath := filepath.Join(path, "..", "..", "deploy", "base", "maven-v0.2.yaml")
+	mavenYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "maven-v0.2.yaml")
 	ta.maven = &v1beta1.Task{}
 	obj = streamFileYamlToTektonObj(mavenYamlPath, ta.maven, ta)
 	ta.maven, ok = obj.(*v1beta1.Task)
