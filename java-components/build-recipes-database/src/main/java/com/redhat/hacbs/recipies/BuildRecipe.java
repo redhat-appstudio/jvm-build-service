@@ -9,10 +9,11 @@ import com.redhat.hacbs.recipies.scm.ScmInfoManager;
 
 /**
  * Represents a recipe file (e.g. scm.yaml) that contains build information
- *
+ * <br/>
  * This is not an enum to allow for extensibility
  */
 public class BuildRecipe<T> {
+    public static final String DEFAULT_RECIPE_REPO_URL = "https://github.com/redhat-appstudio/jvm-build-data";
 
     public static final BuildRecipe<ScmInfo> SCM = new BuildRecipe<>("scm.yaml", new ScmInfoManager());
     public static final BuildRecipe<BuildRecipeInfo> BUILD = new BuildRecipe<>("build.yaml", new BuildRecipeInfoManager());

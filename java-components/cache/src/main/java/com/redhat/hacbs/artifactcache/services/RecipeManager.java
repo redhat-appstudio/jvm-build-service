@@ -45,7 +45,7 @@ public class RecipeManager {
     @Inject
     CachePomScmLocator cachePomScmLocator;
 
-    @ConfigProperty(name = "build-info.repositories", defaultValue = "https://github.com/redhat-appstudio/jvm-build-data")
+    @ConfigProperty(name = "build-info.repositories", defaultValue = BuildRecipe.DEFAULT_RECIPE_REPO_URL)
     List<String> buildInfoRepos;
 
     final List<RecipeDirectory> recipeDirs = new ArrayList<>();
