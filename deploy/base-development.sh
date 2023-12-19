@@ -9,15 +9,15 @@ if ! command -v kustomize &> /dev/null; then
     exit 1
 fi
 
-if [ -z "$JBS_QUAY_IMAGE" ]; then
-    export JBS_QUAY_IMAGE=redhat-appstudio
-fi
-if [ -z "$JBS_WORKER_NAMESPACE" ]; then
-    export JBS_WORKER_NAMESPACE=test-jvm-namespace
-fi
 if [ -z "$QUAY_USERNAME" ]; then
     echo "Set QUAY_USERNAME"
     exit 1
+fi
+if [ -z "$JBS_QUAY_IMAGE" ]; then
+    export JBS_QUAY_IMAGE="$QUAY_USERNAME"
+fi
+if [ -z "$JBS_WORKER_NAMESPACE" ]; then
+    export JBS_WORKER_NAMESPACE=test-jvm-namespace
 fi
 if [ -z "$JBS_BUILD_IMAGE_SECRET" ]; then
     # Represents an empty dockerconfig.json
