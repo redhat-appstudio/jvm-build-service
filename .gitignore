@@ -43,6 +43,5 @@ nb-configuration.xml
 .env
 .quinoa
 
-# Kustomize overlays for development, openshift ci
-deploy/**/development/**
+# Kustomize overlays for openshift ci
 deploy/**/ci-final/**

@@ -7,17 +7,17 @@ metadata:
     jvmbuildservice.io/s3-bucket-name: "jvm-build-service-data"
 spec:
   registry:
-    owner: QUAY_USERNAME
+    owner: ${QUAY_USERNAME}
     dontReuseExisting: true
   cacheSettings:
     storage:  "60Gi"
   mavenDeployment:
-    username: MAVEN_USERNAME
-    repository: MAVEN_REPOSITORY
+    username: ${MAVEN_USERNAME}
+    repository: ${MAVEN_REPOSITORY}
   gitSourceArchive:
-    identity: GIT_DEPLOY_IDENTITY
-    url: GIT_DEPLOY_URL
-    disableSSLVerification: GIT_DISABLE_SSL_VERIFICATION
+    identity: ${GIT_DEPLOY_IDENTITY}
+    url: ${GIT_DEPLOY_URL}
+    disableSSLVerification: ${GIT_DISABLE_SSL_VERIFICATION}
   relocationPatterns:
     - relocationPattern:
         buildPolicy: "default"

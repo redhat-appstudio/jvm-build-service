@@ -31,6 +31,7 @@ The following environment variables are configurable and may be set by the user 
 | GIT_DEPLOY_IDENTITY | Username/organisation name for the Git service
 | GIT_DEPLOY_TOKEN | Authentication token
 | GIT_DEPLOY_URL | The URL for the Git service (GitHub/GitLab are supported) to archive the sources
+| GIT_DISABLE_SSL_VERIFICATION | Whether to disable SSL verification for Git archival service communication
 | MAVEN_PASSWORD | Password for the Maven repository
 | MAVEN_REPOSITORY | The URL for the external Maven repository to deploy to
 | MAVEN_USERNAME | Username for the Maven repository

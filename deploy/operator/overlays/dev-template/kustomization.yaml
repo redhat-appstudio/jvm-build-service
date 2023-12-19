@@ -9,7 +9,7 @@ resources:
 
 images:
 - name: hacbs-jvm-operator
-  newName: jvm-build-service-image
+  newName: quay.io/${JBS_QUAY_IMAGE}/hacbs-jvm-controller
   newTag: dev
 
 
