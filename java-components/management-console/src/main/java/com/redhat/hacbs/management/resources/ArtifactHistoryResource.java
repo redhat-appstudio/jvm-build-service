@@ -83,9 +83,7 @@ public class ArtifactHistoryResource {
                     Objects.equals(build.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
                     Objects.equals(build.state, ModelConstants.ARTIFACT_BUILD_MISSING), build.message));
         }
-        q = entityManager.createQuery("select count(s) from StoredArtifactBuild s " + query.toString())
-                .setFirstResult(perPage * (page - 1))
-                .setMaxResults(perPage);
+        q = entityManager.createQuery("select count(s) from StoredArtifactBuild s " + query.toString());
         for (var p : parameters.map().entrySet()) {
             q.setParameter(p.getKey(), p.getValue());
         }
