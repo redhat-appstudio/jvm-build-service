@@ -64,6 +64,6 @@ if [ ! -d $(workspaces.source.path)/source ]; then
 fi
 #we can't use array parameters directly here
 #we pass them in as goals
-mvn -V -B -e -s "$(workspaces.build-settings.path)/settings.xml" -t "$(workspaces.build-settings.path)/toolchains.xml" "$@" "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/artifacts" "org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy" | tee $(workspaces.source.path)/logs/maven.log
+mvn -V -B -e -s "$(workspaces.build-settings.path)/settings.xml" -t "$(workspaces.build-settings.path)/toolchains.xml" "$@" "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/artifacts" "org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy" | tee $(workspaces.source.path)/logs/maven.log
 
 cp -r "${HOME}"/.m2/repository/* $(workspaces.source.path)/build-info
