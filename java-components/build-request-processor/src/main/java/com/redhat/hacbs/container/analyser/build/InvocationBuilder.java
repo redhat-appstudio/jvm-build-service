@@ -254,9 +254,21 @@ public class InvocationBuilder {
                             Invocation result = new Invocation();
                             Map<String, String> toolVersion = new HashMap<>(perm);
                             toolVersion.put(BuildInfo.JDK, javaVersion.version());
+
                             result.setToolVersion(toolVersion);
-                            result.setCommands(invocation);
                             String tool = invocationSet.getKey();
+                            if (tool.equals(BuildInfo.MAVEN)) {
+                                //huge hack, we need a different invocation for different java versions
+                                List<String> cmds = new ArrayList<>(invocation);
+                                if (javaVersion.intVersion() < 8) {
+                                    cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy");
+                                } else {
+                                    cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy");
+                                }
+                                result.setCommands(cmds);
+                            } else {
+                                result.setCommands(invocation);
+                            }
                             result.setTool(tool);
                             result.setDisabledPlugins(buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
                                     ? buildRecipeInfo.getDisabledPlugins()
