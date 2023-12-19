@@ -45,24 +45,24 @@ public class RecipeLayoutManager implements RecipeDirectory {
     private final Path pluginInfoDirectory;
 
     public RecipeLayoutManager(Path baseDirectory) {
-        this.scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
-        this.buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
-        this.repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
-        this.buildToolInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_TOOL_INFO);
-        this.pluginInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.DISABLED_PLUGINS);
+        scmInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.SCM_INFO);
+        buildInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_INFO);
+        repositoryInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.REPOSITORY_INFO);
+        buildToolInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.BUILD_TOOL_INFO);
+        pluginInfoDirectory = baseDirectory.resolve(RecipeRepositoryManager.DISABLED_PLUGINS);
     }
 
     /**
      * Returns the directories that contain the recipe information for this specific artifact
      */
     public Optional<RecipePathMatch> getArtifactPaths(String groupId, String artifactId, String version) {
-        Path groupPath = this.scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar));
+        Path groupPath = scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar));
         Path artifactFolder = groupPath.resolve(ARTIFACT);
         Path artifactPath = artifactFolder.resolve(artifactId);
         Path artifactAndVersionPath = null;
         log.warning("Searching for recipe in " + groupPath);
 
-        if (!Files.exists(groupPath)) {
+        if (Files.notExists(groupPath)) {
             return Optional.empty();
         }
         boolean groupAuthoritative = true;
@@ -110,6 +110,9 @@ public class RecipeLayoutManager implements RecipeDirectory {
 
     @Override
     public List<Path> getAllRepositoryPaths() {
+        if (Files.notExists(repositoryInfoDirectory)) {
+            return List.of();
+        }
         try (Stream<Path> list = Files.list(repositoryInfoDirectory)) {
             return list.filter(s -> s.toString().endsWith(".yaml")).collect(Collectors.toList());
         } catch (IOException e) {
@@ -174,7 +177,7 @@ public class RecipeLayoutManager implements RecipeDirectory {
         String groupId = data.getGroupId();
         String artifactId = data.getArtifactId();
         String version = data.getVersion();
-        Path resolved = this.scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar));
+        Path resolved = scmInfoDirectory.resolve(groupId.replace('.', File.separatorChar));
         if (artifactId != null) {
             resolved = resolved.resolve(ARTIFACT);
             resolved = resolved.resolve(artifactId);
