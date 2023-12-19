@@ -594,10 +594,10 @@ func additionalPackages(recipe *v1alpha12.BuildRecipe) string {
 }
 
 func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) string {
-	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ")\"\n"
+	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ")\" && "
 	if db.Spec.ScmInfo.Private {
-		gitArgs = gitArgs + "echo \"$GIT_TOKEN\"  > $HOME/.git-credentials\nchmod 400 $HOME/.git-credentials\n"
-		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig\n"
+		gitArgs = gitArgs + "echo \"$GIT_TOKEN\" > $HOME/.git-credentials && chmod 400 $HOME/.git-credentials && "
+		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig && "
 	}
 	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineParamScmHash + ")"
 
