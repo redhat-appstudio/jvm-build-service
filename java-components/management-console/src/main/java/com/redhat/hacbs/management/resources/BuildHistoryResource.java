@@ -105,9 +105,7 @@ public class BuildHistoryResource {
                     build.buildIdentifier.tag, build.succeeded, build.contaminated, artifactList, inQueue));
         }
 
-        q = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query.toString())
-                .setFirstResult(perPage * (page - 1))
-                .setMaxResults(perPage);
+        q = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query.toString());
         for (var p : parameters.map().entrySet()) {
             q.setParameter(p.getKey(), p.getValue());
         }
