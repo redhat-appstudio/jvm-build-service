@@ -386,7 +386,7 @@ public class DeployCommand implements Runnable {
         }
     }
 
-    private void cleanBrokenSymlinks(Path sourcePath) throws IOException {
+    static void cleanBrokenSymlinks(Path sourcePath) throws IOException {
         Files.walkFileTree(sourcePath, new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
