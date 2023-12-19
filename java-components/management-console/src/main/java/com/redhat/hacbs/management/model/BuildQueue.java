@@ -41,6 +41,13 @@ public class BuildQueue extends PanacheEntity {
         }
     }
 
+    public static void rebuild(MavenArtifact mavenArtifact, boolean priority, String... labels) {
+        create(mavenArtifact, priority, true);
+        for (var i : labels) {
+            MavenArtifactLabel.getOrCreate(mavenArtifact, i);
+        }
+    }
+
     public static void create(MavenArtifact mavenArtifact, boolean priority) {
         create(mavenArtifact, false, false);
     }

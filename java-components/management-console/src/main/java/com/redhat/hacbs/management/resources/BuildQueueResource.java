@@ -74,6 +74,6 @@ public class BuildQueueResource {
     public void addBuild(String gav) {
         MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
         MavenArtifactLabel.getOrCreate(mavenArtifact, "From ArtifactEntry");
-        BuildQueue.create(mavenArtifact, true);
+        BuildQueue.rebuild(mavenArtifact, true);
     }
 }
