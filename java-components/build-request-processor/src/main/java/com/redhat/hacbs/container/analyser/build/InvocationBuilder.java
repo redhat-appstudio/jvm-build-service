@@ -1,7 +1,11 @@
 package com.redhat.hacbs.container.analyser.build;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -136,25 +140,17 @@ public class InvocationBuilder {
             info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
             info.setDisabledPlugins(buildRecipeInfo.getDisabledPlugins());
         }
+        Date commitTime = new Date(info.commitTime);
+        DateFormat simpleDate = new SimpleDateFormat("yyyy-MM-dd");
         //now we need to figure out what possible build recipes we can try
         //we work through from lowest Java version to highest
-        var javaVersions = new ArrayList<>(
-                availableTools.getOrDefault("jdk", List.of()).stream().map(JavaVersion::new).filter(j -> {
-                    if (minJavaVersion != null) {
-                        if (minJavaVersion.intVersion() > j.intVersion()) {
-                            return false;
-                        }
-                    }
-                    if (maxJavaVersion != null) {
-                        if (maxJavaVersion.intVersion() < j.intVersion()) {
-                            return false;
-                        }
-                    }
-                    return true;
-                }).toList());
-        Collections.sort(javaVersions);
+        var javaVersions = new ArrayList<JavaVersion>();
+        var allPossibleJavaVersions = new ArrayList<JavaVersion>();
+
         Map<String, Map<String, BuildToolInfo>> buildToolInfo = new HashMap<>();
-        for (var tool : toolInvocations.keySet()) {
+        Set<String> tools = new HashSet<>(toolInvocations.keySet());
+        tools.add("jdk");
+        for (var tool : tools) {
             var result = buildInfoLocator.lookupBuildToolInfo(tool);
             Map<String, BuildToolInfo> versionMap = new HashMap<>();
             buildToolInfo.put(tool, versionMap);
@@ -162,6 +158,40 @@ public class InvocationBuilder {
                 versionMap.put(i.getVersion(), i);
             }
         }
+
+        var jdkReleaseInfo = buildToolInfo.get("jdk");
+        for (var javaVersion : availableTools.getOrDefault("jdk", List.of())) {
+            JavaVersion j = new JavaVersion(javaVersion);
+            if (minJavaVersion != null) {
+                if (minJavaVersion.intVersion() > j.intVersion()) {
+                    continue;
+                }
+            }
+            if (maxJavaVersion != null) {
+                if (maxJavaVersion.intVersion() < j.intVersion()) {
+                    continue;
+                }
+            }
+            allPossibleJavaVersions.add(j);
+            var jdkRelease = jdkReleaseInfo.get("" + j.intVersion());
+            if (jdkRelease == null) {
+                javaVersions.add(j);
+            } else {
+                try {
+                    Date release = simpleDate.parse(jdkRelease.getReleaseDate());
+                    if (release.before(commitTime)) {
+                        javaVersions.add(j); //no info, always add it
+                    }
+                } catch (ParseException e) {
+                    Log.errorf(e, "Failed to parse release date");
+                    javaVersions.add(j); //no info, always add it
+                }
+            }
+        }
+        if (javaVersions.isEmpty()) {
+            javaVersions.addAll(allPossibleJavaVersions);
+        }
+        Collections.sort(javaVersions);
         //now select possible tools based on discovered version, or just whatever is available
         Map<String, Set<String>> selectedToolVersions = new HashMap<>();
         for (var entry : toolInvocations.entrySet()) {
@@ -173,8 +203,33 @@ public class InvocationBuilder {
             var toolVersions = availableTools.getOrDefault(tool, List.of());
             if (!toolVersions.isEmpty()) {
                 if (discovered == null) {
-                    //all tool versions
-                    selectedToolVersions.put(tool, new LinkedHashSet<>(toolVersions));
+                    var possible = buildToolInfo.get(tool);
+                    if (possible == null) {
+                        //all tool versions
+                        selectedToolVersions.put(tool, new LinkedHashSet<>(toolVersions));
+                    } else {
+                        LinkedHashSet<String> selectedVersions = new LinkedHashSet<>();
+                        for (var i : toolVersions) {
+                            var bti = possible.get(i);
+                            if (bti == null) {
+                                selectedVersions.add(i); //no info, always add it
+                            } else {
+                                try {
+                                    Date release = simpleDate.parse(bti.getReleaseDate());
+                                    if (release.before(commitTime)) {
+                                        selectedVersions.add(i); //no info, always add it
+                                    }
+                                } catch (ParseException e) {
+                                    Log.errorf(e, "Failed to parse release date");
+                                    selectedVersions.add(i); //no info, always add it
+                                }
+                            }
+                        }
+                        if (selectedVersions.isEmpty()) {
+                            selectedVersions.addAll(toolVersions);
+                        }
+                        selectedToolVersions.put(tool, selectedVersions);
+                    }
                 } else {
                     var closest = findClosestVersions(toolVersions, discovered);
                     if (!closest.isEmpty()) {
