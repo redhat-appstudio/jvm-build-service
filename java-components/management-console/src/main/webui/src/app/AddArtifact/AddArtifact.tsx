@@ -36,11 +36,11 @@ export const AddArtifact: React.FunctionComponent = () => {
             const promises = new Array<Promise<any>>();
             const result = new Array<string>();
             let gavs: string[]
-            gavs = txtValue.trim().split(",")
+            gavs = txtValue.trim().split(/[\n,]/)
             for (let gav of gavs) {
                 console.log("Creating build for " + gav)
                 promises.push(
-                    BuildQueueResourceService.postApiBuildsQueueAdd(gav).then((response) => {
+                    BuildQueueResourceService.postApiBuildsQueueAdd(gav).then(() => {
                         console.log("Submitted! Code: " + gav)
                         result.push(gav + "@submitted")
                     })
@@ -51,7 +51,7 @@ export const AddArtifact: React.FunctionComponent = () => {
                             console.log("Caught error " + error.body.details)
                         }))
             }
-            Promise.all(promises).then((res) => {
+            Promise.all(promises).then(() => {
                 setResultInput(result)
                 handleModalToggle(event)
                 setInput("")
@@ -63,7 +63,7 @@ export const AddArtifact: React.FunctionComponent = () => {
         <Form id={formId} onSubmit={handleSubmit} isWidthLimited={true}>
             <FormHelperText>
                 <HelperText>
-                    <HelperTextItem><br/>Enter a list of comma separated "group:artifact:version"</HelperTextItem>
+                    <HelperTextItem><br/>Enter a list of newline or comma separated "group:artifact:version"</HelperTextItem>
                 </HelperText>
             </FormHelperText>
             <FormGroup label="GAVs" fieldId="horizontal-form-exp">
