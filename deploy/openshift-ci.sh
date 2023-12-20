@@ -12,9 +12,26 @@ echo ${JVM_BUILD_SERVICE_CACHE_IMAGE}
 echo "jvm build service jvm reqprocessor image:"
 echo ${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}
 
+function waitFor() {
+    endTime=$(( $(date +%s) + 600 ))
+    while ! eval $1; do
+        sleep 1
+        if [ $(date +%s) -gt $endTime ]; then
+            echo "Unable to find $1"
+            exit 1
+        fi
+    done
+}
+
 DIR=`dirname $0`
 echo "Running out of ${DIR}"
-$DIR/install-openshift-pipelines.sh
+
+oc apply -f ${DIR}/base/pipelines/openshift-pipelines-subscription.yaml
+waitFor "oc get ns openshift-pipelines"
+waitFor "oc get pods -n openshift-pipelines | grep tekton-pipelines-controller | grep Running"
+waitFor "oc get mutatingwebhookconfigurations.admissionregistration.k8s.io webhook.pipeline.tekton.dev -o yaml | grep rules"
+echo "Tekton controller is running"
+
 oc create ns jvm-build-service || true
 oc apply -k $DIR/crds/base
 oc apply -k $DIR/operator/base
