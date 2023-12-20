@@ -107,6 +107,9 @@ public class LookupBuildInfoCommand implements Runnable {
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
 
+    @Inject
+    BootstrapMavenContext mavenContext;
+
     @Override
     public void run() {
         try {
@@ -284,25 +287,44 @@ public class LookupBuildInfoCommand implements Runnable {
     Collection<String> handleRepositories(Path pomFile, CacheBuildInfoLocator buildInfoLocator)
             throws BootstrapMavenException {
         var config = BootstrapMavenContext.config();
-        config.setCurrentProject(pomFile.getParent().toString());
-        config.setRootProjectDir(pomFile.getParent());
         config.setEffectiveModelBuilder(true);
-        var newCtx = new BootstrapMavenContext(config);
+        config.setPreferPomsFromWorkspace(true);
+        config.setRepositorySystem(mavenContext.getRepositorySystem());
+        config.setRemoteRepositoryManager(mavenContext.getRemoteRepositoryManager());
 
-        Set<String> repos = new HashSet<>();
+        Set<String> result = new HashSet<>(internalHandleRepositories(config, pomFile));
+        if (result.isEmpty()) {
+            return List.of();
+        }
+        Log.infof("Found repositories %s", result);
+        return buildInfoLocator.findRepositories(result);
+    }
+
+    private Collection<String> internalHandleRepositories(
+            io.quarkus.bootstrap.resolver.maven.BootstrapMavenContextConfig<?> config,
+            Path pomFile)
+            throws BootstrapMavenException {
+        Set<String> result = new HashSet<>();
+        Path parent = pomFile.getParent();
+        config.setCurrentProject(parent.toString());
+        config.setRootProjectDir(parent);
+        var newCtx = new BootstrapMavenContext(config);
+        var effective = newCtx.getCurrentProject().getModelBuildingResult().getEffectiveModel();
+
         List<RemoteRepository> repositories = newCtx.getRemoteRepositories();
         for (RemoteRepository repository : repositories) {
-            repos.add(repository.getUrl());
+            result.add(repository.getUrl());
         }
         List<RemoteRepository> pluginRepositories = newCtx.getRemotePluginRepositories();
         for (RemoteRepository repository : pluginRepositories) {
-            repos.add(repository.getUrl());
+            result.add(repository.getUrl());
         }
-        if (repos.isEmpty()) {
-            return List.of();
+
+        // Check every submodule for repositories as well.
+        for (String module : effective.getModules()) {
+            result.addAll(internalHandleRepositories(config, parent.resolve(module).resolve("pom.xml")));
         }
-        Log.infof("Found repositories %s", repos);
-        return buildInfoLocator.findRepositories(repos);
+        return result;
     }
 
     private boolean searchForBuildScript(BuildRecipeInfo buildRecipeInfo, CacheBuildInfoLocator buildInfoLocator,
