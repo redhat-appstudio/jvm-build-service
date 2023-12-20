@@ -5,6 +5,9 @@ import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.InvocationBuilder.findClosestVersions;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +33,19 @@ public class InvocationBuilderTestCase {
 
         @Override
         public List<BuildToolInfo> lookupBuildToolInfo(String name) {
+            if (name.equals("jdk")) {
+                return List.of(
+                        new BuildToolInfo().setReleaseDate("2018-09-25").setVersion("11").setMaxJdkVersion("11")
+                                .setMinJdkVersion("11"),
+                        new BuildToolInfo().setReleaseDate("2014-03-18").setVersion("8").setMaxJdkVersion("8")
+                                .setMinJdkVersion("8"));
+            } else if (name.equals("gradle")) {
+                return List.of(
+                        new BuildToolInfo().setReleaseDate("2019-04-26").setVersion("5.4").setMaxJdkVersion("12")
+                                .setMinJdkVersion("8"),
+                        new BuildToolInfo().setReleaseDate("2020-01-15").setVersion("6.1").setMaxJdkVersion("13")
+                                .setMinJdkVersion("8"));
+            }
             return List.of();
         }
 
@@ -62,6 +78,7 @@ public class InvocationBuilderTestCase {
     @Test
     public void testInvocationMapping() {
         InvocationBuilder builder = newBuilder();
+        builder.setCommitTime(System.currentTimeMillis());
         builder.addToolInvocation(MAVEN, List.of("install"));
         var result = builder.build(buildInfoLocator);
         Assertions.assertEquals(3, result.invocations.size());
@@ -73,6 +90,7 @@ public class InvocationBuilderTestCase {
                                         buildInfoLocator.lookupDisabledPlugins(MAVEN))));
 
         builder = newBuilder();
+        builder.setCommitTime(System.currentTimeMillis());
         builder.addToolInvocation(MAVEN, List.of("install"));
         builder.addToolInvocation(GRADLE, List.of("build"));
         builder.minJavaVersion(new JavaVersion("11"));
@@ -105,6 +123,42 @@ public class InvocationBuilderTestCase {
                 .contains(new Invocation(List.of("gradle", "build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"),
                         GRADLE, buildInfoLocator.lookupDisabledPlugins(GRADLE))));
 
+    }
+
+    @Test
+    public void testInvocationMappingDateFiltering() throws ParseException {
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+        InvocationBuilder builder = newBuilder();
+        builder.setCommitTime(df.parse("2016-01-01").getTime());
+        builder.addToolInvocation(MAVEN, List.of("install"));
+        var result = builder.build(buildInfoLocator);
+        Assertions.assertEquals(2, result.invocations.size());
+        Assertions.assertTrue(
+                result.invocations
+                        .contains(
+                                new Invocation(List.of("install", "org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy"),
+                                        Map.of(MAVEN, "3.8.0", JDK, "8"), MAVEN,
+                                        buildInfoLocator.lookupDisabledPlugins(MAVEN))));
+
+        builder = newBuilder();
+        builder.setCommitTime(df.parse("2019-05-06").getTime());
+        builder.addToolInvocation(GRADLE, List.of("build"));
+        result = builder.build(buildInfoLocator);
+        Assertions.assertEquals(2, result.invocations.size());
+        Assertions.assertTrue(
+                result.invocations
+                        .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "8"), GRADLE,
+                                buildInfoLocator.lookupDisabledPlugins(GRADLE))));
+        Assertions.assertTrue(
+                result.invocations
+                        .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), GRADLE,
+                                buildInfoLocator.lookupDisabledPlugins(GRADLE))));
+
+        builder = newBuilder();
+        builder.setCommitTime(df.parse("2010-05-06").getTime());
+        builder.addToolInvocation(GRADLE, List.of("build"));
+        result = builder.build(buildInfoLocator);
+        Assertions.assertEquals(0, result.invocations.size());
     }
 
     private InvocationBuilder newBuilder() {
