@@ -284,7 +284,7 @@ public class LookupBuildInfoCommand implements Runnable {
     Collection<String> handleRepositories(Path pomFile, CacheBuildInfoLocator buildInfoLocator)
             throws BootstrapMavenException {
         var config = BootstrapMavenContext.config();
-        System.setProperty("basedir", pomFile.getParent().toString());
+        config.setCurrentProject(pomFile.getParent().toString());
         config.setRootProjectDir(pomFile.getParent());
         config.setEffectiveModelBuilder(true);
         var newCtx = new BootstrapMavenContext(config);
