@@ -34,12 +34,6 @@ public class GitScmLocator implements ScmLocator {
 
     private static final Pattern NUMERIC_PART = Pattern.compile("(\\d+)(\\.\\d+)+");
 
-    private static final String DEFAULT_RECIPE_REPO_URL = "https://github.com/redhat-appstudio/jvm-build-data";
-
-    public static String getDefaultRecipeRepoUrl() {
-        return DEFAULT_RECIPE_REPO_URL;
-    }
-
     public static GitScmLocator getInstance() {
         return builder().build();
     }
@@ -51,7 +45,7 @@ public class GitScmLocator implements ScmLocator {
     public static class Builder {
 
         public RecipeGroupManager recipeGroupManager;
-        private List<String> recipeRepos = List.of(DEFAULT_RECIPE_REPO_URL);
+        private List<String> recipeRepos = List.of(BuildRecipe.DEFAULT_RECIPE_REPO_URL);
         private boolean cacheRepoTags;
         private String cacheUrl;
         private ScmLocator fallbackScmLocator;

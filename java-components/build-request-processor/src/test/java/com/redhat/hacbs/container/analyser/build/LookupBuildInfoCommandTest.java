@@ -36,7 +36,7 @@ class LookupBuildInfoCommandTest {
 
         @Override
         public List<String> findRepositories(Set<String> repositories) {
-            return List.of();
+            return List.copyOf(repositories);
         }
 
         @Override
@@ -95,5 +95,16 @@ class LookupBuildInfoCommandTest {
                         .contains("Found Maven pom file at"))
                 .count());
 
+    }
+
+    @Test
+    public void testModelResolver()
+            throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        lookupBuildInfoCommand.commit = "ea39ccf03d38b65df7aa5153a1bbddc3197b1597";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/wso2/balana", new BuildRecipeInfo(),
+                cacheBuildInfoLocator);
+        assertTrue(info.repositories.contains("https://maven.wso2.org/nexus/content/groups/wso2-public/"));
     }
 }

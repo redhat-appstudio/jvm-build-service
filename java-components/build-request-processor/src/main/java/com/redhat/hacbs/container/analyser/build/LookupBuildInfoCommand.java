@@ -36,6 +36,7 @@ import org.apache.maven.cli.CLIManager;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
@@ -60,6 +61,8 @@ import com.redhat.hacbs.recipies.util.GitCredentials;
 import com.redhat.hacbs.resources.model.v1alpha1.Util;
 import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
+import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
+import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
 import io.quarkus.logging.Log;
 import io.vertx.core.json.JsonObject;
 import picocli.CommandLine;
@@ -278,31 +281,33 @@ public class LookupBuildInfoCommand implements Runnable {
         return ret;
     }
 
-    private Collection<String> handleRepositories(Model model, CacheBuildInfoLocator buildInfoLocator) {
+    Collection<String> handleRepositories(Path pomFile, CacheBuildInfoLocator buildInfoLocator)
+            throws BootstrapMavenException {
+        var config = BootstrapMavenContext.config();
+        System.setProperty("basedir", pomFile.getParent().toString());
+        config.setRootProjectDir(pomFile.getParent());
+        config.setEffectiveModelBuilder(true);
+        var newCtx = new BootstrapMavenContext(config);
+
         Set<String> repos = new HashSet<>();
-        for (var i : model.getRepositories()) {
-            repos.add(i.getUrl());
+        List<RemoteRepository> repositories = newCtx.getRemoteRepositories();
+        for (RemoteRepository repository : repositories) {
+            repos.add(repository.getUrl());
         }
-        for (var i : model.getPluginRepositories()) {
-            repos.add(i.getUrl());
-        }
-        for (var profile : model.getProfiles()) {
-            for (var i : profile.getRepositories()) {
-                repos.add(i.getUrl());
-            }
-            for (var i : profile.getPluginRepositories()) {
-                repos.add(i.getUrl());
-            }
+        List<RemoteRepository> pluginRepositories = newCtx.getRemotePluginRepositories();
+        for (RemoteRepository repository : pluginRepositories) {
+            repos.add(repository.getUrl());
         }
         if (repos.isEmpty()) {
             return List.of();
         }
+        Log.infof("Found repositories %s", repos);
         return buildInfoLocator.findRepositories(repos);
     }
 
     private boolean searchForBuildScript(BuildRecipeInfo buildRecipeInfo, CacheBuildInfoLocator buildInfoLocator,
             InvocationBuilder builder, Path path, boolean skipTests)
-            throws IOException, XmlPullParserException {
+            throws IOException, XmlPullParserException, BootstrapMavenException {
         boolean versionCorrect = false;
         boolean foundBuildScript = false;
         Path pomFile = null;
@@ -329,6 +334,7 @@ public class LookupBuildInfoCommand implements Runnable {
         }
         if (Files.isRegularFile(pomFile)) {
             Log.infof("Found Maven pom file at %s", pomFile);
+
             try (BufferedReader pomReader = Files.newBufferedReader(pomFile)) {
                 MavenXpp3Reader reader = new MavenXpp3Reader();
                 Model model = reader.read(pomReader);
@@ -346,7 +352,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 MavenJavaVersionDiscovery.filterJavaVersions(model, builder);
 
                 //look for repositories
-                for (var repo : handleRepositories(model, buildInfoLocator)) {
+                for (var repo : handleRepositories(pomFile, buildInfoLocator)) {
                     builder.addRepository(repo);
                 }
 

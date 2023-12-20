@@ -1,6 +1,5 @@
 package com.redhat.hacbs.artifactcache.resources;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -60,8 +59,7 @@ public class V2RecipeLookupResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("repository-info")
-    public Response findRepositories(@QueryParam("repositories") Set<String> repositories)
-            throws IOException {
+    public Response findRepositories(@QueryParam("repositories") Set<String> repositories) {
         try {
             repositories = repositories.stream().map(s -> s.endsWith("/") ? s.substring(0, s.length() - 1) : s)
                     .collect(Collectors.toSet());
@@ -88,8 +86,7 @@ public class V2RecipeLookupResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("build-tool-info")
-    public Response lookupBuildToolInfo(@QueryParam("name") String name)
-            throws IOException {
+    public Response lookupBuildToolInfo(@QueryParam("name") String name) {
         try {
             return Response.ok(recipeManager.getBuildToolInfo(name)).build();
         } catch (Exception e) {
