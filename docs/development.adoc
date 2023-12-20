@@ -8,6 +8,7 @@
 
 * Kubernetes cluster (link:https://kubernetes.io/docs/tasks/tools/#minikube[minikube] is fine!)
 * link:https://tekton.dev/docs/cli/[Tekton CLI]
+* link:https://github.com/openshift/oc[OpenShift OC CLI]
 
 == Local Development
 
