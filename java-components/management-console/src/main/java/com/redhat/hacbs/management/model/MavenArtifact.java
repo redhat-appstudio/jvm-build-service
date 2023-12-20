@@ -37,6 +37,9 @@ public class MavenArtifact extends PanacheEntity {
 
     public static MavenArtifact forGav(String gav) {
         var parts = gav.split(":");
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("not a GAV: " + gav);
+        }
         var group = parts[0];
         var artifact = parts[1];
         var version = parts[2];
