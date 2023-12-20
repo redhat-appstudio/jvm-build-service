@@ -259,6 +259,8 @@ public class InvocationBuilder {
                             String tool = invocationSet.getKey();
                             if (tool.equals(BuildInfo.MAVEN)) {
                                 //huge hack, we need a different invocation for different java versions
+                                //Note - according to https://github.com/apache/maven-deploy-plugin/releases
+                                //  the deploy plugin >= 3.1 is JDK8 only.
                                 List<String> cmds = new ArrayList<>(invocation);
                                 if (javaVersion.intVersion() < 8) {
                                     cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy");

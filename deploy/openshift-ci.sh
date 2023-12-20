@@ -1,5 +1,8 @@
 #!/bin/sh
-
+#
+# This is referenced by:
+# https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/jvm-build-service/redhat-appstudio-jvm-build-service-main.yaml
+#
 echo "Executing openshift-ci.sh"
 
 echo "jvm build service golang operator image:"
