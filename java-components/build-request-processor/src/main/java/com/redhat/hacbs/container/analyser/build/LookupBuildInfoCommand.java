@@ -352,7 +352,7 @@ public class LookupBuildInfoCommand implements Runnable {
 
                 var invocations = new ArrayList<>(
                         List.of("install", "-Denforcer.skip", "-Dcheckstyle.skip",
-                                "-Drat.skip=true", "-Dmaven.deploy.skip=false", "-Dgpg.skip", "-Drevapi.skip",
+                                "-Drat.skip=true", "-Dgpg.skip", "-Drevapi.skip",
                                 "-Djapicmp.skip", "-Dmaven.javadoc.failOnError=false", "-Dcobertura.skip=true",
                                 "-Dpgpverify.skip", "-Dspotbugs.skip", "-DallowIncompleteProjects"));
                 if (skipTests) {
