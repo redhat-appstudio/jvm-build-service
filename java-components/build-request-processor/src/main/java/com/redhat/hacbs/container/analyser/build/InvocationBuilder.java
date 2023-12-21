@@ -4,7 +4,6 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -191,7 +190,6 @@ public class InvocationBuilder {
         if (javaVersions.isEmpty()) {
             javaVersions.addAll(allPossibleJavaVersions);
         }
-        Collections.sort(javaVersions);
         //now select possible tools based on discovered version, or just whatever is available
         Map<String, Set<String>> selectedToolVersions = new HashMap<>();
         for (var entry : toolInvocations.entrySet()) {
