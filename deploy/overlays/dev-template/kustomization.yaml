@@ -10,14 +10,5 @@ resources:
 - quota.yaml
 
 patches:
-- patch: |-
-    - op: add
-      path: "/spec/template/spec/containers/0/env"
-      value:
-        - name: S3_SYNC_ENABLED
-          value: "true"
-  target:
-    kind: Deployment
-    name: hacbs-jvm-operator
 - path: config.yaml
 - path: system-config.yaml

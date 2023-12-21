@@ -23,6 +23,14 @@ if [ -z "$JBS_BUILD_IMAGE_SECRET" ]; then
     # Represents an empty dockerconfig.json
     export JBS_BUILD_IMAGE_SECRET="ewogICAgImF1dGhzIjogewogICAgfQp9Cg==" # notsecret
 fi
+if [ -z "$JBS_S3_SYNC_ENABLED" ]; then
+    export JBS_S3_SYNC_ENABLED=true
+fi
+# Horrendous hack to work around
+# https://github.com/kubernetes-sigs/kustomize/issues/5124
+# given an env var is a string (https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/)
+# and if 'true' or 'false' is seen that is coerced to a bool which causes an issue
+export JBS_S3_SYNC_ENABLED="\"$JBS_S3_SYNC_ENABLED\""
 
 kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
 # we don't restart the cache and local storage by default
@@ -56,6 +64,7 @@ ${GIT_DISABLE_SSL_VERIFICATION}
 ${JBS_BUILD_IMAGE_SECRET}
 ${JBS_GIT_CREDENTIALS}
 ${JBS_QUAY_IMAGE}
+${JBS_S3_SYNC_ENABLED}
 ${JBS_WORKER_NAMESPACE}
 ${MAVEN_PASSWORD}
 ${MAVEN_REPOSITORY}

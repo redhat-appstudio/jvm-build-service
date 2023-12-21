@@ -12,8 +12,18 @@ images:
   newName: quay.io/${JBS_QUAY_IMAGE}/hacbs-jvm-controller
   newTag: dev
 
-
 patches:
+# Note - see base-development for quoting requirements for
+# JBS_S3_SYNC_ENABLED and the linked kubernete issue.
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env
+      value:
+        - name: S3_SYNC_ENABLED
+          value: ${JBS_S3_SYNC_ENABLED}
+  target:
+    kind: Deployment
+    name: hacbs-jvm-operator
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/imagePullPolicy

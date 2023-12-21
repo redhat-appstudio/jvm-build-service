@@ -35,6 +35,7 @@ export JBS_QUAY_IMAGE=$QUAY_USERNAME
 export JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller
 # Represents an empty dockerconfig.json
 export JBS_BUILD_IMAGE_SECRET="ewogICAgImF1dGhzIjogewogICAgfQp9Cg==" # notsecret
+export JBS_S3_SYNC_ENABLED="\"false\""
 
 cat $DIR/base/namespace/namespace.yaml | envsubst '${JBS_WORKER_NAMESPACE}' | kubectl apply -f -
 kubectl config set-context --current --namespace=test-jvm-namespace
@@ -53,6 +54,7 @@ ${GIT_DISABLE_SSL_VERIFICATION}
 ${JBS_BUILD_IMAGE_SECRET}
 ${JBS_GIT_CREDENTIALS}
 ${JBS_QUAY_IMAGE}
+${JBS_S3_SYNC_ENABLED}
 ${JBS_WORKER_NAMESPACE}
 ${MAVEN_PASSWORD}
 ${MAVEN_REPOSITORY}
