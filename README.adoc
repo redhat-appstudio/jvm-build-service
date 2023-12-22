@@ -32,6 +32,11 @@ The following environment variables are configurable and may be set by the user 
 | GIT_DEPLOY_TOKEN | Authentication token
 | GIT_DEPLOY_URL | The URL for the Git service (GitHub/GitLab are supported) to archive the sources
 | GIT_DISABLE_SSL_VERIFICATION | Whether to disable SSL verification for Git archival service communication
+| JBS_QUAY_IMAGE | JBS images are pulled by default from the `QUAY_USERNAME` organization. This may be overridden by changing this
+| JBS_BUILD_IMAGE_SECRET | Secret for accessing Quay.io (See below)
+| JBS_GIT_CREDENTIALS | Support for private repositories (See below)
+| JBS_S3_SYNC_ENABLED | Whether to enable Amazon S3 sync for storage
+| JBS_WORKER_NAMESPACE | Default 'worker' namespace (`test-jvm-namespace`) may be customised by setting this
 | MAVEN_PASSWORD | Password for the Maven repository
 | MAVEN_REPOSITORY | The URL for the external Maven repository to deploy to
 | MAVEN_USERNAME | Username for the Maven repository
@@ -50,9 +55,6 @@ To support private repositories set:
 ```
 export JBS_GIT_CREDENTIALS='https://$GITHUB_E2E_ORGANIZATION:$GITHUB_TOKEN@github.com'
 ```
-By default, the JBS images are pulled from the `QUAY_USERNAME` organization. This may be overridden by setting `JBS_QUAY_IMAGE`.
-
-The 'worker' namespace (`test-jvm-namespace`) may be customized by setting `JBS_WORKER_NAMESPACE`.
 
 
 == Documentation
