@@ -8,22 +8,24 @@ import {
 } from "../../services/openapi";
 import {Link, RouteComponentProps} from "react-router-dom";
 import {
-    Card,
-    CardBody,
-    CardHeader,
-    CardTitle, CodeBlock, CodeBlockCode,
-    DescriptionList,
-    DescriptionListDescription,
-    DescriptionListGroup,
-    DescriptionListTerm,
-    Dropdown,
-    DropdownItem, DropdownList,
-    ExpandableSection,
-    Flex,
-    FlexItem,
-    Label,
-    MenuToggle,
-    MenuToggleElement
+  ActionList,
+  ActionListItem, Button,
+  Card,
+  CardBody, CardFooter,
+  CardHeader,
+  CardTitle, CodeBlock, CodeBlockCode,
+  DescriptionList,
+  DescriptionListDescription,
+  DescriptionListGroup,
+  DescriptionListTerm,
+  Dropdown,
+  DropdownItem, DropdownList,
+  ExpandableSection,
+  Flex,
+  FlexItem,
+  Label,
+  MenuToggle,
+  MenuToggleElement, PageSection, PageSectionVariants, Tab, Tabs, TabTitleText, Text, TextContent, TextVariants
 } from "@patternfly/react-core";
 import {
     CheckCircleIcon,
@@ -31,6 +33,7 @@ import {
     ErrorCircleOIcon,
     IceCreamIcon, WarningTriangleIcon
 } from "@patternfly/react-icons";
+import {H1} from "@storybook/components";
 
 interface RouteParams {
     id: string
@@ -46,7 +49,16 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
     const [build, setBuild] = useState(initial);
     const [error, setError] = useState(false);
     const [state, setState] = useState('');
-    const [isMenuOpen, setIsMenuOpen] = React.useState<boolean>(false);
+
+  const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
+  // Toggle currently active tab
+  const handleTabClick = (
+    event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
+    tabIndex: string | number
+  ) => {
+    setActiveTabKey(tabIndex);
+  };
+
 
     useEffect(() => {
         setState('loading');
@@ -71,6 +83,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
         );
     if (state === 'loading')
         return (<h1>Loading...</h1>)
+
     const statusIcon = function (build: BuildDTO) {
         if (build.contaminated) {
             return <Label color="orange" icon={<CheckCircleIcon/>}>
@@ -86,7 +99,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
         </Label>
     }
 
-    const rebuild = (event: React.SyntheticEvent<HTMLLIElement>) => {
+    const rebuild = () => {
         BuildQueueResourceService.postApiBuildsQueue(build.name)
             .then(() => {
                 const copy = Object.assign({}, build);
@@ -94,40 +107,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 setBuild(copy)
             })
     };
-
-    const dropdownItems = (
-        <>
-            {/* Prevent default onClick functionality for example purposes */}
-            <DropdownItem key="rebuild" onSelect={rebuild} onClick={rebuild}>
-                Rebuild
-            </DropdownItem>
-            <DropdownItem key="discovery-logs" to={"/api/builds/history/discovery-logs/" + build.id} target="_blank">
-                Build Discovery Logs
-            </DropdownItem>
-        </>
-    );
-
-    const headerActions = (
-        <>
-            <Dropdown key="actions-dropdown"
-                      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                          <MenuToggle
-                              ref={toggleRef}
-                              isExpanded={isMenuOpen}
-                              onClick={() => setIsMenuOpen(!isMenuOpen)}
-                              variant="plain"
-                              aria-label="Actions"
-                          >
-                              <EllipsisVIcon aria-hidden="true"/>
-                          </MenuToggle>
-                      )}
-                      isOpen={isMenuOpen}
-                      onOpenChange={(isOpen: boolean) => setIsMenuOpen(isOpen)}
-            >
-                <DropdownList>{dropdownItems}</DropdownList>
-            </Dropdown>
-        </>
-    );
 
     const gitUri = (url: string, tag: string, commit: string) => {
         if (url == undefined) {
@@ -143,90 +122,119 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
     }
 
     return (
-        <Flex>
-            <FlexItem>
-                <Card>
-                    <CardHeader actions={{actions: headerActions}}>
-                        <CardTitle>Build {build.scmRepo}@{build.tag} {statusIcon(build)} {build.successfulBuild != undefined && !build.successfulBuild.passedVerification ?
-                            <Label color="orange" icon={<WarningTriangleIcon/>}>Failed
-                                Verification</Label> : ''} {build.inQueue &&
-                            <Label color="blue" icon={<IceCreamIcon/>}>In Build Queue</Label>}</CardTitle>
+      <>
+        <PageSection variant={PageSectionVariants.light}>
+          <TextContent>
+            <Text component={TextVariants.h1}>Build {build.scmRepo}@{build.tag} {statusIcon(build)} {build.successfulBuild != undefined && !build.successfulBuild.passedVerification ?
+              <Label color="orange" icon={<WarningTriangleIcon/>}>Failed
+                Verification</Label> : ''} {build.inQueue &&
+              <Label color="blue" icon={<IceCreamIcon/>}>In Build Queue</Label>}</Text>
+          </TextContent>
+        </PageSection>
+        <PageSection isFilled>
+          <Tabs  activeKey={activeTabKey}
+                 onSelect={handleTabClick}
+                 isBox
+                 aria-label="Tabs in the box light variation example"
+                 role="region" >
+            <Tab eventKey={0} title={<TabTitleText>Build Details</TabTitleText>} aria-label="Box light variation content - users">
+              <Card>
+                <CardHeader>Build Details</CardHeader>
+                <CardBody >
 
-                    </CardHeader>
-                    <CardBody>
-                        <DescriptionList
-                            columnModifier={{
-                                default: '2Col'
-                            }}>
-                            <DescriptionListGroup>
-                                <DescriptionListTerm>Internal Id</DescriptionListTerm>
-                                <DescriptionListDescription>{build.name}</DescriptionListDescription>
-                            </DescriptionListGroup>
-                            <DescriptionListGroup>
-                                <DescriptionListTerm>External Repository</DescriptionListTerm>
-                                <DescriptionListDescription>{gitUri(build.scmRepo, build.tag, build.commit)}</DescriptionListDescription>
-                            </DescriptionListGroup>
-                            <DescriptionListGroup>
-                                <DescriptionListTerm>Commit Hash</DescriptionListTerm>
-                                <DescriptionListDescription>{build.commit}</DescriptionListDescription>
-                            </DescriptionListGroup>
+                  <DescriptionList
+                    columnModifier={{
+                      default: '2Col'
+                    }}>
+                    <DescriptionListGroup>
+                      <DescriptionListTerm>Internal Id</DescriptionListTerm>
+                      <DescriptionListDescription>{build.name}</DescriptionListDescription>
+                    </DescriptionListGroup>
+                    <DescriptionListGroup>
+                      <DescriptionListTerm>External Repository</DescriptionListTerm>
+                      <DescriptionListDescription>{gitUri(build.scmRepo, build.tag, build.commit)}</DescriptionListDescription>
+                    </DescriptionListGroup>
+                    <DescriptionListGroup>
+                      <DescriptionListTerm>Commit Hash</DescriptionListTerm>
+                      <DescriptionListDescription>{build.commit}</DescriptionListDescription>
+                    </DescriptionListGroup>
+                    <DescriptionListGroup>
+                      <DescriptionListTerm>Logs</DescriptionListTerm>
+                      <DescriptionListDescription><Link  to={"/api/builds/history/discovery-logs/" + build.id} target="_blank">Discovery Logs</Link> <Link to={"/api/builds/attempts/logs/" + build.successfulBuild?.id} target="_blank"> Build Logs</Link></DescriptionListDescription>
+                    </DescriptionListGroup>
+                    {build.successfulBuild != undefined && build.successfulBuild.gitArchiveUrl != undefined && build.successfulBuild.gitArchiveSha != undefined && build.successfulBuild.gitArchiveTag != undefined &&
+                      <DescriptionListGroup>
+                        <DescriptionListTerm>Internal Archive</DescriptionListTerm>
+                        <DescriptionListDescription>{gitUri(build.successfulBuild.gitArchiveUrl, build.successfulBuild.gitArchiveTag, build.successfulBuild.gitArchiveSha)}</DescriptionListDescription>
+                      </DescriptionListGroup>}
+                    {build.successfulBuild != undefined && <BuildAttemptDetails attempt={build.successfulBuild}></BuildAttemptDetails>}
+                  </DescriptionList>
+                </CardBody>
 
-                            {build.successfulBuild != undefined ? build.successfulBuild.gitArchiveUrl != undefined && build.successfulBuild.gitArchiveSha != undefined && build.successfulBuild.gitArchiveTag != undefined ?
-                                <DescriptionListGroup>
-                                    <DescriptionListTerm>Internal Archive</DescriptionListTerm>
-                                    <DescriptionListDescription>{gitUri(build.successfulBuild.gitArchiveUrl, build.successfulBuild.gitArchiveTag, build.successfulBuild.gitArchiveSha)}</DescriptionListDescription>
-                                </DescriptionListGroup> : '' : ''}
+                <CardFooter>
+                <ActionList>
+                  <ActionListItem>
+                    <Button variant="secondary" id="single-group-next-button" onClick={rebuild}>
+                      Rebuild
+                    </Button>
+                  </ActionListItem>
+                </ActionList></CardFooter>
+              </Card>
+            </Tab>
+            <Tab eventKey={1} title={<TabTitleText>Failed Build Attempts</TabTitleText>}>
+              {build.buildAttempts == undefined ? '' : build.buildAttempts.map((build) => (
+                <Card key={build.id} >
+                <BuildAttempt attempt={build}></BuildAttempt></Card>
+              ))}
+            </Tab>
+            <Tab eventKey={2} disabled={build.successfulBuild == undefined || Object.entries(build.successfulBuild.upstreamDifferences).length == 0} title={<TabTitleText>Verification Failures</TabTitleText>}>
+              <Card>
+                <CardHeader>Verification Failures</CardHeader>
+                <CardBody>
+                  <DescriptionList>
+                    {build.successfulBuild != undefined && Object.entries(build.successfulBuild.upstreamDifferences).map(([key, value]) => {
+                      return <DescriptionListGroup key={key}>
+                        <DescriptionListTerm>{key}</DescriptionListTerm>
+                        <DescriptionListDescription>
+                          <CodeBlock >
+                            <CodeBlockCode id="code-content">{value}</CodeBlockCode>
+                          </CodeBlock>
+                        </DescriptionListDescription>
+                      </DescriptionListGroup>
+                    })}
+                  </DescriptionList>
+                </CardBody>
+              </Card>
+            </Tab>
 
-                        </DescriptionList>
-                    </CardBody>
-                </Card>
-                {build.successfulBuild == undefined ? '' :
-                    <>
-                        {Object.entries(build.successfulBuild.upstreamDifferences).length > 0 ?
-                            <Card>
-                                <CardHeader>Verification Failures</CardHeader>
-                                <CardBody>
-
-                                    <DescriptionList>
-
-                                        {Object.entries(build.successfulBuild.upstreamDifferences).map(([key, value]) => {
-                                            return <DescriptionListGroup key={key}>
-                                                <DescriptionListTerm>{key}</DescriptionListTerm>
-                                                <DescriptionListDescription>
-                                                    <CodeBlock >
-                                                        <CodeBlockCode id="code-content">{value}</CodeBlockCode>
-                                                    </CodeBlock>
-                                                </DescriptionListDescription>
-                                            </DescriptionListGroup>
-                                        })}
-                                    </DescriptionList>
-                                </CardBody>
-                            </Card>
-                            : ''}
-                        <BuildAttempt attempt={build.successfulBuild} expanded={true}></BuildAttempt></>}
-                {build.buildAttempts == undefined ? '' : build.buildAttempts.map((build) => (
-                    <BuildAttempt key={build.id} attempt={build} expanded={false}></BuildAttempt>
-                ))}
-            </FlexItem>
-        </Flex>);
+            <Tab eventKey={3} disabled={build.successfulBuild == undefined} title={<TabTitleText>Deployed Artifacts</TabTitleText>}>
+              <Card>
+                <CardHeader>Artifacts</CardHeader>
+                <CardBody>
+                  <DescriptionList>
+                    {build.artifacts != undefined && build.artifacts.map(key => <>{key}</>)}
+                  </DescriptionList>
+                </CardBody>
+              </Card>
+            </Tab>
+            <Tab eventKey={4} disabled={build.shadingDetails?.length == 0} title={<TabTitleText>Shading Details</TabTitleText>}>
+              <Card>
+                <CardHeader>Shading</CardHeader>
+                <CardBody>
+                  {build.shadingDetails?.map(key => <>{key.contaminant?.identifier?.group}:{key.contaminant?.identifier?.artifact}:{key.contaminant?.version}</>)}
+                </CardBody>
+              </Card>
+            </Tab>
+          </Tabs>
+        </PageSection>
+      </>);
 };
 
 type BuildAttemptType = {
     attempt: BuildAttemptDTO
-    expanded: boolean
 };
 
 const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {
-    const [isExpanded, setIsExpanded] = React.useState(data.expanded);
-    const [isMenuOpen, setIsMenuOpen] = React.useState<boolean>(false);
-
-    const onToggle = (_event: React.MouseEvent, isExpanded: boolean) => {
-        setIsExpanded(isExpanded);
-    };
-    if (data.attempt == undefined) {
-        return <></>
-    }
-
     const statusIcon = function (build: BuildAttemptDTO) {
 
         if (build.successful) {
@@ -239,78 +247,52 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
         </Label>
     }
 
-    const dropdownItems = (
-        <>
-            {/* Prevent default onClick functionality for example purposes */}
-            <DropdownItem key="link" to={"/api/builds/attempts/logs/" + data.attempt?.id} target="_blank">
-                Build Logs
-            </DropdownItem>
-        </>
-    );
-
-    const headerActions = (
-        <>
-            <Dropdown
-                toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                    <MenuToggle
-                        ref={toggleRef}
-                        isExpanded={isMenuOpen}
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        variant="plain"
-                        aria-label="Actions"
-                    >
-                        <EllipsisVIcon aria-hidden="true"/>
-                    </MenuToggle>
-                )}
-                isOpen={isMenuOpen}
-                onOpenChange={(isOpen: boolean) => setIsMenuOpen(isOpen)}
-            >
-                <DropdownList>{dropdownItems}</DropdownList>
-            </Dropdown>
-        </>
-    );
-    return (
-        <ExpandableSection
-            toggleContent={<>{'JDK' + data.attempt.jdk + " " + data.attempt.tool + " " + (data.attempt.tool === "maven" ? data.attempt.mavenVersion : data.attempt.tool === "gradle" ? data.attempt.gradleVersion : "")}{statusIcon(data.attempt)} </>}
-            onToggle={onToggle}
-            isExpanded={isExpanded}>
-            <Card>
-                <CardHeader actions={{actions: headerActions}}>Build Details</CardHeader>
+    return (<Card>
+                <CardHeader>{'JDK' + data.attempt.jdk + " " + data.attempt.tool + " " + (data.attempt.tool === "maven" ? data.attempt.mavenVersion : data.attempt.tool === "gradle" ? data.attempt.gradleVersion : "")}{statusIcon(data.attempt)}</CardHeader>
                 <CardBody>
                     <DescriptionList
                         columnModifier={{
                             default: '2Col'
                         }}>
-                        <DescriptionListGroup>
-                            <DescriptionListTerm>JDK</DescriptionListTerm>
-                            <DescriptionListDescription>{data.attempt.jdk}</DescriptionListDescription>
-                        </DescriptionListGroup>
-                        <DescriptionListGroup>
-                            <DescriptionListTerm>Tool</DescriptionListTerm>
-                            <DescriptionListDescription>{data.attempt.tool}</DescriptionListDescription>
-                        </DescriptionListGroup>
-                        <DescriptionListGroup>
-                            <DescriptionListTerm>Maven Version</DescriptionListTerm>
-                            <DescriptionListDescription>{data.attempt.mavenVersion}</DescriptionListDescription>
-                        </DescriptionListGroup>
-                        <DescriptionListGroup>
-                            <DescriptionListTerm>Gradle Version</DescriptionListTerm>
-                            <DescriptionListDescription>{data.attempt.gradleVersion}</DescriptionListDescription>
-                        </DescriptionListGroup>
-                        <DescriptionListGroup>
-                            <DescriptionListTerm>SBT Version</DescriptionListTerm>
-                            <DescriptionListDescription>{data.attempt.sbtVersion}</DescriptionListDescription>
-                        </DescriptionListGroup>
-                        <DescriptionListGroup>
-                            <DescriptionListTerm>Ant Version</DescriptionListTerm>
-                            <DescriptionListDescription>{data.attempt.antVersion}</DescriptionListDescription>
-                        </DescriptionListGroup>
+                      <DescriptionListGroup>
+                        <DescriptionListTerm>Logs</DescriptionListTerm>
+                        <DescriptionListDescription><Link to={"/api/builds/attempts/logs/" + data.attempt?.id} target="_blank"> Build Logs</Link></DescriptionListDescription>
+                      </DescriptionListGroup>
+                      <BuildAttemptDetails attempt={data.attempt}></BuildAttemptDetails>
                     </DescriptionList>
 
                 </CardBody>
-            </Card>
-        </ExpandableSection>
-    );
+            </Card>);
+};
+
+const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {
+
+
+  return <>
+        <DescriptionListGroup>
+          <DescriptionListTerm>JDK</DescriptionListTerm>
+          <DescriptionListDescription>{data.attempt.jdk}</DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Tool</DescriptionListTerm>
+          <DescriptionListDescription>{data.attempt.tool}</DescriptionListDescription>
+        </DescriptionListGroup>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Maven Version</DescriptionListTerm>
+          <DescriptionListDescription>{data.attempt.mavenVersion}</DescriptionListDescription>
+        </DescriptionListGroup>
+        {data.attempt.gradleVersion != undefined && <DescriptionListGroup>
+          <DescriptionListTerm>Gradle Version</DescriptionListTerm>
+          <DescriptionListDescription>{data.attempt.gradleVersion}</DescriptionListDescription>
+        </DescriptionListGroup>}
+        {data.attempt.sbtVersion != undefined && <DescriptionListGroup>
+          <DescriptionListTerm>SBT Version</DescriptionListTerm>
+          <DescriptionListDescription>{data.attempt.sbtVersion}</DescriptionListDescription>
+        </DescriptionListGroup>}
+        {data.attempt.antVersion != undefined && <DescriptionListGroup>
+          <DescriptionListTerm>Ant Version</DescriptionListTerm>
+          <DescriptionListDescription>{data.attempt.antVersion}</DescriptionListDescription>
+        </DescriptionListGroup>}</>
 };
 
 

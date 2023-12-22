@@ -12,5 +12,6 @@ export type BuildListDTO = {
     contaminated?: boolean;
     artifacts?: string;
     inQueue?: boolean;
+    creationTime: number;
 };
 

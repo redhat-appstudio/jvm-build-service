@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import com.redhat.hacbs.management.model.MavenArtifact;
+import com.redhat.hacbs.management.model.ShadingDetails;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
 import io.quarkus.arc.Arc;
@@ -23,13 +24,14 @@ public record BuildDTO(
         List<String> artifacts,
         BuildAttemptDTO successfulBuild,
         List<BuildAttemptDTO> buildAttempts,
+        List<ShadingDetails> shadingDetails,
 
         boolean inQueue) {
     public static BuildDTO of(StoredDependencyBuild build) {
         EntityManager entityManager = Arc.container().instance(EntityManager.class).get();
         var inQueue = false;
         Long n = (Long) entityManager.createQuery(
-                "select count(*) from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier=:b")
+                "select count(a) from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier=:b")
                 .setParameter("b", build.buildIdentifier).getSingleResult();
         if (n > 0) {
             inQueue = true;
@@ -51,6 +53,7 @@ public record BuildDTO(
                 build.producedArtifacts.stream().map(MavenArtifact::gav).toList(),
                 success,
                 others,
+                build.shadingDetails,
                 inQueue);
 
     }
