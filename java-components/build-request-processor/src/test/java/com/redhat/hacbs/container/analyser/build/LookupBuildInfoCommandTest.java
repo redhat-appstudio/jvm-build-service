@@ -66,6 +66,7 @@ class LookupBuildInfoCommandTest {
         assertTrue(logRecords.stream()
                 .anyMatch(r -> LogCollectingTestResource.format(r)
                         .contains("Unable to locate a build script within")));
+        assertEquals("8", info.invocations.get(0).getToolVersion().get("jdk"));
     }
 
     @Test
