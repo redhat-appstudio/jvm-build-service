@@ -381,7 +381,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 var invocations = new ArrayList<>(
                         List.of("install",
                                 "-DallowIncompleteProjects",
-                                "-Danimal.sniffer.skip",
+                                "-Danimal.sniffer.skip", // https://github.com/mojohaus/animal-sniffer
                                 "-Dcheckstyle.skip",
                                 "-Dcobertura.skip",
                                 "-Denforcer.skip",
@@ -391,6 +391,7 @@ public class LookupBuildInfoCommand implements Runnable {
                                 "-Dpgpverify.skip",
                                 "-Drat.skip=true",
                                 "-Drevapi.skip",
+                                "-Dsort.skip", // https://github.com/Ekryd/sortpom
                                 "-Dspotbugs.skip"));
                 if (skipTests) {
                     //we assume private repos are essentially fresh tags we have control of
