@@ -15,6 +15,7 @@ import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildIdentifier;
 import com.redhat.hacbs.management.model.MavenArtifact;
 import com.redhat.hacbs.management.model.ScmRepository;
+import com.redhat.hacbs.management.model.ShadingDetails;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuildSpec;
@@ -89,6 +90,23 @@ public class DependencyBuildImporter {
             storedBuild.buildDiscoveryUrl = "s3://" + s3Bucket + "/build-logs/" + dependencyBuild.getMetadata().getName() + "/"
                     + dependencyBuild.getMetadata().getUid()
                     + "/build-discovery.log";
+        }
+        if (dependencyBuild.getStatus().getContaminates() != null) {
+            storedBuild.shadingDetails = new ArrayList<>();
+            for (var i : dependencyBuild.getStatus().getContaminates()) {
+                ShadingDetails d = new ShadingDetails();
+                d.contaminant = MavenArtifact.forGav(i.getGav());
+                d.contaminatedArtifacts = new ArrayList<>();
+                for (var j : i.getContaminatedArtifacts()) {
+                    d.contaminatedArtifacts.add(MavenArtifact.forGav(j));
+                }
+                d.buildId = i.getBuildId();
+                d.allowed = i.getAllowed() == null ? false : i.getAllowed();
+                d.rebuildAvailable = i.getRebuildAvailable() == null ? false : i.getRebuildAvailable();
+                d.source = i.getSource();
+
+                storedBuild.shadingDetails.add(d);
+            }
         }
         if (dependencyBuild.getStatus().getBuildAttempts() != null) {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {

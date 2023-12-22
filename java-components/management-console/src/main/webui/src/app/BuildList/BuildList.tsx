@@ -13,7 +13,7 @@ import {
   Label,
   MenuToggle,
   MenuToggleElement,
-  Pagination, SearchInput,
+  Pagination, SearchInput, Timestamp,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -36,6 +36,7 @@ const columnNames = {
   repo: 'Repo',
   tag: 'Tag',
   artifacts: 'Artifacts',
+  creationTime: 'Creation Time',
   actions: 'Actions',
 };
 
@@ -185,16 +186,14 @@ const BuildList: React.FunctionComponent = () => {
             <Th width={10}>{columnNames.name}</Th>
             <Th width={20}>{columnNames.repo}</Th>
             <Th width={10}>{columnNames.tag}</Th>
+            <Th width={10}>{columnNames.creationTime}</Th>
             <Th width={10}>{columnNames.artifacts}</Th>
             <Th width={10}>{columnNames.actions}</Th>
           </Tr>
         </Thead>
         <Tbody>
           {builds.length > 0 &&
-            builds.sort((a: BuildListDTO,b: BuildListDTO) => {
-              const left = a.scmRepo ?? "";
-              const right = b.scmRepo ?? "";
-              return left.localeCompare(right)}).map((build: BuildListDTO, index) => (
+            builds.map((build: BuildListDTO, index) => (
                   <BuildRow build={build} key={index}></BuildRow>
             ))}
           {builds.length === 0 && (
@@ -283,6 +282,9 @@ const BuildRow: React.FunctionComponent<BuildActionsType> = (initialBuild):JSX.E
     </Td>
     <Td dataLabel={columnNames.tag} modifier="truncate">
       {build.tag}
+    </Td>
+    <Td dataLabel={columnNames.creationTime} modifier="truncate">
+      <Timestamp date={new Date(build.creationTime)}></Timestamp>
     </Td>
     <Td dataLabel={columnNames.tag} modifier="truncate">
       {build.artifacts}

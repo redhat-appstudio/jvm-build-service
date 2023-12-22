@@ -7,6 +7,7 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { ArtifactIdentifier } from './models/ArtifactIdentifier';
 export type { ArtifactLabelName } from './models/ArtifactLabelName';
 export type { ArtifactListDTO } from './models/ArtifactListDTO';
 export type { ArtifactSummaryDTO } from './models/ArtifactSummaryDTO';
@@ -23,6 +24,7 @@ export type { IdentifiedDependencyDTO } from './models/IdentifiedDependencyDTO';
 export type { Image } from './models/Image';
 export type { Instant } from './models/Instant';
 export type { JsonObject } from './models/JsonObject';
+export type { MavenArtifact } from './models/MavenArtifact';
 export type { ModifyScmRepoCommand } from './models/ModifyScmRepoCommand';
 export type { PageParametersArtifactListDTO } from './models/PageParametersArtifactListDTO';
 export type { PageParametersBuildListDTO } from './models/PageParametersBuildListDTO';
@@ -30,6 +32,7 @@ export type { PageParametersBuildQueueListDTO } from './models/PageParametersBui
 export type { PageParametersGithubBuildDTO } from './models/PageParametersGithubBuildDTO';
 export type { ReplayEvent } from './models/ReplayEvent';
 export type { RunningBuildDTO } from './models/RunningBuildDTO';
+export type { ShadingDetails } from './models/ShadingDetails';
 
 export { ArtifactEditResourceService } from './services/ArtifactEditResourceService';
 export { ArtifactHistoryResourceService } from './services/ArtifactHistoryResourceService';

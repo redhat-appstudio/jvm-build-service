@@ -102,7 +102,8 @@ public class BuildHistoryResource {
             String artifactList = StoredArtifactBuild.<StoredArtifactBuild> find("buildIdentifier", build.buildIdentifier)
                     .page(0, 5).stream().map(s -> s.mavenArtifact.gav()).collect(Collectors.joining(","));
             ret.add(new BuildListDTO(build.id, build.buildIdentifier.dependencyBuildName, build.buildIdentifier.repository.url,
-                    build.buildIdentifier.tag, build.succeeded, build.contaminated, artifactList, inQueue));
+                    build.buildIdentifier.tag, build.succeeded, build.contaminated, artifactList, inQueue,
+                    build.creationTimestamp.toEpochMilli()));
         }
 
         q = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query.toString());
