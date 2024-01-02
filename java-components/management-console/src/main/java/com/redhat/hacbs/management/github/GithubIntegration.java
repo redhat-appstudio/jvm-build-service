@@ -18,6 +18,7 @@ import jakarta.transaction.Transactional;
 import org.cyclonedx.BomParserFactory;
 import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.model.Bom;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.kohsuke.github.GHArtifact;
 import org.kohsuke.github.GHCheckRun;
 import org.kohsuke.github.GHCheckRunBuilder;
@@ -31,6 +32,7 @@ import com.redhat.hacbs.management.model.*;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
+import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
@@ -38,6 +40,7 @@ import io.quarkiverse.githubapp.GitHubClientProvider;
 import io.quarkiverse.githubapp.event.PullRequest;
 import io.quarkiverse.githubapp.event.WorkflowRun;
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.LaunchMode;
 import io.quarkus.runtime.Startup;
 
 @Startup
@@ -55,10 +58,19 @@ public class GithubIntegration {
     @Inject
     EntityManager entityManager;
 
+    @ConfigProperty(name = "kube.disabled", defaultValue = "false")
+    boolean disabled;
+
     public static final String SUPPLY_CHAIN_CHECK = "Supply Chain Check";
 
     @PostConstruct
     public void setupWatch() {
+        if ((LaunchMode.current() == LaunchMode.TEST
+                && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test")) || disabled) {
+            //don't start in tests, as kube might not be present
+            Log.warnf("Kubernetes client disabled so unable to initiate GitHub integration");
+            return;
+        }
         client.resources(ArtifactBuild.class).watch(new Watcher<ArtifactBuild>() {
             @Override
             public void eventReceived(Action action, ArtifactBuild artifactBuild) {

@@ -14,6 +14,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import com.redhat.hacbs.management.model.ContainerImage;
 import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
 import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScanSpec;
@@ -35,6 +37,8 @@ public class DeploymentWatcher {
     @Inject
     KubernetesClient client;
 
+    @ConfigProperty(name = "kube.disabled", defaultValue = "false")
+    boolean disabled;
     private final TreeMap<NamespacedName, DeploymentInfo> deployments = new TreeMap<>();
 
     public Map<NamespacedName, DeploymentInfo> getDeployments() {
@@ -46,7 +50,7 @@ public class DeploymentWatcher {
     @PostConstruct
     public void setup() {
         if ((LaunchMode.current() == LaunchMode.TEST
-                && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test"))) {
+                && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test")) || disabled) {
             //don't start in tests, as kube might not be present
             Log.warnf("Kubernetes client disabled so unable to initiate Deployment  importer");
             return;

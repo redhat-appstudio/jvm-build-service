@@ -40,10 +40,13 @@ public class JvmImageScanWatcher {
     @ConfigProperty(name = "image-scan.enabled", defaultValue = "true")
     boolean enabled;
 
+    @ConfigProperty(name = "kube.disabled", defaultValue = "false")
+    boolean disabled;
+
     @PostConstruct
     public void setup() {
         if ((LaunchMode.current() == LaunchMode.TEST
-                && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test"))) {
+                && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test")) || disabled) {
             //don't start in tests, as kube might not be present
             Log.warnf("Kubernetes client disabled so unable to initiate image scan importer");
             return;
