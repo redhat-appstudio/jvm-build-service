@@ -7,6 +7,10 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const Dotenv = require('dotenv-webpack');
 const BG_IMAGES_DIRNAME = 'bgimages';
 const ASSET_PATH = process.env.ASSET_PATH || '/';
+const webpack = require('webpack')
+const { GitRevisionPlugin } = require('git-revision-webpack-plugin');
+const gitRevisionPlugin = new GitRevisionPlugin()
+
 module.exports = (env) => {
   return {
     module: {
@@ -121,6 +125,7 @@ module.exports = (env) => {
       new CopyPlugin({
         patterns: [{ from: './src/favicon.png', to: 'images' }],
       }),
+      new webpack.DefinePlugin({'COMMIT_HASH': JSON.stringify(gitRevisionPlugin.commithash())}),
     ],
     resolve: {
       extensions: ['.js', '.ts', '.tsx', '.jsx'],

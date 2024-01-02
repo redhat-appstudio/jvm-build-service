@@ -1,24 +1,31 @@
 import * as React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import {NavLink, useLocation} from 'react-router-dom';
 import {
-  Brand,
   Button,
   Masthead,
   MastheadBrand,
+  MastheadContent,
   MastheadMain,
   MastheadToggle,
-	Nav,
+  Modal,
+  Nav,
   NavExpandable,
   NavItem,
-	NavList,
-	Page,
-	PageSidebar,
+  NavList,
+  Page,
+  PageSidebar,
   PageSidebarBody,
-	SkipToContent
+  SkipToContent,
+  TextContent,
+  TextList,
+  TextListItem,
+  Toolbar,
+  ToolbarContent,
+  ToolbarGroup,
+  ToolbarItem
 } from '@patternfly/react-core';
-import { IAppRoute, IAppRouteGroup, routes } from '@app/routes';
-import logo from '@app/bgimages/Patternfly-Logo.svg';
-import { BarsIcon } from '@patternfly/react-icons';
+import {IAppRoute, IAppRouteGroup, routes} from '@app/routes';
+import {BarsIcon, QuestionCircleIcon} from '@patternfly/react-icons';
 
 interface IAppLayout {
   children: React.ReactNode;
@@ -26,6 +33,39 @@ interface IAppLayout {
 
 const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+
+  const headerToolbar = (
+    <Toolbar id="toolbar" isFullHeight isStatic>
+      <ToolbarContent>
+        <ToolbarGroup
+          variant="icon-button-group"
+          align={{ default: 'alignRight' }}
+          spacer={{ default: 'spacerNone', md: 'spacerMd' }}
+        >
+          <ToolbarItem>
+            <Button aria-label="Help" variant="plain" icon={<QuestionCircleIcon/>} onClick={() => setIsModalOpen(!isModalOpen)}/>
+            {/* Could use AboutModal here but currently have very little to display */}
+            <Modal
+              variant="small"
+              title="Java Build Service"
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(!isModalOpen)}
+            >
+              <TextContent id="c1" className="pf-v5-u-py-xl">
+                <p>See <a href="https://github.com/redhat-appstudio/jvm-build-service">jvm-build-service</a> for
+                  information</p>
+                <TextList component="dl">
+                  <TextListItem component="dt">GIT SHA</TextListItem>
+                  <TextListItem component="dd">{COMMIT_HASH}</TextListItem>
+                </TextList>
+              </TextContent>
+            </Modal>
+          </ToolbarItem>
+        </ToolbarGroup>
+      </ToolbarContent>
+    </Toolbar>
+  );
   const Header = (
     <Masthead>
       <MastheadToggle>
@@ -34,10 +74,9 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
         </Button>
       </MastheadToggle>
       <MastheadMain>
-        <MastheadBrand>
-          <Brand src={logo} alt="Patterfly Logo" heights={{ default: '36px' }} />
-        </MastheadBrand>
+        <MastheadBrand>Java Build Service</MastheadBrand>
       </MastheadMain>
+      <MastheadContent>{headerToolbar}</MastheadContent>
     </Masthead>
   );
 
