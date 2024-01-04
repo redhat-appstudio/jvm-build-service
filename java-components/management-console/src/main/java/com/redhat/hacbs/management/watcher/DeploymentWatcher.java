@@ -48,7 +48,7 @@ public class DeploymentWatcher {
         if ((LaunchMode.current() == LaunchMode.TEST
                 && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test"))) {
             //don't start in tests, as kube might not be present
-            Log.warnf("Kubernetes client disabled so unable to initiate Deployment  importer");
+            Log.warnf("Kubernetes client disabled so unable to initiate Deployment importer");
             return;
         }
         ExecutorRecorder.getCurrent().execute(new Runnable() {
