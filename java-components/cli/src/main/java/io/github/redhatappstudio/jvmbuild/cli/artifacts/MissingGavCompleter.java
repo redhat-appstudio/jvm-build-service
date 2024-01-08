@@ -2,11 +2,11 @@ package io.github.redhatappstudio.jvmbuild.cli.artifacts;
 
 import java.util.stream.Collectors;
 
+import com.redhat.hacbs.common.tools.completer.RequestScopedCompleter;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.github.redhatappstudio.jvmbuild.cli.RequestScopedCompleter;
 
 /**
  * Completer that selects artifacts by GAV, but only in state missing

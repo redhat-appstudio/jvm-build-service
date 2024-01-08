@@ -1,6 +1,6 @@
-package io.github.redhatappstudio.jvmbuild.cli.util;
+package com.redhat.hacbs.common.tools.logging;
 
-import io.github.redhatappstudio.jvmbuild.cli.model.Log;
+import io.github.redhatappstudio.jvmbuild.resources.model.Log;
 
 /**
  * A log record is as follows:

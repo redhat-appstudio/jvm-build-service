@@ -1,4 +1,4 @@
-package io.github.redhatappstudio.jvmbuild.cli;
+package com.redhat.hacbs.common.tools.completer;
 
 import java.util.HashMap;
 import java.util.Iterator;
