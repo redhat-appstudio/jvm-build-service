@@ -14,6 +14,7 @@ import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.BuildAttempts;
+import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.DiscoveryPipelineResults;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.buildattempts.Build;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.buildattempts.build.Results;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.buildattempts.build.results.PipelineResults;
@@ -65,6 +66,9 @@ public class BuildLogTest extends TestComponentManager {
         buildAttempts.setBuild(build);
         build.setResults(results);
         results.setPipelineResults(pipelineResults);
+        DiscoveryPipelineResults discoveryPipelineResults = new DiscoveryPipelineResults();
+        discoveryPipelineResults.setLogs("test-jvm-namespace/foo/" + RESULT_UID + "/foo/" + LOG_UID);
+        db.getStatus().setDiscoveryPipelineResults(discoveryPipelineResults);
         // This is what the REST call ends up looking up.
         pipelineResults.setLogs(
                 "test-jvm-namespace/foo/" + RESULT_UID + "/foo/" + LOG_UID);
