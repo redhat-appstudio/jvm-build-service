@@ -9,6 +9,8 @@ import java.util.Objects;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import com.redhat.hacbs.management.model.User;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
@@ -32,10 +34,13 @@ public class InitialUserSetup {
     @Inject
     KubernetesClient kubernetesClient;
 
+    @ConfigProperty(name = "kube.disabled", defaultValue = "false")
+    boolean disabled;
+
     @PostConstruct
     public void setup() {
         if ((LaunchMode.current() == LaunchMode.TEST
-                && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test"))) {
+                && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test")) || disabled) {
             //don't start in tests, as kube might not be present
             Log.warnf("Kubernetes client disabled so unable to initiate admin user setup");
             return;
@@ -68,6 +73,5 @@ public class InitialUserSetup {
                 }
             });
         }
-
     }
 }
