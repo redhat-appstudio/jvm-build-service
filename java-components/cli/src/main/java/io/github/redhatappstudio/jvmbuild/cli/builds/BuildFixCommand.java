@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import com.redhat.hacbs.common.tools.recipes.ModifyBuildRecipeCommand;
-import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 

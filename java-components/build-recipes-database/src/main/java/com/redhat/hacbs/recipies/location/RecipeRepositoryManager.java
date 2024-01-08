@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.location;
+package com.redhat.hacbs.recipes.location;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -13,7 +13,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.merge.ContentMergeStrategy;
 import org.eclipse.jgit.merge.MergeStrategy;
 
-import com.redhat.hacbs.recipies.util.GitCredentials;
+import com.redhat.hacbs.recipes.util.GitCredentials;
 
 /**
  * A recipe database stored in git.

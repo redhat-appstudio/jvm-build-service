@@ -2,7 +2,7 @@ package com.redhat.hacbs.analyser.maven;
 
 import java.nio.file.Path;
 
-import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipes.GAV;
 
 public class MavenModule {
 

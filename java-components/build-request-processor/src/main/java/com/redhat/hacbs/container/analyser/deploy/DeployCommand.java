@@ -42,7 +42,7 @@ import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerReg
 import com.redhat.hacbs.container.analyser.deploy.git.Git;
 import com.redhat.hacbs.container.analyser.deploy.mavenrepository.MavenRepositoryDeployer;
 import com.redhat.hacbs.container.results.ResultsUpdater;
-import com.redhat.hacbs.recipies.util.FileUtil;
+import com.redhat.hacbs.recipes.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
 import com.redhat.hacbs.resources.util.HashUtil;
 

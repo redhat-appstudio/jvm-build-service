@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.scm;
+package com.redhat.hacbs.recipes.scm;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -21,12 +21,12 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.jboss.logging.Logger;
 
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.location.RecipeDirectory;
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
-import com.redhat.hacbs.recipies.util.GitCredentials;
+import com.redhat.hacbs.recipes.BuildRecipe;
+import com.redhat.hacbs.recipes.GAV;
+import com.redhat.hacbs.recipes.location.RecipeDirectory;
+import com.redhat.hacbs.recipes.location.RecipeGroupManager;
+import com.redhat.hacbs.recipes.location.RecipeRepositoryManager;
+import com.redhat.hacbs.recipes.util.GitCredentials;
 
 public class GitScmLocator implements ScmLocator {
 

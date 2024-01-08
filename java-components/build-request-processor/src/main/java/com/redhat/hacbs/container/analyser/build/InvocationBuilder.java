@@ -14,8 +14,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipies.tools.BuildToolInfo;
+import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipes.tools.BuildToolInfo;
 
 import io.quarkus.logging.Log;
 

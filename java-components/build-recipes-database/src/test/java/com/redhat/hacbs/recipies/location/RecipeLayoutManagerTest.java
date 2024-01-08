@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.location;
+package com.redhat.hacbs.recipes.location;
 
 import static org.junit.jupiter.api.Assertions.*;
 

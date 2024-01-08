@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies;
+package com.redhat.hacbs.recipes;
 
 import java.util.Objects;
 

@@ -1,11 +1,11 @@
-package com.redhat.hacbs.recipies;
+package com.redhat.hacbs.recipes;
 
 import java.util.Objects;
 
-import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipies.build.BuildRecipeInfoManager;
-import com.redhat.hacbs.recipies.scm.ScmInfo;
-import com.redhat.hacbs.recipies.scm.ScmInfoManager;
+import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipes.build.BuildRecipeInfoManager;
+import com.redhat.hacbs.recipes.scm.ScmInfo;
+import com.redhat.hacbs.recipes.scm.ScmInfoManager;
 
 /**
  * Represents a recipe file (e.g. scm.yaml) that contains build information

@@ -4,10 +4,10 @@ import java.util.Set;
 import java.util.function.Function;
 
 import com.redhat.hacbs.common.tools.repo.RepositoryChange;
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.build.AddBuildRecipeRequest;
-import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipies.location.BuildInfoRequest;
+import com.redhat.hacbs.recipes.BuildRecipe;
+import com.redhat.hacbs.recipes.build.AddBuildRecipeRequest;
+import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipes.location.BuildInfoRequest;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuildSpec;
 

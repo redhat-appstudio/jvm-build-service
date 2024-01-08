@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.disabledplugins;
+package com.redhat.hacbs.recipes.disabledplugins;
 
 import java.util.List;
 

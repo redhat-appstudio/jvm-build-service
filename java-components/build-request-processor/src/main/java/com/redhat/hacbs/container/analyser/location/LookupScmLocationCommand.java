@@ -8,8 +8,8 @@ import java.nio.file.Path;
 
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
-import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.scm.ScmLocator;
+import com.redhat.hacbs.recipes.GAV;
+import com.redhat.hacbs.recipes.scm.ScmLocator;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;

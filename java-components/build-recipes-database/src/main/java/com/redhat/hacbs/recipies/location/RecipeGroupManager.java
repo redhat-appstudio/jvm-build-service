@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.location;
+package com.redhat.hacbs.recipes.location;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,8 +9,8 @@ import java.util.Map;
 
 import org.jboss.logging.Logger;
 
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipes.BuildRecipe;
+import com.redhat.hacbs.recipes.GAV;
 
 /**
  * Entry point for requesting build information

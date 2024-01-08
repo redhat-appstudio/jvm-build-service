@@ -6,8 +6,8 @@ import java.util.List;
 
 import jakarta.inject.Singleton;
 
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipes.location.RecipeGroupManager;
+import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
 
 import picocli.CommandLine;
 

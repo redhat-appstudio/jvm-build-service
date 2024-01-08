@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.scm;
+package com.redhat.hacbs.recipes.scm;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

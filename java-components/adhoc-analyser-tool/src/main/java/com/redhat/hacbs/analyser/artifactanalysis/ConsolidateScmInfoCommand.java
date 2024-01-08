@@ -17,10 +17,10 @@ import jakarta.inject.Singleton;
 
 import com.redhat.hacbs.analyser.config.CheckoutConfig;
 import com.redhat.hacbs.analyser.config.RepoConfig;
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
-import com.redhat.hacbs.recipies.location.RecipeRepositoryManager;
-import com.redhat.hacbs.recipies.scm.ScmInfo;
+import com.redhat.hacbs.recipes.BuildRecipe;
+import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipes.location.RecipeRepositoryManager;
+import com.redhat.hacbs.recipes.scm.ScmInfo;
 
 import picocli.CommandLine;
 

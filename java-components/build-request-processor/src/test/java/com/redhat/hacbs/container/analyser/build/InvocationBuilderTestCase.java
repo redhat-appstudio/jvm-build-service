@@ -15,8 +15,8 @@ import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipies.tools.BuildToolInfo;
+import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipes.tools.BuildToolInfo;
 
 public class InvocationBuilderTestCase {
 

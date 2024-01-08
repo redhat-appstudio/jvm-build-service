@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.tools;
+package com.redhat.hacbs.recipes.tools;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -7,7 +7,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.redhat.hacbs.recipies.RecipeManager;
+import com.redhat.hacbs.recipes.RecipeManager;
 
 public class BuildToolInfoManager implements RecipeManager<List<BuildToolInfo>> {
 

@@ -2,7 +2,7 @@ package com.redhat.hacbs.analyser.maven;
 
 import java.util.Map;
 
-import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipes.GAV;
 
 public class MavenProject {
     private MavenModule topLevel;

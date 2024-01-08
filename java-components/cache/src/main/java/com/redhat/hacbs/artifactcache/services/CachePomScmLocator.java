@@ -10,7 +10,7 @@ import jakarta.inject.Inject;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 
-import com.redhat.hacbs.recipies.scm.AbstractPomScmLocator;
+import com.redhat.hacbs.recipes.scm.AbstractPomScmLocator;
 
 import io.quarkus.logging.Log;
 

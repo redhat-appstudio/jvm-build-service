@@ -17,6 +17,14 @@
             <artifactId>common-tools</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-classfile-tracker</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-resource-model</artifactId>
+        </dependency>
+        <dependency>
             <groupId>info.picocli</groupId>
             <artifactId>picocli-shell-jline2</artifactId>
         </dependency>
@@ -35,14 +43,6 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-kubernetes-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-resource-model</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-classfile-tracker</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -66,7 +66,7 @@
         </dependency>
         <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-build-recipies-database</artifactId>
+            <artifactId>hacbs-build-recipes-database</artifactId>
         </dependency>
         <dependency>
             <groupId>org.cyclonedx</groupId>

@@ -6,21 +6,20 @@
         <artifactId>jvm-build-service-parent</artifactId>
         <version>999-SNAPSHOT</version>
     </parent>
-    <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
     <artifactId>hacbs-resource-model</artifactId>
     <version>999-SNAPSHOT</version>
     <dependencies>
         <dependency>
-            <groupId>io.fabric8</groupId>
-            <artifactId>kubernetes-model-core</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-client</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-model-core</artifactId>
         </dependency>
         <dependency>
             <groupId>io.fabric8</groupId>

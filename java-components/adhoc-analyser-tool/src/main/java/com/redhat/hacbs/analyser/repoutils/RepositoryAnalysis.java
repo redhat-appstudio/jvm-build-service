@@ -14,12 +14,12 @@ import org.eclipse.jgit.api.Git;
 import com.redhat.hacbs.analyser.maven.GradleAnalyser;
 import com.redhat.hacbs.analyser.maven.MavenAnalyser;
 import com.redhat.hacbs.analyser.maven.MavenProject;
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.location.AddRecipeRequest;
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
-import com.redhat.hacbs.recipies.scm.RepositoryInfo;
-import com.redhat.hacbs.recipies.scm.ScmInfo;
+import com.redhat.hacbs.recipes.BuildRecipe;
+import com.redhat.hacbs.recipes.location.AddRecipeRequest;
+import com.redhat.hacbs.recipes.location.RecipeGroupManager;
+import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipes.scm.RepositoryInfo;
+import com.redhat.hacbs.recipes.scm.ScmInfo;
 
 public class RepositoryAnalysis {
 

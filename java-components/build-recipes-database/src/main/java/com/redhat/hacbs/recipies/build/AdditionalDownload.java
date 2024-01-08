@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.build;
+package com.redhat.hacbs.recipes.build;
 
 public class AdditionalDownload {
 

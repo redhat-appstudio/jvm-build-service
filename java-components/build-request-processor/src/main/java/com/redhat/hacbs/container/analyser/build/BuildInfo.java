@@ -3,7 +3,7 @@ package com.redhat.hacbs.container.analyser.build;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.redhat.hacbs.recipies.build.AdditionalDownload;
+import com.redhat.hacbs.recipes.build.AdditionalDownload;
 
 public class BuildInfo {
 
