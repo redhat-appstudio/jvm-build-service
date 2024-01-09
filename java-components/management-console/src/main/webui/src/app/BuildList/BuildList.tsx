@@ -35,7 +35,6 @@ const columnNames = {
   name: 'Build ID',
   repo: 'Repo',
   tag: 'Tag',
-  artifacts: 'Artifacts',
   creationTime: 'Creation Time',
   actions: 'Actions',
 };
@@ -187,7 +186,6 @@ const BuildList: React.FunctionComponent = () => {
             <Th width={20}>{columnNames.repo}</Th>
             <Th width={10}>{columnNames.tag}</Th>
             <Th width={10}>{columnNames.creationTime}</Th>
-            <Th width={10}>{columnNames.artifacts}</Th>
             <Th width={10}>{columnNames.actions}</Th>
           </Tr>
         </Thead>
@@ -285,9 +283,6 @@ const BuildRow: React.FunctionComponent<BuildActionsType> = (initialBuild):JSX.E
     </Td>
     <Td dataLabel={columnNames.creationTime} modifier="truncate">
       <Timestamp date={new Date(build.creationTime)}></Timestamp>
-    </Td>
-    <Td dataLabel={columnNames.tag} modifier="truncate">
-      {build.artifacts}
     </Td>
     <Td>
       <ActionListItem>

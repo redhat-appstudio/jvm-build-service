@@ -24,7 +24,6 @@ const columnNames = {
   status: 'Status',
   name: 'Artifact ID',
   gav: 'GAV',
-  message: 'Message',
   actions: 'Actions',
 };
 
@@ -176,7 +175,6 @@ const ArtifactList: React.FunctionComponent = () => {
             <Th width={10}>{columnNames.status}</Th>
             <Th width={10}>{columnNames.name}</Th>
             <Th width={10}>{columnNames.gav}</Th>
-            <Th width={10}>{columnNames.message}</Th>
             <Th width={10}>{columnNames.actions}</Th>
           </Tr>
         </Thead>
@@ -254,9 +252,6 @@ const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.E
     </Td>
     <Td dataLabel={columnNames.gav} modifier="truncate">
       {artifact.artifact.gav}
-    </Td>
-    <Td dataLabel={columnNames.message} modifier="truncate">
-      {artifact.artifact.message}
     </Td>
     <Td dataLabel={columnNames.actions}>
       <ActionListItem>
