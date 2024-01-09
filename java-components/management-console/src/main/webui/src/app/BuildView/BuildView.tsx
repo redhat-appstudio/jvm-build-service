@@ -160,7 +160,11 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                     </DescriptionListGroup>
                     <DescriptionListGroup>
                       <DescriptionListTerm>Logs</DescriptionListTerm>
-                      <DescriptionListDescription><Link  to={"/api/builds/history/discovery-logs/" + build.id} target="_blank">Discovery Logs</Link> <Link to={"/api/builds/attempts/logs/" + build.successfulBuild?.id} target="_blank"> Build Logs</Link></DescriptionListDescription>
+                      <DescriptionListDescription>
+                        <Link to={"/api/builds/attempts/logs/" + build.successfulBuild?.id} target="_blank"> Build Logs</Link>
+                        <br/>
+                        <Link to={"/api/builds/history/discovery-logs/" + build.id} target="_blank">Discovery Logs</Link>
+                      </DescriptionListDescription>
                     </DescriptionListGroup>
                     {build.successfulBuild != undefined && build.successfulBuild.gitArchiveUrl != undefined && build.successfulBuild.gitArchiveSha != undefined && build.successfulBuild.gitArchiveTag != undefined &&
                       <DescriptionListGroup>
@@ -181,7 +185,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 </ActionList></CardFooter>
               </Card>
             </Tab>
-            <Tab eventKey={1} title={<TabTitleText>Failed Build Attempts</TabTitleText>}>
+            <Tab eventKey={1} disabled={build.buildAttempts == undefined || build.buildAttempts.length == 0} title={<TabTitleText>Failed Build Attempts</TabTitleText>}>
               {build.buildAttempts == undefined ? '' : build.buildAttempts.map((build) => (
                 <Card key={build.id} >
                 <BuildAttempt attempt={build}></BuildAttempt></Card>
