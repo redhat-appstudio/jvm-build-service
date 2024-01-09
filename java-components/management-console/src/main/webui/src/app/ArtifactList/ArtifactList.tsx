@@ -1,14 +1,10 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
 import {
-  ActionListItem, Button,
+  ActionListItem,
   Dropdown,
   DropdownItem,
   DropdownList,
-  EmptyState,
-  EmptyStateBody,
-  EmptyStateHeader,
-  EmptyStateIcon,
   Label,
   MenuToggle,
   MenuToggleElement,
@@ -18,7 +14,6 @@ import {
   ToolbarItem,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
 import {ArtifactEditResourceService, ArtifactHistoryResourceService, ArtifactListDTO} from "../../services/openapi";
 import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
 import {ArtifactEditModal} from "@app/ArtifactEditModal/ArtifactEditModal";
@@ -27,6 +22,7 @@ import {EmptyTable} from "@app/EmptyTable/EmptyTable";
 
 const columnNames = {
   status: 'Status',
+  name: 'Artifact ID',
   gav: 'GAV',
   message: 'Message',
   actions: 'Actions',
@@ -44,7 +40,7 @@ const ArtifactList: React.FunctionComponent = () => {
   const [count, setCount] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(20);
-  const emptyArtifact: ArtifactListDTO = {gav: ""}
+  const emptyArtifact: ArtifactListDTO = {gav: "", name: ""}
   const [artifact, setArtifact] = useState(emptyArtifact);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -178,6 +174,7 @@ const ArtifactList: React.FunctionComponent = () => {
         <Thead>
           <Tr>
             <Th width={10}>{columnNames.status}</Th>
+            <Th width={10}>{columnNames.name}</Th>
             <Th width={10}>{columnNames.gav}</Th>
             <Th width={10}>{columnNames.message}</Th>
             <Th width={10}>{columnNames.actions}</Th>
@@ -251,6 +248,9 @@ const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.E
   return <Tr key={artifact.artifact.gav}>
     <Td>
       {statusIcon(artifact.artifact)}
+    </Td>
+    <Td dataLabel={columnNames.name} modifier="truncate">
+      {artifact.artifact.name}
     </Td>
     <Td dataLabel={columnNames.gav} modifier="truncate">
       {artifact.artifact.gav}

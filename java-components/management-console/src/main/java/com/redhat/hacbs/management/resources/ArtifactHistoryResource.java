@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
+import jakarta.persistence.TypedQuery;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
@@ -69,8 +69,9 @@ public class ArtifactHistoryResource {
             }
         }
 
-        Query q = entityManager
-                .createQuery("select s from StoredArtifactBuild s " + query.toString() + " order by s.creationTimestamp desc")
+        TypedQuery<StoredArtifactBuild> q = entityManager
+                .createQuery("select s from StoredArtifactBuild s " + query + " order by s"
+                        + ".creationTimestamp desc", StoredArtifactBuild.class)
                 .setFirstResult(perPage * (page - 1))
                 .setMaxResults(perPage);
         for (var p : parameters.map().entrySet()) {
@@ -78,16 +79,18 @@ public class ArtifactHistoryResource {
         }
         List<StoredArtifactBuild> list = q.getResultList();
         List<ArtifactListDTO> ret = new ArrayList<>();
-        for (StoredArtifactBuild build : list) {
-            ret.add(new ArtifactListDTO(build.mavenArtifact.gav(),
-                    Objects.equals(build.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
-                    Objects.equals(build.state, ModelConstants.ARTIFACT_BUILD_MISSING), build.message));
+        for (StoredArtifactBuild storedArtifactBuild : list) {
+            ret.add(new ArtifactListDTO(storedArtifactBuild.mavenArtifact.gav(), storedArtifactBuild.name,
+                    Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
+                    Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_MISSING),
+                    storedArtifactBuild.message));
         }
-        q = entityManager.createQuery("select count(s) from StoredArtifactBuild s " + query.toString());
+        TypedQuery<Long> q2 = entityManager.createQuery("select count(s) from StoredArtifactBuild s " + query,
+                Long.class);
         for (var p : parameters.map().entrySet()) {
-            q.setParameter(p.getKey(), p.getValue());
+            q2.setParameter(p.getKey(), p.getValue());
         }
-        long count = (long) q.getSingleResult();
+        long count = q2.getSingleResult();
         return new PageParameters<>(ret, count, page, perPage);
     }
 }
