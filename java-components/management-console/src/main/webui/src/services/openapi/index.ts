@@ -7,6 +7,7 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { ArtifactDTO } from './models/ArtifactDTO';
 export type { ArtifactIdentifier } from './models/ArtifactIdentifier';
 export type { ArtifactLabelName } from './models/ArtifactLabelName';
 export type { ArtifactListDTO } from './models/ArtifactListDTO';

@@ -8,14 +8,20 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+
+import com.redhat.hacbs.management.dto.ArtifactDTO;
 import com.redhat.hacbs.management.dto.ArtifactListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
+import io.quarkus.logging.Log;
 import io.quarkus.panache.common.Parameters;
 
 @Path("/artifacts/history")
@@ -78,9 +84,18 @@ public class ArtifactHistoryResource {
             q.setParameter(p.getKey(), p.getValue());
         }
         List<StoredArtifactBuild> list = q.getResultList();
+        Log.warnf("### storedArtifactBuild list size %s amd list %s ", list.size(), list);
         List<ArtifactListDTO> ret = new ArrayList<>();
         for (StoredArtifactBuild storedArtifactBuild : list) {
-            ret.add(new ArtifactListDTO(storedArtifactBuild.mavenArtifact.gav(), storedArtifactBuild.name,
+            Log.warnf("### storedArtifactBuild name %s , buildIdent %s : %s : %s : %s : %s", storedArtifactBuild.name,
+                    storedArtifactBuild.buildIdentifier.repository.url,
+                    storedArtifactBuild.buildIdentifier.tag,
+                    storedArtifactBuild.buildIdentifier.hash,
+                    storedArtifactBuild.buildIdentifier.contextPath,
+                    storedArtifactBuild.buildIdentifier.dependencyBuildName);
+            ret.add(new ArtifactListDTO(storedArtifactBuild.id,
+                    storedArtifactBuild.name,
+                    storedArtifactBuild.mavenArtifact.gav(),
                     Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
                     Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_MISSING),
                     storedArtifactBuild.message));
@@ -92,5 +107,17 @@ public class ArtifactHistoryResource {
         }
         long count = q2.getSingleResult();
         return new PageParameters<>(ret, count, page, perPage);
+    }
+
+    @GET
+    @Path("{id}")
+    @Operation(operationId = "get-artifact")
+    public ArtifactDTO get(@PathParam("id") long id) {
+        Log.warnf("### ArtifactHistoryResource::get [get-artifact] : %s ", id);
+        StoredArtifactBuild build = StoredArtifactBuild.findById(id);
+        if (build == null) {
+            throw new NotFoundException();
+        }
+        return ArtifactDTO.of(build);
     }
 }

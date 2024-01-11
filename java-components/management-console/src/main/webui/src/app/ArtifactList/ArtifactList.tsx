@@ -18,6 +18,7 @@ import {ArtifactEditResourceService, ArtifactHistoryResourceService, ArtifactLis
 import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
 import {ArtifactEditModal} from "@app/ArtifactEditModal/ArtifactEditModal";
 import {EmptyTable} from "@app/EmptyTable/EmptyTable";
+import {Link} from "react-router-dom";
 
 
 const columnNames = {
@@ -39,7 +40,7 @@ const ArtifactList: React.FunctionComponent = () => {
   const [count, setCount] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(20);
-  const emptyArtifact: ArtifactListDTO = {gav: "", name: ""}
+  const emptyArtifact: ArtifactListDTO = {id: 0, gav: "", name: ""}
   const [artifact, setArtifact] = useState(emptyArtifact);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -195,10 +196,11 @@ const ArtifactList: React.FunctionComponent = () => {
 type BuildActionsType = {
   artifact: ArtifactListDTO,
   selectArtifact: (artifact: ArtifactListDTO) => void
-
 };
 
 const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.Element => {
+
+  const [build, setBuild] = useState(artifact.artifact);
 
   const [isOpen, setIsOpen] = React.useState(false);
   const onToggle = () => {
@@ -248,7 +250,7 @@ const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.E
       {statusIcon(artifact.artifact)}
     </Td>
     <Td dataLabel={columnNames.name} modifier="truncate">
-      {artifact.artifact.name}
+      <Link to={`/artifacts/artifact/${artifact.artifact.id}`}>{artifact.artifact.name}</Link>
     </Td>
     <Td dataLabel={columnNames.gav} modifier="truncate">
       {artifact.artifact.gav}

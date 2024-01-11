@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { ArtifactDTO } from '../models/ArtifactDTO';
 import type { PageParametersArtifactListDTO } from '../models/PageParametersArtifactListDTO';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -32,4 +33,22 @@ export class ArtifactHistoryResourceService {
             },
         });
     }
+
+    /**
+     * @param id
+     * @returns ArtifactDTO OK
+     * @throws ApiError
+     */
+    public static getArtifact(
+        id: number,
+    ): CancelablePromise<ArtifactDTO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/artifacts/history/{id}',
+            path: {
+                'id': id,
+            },
+        });
+    }
+
 }

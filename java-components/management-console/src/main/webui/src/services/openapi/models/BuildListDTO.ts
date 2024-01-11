@@ -9,7 +9,6 @@ export type BuildListDTO = {
     tag?: string;
     succeeded?: boolean;
     contaminated?: boolean;
-    artifacts?: string;
     inQueue?: boolean;
     creationTime: number;
 };
