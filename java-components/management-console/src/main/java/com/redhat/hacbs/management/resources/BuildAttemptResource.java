@@ -1,7 +1,5 @@
 package com.redhat.hacbs.management.resources;
 
-import java.net.URI;
-
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
@@ -20,7 +18,6 @@ public class BuildAttemptResource extends BuildLogs {
         if (attempt == null) {
             throw new NotFoundException();
         }
-        URI uri = URI.create(attempt.buildLogsUrl);
-        return extractLog(Type.BUILD, uri, attempt.dependencyBuild.buildIdentifier.dependencyBuildName);
+        return extractLog(Type.BUILD, attempt.buildLogsUrl, attempt.dependencyBuild.buildIdentifier.dependencyBuildName);
     }
 }

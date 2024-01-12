@@ -1,6 +1,5 @@
 package com.redhat.hacbs.management.resources;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -122,7 +121,6 @@ public class BuildHistoryResource extends BuildLogs {
         if (attempt == null) {
             throw new NotFoundException();
         }
-        URI uri = URI.create(attempt.buildDiscoveryUrl);
-        return extractLog(Type.DISCOVERY, uri, attempt.buildIdentifier.dependencyBuildName);
+        return extractLog(Type.DISCOVERY, attempt.buildDiscoveryUrl, attempt.buildIdentifier.dependencyBuildName);
     }
 }
