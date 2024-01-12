@@ -208,9 +208,8 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 </CardBody>
               </Card>
             </Tab>
-            <Tab eventKey={3} disabled={build.successfulBuild == undefined} title={<TabTitleText>Deployed Artifacts</TabTitleText>}>
+            <Tab eventKey={3} disabled={build.successfulBuild == undefined} title={<TabTitleText>Deployed GAVs</TabTitleText>}>
               <Card>
-                <CardHeader>Artifacts</CardHeader>
                 <CardBody>
                   <DescriptionList>
                     {build.artifacts != undefined && build.artifacts.map(key => <>{key}</>)}
