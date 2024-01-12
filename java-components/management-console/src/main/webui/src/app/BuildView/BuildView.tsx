@@ -222,9 +222,13 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 <CardHeader>Quay Image</CardHeader>
                 <CardBody>
                   <DescriptionList>
-                    <a href={build.successfulBuild?.outputImage?.replace(/(quay.io)(.*):(.*)/, "https://quay.io/repository$2/tag/$3")} target="_blank">
-                      {build.successfulBuild?.outputImage}
-                    </a>
+                    <ul style={{listStyleType: 'disc'}}><li>
+                      <a
+                        href={build.successfulBuild?.outputImage?.replace(/(quay.io)(.*):(.*)/, "https://quay.io/repository$2/tag/$3")}
+                        target="_blank">
+                        {build.successfulBuild?.outputImage}
+                      </a>
+                    </li></ul>
                   </DescriptionList>
                 </CardBody>
                 <CardHeader>Maven Repository</CardHeader>
