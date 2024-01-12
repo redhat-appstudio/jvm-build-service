@@ -141,7 +141,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               <Card>
                 <CardHeader>Build Details</CardHeader>
                 <CardBody >
-
                   <DescriptionList
                     columnModifier={{
                       default: '2Col'
@@ -174,7 +173,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                     {build.successfulBuild != undefined && <BuildAttemptDetails attempt={build.successfulBuild}></BuildAttemptDetails>}
                   </DescriptionList>
                 </CardBody>
-
                 <CardFooter>
                 <ActionList>
                   <ActionListItem>
@@ -210,7 +208,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 </CardBody>
               </Card>
             </Tab>
-
             <Tab eventKey={3} disabled={build.successfulBuild == undefined} title={<TabTitleText>Deployed Artifacts</TabTitleText>}>
               <Card>
                 <CardHeader>Artifacts</CardHeader>
@@ -221,7 +218,19 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 </CardBody>
               </Card>
             </Tab>
-            <Tab eventKey={4} disabled={build.shadingDetails?.length == 0} title={<TabTitleText>Shading Details</TabTitleText>}>
+            <Tab eventKey={4} disabled={build.successfulBuild == undefined} title={<TabTitleText>Artifacts</TabTitleText>}>
+              <Card>
+                <CardHeader>Quay Image</CardHeader>
+                <CardBody>
+                  <DescriptionList>
+                    <a href={build.successfulBuild?.outputImage?.replace(/(quay.io)(.*):(.*)/, "https://quay.io/repository$2/tag/$3")} target="_blank">
+                      {build.successfulBuild?.outputImage}
+                    </a>
+                  </DescriptionList>
+                </CardBody>
+              </Card>
+            </Tab>
+            <Tab eventKey={5} disabled={build.shadingDetails?.length == 0} title={<TabTitleText>Shading Details</TabTitleText>}>
               <Card>
                 <CardHeader>Shading</CardHeader>
                 <CardBody>
@@ -270,8 +279,6 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
 };
 
 const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {
-
-
   return <>
         <DescriptionListGroup>
           <DescriptionListTerm>JDK</DescriptionListTerm>

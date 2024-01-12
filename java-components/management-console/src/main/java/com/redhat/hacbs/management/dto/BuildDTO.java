@@ -37,9 +37,14 @@ public record BuildDTO(
             inQueue = true;
         }
 
-        BuildAttemptDTO success = build.buildAttempts.stream().filter(s -> s.successful).findFirst().map(BuildAttemptDTO::of)
+        BuildAttemptDTO successfulBuild = build.buildAttempts.stream().filter(s -> s.successful).findFirst()
+                .map(BuildAttemptDTO::of)
                 .orElse(null);
-        List<BuildAttemptDTO> others = build.buildAttempts.stream().filter(s -> success == null || s.id != success.id())
+        if (successfulBuild != null) {
+
+        }
+        List<BuildAttemptDTO> others = build.buildAttempts.stream()
+                .filter(s -> successfulBuild == null || s.id != successfulBuild.id())
                 .map(BuildAttemptDTO::of).toList();
         return new BuildDTO(
                 build.id,
@@ -51,7 +56,7 @@ public record BuildDTO(
                 build.succeeded,
                 build.contaminated,
                 build.producedArtifacts.stream().map(MavenArtifact::gav).toList(),
-                success,
+                successfulBuild,
                 others,
                 build.shadingDetails,
                 inQueue);
