@@ -228,6 +228,21 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                     </a>
                   </DescriptionList>
                 </CardBody>
+                <CardHeader>Maven Repository</CardHeader>
+                <CardBody>
+                  <ul style={{ listStyleType: 'disc'}}>
+                    {build.successfulBuild?.mavenRepository == undefined || build.artifacts == undefined ? '' : build.artifacts.map((key) => (
+                      <li><a href={
+                        build.successfulBuild?.mavenRepository +
+                        key.split(":")[0].replace(/\./g, "/") +
+                        "/" +
+                        key.split(":")[1] +
+                        "/" +
+                        key.split(":")[2]
+                      } target="_blank">{key}</a></li>
+                    ))}
+                  </ul>
+                </CardBody>
               </Card>
             </Tab>
             <Tab eventKey={5} disabled={build.shadingDetails?.length == 0} title={<TabTitleText>Shading Details</TabTitleText>}>

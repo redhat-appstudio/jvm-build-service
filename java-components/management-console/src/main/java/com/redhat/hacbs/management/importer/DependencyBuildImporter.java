@@ -31,6 +31,9 @@ public class DependencyBuildImporter {
     @ConfigProperty(name = "bucket.name")
     String s3Bucket;
 
+    @ConfigProperty(name = "MAVEN_REPOSITORY", defaultValue = "")
+    String mavenRepo;
+
     @Transactional
     public void doImport(DependencyBuild dependencyBuild) {
         if (dependencyBuild.getStatus() == null || dependencyBuild.getStatus().getState() == null) {
@@ -144,6 +147,10 @@ public class DependencyBuildImporter {
                         download.fileType = s.getType();
                         return download;
                     }).collect(Collectors.toList());
+                }
+                if (mavenRepo != null) {
+                    attempt.mavenRepository = mavenRepo.replace("/repository/maven-releases",
+                            "/service/rest/repository/browse/maven-releases");
                 }
 
                 if (s3Bucket != null) {

@@ -26,6 +26,7 @@ export type BuildAttemptDTO = {
     allowedDifferences?: string;
     buildLogsUrl?: string;
     buildPipelineUrl?: string;
+    mavenRepository?: string;
     successful?: boolean;
     passedVerification?: boolean;
     upstreamDifferences: Record<string, Array<string>>;
