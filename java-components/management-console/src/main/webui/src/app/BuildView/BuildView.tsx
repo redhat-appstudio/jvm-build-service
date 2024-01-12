@@ -225,7 +225,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               <Card>
                 <CardHeader>Shading</CardHeader>
                 <CardBody>
-                  {build.shadingDetails?.map(key => <>{key.contaminant?.identifier?.group}:{key.contaminant?.identifier?.artifact}:{key.contaminant?.version}</>)}
+                  {build.shadingDetails?.map(key => <>{key.contaminant?.identifier?.group}:{key.contaminant?.identifier?.artifact}:{key.contaminant?.version}<br/></>)}
                 </CardBody>
               </Card>
             </Tab>
