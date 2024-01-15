@@ -5,7 +5,7 @@ import {
   ArtifactDTO,
   ArtifactHistoryResourceService, BuildQueueResourceService,
 } from "../../services/openapi";
-import {RouteComponentProps} from "react-router-dom";
+import {Link, RouteComponentProps} from "react-router-dom";
 import {
   ActionList,
   ActionListItem,
@@ -163,7 +163,9 @@ const ArtifactView: React.FunctionComponent<ArtifactView> = (props) => {
                     </DescriptionListGroup>
                     <DescriptionListGroup>
                       <DescriptionListTerm>Dependency Build</DescriptionListTerm>
-                      <DescriptionListDescription>{artifact.dependencyBuildName}</DescriptionListDescription>
+                      <DescriptionListDescription>
+                        <Link to={`/builds/build/${artifact.dependencyBuildId}`}>{artifact.dependencyBuildName}</Link>
+                      </DescriptionListDescription>
                     </DescriptionListGroup>
                   </DescriptionList>
                 </CardBody>

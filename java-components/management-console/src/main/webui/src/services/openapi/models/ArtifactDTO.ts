@@ -12,6 +12,7 @@ export type ArtifactDTO = {
     commit: string;
     contextPath?: string;
     dependencyBuildName?: string;
+    dependencyBuildId?: number;
     succeeded?: boolean;
     missing?: boolean;
     message?: string;

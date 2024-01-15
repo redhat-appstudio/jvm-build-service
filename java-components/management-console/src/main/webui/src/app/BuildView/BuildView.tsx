@@ -53,14 +53,14 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
     const [error, setError] = useState(false);
     const [state, setState] = useState('');
 
-  const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
-  // Toggle currently active tab
-  const handleTabClick = (
-    event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
-    tabIndex: string | number
-  ) => {
-    setActiveTabKey(tabIndex);
-  };
+    const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
+    // Toggle currently active tab
+    const handleTabClick = (
+      event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
+      tabIndex: string | number
+    ) => {
+      setActiveTabKey(tabIndex);
+    };
 
 
     useEffect(() => {

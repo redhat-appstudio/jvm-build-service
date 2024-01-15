@@ -19,9 +19,9 @@ import com.redhat.hacbs.management.dto.ArtifactDTO;
 import com.redhat.hacbs.management.dto.ArtifactListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
+import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
-import io.quarkus.logging.Log;
 import io.quarkus.panache.common.Parameters;
 
 @Path("/artifacts/history")
@@ -118,6 +118,11 @@ public class ArtifactHistoryResource {
         if (build == null) {
             throw new NotFoundException();
         }
-        return ArtifactDTO.of(build);
+        StoredDependencyBuild dependencyBuild = StoredDependencyBuild
+                .find("buildIdentifier = :buildIdentifier",
+                        Parameters.with("buildIdentifier", build.buildIdentifier))
+                .firstResult();
+
+        return ArtifactDTO.of(build, dependencyBuild);
     }
 }
