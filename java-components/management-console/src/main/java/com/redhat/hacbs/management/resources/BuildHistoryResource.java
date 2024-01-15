@@ -106,7 +106,6 @@ public class BuildHistoryResource extends BuildLogs {
     @Path("{id}")
     @Operation(operationId = "get-build")
     public BuildDTO get(@PathParam("id") long id) {
-        Log.warnf("### BuildHistoryResource::get [get-build] : %s ", id);
         StoredDependencyBuild build = StoredDependencyBuild.findById(id);
         if (build == null) {
             throw new NotFoundException();

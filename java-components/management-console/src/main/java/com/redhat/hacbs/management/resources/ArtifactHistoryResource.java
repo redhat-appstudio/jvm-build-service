@@ -84,15 +84,8 @@ public class ArtifactHistoryResource {
             q.setParameter(p.getKey(), p.getValue());
         }
         List<StoredArtifactBuild> list = q.getResultList();
-        Log.warnf("### storedArtifactBuild list size %s amd list %s ", list.size(), list);
         List<ArtifactListDTO> ret = new ArrayList<>();
         for (StoredArtifactBuild storedArtifactBuild : list) {
-            Log.warnf("### storedArtifactBuild name %s , buildIdent %s : %s : %s : %s : %s", storedArtifactBuild.name,
-                    storedArtifactBuild.buildIdentifier.repository.url,
-                    storedArtifactBuild.buildIdentifier.tag,
-                    storedArtifactBuild.buildIdentifier.hash,
-                    storedArtifactBuild.buildIdentifier.contextPath,
-                    storedArtifactBuild.buildIdentifier.dependencyBuildName);
             ret.add(new ArtifactListDTO(storedArtifactBuild.id,
                     storedArtifactBuild.name,
                     storedArtifactBuild.mavenArtifact.gav(),
@@ -113,7 +106,6 @@ public class ArtifactHistoryResource {
     @Path("{id}")
     @Operation(operationId = "get-artifact")
     public ArtifactDTO get(@PathParam("id") long id) {
-        Log.warnf("### ArtifactHistoryResource::get [get-artifact] : %s ", id);
         StoredArtifactBuild build = StoredArtifactBuild.findById(id);
         if (build == null) {
             throw new NotFoundException();

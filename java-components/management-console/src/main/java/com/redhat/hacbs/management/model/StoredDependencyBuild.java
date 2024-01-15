@@ -24,6 +24,8 @@ public class StoredDependencyBuild extends PanacheEntity {
     @ManyToOne(optional = false)
     @JoinColumn(nullable = false)
     public BuildIdentifier buildIdentifier;
+    @Column
+    public String uid;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(nullable = false)

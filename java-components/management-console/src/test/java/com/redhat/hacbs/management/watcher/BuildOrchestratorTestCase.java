@@ -2,6 +2,7 @@ package com.redhat.hacbs.management.watcher;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.UUID;
 
 import jakarta.inject.Inject;
 
@@ -68,6 +69,7 @@ public class BuildOrchestratorTestCase {
         scm.persistAndFlush();
         for (int i = 0; i < 5; ++i) {
             StoredDependencyBuild bd = new StoredDependencyBuild();
+            bd.uid = UUID.randomUUID().toString();
             bd.creationTimestamp = Instant.now();
             bd.buildIdentifier = BuildIdentifier.findORCreate("http://github.com/foo", "foo" + i, "sdfsdajklfdskl", "",
                     "somename" + i);

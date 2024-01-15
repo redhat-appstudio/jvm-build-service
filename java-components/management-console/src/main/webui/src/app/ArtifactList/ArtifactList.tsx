@@ -124,7 +124,7 @@ const ArtifactList: React.FunctionComponent = () => {
   const toolbar = (
     <Toolbar id="search-input-filter-toolbar">
       <ToolbarContent>
-        <ToolbarItem variant="search-filter"><SearchInput aria-label="Search by GAV" value={gavFilter} onKeyDown={doSearch} onBlur={() => setGavFilter(transientGav)} onChange={(e, v) => {transientGav = v}} /></ToolbarItem>
+        <ToolbarItem variant="search-filter"><SearchInput aria-label="Search by GAV" value={gavFilter} onClear={() => setGavFilter('')} onKeyDown={doSearch} onBlur={() => setGavFilter(transientGav)} onChange={(e, v) => {transientGav = v}} /></ToolbarItem>
 
         <ToolbarItem variant="search-filter">
           <Dropdown
