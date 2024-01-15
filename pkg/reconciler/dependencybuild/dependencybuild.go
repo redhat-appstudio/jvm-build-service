@@ -153,7 +153,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			//always remove the finalizer if it is deleted
 			//but continue with the method
 			//if the PR is deleted while it is running then we want to allow that
-			result, err2 := RemovePipelineFinalizer(ctx, &pr, r.client)
+			result, err2 := r.removePipelineFinalizer(ctx, &pr)
 			if err2 != nil {
 				return result, err2
 			}
@@ -1164,26 +1164,10 @@ type BuilderImage struct {
 	Priority int
 }
 
-func RemovePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun, client client.Client) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	//remove the finalizer
-	if pr.Finalizers != nil {
-		mod := false
-		for i, fz := range pr.Finalizers {
-			if fz == PipelineRunFinalizer {
-				newLength := len(pr.Finalizers) - 1
-				pr.Finalizers[i] = pr.Finalizers[newLength] // Copy last element to index i.
-				pr.Finalizers[newLength] = ""               // Erase last element (write zero value).
-				pr.Finalizers = pr.Finalizers[:newLength]   // Truncate slice.
-				mod = true
-				break
-			}
-		}
-		if mod {
-			err := client.Update(ctx, pr)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		}
+	if controllerutil.RemoveFinalizer(pr, PipelineRunFinalizer) {
+		return reconcile.Result{}, r.client.Update(ctx, pr)
 	}
 	return reconcile.Result{}, nil
 }

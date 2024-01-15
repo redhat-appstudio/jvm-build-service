@@ -156,12 +156,8 @@ func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log 
 
 func removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun, client client.Client) (reconcile.Result, error) {
 	//remove the finalizer
-	if controllerutil.ContainsFinalizer(pr, ImageScanFinalizer) {
-		controllerutil.RemoveFinalizer(pr, ImageScanFinalizer)
-		err := client.Update(ctx, pr)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+	if controllerutil.RemoveFinalizer(pr, ImageScanFinalizer) {
+		return reconcile.Result{}, client.Update(ctx, pr)
 	}
 	return reconcile.Result{}, nil
 }

@@ -201,16 +201,15 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 		//always remove the finalizer if it is deleted
 		//but continue with the method
 		//if the PR is deleted while it is running then we want to allow that
-		result, err2 := removePipelineFinalizer(ctx, pr, r.client)
-		if err2 != nil {
-			return result, err2
+		result, err := r.removePipelineFinalizer(ctx, pr)
+		if err != nil {
+			return result, err
 		}
 	} else if pr.Status.CompletionTime == nil {
 		//not finished, add the finalizer if needed
 		//these PRs can be aggressively pruned, we need the finalizer to
 		//make sure we see the results
-		if !controllerutil.ContainsFinalizer(pr, ComponentFinalizer) {
-			controllerutil.AddFinalizer(pr, ComponentFinalizer)
+		if controllerutil.AddFinalizer(pr, ComponentFinalizer) {
 			return reconcile.Result{}, r.client.Update(ctx, pr)
 		}
 		return reconcile.Result{}, nil
@@ -226,26 +225,10 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun, client client.Client) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
 	//remove the finalizer
-	if pr.Finalizers != nil {
-		mod := false
-		for i, fz := range pr.Finalizers {
-			if fz == ComponentFinalizer {
-				newLength := len(pr.Finalizers) - 1
-				pr.Finalizers[i] = pr.Finalizers[newLength] // Copy last element to index i.
-				pr.Finalizers[newLength] = ""               // Erase last element (write zero value).
-				pr.Finalizers = pr.Finalizers[:newLength]   // Truncate slice.
-				mod = true
-				break
-			}
-		}
-		if mod {
-			err := client.Update(ctx, pr)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		}
+	if controllerutil.RemoveFinalizer(pr, ComponentFinalizer) {
+		return reconcile.Result{}, r.client.Update(ctx, pr)
 	}
 	return reconcile.Result{}, nil
 }
@@ -325,7 +308,6 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		db := &v1alpha1.DependencyBuild{}
 		db.Annotations = map[string]string{}
 		db.Namespace = abr.Namespace
-		//TODO: do we in fact need to put depId through GenerateName sanitation algorithm for the name? label value restrictions are more stringent than obj name
 		db.Name = depId
 		if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 			return err
