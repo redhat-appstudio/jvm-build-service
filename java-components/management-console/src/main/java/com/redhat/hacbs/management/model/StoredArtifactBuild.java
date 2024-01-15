@@ -14,15 +14,12 @@ import jakarta.persistence.UniqueConstraint;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "mavenartifact_id", "uid" }))
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "mavenartifact_id" }))
 public class StoredArtifactBuild extends PanacheEntity {
 
     @ManyToOne
     @JoinColumn(nullable = false)
     public MavenArtifact mavenArtifact;
-
-    @Column(nullable = false)
-    public String uid;
 
     @Column(nullable = false)
     @Temporal(TemporalType.TIMESTAMP)

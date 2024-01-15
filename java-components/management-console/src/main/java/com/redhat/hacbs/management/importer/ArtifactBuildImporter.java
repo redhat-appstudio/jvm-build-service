@@ -37,11 +37,10 @@ public class ArtifactBuildImporter {
             return;
         }
         MavenArtifact artifact = MavenArtifact.forGav(artifactBuild.getSpec().getGav());
-        StoredArtifactBuild storedBuild = StoredArtifactBuild.find("mavenArtifact=:artifact and uid=:uid",
-                Parameters.with("artifact", artifact).and("uid", artifactBuild.getMetadata().getUid())).firstResult();
+        StoredArtifactBuild storedBuild = StoredArtifactBuild.find("mavenArtifact=:artifact",
+                Parameters.with("artifact", artifact)).firstResult();
         if (storedBuild == null) {
             storedBuild = new StoredArtifactBuild();
-            storedBuild.uid = artifactBuild.getMetadata().getUid();
             storedBuild.mavenArtifact = artifact;
             storedBuild.creationTimestamp = Instant.parse(artifactBuild.getMetadata().getCreationTimestamp());
         }
