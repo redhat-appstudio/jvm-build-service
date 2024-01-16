@@ -141,7 +141,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               <Card>
                 <CardHeader>Build Details</CardHeader>
                 <CardBody >
-
                   <DescriptionList
                     columnModifier={{
                       default: '2Col'
@@ -174,7 +173,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                     {build.successfulBuild != undefined && <BuildAttemptDetails attempt={build.successfulBuild}></BuildAttemptDetails>}
                   </DescriptionList>
                 </CardBody>
-
                 <CardFooter>
                 <ActionList>
                   <ActionListItem>
@@ -210,10 +208,8 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 </CardBody>
               </Card>
             </Tab>
-
-            <Tab eventKey={3} disabled={build.successfulBuild == undefined} title={<TabTitleText>Deployed Artifacts</TabTitleText>}>
+            <Tab eventKey={3} disabled={build.successfulBuild == undefined} title={<TabTitleText>Deployed GAVs</TabTitleText>}>
               <Card>
-                <CardHeader>Artifacts</CardHeader>
                 <CardBody>
                   <DescriptionList>
                     {build.artifacts != undefined && build.artifacts.map(key => <>{key}</>)}
@@ -221,11 +217,42 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 </CardBody>
               </Card>
             </Tab>
-            <Tab eventKey={4} disabled={build.shadingDetails?.length == 0} title={<TabTitleText>Shading Details</TabTitleText>}>
+            <Tab eventKey={4} disabled={build.successfulBuild == undefined} title={<TabTitleText>Artifacts</TabTitleText>}>
+              <Card>
+                <CardHeader>Quay Image</CardHeader>
+                <CardBody>
+                  <DescriptionList>
+                    <ul style={{listStyleType: 'disc'}}><li>
+                      <a
+                        href={build.successfulBuild?.outputImage?.replace(/(quay.io)(.*):(.*)/, "https://quay.io/repository$2/tag/$3")}
+                        target="_blank">
+                        {build.successfulBuild?.outputImage}
+                      </a>
+                    </li></ul>
+                  </DescriptionList>
+                </CardBody>
+                <CardHeader>Maven Repository</CardHeader>
+                <CardBody>
+                  <ul style={{ listStyleType: 'disc'}}>
+                    {build.successfulBuild?.mavenRepository == undefined || build.artifacts == undefined ? '' : build.artifacts.map((key) => (
+                      <li><a href={
+                        build.successfulBuild?.mavenRepository +
+                        key.split(":")[0].replace(/\./g, "/") +
+                        "/" +
+                        key.split(":")[1] +
+                        "/" +
+                        key.split(":")[2]
+                      } target="_blank">{key}</a></li>
+                    ))}
+                  </ul>
+                </CardBody>
+              </Card>
+            </Tab>
+            <Tab eventKey={5} disabled={build.shadingDetails?.length == 0} title={<TabTitleText>Shading Details</TabTitleText>}>
               <Card>
                 <CardHeader>Shading</CardHeader>
                 <CardBody>
-                  {build.shadingDetails?.map(key => <>{key.contaminant?.identifier?.group}:{key.contaminant?.identifier?.artifact}:{key.contaminant?.version}</>)}
+                  {build.shadingDetails?.map(key => <>{key.contaminant?.identifier?.group}:{key.contaminant?.identifier?.artifact}:{key.contaminant?.version}<br/></>)}
                 </CardBody>
               </Card>
             </Tab>
@@ -270,8 +297,6 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
 };
 
 const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {
-
-
   return <>
         <DescriptionListGroup>
           <DescriptionListTerm>JDK</DescriptionListTerm>

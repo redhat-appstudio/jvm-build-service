@@ -51,6 +51,8 @@ public class BuildAttempt extends PanacheEntity {
     public String buildLogsUrl;
     public String buildPipelineUrl;
 
+    public String mavenRepository;
+
     @OneToMany(cascade = CascadeType.ALL)
     public List<AdditionalDownload> additionalDownloads;
 

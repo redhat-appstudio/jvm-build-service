@@ -38,7 +38,7 @@ public record BuildAttemptDTO(
 
         String buildLogsUrl,
         String buildPipelineUrl,
-
+        String mavenRepository,
         //List<AdditionalDownload> additionalDownloads,
 
         boolean successful,
@@ -76,6 +76,7 @@ public record BuildAttemptDTO(
                 i.allowedDifferences,
                 i.buildLogsUrl,
                 i.buildPipelineUrl,
+                i.mavenRepository,
                 i.successful,
                 i.passedVerification,
                 mapDifferences(i.upstreamDifferences),

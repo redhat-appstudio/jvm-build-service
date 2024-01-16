@@ -3,6 +3,7 @@ package com.redhat.hacbs.management.importer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -30,6 +31,9 @@ public class DependencyBuildImporter {
 
     @ConfigProperty(name = "bucket.name")
     String s3Bucket;
+
+    @ConfigProperty(name = "MAVEN_REPOSITORY")
+    Optional<String> mavenRepo;
 
     @Transactional
     public void doImport(DependencyBuild dependencyBuild) {
@@ -145,6 +149,8 @@ public class DependencyBuildImporter {
                         return download;
                     }).collect(Collectors.toList());
                 }
+                mavenRepo.ifPresent(s -> attempt.mavenRepository = s.replace("/repository/maven-releases",
+                        "/service/rest/repository/browse/maven-releases"));
 
                 if (s3Bucket != null) {
                     //todo we just assume the logs are present
