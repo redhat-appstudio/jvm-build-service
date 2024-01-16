@@ -1,6 +1,6 @@
-package com.redhat.hacbs.recipies.build;
+package com.redhat.hacbs.recipes.build;
 
-import com.redhat.hacbs.recipies.BuildRecipe;
+import com.redhat.hacbs.recipes.BuildRecipe;
 
 public class AddBuildRecipeRequest<T> {
 

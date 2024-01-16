@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.mavenrepo;
+package com.redhat.hacbs.recipes.mavenrepo;
 
 import java.util.List;
 

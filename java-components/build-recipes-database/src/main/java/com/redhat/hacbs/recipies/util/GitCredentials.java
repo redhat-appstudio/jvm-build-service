@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.util;
+package com.redhat.hacbs.recipes.util;
 
 import java.util.HashMap;
 import java.util.Map;

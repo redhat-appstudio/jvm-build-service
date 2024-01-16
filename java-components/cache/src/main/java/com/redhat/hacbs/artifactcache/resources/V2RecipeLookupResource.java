@@ -15,7 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import com.redhat.hacbs.artifactcache.services.RecipeManager;
-import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipes.GAV;
 
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.Blocking;

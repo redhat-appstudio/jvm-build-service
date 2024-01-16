@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.location;
+package com.redhat.hacbs.recipes.location;
 
 import java.nio.file.Path;
 import java.util.Objects;

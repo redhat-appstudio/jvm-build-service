@@ -12,6 +12,14 @@
     <dependencies>
         <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-resource-model</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-build-recipes-database</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
             <artifactId>common-tools</artifactId>
         </dependency>
         <dependency>
@@ -59,10 +67,6 @@
             <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-build-recipies-database</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-container-image-jib</artifactId>
         </dependency>
@@ -73,10 +77,6 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-kubernetes-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-resource-model</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>

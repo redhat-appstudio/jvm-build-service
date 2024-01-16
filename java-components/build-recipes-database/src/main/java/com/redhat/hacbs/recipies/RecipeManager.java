@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies;
+package com.redhat.hacbs.recipes;
 
 import java.io.IOException;
 import java.nio.file.Path;

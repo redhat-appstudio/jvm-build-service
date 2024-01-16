@@ -55,9 +55,9 @@ import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
 import com.redhat.hacbs.container.results.ResultsUpdater;
-import com.redhat.hacbs.recipies.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipies.scm.ScmInfo;
-import com.redhat.hacbs.recipies.util.GitCredentials;
+import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipes.scm.ScmInfo;
+import com.redhat.hacbs.recipes.util.GitCredentials;
 import com.redhat.hacbs.resources.model.v1alpha1.Util;
 import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 

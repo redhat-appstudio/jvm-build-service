@@ -25,8 +25,8 @@ import com.redhat.hacbs.analyser.config.CheckoutConfig;
 import com.redhat.hacbs.analyser.config.RepoConfig;
 import com.redhat.hacbs.analyser.data.scm.Repository;
 import com.redhat.hacbs.analyser.data.scm.ScmManager;
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipes.location.RecipeGroupManager;
+import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
 
 import io.quarkus.dev.console.QuarkusConsole;
 import io.quarkus.dev.console.StatusLine;

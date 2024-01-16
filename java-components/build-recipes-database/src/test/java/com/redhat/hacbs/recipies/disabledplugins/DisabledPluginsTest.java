@@ -1,7 +1,7 @@
-package com.redhat.hacbs.recipies.disabledplugins;
+package com.redhat.hacbs.recipes.disabledplugins;
 
-import static com.redhat.hacbs.recipies.disabledplugins.DisabledPluginsManager.DISABLED_PLUGINS_GRADLE;
-import static com.redhat.hacbs.recipies.disabledplugins.DisabledPluginsManager.DISABLED_PLUGINS_MAVEN;
+import static com.redhat.hacbs.recipes.disabledplugins.DisabledPluginsManager.DISABLED_PLUGINS_GRADLE;
+import static com.redhat.hacbs.recipes.disabledplugins.DisabledPluginsManager.DISABLED_PLUGINS_MAVEN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -14,10 +14,10 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.location.BuildInfoRequest;
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipes.BuildRecipe;
+import com.redhat.hacbs.recipes.location.BuildInfoRequest;
+import com.redhat.hacbs.recipes.location.RecipeGroupManager;
+import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
 
 public class DisabledPluginsTest {
     @Test

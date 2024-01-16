@@ -1,8 +1,8 @@
-package com.redhat.hacbs.recipies.location;
+package com.redhat.hacbs.recipes.location;
 
 import java.util.Set;
 
-import com.redhat.hacbs.recipies.BuildRecipe;
+import com.redhat.hacbs.recipes.BuildRecipe;
 
 public class BuildInfoRequest {
 

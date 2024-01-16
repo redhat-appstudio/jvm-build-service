@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.tools;
+package com.redhat.hacbs.recipes.tools;
 
 public class BuildToolInfo {
 

@@ -10,7 +10,7 @@
         <version>999-SNAPSHOT</version>
     </parent>
 
-    <artifactId>hacbs-build-recipies-database</artifactId>
+    <artifactId>hacbs-build-recipes-database</artifactId>
 
     <properties>
         <maven.compiler.release>11</maven.compiler.release>

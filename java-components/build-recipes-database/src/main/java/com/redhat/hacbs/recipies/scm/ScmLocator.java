@@ -1,6 +1,6 @@
-package com.redhat.hacbs.recipies.scm;
+package com.redhat.hacbs.recipes.scm;
 
-import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipes.GAV;
 
 public interface ScmLocator {
 

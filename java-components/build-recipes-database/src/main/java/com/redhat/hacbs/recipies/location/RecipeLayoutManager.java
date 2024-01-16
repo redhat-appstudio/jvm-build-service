@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.location;
+package com.redhat.hacbs.recipes.location;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 
 import org.apache.maven.artifact.versioning.ComparableVersion;
 
-import com.redhat.hacbs.recipies.build.AddBuildRecipeRequest;
+import com.redhat.hacbs.recipes.build.AddBuildRecipeRequest;
 
 /**
  * Manages an individual recipe database of build recipes.

@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.scm;
+package com.redhat.hacbs.recipes.scm;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

@@ -120,7 +120,7 @@
             </dependency>
             <dependency>
                 <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-                <artifactId>hacbs-build-recipies-database</artifactId>
+                <artifactId>hacbs-build-recipes-database</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

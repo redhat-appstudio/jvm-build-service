@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.build;
+package com.redhat.hacbs.recipes.build;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.redhat.hacbs.recipies.RecipeManager;
+import com.redhat.hacbs.recipes.RecipeManager;
 
 public class BuildRecipeInfoManager implements RecipeManager<BuildRecipeInfo> {
 

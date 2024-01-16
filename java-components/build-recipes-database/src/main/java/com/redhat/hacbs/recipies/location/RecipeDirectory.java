@@ -1,10 +1,10 @@
-package com.redhat.hacbs.recipies.location;
+package com.redhat.hacbs.recipes.location;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
-import com.redhat.hacbs.recipies.build.AddBuildRecipeRequest;
+import com.redhat.hacbs.recipes.build.AddBuildRecipeRequest;
 
 public interface RecipeDirectory {
 

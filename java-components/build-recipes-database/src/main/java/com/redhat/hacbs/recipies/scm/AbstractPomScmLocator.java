@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.scm;
+package com.redhat.hacbs.recipes.scm;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +12,7 @@ import org.apache.maven.model.Parent;
 import org.apache.maven.model.Scm;
 import org.jboss.logging.Logger;
 
-import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipes.GAV;
 
 public abstract class AbstractPomScmLocator implements ScmLocator {
 

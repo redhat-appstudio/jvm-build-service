@@ -8,7 +8,7 @@ import java.util.*;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 
-import com.redhat.hacbs.recipies.GAV;
+import com.redhat.hacbs.recipes.GAV;
 
 public class MavenAnalyser {
 

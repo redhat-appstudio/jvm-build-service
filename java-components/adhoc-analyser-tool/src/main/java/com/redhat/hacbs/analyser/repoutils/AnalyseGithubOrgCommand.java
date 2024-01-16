@@ -14,8 +14,8 @@ import jakarta.inject.Singleton;
 import org.kohsuke.github.GHOrganization;
 import org.kohsuke.github.GitHub;
 
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipes.location.RecipeGroupManager;
+import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;

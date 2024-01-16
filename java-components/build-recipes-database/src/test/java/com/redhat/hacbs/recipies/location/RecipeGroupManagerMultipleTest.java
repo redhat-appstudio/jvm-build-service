@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipies.location;
+package com.redhat.hacbs.recipes.location;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.scm.ScmInfo;
+import com.redhat.hacbs.recipes.BuildRecipe;
+import com.redhat.hacbs.recipes.GAV;
+import com.redhat.hacbs.recipes.scm.ScmInfo;
 
 public class RecipeGroupManagerMultipleTest {
     static RecipeGroupManager manager;

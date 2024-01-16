@@ -11,9 +11,9 @@ import org.eclipse.jgit.transport.URIish;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 
-import com.redhat.hacbs.recipies.location.RecipeGroupManager;
-import com.redhat.hacbs.recipies.location.RecipeLayoutManager;
-import com.redhat.hacbs.recipies.util.FileUtil;
+import com.redhat.hacbs.recipes.location.RecipeGroupManager;
+import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
+import com.redhat.hacbs.recipes.util.FileUtil;
 
 import io.quarkus.logging.Log;
 

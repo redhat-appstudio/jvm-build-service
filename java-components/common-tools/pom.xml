@@ -12,6 +12,14 @@
     <description>Shared code for the CLI and Console</description>
     <dependencies>
         <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-build-recipes-database</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>hacbs-resource-model</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
         </dependency>
@@ -28,16 +36,8 @@
             <artifactId>jib-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-build-recipies-database</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-kubernetes-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-resource-model</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkiverse.amazonservices</groupId>

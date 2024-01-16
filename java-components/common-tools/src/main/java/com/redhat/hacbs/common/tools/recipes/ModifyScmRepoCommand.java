@@ -5,12 +5,12 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import com.redhat.hacbs.common.tools.repo.RepositoryChange;
-import com.redhat.hacbs.recipies.BuildRecipe;
-import com.redhat.hacbs.recipies.GAV;
-import com.redhat.hacbs.recipies.location.AddRecipeRequest;
-import com.redhat.hacbs.recipies.scm.RepositoryInfo;
-import com.redhat.hacbs.recipies.scm.ScmInfo;
-import com.redhat.hacbs.recipies.scm.TagMapping;
+import com.redhat.hacbs.recipes.BuildRecipe;
+import com.redhat.hacbs.recipes.GAV;
+import com.redhat.hacbs.recipes.location.AddRecipeRequest;
+import com.redhat.hacbs.recipes.scm.RepositoryInfo;
+import com.redhat.hacbs.recipes.scm.ScmInfo;
+import com.redhat.hacbs.recipes.scm.TagMapping;
 
 public class ModifyScmRepoCommand {
 
