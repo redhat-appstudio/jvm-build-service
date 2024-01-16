@@ -5,6 +5,7 @@
 
 export type ArtifactListDTO = {
     gav: string;
+    name: string;
     succeeded?: boolean;
     missing?: boolean;
     message?: string;
