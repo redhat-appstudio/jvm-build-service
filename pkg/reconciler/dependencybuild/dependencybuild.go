@@ -208,7 +208,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}}}
 	}
 	pr.Namespace = db.Namespace
-	pr.GenerateName = db.Name + "-build-discovery-"
+	pr.Name = db.Name + "-build-discovery"
 	pr.Labels = map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineTypeLabel: PipelineTypeBuildInfo}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err

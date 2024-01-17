@@ -28,6 +28,7 @@ import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 
 import io.fabric8.kubernetes.api.model.ContainerStatus;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.api.model.RouteSpec;
@@ -236,10 +237,10 @@ public class BuildLogsCommand implements Runnable {
             var references = pipelineRun.getStatus().getChildReferences();
             List<TaskRun> taskRuns = new ArrayList<>();
 
-            // TaskRun taskRun = new TaskRun();
-            // ObjectMeta om = new ObjectMeta();
-            // om.setName(theBuild.getMetadata().getName() + "-build-discovery-task");
-            // taskRun.setMetadata(om);
+            TaskRun taskRun = new TaskRun();
+            ObjectMeta om = new ObjectMeta();
+            om.setName(theBuild.getMetadata().getName() + "-build-discovery-task");
+            taskRun.setMetadata(om);
 
             for (var ref : references) {
                 var tr = client.resources(TaskRun.class).withName(ref.getName());
@@ -257,8 +258,7 @@ public class BuildLogsCommand implements Runnable {
 
             taskRuns.sort(
                     Comparator.comparing(t -> OffsetDateTime.parse(t.getStatus().getStartTime(), formatter)));
-            // TODO: build-discovery pipeline is current not identifiable in a predictable way.
-            // taskRuns.add(0, taskRun);
+            taskRuns.add(0, taskRun);
 
             OffsetDateTime startTime = OffsetDateTime.parse(pipelineRun.getStatus().getStartTime(), formatter);
             System.out.println("\n\n#####################################################");
