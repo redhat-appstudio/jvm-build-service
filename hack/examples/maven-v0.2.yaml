@@ -24,7 +24,8 @@ spec:
     - name: MAVEN_IMAGE
       type: string
       description: Maven base image
-      default: registry.access.redhat.com/ubi8/openjdk-17:1.13-1.1653918216
+      # Provides Maven 3.8.5
+      default: registry.access.redhat.com/ubi8/openjdk-17:1.18-2
     - name: GOALS
       description: maven goals to run
       type: array
@@ -171,6 +172,11 @@ spec:
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
       script: |
         #!/usr/bin/env bash
+
+        # XXX: JBS management-console webpack-cli runs 'git rev-parse HEAD'
+        microdnf --assumeyes --nodocs --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install git
+        # XXX: fatal: detected dubious ownership in repository at '/workspace/source'
+        git config --global --add safe.directory $(workspaces.source.path)
 
         # fix-permissions-for-builder
         chown 1001:1001 -R $(workspaces.source.path)
