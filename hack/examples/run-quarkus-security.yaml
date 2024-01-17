@@ -1,10 +1,10 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  generateName: service-registry-build-
+  generateName: quarkus-security-build-
 spec:
   pipelineRef:
-    name: run-component-build
+    name: sample-component-build
   params:
     - name: url
       value: https://github.com/quarkusio/quarkus-security.git

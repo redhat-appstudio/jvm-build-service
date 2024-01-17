@@ -11,7 +11,7 @@ echo
 
 kubectl apply -f $DIR/openshift-specific-rbac.yaml || true
 
-kubectl create -f $DIR/run-build-quarkus-security.yaml
+kubectl create -f $DIR/run-quarkus-security.yaml
 
 echo
 echo "🎉 Done! You can watch logs now with the following command: tkn pr logs --last -f"
