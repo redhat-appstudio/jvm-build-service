@@ -19,6 +19,6 @@ spec:
           resources:
             requests:
               storage: 1Gi
-  serviceAccountNames:
-    - serviceAccountName: pipeline
-      taskName: gradle-run
+  taskRunSpecs:
+    - pipelineTaskName: gradle-run
+      serviceAccountName: pipeline
