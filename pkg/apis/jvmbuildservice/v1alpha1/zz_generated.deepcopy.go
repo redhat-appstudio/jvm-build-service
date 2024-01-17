@@ -239,6 +239,11 @@ func (in *BuildRecipe) DeepCopyInto(out *BuildRecipe) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.DisabledPlugins != nil {
+		in, out := &in.DisabledPlugins, &out.DisabledPlugins
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

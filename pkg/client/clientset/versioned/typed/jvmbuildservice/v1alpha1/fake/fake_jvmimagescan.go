@@ -23,7 +23,6 @@ import (
 	v1alpha1 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeJvmImageScans struct {
 	ns   string
 }
 
-var jvmimagescansResource = schema.GroupVersionResource{Group: "jvmbuildservice.io", Version: "v1alpha1", Resource: "jvmimagescans"}
+var jvmimagescansResource = v1alpha1.SchemeGroupVersion.WithResource("jvmimagescans")
 
-var jvmimagescansKind = schema.GroupVersionKind{Group: "jvmbuildservice.io", Version: "v1alpha1", Kind: "JvmImageScan"}
+var jvmimagescansKind = v1alpha1.SchemeGroupVersion.WithKind("JvmImageScan")
 
 // Get takes name of the jvmImageScan, and returns the corresponding jvmImageScan object, and an error if there is any.
 func (c *FakeJvmImageScans) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.JvmImageScan, err error) {

@@ -101,7 +101,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 
 	var mgr ctrl.Manager
 	// this replaces the need for creating a non-caching client to access these various types
-	options.ClientDisableCacheFor = []client.Object{
+	options.Client.Cache.DisableFor = []client.Object{
 		&v1.ConfigMap{},
 		&v1.Secret{},
 		&v1.Service{},
@@ -118,7 +118,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, lerr
 	}
 	cachePods = cachePods.Add(*cacheRequirement)
-	cacheSelector := cache.ObjectSelector{Label: cachePods}
 	var logReaderParams *cli.TektonParams
 	if util.S3Enabled {
 		//if we are synching to S3 we need init the log reader
@@ -129,15 +128,17 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 			return nil, err
 		}
 	}
-	options.NewCache = cache.BuilderWithOptions(cache.Options{
-		SelectorsByObject: cache.SelectorsByObject{
+
+	options.Cache = cache.Options{
+		ByObject: map[client.Object]cache.ByObject{
 			&pipelinev1.PipelineRun{}:   {},
 			&v1alpha1.DependencyBuild{}: {},
 			&v1alpha1.ArtifactBuild{}:   {},
 			&v1alpha1.JvmImageScan{}:    {},
 			&v1alpha1.RebuiltArtifact{}: {},
-			&v1.Pod{}:                   cacheSelector,
-		}})
+			&v1.Pod{}:                   {Label: cachePods},
+		},
+	}
 
 	mgr, err := ctrl.NewManager(cfg, options)
 

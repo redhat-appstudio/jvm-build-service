@@ -54,12 +54,11 @@ func main() {
 
 	var mgr ctrl.Manager
 	mopts := ctrl.Options{
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "5483be8f.redhat.com",
 	}
+	mopts.Metrics.BindAddress = metricsAddr
 
 	util.ImageTag = os.Getenv("IMAGE_TAG")
 	util.ImageRepo = os.Getenv("IMAGE_REPO")
