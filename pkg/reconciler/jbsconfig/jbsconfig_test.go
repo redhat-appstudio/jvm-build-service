@@ -220,8 +220,9 @@ func TestCacheCreatedAndDeleted(t *testing.T) {
 	g.Expect(err).To(BeNil())
 
 	// While the owner references are not deleted using fakeclient/envtest, the finalizers and the JBSConfig should be
-	// so attempt another reconcile to verify it does not exist.
-	_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}})
+	// so attempt another get to verify it does not exist.
+
+	err = client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: v1alpha1.JBSConfigName}, &jbsc)
 	g.Expect(errors.IsNotFound(err)).To(BeTrue())
 }
 
