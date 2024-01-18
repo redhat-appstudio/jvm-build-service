@@ -50,7 +50,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 		Spec:       v1alpha1.SystemConfigSpec{},
 	}
 	objs = append(objs, sysConfig, systemConfig)
-	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	client := fake.NewClientBuilder().WithStatusSubresource(&v1alpha1.JBSConfig{}, &v1alpha1.ArtifactBuild{}, &v1alpha1.DependencyBuild{}).WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileArtifactBuild{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}
 	util.ImageTag = "foo"
 	return client, reconciler
@@ -248,7 +248,7 @@ func TestStateBuilding(t *testing.T) {
 		abr.Spec.GAV = "com.foo:gax:2.0"
 		abr.Status.SCMInfo.SCMURL = repo
 		abr.Status.SCMInfo.Tag = version
-		g.Expect(client.Update(ctx, abr)).Should(Succeed())
+		g.Expect(client.Status().Update(ctx, abr)).Should(Succeed())
 
 		other := getNamedABR(client, g, otherName)
 		other.Spec.GAV = "org.other:args:1.0"

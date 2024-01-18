@@ -101,14 +101,16 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 
 	var mgr ctrl.Manager
 	// this replaces the need for creating a non-caching client to access these various types
-	options.Client.Cache.DisableFor = []client.Object{
-		&v1.ConfigMap{},
-		&v1.Secret{},
-		&v1.Service{},
-		&v1.ServiceAccount{},
-		&v1.PersistentVolumeClaim{},
-		&rbacv1.RoleBinding{},
-		&appsv1.Deployment{},
+	options.Client.Cache = &client.CacheOptions{
+		DisableFor: []client.Object{
+			&v1.ConfigMap{},
+			&v1.Secret{},
+			&v1.Service{},
+			&v1.ServiceAccount{},
+			&v1.PersistentVolumeClaim{},
+			&rbacv1.RoleBinding{},
+			&appsv1.Deployment{},
+		},
 	}
 
 	//we only want to watch our cache pods

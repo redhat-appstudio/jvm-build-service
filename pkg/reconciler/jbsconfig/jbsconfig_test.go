@@ -35,7 +35,7 @@ func setupClientAndReconciler(includeSpi bool, objs ...runtimeclient.Object) (ru
 	if includeSpi {
 		_ = imagecontroller.AddToScheme(scheme)
 	}
-	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	client := fake.NewClientBuilder().WithStatusSubresource(&v1alpha1.JBSConfig{}).WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcilerJBSConfig{
 		client:        client,
 		scheme:        scheme,

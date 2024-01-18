@@ -37,7 +37,7 @@ func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Clien
 	_ = pipelinev1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	_ = appsv1.AddToScheme(scheme)
-	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	client := fake.NewClientBuilder().WithStatusSubresource(&v1alpha1.JBSConfig{}, &v1alpha1.ArtifactBuild{}, &v1alpha1.DependencyBuild{}, &pipelinev1beta1.PipelineRun{}).WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcileDependencyBuild{
 		client:        client,
 		scheme:        scheme,
@@ -156,14 +156,12 @@ func runBuildDiscoveryPipelineForResult(db v1alpha1.DependencyBuild, g *WithT, r
 		})
 	}
 	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-	g.Expect(client.Update(ctx, pr)).Should(BeNil())
+	g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
 	g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).Should(Succeed())
 	g.Expect(len(pr.Finalizers)).Should(Equal(1))
 
-	pr.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-
-	g.Expect(client.Update(ctx, pr)).Should(BeNil())
+	g.Expect(client.Delete(ctx, pr)).Should(BeNil())
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
 	g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).ShouldNot(Succeed())
 }
@@ -364,7 +362,7 @@ func TestStateBuilding(t *testing.T) {
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
 		pr.Status.Results = []pipelinev1beta1.PipelineRunResult{{Name: artifactbuild.PipelineResultDeployedResources, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: TestArtifact}}}
-		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
@@ -376,9 +374,7 @@ func TestStateBuilding(t *testing.T) {
 		pr = getBuildPipeline(client, g)
 		g.Expect(len(pr.Finalizers)).Should(Equal(1))
 
-		pr.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-
-		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(client.Delete(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
 		g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).ShouldNot(Succeed())
 	})
@@ -392,7 +388,7 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "False",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
@@ -421,7 +417,7 @@ func TestStateBuilding(t *testing.T) {
 
 		pr.Status.ChildReferences = []pipelinev1beta1.ChildStatusReference{{Name: "task"}}
 
-		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
@@ -446,7 +442,7 @@ func TestStateBuilding(t *testing.T) {
 
 		pr.Status.ChildReferences = []pipelinev1beta1.ChildStatusReference{{Name: "task2"}}
 
-		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}}))
 		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
@@ -488,11 +484,11 @@ func TestStateBuilding(t *testing.T) {
 		ab.Spec.GAV = TestArtifact
 		g.Expect(client.Create(ctx, &ab)).Should(BeNil())
 		pr.Status.Results = []pipelinev1beta1.PipelineRunResult{{Name: "contaminants", Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "[{\"gav\": \"com.acme:foo:1.0\", \"contaminatedArtifacts\": [\"" + TestArtifact + "\"]}]"}}}
-		g.Expect(client.Update(ctx, pr)).Should(BeNil())
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 		db := getBuild(client, g)
 		g.Expect(controllerutil.SetOwnerReference(&ab, db, reconciler.scheme)).Should(BeNil())
 		db.Status.Contaminants = []*v1alpha1.Contaminant{{GAV: "com.acme:foo:1.0", ContaminatedArtifacts: []string{TestArtifact}}}
-		g.Expect(client.Update(ctx, db))
+		g.Expect(client.Status().Update(ctx, db))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: buildName}))
 		db = getBuild(client, g)

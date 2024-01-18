@@ -19,9 +19,9 @@ package v1alpha1
 
 import (
 	"net/http"
-	"pkg/client/clientset/versioned/scheme"
 
 	v1alpha1 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

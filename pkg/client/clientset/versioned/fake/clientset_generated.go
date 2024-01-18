@@ -18,10 +18,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "pkg/client/clientset/versioned"
-	jvmbuildservicev1alpha1 "pkg/client/clientset/versioned/typed/jvmbuildservice/v1alpha1"
-	fakejvmbuildservicev1alpha1 "pkg/client/clientset/versioned/typed/jvmbuildservice/v1alpha1/fake"
-
+	clientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
+	jvmbuildservicev1alpha1 "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned/typed/jvmbuildservice/v1alpha1"
+	fakejvmbuildservicev1alpha1 "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned/typed/jvmbuildservice/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
