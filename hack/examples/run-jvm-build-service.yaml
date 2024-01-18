@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  generateName: service-registry-build-
+  generateName: jvm-build-service-build-
 spec:
   pipelineRef:
     name: sample-component-build
