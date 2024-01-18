@@ -38,7 +38,9 @@ public class InvocationBuilderTestCase {
                         new BuildToolInfo().setReleaseDate("2018-09-25").setVersion("11").setMaxJdkVersion("11")
                                 .setMinJdkVersion("11"),
                         new BuildToolInfo().setReleaseDate("2014-03-18").setVersion("8").setMaxJdkVersion("8")
-                                .setMinJdkVersion("8"));
+                                .setMinJdkVersion("8"),
+                        new BuildToolInfo().setReleaseDate("2011-07-28").setVersion("7").setMaxJdkVersion("7")
+                                .setMinJdkVersion("7"));
             } else if (name.equals("gradle")) {
                 return List.of(
                         new BuildToolInfo().setReleaseDate("2019-04-26").setVersion("5.4").setMaxJdkVersion("12")
@@ -81,7 +83,7 @@ public class InvocationBuilderTestCase {
         builder.setCommitTime(System.currentTimeMillis());
         builder.addToolInvocation(MAVEN, List.of("install"));
         var result = builder.build(buildInfoLocator);
-        Assertions.assertEquals(3, result.invocations.size());
+        Assertions.assertEquals(4, result.invocations.size());
         Assertions.assertTrue(
                 result.invocations
                         .contains(
@@ -129,10 +131,10 @@ public class InvocationBuilderTestCase {
     public void testInvocationMappingDateFiltering() throws ParseException {
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
         InvocationBuilder builder = newBuilder();
-        builder.setCommitTime(df.parse("2016-01-01").getTime());
+        builder.setCommitTime(df.parse("2013-01-01").getTime());
         builder.addToolInvocation(MAVEN, List.of("install"));
         var result = builder.build(buildInfoLocator);
-        Assertions.assertEquals(2, result.invocations.size());
+        Assertions.assertEquals(3, result.invocations.size());
         Assertions.assertTrue(
                 result.invocations
                         .contains(
@@ -165,6 +167,6 @@ public class InvocationBuilderTestCase {
         return new InvocationBuilder(null, Map.of(
                 MAVEN, List.of("3.8.0"),
                 GRADLE, List.of("5.4", "6.1"),
-                BuildInfo.JDK, List.of("8", "11", "17")), "1");
+                BuildInfo.JDK, List.of("7", "8", "11", "17")), "1");
     }
 }
