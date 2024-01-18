@@ -128,7 +128,6 @@ public class BuildLogsCommand implements Runnable {
                 }
             }
         }
-
         System.out.println("Selected build: " + theBuild.getMetadata().getName());
 
         if (legacyRetrieval) {
@@ -166,6 +165,12 @@ public class BuildLogsCommand implements Runnable {
 
             StringBuilder allLog = new StringBuilder();
 
+            String[] discoverySplit = theBuild.getStatus().getDiscoveryPipelineResults().getLogs().split("/");
+            System.out.println("Discovery Log information: " + Arrays.toString(discoverySplit));
+            String log = logsApi.getLogByUid(discoverySplit[0], UUID.fromString(discoverySplit[2]),
+                    UUID.fromString(discoverySplit[4]));
+            parseLog(allLog, log);
+
             for (Integer buildCount : buildNumbers) {
                 String[] split = theBuild.getStatus()
                         .getBuildAttempts()
@@ -175,28 +180,32 @@ public class BuildLogsCommand implements Runnable {
                         .getPipelineResults()
                         .getLogs()
                         .split("/");
-                System.out.println("Log information: " + Arrays.toString(split));
+                System.out.println("Build Log information: " + Arrays.toString(split));
 
                 // Equivalent to using this Quarkus API would be to call the client raw method.
                 // client.raw("https://" + host + ":" + defaultPort + restPath + "/v1alpha2/parents/" + split[0]
                 //          + "/results/" + split[2] + "/logs/" + split[4]);
-                String log = logsApi.getLogByUid(split[0], UUID.fromString(split[2]), UUID.fromString(split[4]));
+                log = logsApi.getLogByUid(split[0], UUID.fromString(split[2]), UUID.fromString(split[4]));
 
                 // When the log is too big it returns a sequence of JSON documents. While a string
                 // split "((?<=[}][}]))" around the separator would work a JsonParser can parse and
                 // tokenize the string itself.
-                try (JsonParser jp = JSON_FACTORY.createParser(log)) {
-                    Iterator<Result> value = MAPPER.readValues(jp, Result.class);
-                    value.forEachRemaining((r) ->
-                    // According to the spec its meant to be a Base64 encoded chunk. However, it appears
-                    // to be implicitly decoded
-                    allLog.append(new String(r.result.getData(), StandardCharsets.UTF_8)));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                parseLog(allLog, log);
             }
             System.out.println();
             System.out.println(allLog);
+        }
+    }
+
+    private void parseLog(StringBuilder allLog, String log) {
+        try (JsonParser jp = JSON_FACTORY.createParser(log)) {
+            Iterator<Result> value = MAPPER.readValues(jp, Result.class);
+            value.forEachRemaining((r) ->
+            // According to the spec its meant to be a Base64 encoded chunk. However, it appears
+            // to be implicitly decoded
+            allLog.append(new String(r.result.getData(), StandardCharsets.UTF_8)));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -226,6 +235,12 @@ public class BuildLogsCommand implements Runnable {
                     + (success ? "SUCCEEDED" : "FAILED") + ") ---------");
             var references = pipelineRun.getStatus().getChildReferences();
             List<TaskRun> taskRuns = new ArrayList<>();
+
+            // TaskRun taskRun = new TaskRun();
+            // ObjectMeta om = new ObjectMeta();
+            // om.setName(theBuild.getMetadata().getName() + "-build-discovery-task");
+            // taskRun.setMetadata(om);
+
             for (var ref : references) {
                 var tr = client.resources(TaskRun.class).withName(ref.getName());
                 if (tr == null || tr.get() == null) {
@@ -242,6 +257,8 @@ public class BuildLogsCommand implements Runnable {
 
             taskRuns.sort(
                     Comparator.comparing(t -> OffsetDateTime.parse(t.getStatus().getStartTime(), formatter)));
+            // TODO: build-discovery pipeline is current not identifiable in a predictable way.
+            // taskRuns.add(0, taskRun);
 
             OffsetDateTime startTime = OffsetDateTime.parse(pipelineRun.getStatus().getStartTime(), formatter);
             System.out.println("\n\n#####################################################");
