@@ -23,7 +23,6 @@ import (
 	v1alpha1 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeSystemConfigs struct {
 	ns   string
 }
 
-var systemconfigsResource = schema.GroupVersionResource{Group: "jvmbuildservice.io", Version: "v1alpha1", Resource: "systemconfigs"}
+var systemconfigsResource = v1alpha1.SchemeGroupVersion.WithResource("systemconfigs")
 
-var systemconfigsKind = schema.GroupVersionKind{Group: "jvmbuildservice.io", Version: "v1alpha1", Kind: "SystemConfig"}
+var systemconfigsKind = v1alpha1.SchemeGroupVersion.WithKind("SystemConfig")
 
 // Get takes name of the systemConfig, and returns the corresponding systemConfig object, and an error if there is any.
 func (c *FakeSystemConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.SystemConfig, err error) {

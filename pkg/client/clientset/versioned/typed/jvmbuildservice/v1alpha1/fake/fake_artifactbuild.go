@@ -23,7 +23,6 @@ import (
 	v1alpha1 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeArtifactBuilds struct {
 	ns   string
 }
 
-var artifactbuildsResource = schema.GroupVersionResource{Group: "jvmbuildservice.io", Version: "v1alpha1", Resource: "artifactbuilds"}
+var artifactbuildsResource = v1alpha1.SchemeGroupVersion.WithResource("artifactbuilds")
 
-var artifactbuildsKind = schema.GroupVersionKind{Group: "jvmbuildservice.io", Version: "v1alpha1", Kind: "ArtifactBuild"}
+var artifactbuildsKind = v1alpha1.SchemeGroupVersion.WithKind("ArtifactBuild")
 
 // Get takes name of the artifactBuild, and returns the corresponding artifactBuild object, and an error if there is any.
 func (c *FakeArtifactBuilds) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ArtifactBuild, err error) {
