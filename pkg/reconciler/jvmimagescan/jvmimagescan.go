@@ -132,7 +132,7 @@ func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log 
 	if len(ownerName) == 0 {
 		msg := "pipelinerun missing jvmimagescan ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 
 		return reconcile.Result{}, nil
 	}

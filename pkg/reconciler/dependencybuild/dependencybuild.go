@@ -230,8 +230,8 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 	ownerRefs := pr.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		msg := "pipelinerun missing ownerrefs %s:%s"
-		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 		return reconcile.Result{}, nil
 	}
 	ownerName := ""
@@ -244,7 +244,7 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 	if len(ownerName) == 0 {
 		msg := "pipelinerun missing dependencybuild ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 
 		return reconcile.Result{}, nil
 	}
@@ -254,7 +254,8 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 	err := r.client.Get(ctx, key, &db)
 	if err != nil {
 		msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
-		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error())
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "GetError", msg, pr.Namespace, pr.Name, pr.Namespace,
+			ownerName, err.Error())
 		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerName, err.Error()))
 		if !errors.IsNotFound(err) {
 			return reconcile.Result{}, err
@@ -567,7 +568,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	//now we submit the build
 	if err := r.client.Create(ctx, &pr); err != nil {
 		if errors.IsAlreadyExists(err) {
-			log.V(4).Info("handleStateBuilding: pipelinerun %s:%s already exists, not retrying", pr.Namespace, pr.Name)
+			log.Info(fmt.Sprintf("handleStateBuilding: pipelinerun %s:%s already exists, not retrying", pr.Namespace, pr.Name))
 			return reconcile.Result{}, nil
 		}
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "PipelineRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
@@ -589,9 +590,9 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 		attempt := db.Status.GetBuildPipelineRun(pr.Name)
 		if attempt == nil {
-			msg := fmt.Sprintf("unknown build pipeline run for db %s %s:%s", db.Name, pr.Namespace, pr.Name)
-			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, msg)
-			log.Info(msg, pr.Namespace, pr.Name)
+			msg := "unknown build pipeline run for db %s %s:%s"
+			r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "UnknownPipeline", msg, db.Name, pr.Namespace, pr.Name)
+			log.Info(fmt.Sprintf(msg, db.Name, pr.Namespace, pr.Name))
 			return reconcile.Result{}, nil
 		}
 		run := attempt.Build
@@ -782,17 +783,16 @@ func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Con
 	ownerRefs := pr.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		msg := "pipelinerun missing ownerrefs %s:%s"
-		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
-
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 		return nil, nil
 	}
 	if len(ownerRefs) > 1 {
 		// workaround for event/logging methods that can only take string args
 		count := fmt.Sprintf("%d", len(ownerRefs))
-		msg := "pipelinerun %s:%s has %s ownerrefs but only using the first dependencybuild ownerfef"
-		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, count)
-		log.Info(msg, pr.Namespace, pr.Name, count)
+		msg := "pipelinerun %s:%s has %s ownerrefs but only using the first dependencybuild ownerref"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "TooManyOwner", msg, pr.Namespace, pr.Name, count)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name, count))
 	}
 	// even though we filter out artifactbuild pipelineruns, let's check the kind and make sure
 	// we use a dependencybuild ownerref
@@ -804,10 +804,9 @@ func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Con
 		}
 	}
 	if ownerRef == nil {
-		msg := "pipelinerun missing dependencybuild onwerrefs %s:%s"
-		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name)
-		log.Info(msg, pr.Namespace, pr.Name)
-
+		msg := "pipelinerun missing dependencybuild ownerrefs %s:%s"
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
+		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 		return nil, nil
 	}
 
@@ -816,7 +815,8 @@ func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Con
 	err := r.client.Get(ctx, key, &db)
 	if err != nil {
 		msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
-		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error())
+		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "GetError", msg, pr.Namespace, pr.Name, pr.Namespace,
+			ownerRef.Name, err.Error())
 		log.Error(err, fmt.Sprintf(msg, pr.Namespace, pr.Name, pr.Namespace, ownerRef.Name, err.Error()))
 		//on not found we don't return the error
 		//no need to retry
