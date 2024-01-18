@@ -48,14 +48,13 @@ build:
 clean:
 	rm -rf out
 
-generate-deepcopy-client:
-	hack/update-codegen.sh
-
 generate-crds:
 	hack/install-controller-gen.sh
-	"$(CONTROLLER_GEN)" "$(CRD_OPTIONS)" rbac:roleName=manager-role webhook paths=./pkg/apis/jvmbuildservice/v1alpha1 output:crd:artifacts:config=deploy/crds/base
+	"$(CONTROLLER_GEN)" "$(CRD_OPTIONS)" object:headerFile="hack/boilerplate.go.txt" rbac:roleName=manager-role webhook paths=./pkg/apis/jvmbuildservice/v1alpha1 output:crd:artifacts:config=deploy/crds/base
+	 go install k8s.io/code-generator/cmd/client-gen
+	client-gen --go-header-file "hack/boilerplate.go.txt" --input jvmbuildservice/v1alpha1 --input-base github.com/redhat-appstudio/jvm-build-service/pkg/apis --output-package pkg/client/clientset --output-base . --clientset-name versioned
 
-generate: generate-crds generate-deepcopy-client
+generate: generate-crds
 	cp deploy/crds/base/* java-components/resource-model/src/main/resources/crds
 
 verify-generate-deepcopy-client: generate-deepcopy-client
