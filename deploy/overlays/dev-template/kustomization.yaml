@@ -8,6 +8,7 @@ resources:
 - ../../operator/overlays/dev-template
 # - ../../console/overlays/dev-template
 - quota.yaml
+- rbac.yaml
 
 patches:
 - path: config.yaml

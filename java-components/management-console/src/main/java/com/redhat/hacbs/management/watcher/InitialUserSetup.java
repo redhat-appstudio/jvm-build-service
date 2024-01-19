@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -32,43 +33,52 @@ public class InitialUserSetup {
 
     public static final String JBS_USER_SECRET = "jbs-user-secret";
     @Inject
-    KubernetesClient kubernetesClient;
+    Instance<KubernetesClient> kubernetesClient;
 
     @ConfigProperty(name = "kube.disabled", defaultValue = "false")
     boolean disabled;
 
     @PostConstruct
     public void setup() {
-        if ((LaunchMode.current() == LaunchMode.TEST
-                && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test")) || disabled) {
-            //don't start in tests, as kube might not be present
-            Log.warnf("Kubernetes client disabled so unable to initiate admin user setup");
-            return;
+        String userName = "admin";
+        String password = System.getenv("JBS_ADMIN_PASSWORD");
+        if (password == null) {
+            if ((LaunchMode.current() == LaunchMode.TEST
+                    && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test")) || disabled) {
+                //don't start in tests, as kube might not be present
+                Log.warnf("Kubernetes client disabled so unable to initiate admin user setup");
+                return;
+            }
+            Secret secret = kubernetesClient.get().resources(Secret.class).withName(JBS_USER_SECRET).get();
+            if (secret == null) {
+                var sr = new SecureRandom();
+                byte[] data = new byte[21];
+                sr.nextBytes(data);
+                var pw = Base64.getEncoder().encodeToString(data);
+                secret = new Secret();
+                secret.setMetadata(new ObjectMeta());
+                secret.getMetadata().setName(JBS_USER_SECRET);
+                secret.setData(Map.of("username", Base64.getEncoder().encodeToString("admin".getBytes(StandardCharsets.UTF_8)),
+                        "password", Base64.getEncoder().encodeToString(pw.getBytes(StandardCharsets.UTF_8))));
+                kubernetesClient.get().resource(secret).create();
+            }
+            userName = new String(Base64.getDecoder().decode(secret.getData().get("username")), StandardCharsets.UTF_8);
+            password = new String(Base64.getDecoder().decode(secret.getData().get("password")), StandardCharsets.UTF_8);
+        } else {
+            Log.infof("Initial user set in JBS_ADMIN_PASSWORD");
         }
 
-        Secret secret = kubernetesClient.resources(Secret.class).withName(JBS_USER_SECRET).get();
-        if (secret == null) {
-            var sr = new SecureRandom();
-            byte[] data = new byte[21];
-            sr.nextBytes(data);
-            var pw = Base64.getEncoder().encodeToString(data);
-            secret = new Secret();
-            secret.setMetadata(new ObjectMeta());
-            secret.getMetadata().setName(JBS_USER_SECRET);
-            secret.setData(Map.of("username", Base64.getEncoder().encodeToString("admin".getBytes(StandardCharsets.UTF_8)),
-                    "password", Base64.getEncoder().encodeToString(pw.getBytes(StandardCharsets.UTF_8))));
-            kubernetesClient.resource(secret).create();
-        }
-        var userName = new String(Base64.getDecoder().decode(secret.getData().get("username")), StandardCharsets.UTF_8);
-        var password = new String(Base64.getDecoder().decode(secret.getData().get("password")), StandardCharsets.UTF_8);
+        var u = userName;
+        var p = password;
         User user = User.find("username", userName).firstResult();
         if (user == null) {
+            Log.infof("Creating initial user");
             QuarkusTransaction.requiringNew().run(new Runnable() {
                 @Override
                 public void run() {
                     User user = new User();
-                    user.username = userName;
-                    user.pass = BcryptUtil.bcryptHash(password);
+                    user.username = u;
+                    user.pass = BcryptUtil.bcryptHash(p);
                     user.persistAndFlush();
                 }
             });
