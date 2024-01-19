@@ -20,7 +20,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/events/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,10 +47,10 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", pipeline)
-	ta.run = &v1beta1.PipelineRun{}
+	ta.run = &tektonpipeline.PipelineRun{}
 	var ok bool
 	obj := streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
-	ta.run, ok = obj.(*v1beta1.PipelineRun)
+	ta.run, ok = obj.(*tektonpipeline.PipelineRun)
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 	}
@@ -295,9 +295,9 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 			}
 		}
 
-		ta.run = &v1beta1.PipelineRun{}
+		ta.run = &tektonpipeline.PipelineRun{}
 		obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
-		ta.run, ok = obj.(*v1beta1.PipelineRun)
+		ta.run, ok = obj.(*tektonpipeline.PipelineRun)
 		if !ok {
 			debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 		}
@@ -334,7 +334,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 				if event.Object == nil {
 					continue
 				}
-				pr, ok := event.Object.(*v1beta1.PipelineRun)
+				pr, ok := event.Object.(*tektonpipeline.PipelineRun)
 				if !ok {
 					continue
 				}

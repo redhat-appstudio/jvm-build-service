@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
-	realv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"html/template"
 	"io"
 	"net/http"
@@ -28,7 +27,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
 	corev1 "k8s.io/api/core/v1"
@@ -172,14 +171,14 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 		debugAndFailTest(ta, "task CRD not present in timely fashion")
 	}
 
-	ta.gitClone = &realv1beta1.Task{}
+	ta.gitClone = &tektonpipeline.Task{}
 	obj := streamRemoteYamlToTektonObj(gitCloneUrl, ta.gitClone, ta)
 	var ok bool
-	ta.gitClone, ok = obj.(*realv1beta1.Task)
+	ta.gitClone, ok = obj.(*tektonpipeline.Task)
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("%s did not produce a task: %#v", gitCloneTaskUrl, obj))
 	}
-	ta.gitClone, err = tektonClient.TektonV1beta1().Tasks(ta.ns).Create(context.TODO(), ta.gitClone, metav1.CreateOptions{})
+	ta.gitClone, err = tektonClient.TektonV1().Tasks(ta.ns).Create(context.TODO(), ta.gitClone, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
@@ -190,9 +189,9 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	}
 
 	mavenYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "maven-v0.2.yaml")
-	ta.maven = &v1beta1.Task{}
+	ta.maven = &tektonpipeline.Task{}
 	obj = streamFileYamlToTektonObj(mavenYamlPath, ta.maven, ta)
-	ta.maven, ok = obj.(*v1beta1.Task)
+	ta.maven, ok = obj.(*tektonpipeline.Task)
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a task: %#v", mavenYamlPath, obj))
 	}
@@ -227,9 +226,9 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 		debugAndFailTest(ta, err.Error())
 	}
 	pipelineYamlPath := filepath.Join(path, "..", "..", "hack", "examples", "pipeline.yaml")
-	ta.pipeline = &v1beta1.Pipeline{}
+	ta.pipeline = &tektonpipeline.Pipeline{}
 	obj = streamFileYamlToTektonObj(pipelineYamlPath, ta.pipeline, ta)
-	ta.pipeline, ok = obj.(*v1beta1.Pipeline)
+	ta.pipeline, ok = obj.(*tektonpipeline.Pipeline)
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipeline: %#v", pipelineYamlPath, obj))
 	}
@@ -399,9 +398,9 @@ func bothABsAndDBsGenerated(ta *testArgs) (bool, error) {
 
 func decodeBytesToTektonObjbytes(bytes []byte, obj runtime.Object, ta *testArgs) runtime.Object {
 	decodingScheme := runtime.NewScheme()
-	utilruntime.Must(v1beta1.AddToScheme(decodingScheme))
+	utilruntime.Must(tektonpipeline.AddToScheme(decodingScheme))
 	decoderCodecFactory := serializer.NewCodecFactory(decodingScheme)
-	decoder := decoderCodecFactory.UniversalDecoder(v1beta1.SchemeGroupVersion)
+	decoder := decoderCodecFactory.UniversalDecoder(tektonpipeline.SchemeGroupVersion)
 	err := runtime.DecodeInto(decoder, bytes, obj)
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
@@ -425,19 +424,19 @@ func streamRemoteYamlToTektonObj(url string, obj runtime.Object, ta *testArgs) r
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
 	}(resp.Body)
-	bytes, err := io.ReadAll(resp.Body)
+	readAll, err := io.ReadAll(resp.Body)
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-	return decodeBytesToTektonObjbytes(bytes, obj, ta)
+	return decodeBytesToTektonObjbytes(readAll, obj, ta)
 }
 
 func streamFileYamlToTektonObj(path string, obj runtime.Object, ta *testArgs) runtime.Object {
-	bytes, err := os.ReadFile(filepath.Clean(path))
+	readFile, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-	return decodeBytesToTektonObjbytes(bytes, obj, ta)
+	return decodeBytesToTektonObjbytes(readFile, obj, ta)
 }
 
 func prPods(ta *testArgs, name string) []corev1.Pod {
