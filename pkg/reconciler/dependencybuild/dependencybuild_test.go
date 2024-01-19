@@ -313,6 +313,8 @@ func TestStateBuilding(t *testing.T) {
 				},
 			},
 		}
+		db.Status.PotentialBuildRecipes = []*v1alpha1.BuildRecipe{db.Status.BuildAttempts[0].Recipe}
+		db.Status.PotentialBuildRecipesIndex = 1
 		db.Spec.ScmInfo.SCMURL = "some-url"
 		db.Spec.ScmInfo.Tag = "some-tag"
 		db.Spec.ScmInfo.Path = "some-path"

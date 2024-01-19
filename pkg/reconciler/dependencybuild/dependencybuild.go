@@ -129,7 +129,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		case "", v1alpha1.DependencyBuildStateNew:
 			return r.handleStateNew(ctx, log, &db)
 		case v1alpha1.DependencyBuildStateSubmitBuild:
-			return r.handleStateSubmitBuild(ctx, &db)
+			return r.handleStateSubmitBuild(ctx, log, &db)
 		case v1alpha1.DependencyBuildStateFailed:
 			return reconcile.Result{}, nil
 		case v1alpha1.DependencyBuildStateBuilding:
@@ -141,7 +141,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-
 		result, err := r.handleS3SyncPipelineRun(ctx, log, &pr)
 		if result != nil || err != nil {
 			if result != nil {
@@ -305,7 +304,6 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 
 		if err := json.Unmarshal([]byte(buildInfo), &unmarshalled); err != nil {
 			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
-
 			db.Status.State = v1alpha1.DependencyBuildStateFailed
 			db.Status.Message = "failed to unmarshal json build info: " + err.Error() + ": " + buildInfo
 			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
@@ -313,7 +311,7 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 
 		//read our builder images from the config
 		var allBuilderImages []BuilderImage
-		allBuilderImages, err = r.processBuilderImages(ctx, log)
+		allBuilderImages, err = r.processBuilderImages(ctx)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -364,9 +362,9 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 					break
 				}
 			}
-
 		}
 		db.Status.PotentialBuildRecipes = buildRecipes
+		db.Status.PotentialBuildRecipesIndex = 0
 
 		if len(unmarshalled.Image) > 0 {
 			log.Info(fmt.Sprintf("Found preexisting shared build with deployed GAVs %#v from image %#v", unmarshalled.Gavs, unmarshalled.Image))
@@ -413,7 +411,7 @@ type invocation struct {
 	DisabledPlugins []string
 }
 
-func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context, log logr.Logger) ([]BuilderImage, error) {
+func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context) ([]BuilderImage, error) {
 	systemConfig := v1alpha1.SystemConfig{}
 	getCtx := ctx
 	err := r.client.Get(getCtx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
@@ -448,27 +446,29 @@ func (r *ReconcileDependencyBuild) processBuilderImageTags(tags string) map[stri
 	return tools
 }
 
-func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//the current recipe has been built, we need to pick a new one
 	//pick the first recipe in the potential list
 	//new build, kick off a pipeline run to run the build
 	//first we update the recipes, but add a flag that this is not submitted yet
 
 	//no more attempts
-	if len(db.Status.PotentialBuildRecipes) == 0 {
+	if len(db.Status.PotentialBuildRecipes) == db.Status.PotentialBuildRecipesIndex {
+		msg := "The DependencyBuild %s/%s moved to failed, all recipes exhausted"
+		log.Info(fmt.Sprintf(msg, db.Namespace, db.Name))
+		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildFailed", msg, db.Namespace, db.Name)
 		db.Status.State = v1alpha1.DependencyBuildStateFailed
-		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildFailed", "The DependencyBuild %s/%s moved to failed, all recipes exhausted", db.Namespace, db.Name)
 		return reconcile.Result{}, r.client.Status().Update(ctx, db)
 	}
 	ba := v1alpha1.BuildAttempt{}
 	ba.BuildId = uuid.New().String()
-	ba.Recipe = db.Status.PotentialBuildRecipes[0]
+	ba.Recipe = db.Status.PotentialBuildRecipes[db.Status.PotentialBuildRecipesIndex]
 	pipelineName := currentDependencyBuildPipelineName(db)
 	ba.Build = &v1alpha1.BuildPipelineRun{
 		PipelineName: pipelineName,
 	}
-	//and remove if from the potential list
-	db.Status.PotentialBuildRecipes = db.Status.PotentialBuildRecipes[1:]
+	//and remove if from the potential list via the index
+	db.Status.PotentialBuildRecipesIndex++
 	db.Status.BuildAttempts = append(db.Status.BuildAttempts, &ba)
 	db.Status.State = v1alpha1.DependencyBuildStateBuilding
 	//create the pipeline run
@@ -500,9 +500,11 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	pr.Namespace = db.Namespace
-	// we do not use generate name since a) it was used in creating the db and the db name has random ids b) there is a 1 to 1 relationship (but also consider potential recipe retry)
-	// c) it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs updates to the db before
-	// we move the db out of building
+	// we do not use generate name since
+	// 1. it was used in creating the db and the db name has random ids
+	// 2. there is a 1 to 1 relationship (but also consider potential recipe retry)
+	// 3. it allows us to use the already exist error on create to short circuit the creation of dbs if owner refs
+	//    updates to the db before we move the db out of building
 	pr.Name = attempt.Build.PipelineName
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Name, artifactbuild.PipelineRunLabel: "", PipelineTypeLabel: PipelineTypeBuild}
 
@@ -655,9 +657,9 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				}
 
 				if doRetry {
-					existing := db.Status.PotentialBuildRecipes
-					db.Status.PotentialBuildRecipes = []*v1alpha1.BuildRecipe{attempt.Recipe}
-					db.Status.PotentialBuildRecipes = append(db.Status.PotentialBuildRecipes, existing...)
+					log.Info(fmt.Sprintf("Resetting %d to retry build for %s", db.Status.PotentialBuildRecipesIndex,
+						db.Name))
+					db.Status.PotentialBuildRecipesIndex--
 					db.Status.PipelineRetries++
 					db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 					err := r.client.Status().Update(ctx, db)
@@ -734,7 +736,9 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			if len(problemContaminates) == 0 {
 				db.Status.State = v1alpha1.DependencyBuildStateComplete
 			} else {
-				r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildContaminated", "The DependencyBuild %s/%s was contaminated with community dependencies", db.Namespace, db.Name)
+				msg := "The DependencyBuild %s/%s was contaminated with community dependencies"
+				log.Info(fmt.Sprintf(msg, db.Namespace, db.Name))
+				r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildContaminated", msg, db.Namespace, db.Name)
 				//the dependency was contaminated with community deps
 				//most likely shaded in
 				//we don't need to update the status here, it will be handled by the handleStateComplete method
@@ -856,6 +860,7 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 			ownerGavs[ab.Spec.GAV] = true
 		}
 	}
+
 	for _, contaminant := range problemContaminates {
 		for _, artifact := range contaminant.ContaminatedArtifacts {
 			if ownerGavs[artifact] {
@@ -882,7 +887,7 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 				} else {
 					abr.Annotations = map[string]string{}
 					abr.Annotations[artifactbuild.DependencyBuildContaminatedByAnnotation+suffix] = db.Name
-					l.Info("Marking ArtifactBuild %s as a contaminant of %s", abr.Name, db.Name, "action", "ADD")
+					l.Info(fmt.Sprintf("Marking ArtifactBuild %s as a contaminant of %s", abr.Name, db.Name))
 					err := r.client.Update(ctx, &abr)
 					if err != nil {
 						return err
@@ -912,7 +917,9 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 		//all fixed, just set the state back to building and try again
 		//this is triggered when contaminants are removed by the ABR controller
 		//setting it back to building should re-try the recipe that actually worked
-		db.Status.State = v1alpha1.DependencyBuildStateNew
+		db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+		db.Status.PotentialBuildRecipesIndex = 0
+		db.Status.PipelineRetries = 0
 		return reconcile.Result{}, r.client.Update(ctx, db)
 	}
 	return reconcile.Result{}, nil

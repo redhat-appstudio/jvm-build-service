@@ -371,8 +371,9 @@ func (r *ReconcileArtifactBuild) handleStateComplete(ctx context.Context, log lo
 				log.Info("Attempting to resolve contamination for dependencybuild as all contaminates are ready", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag)
 				//TODO: we could have a situation where there are still some contamination, but not for artifacts that we care about
 				//kick off the build again
-				log.Info("Contamination resolved, moving to state new", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag)
-				db.Status.State = v1alpha1.DependencyBuildStateNew
+				log.Info("Contamination resolved, moving to state SubmitBuild", "dependencybuild", db.Name+"-"+db.Spec.ScmInfo.SCMURL+"-"+db.Spec.ScmInfo.Tag)
+				db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+				db.Status.PotentialBuildRecipesIndex = 0
 			}
 			if err := r.client.Status().Update(ctx, &db); err != nil {
 				return err
