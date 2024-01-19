@@ -392,10 +392,6 @@ func bothABsAndDBsGenerated(ta *testArgs) (bool, error) {
 	return false, nil
 }
 
-//func projectCleanup(ta *testArgs) {
-//	projectClient.ProjectV1().Projects().Delete(context.Background(), ta.ns, metav1.DeleteOptions{})
-//}
-
 func decodeBytesToTektonObjbytes(bytes []byte, obj runtime.Object, ta *testArgs) runtime.Object {
 	decodingScheme := runtime.NewScheme()
 	utilruntime.Must(tektonpipeline.AddToScheme(decodingScheme))
@@ -428,6 +424,7 @@ func streamRemoteYamlToTektonObj(url string, obj runtime.Object, ta *testArgs) r
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
+	fmt.Printf("Reading from %s url\n", url)
 	return decodeBytesToTektonObjbytes(readAll, obj, ta)
 }
 
@@ -436,6 +433,7 @@ func streamFileYamlToTektonObj(path string, obj runtime.Object, ta *testArgs) ru
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
+	fmt.Printf("Reading from %s file\n", path)
 	return decodeBytesToTektonObjbytes(readFile, obj, ta)
 }
 

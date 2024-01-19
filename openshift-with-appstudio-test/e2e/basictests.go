@@ -95,7 +95,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		}
 		ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
-				pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
+				pr, err := tektonClient.TektonV1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
 				if err != nil {
 					ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
 					return false, nil
@@ -284,12 +284,12 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	ta.t.Run("make sure second build access cached dependencies", func(t *testing.T) {
 		//first delete all existing PipelineRuns to free up resources
 		//mostly for minikube
-		runs, lerr := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).List(context.TODO(), metav1.ListOptions{})
+		runs, lerr := tektonClient.TektonV1().PipelineRuns(ta.ns).List(context.TODO(), metav1.ListOptions{})
 		if lerr != nil {
 			debugAndFailTest(ta, fmt.Sprintf("error listing runs %s", lerr.Error()))
 		}
 		for _, r := range runs.Items {
-			err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Delete(context.TODO(), r.Name, metav1.DeleteOptions{})
+			err := tektonClient.TektonV1().PipelineRuns(ta.ns).Delete(context.TODO(), r.Name, metav1.DeleteOptions{})
 			if err != nil {
 				debugAndFailTest(ta, fmt.Sprintf("error deleting runs %s", err.Error()))
 			}
