@@ -124,6 +124,7 @@ public class InvocationBuilder {
     }
 
     public BuildInfo build(CacheBuildInfoLocator buildInfoLocator) {
+        Log.infof("Attempting to build invocations, with builder %s", this);
         if (buildRecipeInfo != null) {
             if (buildRecipeInfo.isEnforceVersion() && !versionCorrect) {
                 info.enforceVersion = version;
@@ -159,7 +160,10 @@ public class InvocationBuilder {
         }
 
         var jdkReleaseInfo = buildToolInfo.get("jdk");
-        for (var javaVersion : availableTools.getOrDefault("jdk", List.of())) {
+        Date maybeAddReleaseDate = null;
+        JavaVersion maybeAddJavaVersion = null;
+        List<String> availableJDKs = availableTools.getOrDefault("jdk", List.of());
+        for (var javaVersion : availableJDKs) {
             JavaVersion j = new JavaVersion(javaVersion);
             if (minJavaVersion != null) {
                 if (minJavaVersion.intVersion() > j.intVersion()) {
@@ -172,20 +176,31 @@ public class InvocationBuilder {
                 }
             }
             allPossibleJavaVersions.add(j);
-            var jdkRelease = jdkReleaseInfo.get("" + j.intVersion());
+            BuildToolInfo jdkRelease = jdkReleaseInfo.get("" + j.intVersion());
             if (jdkRelease == null) {
                 javaVersions.add(j);
             } else {
                 try {
                     Date release = simpleDate.parse(jdkRelease.getReleaseDate());
                     if (release.before(commitTime)) {
-                        javaVersions.add(j); //no info, always add it
+                        javaVersions.add(j);
+                    } else {
+                        //we still want to add this if the commit happened between available tool releases
+                        //e.g. if it happened between 8 and 11 it may be targeting 9, which means we might need 11
+                        //to build it
+                        if (maybeAddReleaseDate == null || maybeAddReleaseDate.after(release)) {
+                            maybeAddJavaVersion = j;
+                            maybeAddReleaseDate = release;
+                        }
                     }
                 } catch (ParseException e) {
                     Log.errorf(e, "Failed to parse release date");
                     javaVersions.add(j); //no info, always add it
                 }
             }
+        }
+        if (maybeAddJavaVersion != null) {
+            javaVersions.add(maybeAddJavaVersion);
         }
         if (javaVersions.isEmpty()) {
             javaVersions.addAll(allPossibleJavaVersions);
@@ -414,5 +429,21 @@ public class InvocationBuilder {
 
     public void setContextPath(String contextPath) {
         this.contextPath = contextPath;
+    }
+
+    @Override
+    public String toString() {
+        return "InvocationBuilder{" +
+                "buildRecipeInfo=" + buildRecipeInfo +
+                ", availableTools=" + availableTools +
+                ", version='" + version + '\'' +
+                ", discoveredToolVersions=" + discoveredToolVersions +
+                ", toolInvocations=" + toolInvocations +
+                ", minJavaVersion=" + minJavaVersion +
+                ", maxJavaVersion=" + maxJavaVersion +
+                ", info=" + info +
+                ", versionCorrect=" + versionCorrect +
+                ", contextPath='" + contextPath + '\'' +
+                '}';
     }
 }
