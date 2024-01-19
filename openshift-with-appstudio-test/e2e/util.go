@@ -815,7 +815,7 @@ func (a SortableArtifact) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 func setupMinikube(t *testing.T, namespace string) *testArgs {
 
-	ta := commonSetup(t, minikubeGitCloneTaskUrl, namespace)
+	ta := commonSetup(t, gitCloneTaskUrl, namespace)
 	//go through and limit all deployments
 	//we have very little memory, we need some limits to make sure minikube can actually run
 	//limit every deployment to 100mb
