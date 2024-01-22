@@ -286,18 +286,23 @@ public class LookupBuildInfoCommand implements Runnable {
 
     Collection<String> handleRepositories(Path pomFile, CacheBuildInfoLocator buildInfoLocator)
             throws BootstrapMavenException {
-        var config = BootstrapMavenContext.config();
-        config.setEffectiveModelBuilder(true);
-        config.setPreferPomsFromWorkspace(true);
-        config.setRepositorySystem(mavenContext.getRepositorySystem());
-        config.setRemoteRepositoryManager(mavenContext.getRemoteRepositoryManager());
+        try {
+            var config = BootstrapMavenContext.config();
+            config.setEffectiveModelBuilder(true);
+            config.setPreferPomsFromWorkspace(true);
+            config.setRepositorySystem(mavenContext.getRepositorySystem());
+            config.setRemoteRepositoryManager(mavenContext.getRemoteRepositoryManager());
 
-        Set<String> result = new HashSet<>(internalHandleRepositories(config, pomFile));
-        if (result.isEmpty()) {
+            Set<String> result = new HashSet<>(internalHandleRepositories(config, pomFile));
+            if (result.isEmpty()) {
+                return List.of();
+            }
+            Log.infof("Found repositories %s", result);
+            return buildInfoLocator.findRepositories(result);
+        } catch (Exception e) {
+            Log.error("Failed to resolve repositories", e);
             return List.of();
         }
-        Log.infof("Found repositories %s", result);
-        return buildInfoLocator.findRepositories(result);
     }
 
     private Collection<String> internalHandleRepositories(
