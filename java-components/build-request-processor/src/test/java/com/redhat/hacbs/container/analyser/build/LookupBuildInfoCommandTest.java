@@ -144,7 +144,21 @@ class LookupBuildInfoCommandTest {
                 "https://github.com/jvm-build-service-test-data/maven-symlink-in-repo",
                 new BuildRecipeInfo(),
                 cacheBuildInfoLocator);
-        System.out.println("info " + info.repositories);
         assertTrue(info.repositories.contains("https://repo.maven.apache.org/maven2"));
+    }
+
+    @Test
+    public void testModelResolver4()
+            throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+
+        lookupBuildInfoCommand.mavenContext = new BootstrapMavenContext();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        lookupBuildInfoCommand.commit = "a586e706aea82dc80fb05bdf59f2a25150ee1801";
+        var info = lookupBuildInfoCommand.doBuildAnalysis(
+                "https://github.com/javaee/jsonp",
+                new BuildRecipeInfo(),
+                cacheBuildInfoLocator);
+        assertTrue(info.repositories.contains("https://maven.java.net/content/repositories/snapshots"));
     }
 }

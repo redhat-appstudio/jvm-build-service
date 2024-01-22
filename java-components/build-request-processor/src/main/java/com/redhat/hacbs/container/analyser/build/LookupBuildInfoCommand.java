@@ -63,6 +63,7 @@ import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
+import io.quarkus.bootstrap.resolver.maven.options.BootstrapMavenOptions;
 import io.quarkus.logging.Log;
 import io.vertx.core.json.JsonObject;
 import picocli.CommandLine;
@@ -284,9 +285,12 @@ public class LookupBuildInfoCommand implements Runnable {
         return ret;
     }
 
-    Collection<String> handleRepositories(Path pomFile, CacheBuildInfoLocator buildInfoLocator)
-            throws BootstrapMavenException {
+    Collection<String> handleRepositories(Path pomFile, CacheBuildInfoLocator buildInfoLocator,
+            boolean releaseProfile) {
         try {
+            if (releaseProfile) {
+                System.setProperty(BootstrapMavenOptions.QUARKUS_INTERNAL_MAVEN_CMD_LINE_ARGS, "-Prelease");
+            }
             var config = BootstrapMavenContext.config();
             config.setEffectiveModelBuilder(true);
             config.setPreferPomsFromWorkspace(true);
@@ -302,6 +306,8 @@ public class LookupBuildInfoCommand implements Runnable {
         } catch (Exception e) {
             Log.error("Failed to resolve repositories", e);
             return List.of();
+        } finally {
+            System.clearProperty(BootstrapMavenOptions.QUARKUS_INTERNAL_MAVEN_CMD_LINE_ARGS);
         }
     }
 
@@ -378,11 +384,6 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
                 MavenJavaVersionDiscovery.filterJavaVersions(model, builder);
 
-                //look for repositories
-                for (var repo : handleRepositories(pomFile, buildInfoLocator)) {
-                    builder.addRepository(repo);
-                }
-
                 var invocations = new ArrayList<>(
                         List.of("install",
                                 "-DallowIncompleteProjects",
@@ -404,14 +405,22 @@ public class LookupBuildInfoCommand implements Runnable {
                     //this can be controller via additional args if you still want to skip them
                     invocations.add("-DskipTests");
                 }
+                boolean releaseProfile = false;
                 if (model.getProfiles() != null) {
                     for (var profile : model.getProfiles()) {
                         if (Objects.equals(profile.getId(), "release")) {
                             invocations.add("-Prelease");
+                            releaseProfile = true;
                         }
                     }
                 }
                 builder.addToolInvocation(MAVEN, invocations);
+
+                //look for repositories
+                for (var repo : handleRepositories(pomFile, buildInfoLocator, releaseProfile)) {
+                    builder.addRepository(repo);
+                }
+
                 foundBuildScript = true;
             }
         }
