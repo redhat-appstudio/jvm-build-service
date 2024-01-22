@@ -1,10 +1,10 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  generateName: sample-component-build-
+  generateName: sample-component-build-gradle-
 spec:
   pipelineRef:
-    name: sample-component-build
+    name: sample-component-build-gradle
   params:
     - name: url
       value: https://github.com/dwalluck/gradle-sample-project.git

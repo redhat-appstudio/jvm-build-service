@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: sample-component-build
+  name: sample-component-build-gradle
 spec:
   params:
     - name: url

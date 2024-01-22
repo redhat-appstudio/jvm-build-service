@@ -11,3 +11,4 @@ spec:
     maven-repository-302-redhat: "https://maven.repository.redhat.com/ga"
     maven-repository-303-jitpack: "https://jitpack.io"
     maven-repository-304-gradle: "https://repo.gradle.org/artifactory/libs-releases"
+    maven-repository-305-gradleplugins: "https://plugins.gradle.org/m2"

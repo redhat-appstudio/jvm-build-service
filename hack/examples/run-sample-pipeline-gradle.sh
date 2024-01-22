@@ -9,7 +9,7 @@ echo
 echo "👉 Registering sample Gradle pipeline:"
 echo
 
-kubectl apply -f $DIR/pipeline-gradle.yaml
+kustomize build $DIR | envsubst '${QUAY_USERNAME}' | kubectl apply -f -
 
 echo
 echo "👉 Running the Gradle pipeline with a sample Gradle project:"
