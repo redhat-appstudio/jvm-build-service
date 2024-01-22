@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -32,7 +32,7 @@ const name = "test"
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcileArtifactBuild) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
-	err := pipelinev1beta1.AddToScheme(scheme)
+	err := tektonpipeline.AddToScheme(scheme)
 	if err != nil {
 		panic(err)
 	}

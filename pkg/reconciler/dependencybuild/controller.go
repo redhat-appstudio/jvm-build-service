@@ -8,7 +8,7 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,8 +42,8 @@ func SetupNewReconcilerWithManager(mgr ctrl.Manager, params *cli.TektonParams) e
 				return true
 			},
 		})).
-		Watches(&v1beta1.PipelineRun{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
-			pipelineRun := o.(*v1beta1.PipelineRun)
+		Watches(&tektonpipeline.PipelineRun{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
+			pipelineRun := o.(*tektonpipeline.PipelineRun)
 
 			// check if the TaskRun is related to DependencyBuild
 			if pipelineRun.GetLabels() == nil {

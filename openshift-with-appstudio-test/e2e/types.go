@@ -2,7 +2,7 @@ package e2e
 
 import (
 	"fmt"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"testing"
 	"time"
 )
@@ -14,10 +14,10 @@ type testArgs struct {
 	timeout  time.Duration
 	interval time.Duration
 
-	gitClone *v1.Task
-	maven    *v1.Task
-	pipeline *v1.Pipeline
-	run      *v1.PipelineRun
+	gitClone *tektonpipeline.Task
+	maven    *tektonpipeline.Task
+	pipeline *tektonpipeline.Pipeline
+	run      *tektonpipeline.PipelineRun
 }
 
 func (ta *testArgs) Logf(msg string) {
