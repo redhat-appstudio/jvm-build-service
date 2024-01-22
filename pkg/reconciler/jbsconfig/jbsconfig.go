@@ -77,6 +77,9 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	jbsConfig := v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, request.NamespacedName, &jbsConfig)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
 		return reconcile.Result{}, err
 	}
 
@@ -630,7 +633,7 @@ func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log lo
 		Repository: repository,
 		SecretName: repo.Status.Credentials.PushSecretName,
 	}
-	return r.client.Status().Update(ctx, config)
+	return nil
 }
 
 func ImageRegistriesToString(log logr.Logger, sharedRegistries []v1alpha1.ImageRegistry) string {
