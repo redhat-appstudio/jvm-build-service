@@ -53,7 +53,7 @@ spec:
     - name: MAVEN_MIRROR_URL
       description: The Maven repository mirror url
       type: string
-      default: "http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local/v2/cache/user/default/"
+      default: "http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local"
     - name: SERVER_USER
       description: The username for the server
       type: string
@@ -293,16 +293,11 @@ spec:
     - name: analyse-dependencies
       securityContext:
         runAsUser: 0
-
       image: quay.io/${QUAY_USERNAME}/hacbs-jvm-build-request-processor:dev
-      args:
-        - path
-        - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)
-        - -s
-        - $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)/java-sbom.json
-        - -c
-        - "$(results.dependencies.path)"
-        - -u
-        - "$(results.untrusted-dependencies.path)"
-        - --cache-url
-        - $(params.MAVEN_MIRROR_URL)/v1/rebuild
+      imagePullPolicy: Always
+      script: |
+        /opt/jboss/container/java/run/run-java.sh analyse-dependencies path $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH) \
+          -s $(workspaces.source.path)/$(params.CONTEXT_DIR)/$(params.DEPENDENCY_ANALYSER_PATH)/java-sbom.json \
+          -c "$(results.dependencies.path)" \
+          -u "$(results.untrusted-dependencies.path)" \
+          --task-run-name $(context.taskRun.name) \
