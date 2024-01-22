@@ -20,9 +20,11 @@ import java.util.logging.LogRecord;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.inject.Inject;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.container.analyser.deploy.mavenrepository.CodeArtifactRepository;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.resources.util.HashUtil;
 
@@ -108,6 +110,15 @@ public class DeployContaminateTest {
                 .contains("GAVs to deploy: [com.company.foo:foo-bar:3.25.8, com.company.foo:foo-baz:3.25.8")));
     }
 
+    @Test
+    public void testCodeArtifactRegex() {
+        var m = DeployCommand.CODE_ARTIFACT_PATTERN
+                .matcher("https://demo-151537584421.d.codeartifact.us-east-1.amazonaws.com/maven/jbs-demo/");
+        Assertions.assertTrue(m.matches());
+        Assertions.assertEquals("demo", m.group(1));
+        Assertions.assertEquals("jbs-demo", m.group(2));
+    }
+
     private Path createDeploymentRepo()
             throws IOException, URISyntaxException {
         Path testData = Files.createTempDirectory("test-data");
@@ -152,7 +163,8 @@ public class DeployContaminateTest {
         }
 
         @Override
-        protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs)
+        protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs,
+                CodeArtifactRepository codeArtifactRepository)
                 throws Exception {
             System.out.println("Skipping doDeployment for " + deploymentPath + " from " + sourcePath);
         }

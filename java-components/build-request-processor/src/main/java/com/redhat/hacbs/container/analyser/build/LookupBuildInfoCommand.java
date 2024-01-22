@@ -190,7 +190,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 if (paths.size() > 1) {
                     Log.errorf("Multiple subdirectories have build systems");
                     throw new RuntimeException("Multiple subdirectories have build files.");
-                } else {
+                } else if (paths.size() == 1) {
                     String foundContext = paths.get(0).getFileName().toString();
                     Log.warnf("Setting context path %s", foundContext);
                     builder.setContextPath(foundContext);
@@ -439,6 +439,9 @@ public class LookupBuildInfoCommand implements Runnable {
                 inv.add("-x");
                 inv.add("test");
             }
+            //gradle projects often need plugins from the google repo
+            //we add it by default
+            builder.addRepository("google");
             builder.addToolInvocation(GRADLE, inv);
             foundBuildScript = true;
         }

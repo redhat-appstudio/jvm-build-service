@@ -21,6 +21,11 @@ import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.util.repository.AuthenticationBuilder;
 
+import com.amazonaws.services.codeartifact.model.DeletePackageVersionsRequest;
+import com.amazonaws.services.codeartifact.model.PackageFormat;
+import com.amazonaws.services.codeartifact.model.ResourceNotFoundException;
+import com.amazonaws.services.codeartifact.model.ThrottlingException;
+
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
 import io.quarkus.logging.Log;
@@ -38,8 +43,10 @@ public class MavenRepositoryDeployer {
 
     private final DefaultRepositorySystemSession session;
 
+    private final CodeArtifactRepository codeArtifactRepository;
+
     public MavenRepositoryDeployer(BootstrapMavenContext mvnCtx, String username, String password, String repository,
-            Path artifacts)
+            Path artifacts, CodeArtifactRepository codeArtifactRepository)
             throws BootstrapMavenException {
         this.username = username;
         this.password = password;
@@ -47,6 +54,7 @@ public class MavenRepositoryDeployer {
         this.artifacts = artifacts;
 
         this.system = mvnCtx.getRepositorySystem();
+        this.codeArtifactRepository = codeArtifactRepository;
         this.session = MavenRepositorySystemUtils.newSession();
 
         Log.infof("Maven credentials are username '%s' and repository '%s'", username, repository);
@@ -97,6 +105,24 @@ public class MavenRepositoryDeployer {
                                                 version);
                                         jarArtifact = jarArtifact.setFile(i.toFile());
                                         deployRequest.addArtifact(jarArtifact);
+
+                                        if (codeArtifactRepository != null) {
+                                            handleThrottling(() -> {
+                                                try {
+                                                    DeletePackageVersionsRequest request = new DeletePackageVersionsRequest()
+                                                            .withPackage(artifact)
+                                                            .withRepository(codeArtifactRepository.repository())
+                                                            .withDomain(codeArtifactRepository.domain())
+                                                            .withFormat(PackageFormat.Maven)
+                                                            .withNamespace(group)
+                                                            .withVersions(version);
+                                                    var result = codeArtifactRepository.client().deletePackageVersions(request);
+                                                    Log.infof("Deleted packages %s", result);
+                                                } catch (ResourceNotFoundException e) {
+                                                    //not found
+                                                }
+                                            });
+                                        }
                                     }
                                 }
 
@@ -119,4 +145,34 @@ public class MavenRepositoryDeployer {
 
                 });
     }
+
+    private void handleThrottling(Runnable task) {
+        for (int i = 0; i < 10; ++i) {
+            try {
+                task.run();
+                return;
+            } catch (RuntimeException e) {
+                if (!isThrottle(e)) {
+                    throw e;
+                }
+            }
+            try {
+                Thread.sleep(i * 10000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private boolean isThrottle(RuntimeException e) {
+        Throwable ex = e;
+        while (ex != null) {
+            if (ex instanceof ThrottlingException) {
+                return true;
+            }
+            ex = ex.getCause();
+        }
+        return false;
+    }
+
 }
