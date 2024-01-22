@@ -466,6 +466,7 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, d
 	pipelineName := currentDependencyBuildPipelineName(db)
 	ba.Build = &v1alpha1.BuildPipelineRun{
 		PipelineName: pipelineName,
+		StartTime:    time.Now().Unix(),
 	}
 	//and remove if from the potential list
 	db.Status.PotentialBuildRecipes = db.Status.PotentialBuildRecipes[1:]

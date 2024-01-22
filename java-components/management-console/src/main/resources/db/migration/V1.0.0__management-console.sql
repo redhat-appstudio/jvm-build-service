@@ -94,6 +94,7 @@
         preBuildScript text,
         repositories varchar(255),
         sbtVersion varchar(255),
+        startTime timestamp(6),
         successful boolean not null,
         tool varchar(255),
         upstreamDifferences text,
@@ -269,7 +270,7 @@
         version varchar(255),
         buildIdentifier_id bigint not null,
         primary key (id),
-        constraint UKmqhxn62o5bhx4qwwrajohpgn unique (buildIdentifier_id, uid)
+        constraint UK3vhc9gqgiq7hppr3iglc2n0b8 unique (buildIdentifier_id)
     );
 
     create table StoredDependencyBuild_BuildAttempt (
@@ -294,162 +295,162 @@
         primary key (id)
     );
 
-    alter table if exists AdditionalDownload 
-       add constraint FK39eh5a8xxp46q3gtmeyncch1h 
-       foreign key (buildAttempt_id) 
+    alter table if exists AdditionalDownload
+       add constraint FK39eh5a8xxp46q3gtmeyncch1h
+       foreign key (buildAttempt_id)
        references BuildAttempt;
 
-    alter table if exists BuildAttempt 
-       add constraint FK2vqtsy25ccjmikislqo3a0aim 
-       foreign key (dependencyBuild_id) 
+    alter table if exists BuildAttempt
+       add constraint FK2vqtsy25ccjmikislqo3a0aim
+       foreign key (dependencyBuild_id)
        references StoredDependencyBuild;
 
-    alter table if exists BuildAttempt_AdditionalDownload 
-       add constraint FKbiicbxkn2vh9dllrjma0odjw0 
-       foreign key (additionalDownloads_id) 
+    alter table if exists BuildAttempt_AdditionalDownload
+       add constraint FKbiicbxkn2vh9dllrjma0odjw0
+       foreign key (additionalDownloads_id)
        references AdditionalDownload;
 
-    alter table if exists BuildAttempt_AdditionalDownload 
-       add constraint FKbmavpy9fpr3g86o5qfkmf5srb 
-       foreign key (BuildAttempt_id) 
+    alter table if exists BuildAttempt_AdditionalDownload
+       add constraint FKbmavpy9fpr3g86o5qfkmf5srb
+       foreign key (BuildAttempt_id)
        references BuildAttempt;
 
-    alter table if exists BuildAttempt_BuildFile 
-       add constraint FKaeo4m7letkmwfyoyopm8yj0gj 
-       foreign key (storedBuildResults_id) 
+    alter table if exists BuildAttempt_BuildFile
+       add constraint FKaeo4m7letkmwfyoyopm8yj0gj
+       foreign key (storedBuildResults_id)
        references BuildFile;
 
-    alter table if exists BuildAttempt_BuildFile 
-       add constraint FKc5ag6faehmls1owi8oykcs9qy 
-       foreign key (BuildAttempt_id) 
+    alter table if exists BuildAttempt_BuildFile
+       add constraint FKc5ag6faehmls1owi8oykcs9qy
+       foreign key (BuildAttempt_id)
        references BuildAttempt;
 
-    alter table if exists BuildFile 
-       add constraint FKmke5rkkm1roj9nq6c77yyr42j 
-       foreign key (build_id) 
+    alter table if exists BuildFile
+       add constraint FKmke5rkkm1roj9nq6c77yyr42j
+       foreign key (build_id)
        references BuildAttempt;
 
-    alter table if exists BuildIdentifier 
-       add constraint FKhy8g6bovqm0fnesgul4293uv0 
-       foreign key (repository_id) 
+    alter table if exists BuildIdentifier
+       add constraint FKhy8g6bovqm0fnesgul4293uv0
+       foreign key (repository_id)
        references ScmRepository;
 
-    alter table if exists BuildQueue 
-       add constraint FKdul89emvqjn1ne0jidcyqs6s1 
-       foreign key (mavenArtifact_id) 
+    alter table if exists BuildQueue
+       add constraint FKdul89emvqjn1ne0jidcyqs6s1
+       foreign key (mavenArtifact_id)
        references MavenArtifact;
 
-    alter table if exists BuildSBOMDiscoveryInfo 
-       add constraint FKxguvu08ig0ktv7b0tnjr38dx 
-       foreign key (build_id) 
+    alter table if exists BuildSBOMDiscoveryInfo
+       add constraint FKxguvu08ig0ktv7b0tnjr38dx
+       foreign key (build_id)
        references StoredDependencyBuild;
 
-    alter table if exists ContainerImage 
-       add constraint FKegmav1y7dg5t2ykl7bdn7sk3e 
-       foreign key (dependencySet_id) 
+    alter table if exists ContainerImage
+       add constraint FKegmav1y7dg5t2ykl7bdn7sk3e
+       foreign key (dependencySet_id)
        references DependencySet;
 
-    alter table if exists GithubActionsBuild 
-       add constraint FK4b0h7wssxcjduxyntp07yonj 
-       foreign key (dependencySet_id) 
+    alter table if exists GithubActionsBuild
+       add constraint FK4b0h7wssxcjduxyntp07yonj
+       foreign key (dependencySet_id)
        references DependencySet;
 
-    alter table if exists IdentifiedDependency 
-       add constraint FK3pnb3jtp9ckrvq5i7toiaqjh0 
-       foreign key (dependencySet_id) 
+    alter table if exists IdentifiedDependency
+       add constraint FK3pnb3jtp9ckrvq5i7toiaqjh0
+       foreign key (dependencySet_id)
        references DependencySet;
 
-    alter table if exists IdentifiedDependency 
-       add constraint FKi7f1ero4w4os5o1b96ut7tncb 
-       foreign key (mavenArtifact_id) 
+    alter table if exists IdentifiedDependency
+       add constraint FKi7f1ero4w4os5o1b96ut7tncb
+       foreign key (mavenArtifact_id)
        references MavenArtifact;
 
-    alter table if exists jbs_user_Role 
-       add constraint FKgm8053kwsm0bf8diecjsrm5wh 
-       foreign key (roles_id) 
+    alter table if exists jbs_user_Role
+       add constraint FKgm8053kwsm0bf8diecjsrm5wh
+       foreign key (roles_id)
        references Role;
 
-    alter table if exists jbs_user_Role 
-       add constraint FKeojvfxx1yoge641w29ncfc5ih 
-       foreign key (users_id) 
+    alter table if exists jbs_user_Role
+       add constraint FKeojvfxx1yoge641w29ncfc5ih
+       foreign key (users_id)
        references jbs_user;
 
-    alter table if exists MavenArtifact 
-       add constraint FKl9mu28j56nnr9dgmlelntn1rw 
-       foreign key (identifier_id) 
+    alter table if exists MavenArtifact
+       add constraint FKl9mu28j56nnr9dgmlelntn1rw
+       foreign key (identifier_id)
        references ArtifactIdentifier;
 
-    alter table if exists MavenArtifactLabel 
-       add constraint FK655fjw29db296xsnwaa4cux02 
-       foreign key (artifact_id) 
+    alter table if exists MavenArtifactLabel
+       add constraint FK655fjw29db296xsnwaa4cux02
+       foreign key (artifact_id)
        references MavenArtifact;
 
-    alter table if exists MavenArtifactLabel 
-       add constraint FK8dxbi5yqum5yaldfr2qa8a63q 
-       foreign key (name_id) 
+    alter table if exists MavenArtifactLabel
+       add constraint FK8dxbi5yqum5yaldfr2qa8a63q
+       foreign key (name_id)
        references ArtifactLabelName;
 
-    alter table if exists ShadingDetails 
-       add constraint FKijuafi86lbamrk4rx9v9ih36n 
-       foreign key (contaminant_id) 
+    alter table if exists ShadingDetails
+       add constraint FKijuafi86lbamrk4rx9v9ih36n
+       foreign key (contaminant_id)
        references MavenArtifact;
 
-    alter table if exists ShadingDetails_MavenArtifact 
-       add constraint FKcsmwpetci1vywfi82qewxi1g2 
-       foreign key (contaminatedArtifacts_id) 
+    alter table if exists ShadingDetails_MavenArtifact
+       add constraint FKcsmwpetci1vywfi82qewxi1g2
+       foreign key (contaminatedArtifacts_id)
        references MavenArtifact;
 
-    alter table if exists ShadingDetails_MavenArtifact 
-       add constraint FKtebabkifoet26ei0xilant7l 
-       foreign key (ShadingDetails_id) 
+    alter table if exists ShadingDetails_MavenArtifact
+       add constraint FKtebabkifoet26ei0xilant7l
+       foreign key (ShadingDetails_id)
        references ShadingDetails;
 
-    alter table if exists StoredArtifactBuild 
-       add constraint FK6pda7fm0eqj60yjy4v2bu7163 
-       foreign key (buildIdentifier_id) 
+    alter table if exists StoredArtifactBuild
+       add constraint FK6pda7fm0eqj60yjy4v2bu7163
+       foreign key (buildIdentifier_id)
        references BuildIdentifier;
 
-    alter table if exists StoredArtifactBuild 
-       add constraint FKdc6wbe97oyhmpjww6ukg1u0q7 
-       foreign key (mavenArtifact_id) 
+    alter table if exists StoredArtifactBuild
+       add constraint FKdc6wbe97oyhmpjww6ukg1u0q7
+       foreign key (mavenArtifact_id)
        references MavenArtifact;
 
-    alter table if exists StoredDependencyBuild 
-       add constraint FK7hob7xntbx8beddme3twb0mxm 
-       foreign key (buildIdentifier_id) 
+    alter table if exists StoredDependencyBuild
+       add constraint FK7hob7xntbx8beddme3twb0mxm
+       foreign key (buildIdentifier_id)
        references BuildIdentifier;
 
-    alter table if exists StoredDependencyBuild_BuildAttempt 
-       add constraint FKmwoxb55k088vga72oev550d1 
-       foreign key (buildAttempts_id) 
+    alter table if exists StoredDependencyBuild_BuildAttempt
+       add constraint FKmwoxb55k088vga72oev550d1
+       foreign key (buildAttempts_id)
        references BuildAttempt;
 
-    alter table if exists StoredDependencyBuild_BuildAttempt 
-       add constraint FKgfodrlq1erw0qn5p39axeb0fq 
-       foreign key (StoredDependencyBuild_id) 
+    alter table if exists StoredDependencyBuild_BuildAttempt
+       add constraint FKgfodrlq1erw0qn5p39axeb0fq
+       foreign key (StoredDependencyBuild_id)
        references StoredDependencyBuild;
 
-    alter table if exists StoredDependencyBuild_MavenArtifact 
-       add constraint FKhche325otxfgggxd5a7u5hdtf 
-       foreign key (producedArtifacts_id) 
+    alter table if exists StoredDependencyBuild_MavenArtifact
+       add constraint FKhche325otxfgggxd5a7u5hdtf
+       foreign key (producedArtifacts_id)
        references MavenArtifact;
 
-    alter table if exists StoredDependencyBuild_MavenArtifact 
-       add constraint FKrqvdnenqvtw15sprk88fx1rnc 
-       foreign key (StoredDependencyBuild_id) 
+    alter table if exists StoredDependencyBuild_MavenArtifact
+       add constraint FKrqvdnenqvtw15sprk88fx1rnc
+       foreign key (StoredDependencyBuild_id)
        references StoredDependencyBuild;
 
-    alter table if exists StoredDependencyBuild_ShadingDetails 
-       add constraint FKsec76urqowvrcboayagv2dy2c 
-       foreign key (shadingDetails_id) 
+    alter table if exists StoredDependencyBuild_ShadingDetails
+       add constraint FKsec76urqowvrcboayagv2dy2c
+       foreign key (shadingDetails_id)
        references ShadingDetails;
 
-    alter table if exists StoredDependencyBuild_ShadingDetails 
-       add constraint FKngenliybt8mfng3smkeugxvlf 
-       foreign key (StoredDependencyBuild_id) 
+    alter table if exists StoredDependencyBuild_ShadingDetails
+       add constraint FKngenliybt8mfng3smkeugxvlf
+       foreign key (StoredDependencyBuild_id)
        references StoredDependencyBuild;
 
-    alter table if exists VersionDiscoveryQueue 
-       add constraint FKhfmeop7e32qo1um0phetom2ut 
-       foreign key (artifactIdentifier_id) 
+    alter table if exists VersionDiscoveryQueue
+       add constraint FKhfmeop7e32qo1um0phetom2ut
+       foreign key (artifactIdentifier_id)
        references ArtifactIdentifier;

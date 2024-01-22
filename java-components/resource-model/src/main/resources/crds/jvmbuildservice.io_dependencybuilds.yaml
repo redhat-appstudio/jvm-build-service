@@ -123,6 +123,9 @@ spec:
                           required:
                           - imageDigest
                           type: object
+                        startTime:
+                          format: int64
+                          type: integer
                         succeeded:
                           type: boolean
                       required:

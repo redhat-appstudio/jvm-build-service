@@ -65,14 +65,14 @@ public class DependencyBuildImporter {
                 scm.getPath(), dependencyBuild.getMetadata().getName());
 
         StoredDependencyBuild storedBuild = StoredDependencyBuild
-                .find("buildIdentifier = :buildIdentifier and uid = :uid",
-                        Parameters.with("buildIdentifier", identifier).and("uid", dependencyBuild.getMetadata().getUid()))
+                .find("buildIdentifier = :buildIdentifier",
+                        Parameters.with("buildIdentifier", identifier))
                 .firstResult();
         if (storedBuild == null) {
             storedBuild = new StoredDependencyBuild();
             storedBuild.buildIdentifier = identifier;
-            storedBuild.uid = dependencyBuild.getMetadata().getUid();
         }
+        storedBuild.uid = dependencyBuild.getMetadata().getUid();
         if (s3Bucket != null) {
             storedBuild.buildYamlUrl = "s3://" + s3Bucket + "/builds/" + dependencyBuild.getMetadata().getName() + "/"
                     + dependencyBuild.getMetadata().getUid() + ".yaml";
@@ -114,9 +114,19 @@ public class DependencyBuildImporter {
         }
         if (dependencyBuild.getStatus().getBuildAttempts() != null) {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {
-                BuildAttempt attempt = new BuildAttempt();
+                boolean found = false;
+                BuildAttempt attempt = null;
+                for (var ba : storedBuild.buildAttempts) {
+                    if (ba.startTime != null && ba.startTime.getTime() == i.getBuild().getStartTime()) {
+                        //existing one, just update it
+                        attempt = ba;
+                    }
+                }
+                if (attempt == null) {
+                    attempt = new BuildAttempt();
+                    storedBuild.buildAttempts.add(attempt);
+                }
                 attempt.dependencyBuild = storedBuild;
-                storedBuild.buildAttempts.add(attempt);
                 attempt.jdk = i.getBuildRecipe().getJavaVersion();
                 attempt.mavenVersion = i.getBuildRecipe().getToolVersions().get("maven");
                 attempt.gradleVersion = i.getBuildRecipe().getToolVersions().get("gradle");
@@ -136,10 +146,11 @@ public class DependencyBuildImporter {
                         : i.getBuildRecipe().getAllowedDifferences().stream()
                                 .collect(Collectors.joining("\n"));
                 attempt.successful = Boolean.TRUE.equals(i.getBuild().getSucceeded());
+                var finalAttempt = attempt;
                 if (i.getBuildRecipe().getAdditionalDownloads() != null) {
                     attempt.additionalDownloads = i.getBuildRecipe().getAdditionalDownloads().stream().map(s -> {
                         AdditionalDownload download = new AdditionalDownload();
-                        download.buildAttempt = attempt;
+                        download.buildAttempt = finalAttempt;
                         download.binaryPath = s.getBinaryPath();
                         download.fileName = s.getFileName();
                         download.packageName = s.getPackageName();
@@ -149,7 +160,7 @@ public class DependencyBuildImporter {
                         return download;
                     }).collect(Collectors.toList());
                 }
-                mavenRepo.ifPresent(s -> attempt.mavenRepository = s.replace("/repository/maven-releases",
+                mavenRepo.ifPresent(s -> finalAttempt.mavenRepository = s.replace("/repository/maven-releases",
                         "/service/rest/repository/browse/maven-releases"));
 
                 if (s3Bucket != null) {

@@ -59,7 +59,7 @@ public class DeploymentWatcher {
             @Override
             public void run() {
 
-                client.resources(Pod.class).inAnyNamespace().inform(new ResourceEventHandler<Pod>() {
+                client.resources(Pod.class).inform(new ResourceEventHandler<Pod>() {
                     @Override
                     public void onAdd(Pod resource) {
                         if (resource.getMetadata().getName().contains("jvm-build-workspace-artifact-cache")
