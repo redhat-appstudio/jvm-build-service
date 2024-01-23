@@ -4,5 +4,6 @@
     "config:recommended"
   ],
   "pinDigests": "true",
-  "postUpdateOptions": ["gomodTidy"]
+  "postUpdateOptions": ["gomodTidy"],
+  "addLabels": ["ok-to-test"],
 }
