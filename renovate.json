@@ -4,5 +4,5 @@
     "config:recommended"
   ],
   "pinDigests": "true",
-  "postUpdateOptions": "gomodTidy"
+  "postUpdateOptions": ["gomodTidy"]
 }
