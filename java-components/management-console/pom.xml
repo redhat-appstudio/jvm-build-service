@@ -9,6 +9,10 @@
         <version>999-SNAPSHOT</version>
     </parent>
     <artifactId>management-console</artifactId>
+    <properties>
+        <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
+        <quarkus.container-image.additional-tags>${maven.build.timestamp}</quarkus.container-image.additional-tags>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
@@ -85,6 +89,10 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkiverse.amazonservices</groupId>

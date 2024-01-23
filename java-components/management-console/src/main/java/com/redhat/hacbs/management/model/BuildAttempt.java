@@ -1,5 +1,6 @@
 package com.redhat.hacbs.management.model;
 
+import java.util.Date;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -7,6 +8,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,6 +77,10 @@ public class BuildAttempt extends PanacheEntity {
     @Column(length = -1)
     public String gitArchiveUrl;
 
+    @Column
+    @Temporal(TemporalType.TIMESTAMP)
+    public Date startTime;
+
     //this is pretty yuck, but we don't want a whole new table to store a List<String>
     public void commandLine(List<String> commandLine) {
         var mapper = Arc.container().instance(ObjectMapper.class);
@@ -92,4 +99,5 @@ public class BuildAttempt extends PanacheEntity {
             throw new RuntimeException(e);
         }
     }
+
 }

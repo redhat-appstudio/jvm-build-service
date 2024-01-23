@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import jakarta.enterprise.inject.spi.BeanManager;
@@ -40,6 +42,7 @@ import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
 import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
 import com.redhat.hacbs.container.analyser.deploy.git.Git;
+import com.redhat.hacbs.container.analyser.deploy.mavenrepository.CodeArtifactRepository;
 import com.redhat.hacbs.container.analyser.deploy.mavenrepository.MavenRepositoryDeployer;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.util.FileUtil;
@@ -54,6 +57,7 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "deploy")
 public class DeployCommand implements Runnable {
 
+    static final Pattern CODE_ARTIFACT_PATTERN = Pattern.compile("https://([^.]*)-\\d+\\..*\\.amazonaws\\.com/maven/(.*)/");
     private static final String SLASH = "/";
     private static final String DOT_JAR = ".jar";
     private static final String DOT_POM = ".pom";
@@ -285,6 +289,7 @@ public class DeployCommand implements Runnable {
                 }
             }
             generateBuildSbom();
+            CodeArtifactRepository codeArtifactRepository = null;
             if (isNotEmpty(mvnRepo) && mvnPassword.isEmpty()) {
                 Log.infof("Maven repository specified as %s and no password specified", mvnRepo);
                 URL url = new URL(mvnRepo);
@@ -297,19 +302,27 @@ public class DeployCommand implements Runnable {
                     if (isEmpty(mvnUser)) {
                         Log.warnf("Username for deployment is empty");
                     }
-                    int firstDash = repo.indexOf("-");
-                    String parsedRegion = AwsHostNameUtils.parseRegion(repo, null);
-                    String domain = repo.substring(0, firstDash);
-                    String domainOwner = repo.substring(firstDash + 1, repo.indexOf("."));
-                    Log.infof("Generating AWS token for domain %s, owner %s, region %s", domain, domainOwner, parsedRegion);
+                    Matcher matcher = CODE_ARTIFACT_PATTERN.matcher(mvnRepo);
+                    if (matcher.matches()) {
+                        var mr = matcher.toMatchResult();
+                        int firstDash = repo.indexOf("-");
+                        String parsedRegion = AwsHostNameUtils.parseRegion(repo, null);
+                        String domain = repo.substring(0, firstDash);
+                        String domainOwner = repo.substring(firstDash + 1, repo.indexOf("."));
+                        Log.infof("Generating AWS token for domain %s, owner %s, region %s", domain, domainOwner, parsedRegion);
 
-                    var awsClient = AWSCodeArtifactClientBuilder.standard()
-                            .withCredentials(awsProfile.isEmpty() ? DefaultAWSCredentialsProviderChain.getInstance()
-                                    : new ProfileCredentialsProvider(awsProfile.get()))
-                            .withRegion(Regions.fromName(parsedRegion)).build();
-                    mvnPassword = Optional.of(awsClient.getAuthorizationToken(
-                            new GetAuthorizationTokenRequest().withDomain(domain).withDomainOwner(domainOwner))
-                            .getAuthorizationToken());
+                        Regions region = Regions.fromName(parsedRegion);
+                        var awsClient = AWSCodeArtifactClientBuilder.standard()
+                                .withCredentials(awsProfile.isEmpty() ? DefaultAWSCredentialsProviderChain.getInstance()
+                                        : new ProfileCredentialsProvider(awsProfile.get()))
+                                .withRegion(region).build();
+                        mvnPassword = Optional.of(awsClient.getAuthorizationToken(
+                                new GetAuthorizationTokenRequest().withDomain(domain).withDomainOwner(domainOwner))
+                                .getAuthorizationToken());
+                        codeArtifactRepository = new CodeArtifactRepository(awsClient, mr.group(1), mr.group(2));
+                    } else {
+                        Log.errorf("Unable to parse AWS CodeArtifact URL: %s", mvnRepo);
+                    }
                 }
             }
 
@@ -319,7 +332,7 @@ public class DeployCommand implements Runnable {
             if (!gavs.isEmpty()) {
                 try {
                     cleanBrokenSymlinks(sourcePath);
-                    doDeployment(sourcePath, logsPath, gavs);
+                    doDeployment(sourcePath, logsPath, gavs, codeArtifactRepository);
                 } catch (Throwable t) {
                     Log.error("Deployment failed", t);
                     flushLogs();
@@ -405,7 +418,8 @@ public class DeployCommand implements Runnable {
 
     }
 
-    protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs) throws Exception {
+    protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs, CodeArtifactRepository codeArtifactRepository)
+            throws Exception {
         if (imageDeployment) {
             ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                     insecure, prependTag);
@@ -421,7 +435,7 @@ public class DeployCommand implements Runnable {
         if (isNotEmpty(mvnRepo)) {
             // Maven Repo Deployment
             MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo,
-                    deploymentPath);
+                    deploymentPath, codeArtifactRepository);
             deployer.deploy();
         }
     }

@@ -55,7 +55,7 @@ public class JvmImageScanWatcher {
             Log.warnf("image scan importer disabled");
             return;
         }
-        client.resources(JvmImageScan.class).inAnyNamespace().inform(new ResourceEventHandler<JvmImageScan>() {
+        client.resources(JvmImageScan.class).inform(new ResourceEventHandler<JvmImageScan>() {
             @Override
             public void onAdd(JvmImageScan obj) {
                 ContainerImage image = ensureImageExists(obj);

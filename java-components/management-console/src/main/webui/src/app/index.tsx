@@ -6,7 +6,6 @@ import { AppRoutes } from '@app/routes';
 import '@app/app.css';
 import {OpenAPI} from "../services/openapi";
 
-OpenAPI.BASE = "http://localhost:8080"
 const App: React.FunctionComponent = () => (
   <Router>
     <AppLayout>

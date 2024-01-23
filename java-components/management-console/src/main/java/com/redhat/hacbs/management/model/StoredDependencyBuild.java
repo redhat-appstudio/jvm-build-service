@@ -18,7 +18,7 @@ import jakarta.persistence.UniqueConstraint;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "buildidentifier_id", "uid" }))
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "buildidentifier_id" }))
 public class StoredDependencyBuild extends PanacheEntity {
 
     @ManyToOne(optional = false)

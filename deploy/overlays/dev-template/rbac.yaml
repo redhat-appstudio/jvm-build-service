@@ -1,0 +1,100 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jbs-management
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups:
+      - jvmbuildservice.io
+    resources:
+      - artifactbuilds
+      - artifactbuilds/status
+      - jvmimagescans
+      - jvmimagescans/status
+      - dependencybuilds
+      - dependencybuilds/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - patch
+      - update
+      - delete
+  - apiGroups:
+      - jvmbuildservice.io
+    resources:
+      - jbsconfigs
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - taskruns
+      - taskruns/status
+      - pipelineruns
+      - pipelineruns/status
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "apps"
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    # note - tekton gives its controller read access to secrets, so any pods there can access secrets in the pods namespace
+    resources:
+      - secrets
+    resourceNames:
+      - jbs-user-secret
+    verbs:
+      - get
+      - create
+      - watch
+      - update
+      - patch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jbs-management
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jbs-management
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jbs-management
+subjects:
+  - kind: ServiceAccount
+    name: jbs-management
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jbs-management-secret
+  annotations:
+    kubernetes.io/service-account.name: jbs-management
+type: kubernetes.io/service-account-token
