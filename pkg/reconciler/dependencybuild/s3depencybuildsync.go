@@ -11,7 +11,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	tknlogs "github.com/tektoncd/cli/pkg/log"
 	"github.com/tektoncd/cli/pkg/options"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"io"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,7 +35,7 @@ const (
 	Logs      = "logs"
 )
 
-func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (*reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (*reconcile.Result, error) {
 	if !util.S3Enabled {
 		return nil, nil
 	}
@@ -136,7 +136,7 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 		return nil, nil
 	}
 
-	taskRuns := pipelinev1beta1.TaskRunList{}
+	taskRuns := tektonpipeline.TaskRunList{}
 	err = r.client.List(ctx, &taskRuns, client.InNamespace(pr.Namespace))
 	if err != nil {
 		return nil, err

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -66,10 +66,10 @@ func runTests(t *testing.T, namespace string, runYaml string) {
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", runYaml)
-	ta.run = &v1beta1.PipelineRun{}
+	ta.run = &tektonpipeline.PipelineRun{}
 	obj := streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
 	var ok bool
-	ta.run, ok = obj.(*v1beta1.PipelineRun)
+	ta.run, ok = obj.(*tektonpipeline.PipelineRun)
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 	}

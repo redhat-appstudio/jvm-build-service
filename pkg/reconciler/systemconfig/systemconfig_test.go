@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +21,7 @@ import (
 func setupClientAndReconciler(objs ...runtimeclient.Object) (runtimeclient.Client, *ReconcilerSystemConfig) {
 	scheme := runtime.NewScheme()
 	_ = v1alpha1.AddToScheme(scheme)
-	_ = v1beta1.AddToScheme(scheme)
+	_ = tektonpipeline.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	reconciler := &ReconcilerSystemConfig{client: client, scheme: scheme, eventRecorder: &record.FakeRecorder{}}

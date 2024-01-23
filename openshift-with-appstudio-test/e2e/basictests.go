@@ -20,7 +20,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/events/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,10 +47,10 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", pipeline)
-	ta.run = &v1beta1.PipelineRun{}
+	ta.run = &tektonpipeline.PipelineRun{}
 	var ok bool
 	obj := streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
-	ta.run, ok = obj.(*v1beta1.PipelineRun)
+	ta.run, ok = obj.(*tektonpipeline.PipelineRun)
 	if !ok {
 		debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 	}
@@ -95,7 +95,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		}
 		ta.t.Run("pipelinerun completes successfully", func(t *testing.T) {
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
-				pr, err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
+				pr, err := tektonClient.TektonV1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
 				if err != nil {
 					ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
 					return false, nil
@@ -284,20 +284,20 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	ta.t.Run("make sure second build access cached dependencies", func(t *testing.T) {
 		//first delete all existing PipelineRuns to free up resources
 		//mostly for minikube
-		runs, lerr := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).List(context.TODO(), metav1.ListOptions{})
+		runs, lerr := tektonClient.TektonV1().PipelineRuns(ta.ns).List(context.TODO(), metav1.ListOptions{})
 		if lerr != nil {
 			debugAndFailTest(ta, fmt.Sprintf("error listing runs %s", lerr.Error()))
 		}
 		for _, r := range runs.Items {
-			err := tektonClient.TektonV1beta1().PipelineRuns(ta.ns).Delete(context.TODO(), r.Name, metav1.DeleteOptions{})
+			err := tektonClient.TektonV1().PipelineRuns(ta.ns).Delete(context.TODO(), r.Name, metav1.DeleteOptions{})
 			if err != nil {
 				debugAndFailTest(ta, fmt.Sprintf("error deleting runs %s", err.Error()))
 			}
 		}
 
-		ta.run = &v1beta1.PipelineRun{}
+		ta.run = &tektonpipeline.PipelineRun{}
 		obj = streamFileYamlToTektonObj(runYamlPath, ta.run, ta)
-		ta.run, ok = obj.(*v1beta1.PipelineRun)
+		ta.run, ok = obj.(*tektonpipeline.PipelineRun)
 		if !ok {
 			debugAndFailTest(ta, fmt.Sprintf("file %s did not produce a pipelinerun: %#v", runYamlPath, obj))
 		}
@@ -334,7 +334,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 				if event.Object == nil {
 					continue
 				}
-				pr, ok := event.Object.(*v1beta1.PipelineRun)
+				pr, ok := event.Object.(*tektonpipeline.PipelineRun)
 				if !ok {
 					continue
 				}

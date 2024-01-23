@@ -24,7 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
 const (
@@ -106,7 +106,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		return reconcile.Result{}, nil
 	}
 
-	pr := pipelinev1beta1.PipelineRun{}
+	pr := tektonpipeline.PipelineRun{}
 	prerr := r.client.Get(ctx, request.NamespacedName, &pr)
 	if prerr != nil {
 		if !errors.IsNotFound(prerr) {
@@ -195,7 +195,7 @@ func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
 
 	if pr.DeletionTimestamp != nil {
 		//always remove the finalizer if it is deleted
@@ -225,7 +225,7 @@ func (r *ReconcileArtifactBuild) handlePipelineRunReceived(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileArtifactBuild) removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileArtifactBuild) removePipelineFinalizer(ctx context.Context, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
 	//remove the finalizer
 	if controllerutil.RemoveFinalizer(pr, ComponentFinalizer) {
 		return reconcile.Result{}, r.client.Update(ctx, pr)

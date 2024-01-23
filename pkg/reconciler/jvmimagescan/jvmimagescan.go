@@ -20,7 +20,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
 const (
@@ -61,7 +61,7 @@ func (r *ReconcileImageScan) Reconcile(ctx context.Context, request reconcile.Re
 		}
 	}
 
-	pr := pipelinev1beta1.PipelineRun{}
+	pr := tektonpipeline.PipelineRun{}
 	prerr := r.client.Get(ctx, request.NamespacedName, &pr)
 	if prerr != nil {
 		if !errors.IsNotFound(prerr) {
@@ -100,7 +100,7 @@ func (r *ReconcileImageScan) handleImageScan(ctx context.Context, ia v1alpha1.Jv
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
 
 	if pr.DeletionTimestamp != nil {
 		//always remove the finalizer if it is deleted
@@ -154,7 +154,7 @@ func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log 
 	return reconcile.Result{}, r.client.Status().Update(ctx, &ia)
 }
 
-func removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun, client client.Client) (reconcile.Result, error) {
+func removePipelineFinalizer(ctx context.Context, pr *tektonpipeline.PipelineRun, client client.Client) (reconcile.Result, error) {
 	//remove the finalizer
 	if controllerutil.RemoveFinalizer(pr, ImageScanFinalizer) {
 		return reconcile.Result{}, client.Update(ctx, pr)
@@ -176,7 +176,7 @@ func (r *ReconcileImageScan) handleStateNew(ctx context.Context, log logr.Logger
 		return reconcile.Result{}, r.client.Status().Update(ctx, ia)
 	}
 
-	pr := pipelinev1beta1.PipelineRun{}
+	pr := tektonpipeline.PipelineRun{}
 	pr.Finalizers = []string{ImageScanFinalizer}
 	pr.Spec.PipelineSpec = spec
 	pr.Namespace = ia.Namespace
@@ -225,7 +225,7 @@ func (r *ReconcileImageScan) handleJavaDependencies(ctx context.Context, deps []
 	return r.client.Status().Update(ctx, ia)
 }
 
-func (r *ReconcileImageScan) createLookupPipeline(ctx context.Context, log logr.Logger, image string) (*pipelinev1beta1.PipelineSpec, error) {
+func (r *ReconcileImageScan) createLookupPipeline(ctx context.Context, log logr.Logger, image string) (*tektonpipeline.PipelineSpec, error) {
 
 	buildReqProcessorImages, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	if err != nil {
@@ -254,16 +254,16 @@ func (r *ReconcileImageScan) createLookupPipeline(ctx context.Context, log logr.
 	}
 	//TODO: this pulls twice
 
-	return &pipelinev1beta1.PipelineSpec{
-		Results: []pipelinev1beta1.PipelineResult{{Name: JvmDependenciesResult, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks.task.results." + JvmDependenciesResult + ")"}}},
-		Tasks: []pipelinev1beta1.PipelineTask{
+	return &tektonpipeline.PipelineSpec{
+		Results: []tektonpipeline.PipelineResult{{Name: JvmDependenciesResult, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks.task.results." + JvmDependenciesResult + ")"}}},
+		Tasks: []tektonpipeline.PipelineTask{
 			{
 				Name: "task",
-				TaskSpec: &pipelinev1beta1.EmbeddedTask{
-					TaskSpec: pipelinev1beta1.TaskSpec{
+				TaskSpec: &tektonpipeline.EmbeddedTask{
+					TaskSpec: tektonpipeline.TaskSpec{
 						Volumes: []corev1.Volume{{Name: "data", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
-						Results: []pipelinev1beta1.TaskResult{{Name: JvmDependenciesResult}},
-						Steps: []pipelinev1beta1.Step{
+						Results: []tektonpipeline.TaskResult{{Name: JvmDependenciesResult}},
+						Steps: []tektonpipeline.Step{
 							{
 								Name:            "run-syft",
 								Image:           "quay.io/redhat-appstudio/syft:v0.95.0", //TODO: hard coded

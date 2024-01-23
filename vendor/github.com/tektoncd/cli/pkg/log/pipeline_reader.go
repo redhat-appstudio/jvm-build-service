@@ -95,6 +95,13 @@ func (r *Reader) readAvailablePipelineLogs(pr *v1.PipelineRun) (<-chan Log, <-ch
 	}
 
 	taskRuns := taskrunpkg.Filter(ordered, r.tasks)
+	if len(taskRuns) == 0 && len(r.tasks) != 0 {
+		availTasks := []string{}
+		for _, o := range ordered {
+			availTasks = append(availTasks, o.Task)
+		}
+		return nil, nil, fmt.Errorf("passed filtered tasks: %v is not available, available tasks are: %v", r.tasks, availTasks)
+	}
 
 	logC := make(chan Log)
 	errC := make(chan error)
@@ -123,7 +130,7 @@ func (r *Reader) readAvailablePipelineLogs(pr *v1.PipelineRun) (<-chan Log, <-ch
 // and keep checking the status until it changes to true|false
 // or the reach timeout
 func (r *Reader) waitUntilAvailable() error {
-	var first = true
+	first := true
 	opts := metav1.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector("metadata.name", r.run).String(),
 	}
@@ -208,15 +215,22 @@ func (r *Reader) setUpTask(taskNumber int, tr taskrunpkg.Run) {
 // and return trh.Run after converted taskruns into trh.Run.
 func (r *Reader) getOrderedTasks(pr *v1.PipelineRun) ([]taskrunpkg.Run, error) {
 	var tasks []v1.PipelineTask
-
 	switch {
 	case pr.Spec.PipelineRef != nil:
-		pl, err := pipelinepkg.GetPipeline(pipelineGroupResource, r.clients, pr.Spec.PipelineRef.Name, r.ns)
-		if err != nil {
-			return nil, err
+		if pr.Spec.PipelineRef.Resolver != "" {
+			if pr.Status.PipelineSpec != nil {
+				tasks = append(tasks, pr.Status.PipelineSpec.Tasks...)
+			} else {
+				return nil, fmt.Errorf("pipelinerun %s does not have the PipelineRunSpec", pr.Name)
+			}
+		} else {
+			pl, err := pipelinepkg.GetPipeline(pipelineGroupResource, r.clients, pr.Spec.PipelineRef.Name, r.ns)
+			if err != nil {
+				return nil, err
+			}
+			tasks = pl.Spec.Tasks
+			tasks = append(tasks, pl.Spec.Finally...)
 		}
-		tasks = pl.Spec.Tasks
-		tasks = append(tasks, pl.Spec.Finally...)
 	case pr.Spec.PipelineSpec != nil:
 		tasks = pr.Spec.PipelineSpec.Tasks
 		tasks = append(tasks, pr.Spec.PipelineSpec.Finally...)

@@ -34,7 +34,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/systemconfig"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
 const (
@@ -104,7 +104,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 	}
 
-	pr := pipelinev1beta1.PipelineRun{}
+	pr := tektonpipeline.PipelineRun{}
 	trerr := r.client.Get(ctx, request.NamespacedName, &pr)
 	if trerr != nil {
 		if !errors.IsNotFound(trerr) {
@@ -179,7 +179,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		return reconcile.Result{}, err
 	}
 	// create pipeline run
-	pr := pipelinev1beta1.PipelineRun{}
+	pr := tektonpipeline.PipelineRun{}
 	pr.Finalizers = []string{PipelineRunFinalizer}
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
@@ -202,9 +202,9 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		return reconcile.Result{}, err
 	}
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
-		pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}}}
+		pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}}}
 	} else {
-		pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}}}
+		pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}}}
 	}
 	pr.Namespace = db.Namespace
 	pr.Name = db.Name + "-build-discovery"
@@ -222,7 +222,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime == nil {
 		return reconcile.Result{}, nil
 	}
@@ -482,7 +482,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	//first we check to see if the pipeline exists
 	attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
 
-	pr := pipelinev1beta1.PipelineRun{}
+	pr := tektonpipeline.PipelineRun{}
 	err := r.client.Get(ctx, types.NamespacedName{Name: attempt.Build.PipelineName, Namespace: db.Namespace}, &pr)
 	if err == nil {
 		//the build already exists
@@ -525,19 +525,19 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	scmUrl := modifyURLFragment(log, db.Spec.ScmInfo.SCMURL)
-	paramValues := []pipelinev1beta1.Param{
-		{Name: PipelineBuildId, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Name}},
-		{Name: PipelineParamScmUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
-		{Name: PipelineParamScmTag, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
-		{Name: PipelineParamScmHash, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
-		{Name: PipelineParamChainsGitUrl, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: scmUrl}},
-		{Name: PipelineParamChainsGitCommit, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
-		{Name: PipelineParamPath, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: contextDir}},
-		{Name: PipelineParamImage, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.Image}},
-		{Name: PipelineParamGoals, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
-		{Name: PipelineParamEnforceVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.EnforceVersion}},
-		{Name: PipelineParamToolVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.ToolVersion}},
-		{Name: PipelineParamJavaVersion, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
+	paramValues := []tektonpipeline.Param{
+		{Name: PipelineBuildId, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Name}},
+		{Name: PipelineParamScmUrl, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: scmUrl}},
+		{Name: PipelineParamScmTag, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.ScmInfo.Tag}},
+		{Name: PipelineParamScmHash, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
+		{Name: PipelineParamChainsGitUrl, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: scmUrl}},
+		{Name: PipelineParamChainsGitCommit, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
+		{Name: PipelineParamPath, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: contextDir}},
+		{Name: PipelineParamImage, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.Image}},
+		{Name: PipelineParamGoals, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
+		{Name: PipelineParamEnforceVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.EnforceVersion}},
+		{Name: PipelineParamToolVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.ToolVersion}},
+		{Name: PipelineParamJavaVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
 	}
 
 	systemConfig := v1alpha1.SystemConfig{}
@@ -554,17 +554,17 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 
 	attempt.Build.DiagnosticDockerFile = diagnostic
 	pr.Spec.Params = paramValues
-	pr.Spec.Workspaces = []pipelinev1beta1.WorkspaceBinding{
+	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
 		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
 	}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
-		pr.Spec.Workspaces = append(pr.Spec.Workspaces, pipelinev1beta1.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
+		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
 	} else {
-		pr.Spec.Workspaces = append(pr.Spec.Workspaces, pipelinev1beta1.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
+		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
 	}
-	pr.Spec.Timeouts = &pipelinev1beta1.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * 3}}
+	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * 3}}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -584,7 +584,7 @@ func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
 	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.BuildAttempts))
 }
 
-func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
 	if pr.Status.CompletionTime != nil {
 		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
 		if err != nil || db == nil {
@@ -783,7 +783,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 }
 
-func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) (*v1alpha1.DependencyBuild, error) {
+func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (*v1alpha1.DependencyBuild, error) {
 	// get db
 	ownerRefs := pr.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
@@ -926,7 +926,7 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun, db *v1alpha1.DependencyBuild,
+func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun, db *v1alpha1.DependencyBuild,
 	image string, digest string, deployed []string) error {
 	db.Status.DeployedArtifacts = deployed
 
@@ -964,7 +964,7 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 	return nil
 }
 
-func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*pipelinev1beta1.PipelineSpec, error) {
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*tektonpipeline.PipelineSpec, error) {
 	image, err := r.buildRequestProcessorImage(ctx, log)
 	if err != nil {
 		return nil, err
@@ -1037,18 +1037,18 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if jbsConfig.ImageRegistry().SecretName != "" {
 		envVars = append(envVars, v1.EnvVar{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}}})
 	}
-	return &pipelinev1beta1.PipelineSpec{
-		Workspaces: []pipelinev1beta1.PipelineWorkspaceDeclaration{{Name: "tls"}},
-		Results:    []pipelinev1beta1.PipelineResult{{Name: BuildInfoPipelineResultBuildInfo, Value: pipelinev1beta1.ResultValue{Type: pipelinev1beta1.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultBuildInfo + ")"}}},
-		Tasks: []pipelinev1beta1.PipelineTask{
+	return &tektonpipeline.PipelineSpec{
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: "tls"}},
+		Results:    []tektonpipeline.PipelineResult{{Name: BuildInfoPipelineResultBuildInfo, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultBuildInfo + ")"}}},
+		Tasks: []tektonpipeline.PipelineTask{
 			{
 				Name:       "task",
-				Workspaces: []pipelinev1beta1.WorkspacePipelineTaskBinding{{Name: "tls", Workspace: "tls"}},
-				TaskSpec: &pipelinev1beta1.EmbeddedTask{
-					TaskSpec: pipelinev1beta1.TaskSpec{
-						Workspaces: []pipelinev1beta1.WorkspaceDeclaration{{Name: "tls"}},
-						Results:    []pipelinev1beta1.TaskResult{{Name: BuildInfoPipelineResultBuildInfo}},
-						Steps: []pipelinev1beta1.Step{
+				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{{Name: "tls", Workspace: "tls"}},
+				TaskSpec: &tektonpipeline.EmbeddedTask{
+					TaskSpec: tektonpipeline.TaskSpec{
+						Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: "tls"}},
+						Results:    []tektonpipeline.TaskResult{{Name: BuildInfoPipelineResultBuildInfo}},
+						Steps: []tektonpipeline.Step{
 							{
 								Name:            "process-build-requests",
 								Image:           image,
@@ -1108,9 +1108,9 @@ func (r *ReconcileDependencyBuild) createToolVersionString(config *v1alpha1.Syst
 	return ret
 }
 
-func (r *ReconcileDependencyBuild) failedDueToMemory(ctx context.Context, log logr.Logger, pr *pipelinev1beta1.PipelineRun) bool {
+func (r *ReconcileDependencyBuild) failedDueToMemory(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) bool {
 	for _, trs := range pr.Status.ChildReferences {
-		tr := pipelinev1beta1.TaskRun{}
+		tr := tektonpipeline.TaskRun{}
 		err := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: trs.Name}, &tr)
 		if err != nil {
 			log.Error(err, "Unable to retrieve TaskRun to check for memory conditions")
@@ -1132,7 +1132,7 @@ func (r *ReconcileDependencyBuild) buildRequestProcessorImage(ctx context.Contex
 	return image, err
 }
 
-func (r *ReconcileDependencyBuild) handleTektonResults(db *v1alpha1.DependencyBuild, pr *pipelinev1beta1.PipelineRun) bool {
+func (r *ReconcileDependencyBuild) handleTektonResults(db *v1alpha1.DependencyBuild, pr *tektonpipeline.PipelineRun) bool {
 	if pr.GetAnnotations() == nil {
 		return false
 	}
@@ -1146,7 +1146,7 @@ func (r *ReconcileDependencyBuild) handleTektonResults(db *v1alpha1.DependencyBu
 	return r.handleTektonResultsForPipeline(ba.Build.Results.PipelineResults, pr)
 }
 
-func (r *ReconcileDependencyBuild) handleTektonResultsForPipeline(ba *v1alpha1.PipelineResults, pr *pipelinev1beta1.PipelineRun) bool {
+func (r *ReconcileDependencyBuild) handleTektonResultsForPipeline(ba *v1alpha1.PipelineResults, pr *tektonpipeline.PipelineRun) bool {
 	log := pr.GetAnnotations()["results.tekton.dev/log"]
 	rec := pr.GetAnnotations()["results.tekton.dev/record"]
 	result := pr.GetAnnotations()["results.tekton.dev/result"]
@@ -1172,7 +1172,7 @@ type BuilderImage struct {
 	Priority int
 }
 
-func (r *ReconcileDependencyBuild) removePipelineFinalizer(ctx context.Context, pr *pipelinev1beta1.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) removePipelineFinalizer(ctx context.Context, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
 	//remove the finalizer
 	if controllerutil.RemoveFinalizer(pr, PipelineRunFinalizer) {
 		return reconcile.Result{}, r.client.Update(ctx, pr)
