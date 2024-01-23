@@ -389,6 +389,8 @@ spec:
                       type: object
                   type: object
                 type: array
+              potentialBuildRecipesIndex:
+                type: integer
               state:
                 type: string
             type: object

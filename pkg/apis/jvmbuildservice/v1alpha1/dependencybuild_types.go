@@ -30,14 +30,15 @@ type DependencyBuildStatus struct {
 	Message      string             `json:"message,omitempty"`
 	Contaminants []*Contaminant     `json:"contaminates,omitempty"`
 	// PotentialBuildRecipes additional recipes to try if the current recipe fails
-	PotentialBuildRecipes    []*BuildRecipe   `json:"potentialBuildRecipes,omitempty"`
-	CommitTime               int64            `json:"commitTime,omitempty"`
-	DeployedArtifacts        []string         `json:"deployedArtifacts,omitempty"`
-	FailedVerification       bool             `json:"failedVerification,omitempty"`
-	Hermetic                 bool             `json:"hermetic,omitempty"`
-	PipelineRetries          int              `json:"pipelineRetries,omitempty"`
-	BuildAttempts            []*BuildAttempt  `json:"buildAttempts,omitempty"`
-	DiscoveryPipelineResults *PipelineResults `json:"discoveryPipelineResults,omitempty"`
+	PotentialBuildRecipes      []*BuildRecipe   `json:"potentialBuildRecipes,omitempty"`
+	PotentialBuildRecipesIndex int              `json:"potentialBuildRecipesIndex,omitempty"`
+	CommitTime                 int64            `json:"commitTime,omitempty"`
+	DeployedArtifacts          []string         `json:"deployedArtifacts,omitempty"`
+	FailedVerification         bool             `json:"failedVerification,omitempty"`
+	Hermetic                   bool             `json:"hermetic,omitempty"`
+	PipelineRetries            int              `json:"pipelineRetries,omitempty"`
+	BuildAttempts              []*BuildAttempt  `json:"buildAttempts,omitempty"`
+	DiscoveryPipelineResults   *PipelineResults `json:"discoveryPipelineResults,omitempty"`
 }
 
 // +genclient
