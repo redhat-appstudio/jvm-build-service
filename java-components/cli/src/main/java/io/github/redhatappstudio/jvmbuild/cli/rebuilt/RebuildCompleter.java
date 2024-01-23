@@ -5,10 +5,10 @@ import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.redhat.hacbs.common.tools.completer.RequestScopedCompleter;
 import com.redhat.hacbs.resources.model.v1alpha1.RebuiltArtifact;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.github.redhatappstudio.jvmbuild.cli.RequestScopedCompleter;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;
 

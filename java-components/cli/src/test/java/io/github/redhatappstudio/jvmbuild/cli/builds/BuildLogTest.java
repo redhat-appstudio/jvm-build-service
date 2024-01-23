@@ -1,5 +1,6 @@
 package io.github.redhatappstudio.jvmbuild.cli.builds;
 
+import static com.github.stefanbirkner.systemlambda.SystemLambda.tapSystemErrAndOut;
 import static com.github.stefanbirkner.systemlambda.SystemLambda.tapSystemOut;
 import static io.github.redhatappstudio.jvmbuild.cli.WireMockExtensions.LOG_UID;
 import static io.github.redhatappstudio.jvmbuild.cli.WireMockExtensions.RESULT_UID;
@@ -90,14 +91,21 @@ public class BuildLogTest extends TestComponentManager {
                 "/log?pretty=false&container=" +
                 podName +
                 "&follow=true")
-                .andReturn(200, pod1Log)
-                .once();
+                .andReturn(200, pod1Log).always();
 
         // Legacy
         BuildLogsCommand blc = new BuildLogsCommand();
         blc.gav = gav;
         blc.legacyRetrieval = true;
         String out = tapSystemOut(blc::run);
+        assertTrue(out.contains("Logs for container"));
+        assertTrue(out.contains(pod1Log));
+
+        // Legacy-Fallback
+        blc = new BuildLogsCommand();
+        blc.gav = gav;
+        out = tapSystemErrAndOut(blc::run);
+        assertTrue(out.contains("No Tekton-Results found in namespace openshift-pipelines"));
         assertTrue(out.contains("Logs for container"));
         assertTrue(out.contains(pod1Log));
 

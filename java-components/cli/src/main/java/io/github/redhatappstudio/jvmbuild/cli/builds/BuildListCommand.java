@@ -2,6 +2,7 @@ package io.github.redhatappstudio.jvmbuild.cli.builds;
 
 import java.util.TreeMap;
 
+import com.redhat.hacbs.common.tools.completer.BuildCompleter;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import picocli.CommandLine;

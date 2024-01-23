@@ -1,4 +1,4 @@
-package io.github.redhatappstudio.jvmbuild.cli.builds;
+package com.redhat.hacbs.common.tools.completer;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -12,7 +12,6 @@ import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildspec.Scm;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.github.redhatappstudio.jvmbuild.cli.RequestScopedCompleter;
 import io.quarkus.arc.Arc;
 
 public class BuildCompleter extends RequestScopedCompleter {

@@ -1,6 +1,5 @@
 package com.redhat.hacbs.management.resources;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +14,6 @@ import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -26,15 +24,10 @@ import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
-import io.quarkus.logging.Log;
 import io.quarkus.panache.common.Parameters;
-import software.amazon.awssdk.services.s3.S3Client;
 
 @Path("/builds/history")
-public class BuildHistoryResource {
-
-    @Inject
-    S3Client s3Client;
+public class BuildHistoryResource extends BuildLogs {
 
     @Inject
     EntityManager entityManager;
@@ -106,7 +99,7 @@ public class BuildHistoryResource {
                     build.creationTimestamp.toEpochMilli()));
         }
 
-        q = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query.toString());
+        q = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query);
         for (var p : parameters.map().entrySet()) {
             q.setParameter(p.getKey(), p.getValue());
         }
@@ -133,14 +126,6 @@ public class BuildHistoryResource {
             throw new NotFoundException();
         }
         URI uri = URI.create(attempt.buildDiscoveryUrl);
-
-        InputStream stream = s3Client.getObject(b -> {
-            String path = uri.getPath().substring(1);
-            String bucket = uri.getHost();
-            Log.infof("requesting logs %s from bucket %s", path, bucket);
-            b.bucket(bucket)
-                    .key(path);
-        });
-        return Response.ok(stream, MediaType.TEXT_PLAIN_TYPE).build();
+        return extractLog(Type.DISCOVERY, uri, attempt.buildIdentifier.dependencyBuildName);
     }
 }

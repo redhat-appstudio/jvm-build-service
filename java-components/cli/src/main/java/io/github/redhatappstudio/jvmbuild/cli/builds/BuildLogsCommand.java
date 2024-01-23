@@ -1,55 +1,26 @@
 package io.github.redhatappstudio.jvmbuild.cli.builds;
 
-import java.io.IOException;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
 
-import jakarta.ws.rs.client.ClientRequestFilter;
-import jakarta.ws.rs.core.HttpHeaders;
-
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.redhat.hacbs.common.tools.completer.BuildCompleter;
+import com.redhat.hacbs.common.tools.logging.LogExtractor;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 
-import io.fabric8.kubernetes.api.model.ContainerStatus;
-import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.api.model.RouteSpec;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.fabric8.tekton.pipeline.v1beta1.PipelineRun;
-import io.fabric8.tekton.pipeline.v1beta1.TaskRun;
-import io.github.redhatappstudio.jvmbuild.cli.api.LogsApi;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.ArtifactBuildCompleter;
 import io.github.redhatappstudio.jvmbuild.cli.artifacts.GavCompleter;
 import io.github.redhatappstudio.jvmbuild.cli.util.BuildConverter;
-import io.github.redhatappstudio.jvmbuild.cli.util.Result;
 import io.quarkus.arc.Arc;
-import io.quarkus.rest.client.reactive.QuarkusRestClientBuilder;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "logs", mixinStandardHelpOptions = true, description = "Displays the logs for the build")
 public class BuildLogsCommand implements Runnable {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
     private static final String DEV_PATH = "/apis/results.tekton.dev";
 
@@ -132,7 +103,8 @@ public class BuildLogsCommand implements Runnable {
         System.out.println("Selected build: " + theBuild.getMetadata().getName());
 
         if (legacyRetrieval) {
-            legacyLogRetrieval(client, buildNumbers, theBuild);
+            System.out.println(LogExtractor.legacyDiscoveryLogRetrieval(client, theBuild));
+            System.out.println(LogExtractor.legacyBuildLogRetrieval(client, buildNumbers, theBuild));
         } else {
             String host;
             String restPath;
@@ -141,7 +113,8 @@ public class BuildLogsCommand implements Runnable {
                 if (route == null) {
                     System.err.println(
                             "No Tekton-Results found in namespace openshift-pipelines ; falling back to legacy retrieval");
-                    legacyLogRetrieval(client, buildNumbers, theBuild);
+                    System.out.println(LogExtractor.legacyDiscoveryLogRetrieval(client, theBuild));
+                    System.out.println(LogExtractor.legacyBuildLogRetrieval(client, buildNumbers, theBuild));
                     return;
                 }
                 RouteSpec routeSpec = route.getSpec();
@@ -158,147 +131,9 @@ public class BuildLogsCommand implements Runnable {
             }
             System.out.println("REST path: " + host + ":" + defaultPort + restPath);
 
-            LogsApi logsApi = QuarkusRestClientBuilder.newBuilder()
-                    .register(((ClientRequestFilter) context -> context.getHeaders().add(HttpHeaders.AUTHORIZATION,
-                            String.format("Bearer %s", client.getConfiguration().getAutoOAuthToken()))))
-                    .baseUri(URI.create("https://" + host + ":" + defaultPort + restPath))
-                    .build(LogsApi.class);
-
-            StringBuilder allLog = new StringBuilder();
-
-            String[] discoverySplit = theBuild.getStatus().getDiscoveryPipelineResults().getLogs().split("/");
-            System.out.println("Discovery Log information: " + Arrays.toString(discoverySplit));
-            String log = logsApi.getLogByUid(discoverySplit[0], UUID.fromString(discoverySplit[2]),
-                    UUID.fromString(discoverySplit[4]));
-            parseLog(allLog, log);
-
-            for (Integer buildCount : buildNumbers) {
-                String[] split = theBuild.getStatus()
-                        .getBuildAttempts()
-                        .get(buildCount)
-                        .getBuild()
-                        .getResults()
-                        .getPipelineResults()
-                        .getLogs()
-                        .split("/");
-                System.out.println("Build Log information: " + Arrays.toString(split));
-
-                // Equivalent to using this Quarkus API would be to call the client raw method.
-                // client.raw("https://" + host + ":" + defaultPort + restPath + "/v1alpha2/parents/" + split[0]
-                //          + "/results/" + split[2] + "/logs/" + split[4]);
-                log = logsApi.getLogByUid(split[0], UUID.fromString(split[2]), UUID.fromString(split[4]));
-
-                // When the log is too big it returns a sequence of JSON documents. While a string
-                // split "((?<=[}][}]))" around the separator would work a JsonParser can parse and
-                // tokenize the string itself.
-                parseLog(allLog, log);
-            }
-            System.out.println();
-            System.out.println(allLog);
-        }
-    }
-
-    private void parseLog(StringBuilder allLog, String log) {
-        try (JsonParser jp = JSON_FACTORY.createParser(log)) {
-            Iterator<Result> value = MAPPER.readValues(jp, Result.class);
-            value.forEachRemaining((r) ->
-            // According to the spec its meant to be a Base64 encoded chunk. However, it appears
-            // to be implicitly decoded
-            allLog.append(new String(r.result.getData(), StandardCharsets.UTF_8)));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void legacyLogRetrieval(OpenShiftClient client, Set<Integer> buildNumbers, DependencyBuild theBuild) {
-        for (var buildNo : buildNumbers) {
-            var pr = client.resources(PipelineRun.class)
-                    .withName(theBuild.getMetadata().getName() + "-build-" + buildNo);
-            if (pr == null || pr.get() == null) {
-                System.out.println("PipelineRun not found so unable to extract logs.");
-                return;
-            }
-            PipelineRun pipelineRun = pr.get();
-            if (pipelineRun.getStatus().getCompletionTime() == null) {
-                System.out.println("PipelineRun not finished.");
-                continue;
-            }
-            boolean success = false;
-            for (var i : pipelineRun.getStatus().getConditions()) {
-                if (Objects.equals("Succeeded", i.getType())) {
-                    if (i.getStatus().toLowerCase(Locale.ROOT).equals("true")) {
-                        success = true;
-                    }
-                }
-            }
-
-            System.out.println("---------   Logs for PipelineRun " + pipelineRun.getMetadata().getName() + " ("
-                    + (success ? "SUCCEEDED" : "FAILED") + ") ---------");
-            var references = pipelineRun.getStatus().getChildReferences();
-            List<TaskRun> taskRuns = new ArrayList<>();
-
-            TaskRun taskRun = new TaskRun();
-            ObjectMeta om = new ObjectMeta();
-            om.setName(theBuild.getMetadata().getName() + "-build-discovery-task");
-            taskRun.setMetadata(om);
-
-            for (var ref : references) {
-                var tr = client.resources(TaskRun.class).withName(ref.getName());
-                if (tr == null || tr.get() == null) {
-                    System.out.println("TaskRun " + ref.getName() + " not found so unable to extract logs.");
-                } else {
-                    taskRuns.add(tr.get());
-                }
-            }
-            if (taskRuns.isEmpty()) {
-                System.out.println("No TaskRuns found");
-                continue;
-            }
-            DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-
-            taskRuns.sort(
-                    Comparator.comparing(t -> OffsetDateTime.parse(t.getStatus().getStartTime(), formatter)));
-            taskRuns.add(0, taskRun);
-
-            OffsetDateTime startTime = OffsetDateTime.parse(pipelineRun.getStatus().getStartTime(), formatter);
-            System.out.println("\n\n#####################################################");
-            for (var tr : taskRuns) {
-
-                var pod = client.pods().withName(tr.getMetadata().getName() + "-pod");
-                if (pod == null || pod.get() == null) {
-                    System.out.println(
-                            "Pod not found for task  " + tr.getMetadata().getName() + " so unable to extract logs.");
-                    continue;
-                }
-
-                List<ContainerStatus> containerStatuses = new ArrayList<>(pod.get().getStatus().getContainerStatuses());
-                containerStatuses.sort(Comparator.comparing(
-                        t -> OffsetDateTime.parse(t.getState().getTerminated().getFinishedAt(), formatter)));
-                for (var i : containerStatuses) {
-                    var p = pod.inContainer(i.getName());
-
-                    System.out.println("### Logs for container " + i.getName());
-                    System.out.println("#####################################################\n\n");
-                    try (var w = p.watchLog(); var in = w.getOutput()) {
-                        int r;
-                        byte[] buff = new byte[1024];
-                        while ((r = in.read(buff)) > 0) {
-                            System.out.print(new String(buff, 0, r));
-                        }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    var finishTime = OffsetDateTime.parse(i.getState().getTerminated().getFinishedAt(), formatter);
-                    Duration duration = Duration.between(startTime, finishTime);
-                    startTime = finishTime;
-                    System.out.println("\n\n#####################################################");
-                    System.out.println(
-                            "### Container " + i.getName() + " finished at " + i.getState().getTerminated().getFinishedAt()
-                                    + " in " + duration.getSeconds() + " seconds");
-                }
-            }
-            System.out.println("#####################################################\n\n");
+            System.out.println(LogExtractor.discoveryLogRetrieval(client, host, defaultPort, restPath, theBuild));
+            System.out.println(LogExtractor.buildLogRetrieval(client, host, defaultPort, restPath, buildNumbers,
+                    theBuild));
         }
     }
 
