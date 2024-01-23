@@ -5,3 +5,4 @@ metadata:
   name: cluster
 spec:
   maxAdditionalMemory: 2048
+  recipeDatabase: "${JBS_RECIPE_DATABASE}"
