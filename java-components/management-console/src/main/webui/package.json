@@ -57,7 +57,7 @@
     "openapi-typescript": "^6.7.3",
     "openapi-typescript-codegen": "^0.25.0",
     "postcss": "^8.4.25",
-    "prettier": "^3.0.0",
+    "prettier": "^3.2.4",
     "prop-types": "^15.8.1",
     "raw-loader": "^4.0.2",
     "react-axe": "^3.5.4",
