@@ -1,11 +1,11 @@
-FROM registry.access.redhat.com/ubi8/openjdk-17 AS builder
+FROM registry.access.redhat.com/ubi8/openjdk-17@sha256:a8165bc2cd5051a96d6937e25ed03155bbd4b731da6e58cebfe2ea83209c16d8 AS builder
 
 WORKDIR /work
 COPY ./ .
 
 RUN mvn -V -B package -pl cli -am -DskipTests
 
-FROM registry.access.redhat.com/ubi8/openjdk-17-runtime
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:c0aeca9ef908aac57b92744839d03c8f9af57b6fb1c5a534075f42af8ab57c2f
 WORKDIR /work/
 
 COPY --from=builder /work/cli/target/quarkus-app/lib/ /deployments/lib/

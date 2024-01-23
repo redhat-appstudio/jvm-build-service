@@ -48,7 +48,7 @@ jobs:
           docker-images: false
           large-packages: false
           swap-storage: false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
       - name: Setup Registry
         run: |
           export DEV_IP=172.16.1.1
@@ -81,7 +81,7 @@ jobs:
           ./deploy/minikube-ci.sh
           make minikube-test
       - name: Archive Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@694cdabd8bdb0f10b2cea11669e1bf5453eed0a6 # v4
         if: always()
         with:
           name: matrix-report-${{ matrix.testsets }}
