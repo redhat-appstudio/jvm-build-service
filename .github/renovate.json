@@ -1,9 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
-  "pinDigests": "true",
+  "extends": ["config:recommended"],
+  "pinDigests": true,
   "postUpdateOptions": ["gomodTidy"],
-  "addLabels": ["ok-to-test"],
+  "addLabels": ["ok-to-test"]
 }
