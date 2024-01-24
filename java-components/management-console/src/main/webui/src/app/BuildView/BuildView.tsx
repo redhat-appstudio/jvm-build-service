@@ -37,6 +37,7 @@ import {
   ToggleGroupItem
 } from "@patternfly/react-core";
 import {CheckCircleIcon, ErrorCircleOIcon, IceCreamIcon, WarningTriangleIcon} from "@patternfly/react-icons";
+import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 
 interface RouteParams {
     id: string
@@ -214,9 +215,21 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
             <Tab eventKey={3} disabled={build.successfulBuild == undefined} title={<TabTitleText>Deployed GAVs</TabTitleText>}>
               <Card>
                 <CardBody>
-                  <DescriptionList>
-                    {build.artifacts != undefined && build.artifacts.map(key => <>{key}<br/></>)}
-                  </DescriptionList>
+                  <Table aria-label="Artifact List">
+                    <Thead>
+                      <Tr>
+                        <Th width={100}>Artifact</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {build.artifacts != undefined && build.artifacts.sort().map(artifact => <>
+                        <Tr key={artifact}></Tr>
+                        <Td dataLabel="Artifact" modifier="truncate">
+                          {artifact}
+                        </Td>
+                        <br/></>)}
+                    </Tbody>
+                  </Table>
                 </CardBody>
               </Card>
             </Tab>
@@ -255,7 +268,22 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               <Card>
                 <CardHeader>Shading</CardHeader>
                 <CardBody>
-                  {build.shadingDetails?.map(key => <>{key.contaminant?.identifier?.group}:{key.contaminant?.identifier?.artifact}:{key.contaminant?.version}<br/></>)}
+                  <Table>
+                    <Thead>
+                      <Th>Shaded Artifact</Th>
+                      <Th>Source</Th>
+                      <Th>Affected Build Artifacts</Th>
+                    </Thead>
+                  <Tbody>
+                    {build.shadingDetails?.map(data => <Tr>
+                      <Td>{data.contaminant?.identifier?.group}:{data.contaminant?.identifier?.artifact}:{data.contaminant?.version}</Td>
+                      <Td>{data.allowed ?
+                        <Label color="green" icon={<CheckCircleIcon/>}>{data.source}</Label> :
+                        <Label color="red" icon={<ErrorCircleOIcon/>}>{data.source}</Label>}</Td>
+                      <Td>{data.contaminatedArtifacts?.map(key => <>{key.identifier?.artifact} &nbsp;</>)}</Td>
+                    </Tr>)}
+                  </Tbody>
+                </Table>
                 </CardBody>
               </Card>
             </Tab>
@@ -350,6 +378,7 @@ const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: Bu
           </DescriptionListGroup>}
   </>
 };
+
 
 
 export {BuildView}
