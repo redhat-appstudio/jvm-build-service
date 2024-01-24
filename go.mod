@@ -17,12 +17,12 @@ require (
 	github.com/tektoncd/cli v0.33.0
 	github.com/tektoncd/pipeline v0.53.3
 	go.uber.org/zap v1.26.0
-	k8s.io/api v0.28.3
-	k8s.io/apiextensions-apiserver v0.28.3
-	k8s.io/apimachinery v0.28.3
-	k8s.io/cli-runtime v0.28.3
-	k8s.io/client-go v0.28.3
-	k8s.io/code-generator v0.28.3
+	k8s.io/api v0.29.1
+	k8s.io/apiextensions-apiserver v0.29.1
+	k8s.io/apimachinery v0.29.1
+	k8s.io/cli-runtime v0.29.1
+	k8s.io/client-go v0.29.1
+	k8s.io/code-generator v0.29.1
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106
 	knative.dev/pkg v0.0.0-20231023160942-0c39ce4b3a7f
