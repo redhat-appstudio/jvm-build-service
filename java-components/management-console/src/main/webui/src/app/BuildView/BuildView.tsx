@@ -2,9 +2,10 @@ import * as React from 'react';
 import {useEffect, useState} from 'react';
 
 import {
-    BuildAttemptDTO,
-    BuildDTO,
-    BuildHistoryResourceService, BuildListDTO, BuildQueueResourceService
+  BuildAttemptDTO,
+  BuildDTO,
+  BuildHistoryResourceService,
+  BuildQueueResourceService
 } from "../../services/openapi";
 import {Link, RouteComponentProps} from "react-router-dom";
 import {
@@ -15,7 +16,6 @@ import {
   CardBody,
   CardFooter,
   CardHeader,
-  CardTitle,
   ClipboardCopy,
   ClipboardCopyVariant,
   CodeBlock,
@@ -24,15 +24,7 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
-  Dropdown,
-  DropdownItem,
-  DropdownList,
-  ExpandableSection,
-  Flex,
-  FlexItem,
   Label,
-  MenuToggle,
-  MenuToggleElement,
   PageSection,
   PageSectionVariants,
   Tab,
@@ -41,15 +33,10 @@ import {
   Text,
   TextContent,
   TextVariants,
-  ToggleGroup, ToggleGroupItem
+  ToggleGroup,
+  ToggleGroupItem
 } from "@patternfly/react-core";
-import {
-    CheckCircleIcon,
-    EllipsisVIcon,
-    ErrorCircleOIcon,
-    IceCreamIcon, WarningTriangleIcon
-} from "@patternfly/react-icons";
-import {H1} from "@storybook/components";
+import {CheckCircleIcon, ErrorCircleOIcon, IceCreamIcon, WarningTriangleIcon} from "@patternfly/react-icons";
 
 interface RouteParams {
     id: string
@@ -66,14 +53,14 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
     const [error, setError] = useState(false);
     const [state, setState] = useState('');
 
-  const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
-  // Toggle currently active tab
-  const handleTabClick = (
-    event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
-    tabIndex: string | number
-  ) => {
-    setActiveTabKey(tabIndex);
-  };
+    const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
+    // Toggle currently active tab
+    const handleTabClick = (
+      event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
+      tabIndex: string | number
+    ) => {
+      setActiveTabKey(tabIndex);
+    };
 
 
     useEffect(() => {
@@ -228,7 +215,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               <Card>
                 <CardBody>
                   <DescriptionList>
-                    {build.artifacts != undefined && build.artifacts.map(key => <>{key}</>)}
+                    {build.artifacts != undefined && build.artifacts.map(key => <>{key}<br/></>)}
                   </DescriptionList>
                 </CardBody>
               </Card>

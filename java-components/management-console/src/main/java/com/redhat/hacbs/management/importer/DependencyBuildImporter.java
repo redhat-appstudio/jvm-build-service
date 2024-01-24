@@ -143,8 +143,7 @@ public class DependencyBuildImporter {
                 attempt.repositories = i.getBuildRecipe().getRepositories() == null ? null
                         : i.getBuildRecipe().getRepositories().stream().collect(Collectors.joining(","));
                 attempt.allowedDifferences = i.getBuildRecipe().getAllowedDifferences() == null ? null
-                        : i.getBuildRecipe().getAllowedDifferences().stream()
-                                .collect(Collectors.joining("\n"));
+                        : String.join("\n", i.getBuildRecipe().getAllowedDifferences());
                 attempt.successful = Boolean.TRUE.equals(i.getBuild().getSucceeded());
                 var finalAttempt = attempt;
                 if (i.getBuildRecipe().getAdditionalDownloads() != null) {
@@ -191,5 +190,4 @@ public class DependencyBuildImporter {
         storedBuild.persist();
 
     }
-
 }

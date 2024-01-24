@@ -8,12 +8,18 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+
+import com.redhat.hacbs.management.dto.ArtifactDTO;
 import com.redhat.hacbs.management.dto.ArtifactListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
+import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import io.quarkus.panache.common.Parameters;
@@ -80,7 +86,9 @@ public class ArtifactHistoryResource {
         List<StoredArtifactBuild> list = q.getResultList();
         List<ArtifactListDTO> ret = new ArrayList<>();
         for (StoredArtifactBuild storedArtifactBuild : list) {
-            ret.add(new ArtifactListDTO(storedArtifactBuild.mavenArtifact.gav(), storedArtifactBuild.name,
+            ret.add(new ArtifactListDTO(storedArtifactBuild.id,
+                    storedArtifactBuild.name,
+                    storedArtifactBuild.mavenArtifact.gav(),
                     Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
                     Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_MISSING),
                     storedArtifactBuild.message));
@@ -92,5 +100,21 @@ public class ArtifactHistoryResource {
         }
         long count = q2.getSingleResult();
         return new PageParameters<>(ret, count, page, perPage);
+    }
+
+    @GET
+    @Path("{id}")
+    @Operation(operationId = "get-artifact")
+    public ArtifactDTO get(@PathParam("id") long id) {
+        StoredArtifactBuild build = StoredArtifactBuild.findById(id);
+        if (build == null) {
+            throw new NotFoundException();
+        }
+        StoredDependencyBuild dependencyBuild = StoredDependencyBuild
+                .find("buildIdentifier = :buildIdentifier",
+                        Parameters.with("buildIdentifier", build.buildIdentifier))
+                .firstResult();
+
+        return ArtifactDTO.of(build, dependencyBuild);
     }
 }

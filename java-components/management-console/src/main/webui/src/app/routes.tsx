@@ -11,6 +11,7 @@ import {AddArtifact} from "@app/AddArtifact/AddArtifact";
 import {ArtifactList} from "@app/ArtifactList/ArtifactList";
 import {BuildList} from "@app/BuildList/BuildList";
 import {RunningBuildList} from "@app/RunningBuildList/RunningBuildList";
+import {ArtifactView} from "@app/ArtifactView/ArtifactView";
 
 let routeFocusTimer: number;
 export interface IAppRoute {
@@ -80,6 +81,12 @@ const routes: AppRouteConfig[] = [
         label: 'All Artifacts',
         path: '/artifacts/all',
         title: 'JVM Build Service | Artifact List',
+      },
+      {
+        component: ArtifactView,
+        exact: true,
+        path: '/artifacts/artifact/:id',
+        title: 'JVM Build Service | Artifact',
       },
       {
         component: AddArtifact,

@@ -35,7 +35,6 @@ const columnNames = {
   name: 'Build ID',
   repo: 'Repo',
   tag: 'Tag',
-  artifacts: 'Artifacts',
   creationTime: 'Creation Time',
   actions: 'Actions',
 };
@@ -128,7 +127,7 @@ const BuildList: React.FunctionComponent = () => {
     <Toolbar id="search-input-filter-toolbar">
       <ToolbarContent>
 
-        <ToolbarItem variant="search-filter"><SearchInput aria-label="Search by GAV" value={gavFilter} onKeyDown={doSearch} onBlur={() => setGavFilter(transientGav)} onChange={(e, v) => {transientGav = v}} /></ToolbarItem>
+        <ToolbarItem variant="search-filter"><SearchInput aria-label="Search by GAV" value={gavFilter} onClear={() => setGavFilter('')} onKeyDown={doSearch} onBlur={() => setGavFilter(transientGav)} onChange={(e, v) => {transientGav = v}} /></ToolbarItem>
 
         <ToolbarItem variant="search-filter">
           <Dropdown
@@ -187,7 +186,6 @@ const BuildList: React.FunctionComponent = () => {
             <Th width={20}>{columnNames.repo}</Th>
             <Th width={10}>{columnNames.tag}</Th>
             <Th width={10}>{columnNames.creationTime}</Th>
-            <Th width={10}>{columnNames.artifacts}</Th>
             <Th width={10}>{columnNames.actions}</Th>
           </Tr>
         </Thead>
@@ -285,9 +283,6 @@ const BuildRow: React.FunctionComponent<BuildActionsType> = (initialBuild):JSX.E
     </Td>
     <Td dataLabel={columnNames.creationTime} modifier="truncate">
       <Timestamp date={new Date(build.creationTime)}></Timestamp>
-    </Td>
-    <Td dataLabel={columnNames.tag} modifier="truncate">
-      {build.artifacts}
     </Td>
     <Td>
       <ActionListItem>

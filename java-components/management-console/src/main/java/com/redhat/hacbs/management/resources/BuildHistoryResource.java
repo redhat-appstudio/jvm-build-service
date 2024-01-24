@@ -1,10 +1,8 @@
 package com.redhat.hacbs.management.resources;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -21,7 +19,6 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import com.redhat.hacbs.management.dto.BuildDTO;
 import com.redhat.hacbs.management.dto.BuildListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
-import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
 import io.quarkus.panache.common.Parameters;
@@ -92,10 +89,8 @@ public class BuildHistoryResource extends BuildLogs {
             if (n > 0) {
                 inQueue = true;
             }
-            String artifactList = StoredArtifactBuild.<StoredArtifactBuild> find("buildIdentifier", build.buildIdentifier)
-                    .page(0, 5).stream().map(s -> s.mavenArtifact.gav()).collect(Collectors.joining(","));
             ret.add(new BuildListDTO(build.id, build.buildIdentifier.dependencyBuildName, build.buildIdentifier.repository.url,
-                    build.buildIdentifier.tag, build.succeeded, build.contaminated, artifactList, inQueue,
+                    build.buildIdentifier.tag, build.succeeded, build.contaminated, inQueue,
                     build.creationTimestamp.toEpochMilli()));
         }
 
@@ -125,7 +120,6 @@ public class BuildHistoryResource extends BuildLogs {
         if (attempt == null) {
             throw new NotFoundException();
         }
-        URI uri = URI.create(attempt.buildDiscoveryUrl);
-        return extractLog(Type.DISCOVERY, uri, attempt.buildIdentifier.dependencyBuildName);
+        return extractLog(Type.DISCOVERY, attempt.buildDiscoveryUrl, attempt.buildIdentifier.dependencyBuildName);
     }
 }

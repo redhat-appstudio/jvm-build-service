@@ -42,8 +42,9 @@ public class BuildLogs {
     @ConfigProperty(name = "jbs.s3.sync.enabled", defaultValue = "true")
     boolean s3;
 
-    protected Response extractLog(Type logType, URI uri, String id) {
+    protected Response extractLog(Type logType, String s3LogUri, String id) {
         if (s3) {
+            URI uri = URI.create(s3LogUri);
             try {
                 InputStream stream = s3Client.getObject(b -> {
                     String path = uri.getPath().substring(1);

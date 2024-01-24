@@ -18,13 +18,13 @@ import {ArtifactEditResourceService, ArtifactHistoryResourceService, ArtifactLis
 import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
 import {ArtifactEditModal} from "@app/ArtifactEditModal/ArtifactEditModal";
 import {EmptyTable} from "@app/EmptyTable/EmptyTable";
+import {Link} from "react-router-dom";
 
 
 const columnNames = {
   status: 'Status',
   name: 'Artifact ID',
   gav: 'GAV',
-  message: 'Message',
   actions: 'Actions',
 };
 
@@ -40,7 +40,7 @@ const ArtifactList: React.FunctionComponent = () => {
   const [count, setCount] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(20);
-  const emptyArtifact: ArtifactListDTO = {gav: "", name: ""}
+  const emptyArtifact: ArtifactListDTO = {id: 0, gav: "", name: ""}
   const [artifact, setArtifact] = useState(emptyArtifact);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -124,7 +124,7 @@ const ArtifactList: React.FunctionComponent = () => {
   const toolbar = (
     <Toolbar id="search-input-filter-toolbar">
       <ToolbarContent>
-        <ToolbarItem variant="search-filter"><SearchInput aria-label="Search by GAV" value={gavFilter} onKeyDown={doSearch} onBlur={() => setGavFilter(transientGav)} onChange={(e, v) => {transientGav = v}} /></ToolbarItem>
+        <ToolbarItem variant="search-filter"><SearchInput aria-label="Search by GAV" value={gavFilter} onClear={() => setGavFilter('')} onKeyDown={doSearch} onBlur={() => setGavFilter(transientGav)} onChange={(e, v) => {transientGav = v}} /></ToolbarItem>
 
         <ToolbarItem variant="search-filter">
           <Dropdown
@@ -176,7 +176,6 @@ const ArtifactList: React.FunctionComponent = () => {
             <Th width={10}>{columnNames.status}</Th>
             <Th width={10}>{columnNames.name}</Th>
             <Th width={10}>{columnNames.gav}</Th>
-            <Th width={10}>{columnNames.message}</Th>
             <Th width={10}>{columnNames.actions}</Th>
           </Tr>
         </Thead>
@@ -197,10 +196,11 @@ const ArtifactList: React.FunctionComponent = () => {
 type BuildActionsType = {
   artifact: ArtifactListDTO,
   selectArtifact: (artifact: ArtifactListDTO) => void
-
 };
 
 const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.Element => {
+
+  const [build, setBuild] = useState(artifact.artifact);
 
   const [isOpen, setIsOpen] = React.useState(false);
   const onToggle = () => {
@@ -250,13 +250,10 @@ const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.E
       {statusIcon(artifact.artifact)}
     </Td>
     <Td dataLabel={columnNames.name} modifier="truncate">
-      {artifact.artifact.name}
+      <Link to={`/artifacts/artifact/${artifact.artifact.id}`}>{artifact.artifact.name}</Link>
     </Td>
     <Td dataLabel={columnNames.gav} modifier="truncate">
       {artifact.artifact.gav}
-    </Td>
-    <Td dataLabel={columnNames.message} modifier="truncate">
-      {artifact.artifact.message}
     </Td>
     <Td dataLabel={columnNames.actions}>
       <ActionListItem>
