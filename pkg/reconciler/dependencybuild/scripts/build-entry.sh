@@ -11,7 +11,11 @@ then
     cd $(params.CONTEXT_DIR)
 fi
 
-echo "JAVA_HOME:$JAVA_HOME"
+if [ ! -z ${JAVA_HOME+x} ]; then
+    echo "JAVA_HOME:$JAVA_HOME"
+    PATH="${JAVA_HOME}/bin:$PATH"
+fi
+
 if [ ! -z ${MAVEN_HOME+x} ]; then
     echo "MAVEN_HOME:$MAVEN_HOME"
     PATH="${MAVEN_HOME}/bin:$PATH"
