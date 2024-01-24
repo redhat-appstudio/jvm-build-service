@@ -3,13 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { DeploymentDTO } from '../models/DeploymentDTO';
-
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-
 export class DeploymentResourceService {
-
     /**
      * @returns DeploymentDTO OK
      * @throws ApiError
@@ -20,5 +17,4 @@ export class DeploymentResourceService {
             url: '/api/deployment',
         });
     }
-
 }

@@ -3,13 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { ReplayEvent } from '../models/ReplayEvent';
-
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-
 export class DefaultService {
-
     /**
      * @param xGitHubDelivery
      * @param xGitHubEvent
@@ -38,7 +35,6 @@ export class DefaultService {
             },
         });
     }
-
     /**
      * @returns ReplayEvent OK
      * @throws ApiError
@@ -49,7 +45,6 @@ export class DefaultService {
             url: '/api/replay/events',
         });
     }
-
     /**
      * @returns ReplayEvent OK
      * @throws ApiError
@@ -60,7 +55,6 @@ export class DefaultService {
             url: '/api/replay/events',
         });
     }
-
     /**
      * @returns ReplayEvent OK
      * @throws ApiError
@@ -71,7 +65,6 @@ export class DefaultService {
             url: '/api/replay/events',
         });
     }
-
     /**
      * @returns ReplayEvent OK
      * @throws ApiError
@@ -82,7 +75,6 @@ export class DefaultService {
             url: '/api/replay/events',
         });
     }
-
     /**
      * @returns ReplayEvent OK
      * @throws ApiError
@@ -93,7 +85,6 @@ export class DefaultService {
             url: '/api/replay/events',
         });
     }
-
     /**
      * @returns ReplayEvent OK
      * @throws ApiError
@@ -104,7 +95,6 @@ export class DefaultService {
             url: '/api/replay/events',
         });
     }
-
     /**
      * @returns ReplayEvent OK
      * @throws ApiError
@@ -115,5 +105,4 @@ export class DefaultService {
             url: '/api/replay/events',
         });
     }
-
 }

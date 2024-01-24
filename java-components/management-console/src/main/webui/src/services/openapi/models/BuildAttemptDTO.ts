@@ -2,7 +2,6 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-
 export type BuildAttemptDTO = {
     id: number;
     jdk?: string;
@@ -33,5 +32,6 @@ export type BuildAttemptDTO = {
     gitArchiveSha?: string;
     gitArchiveTag?: string;
     gitArchiveUrl?: string;
+    diagnosticDockerFile?: string;
 };
 

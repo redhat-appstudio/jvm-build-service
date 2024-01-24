@@ -2,9 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-
 import type { BuildQueueListDTO } from './BuildQueueListDTO';
-
 export type PageParametersBuildQueueListDTO = {
     items: Array<BuildQueueListDTO>;
     count: number;

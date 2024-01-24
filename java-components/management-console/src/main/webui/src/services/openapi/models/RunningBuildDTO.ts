@@ -2,9 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-
 import type { Instant } from './Instant';
-
 export type RunningBuildDTO = {
     description?: string;
     status?: string;

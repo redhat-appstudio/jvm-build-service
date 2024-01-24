@@ -2,9 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-
 import type { Image } from './Image';
-
 export type DeploymentDTO = {
     namespace: string;
     name: string;

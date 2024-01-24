@@ -172,6 +172,7 @@ public class DependencyBuildImporter {
                             + dependencyBuild.getMetadata().getName()
                             + "/" + dependencyBuild.getMetadata().getUid() + "/" + i.getBuild().getPipelineName() + ".yaml";
                 }
+                attempt.diagnosticDockerFile = i.getBuild().getDiagnosticDockerFile();
                 if (i.getBuild().getResults() != null) {
                     attempt.outputImage = i.getBuild().getResults().getImage();
                     attempt.outputImageDigest = i.getBuild().getResults().getImageDigest();

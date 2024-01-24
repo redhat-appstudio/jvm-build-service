@@ -2,9 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-
 import type { MavenArtifact } from './MavenArtifact';
-
 export type ShadingDetails = {
     id?: number;
     contaminant?: MavenArtifact;

@@ -9,23 +9,39 @@ import {
 import {Link, RouteComponentProps} from "react-router-dom";
 import {
   ActionList,
-  ActionListItem, Button,
+  ActionListItem,
+  Button,
   Card,
-  CardBody, CardFooter,
+  CardBody,
+  CardFooter,
   CardHeader,
-  CardTitle, CodeBlock, CodeBlockCode,
+  CardTitle,
+  ClipboardCopy,
+  ClipboardCopyVariant,
+  CodeBlock,
+  CodeBlockCode,
   DescriptionList,
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
   Dropdown,
-  DropdownItem, DropdownList,
+  DropdownItem,
+  DropdownList,
   ExpandableSection,
   Flex,
   FlexItem,
   Label,
   MenuToggle,
-  MenuToggleElement, PageSection, PageSectionVariants, Tab, Tabs, TabTitleText, Text, TextContent, TextVariants
+  MenuToggleElement,
+  PageSection,
+  PageSectionVariants,
+  Tab,
+  Tabs,
+  TabTitleText,
+  Text,
+  TextContent,
+  TextVariants,
+  ToggleGroup, ToggleGroupItem
 } from "@patternfly/react-core";
 import {
     CheckCircleIcon,
@@ -297,6 +313,7 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
 };
 
 const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {
+    const [containerRuntime, setContainerRuntime] = useState("docker");
   return <>
         <DescriptionListGroup>
           <DescriptionListTerm>JDK</DescriptionListTerm>
@@ -321,7 +338,30 @@ const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: Bu
         {data.attempt.antVersion != undefined && <DescriptionListGroup>
           <DescriptionListTerm>Ant Version</DescriptionListTerm>
           <DescriptionListDescription>{data.attempt.antVersion}</DescriptionListDescription>
-        </DescriptionListGroup>}</>
+        </DescriptionListGroup>}
+        {data.attempt.diagnosticDockerFile != undefined && <DescriptionListGroup>
+            <DescriptionListTerm>Docker File</DescriptionListTerm>
+            <DescriptionListDescription>
+              <ToggleGroup aria-label="Container Runtime">
+                <ToggleGroupItem
+                  text="Docker"
+                  buttonId="docker"
+                  isSelected={containerRuntime === 'docker'}
+                  onChange={() => setContainerRuntime('docker')}
+                />
+                <ToggleGroupItem
+                  text="Podman"
+                  buttonId="podman"
+                  isSelected={containerRuntime === 'podman'}
+                  onChange={() => setContainerRuntime('podman')}
+                />
+              </ToggleGroup>
+              <ClipboardCopy hoverTip="Copy" clickTip="Copied" variant={ClipboardCopyVariant.expansion} isReadOnly>
+                bash -c 'cd $(mktemp -d) && echo {btoa(data.attempt.diagnosticDockerFile)} | base64  -d &gt;Dockerfile && {containerRuntime} build --pull . -t diagnostic-{data.attempt.id} && {containerRuntime} run -it diagnostic-{data.attempt.id}'
+              </ClipboardCopy>
+              </DescriptionListDescription>
+          </DescriptionListGroup>}
+  </>
 };
 
 

@@ -4,13 +4,10 @@
 /* eslint-disable */
 import type { BuildDTO } from '../models/BuildDTO';
 import type { PageParametersBuildListDTO } from '../models/PageParametersBuildListDTO';
-
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-
 export class BuildHistoryResourceService {
-
     /**
      * @param gav
      * @param page
@@ -36,7 +33,6 @@ export class BuildHistoryResourceService {
             },
         });
     }
-
     /**
      * @param id
      * @returns any OK
@@ -53,7 +49,6 @@ export class BuildHistoryResourceService {
             },
         });
     }
-
     /**
      * @param id
      * @returns BuildDTO OK
@@ -70,5 +65,4 @@ export class BuildHistoryResourceService {
             },
         });
     }
-
 }

@@ -50,7 +50,8 @@ public record BuildAttemptDTO(
         @Schema(required = true) Map<String, List<String>> upstreamDifferences,
         String gitArchiveSha,
         String gitArchiveTag,
-        String gitArchiveUrl) {
+        String gitArchiveUrl,
+        String diagnosticDockerFile) {
 
     public static BuildAttemptDTO of(BuildAttempt i) {
         return new BuildAttemptDTO(
@@ -82,7 +83,8 @@ public record BuildAttemptDTO(
                 mapDifferences(i.upstreamDifferences),
                 i.gitArchiveSha,
                 i.gitArchiveTag,
-                i.gitArchiveUrl);
+                i.gitArchiveUrl,
+                i.diagnosticDockerFile);
     }
 
     private static Map<String, List<String>> mapDifferences(String upstreamDifferences) {

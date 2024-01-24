@@ -3,13 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { PageParametersArtifactListDTO } from '../models/PageParametersArtifactListDTO';
-
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-
 export class ArtifactHistoryResourceService {
-
     /**
      * @param gav
      * @param page
@@ -35,5 +32,4 @@ export class ArtifactHistoryResourceService {
             },
         });
     }
-
 }
