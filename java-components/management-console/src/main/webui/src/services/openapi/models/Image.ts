@@ -2,9 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-
 import type { IdentifiedDependencyDTO } from './IdentifiedDependencyDTO';
-
 export type Image = {
     string: string;
     analysisComplete: boolean;

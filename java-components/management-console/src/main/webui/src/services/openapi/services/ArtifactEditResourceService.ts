@@ -4,13 +4,10 @@
 /* eslint-disable */
 import type { EditResult } from '../models/EditResult';
 import type { ModifyScmRepoCommand } from '../models/ModifyScmRepoCommand';
-
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-
 export class ArtifactEditResourceService {
-
     /**
      * @param requestBody
      * @returns EditResult OK
@@ -26,7 +23,6 @@ export class ArtifactEditResourceService {
             mediaType: 'application/json',
         });
     }
-
     /**
      * @param requestBody
      * @returns any Created
@@ -42,5 +38,4 @@ export class ArtifactEditResourceService {
             mediaType: 'text/plain',
         });
     }
-
 }

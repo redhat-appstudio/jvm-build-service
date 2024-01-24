@@ -2,7 +2,6 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-
 export type ArtifactSummaryDTO = {
     built: number;
     missing: number;

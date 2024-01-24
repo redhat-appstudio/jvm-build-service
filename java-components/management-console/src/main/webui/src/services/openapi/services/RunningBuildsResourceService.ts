@@ -3,13 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { RunningBuildDTO } from '../models/RunningBuildDTO';
-
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-
 export class RunningBuildsResourceService {
-
     /**
      * @returns RunningBuildDTO OK
      * @throws ApiError
@@ -20,5 +17,4 @@ export class RunningBuildsResourceService {
             url: '/api/builds/running',
         });
     }
-
 }

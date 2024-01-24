@@ -3,13 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { PageParametersGithubBuildDTO } from '../models/PageParametersGithubBuildDTO';
-
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-
 export class GithubBuildsResourceService {
-
     /**
      * @param page
      * @param perPage
@@ -29,5 +26,4 @@ export class GithubBuildsResourceService {
             },
         });
     }
-
 }

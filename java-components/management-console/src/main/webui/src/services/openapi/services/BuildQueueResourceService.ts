@@ -3,13 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { PageParametersBuildQueueListDTO } from '../models/PageParametersBuildQueueListDTO';
-
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
-
 export class BuildQueueResourceService {
-
     /**
      * @param page
      * @param perPage
@@ -29,7 +26,6 @@ export class BuildQueueResourceService {
             },
         });
     }
-
     /**
      * @param requestBody
      * @returns any Created
@@ -45,7 +41,6 @@ export class BuildQueueResourceService {
             mediaType: 'text/plain',
         });
     }
-
     /**
      * @param requestBody
      * @returns any Created
@@ -61,5 +56,4 @@ export class BuildQueueResourceService {
             mediaType: 'text/plain',
         });
     }
-
 }

@@ -2,10 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-
 import type { BuildAttemptDTO } from './BuildAttemptDTO';
 import type { ShadingDetails } from './ShadingDetails';
-
 export type BuildDTO = {
     id: number;
     name: string;

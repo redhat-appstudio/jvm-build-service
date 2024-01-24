@@ -76,6 +76,8 @@ public class BuildAttempt extends PanacheEntity {
     public String gitArchiveTag;
     @Column(length = -1)
     public String gitArchiveUrl;
+    @Column(length = -1)
+    public String diagnosticDockerFile;
 
     @Column
     @Temporal(TemporalType.TIMESTAMP)
