@@ -161,4 +161,16 @@ class LookupBuildInfoCommandTest {
                 cacheBuildInfoLocator);
         assertTrue(info.repositories.contains("https://maven.java.net/content/repositories/snapshots"));
     }
+
+    @Test
+    public void testBuildAnalysisGradleRelease()
+            throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        lookupBuildInfoCommand.commit = "1f6020a3f17d9d88dfd54a31370e91e3361c216b";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://gitlab.ow2.org/asm/asm.git", new BuildRecipeInfo(),
+                cacheBuildInfoLocator);
+        System.err.println(info.invocations);
+        assertTrue(info.invocations.get(0).getCommands().contains("-Prelease"));
+    }
 }

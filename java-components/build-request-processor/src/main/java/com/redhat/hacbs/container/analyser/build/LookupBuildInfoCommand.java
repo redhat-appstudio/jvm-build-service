@@ -10,6 +10,7 @@ import static org.eclipse.jgit.api.ResetCommand.ResetType.HARD;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
@@ -26,12 +27,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.maven.cli.CLIManager;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -340,7 +345,7 @@ public class LookupBuildInfoCommand implements Runnable {
 
     private boolean searchForBuildScript(BuildRecipeInfo buildRecipeInfo, CacheBuildInfoLocator buildInfoLocator,
             InvocationBuilder builder, Path path, boolean skipTests)
-            throws IOException, XmlPullParserException, BootstrapMavenException {
+            throws IOException, XmlPullParserException {
         boolean versionCorrect = false;
         boolean foundBuildScript = false;
         Path pomFile = null;
@@ -448,6 +453,22 @@ public class LookupBuildInfoCommand implements Runnable {
                 inv.add("-x");
                 inv.add("test");
             }
+
+            final Collection<File> files = FileUtils.listFiles(
+                    path.toFile(),
+                    WildcardFileFilter.builder().setWildcards("*.gradle", "*.gradle.kts").get(),
+                    TrueFileFilter.INSTANCE);
+
+            for (File buildFile : files) {
+                try (Stream<String> lines = Files.lines(buildFile.toPath())) {
+                    if (lines.anyMatch(s -> s
+                            .matches("(.*findProperty[(].release.*|.*getProperty[(].release.*|.*hasProperty[(].release.*)"))) {
+                        inv.add("-Prelease");
+                        break;
+                    }
+                }
+            }
+
             //gradle projects often need plugins from the google repo
             //we add it by default
             builder.addRepository("google");
