@@ -52,6 +52,10 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 				}
 			}(r.client, ctx, pr)
 		}
+		// If this is not done but is deleted then we just let it happen
+		if !pr.IsDone() {
+			return nil, nil
+		}
 	}
 	if pr.Annotations == nil {
 		pr.Annotations = map[string]string{}

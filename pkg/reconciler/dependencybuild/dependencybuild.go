@@ -156,6 +156,10 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			if err2 != nil {
 				return result, err2
 			}
+			if !pr.IsDone() {
+				// If this is not done then we just return immediately
+				return reconcile.Result{}, r.client.Update(ctx, &pr)
+			}
 		}
 		log = log.WithValues("kind", "PipelineRun")
 		pipelineType := pr.Labels[PipelineTypeLabel]
@@ -451,6 +455,13 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, l
 	//pick the first recipe in the potential list
 	//new build, kick off a pipeline run to run the build
 	//first we update the recipes, but add a flag that this is not submitted yet
+
+	// Guard against inconsistent state, should not happen but we don't want to crash the controller
+	if db.Status.PotentialBuildRecipesIndex == -1 {
+		db.Status.PotentialBuildRecipesIndex = 0
+	} else if db.Status.PotentialBuildRecipesIndex > len(db.Status.PotentialBuildRecipes) {
+		db.Status.PotentialBuildRecipesIndex = len(db.Status.PotentialBuildRecipes)
+	}
 
 	//no more attempts
 	if len(db.Status.PotentialBuildRecipes) == db.Status.PotentialBuildRecipesIndex {
