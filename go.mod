@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/CycloneDX/cyclonedx-go v0.7.1
 	github.com/aws/aws-sdk-go v1.50.3
-	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/logr v1.4.1
 	github.com/google/go-containerregistry v0.18.0
 	github.com/google/uuid v1.6.0
 	github.com/onsi/gomega v1.31.1
