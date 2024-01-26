@@ -5,9 +5,10 @@ metadata:
   name: cluster
 spec:
   builders:
+    #note that when updating the ref here you must also update kustomization.yaml
     jdk17:
-      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:3fc9e76797852c06a5546f8636cb66e9d15c5f0a
+      image: quay.io/redhat-appstudio/hacbs-jdk17-builder:938034a378b72db4378f84927357bc88e3ed3c0f
       priority: 2000
     jdk7:
-      image: quay.io/redhat-appstudio/hacbs-jdk7-builder:3fc9e76797852c06a5546f8636cb66e9d15c5f0a
+      image: quay.io/redhat-appstudio/hacbs-jdk7-builder:938034a378b72db4378f84927357bc88e3ed3c0f
       priority: 1000
