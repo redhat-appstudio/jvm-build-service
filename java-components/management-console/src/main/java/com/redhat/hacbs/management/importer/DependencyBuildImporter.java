@@ -72,7 +72,6 @@ public class DependencyBuildImporter {
             storedBuild = new StoredDependencyBuild();
             storedBuild.buildIdentifier = identifier;
         }
-        storedBuild.uid = dependencyBuild.getMetadata().getUid();
         if (s3Bucket != null) {
             storedBuild.buildYamlUrl = "s3://" + s3Bucket + "/builds/" + dependencyBuild.getMetadata().getName() + "/"
                     + dependencyBuild.getMetadata().getUid() + ".yaml";
