@@ -164,8 +164,8 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                     <DescriptionListGroup>
                       <DescriptionListTerm>Logs</DescriptionListTerm>
                       <DescriptionListDescription>
-                        <Link to={"/api/builds/attempts/logs/" + build.successfulBuild?.id} target="_blank"> Build Logs</Link>
-                        <br/>
+                        {build.successfulBuild != undefined &&
+                          <><Link to={"/api/builds/attempts/logs/" + build.successfulBuild?.id} target="_blank"> Build Logs</Link><br/></>}
                         <Link to={"/api/builds/history/discovery-logs/" + build.id} target="_blank">Discovery Logs</Link>
                       </DescriptionListDescription>
                     </DescriptionListGroup>
