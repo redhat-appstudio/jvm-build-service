@@ -191,7 +191,7 @@ const BuildList: React.FunctionComponent = () => {
         </Thead>
         <Tbody>
           {builds.length > 0 &&
-            builds.map((build: BuildListDTO, index) => (
+            builds.sort((a,b) => a.creationTime > b.creationTime? -1 : 1).map((build: BuildListDTO, index) => (
                   <BuildRow build={build} key={index}></BuildRow>
             ))}
           {builds.length === 0 && (
