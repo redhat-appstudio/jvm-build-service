@@ -293,6 +293,7 @@ public class GitScmLocator implements ScmLocator {
                         hash = selectedTag; //sometimes the tag is a hash
                     }
 
+                    log.infof("Returning tag information of %s : %s : %s", parsedInfo, selectedTag, hash);
                     return new TagInfo(parsedInfo, selectedTag, hash);
                 }
             } catch (RuntimeException ex) {

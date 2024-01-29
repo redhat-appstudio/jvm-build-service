@@ -88,6 +88,8 @@ public class ScmLookup {
                                 scm.setPath(result.getRepoInfo().getPath());
                                 scm.set_private(result.getRepoInfo().isPrivateRepo());
                                 scm.setTag(result.getTag());
+                                Log.infof("Adding artifactBuild with GAV %s with URI %s and hash %s ",
+                                        newObj.getSpec().getGav(), result.getRepoInfo().getUri(), result.getHash());
                                 newObj.getStatus().setScm(scm);
                                 newObj.getStatus().setMessage("");
                                 newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
