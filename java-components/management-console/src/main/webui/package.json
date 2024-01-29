@@ -39,7 +39,7 @@
     "@types/jest": "^29.5.11",
     "@types/react-router-dom": "^5.3.3",
     "@types/victory": "^33.1.5",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.13.1",
     "copy-webpack-plugin": "^12.0.1",
     "css-loader": "^6.8.1",
