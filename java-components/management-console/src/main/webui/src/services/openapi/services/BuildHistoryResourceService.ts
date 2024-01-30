@@ -34,34 +34,34 @@ export class BuildHistoryResourceService {
         });
     }
     /**
-     * @param id
+     * @param name
      * @returns any OK
      * @throws ApiError
      */
     public static getApiBuildsHistoryDiscoveryLogs(
-        id: number,
+        name: string,
     ): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/builds/history/discovery-logs/{id}',
+            url: '/api/builds/history/discovery-logs/{name}',
             path: {
-                'id': id,
+                'name': name,
             },
         });
     }
     /**
-     * @param id
+     * @param name
      * @returns BuildDTO OK
      * @throws ApiError
      */
     public static getBuild(
-        id: number,
+        name: string,
     ): CancelablePromise<BuildDTO> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/builds/history/{id}',
+            url: '/api/builds/history/{name}',
             path: {
-                'id': id,
+                'name': name,
             },
         });
     }

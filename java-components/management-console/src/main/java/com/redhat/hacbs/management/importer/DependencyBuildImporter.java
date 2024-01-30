@@ -113,7 +113,6 @@ public class DependencyBuildImporter {
         }
         if (dependencyBuild.getStatus().getBuildAttempts() != null) {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {
-                boolean found = false;
                 BuildAttempt attempt = null;
                 for (var ba : storedBuild.buildAttempts) {
                     if (ba.startTime != null && ba.startTime.getTime() == i.getBuild().getStartTime()) {

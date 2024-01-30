@@ -250,7 +250,7 @@ const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.E
       {statusIcon(artifact.artifact)}
     </Td>
     <Td dataLabel={columnNames.name} modifier="truncate">
-      <Link to={`/artifacts/artifact/${artifact.artifact.id}`}>{artifact.artifact.name}</Link>
+      <Link to={`/artifacts/artifact/${artifact.artifact.name}`}>{artifact.artifact.name}</Link>
     </Td>
     <Td dataLabel={columnNames.gav} modifier="truncate">
       {artifact.artifact.gav}

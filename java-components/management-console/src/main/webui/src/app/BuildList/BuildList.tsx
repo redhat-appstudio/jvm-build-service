@@ -273,7 +273,7 @@ const BuildRow: React.FunctionComponent<BuildActionsType> = (initialBuild):JSX.E
       {icon(build)}
     </Td>
     <Td dataLabel={columnNames.name} modifier="truncate">
-      <Link to={`/builds/build/${build.id}`}>{build.name}</Link>
+      <Link to={`/builds/build/${build.name}`}>{build.name}</Link>
     </Td>
     <Td dataLabel={columnNames.repo} modifier="truncate">
       {build.scmRepo}

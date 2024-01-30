@@ -7,6 +7,5 @@ public record ArtifactListDTO(
         @Schema(required = true) String name,
         @Schema(required = true) String gav,
         boolean succeeded,
-        boolean missing,
-        String message) {
+        boolean missing) {
 }

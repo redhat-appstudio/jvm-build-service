@@ -6,7 +6,7 @@ import java.util.Objects;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
+import jakarta.persistence.TypedQuery;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
@@ -19,6 +19,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import com.redhat.hacbs.management.dto.BuildDTO;
 import com.redhat.hacbs.management.dto.BuildListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
+import com.redhat.hacbs.management.model.BuildIdentifier;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
 import io.quarkus.panache.common.Parameters;
@@ -72,8 +73,9 @@ public class BuildHistoryResource extends BuildLogs {
                 parameters.and("version", "%" + parts[2] + "%");
             }
         }
-        Query q = entityManager
-                .createQuery("select s from StoredDependencyBuild s " + query.toString() + " order by s.creationTimestamp desc")
+        TypedQuery<StoredDependencyBuild> q = entityManager
+                .createQuery("select s from StoredDependencyBuild s " + query + " order by s.creationTimestamp desc",
+                        StoredDependencyBuild.class)
                 .setFirstResult(perPage * (page - 1))
                 .setMaxResults(perPage);
         for (var p : parameters.map().entrySet()) {
@@ -83,8 +85,9 @@ public class BuildHistoryResource extends BuildLogs {
         List<BuildListDTO> ret = new ArrayList<>();
         for (var build : list) {
             var inQueue = false;
-            Long n = (Long) entityManager.createQuery(
-                    "select count(a) from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier=:b")
+            Long n = entityManager.createQuery(
+                    "select count(a) from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier=:b",
+                    Long.class)
                     .setParameter("b", build.buildIdentifier).getSingleResult();
             if (n > 0) {
                 inQueue = true;
@@ -94,19 +97,19 @@ public class BuildHistoryResource extends BuildLogs {
                     build.creationTimestamp.toEpochMilli()));
         }
 
-        q = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query);
+        TypedQuery<Long> q2 = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query, Long.class);
         for (var p : parameters.map().entrySet()) {
-            q.setParameter(p.getKey(), p.getValue());
+            q2.setParameter(p.getKey(), p.getValue());
         }
-        long count = (long) q.getSingleResult();
+        long count = q2.getSingleResult();
         return new PageParameters<>(ret, count, page, perPage);
     }
 
     @GET
-    @Path("{id}")
+    @Path("{name}")
     @Operation(operationId = "get-build")
-    public BuildDTO get(@PathParam("id") long id) {
-        StoredDependencyBuild build = StoredDependencyBuild.findById(id);
+    public BuildDTO get(@PathParam("name") String name) {
+        StoredDependencyBuild build = getDependencyBuild(name);
         if (build == null) {
             throw new NotFoundException();
         }
@@ -114,12 +117,23 @@ public class BuildHistoryResource extends BuildLogs {
     }
 
     @GET
-    @Path("/discovery-logs/{id}")
-    public Response logs(@PathParam("id") int id) {
-        StoredDependencyBuild attempt = StoredDependencyBuild.findById(id);
+    @Path("/discovery-logs/{name}")
+    public Response logs(@PathParam("name") String name) {
+        StoredDependencyBuild attempt = getDependencyBuild(name);
         if (attempt == null) {
             throw new NotFoundException();
         }
         return extractLog(Type.DISCOVERY, attempt.buildDiscoveryUrl, attempt.buildIdentifier.dependencyBuildName);
+    }
+
+    private StoredDependencyBuild getDependencyBuild(String name) {
+        BuildIdentifier identifier = BuildIdentifier
+                .find("dependencyBuildName = :dependencyBuildName",
+                        Parameters.with("dependencyBuildName", name))
+                .firstResult();
+        return StoredDependencyBuild
+                .find("buildIdentifier = :buildIdentifier",
+                        Parameters.with("buildIdentifier", identifier))
+                .firstResult();
     }
 }

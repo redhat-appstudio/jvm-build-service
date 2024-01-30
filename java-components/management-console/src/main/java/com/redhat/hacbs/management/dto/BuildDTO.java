@@ -40,9 +40,6 @@ public record BuildDTO(
         BuildAttemptDTO successfulBuild = build.buildAttempts.stream().filter(s -> s.successful).findFirst()
                 .map(BuildAttemptDTO::of)
                 .orElse(null);
-        if (successfulBuild != null) {
-
-        }
         List<BuildAttemptDTO> others = build.buildAttempts.stream()
                 .filter(s -> successfulBuild == null || s.id != successfulBuild.id())
                 .map(BuildAttemptDTO::of).toList();

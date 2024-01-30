@@ -4,6 +4,7 @@
 /* eslint-disable */
 export type BuildAttemptDTO = {
     id: number;
+    buildId: string;
     jdk?: string;
     mavenVersion?: string;
     gradleVersion?: string;

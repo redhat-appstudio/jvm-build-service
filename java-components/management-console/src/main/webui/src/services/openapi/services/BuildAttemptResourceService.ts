@@ -12,7 +12,7 @@ export class BuildAttemptResourceService {
      * @throws ApiError
      */
     public static getApiBuildsAttemptsLogs(
-        id: number,
+        id: string,
     ): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',

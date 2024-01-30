@@ -13,6 +13,7 @@ export type GitHubEvent = {
     payload?: string;
     parsedPayload?: JsonObject;
     replayed?: boolean;
+    repositoryOrThrow?: string;
     eventAction?: string;
 };
 
