@@ -42,9 +42,9 @@ public class DeployContaminateTest {
     public static final String FOO_BAZ = "foo-baz";
     private static final String DOT = ".";
     private static final String SHA_1 = "sha1";
-    public static final String COMMIT = "3cf2d99b47f0a05466d1d0a2e09d8740faeda149";
-    public static final String REPO = "https://github.com/foo/bar";
-    private Map<String, String> ARTIFACT_FILE_MAP = Map.of(
+    private static final String COMMIT = "3cf2d99b47f0a05466d1d0a2e09d8740faeda149";
+    private static final String REPO = "https://github.com/foo/bar";
+    private static final Map<String, String> ARTIFACT_FILE_MAP = Map.of(
             FOO_BAR, "foobar-" + VERSION + "-tests.jar",
             FOO_BAZ, "foobaz-" + VERSION + ".jar");
 
@@ -93,6 +93,7 @@ public class DeployContaminateTest {
 
         TestDeployment testDeployment = new TestDeployment(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
+        testDeployment.buildId = "some-id";
         testDeployment.imageId = "test-image";
         testDeployment.scmUri = REPO;
         testDeployment.commit = COMMIT;
