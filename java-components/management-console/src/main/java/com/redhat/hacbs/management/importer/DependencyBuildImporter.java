@@ -72,7 +72,6 @@ public class DependencyBuildImporter {
             storedBuild = new StoredDependencyBuild();
             storedBuild.buildIdentifier = identifier;
         }
-        storedBuild.uid = dependencyBuild.getMetadata().getUid();
         if (s3Bucket != null) {
             storedBuild.buildYamlUrl = "s3://" + s3Bucket + "/builds/" + dependencyBuild.getMetadata().getName() + "/"
                     + dependencyBuild.getMetadata().getUid() + ".yaml";
@@ -114,7 +113,6 @@ public class DependencyBuildImporter {
         }
         if (dependencyBuild.getStatus().getBuildAttempts() != null) {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {
-                boolean found = false;
                 BuildAttempt attempt = null;
                 for (var ba : storedBuild.buildAttempts) {
                     if (ba.startTime != null && ba.startTime.getTime() == i.getBuild().getStartTime()) {

@@ -191,7 +191,7 @@ const BuildList: React.FunctionComponent = () => {
         </Thead>
         <Tbody>
           {builds.length > 0 &&
-            builds.map((build: BuildListDTO, index) => (
+            builds.sort((a,b) => a.creationTime > b.creationTime? -1 : 1).map((build: BuildListDTO, index) => (
                   <BuildRow build={build} key={index}></BuildRow>
             ))}
           {builds.length === 0 && (
@@ -273,7 +273,7 @@ const BuildRow: React.FunctionComponent<BuildActionsType> = (initialBuild):JSX.E
       {icon(build)}
     </Td>
     <Td dataLabel={columnNames.name} modifier="truncate">
-      <Link to={`/builds/build/${build.id}`}>{build.name}</Link>
+      <Link to={`/builds/build/${build.name}`}>{build.name}</Link>
     </Td>
     <Td dataLabel={columnNames.repo} modifier="truncate">
       {build.scmRepo}

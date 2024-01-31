@@ -40,7 +40,7 @@ import {CheckCircleIcon, ErrorCircleOIcon, IceCreamIcon, WarningTriangleIcon} fr
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 
 interface RouteParams {
-    id: string
+    name: string
 }
 
 interface BuildView extends RouteComponentProps<RouteParams> {
@@ -48,7 +48,7 @@ interface BuildView extends RouteComponentProps<RouteParams> {
 
 const BuildView: React.FunctionComponent<BuildView> = (props) => {
 
-    const id = props.match.params.id
+    const name = props.match.params.name
     const initial: BuildDTO = {id: 0, name: "", scmRepo: "", tag: "", commit: ""}
     const [build, setBuild] = useState(initial);
     const [error, setError] = useState(false);
@@ -66,7 +66,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
 
     useEffect(() => {
         setState('loading');
-        BuildHistoryResourceService.getBuild(Number(id)).then()
+        BuildHistoryResourceService.getBuild(name).then()
             .then((res) => {
                 console.log(res);
                 setState('success');
@@ -77,7 +77,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 setState('error');
                 setError(err);
             });
-    }, [id]);
+    }, [name]);
 
     if (state === 'error')
         return (
@@ -164,9 +164,9 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                     <DescriptionListGroup>
                       <DescriptionListTerm>Logs</DescriptionListTerm>
                       <DescriptionListDescription>
-                        <Link to={"/api/builds/attempts/logs/" + build.successfulBuild?.id} target="_blank"> Build Logs</Link>
-                        <br/>
-                        <Link to={"/api/builds/history/discovery-logs/" + build.id} target="_blank">Discovery Logs</Link>
+                        {build.successfulBuild != undefined &&
+                          <><Link to={"/api/builds/attempts/logs/" + build.successfulBuild?.buildId} target="_blank"> Build Logs</Link><br/></>}
+                        <Link to={"/api/builds/history/discovery-logs/" + build.name} target="_blank">Discovery Logs</Link>
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                     {build.successfulBuild != undefined && build.successfulBuild.gitArchiveUrl != undefined && build.successfulBuild.gitArchiveSha != undefined && build.successfulBuild.gitArchiveTag != undefined &&
@@ -318,7 +318,7 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
                         }}>
                       <DescriptionListGroup>
                         <DescriptionListTerm>Logs</DescriptionListTerm>
-                        <DescriptionListDescription><Link to={"/api/builds/attempts/logs/" + data.attempt?.id} target="_blank"> Build Logs</Link></DescriptionListDescription>
+                        <DescriptionListDescription><Link to={"/api/builds/attempts/logs/" + data.attempt?.buildId} target="_blank"> Build Logs</Link></DescriptionListDescription>
                       </DescriptionListGroup>
                       <BuildAttemptDetails attempt={data.attempt}></BuildAttemptDetails>
                     </DescriptionList>

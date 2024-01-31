@@ -33,22 +33,20 @@ export class ArtifactHistoryResourceService {
             },
         });
     }
-
     /**
-     * @param id
+     * @param name
      * @returns ArtifactDTO OK
      * @throws ApiError
      */
     public static getArtifact(
-        id: number,
+        name: string,
     ): CancelablePromise<ArtifactDTO> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/artifacts/history/{id}',
+            url: '/api/artifacts/history/{name}',
             path: {
-                'id': id,
+                'name': name,
             },
         });
     }
-
 }

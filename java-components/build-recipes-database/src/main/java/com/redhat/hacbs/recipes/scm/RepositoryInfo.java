@@ -102,4 +102,9 @@ public class RepositoryInfo {
     public void setUriWithoutFragment(String s) {
         // Noop to avoid bean issues.
     }
+
+    @Override
+    public String toString() {
+        return "RepositoryInfo{" + "uri='" + uri + '\'' + ", path='" + path + '\'' + '}';
+    }
 }

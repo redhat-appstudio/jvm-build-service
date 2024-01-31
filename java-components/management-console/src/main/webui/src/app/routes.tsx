@@ -53,7 +53,7 @@ const routes: AppRouteConfig[] = [
       {
         component: BuildView,
         exact: true,
-        path: '/builds/build/:id',
+        path: '/builds/build/:name',
         title: 'JVM Build Service | Build',
       },
       {
@@ -85,7 +85,7 @@ const routes: AppRouteConfig[] = [
       {
         component: ArtifactView,
         exact: true,
-        path: '/artifacts/artifact/:id',
+        path: '/artifacts/artifact/:name',
         title: 'JVM Build Service | Artifact',
       },
       {

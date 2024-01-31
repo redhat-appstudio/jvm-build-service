@@ -15,6 +15,7 @@ import io.quarkus.arc.Arc;
 
 public record BuildAttemptDTO(
         @Schema(required = true) long id,
+        @Schema(required = true) String buildId,
         String jdk,
         String mavenVersion,
         String gradleVersion,
@@ -22,7 +23,6 @@ public record BuildAttemptDTO(
         String antVersion,
         String tool,
         String builderImage,
-
         String preBuildImage,
         String hermeticBuilderImage,
         String outputImage,
@@ -35,18 +35,11 @@ public record BuildAttemptDTO(
         int additionalMemory,
         String repositories,
         String allowedDifferences,
-
         String buildLogsUrl,
         String buildPipelineUrl,
         String mavenRepository,
-        //List<AdditionalDownload> additionalDownloads,
-
         boolean successful,
         boolean passedVerification,
-
-        //StoredDependencyBuild dependencyBuild,
-
-        //List<BuildFile> storedBuildResults,
         @Schema(required = true) Map<String, List<String>> upstreamDifferences,
         String gitArchiveSha,
         String gitArchiveTag,
@@ -56,6 +49,7 @@ public record BuildAttemptDTO(
     public static BuildAttemptDTO of(BuildAttempt i) {
         return new BuildAttemptDTO(
                 i.id,
+                i.buildId,
                 i.jdk,
                 i.mavenVersion,
                 i.gradleVersion,

@@ -31,7 +31,7 @@ import {
 import {CheckCircleIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
 
 interface RouteParams {
-    id: string
+    name: string
 }
 
 interface ArtifactView extends RouteComponentProps<RouteParams> {
@@ -39,7 +39,7 @@ interface ArtifactView extends RouteComponentProps<RouteParams> {
 
 const ArtifactView: React.FunctionComponent<ArtifactView> = (props) => {
 
-    const id = props.match.params.id
+    const name = props.match.params.name
     const initial: ArtifactDTO = {id: 0, name: "", gav: "", scmRepo: "", tag: "", commit: ""}
     const [artifact, setArtifact] = useState(initial);
     const [error, setError] = useState(false);
@@ -57,7 +57,7 @@ const ArtifactView: React.FunctionComponent<ArtifactView> = (props) => {
 
     useEffect(() => {
         setState('loading');
-        ArtifactHistoryResourceService.getArtifact(Number(id)).then()
+        ArtifactHistoryResourceService.getArtifact(name).then()
             .then((res) => {
                 console.log(res);
                 setState('success');
@@ -68,7 +68,7 @@ const ArtifactView: React.FunctionComponent<ArtifactView> = (props) => {
                 setState('error');
                 setError(err);
             });
-    }, [id]);
+    }, [name]);
 
     if (state === 'error')
         return (
@@ -164,7 +164,7 @@ const ArtifactView: React.FunctionComponent<ArtifactView> = (props) => {
                     <DescriptionListGroup>
                       <DescriptionListTerm>Dependency Build</DescriptionListTerm>
                       <DescriptionListDescription>
-                        <Link to={`/builds/build/${artifact.dependencyBuildId}`}>{artifact.dependencyBuildName}</Link>
+                        <Link to={`/builds/build/${artifact.dependencyBuildName}`}>{artifact.dependencyBuildName}</Link>
                       </DescriptionListDescription>
                     </DescriptionListGroup>
                   </DescriptionList>
