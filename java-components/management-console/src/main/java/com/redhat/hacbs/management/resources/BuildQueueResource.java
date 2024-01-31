@@ -1,6 +1,7 @@
 package com.redhat.hacbs.management.resources;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -74,6 +75,6 @@ public class BuildQueueResource {
     public void addBuild(String gav) {
         MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
         MavenArtifactLabel.getOrCreate(mavenArtifact, "From ArtifactEntry");
-        BuildQueue.rebuild(mavenArtifact, true);
+        BuildQueue.rebuild(mavenArtifact, true, Map.of());
     }
 }

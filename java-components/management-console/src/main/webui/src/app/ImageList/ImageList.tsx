@@ -11,7 +11,11 @@ import {
   Label,
   Title,
 } from '@patternfly/react-core';
-import {DeploymentDTO, DeploymentResourceService, IdentifiedDependencyDTO} from "../../services/openapi";
+import {
+  ImageDTO,
+  ImageResourceService,
+  IdentifiedDependencyDTO,
+} from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
 import {
   AttentionBellIcon,ContainerNodeIcon,
@@ -20,26 +24,32 @@ import {
 } from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
 
-const DeploymentList: React.FunctionComponent = () => {
-  const [deployments, setDeployments] = useState(Array<DeploymentDTO>);
+const ImageList: React.FunctionComponent = () => {
+  const [images, setImages] = useState(Array<ImageDTO>);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
 
+  const [count, setCount] = React.useState(0);
+  const [page, setPage] = React.useState(1);
+  const [perPage, setPerPage] = React.useState(20);
 
   useEffect(() => {
     setState('loading');
-    DeploymentResourceService.getApiDeployment().then()
+    ImageResourceService.getApiImage(page, perPage).then()
       .then((res) => {
         console.log(res);
         setState('success');
-        setDeployments(res);
+        setImages(res.items);
+        setCount(res.count)
+        setPerPage(res.perPage)
+        setPage(res.pageNo)
       })
       .catch((err) => {
         console.error('Error:', err);
         setState('error');
         setError(err);
       });
-  }, []);
+  }, [count, page, perPage]);
 
   if (state === 'error')
     return (
@@ -56,47 +66,44 @@ const DeploymentList: React.FunctionComponent = () => {
     <React.Fragment>
 
       <DataList aria-label="Information">
-      {deployments.map((deployment : DeploymentDTO, index) => (
-          <DeploymentRow key={index} deployment={deployment}></DeploymentRow>
+      {images.map((image : ImageDTO, index) => (
+          <ImageRow key={index} image={image}></ImageRow>
         ))}
-        {deployments.length === 0 && <EmptyTable></EmptyTable>}
+        {images.length === 0 && <EmptyTable></EmptyTable>}
       </DataList>
     </React.Fragment>
   );
 };
 
-type DeploymentActionsType = {
-  deployment: DeploymentDTO,
+type ImageType = {
+  image: ImageDTO,
 };
 
-const DeploymentRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild): JSX.Element => {
+const ImageRow: React.FunctionComponent<ImageType> = (image): JSX.Element => {
 
-  const [imagesExpanded, setImagesExpanded] = React.useState(false);
+  const [imageExpanded, setImageExpanded] = React.useState(false);
 
   const toggleImages = () => {
-    setImagesExpanded(!imagesExpanded);
+    setImageExpanded(!imageExpanded);
   };
 
-  const health = function (deployment: DeploymentDTO) {
-    if (!deployment.analysisComplete) {
+  const health = function (image: ImageDTO) {
+    if (!image.analysisComplete) {
       return <Label color="blue" icon={<InProgressIcon />}>
         Image Analysis in Progress
       </Label>
     }
-    let untrusted = 0
-    let total = 0
-    let available = 0
-    deployment.images.map((i) => {total += i.totalDependencies; untrusted += i.untrustedDependencies; available += i.availableBuilds})
-    const trusted = total - untrusted
-    if (total == 0) {
+    const trusted = image.totalDependencies - image.untrustedDependencies
+
+    if (image.totalDependencies == 0) {
       return <Label color="blue" icon={<StickyNoteIcon />}>
         No Java
       </Label>
     }
     return <>
-      {untrusted > 0 && <Label color="red" icon={<WarningTriangleIcon />}>{untrusted} Untrusted Dependencies</Label>}
+      {image.untrustedDependencies > 0 && <Label color="red" icon={<WarningTriangleIcon />}>{image.untrustedDependencies} Untrusted Dependencies</Label>}
       {trusted > 0 && <Label color="green" icon={<OkIcon />}>{trusted} Rebuilt Dependencies</Label>}
-      {available > 0 && <Label color="orange" icon={<ListIcon />}>{available} Available Rebuilt Dependencies</Label>}
+      {image.availableBuilds > 0 && <Label color="orange" icon={<ListIcon />}>{image.availableBuilds} Available Rebuilt Dependencies</Label>}
 
     </>
   }
@@ -128,11 +135,11 @@ const DeploymentRow: React.FunctionComponent<DeploymentActionsType> = (initialBu
     </DataListItem>
   }
 
-  return <DataListItem aria-labelledby="ex-item1" isExpanded={imagesExpanded}>
+  return <DataListItem aria-labelledby="ex-item1" isExpanded={imageExpanded}>
     <DataListItemRow>
       <DataListToggle
         onClick={() => toggleImages()}
-        isExpanded={imagesExpanded}
+        isExpanded={imageExpanded}
         id="toggle"
         aria-controls="ex-expand"
       />
@@ -142,28 +149,26 @@ const DeploymentRow: React.FunctionComponent<DeploymentActionsType> = (initialBu
             <ContainerNodeIcon/>
           </DataListCell>,
           <DataListCell key="primary content">
-            <div id="ex-item1">{initialBuild.deployment.namespace}/{initialBuild.deployment.name}</div>
+            <div id="ex-item1">{image.image.fullName}</div>
           </DataListCell>,
           <DataListCell key="health">
-            {health(initialBuild.deployment)}
+            {health(image.image)}
           </DataListCell>
         ]}
       />
     </DataListItemRow>
     <DataListContent
-      aria-label="First expandable content details"
+      aria-label="Image Details"
       id="ex-expand1"
-      isHidden={!imagesExpanded}
+      isHidden={!imageExpanded}
     >
-      {initialBuild.deployment.images.map((s) => (
-        <><Title headingLevel={"h2"}>Image: {s.fullName}</Title>
+      <Title headingLevel={"h2"}>Image: {image.image.fullName}</Title>
 
         <DataList aria-label="Dependencies">
-          {s.dependencies?.map(d => (dependencyRow(d)))}
+          {image.image.dependencies?.map(d => (dependencyRow(d)))}
         </DataList>
-        </>))}
     </DataListContent>
   </DataListItem>
 
 }
-export {DeploymentList};
+export {ImageList};

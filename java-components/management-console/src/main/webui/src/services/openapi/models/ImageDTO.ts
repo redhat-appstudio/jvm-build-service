@@ -3,13 +3,16 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { IdentifiedDependencyDTO } from './IdentifiedDependencyDTO';
-export type Image = {
-    string: string;
+export type ImageDTO = {
+    repository: string;
+    tag: string;
+    digest: string;
     analysisComplete: boolean;
     dependencies?: Array<IdentifiedDependencyDTO>;
     totalDependencies: number;
     untrustedDependencies: number;
     trustedDependencies: number;
     availableBuilds: number;
+    fullName?: string;
 };
 

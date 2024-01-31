@@ -115,7 +115,7 @@ public class DependencyBuildImporter {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {
                 BuildAttempt attempt = null;
                 for (var ba : storedBuild.buildAttempts) {
-                    if (ba.startTime != null && ba.startTime.getTime() == i.getBuild().getStartTime()) {
+                    if (ba.buildId != null && Objects.equals(ba.buildId, i.getBuildId())) {
                         //existing one, just update it
                         attempt = ba;
                     }

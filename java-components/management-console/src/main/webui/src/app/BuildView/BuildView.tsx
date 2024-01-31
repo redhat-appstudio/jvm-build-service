@@ -252,7 +252,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                   <ul style={{ listStyleType: 'disc'}}>
                     {build.successfulBuild?.mavenRepository == undefined || build.artifacts == undefined ? '' : build.artifacts.map((key) => (
                       <li><a href={
-                        build.successfulBuild?.mavenRepository +
+                        build.successfulBuild?.mavenRepository + (build.successfulBuild?.mavenRepository?.endsWith("/") ? '' : '/')+
                         key.split(":")[0].replace(/\./g, "/") +
                         "/" +
                         key.split(":")[1] +

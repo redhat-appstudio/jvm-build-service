@@ -101,7 +101,7 @@ const GithubBuildList: React.FunctionComponent = () => {
     <React.Fragment>
       {toolbar}
       <DataList aria-label="Information">
-      {builds.map((build, index) => (
+      {builds.map((build: GithubBuildDTO, index) => (
           <BuildRow key={index} build={build}></BuildRow>
         ))}
         {builds.length === 0 && <EmptyTable></EmptyTable>}
@@ -160,13 +160,13 @@ const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild):
               {(dep.source !== 'redhat' && dep.source != 'rebuilt') && <WarningTriangleIcon color={"orange"}></WarningTriangleIcon>}
             </DataListCell>,
             <DataListCell key="primary content">
-              {dep.build != undefined && <Link to={`/builds/build/${dep.build}`}>{dep.gav}</Link>}
-              {dep.build == undefined && <div id="gav">{dep.gav}</div>}
+              {dep.dependencyBuildIdentifier != undefined && <Link to={`/builds/build/${dep.dependencyBuildIdentifier}`}>{dep.gav}</Link>}
+              {dep.dependencyBuildIdentifier == undefined && <div id="gav">{dep.gav}</div>}
             </DataListCell>,
             <DataListCell key="primary content">
               {dep.inQueue && <Label color="blue" icon={<IceCreamIcon />}> In Build Queue</Label>}
               {(dep.source !== 'redhat' && dep.source != 'rebuilt' && dep.buildSuccess) && <Label color="orange" icon={<AttentionBellIcon />}>Rebuilt Artifact Available, Image Rebuild Required</Label>}
-              {(dep.source !== 'redhat' && dep.source != 'rebuilt' && !dep.buildSuccess && dep.build != undefined) && <Label color="red" icon={<OutlinedAngryIcon />}>Rebuild Failed</Label>}
+              {(dep.source !== 'redhat' && dep.source != 'rebuilt' && !dep.buildSuccess && dep.dependencyBuildIdentifier != undefined) && <Label color="red" icon={<OutlinedAngryIcon />}>Rebuild Failed</Label>}
 
             </DataListCell>,
           ]}

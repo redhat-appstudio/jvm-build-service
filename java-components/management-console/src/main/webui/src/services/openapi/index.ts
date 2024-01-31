@@ -22,7 +22,7 @@ export type { EditResult } from './models/EditResult';
 export type { GithubBuildDTO } from './models/GithubBuildDTO';
 export type { GitHubEvent } from './models/GitHubEvent';
 export type { IdentifiedDependencyDTO } from './models/IdentifiedDependencyDTO';
-export type { Image } from './models/Image';
+export type { ImageDTO } from './models/ImageDTO';
 export type { Instant } from './models/Instant';
 export type { JsonObject } from './models/JsonObject';
 export type { MavenArtifact } from './models/MavenArtifact';
@@ -31,6 +31,7 @@ export type { PageParametersArtifactListDTO } from './models/PageParametersArtif
 export type { PageParametersBuildListDTO } from './models/PageParametersBuildListDTO';
 export type { PageParametersBuildQueueListDTO } from './models/PageParametersBuildQueueListDTO';
 export type { PageParametersGithubBuildDTO } from './models/PageParametersGithubBuildDTO';
+export type { PageParametersImageDTO } from './models/PageParametersImageDTO';
 export type { ReplayEvent } from './models/ReplayEvent';
 export type { RunningBuildDTO } from './models/RunningBuildDTO';
 export type { ShadingDetails } from './models/ShadingDetails';
@@ -46,4 +47,5 @@ export { BuildSummaryResourceService } from './services/BuildSummaryResourceServ
 export { DefaultService } from './services/DefaultService';
 export { DeploymentResourceService } from './services/DeploymentResourceService';
 export { GithubBuildsResourceService } from './services/GithubBuildsResourceService';
+export { ImageResourceService } from './services/ImageResourceService';
 export { RunningBuildsResourceService } from './services/RunningBuildsResourceService';

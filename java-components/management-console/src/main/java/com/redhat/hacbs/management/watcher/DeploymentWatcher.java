@@ -91,7 +91,7 @@ public class DeploymentWatcher {
                                     return;
                                 }
                                 images.add(i.getImageID());
-                                handleImage(i.getImageID(), app);
+                                handleImage(i.getImageID(), app, Instant.parse(resource.getMetadata().getCreationTimestamp()));
                             }
                             images.sort(Comparator.naturalOrder());
                             deployments.put(key, new DeploymentInfo(Collections.unmodifiableList(images), creationTime));
@@ -142,12 +142,12 @@ public class DeploymentWatcher {
     }
 
     @Transactional
-    void handleImage(String image, String app) {
+    void handleImage(String image, String app, Instant timestamp) {
         if (!image.contains("@")) {
             Log.errorf("image %s has no digest, not scanning", image);
             return;
         }
-        ContainerImage containerImage = ContainerImage.getOrCreate(image);
+        ContainerImage containerImage = ContainerImage.getOrCreate(image, timestamp);
         if (containerImage.analysisComplete) {
             return;
         }
