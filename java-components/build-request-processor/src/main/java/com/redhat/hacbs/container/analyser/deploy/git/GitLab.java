@@ -3,12 +3,14 @@ package com.redhat.hacbs.container.analyser.deploy.git;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
+import org.gitlab4j.api.models.Group;
 import org.gitlab4j.api.models.GroupProjectsFilter;
+import org.gitlab4j.api.models.Namespace;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectFilter;
 import org.gitlab4j.api.models.Visibility;
@@ -44,22 +46,27 @@ public class GitLab extends Git {
         String name = parseScmURI(scmUri);
         Long namespace = null;
         try {
-            try {
+            Optional<Group> groupOptional = gitLabApi.getGroupApi().getOptionalGroup(owner);
+            if (groupOptional.isPresent()) {
+                //happens when the 'user' is actually a group
+                project = gitLabApi.getGroupApi()
+                        .getProjectsStream(owner, new GroupProjectsFilter().withSearch(name))
+                        .filter(p -> p.getName().equals(name))
+                        .findFirst()
+                        .orElse(null);
+                Optional<Namespace> optionalNamespace = gitLabApi.getNamespaceApi()
+                        .getNamespacesStream()
+                        .filter(n -> n.getName().equals(owner))
+                        .findFirst();
+                if (optionalNamespace.isPresent()) {
+                    namespace = optionalNamespace.get().getId();
+                } else {
+                    throw new RuntimeException("Unable to find namespace ID for " + owner);
+                }
+            } else {
                 project = gitLabApi.getProjectApi().getUserProjectsStream(owner, new ProjectFilter().withSearch(name))
                         .filter(p -> p.getName().equals(name))
                         .findFirst().orElse(null);
-
-            } catch (GitLabApiException e) {
-                if (e.getHttpStatus() == 404) {
-                    //happens when the 'user' is actually a group
-                    project = gitLabApi.getGroupApi().getProjectsStream(owner, new GroupProjectsFilter().withSearch(name))
-                            .filter(p -> p.getName().equals(name))
-                            .findFirst().orElse(null);
-                    namespace = gitLabApi.getNamespaceApi().getNamespacesStream().filter(n -> n.getName().equals(owner))
-                            .collect(Collectors.toList()).get(0).getId();
-                } else {
-                    throw e;
-                }
             }
             if (project != null) {
                 Log.warnf("Repository %s already exists", name);

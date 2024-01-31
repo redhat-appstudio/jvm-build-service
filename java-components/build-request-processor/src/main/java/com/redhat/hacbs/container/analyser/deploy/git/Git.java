@@ -150,7 +150,6 @@ public abstract class Git {
         if (nonGroupPathIndex != -1) {
             group = group.substring(nonGroupPathIndex + 1);
         }
-        System.err.println((host == null ? "" : host + split()) + group + split() + name);
         return (host == null ? "" : host + split()) + group + split() + name;
     }
 
