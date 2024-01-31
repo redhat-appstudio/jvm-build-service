@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.logging.LogRecord;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -22,6 +23,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.quarkus.logging.Log;
 import io.quarkus.test.LogCollectingTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.ResourceArg;
@@ -68,11 +70,13 @@ public class GitTest {
             FileUtils.copyDirectory(new File(repoRoot.toFile(), ".git"), new File(initialRepo.toFile(), ".git"));
             if (initialRepository.tagList().call().stream().noneMatch(r -> r.getName().equals("refs/tags/0.1"))) {
                 // Don't have the tag and cannot guarantee a fork will have it so fetch from primary repository.
+                String newRemote = RandomStringUtils.randomAlphabetic(8);
+                Log.infof("Current repo does not have 0.1 tag; configuring %s to fetch it.", newRemote);
                 initialRepository.remoteAdd()
-                        .setUri(new URIish("https://github.com/redhat-appstudio/jvm-build-service.git")).setName("upstream")
+                        .setUri(new URIish("https://github.com/redhat-appstudio/jvm-build-service.git")).setName(newRemote)
                         .call();
                 initialRepository.fetch().setRefSpecs("refs/tags/0.1:refs/tags/0.1").setTagOpt(TagOpt.NO_TAGS)
-                        .setRemote("upstream").call();
+                        .setRemote(newRemote).call();
             }
 
             Git test = new Git() {
