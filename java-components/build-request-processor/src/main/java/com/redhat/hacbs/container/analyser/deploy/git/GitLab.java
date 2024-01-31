@@ -3,10 +3,12 @@ package com.redhat.hacbs.container.analyser.deploy.git;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.stream.Collectors;
 
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
+import org.gitlab4j.api.models.GroupProjectsFilter;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectFilter;
 import org.gitlab4j.api.models.Visibility;
@@ -40,17 +42,32 @@ public class GitLab extends Git {
     public void create(String scmUri)
             throws URISyntaxException {
         String name = parseScmURI(scmUri);
+        Long namespace = null;
         try {
-            project = gitLabApi.getProjectApi().getUserProjectsStream(owner, new ProjectFilter().withSearch(name))
-                    .filter(p -> p.getName().equals(name))
-                    .findFirst().orElse(null);
+            try {
+                project = gitLabApi.getProjectApi().getUserProjectsStream(owner, new ProjectFilter().withSearch(name))
+                        .filter(p -> p.getName().equals(name))
+                        .findFirst().orElse(null);
+
+            } catch (GitLabApiException e) {
+                if (e.getHttpStatus() == 404) {
+                    //happens when the 'user' is actually a group
+                    project = gitLabApi.getGroupApi().getProjectsStream(owner, new GroupProjectsFilter().withSearch(name))
+                            .filter(p -> p.getName().equals(name))
+                            .findFirst().orElse(null);
+                    namespace = gitLabApi.getNamespaceApi().getNamespacesStream().filter(n -> n.getName().equals(owner))
+                            .collect(Collectors.toList()).get(0).getId();
+                } else {
+                    throw e;
+                }
+            }
             if (project != null) {
                 Log.warnf("Repository %s already exists", name);
             } else {
                 // Can't set public visibility after creation for some reason with this API.
                 Log.infof("Creating repository with name %s", name);
                 project = gitLabApi.getProjectApi().createProject(name,
-                        null,
+                        namespace,
                         null,
                         null,
                         null,
@@ -59,6 +76,7 @@ public class GitLab extends Git {
                         Visibility.PUBLIC,
                         null,
                         null);
+                newGitRepository = true;
             }
         } catch (GitLabApiException e) {
             throw new RuntimeException(e);
