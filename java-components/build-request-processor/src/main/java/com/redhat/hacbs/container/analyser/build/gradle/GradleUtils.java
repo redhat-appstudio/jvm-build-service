@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import io.quarkus.logging.Log;
 
@@ -114,22 +113,22 @@ public final class GradleUtils {
      * Gets the Java version from the Gradle build files, if any, and matches it with a supported Java version, if
      * possible.
      *
-     * @param path the path to check
+     * @param buildFile the build file to check
      * @return the specified Java version, or empty if none
      * @throws IOException if an error occurs while reading from the build files
      */
-    public static String getSpecifiedJavaVersion(Path path) throws IOException {
-        if (isInBuildGradle(path,
+    public static String getSpecifiedJavaVersion(Path buildFile) throws IOException {
+        if (isInBuildGradle(buildFile,
                 "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?1[2-7][^0-9]['\"]?")) {
             return "17";
         }
 
-        if (isInBuildGradle(path,
+        if (isInBuildGradle(buildFile,
                 "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?(9|1[0-1])[^0-9]['\"]?")) {
             return "11";
         }
 
-        if (isInBuildGradle(path,
+        if (isInBuildGradle(buildFile,
                 "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?[1-8][^0-9]['\"]?")) {
             return "8";
         }
@@ -160,69 +159,55 @@ public final class GradleUtils {
     }
 
     /**
-     * Returns true if and only if the directory contains a readable file named {@code build.gradle} or
+     * Returns the path if and only if the directory contains a readable file named {@code build.gradle} or
      * {@code build.gradle.kts}.
      *
      * @param basedir the base directory
      * @return whether the current directory contains a Gradle build
      */
-    public static boolean isGradleBuild(Path basedir) {
+    public static Optional<Path> getGradleBuild(Path basedir) {
         var buildGradle = basedir.resolve(BUILD_GRADLE);
 
-        if (!Files.isRegularFile(buildGradle) || !Files.isReadable(buildGradle)) {
-            var buildGradleKts = basedir.resolve(BUILD_GRADLE_KTS);
-            return (Files.isRegularFile(buildGradleKts) && Files.isReadable(buildGradleKts));
+        if (Files.isRegularFile(buildGradle)) {
+            return Optional.of(buildGradle);
         }
 
-        return true;
-    }
+        var buildGradleKts = basedir.resolve(BUILD_GRADLE_KTS);
 
-    /**
-     * Checks whether the given path represents a Gradle build file.
-     *
-     * @param path the path to check
-     * @return whether the given path represents a Gradle build file
-     */
-    public static boolean isGradleBuildFile(Path path) {
-        if (!Files.isRegularFile(path)) {
-            return false;
+        if (Files.isRegularFile(buildGradleKts)) {
+            return Optional.of(buildGradleKts);
         }
 
-        var fileName = path.getFileName().toString();
-        return fileName.equals(BUILD_GRADLE) || fileName.equals(BUILD_GRADLE_KTS);
+        return Optional.empty();
     }
 
     /**
      * Checks whether the build file in the path contains the given regex.
      *
-     * @param path the path to check
+     * @param buildFile the build file to check
      * @param regex the regular expression to match
      * @return whether the character sequence is found in a build file located directly under the path
      * @throws IOException if an error occurs while reading from the file
      */
-    public static boolean isInBuildGradle(Path path, String regex) throws IOException {
-        try (Stream<Path> stream = Files.walk(path)) {
-            return stream.filter(GradleUtils::isGradleBuildFile).anyMatch(p -> {
-                try {
-                    var content = Files.readString(p);
-                    return Pattern.compile(regex, Pattern.DOTALL | Pattern.MULTILINE).matcher(content).find();
-                } catch (IOException e) {
-                    return false;
-                }
-            });
+    public static boolean isInBuildGradle(Path buildFile, String regex) throws IOException {
+        try {
+            var content = Files.readString(buildFile);
+            return Pattern.compile(regex, Pattern.DOTALL | Pattern.MULTILINE).matcher(content).find();
+        } catch (IOException e) {
+            return false;
         }
     }
 
     /**
-     * Get the appropriate Gradle arguments for the build in the given path.
+     * Get the appropriate Gradle arguments for the given build file.
      *
-     * @param path the path to check
+     * @param buildFile the build file to check
      * @return the Gradle arguments
      * @throws IOException if an error occurs while reading from the build file(s)
      */
-    public static List<String> getGradleArgs(Path path) throws IOException {
-        boolean hasMavenPlugin = isInBuildGradle(path, MAVEN_PLUGIN);
-        boolean hasMavenPublishPlugin = isInBuildGradle(path, MAVEN_PUBLISH_PLUGIN);
+    public static List<String> getGradleArgs(Path buildFile) throws IOException {
+        boolean hasMavenPlugin = isInBuildGradle(buildFile, MAVEN_PLUGIN);
+        boolean hasMavenPublishPlugin = isInBuildGradle(buildFile, MAVEN_PUBLISH_PLUGIN);
 
         if (hasMavenPlugin && hasMavenPublishPlugin) {
             return DEFAULT_GRADLE_ARGS;

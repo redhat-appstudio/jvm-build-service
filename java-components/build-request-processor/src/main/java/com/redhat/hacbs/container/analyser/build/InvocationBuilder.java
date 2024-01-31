@@ -65,7 +65,7 @@ public class InvocationBuilder {
                 && !buildRecipeInfo.getAlternativeArgs().isEmpty()) {
             toolInvocations.computeIfAbsent(tool, (k) -> new HashSet<>()).add(buildRecipeInfo.getAlternativeArgs());
         } else if (buildRecipeInfo != null && buildRecipeInfo.getAdditionalArgs() != null
-                && buildRecipeInfo.getAdditionalArgs().size() > 0) {
+                && !buildRecipeInfo.getAdditionalArgs().isEmpty()) {
             List<String> replacement = new ArrayList<>(invocation);
             replacement.addAll(buildRecipeInfo.getAdditionalArgs());
             toolInvocations.computeIfAbsent(tool, (k) -> new HashSet<>()).add(replacement);
@@ -86,7 +86,6 @@ public class InvocationBuilder {
         } else if (minJavaVersion.intVersion() < min.intVersion()) {
             minJavaVersion = min;
         }
-
     }
 
     /**

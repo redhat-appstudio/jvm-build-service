@@ -31,8 +31,7 @@ class AntUtilsTest {
 
     @Test
     void testIsAntBuild() {
-        var isAntBuild = AntUtils.isAntBuild(basedir);
-        assertThat(isAntBuild).isTrue();
+        assertThat(AntUtils.getAntBuild(basedir)).hasValue(basedir.resolve(AntUtils.BUILD_XML));
     }
 
     @Test
@@ -45,14 +44,15 @@ class AntUtilsTest {
 
     @Test
     void testGetJavaVersion() {
-        var javaVersion = AntUtils.getJavaVersion(basedir);
-        assertThat(javaVersion).isEqualTo(Integer.toString(JAVA_VERSION));
+        assertThat(AntUtils.getAntBuild(basedir)).hasValueSatisfying(
+                buildXml -> assertThat(AntUtils.getJavaVersion(buildXml)).isEqualTo(Integer.toString(JAVA_VERSION)));
     }
 
     @Test
     void testGetJavaVersionRange() {
-        var javaVersionRange = AntUtils.getJavaVersionRange(basedir);
-        assertThat(javaVersionRange).extracting("min", "max", "preferred").containsExactly("8", "8", "8");
+        assertThat(AntUtils.getAntBuild(basedir)).hasValueSatisfying(
+                buildXml -> assertThat(AntUtils.getJavaVersionRange(buildXml)).extracting("min", "max", "preferred")
+                        .containsExactly("8", "8", "8"));
     }
 
     @Test

@@ -29,21 +29,20 @@ class GradleUtilsTest {
         assertThat(url).isNotNull();
         URI uri = url.toURI();
         Path propertiesFile = Path.of(uri);
-        assertThat(GradleUtils.getGradleVersionFromWrapperProperties(propertiesFile)).get()
-                .isEqualTo("7.6-20220622230534+0000");
+        assertThat(GradleUtils.getGradleVersionFromWrapperProperties(propertiesFile)).hasValue("7.6-20220622230534+0000");
     }
 
     @Test
     void testIsGradleBuild(@TempDir Path basedir) throws IOException {
-        assertThat(GradleUtils.isGradleBuild(basedir)).isFalse();
+        assertThat(GradleUtils.getGradleBuild(basedir)).isEmpty();
         Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE);
         Files.createFile(buildGradle);
-        assertThat(GradleUtils.isGradleBuild(basedir)).isTrue();
+        assertThat(GradleUtils.getGradleBuild(basedir)).hasValue(buildGradle);
         Files.delete(buildGradle);
         assertThat(buildGradle).doesNotExist();
         Path buildGradleKts = basedir.resolve(GradleUtils.BUILD_GRADLE_KTS);
         Files.createFile(buildGradleKts);
-        assertThat(GradleUtils.isGradleBuild(basedir)).isTrue();
+        assertThat(GradleUtils.getGradleBuild(basedir)).hasValue(buildGradleKts);
         Files.delete(buildGradleKts);
         assertThat(buildGradleKts).doesNotExist();
     }
@@ -104,18 +103,18 @@ class GradleUtilsTest {
     void testFindMavenPlugin(@TempDir Path basedir) throws IOException {
         Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE);
         Files.writeString(buildGradle, "apply(plugin: \"maven\");" + System.lineSeparator());
-        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PLUGIN)).isTrue();
         assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(MAVEN_PLUGIN_GRADLE_ARGS);
         Files.writeString(buildGradle, "apply plugin: 'maven'" + System.lineSeparator());
-        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PLUGIN)).isTrue();
         assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(MAVEN_PLUGIN_GRADLE_ARGS);
         Files.writeString(buildGradle, "apply(plugin: \"maven-publish\");" + System.lineSeparator());
-        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PUBLISH_PLUGIN)).isTrue();
-        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isFalse();
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PUBLISH_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PLUGIN)).isFalse();
         assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(DEFAULT_GRADLE_ARGS);
         Files.writeString(buildGradle, "apply plugin: 'maven-publish'" + System.lineSeparator());
-        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PUBLISH_PLUGIN)).isTrue();
-        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isFalse();
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PUBLISH_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PLUGIN)).isFalse();
         assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(DEFAULT_GRADLE_ARGS);
     }
 
@@ -127,8 +126,8 @@ class GradleUtilsTest {
                     apply plugin: "signing"
                     apply plugin: "maven-publish"
                 """.indent(8));
-        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PLUGIN)).isTrue();
-        assertThat(GradleUtils.isInBuildGradle(basedir, MAVEN_PUBLISH_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PLUGIN)).isTrue();
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PUBLISH_PLUGIN)).isTrue();
         assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(DEFAULT_GRADLE_ARGS);
     }
 }

@@ -54,4 +54,8 @@
         <javadoc.plugin.version>3.1.0</javadoc.plugin.version>
         <doclint>none</doclint>
     </properties>
+
+    <modules>
+        <module>module</module>
+    </modules>
 </project>
