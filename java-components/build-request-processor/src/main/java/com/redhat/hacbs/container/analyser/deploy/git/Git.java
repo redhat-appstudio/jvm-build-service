@@ -23,7 +23,7 @@ public abstract class Git {
 
     protected boolean disableSSLVerification;
 
-    protected boolean newGitHubRepository = false;
+    protected boolean newGitRepository = false;
 
     public abstract void create(String name)
             throws IOException, URISyntaxException;
@@ -96,9 +96,9 @@ public abstract class Git {
                     .add(tagRefStable)
                     .add(tagRefUnique)
                     .setCredentialsProvider(credentialsProvider);
-            // If we're using GitHub, and it is a new repository we should push
+            // If it is a new repository we should push
             // the default branch else it doesn't show the code
-            if (newGitHubRepository) {
+            if (newGitRepository) {
                 pushCommand.add(jRepo.getBranch());
             }
 
@@ -150,7 +150,6 @@ public abstract class Git {
         if (nonGroupPathIndex != -1) {
             group = group.substring(nonGroupPathIndex + 1);
         }
-        System.err.println((host == null ? "" : host + split()) + group + split() + name);
         return (host == null ? "" : host + split()) + group + split() + name;
     }
 

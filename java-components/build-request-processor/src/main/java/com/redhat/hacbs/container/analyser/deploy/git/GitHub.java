@@ -68,7 +68,7 @@ public class GitHub extends Git {
                         .defaultBranch("main")
                         .projects(false)
                         .private_(false).create();
-                newGitHubRepository = true;
+                newGitRepository = true;
             } else {
                 Log.warnf("Repository %s already exists", name);
             }
@@ -81,7 +81,7 @@ public class GitHub extends Git {
                         .defaultBranch("main")
                         .projects(false)
                         .private_(false).create();
-                newGitHubRepository = true;
+                newGitRepository = true;
             } else {
                 Log.warnf("Repository %s already exists", name);
             }
