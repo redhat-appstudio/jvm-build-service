@@ -3,10 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { ImageDTO } from './ImageDTO';
-export type DeploymentDTO = {
-    namespace: string;
-    name: string;
-    analysisComplete: boolean;
-    images: Array<ImageDTO>;
+export type PageParametersImageDTO = {
+    items: Array<ImageDTO>;
+    count: number;
+    pageNo: number;
+    perPage: number;
 };
 

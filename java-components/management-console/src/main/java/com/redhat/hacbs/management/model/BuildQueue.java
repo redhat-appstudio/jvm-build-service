@@ -1,6 +1,7 @@
 package com.redhat.hacbs.management.model;
 
 import java.util.List;
+import java.util.Map;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
@@ -25,26 +26,26 @@ public class BuildQueue extends PanacheEntity {
     @ManyToOne
     public MavenArtifact mavenArtifact;
 
-    public static void create(String gav, boolean priority, String... labels) {
+    public static void create(String gav, boolean priority, Map<String, String> labels) {
         MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
         create(mavenArtifact, priority);
-        for (var i : labels) {
-            MavenArtifactLabel.getOrCreate(mavenArtifact, i);
+        for (var i : labels.entrySet()) {
+            MavenArtifactLabel.getOrCreate(mavenArtifact, i.getKey(), i.getValue());
         }
     }
 
-    public static void rebuild(String gav, boolean priority, String... labels) {
+    public static void rebuild(String gav, boolean priority, Map<String, String> labels) {
         MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
         create(mavenArtifact, priority, true);
-        for (var i : labels) {
-            MavenArtifactLabel.getOrCreate(mavenArtifact, i);
+        for (var i : labels.entrySet()) {
+            MavenArtifactLabel.getOrCreate(mavenArtifact, i.getKey(), i.getValue());
         }
     }
 
-    public static void rebuild(MavenArtifact mavenArtifact, boolean priority, String... labels) {
+    public static void rebuild(MavenArtifact mavenArtifact, boolean priority, Map<String, String> labels) {
         create(mavenArtifact, priority, true);
-        for (var i : labels) {
-            MavenArtifactLabel.getOrCreate(mavenArtifact, i);
+        for (var i : labels.entrySet()) {
+            MavenArtifactLabel.getOrCreate(mavenArtifact, i.getKey(), i.getValue());
         }
     }
 
@@ -71,5 +72,9 @@ public class BuildQueue extends PanacheEntity {
             existing.priority = true;
             existing.rebuild |= rebuild;
         }
+    }
+
+    public static boolean inBuildQueue(MavenArtifact mavenArtifact) {
+        return BuildQueue.count("mavenArtifact", mavenArtifact) > 0;
     }
 }

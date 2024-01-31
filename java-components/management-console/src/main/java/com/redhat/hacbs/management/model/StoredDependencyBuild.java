@@ -6,15 +6,18 @@ import java.util.List;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.persistence.UniqueConstraint;
 
+import io.quarkus.arc.Arc;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 
 @Entity
@@ -47,4 +50,15 @@ public class StoredDependencyBuild extends PanacheEntity {
     @ManyToMany(cascade = CascadeType.ALL)
     public List<MavenArtifact> producedArtifacts;
 
+    public static StoredDependencyBuild findByArtifact(MavenArtifact mavenArtifact) {
+        try {
+            return (StoredDependencyBuild) Arc.container().instance(EntityManager.class).get().createQuery(
+                    "select b from StoredArtifactBuild s inner join StoredDependencyBuild b on b.buildIdentifier=s.buildIdentifier where s.mavenArtifact = :artifact order by b.creationTimestamp desc")
+                    .setParameter("artifact", mavenArtifact)
+                    .setMaxResults(1)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
 }

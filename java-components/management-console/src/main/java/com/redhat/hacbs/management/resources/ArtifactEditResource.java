@@ -1,5 +1,7 @@
 package com.redhat.hacbs.management.resources;
 
+import java.util.Map;
+
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -30,7 +32,7 @@ public class ArtifactEditResource {
     @Path("rebuild")
     @Consumes(MediaType.TEXT_PLAIN)
     public void modify(String gav) {
-        BuildQueue.rebuild(gav, true);
+        BuildQueue.rebuild(gav, true, Map.of());
     }
 
     public static class EditResult {

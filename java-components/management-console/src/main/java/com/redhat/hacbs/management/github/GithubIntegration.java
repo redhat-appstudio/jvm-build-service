@@ -227,6 +227,7 @@ public class GithubIntegration {
                 var conclusion = GHCheckRun.Conclusion.SUCCESS;
                 List<String> failureList = new ArrayList<>();
                 GithubActionsBuild githubBuild = GithubActionsBuild.find("workflowRunId", wfr.getId()).firstResult();
+                String identifier = githubBuild.repository + "#" + wfr.getId() + "@" + githubBuild.commit;
                 if (githubBuild == null) {
                     githubBuild = new GithubActionsBuild();
                     githubBuild.creationTime = wfr.getRunStartedAt().toInstant();
@@ -245,7 +246,7 @@ public class GithubIntegration {
                     if (!Objects.equals(i.getPublisher(), "rebuilt") && !Objects.equals(i.getPublisher(), "redhat")) {
                         conclusion = GHCheckRun.Conclusion.FAILURE;
                         failureList.add(gav);
-                        BuildQueue.create(gav, true, "Github Build");
+                        BuildQueue.create(gav, true, Map.of("Github Build", identifier));
 
                         dep.source = "unknown";
                     } else {
@@ -295,7 +296,7 @@ public class GithubIntegration {
                 }
                 githubBuild.commit = wfr.getHeadSha();
                 githubBuild.repository = wfr.getRepository().getOwnerName() + "/" + wfr.getRepository().getName();
-                githubBuild.dependencySet.identifier = githubBuild.repository + "#" + wfr.getId() + "@" + githubBuild.commit;
+                githubBuild.dependencySet.identifier = identifier;
                 githubBuild.dependencySet.type = "github-build";
                 githubBuild.persistAndFlush();
                 var output = new GHCheckRunBuilder.Output(

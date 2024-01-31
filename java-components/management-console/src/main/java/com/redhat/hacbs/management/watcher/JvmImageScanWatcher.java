@@ -1,5 +1,6 @@
 package com.redhat.hacbs.management.watcher;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,21 +96,27 @@ public class JvmImageScanWatcher {
             client.resource(resource).delete();
             return null;
         }
+        ContainerImage containerImage = ContainerImage.getOrCreate(image,
+                Instant.parse(resource.getMetadata().getCreationTimestamp()));
         Log.infof("Processing image scan %s", resource.getMetadata().getName());
         if (resource.getStatus() == null) {
+            containerImage.analysisComplete = false;
+            containerImage.analysisFailed = false;
+            containerImage.persist();
             return null;
         }
         if (Objects.equals(resource.getStatus().getState(), "JvmImageScanFailed")) {
-            ContainerImage containerImage = ContainerImage.getOrCreate(image);
             containerImage.analysisComplete = true;
             containerImage.analysisFailed = true;
             containerImage.persist();
             return null;
         }
         if (!Objects.equals(resource.getStatus().getState(), "JvmImageScanComplete")) {
+            containerImage.analysisComplete = false;
+            containerImage.analysisFailed = false;
             return null;
         }
-        return ContainerImage.getOrCreate(image);
+        return ContainerImage.getOrCreate(image, Instant.parse(resource.getMetadata().getCreationTimestamp()));
     }
 
     @Transactional
@@ -126,7 +133,7 @@ public class JvmImageScanWatcher {
         }
         if (containerImage.dependencySet == null) {
             containerImage.dependencySet = new DependencySet();
-            containerImage.dependencySet.identifier = containerImage.image + "@" + containerImage.digest;
+            containerImage.dependencySet.identifier = containerImage.repository.repository + "@" + containerImage.digest;
             containerImage.dependencySet.type = "container-image";
             containerImage.persistAndFlush();
         }
@@ -141,7 +148,7 @@ public class JvmImageScanWatcher {
                     id.dependencySet = containerImage.dependencySet;
                     id.mavenArtifact = MavenArtifact.forGav(i.getGav());
                 }
-                MavenArtifactLabel.getOrCreate(id.mavenArtifact, "From Deployment");
+                MavenArtifactLabel.getOrCreate(id.mavenArtifact, "Image", containerImage.getFullName());
                 id.source = i.getSource();
                 if (Objects.equals(id.source, "unknown")) {
                     BuildQueue.create(id.mavenArtifact, true);
@@ -165,7 +172,6 @@ public class JvmImageScanWatcher {
         }
         containerImage.analysisComplete = true;
         containerImage.persist();
-        client.resource(resource).delete();
     }
 
 }

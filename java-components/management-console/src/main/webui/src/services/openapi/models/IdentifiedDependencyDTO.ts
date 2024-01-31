@@ -5,7 +5,8 @@
 export type IdentifiedDependencyDTO = {
     gav: string;
     source: string;
-    build?: number;
+    dependencyBuildIdentifier?: string;
+    buildAttemptId?: string;
     inQueue: boolean;
     buildSuccess: boolean;
     attributes: Record<string, string>;

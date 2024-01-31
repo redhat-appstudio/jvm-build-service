@@ -7,18 +7,18 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class BuildAttemptResourceService {
     /**
-     * @param id
+     * @param name
      * @returns any OK
      * @throws ApiError
      */
     public static getApiBuildsAttemptsLogs(
-        id: string,
+        name: string,
     ): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/builds/attempts/logs/{id}',
+            url: '/api/builds/attempts/logs/{name}',
             path: {
-                'id': id,
+                'name': name,
             },
         });
     }
