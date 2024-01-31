@@ -178,15 +178,19 @@ public class LookupBuildInfoCommand implements Runnable {
 
             // Auto-magic discovery - Try looking in this directory and if that fails try immediate subdirectories for
             // a potential build. If multiple subdirectories contain build files an error currently an error is thrown.
-            boolean foundBuildScript = searchForBuildScript(buildRecipeInfo, buildInfoLocator, builder, path, skipTests);
-            if (!foundBuildScript) {
+            var buildScriptPaths = searchForBuildScripts(buildRecipeInfo, path);
+            if (buildScriptPaths.isEmpty()) {
+                Log.warnf("Unable to locate a build script within %s. Searching subdirs...", path);
                 List<Path> paths = new ArrayList<>();
-                Log.warnf("Unable to locate a build script within %s ; searching subdirs...", path);
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
                     for (Path potentialSubDir : stream) {
                         if (Files.isDirectory(potentialSubDir)) {
-                            if (searchForBuildScript(buildRecipeInfo, buildInfoLocator, builder, potentialSubDir, skipTests)) {
+                            Log.infof("Looking for build scripts in %s...", potentialSubDir);
+                            var s = searchForBuildScripts(buildRecipeInfo, potentialSubDir);
+                            if (!s.isEmpty()) {
+                                Log.infof("Found build script(s) in %s: %s", potentialSubDir, s);
                                 paths.add(potentialSubDir);
+                                buildScriptPaths = s;
                             }
                         }
                     }
@@ -194,13 +198,34 @@ public class LookupBuildInfoCommand implements Runnable {
                 // If we have found multiple build files that is a problem (as we don't know which to choose). Otherwise
                 // pass back the new context directory.
                 if (paths.size() > 1) {
-                    Log.errorf("Multiple subdirectories have build systems");
-                    throw new RuntimeException("Multiple subdirectories have build files.");
+                    Log.errorf("Multiple subdirectories have build files: %s", paths);
+                    throw new RuntimeException("Multiple subdirectories have build files: " + paths);
                 } else if (paths.size() == 1) {
-                    String foundContext = paths.get(0).getFileName().toString();
+                    path = paths.get(0);
+                    String foundContext = path.getFileName().toString();
                     Log.warnf("Setting context path %s", foundContext);
                     builder.setContextPath(foundContext);
+                } else {
+                    Log.errorf("No directories have build files");
+                    throw new RuntimeException("No directories have build files");
                 }
+            }
+
+            Log.infof("Build script(s) in %s: %s", path, buildScriptPaths);
+
+            var buildScript = (Path) null;
+
+            if ((buildScript = buildScriptPaths.get(MAVEN)) != null) {
+                handleMavenBuild(builder, buildScript, skipTests, buildInfoLocator);
+            }
+            if ((buildScript = buildScriptPaths.get(GRADLE)) != null) {
+                handleGradleBuild(builder, buildScript, skipTests);
+            }
+            if ((buildScript = buildScriptPaths.get(SBT)) != null) {
+                handleSbtBuild(builder, buildScript);
+            }
+            if ((buildScript = buildScriptPaths.get(ANT)) != null) {
+                handleAntBuild(builder, buildScript);
             }
 
             if (registries != null) {
@@ -343,21 +368,21 @@ public class LookupBuildInfoCommand implements Runnable {
         return result;
     }
 
-    private boolean searchForBuildScript(BuildRecipeInfo buildRecipeInfo, CacheBuildInfoLocator buildInfoLocator,
-            InvocationBuilder builder, Path path, boolean skipTests)
-            throws IOException, XmlPullParserException {
-        boolean versionCorrect = false;
-        boolean foundBuildScript = false;
-        Path pomFile = null;
+    private Map<String, Path> searchForBuildScripts(BuildRecipeInfo buildRecipeInfo, Path path) {
+        var paths = new HashMap<String, Path>();
+        var pomFile = (Path) null;
+
         if (buildRecipeInfo != null && buildRecipeInfo.getAdditionalArgs() != null) {
             try {
-                CLIManager cliManager = new CLIManager();
-                org.apache.commons.cli.CommandLine commandLine = cliManager
-                        .parse(buildRecipeInfo.getAdditionalArgs().toArray(new String[0]));
+                var cliManager = new CLIManager();
+                var commandLine = cliManager.parse(buildRecipeInfo.getAdditionalArgs().toArray(new String[0]));
+
                 if (commandLine.hasOption(CLIManager.ALTERNATE_POM_FILE)) {
-                    String alternatePomFile = commandLine.getOptionValue(CLIManager.ALTERNATE_POM_FILE);
+                    var alternatePomFile = commandLine.getOptionValue(CLIManager.ALTERNATE_POM_FILE);
+
                     if (alternatePomFile != null) {
                         pomFile = path.resolve(alternatePomFile);
+
                         if (Files.isDirectory(pomFile)) {
                             pomFile = pomFile.resolve("pom.xml");
                         }
@@ -370,138 +395,154 @@ public class LookupBuildInfoCommand implements Runnable {
         if (pomFile == null) {
             pomFile = path.resolve("pom.xml");
         }
+
         if (Files.isRegularFile(pomFile)) {
-            Log.infof("Found Maven pom file at %s", pomFile);
+            paths.put(MAVEN, pomFile);
+        }
 
-            try (BufferedReader pomReader = Files.newBufferedReader(pomFile)) {
-                MavenXpp3Reader reader = new MavenXpp3Reader();
-                Model model = reader.read(pomReader);
-                //TODO: we should do discovery on the whole tree
-                if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
-                    //not tagged properly, deal with it automatically
-                    builder.enforceVersion(version);
-                } else if (model.getVersion() == null || Objects.equals(version, model.getVersion())) {
-                    //if the version is null we can't run enforce version at this point
-                    //version is correct, don't run enforce version as it can fail on things
-                    //that are tagged correctly
-                    builder.versionCorrect();
-                    versionCorrect = true;
-                }
-                MavenJavaVersionDiscovery.filterJavaVersions(model, builder);
+        GradleUtils.getGradleBuild(path).ifPresent(p -> paths.put(GRADLE, p));
 
-                var invocations = new ArrayList<>(
-                        List.of("install",
-                                "-DallowIncompleteProjects",
-                                "-Danimal.sniffer.skip", // https://github.com/mojohaus/animal-sniffer
-                                "-Dcheckstyle.skip",
-                                "-Dcobertura.skip",
-                                "-Denforcer.skip",
-                                "-Dgpg.skip",
-                                "-Djapicmp.skip",
-                                "-Dmaven.javadoc.failOnError=false",
-                                "-Dpgpverify.skip",
-                                "-Drat.skip=true",
-                                "-Drevapi.skip",
-                                "-Dsort.skip", // https://github.com/Ekryd/sortpom
-                                "-Dspotbugs.skip"));
-                if (skipTests) {
-                    //we assume private repos are essentially fresh tags we have control of
-                    //so we should run the tests
-                    //this can be controller via additional args if you still want to skip them
-                    invocations.add("-DskipTests");
-                }
-                boolean releaseProfile = false;
-                if (model.getProfiles() != null) {
-                    for (var profile : model.getProfiles()) {
-                        if (Objects.equals(profile.getId(), "release")) {
-                            invocations.add("-Prelease");
-                            releaseProfile = true;
-                        }
-                    }
-                }
-                builder.addToolInvocation(MAVEN, invocations);
+        var buildSbt = path.resolve("build.sbt");
 
-                //look for repositories
-                for (var repo : handleRepositories(pomFile, buildInfoLocator, releaseProfile)) {
-                    builder.addRepository(repo);
-                }
+        if (Files.isRegularFile(buildSbt)) {
+            paths.put(SBT, buildSbt);
+        }
 
-                foundBuildScript = true;
+        AntUtils.getAntBuild(path).ifPresent(p -> paths.put(ANT, p));
+
+        return paths;
+    }
+
+    private static void handleAntBuild(InvocationBuilder builder, Path antFile) {
+        //TODO: this needs work, too much hard coded stuff, just try all and builds
+        // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
+        Log.infof("Detected Ant build file %s", antFile);
+        //                var specifiedJavaVersion = AntUtils.getJavaVersion(antFile);
+        //                Log.infof("Detected Java version %s", !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "none");
+        //                var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
+        //                var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
+        //                Log.infof("Chose Ant version %s", antVersion);
+        //                //this should really be specific to the invocation
+        //                info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
+        //                if (!info.tools.containsKey(JDK)) {
+        //                    info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
+        //                }
+        ArrayList<String> inv = new ArrayList<>(AntUtils.getAntArgs());
+        builder.addToolInvocation(ANT, inv);
+    }
+
+    private static void handleSbtBuild(InvocationBuilder builder, Path sbtFile) {
+        //TODO: initial SBT support, needs more work
+        Log.infof("Detected SBT build file %s", sbtFile);
+        builder.addToolInvocation(SBT, List.of("--no-colors", "+publish"));
+    }
+
+    private static void handleGradleBuild(InvocationBuilder builder, Path gradleFile, boolean skipTests) throws IOException {
+        Log.infof("Detected Gradle build file %s", gradleFile);
+        var optionalGradleVersion = GradleUtils
+                .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(gradleFile.getParent()));
+        optionalGradleVersion.ifPresent(s -> builder.discoveredToolVersion(GRADLE, s));
+        var detectedGradleVersion = optionalGradleVersion.orElse("7");
+        Log.infof("Detected Gradle version %s",
+                optionalGradleVersion.isPresent() ? detectedGradleVersion : "none");
+        Log.infof("Chose Gradle version %s", detectedGradleVersion);
+        String javaVersion;
+        var specifiedJavaVersion = GradleUtils.getSpecifiedJavaVersion(gradleFile);
+
+        if (!specifiedJavaVersion.isEmpty()) {
+            builder.minJavaVersion(new JavaVersion(specifiedJavaVersion));
+            javaVersion = specifiedJavaVersion;
+            Log.infof("Chose min Java version %s based on specified Java version", javaVersion);
+        }
+        ArrayList<String> inv = new ArrayList<>(GradleUtils.getGradleArgs(gradleFile));
+        if (skipTests) {
+            inv.add("-x");
+            inv.add("test");
+        }
+
+        final Collection<File> files = FileUtils.listFiles(
+                gradleFile.getParent().toFile(),
+                WildcardFileFilter.builder().setWildcards("*.gradle", "*.gradle.kts").get(),
+                TrueFileFilter.INSTANCE);
+
+        for (File buildFile : files) {
+            try (Stream<String> lines = Files.lines(buildFile.toPath())) {
+                if (lines.anyMatch(s -> s
+                        .matches("(.*findProperty[(].release.*|.*getProperty[(].release.*|.*hasProperty[(].release.*)"))) {
+                    inv.add("-Prelease");
+                    break;
+                }
             }
         }
-        if (GradleUtils.isGradleBuild(path)) {
-            Log.infof("Detected Gradle build in %s", path);
-            var optionalGradleVersion = GradleUtils
-                    .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(path));
-            if (optionalGradleVersion.isPresent()) {
-                builder.discoveredToolVersion(GRADLE, optionalGradleVersion.get());
-            }
-            var detectedGradleVersion = optionalGradleVersion.orElse("7");
-            Log.infof("Detected Gradle version %s",
-                    optionalGradleVersion.isPresent() ? detectedGradleVersion : "none");
-            Log.infof("Chose Gradle version %s", detectedGradleVersion);
-            String javaVersion;
-            var specifiedJavaVersion = GradleUtils.getSpecifiedJavaVersion(path);
 
-            if (!specifiedJavaVersion.isEmpty()) {
-                builder.minJavaVersion(new JavaVersion(specifiedJavaVersion));
-                javaVersion = specifiedJavaVersion;
-                Log.infof("Chose min Java version %s based on specified Java version", javaVersion);
+        //gradle projects often need plugins from the google repo
+        //we add it by default
+        builder.addRepository("google");
+        builder.addToolInvocation(GRADLE, inv);
+    }
+
+    private void handleMavenBuild(InvocationBuilder builder, Path buildScript, boolean skipTests,
+            CacheBuildInfoLocator buildInfoLocator) throws IOException, XmlPullParserException {
+        Log.infof("Found Maven POM file at %s", buildScript);
+        try (BufferedReader pomReader = Files.newBufferedReader(buildScript)) {
+            MavenXpp3Reader reader = new MavenXpp3Reader();
+            Model model = reader.read(pomReader);
+            //TODO: we should do discovery on the whole tree
+            if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
+                //not tagged properly, deal with it automatically
+                builder.enforceVersion(version);
+            } else if (model.getVersion() == null || Objects.equals(version, model.getVersion())) {
+                //if the version is null we can't run enforce version at this point
+                //version is correct, don't run enforce version as it can fail on things
+                //that are tagged correctly
+                builder.versionCorrect();
             }
-            ArrayList<String> inv = new ArrayList<>(GradleUtils.getGradleArgs(path));
+            MavenJavaVersionDiscovery.filterJavaVersions(buildScript, model, builder);
+            if (builder.minJavaVersion != null && builder.maxJavaVersion != null) {
+                if (builder.minJavaVersion.compareTo(builder.maxJavaVersion) > 0
+                        || builder.maxJavaVersion.compareTo(builder.minJavaVersion) < 0) {
+                    Log.warnf(
+                            "Found incompatible Java versions in project with file %s: minJavaVersion: %s, maxJavaVersion: %s",
+                            buildScript, builder.minJavaVersion, builder.maxJavaVersion);
+                }
+            }
+
+            var invocations = new ArrayList<>(
+                    List.of("install",
+                            "-DallowIncompleteProjects",
+                            "-Danimal.sniffer.skip", // https://github.com/mojohaus/animal-sniffer
+                            "-Dcheckstyle.skip",
+                            "-Dcobertura.skip",
+                            "-Denforcer.skip",
+                            "-Dgpg.skip",
+                            "-Djapicmp.skip",
+                            "-Dmaven.javadoc.failOnError=false",
+                            "-Dpgpverify.skip",
+                            "-Drat.skip=true",
+                            "-Drevapi.skip",
+                            "-Dsort.skip", // https://github.com/Ekryd/sortpom
+                            "-Dspotbugs.skip"));
             if (skipTests) {
-                inv.add("-x");
-                inv.add("test");
+                //we assume private repos are essentially fresh tags we have control of
+                //so we should run the tests
+                //this can be controller via additional args if you still want to skip them
+                invocations.add("-DskipTests");
             }
-
-            final Collection<File> files = FileUtils.listFiles(
-                    path.toFile(),
-                    WildcardFileFilter.builder().setWildcards("*.gradle", "*.gradle.kts").get(),
-                    TrueFileFilter.INSTANCE);
-
-            for (File buildFile : files) {
-                try (Stream<String> lines = Files.lines(buildFile.toPath())) {
-                    if (lines.anyMatch(s -> s
-                            .matches("(.*findProperty[(].release.*|.*getProperty[(].release.*|.*hasProperty[(].release.*)"))) {
-                        inv.add("-Prelease");
-                        break;
+            boolean releaseProfile = false;
+            if (model.getProfiles() != null) {
+                for (var profile : model.getProfiles()) {
+                    if (Objects.equals(profile.getId(), "release")) {
+                        invocations.add("-Prelease");
+                        releaseProfile = true;
                     }
                 }
             }
+            builder.addToolInvocation(MAVEN, invocations);
 
-            //gradle projects often need plugins from the google repo
-            //we add it by default
-            builder.addRepository("google");
-            builder.addToolInvocation(GRADLE, inv);
-            foundBuildScript = true;
+            //look for repositories
+            for (var repo : handleRepositories(buildScript, buildInfoLocator, releaseProfile)) {
+                builder.addRepository(repo);
+            }
         }
-        if (Files.exists(path.resolve("build.sbt"))) {
-            //TODO: initial SBT support, needs more work
-            Log.infof("Detected SBT build in %s", path);
-            builder.addToolInvocation(SBT, List.of("--no-colors", "+publish"));
-            foundBuildScript = true;
-        }
-        if (AntUtils.isAntBuild(path)) {
-            //TODO: this needs work, too much hard coded stuff, just try all and builds
-            // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
-            Log.infof("Detected Ant build in %s", path);
-            //                var specifiedJavaVersion = AntUtils.getJavaVersion(path);
-            //                Log.infof("Detected Java version %s", !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "none");
-            //                var javaVersion = !specifiedJavaVersion.isEmpty() ? specifiedJavaVersion : "8";
-            //                var antVersion = AntUtils.getAntVersionForJavaVersion(javaVersion);
-            //                Log.infof("Chose Ant version %s", antVersion);
-            //                //this should really be specific to the invocation
-            //                info.tools.put(ANT, new VersionRange(antVersion, antVersion, antVersion));
-            //                if (!info.tools.containsKey(JDK)) {
-            //                    info.tools.put(JDK, AntUtils.getJavaVersionRange(path));
-            //                }
-            ArrayList<String> inv = new ArrayList<>(AntUtils.getAntArgs());
-            builder.addToolInvocation(ANT, inv);
-            foundBuildScript = true;
-        }
-        if (versionCorrect) {
-            builder.versionCorrect();
-        }
-        return foundBuildScript;
     }
 }

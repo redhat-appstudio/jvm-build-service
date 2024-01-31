@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.analyser.build;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
@@ -66,6 +67,7 @@ class LookupBuildInfoCommandTest {
         assertTrue(logRecords.stream()
                 .anyMatch(r -> LogCollectingTestResource.format(r)
                         .contains("Unable to locate a build script within")));
+        assertThat(info.invocations).isNotEmpty();
         assertEquals("8", info.invocations.get(0).getToolVersion().get("jdk"));
     }
 
@@ -96,13 +98,8 @@ class LookupBuildInfoCommandTest {
 
         assertThrows(RuntimeException.class,
                 () -> lookupBuildInfoCommand.doBuildAnalysis("https://github.com/jakartaee/jaf-api.git", new BuildRecipeInfo(),
-                        cacheBuildInfoLocator));
-        List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-        assertEquals(2, logRecords.stream()
-                .filter(r -> LogCollectingTestResource.format(r)
-                        .contains("Found Maven pom file at"))
-                .count());
-
+                        cacheBuildInfoLocator),
+                "Multiple subdirectories have build files");
     }
 
     @Test
@@ -170,7 +167,7 @@ class LookupBuildInfoCommandTest {
         lookupBuildInfoCommand.commit = "1f6020a3f17d9d88dfd54a31370e91e3361c216b";
         var info = lookupBuildInfoCommand.doBuildAnalysis("https://gitlab.ow2.org/asm/asm.git", new BuildRecipeInfo(),
                 cacheBuildInfoLocator);
-        System.err.println(info.invocations);
+        assertThat(info.invocations).isNotEmpty();
         assertTrue(info.invocations.get(0).getCommands().contains("-Prelease"));
     }
 }

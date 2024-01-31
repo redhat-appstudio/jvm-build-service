@@ -1,10 +1,12 @@
 package com.redhat.hacbs.container.analyser.build.ant;
 
 import static org.apache.tools.ant.MagicNames.ANT_FILE;
+import static org.apache.tools.ant.Main.DEFAULT_BUILD_FILENAME;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.ProjectHelper;
@@ -22,7 +24,7 @@ public final class AntUtils {
 
     public static final String ANT_VERSION_JAVA8 = "1.10.13";
 
-    private static final String BUILD_XML = "build.xml";
+    public static final String BUILD_XML = DEFAULT_BUILD_FILENAME;
 
     private static final String ANT_BUILD_JAVAC_SOURCE = "ant.build.javac.source";
 
@@ -35,14 +37,19 @@ public final class AntUtils {
     }
 
     /**
-     * Returns true if and only if the directory contains a readable file named {@code build.xml}.
+     * Returns basedir if and only if the directory contains a readable file named {@code build.xml}.
      *
-     * @param path the base directory or build file
+     * @param basedir the base directory or build file
      * @return whether the current directory contains an Ant build
      */
-    public static boolean isAntBuild(Path path) {
-        var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
-        return (Files.isRegularFile(buildFile) && Files.isReadable(buildFile));
+    public static Optional<Path> getAntBuild(Path basedir) {
+        var buildXml = basedir.resolve(DEFAULT_BUILD_FILENAME);
+
+        if (Files.isRegularFile(buildXml)) {
+            return Optional.of(buildXml);
+        }
+
+        return Optional.empty();
     }
 
     /**
@@ -86,12 +93,11 @@ public final class AntUtils {
      * Gets the Java version from the Ant build file, if any, and matches it with a supported Java version, if
      * possible.
      *
-     * @param path the base directory or build file
+     * @param buildFile the build file
      * @return the specified Java version, or empty if none
      */
-    public static String getJavaVersion(Path path) {
+    public static String getJavaVersion(Path buildFile) {
         try {
-            var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
             var project = loadProject(buildFile);
             var javaVersion = getJavaVersion(project);
             return javaVersion != -1 ? Integer.toString(javaVersion) : "";
@@ -104,12 +110,11 @@ public final class AntUtils {
     /**
      * Gets the JDK version range for the given Ant build file.
      *
-     * @param path the base directory or build file
+     * @param buildFile the base directory or build file
      * @return the JDK version range if possible, or {@code null} otherwise
      */
-    public static VersionRange getJavaVersionRange(Path path) {
+    public static VersionRange getJavaVersionRange(Path buildFile) {
         try {
-            var buildFile = Files.isDirectory(path) ? path.resolve(BUILD_XML) : path;
             var project = loadProject(buildFile);
             return getJavaVersionRange(project);
         } catch (Throwable t) {
