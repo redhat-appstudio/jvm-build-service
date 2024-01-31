@@ -30,4 +30,4 @@ jobs:
         working-directory: java-components
         run: mvn -V -B package -Dvalidate-format
       - name: Codecov
-        uses: codecov/codecov-action@4fe8c5f003fae66aa5ebb77cfd3e7bfbbda0b6b0 # v3
+        uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8c02684457 # v3
