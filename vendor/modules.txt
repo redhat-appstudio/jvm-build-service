@@ -9,8 +9,8 @@ contrib.go.opencensus.io/exporter/prometheus
 github.com/AlecAivazis/survey/v2
 github.com/AlecAivazis/survey/v2/core
 github.com/AlecAivazis/survey/v2/terminal
-# github.com/CycloneDX/cyclonedx-go v0.7.1
-## explicit; go 1.17
+# github.com/CycloneDX/cyclonedx-go v0.8.0
+## explicit; go 1.18
 github.com/CycloneDX/cyclonedx-go
 # github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df
 ## explicit; go 1.18
