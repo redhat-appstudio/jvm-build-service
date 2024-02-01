@@ -36,6 +36,7 @@ export type { ReplayEvent } from './models/ReplayEvent';
 export type { RunningBuildDTO } from './models/RunningBuildDTO';
 export type { ShadingDetails } from './models/ShadingDetails';
 
+export { AdminResourceService } from './services/AdminResourceService';
 export { ArtifactEditResourceService } from './services/ArtifactEditResourceService';
 export { ArtifactHistoryResourceService } from './services/ArtifactHistoryResourceService';
 export { ArtifactLabelResourceService } from './services/ArtifactLabelResourceService';

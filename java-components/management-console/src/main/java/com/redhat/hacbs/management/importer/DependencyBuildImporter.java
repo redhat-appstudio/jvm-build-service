@@ -86,7 +86,9 @@ public class DependencyBuildImporter {
                 storedBuild.producedArtifacts.add(MavenArtifact.forGav(i));
             }
         }
-        storedBuild.buildAttempts = new ArrayList<>();
+        if (storedBuild.buildAttempts == null) {
+            storedBuild.buildAttempts = new ArrayList<>();
+        }
 
         if (s3Bucket != null) {
             //todo we just assume the logs are present

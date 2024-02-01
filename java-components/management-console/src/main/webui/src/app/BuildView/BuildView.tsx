@@ -371,7 +371,7 @@ const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: Bu
                   onChange={() => setContainerRuntime('podman')}
                 />
               </ToggleGroup>
-              <ClipboardCopy hoverTip="Copy" clickTip="Copied" variant={ClipboardCopyVariant.expansion} isReadOnly>
+              <ClipboardCopy hoverTip="Copy" clickTip="Copied"  variant={ClipboardCopyVariant.expansion} isReadOnly>
                 bash -c 'cd $(mktemp -d) && echo {btoa(data.attempt.diagnosticDockerFile)} | base64  -d &gt;Dockerfile && {containerRuntime} build --pull . -t diagnostic-{data.attempt.id} && {containerRuntime} run -it diagnostic-{data.attempt.id}'
               </ClipboardCopy>
               </DescriptionListDescription>
