@@ -184,7 +184,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 List<Path> paths = new ArrayList<>();
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
                     for (Path potentialSubDir : stream) {
-                        if (Files.isDirectory(potentialSubDir)) {
+                        if (Files.isDirectory(potentialSubDir) && !Files.isHidden(potentialSubDir)) {
                             Log.infof("Looking for build scripts in %s...", potentialSubDir);
                             var s = searchForBuildScripts(buildRecipeInfo, potentialSubDir);
                             if (!s.isEmpty()) {
