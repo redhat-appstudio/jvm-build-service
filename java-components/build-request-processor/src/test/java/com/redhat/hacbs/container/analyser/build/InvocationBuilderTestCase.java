@@ -83,7 +83,7 @@ public class InvocationBuilderTestCase {
         builder.setCommitTime(System.currentTimeMillis());
         builder.addToolInvocation(MAVEN, List.of("install"));
         var result = builder.build(buildInfoLocator);
-        Assertions.assertEquals(4, result.invocations.size());
+        Assertions.assertEquals(8, result.invocations.size());
         Assertions.assertTrue(
                 result.invocations
                         .contains(
@@ -98,7 +98,7 @@ public class InvocationBuilderTestCase {
         builder.minJavaVersion(new JavaVersion("11"));
         builder.maxJavaVersion(new JavaVersion("11"));
         result = builder.build(buildInfoLocator);
-        Assertions.assertEquals(4, result.invocations.size());
+        Assertions.assertEquals(8, result.invocations.size());
         Assertions.assertTrue(result.invocations
                 .contains(
                         new Invocation(List.of("install", "org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy"),
@@ -115,7 +115,7 @@ public class InvocationBuilderTestCase {
         builder.maxJavaVersion(new JavaVersion("11"));
         builder.discoveredToolVersion(GRADLE, "5.2");
         result = builder.build(buildInfoLocator);
-        Assertions.assertEquals(2, result.invocations.size());
+        Assertions.assertEquals(4, result.invocations.size());
         Assertions.assertTrue(result.invocations
                 .contains(
                         new Invocation(List.of("mvn", "install", "org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy"),
@@ -134,7 +134,8 @@ public class InvocationBuilderTestCase {
         builder.setCommitTime(df.parse("2013-01-01").getTime());
         builder.addToolInvocation(MAVEN, List.of("install"));
         var result = builder.build(buildInfoLocator);
-        Assertions.assertEquals(3, result.invocations.size());
+
+        Assertions.assertEquals(6, result.invocations.size());
         Assertions.assertTrue(
                 result.invocations
                         .contains(
@@ -163,9 +164,41 @@ public class InvocationBuilderTestCase {
         Assertions.assertEquals(0, result.invocations.size());
     }
 
+    @Test
+    public void testInvocationOrderMaven() {
+        InvocationBuilder builder = newBuilder();
+        builder.setCommitTime(System.currentTimeMillis());
+        builder.addToolInvocation(MAVEN, List.of("install"));
+        var result = builder.build(buildInfoLocator);
+        Assertions.assertEquals(8, result.invocations.size());
+        Assertions.assertEquals(result.invocations.get(0).getToolVersion().get(JDK), "7");
+        Assertions.assertEquals(result.invocations.get(0).getToolVersion().get(MAVEN), "3.9.5");
+        Assertions.assertEquals(result.invocations.get(1).getToolVersion().get(MAVEN), "3.9.5");
+        Assertions.assertEquals(result.invocations.get(2).getToolVersion().get(MAVEN), "3.9.5");
+        Assertions.assertEquals(result.invocations.get(4).getToolVersion().get(JDK), "7");
+        Assertions.assertEquals(result.invocations.get(4).getToolVersion().get(MAVEN), "3.8.0");
+        Assertions.assertEquals(result.invocations.get(5).getToolVersion().get(MAVEN), "3.8.0");
+    }
+
+    @Test
+    public void testInvocationOrderGradle() {
+        InvocationBuilder builder = newBuilder();
+        builder.setCommitTime(System.currentTimeMillis());
+        builder.addToolInvocation(GRADLE, List.of("build"));
+        var result = builder.build(buildInfoLocator);
+        Assertions.assertEquals(4, result.invocations.size());
+        Assertions.assertEquals(result.invocations.get(0).getToolVersion().get(JDK), "8");
+        Assertions.assertEquals(result.invocations.get(1).getToolVersion().get(JDK), "11");
+        Assertions.assertEquals(result.invocations.get(2).getToolVersion().get(JDK), "8");
+        Assertions.assertEquals(result.invocations.get(0).getToolVersion().get(GRADLE), "6.1");
+        Assertions.assertEquals(result.invocations.get(1).getToolVersion().get(GRADLE), "6.1");
+        Assertions.assertEquals(result.invocations.get(2).getToolVersion().get(GRADLE), "5.4");
+        Assertions.assertEquals(result.invocations.get(3).getToolVersion().get(GRADLE), "5.4");
+    }
+
     private InvocationBuilder newBuilder() {
         return new InvocationBuilder(null, Map.of(
-                MAVEN, List.of("3.8.0"),
+                MAVEN, List.of("3.8.0", "3.9.5"),
                 GRADLE, List.of("5.4", "6.1"),
                 BuildInfo.JDK, List.of("7", "8", "11", "17")), "1");
     }

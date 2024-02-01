@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 
 import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipes.tools.BuildToolInfo;
@@ -123,7 +124,6 @@ public class InvocationBuilder {
     }
 
     public BuildInfo build(CacheBuildInfoLocator buildInfoLocator) {
-        Log.infof("Attempting to build invocations, with builder %s", this);
         if (buildRecipeInfo != null) {
             if (buildRecipeInfo.isEnforceVersion() && !versionCorrect) {
                 info.enforceVersion = version;
@@ -253,15 +253,16 @@ public class InvocationBuilder {
         if (!selectedToolVersions.containsKey(BuildInfo.MAVEN)) {
             //we always add a maven version
             //some builds like ant may need it to deploy
-            //its not actually explictly invoked though, but MAVEN_HOME will be set
+            //its not actually explicitly invoked though, but MAVEN_HOME will be set
             var toolVersions = availableTools.getOrDefault(BuildInfo.MAVEN, List.of());
             if (!toolVersions.isEmpty()) {
                 //todo: make sure the selected version is stable
                 selectedToolVersions.put(BuildInfo.MAVEN, Set.of(toolVersions.get(0)));
             }
         }
-        //now figure out all possible permuations
-        Set<Map<String, String>> allToolPermutations = new HashSet<>();
+        //now figure out all possible permutations
+        List<Map<String, String>> allToolPermutations = new ArrayList<>();
+
         String[][] versions = new String[selectedToolVersions.size()][];
         int[] positions = new int[selectedToolVersions.size()];
         String[] toolNames = new String[selectedToolVersions.size()];
@@ -273,11 +274,13 @@ public class InvocationBuilder {
             count++;
         }
         for (;;) {
-            Map<String, String> perm = new HashMap<>();
+            Map<String, String> perm = new TreeMap<>();
             for (var i = 0; i < versions.length; ++i) {
                 perm.put(toolNames[i], versions[i][positions[i]]);
             }
-            allToolPermutations.add(perm);
+            // Always add at beginning to effectively reverse the tool order so
+            // latest is handled first.
+            allToolPermutations.add(0, perm);
             int current = 0;
             positions[current]++;
             var allDone = false;
@@ -294,11 +297,10 @@ public class InvocationBuilder {
                 break;
             }
         }
-
         //now map tool versions to java versions
         for (var invocationSet : toolInvocations.entrySet()) {
-            for (var javaVersion : javaVersions) {
-                for (var perm : allToolPermutations) {
+            for (var perm : allToolPermutations) {
+                for (var javaVersion : javaVersions) {
                     boolean ignore = false;
                     for (var tool : perm.entrySet()) {
                         var info = buildToolInfo.get(tool.getKey());
@@ -348,6 +350,9 @@ public class InvocationBuilder {
                 }
             }
         }
+        StringBuilder logging = new StringBuilder();
+        info.invocations.forEach(s -> logging.append("\t").append(s).append("\n"));
+        Log.infof("InvocationBuilder completed and returning invocations\n%s", logging);
         if (contextPath != null) {
             info.setContextPath(contextPath);
         }
@@ -383,7 +388,7 @@ public class InvocationBuilder {
                 return ret;
             }
         }
-        int seekingMajor = -1;
+        int seekingMajor;
         try {
             seekingMajor = Integer.parseInt(disParts[0]);
         } catch (Exception e) {
