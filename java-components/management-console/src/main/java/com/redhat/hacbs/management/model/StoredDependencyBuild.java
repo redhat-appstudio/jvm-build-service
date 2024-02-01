@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
@@ -45,6 +46,7 @@ public class StoredDependencyBuild extends PanacheEntity {
     public List<ShadingDetails> shadingDetails;
 
     @OneToMany(cascade = CascadeType.ALL)
+    @OrderBy("startTime desc")
     public List<BuildAttempt> buildAttempts;
 
     @ManyToMany(cascade = CascadeType.ALL)

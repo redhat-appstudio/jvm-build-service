@@ -68,8 +68,8 @@ public class BuildQueue extends PanacheEntity {
                 queue.priority = priority;
                 queue.persistAndFlush();
             }
-        } else if (priority) {
-            existing.priority = true;
+        } else if (priority || rebuild) {
+            existing.priority |= priority;
             existing.rebuild |= rebuild;
         }
     }

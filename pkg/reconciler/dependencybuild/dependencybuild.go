@@ -62,9 +62,8 @@ const (
 	PipelineTypeBuildInfo = "build-info"
 	PipelineTypeBuild     = "build"
 
-	RetryDueToMemoryAnnotation = "jvmbuildservice.io/retry-build-lookup-due-to-memory"
-	MaxRetries                 = 3
-	MemoryIncrement            = 512
+	MaxRetries      = 3
+	MemoryIncrement = 512
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	JavaHome             = "JAVA_HOME"
@@ -195,12 +194,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		//no need to retry it would just result in an infinite loop
 		return reconcile.Result{}, nil
 	}
-	additionalMemory := 0
-	if db.Annotations != nil && db.Annotations[RetryDueToMemoryAnnotation] == "true" {
-		//TODO: hard coded for now
-		//should be enough for the build lookup task
-		additionalMemory = 1024
-	}
+	additionalMemory := MemoryIncrement * db.Status.PipelineRetries
 	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, db, jbsConfig, additionalMemory, &systemConfig)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -288,22 +282,26 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 	}
 	success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 	if !success {
-		if (db.Annotations == nil || db.Annotations[RetryDueToMemoryAnnotation] != "true") && r.failedDueToMemory(ctx, log, pr) {
-			err := r.client.Delete(ctx, pr)
+		if (db.Status.PipelineRetries < MaxRetries) && r.failedDueToMemory(ctx, log, pr) {
+			// Abuse pipeline retries to apply the same logic
+			// We reset it back to zero before the builds start
+			db.Status.PipelineRetries++
+			db.Status.State = v1alpha1.DependencyBuildStateNew
+			err := r.client.Status().Update(ctx, &db)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-			if db.Annotations == nil {
-				db.Annotations = map[string]string{}
+			err = r.client.Delete(ctx, pr)
+			if err != nil {
+				return reconcile.Result{}, err
 			}
-			db.Annotations[RetryDueToMemoryAnnotation] = "true"
-			return r.handleStateNew(ctx, log, &db)
 		} else {
 			db.Status.State = v1alpha1.DependencyBuildStateFailed
 			db.Status.Message = buildInfo
 		}
 
 	} else {
+		db.Status.PipelineRetries = 0
 		unmarshalled := marshalledBuildInfo{}
 
 		if err := json.Unmarshal([]byte(buildInfo), &unmarshalled); err != nil {
