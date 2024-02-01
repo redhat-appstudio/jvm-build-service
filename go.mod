@@ -3,7 +3,7 @@ module github.com/redhat-appstudio/jvm-build-service
 go 1.20
 
 require (
-	github.com/CycloneDX/cyclonedx-go v0.7.1
+	github.com/CycloneDX/cyclonedx-go v0.8.0
 	github.com/aws/aws-sdk-go v1.50.8
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-containerregistry v0.19.0
