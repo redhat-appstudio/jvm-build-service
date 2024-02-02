@@ -84,7 +84,7 @@ func (r *ReconcileImageScan) Reconcile(ctx context.Context, request reconcile.Re
 	case iaerr == nil:
 		result, err := r.handleImageScan(ctx, ia, log)
 		if err != nil {
-			log.Error(err, "failure reconciling ArtifactBuild")
+			log.Error(err, "failure reconciling JvmImageScan")
 		}
 		return result, err
 	}
@@ -115,8 +115,7 @@ func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log 
 		//not finished, add the finalizer if needed
 		//these PRs can be aggressively pruned, we need the finalizer to
 		//make sure we see the results
-		if !controllerutil.ContainsFinalizer(pr, ImageScanFinalizer) {
-			controllerutil.AddFinalizer(pr, ImageScanFinalizer)
+		if controllerutil.AddFinalizer(pr, ImageScanFinalizer) {
 			return reconcile.Result{}, r.client.Update(ctx, pr)
 		}
 		return reconcile.Result{}, nil
@@ -173,11 +172,12 @@ func (r *ReconcileImageScan) handleStateNew(ctx context.Context, log logr.Logger
 	//guard against " in image name, to prevent script injection
 	if strings.Contains(ia.Spec.Image, "\"") {
 		ia.Status.State = v1alpha1.JvmImageScanStateFailed
-		ia.Status.Message = "invalid image name"
+		ia.Status.Message = "invalid image name " + ia.Spec.Image
 		return reconcile.Result{}, r.client.Status().Update(ctx, ia)
 	}
 	spec, err := r.createLookupPipeline(ctx, log, ia.Spec.Image)
 	if err != nil {
+		log.Info(fmt.Sprintf("Create lookup pipeline failed for %s", ia.Spec.Image))
 		ia.Status.State = v1alpha1.JvmImageScanStateFailed
 		ia.Status.Message = err.Error()
 		return reconcile.Result{}, r.client.Status().Update(ctx, ia)

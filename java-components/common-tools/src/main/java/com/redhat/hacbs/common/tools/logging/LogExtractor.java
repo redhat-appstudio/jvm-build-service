@@ -46,14 +46,19 @@ public class LogExtractor {
                 .baseUri(URI.create("https://" + host + ":" + port + restPath))
                 .build(LogsApi.class);
 
-        String[] discoverySplit = theBuild.getStatus().getDiscoveryPipelineResults().getLogs().split("/");
-        result.append("Discovery Log information: ").append(Arrays.toString(discoverySplit)).append("\n");
-        // Equivalent to using this Quarkus API would be to call the client raw method.
-        // client.raw("https://" + host + ":" + defaultPort + restPath + "/v1alpha2/parents/" + split[0]
-        //          + "/results/" + split[2] + "/logs/" + split[4]);
-        String log = logsApi.getLogByUid(discoverySplit[0], UUID.fromString(discoverySplit[2]),
-                UUID.fromString(discoverySplit[4]));
-        parseLog(result, log);
+        String discoveryPipeLineLogs = theBuild.getStatus().getDiscoveryPipelineResults().getLogs();
+        if (discoveryPipeLineLogs == null) {
+            result.append("No logs founds");
+        } else {
+            String[] discoverySplit = theBuild.getStatus().getDiscoveryPipelineResults().getLogs().split("/");
+            result.append("Discovery Log information: ").append(Arrays.toString(discoverySplit)).append("\n");
+            // Equivalent to using this Quarkus API would be to call the client raw method.
+            // client.raw("https://" + host + ":" + defaultPort + restPath + "/v1alpha2/parents/" + split[0]
+            //          + "/results/" + split[2] + "/logs/" + split[4]);
+            String log = logsApi.getLogByUid(discoverySplit[0], UUID.fromString(discoverySplit[2]),
+                    UUID.fromString(discoverySplit[4]));
+            parseLog(result, log);
+        }
         return result.toString();
     }
 
