@@ -41,8 +41,12 @@ const ImageList: React.FunctionComponent = () => {
         setState('success');
         setImages(res.items);
         setCount(res.count)
-        setPerPage(res.perPage)
-        setPage(res.pageNo)
+        if (res.perPage != perPage) {
+          setPerPage(res.perPage)
+        }
+        if (res.pageNo != page) {
+          setPage(res.pageNo)
+        }
       })
       .catch((err) => {
         console.error('Error:', err);
