@@ -10,6 +10,7 @@ type JvmImageScanSpec struct {
 
 type JvmImageScanStatus struct {
 	State   JvmImageDependenciesState `json:"state,omitempty"`
+	Digest  string                    `json:"digest,omitempty"`
 	Message string                    `json:"message,omitempty"`
 	Results []JavaDependency          `json:"results,omitempty"`
 }

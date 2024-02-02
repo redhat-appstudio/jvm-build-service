@@ -25,10 +25,13 @@ import org.kohsuke.github.GHCheckRunBuilder;
 import org.kohsuke.github.GHEventPayload;
 import org.kohsuke.github.GHWorkflowRun;
 import org.kohsuke.github.GitHub;
-import org.kohsuke.github.PagedIterable;
 import org.kohsuke.github.function.InputStreamFunction;
 
-import com.redhat.hacbs.management.model.*;
+import com.redhat.hacbs.management.model.BuildQueue;
+import com.redhat.hacbs.management.model.DependencySet;
+import com.redhat.hacbs.management.model.GithubActionsBuild;
+import com.redhat.hacbs.management.model.IdentifiedDependency;
+import com.redhat.hacbs.management.model.MavenArtifact;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
@@ -197,114 +200,128 @@ public class GithubIntegration {
             Log.error("Check run not found");
             return;
         }
-        PagedIterable<GHArtifact> artifacts = wfr.listArtifacts();
-        for (var artifact : artifacts) {
+        List<GHArtifact> sbomList = wfr.listArtifacts().toList().stream().filter(s -> s.getName().equals("sbom.json")).toList();
+        if (sbomList.isEmpty()) {
+            Log.infof("No artifacts found, waiting to see if they appear");
+            for (var i = 1; i < 5; ++i) {
+                try {
+                    Thread.sleep(i * 1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                sbomList = wfr.listArtifacts().toList().stream().filter(s -> s.getName().equals("sbom.json")).toList();
+                if (!sbomList.isEmpty()) {
+                    break;
+                }
+            }
+        }
+        for (var artifact : sbomList) {
             Log.infof("Examining artifact %s", artifact.getName());
-            if (artifact.getName().equals("sbom.json")) {
-                Log.infof("Found sbom.json");
-                Bom sbom = artifact.download(new InputStreamFunction<Bom>() {
-                    @Override
-                    public Bom apply(InputStream input) throws IOException {
-                        try (ZipInputStream zip = new ZipInputStream(input)) {
-                            var entry = zip.getNextEntry();
-                            while (entry != null) {
-                                if (entry.getName().equals("sbom.json")) {
-                                    byte[] dd = zip.readAllBytes();
-                                    System.out.println(new String(dd));
-                                    try {
-                                        return BomParserFactory.createParser(dd).parse(dd);
-                                    } catch (ParseException e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                }
-                                entry = zip.getNextEntry();
-                            }
-                        }
-                        return null;
-                    }
-                });
-                Log.infof("Parsed SBOM");
-                var conclusion = GHCheckRun.Conclusion.SUCCESS;
-                List<String> failureList = new ArrayList<>();
-                GithubActionsBuild githubBuild = GithubActionsBuild.find("workflowRunId", wfr.getId()).firstResult();
-                String identifier = githubBuild.repository + "#" + wfr.getId() + "@" + githubBuild.commit;
-                if (githubBuild == null) {
-                    githubBuild = new GithubActionsBuild();
-                    githubBuild.creationTime = wfr.getRunStartedAt().toInstant();
-                    githubBuild.dependencySet = new DependencySet();
-                    githubBuild.dependencySet.dependencies = new ArrayList<>();
-                }
-
-                Map<String, List<String>> successList = new HashMap<>();
-                for (var i : sbom.getComponents()) {
-                    String gav = i.getGroup() + ":" + i.getName() + ":" + i.getVersion();
-                    IdentifiedDependency dep = new IdentifiedDependency();
-                    dep.mavenArtifact = MavenArtifact.forGav(gav);
-                    dep.dependencySet = githubBuild.dependencySet;
-                    dep.source = i.getPublisher();
-                    githubBuild.dependencySet.dependencies.add(dep);
-                    if (!Objects.equals(i.getPublisher(), "rebuilt") && !Objects.equals(i.getPublisher(), "redhat")) {
-                        conclusion = GHCheckRun.Conclusion.FAILURE;
-                        failureList.add(gav);
-                        BuildQueue.create(gav, true, Map.of("Github Build", identifier));
-
-                        dep.source = "unknown";
-                    } else {
-                        if (i.getProperties() != null) {
-                            for (var attr : i.getProperties()) {
-                                if (attr.getName().equals("java:build-id")) {
-                                    dep.buildId = attr.getValue();
+            Log.infof("Found sbom.json");
+            Bom sbom = artifact.download(new InputStreamFunction<Bom>() {
+                @Override
+                public Bom apply(InputStream input) throws IOException {
+                    try (ZipInputStream zip = new ZipInputStream(input)) {
+                        var entry = zip.getNextEntry();
+                        while (entry != null) {
+                            if (entry.getName().equals("sbom.json")) {
+                                byte[] dd = zip.readAllBytes();
+                                System.out.println(new String(dd));
+                                try {
+                                    return BomParserFactory.createParser(dd).parse(dd);
+                                } catch (ParseException e) {
+                                    throw new RuntimeException(e);
                                 }
                             }
+                            entry = zip.getNextEntry();
                         }
-                        successList.computeIfAbsent(i.getPublisher(), s -> new ArrayList<>())
-                                .add(gav);
                     }
+                    return null;
                 }
-                StringBuilder finalResult = new StringBuilder();
+            });
+            Log.infof("Parsed SBOM");
+            var conclusion = GHCheckRun.Conclusion.SUCCESS;
+            List<String> failureList = new ArrayList<>();
+            GithubActionsBuild githubBuild = GithubActionsBuild.find("workflowRunId", wfr.getId()).firstResult();
+            if (githubBuild == null) {
+                githubBuild = new GithubActionsBuild();
+                githubBuild.creationTime = wfr.getRunStartedAt().toInstant();
+                githubBuild.dependencySet = new DependencySet();
+                githubBuild.dependencySet.dependencies = new ArrayList<>();
+            }
+            githubBuild.commit = wfr.getHeadSha();
 
-                if (conclusion == GHCheckRun.Conclusion.FAILURE) {
+            githubBuild.workflowRunId = wfr.getId();
+            for (var pr : wfr.getPullRequests()) {
+                githubBuild.prUrl = pr.getUrl().toExternalForm();
+            }
+            githubBuild.repository = wfr.getRepository().getOwnerName() + "/" + wfr.getRepository().getName();
+            githubBuild.dependencySet.type = "github-build";
+
+            String identifier = githubBuild.repository + "#" + wfr.getId() + "@" + githubBuild.commit;
+            githubBuild.dependencySet.identifier = identifier;
+
+            Map<String, List<String>> successList = new HashMap<>();
+            for (var i : sbom.getComponents()) {
+                String gav = i.getGroup() + ":" + i.getName() + ":" + i.getVersion();
+                IdentifiedDependency dep = new IdentifiedDependency();
+                dep.mavenArtifact = MavenArtifact.forGav(gav);
+                dep.dependencySet = githubBuild.dependencySet;
+                dep.source = i.getPublisher();
+                githubBuild.dependencySet.dependencies.add(dep);
+                if (!Objects.equals(i.getPublisher(), "rebuilt") && !Objects.equals(i.getPublisher(), "redhat")) {
+                    conclusion = GHCheckRun.Conclusion.FAILURE;
+                    failureList.add(gav);
+                    BuildQueue.create(gav, true, Map.of("Github Build", identifier));
+
+                    dep.source = "unknown";
+                } else {
+                    if (i.getProperties() != null) {
+                        for (var attr : i.getProperties()) {
+                            if (attr.getName().equals("java:build-id")) {
+                                dep.buildId = attr.getValue();
+                            }
+                        }
+                    }
+                    successList.computeIfAbsent(i.getPublisher(), s -> new ArrayList<>())
+                            .add(gav);
+                }
+            }
+            StringBuilder finalResult = new StringBuilder();
+
+            if (conclusion == GHCheckRun.Conclusion.FAILURE) {
+                finalResult.append(String.format("""
+                        <details>
+                        <summary>There are %s untrusted artifacts in the result</summary>
+
+                        ```diff
+                        """, failureList.size()));
+                for (var i : failureList) {
+                    finalResult.append("- ").append(i).append("\n");
+                }
+                finalResult.append("```\n</details>");
+
+            } else {
+                for (var e : successList.entrySet()) {
                     finalResult.append(String.format("""
                             <details>
-                            <summary>There are %s untrusted artifacts in the result</summary>
+                            <summary>There are %s artifacts from %s in the result/summary>
 
                             ```diff
-                            """, failureList.size()));
-                    for (var i : failureList) {
-                        finalResult.append("- ").append(i).append("\n");
+                            """, e.getValue().size(), e.getKey()));
+                    for (var i : e.getValue()) {
+                        finalResult.append("+ ").append(i).append("\n");
                     }
                     finalResult.append("```\n</details>");
-
-                } else {
-                    for (var e : successList.entrySet()) {
-                        finalResult.append(String.format("""
-                                <details>
-                                <summary>There are %s artifacts from %s in the result/summary>
-
-                                ```diff
-                                """, e.getValue().size(), e.getKey()));
-                        for (var i : e.getValue()) {
-                            finalResult.append("+ ").append(i).append("\n");
-                        }
-                        finalResult.append("```\n</details>");
-                    }
                 }
-
-                githubBuild.workflowRunId = wfr.getId();
-                for (var pr : wfr.getPullRequests()) {
-                    githubBuild.prUrl = pr.getUrl().toExternalForm();
-                }
-                githubBuild.commit = wfr.getHeadSha();
-                githubBuild.repository = wfr.getRepository().getOwnerName() + "/" + wfr.getRepository().getName();
-                githubBuild.dependencySet.identifier = identifier;
-                githubBuild.dependencySet.type = "github-build";
-                githubBuild.persistAndFlush();
-                var output = new GHCheckRunBuilder.Output(
-                        failureList.size() > 0 ? "Build Contained Untrusted Dependencies" : "All dependencies are trusted",
-                        finalResult.toString());
-                checkRun.update().withConclusion(conclusion).add(output).withStatus(GHCheckRun.Status.COMPLETED).create();
-                break;
             }
+
+            githubBuild.persistAndFlush();
+            var output = new GHCheckRunBuilder.Output(
+                    failureList.size() > 0 ? "Build Contained Untrusted Dependencies" : "All dependencies are trusted",
+                    finalResult.toString());
+            checkRun.update().withConclusion(conclusion).add(output).withStatus(GHCheckRun.Status.COMPLETED).create();
+            break;
         }
     }
 }
