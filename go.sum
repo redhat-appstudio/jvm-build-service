@@ -990,8 +990,8 @@ k8s.io/utils v0.0.0-20240102154912-e7106e64919e h1:eQ/4ljkx21sObifjzXwlPKpdGLrCf
 k8s.io/utils v0.0.0-20240102154912-e7106e64919e/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 knative.dev/eventing v0.30.1-0.20220407170245-58865afba92c h1:5QvWwe3uB7BefHGMg6hC05YVi+zr1kGK7DVMFquqJMI=
 knative.dev/networking v0.0.0-20231017124814-2a7676e912b7 h1:6+1icZuxiZO1paFZ4d/ysKWVG2M4WB7OxNJNyLG0P/E=
-knative.dev/pkg v0.0.0-20240129160226-b6659cc45066 h1:CZSdKszK3MTCuchbQK643y/nHLQs87ESuFQn011XsJ8=
-knative.dev/pkg v0.0.0-20240129160226-b6659cc45066/go.mod h1:cGCJe6wkr0vQMAXTaUHi0XA/12JbxSTK15TnyBmn7ms=
+knative.dev/pkg v0.0.0-20240201013110-e85c3cf6d5f1 h1:xGmWQyA+hwyFT1BN5RWi8wx0DxwZQZni8SPN/FZ02kI=
+knative.dev/pkg v0.0.0-20240201013110-e85c3cf6d5f1/go.mod h1:cGCJe6wkr0vQMAXTaUHi0XA/12JbxSTK15TnyBmn7ms=
 knative.dev/serving v0.39.0 h1:NVt8WthHmFFMWZ3qpBblXt47del8qqrbCegqwGBVSwk=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
