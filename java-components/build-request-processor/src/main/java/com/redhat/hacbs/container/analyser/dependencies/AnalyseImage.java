@@ -81,6 +81,7 @@ public class AnalyseImage extends AnalyserBase {
         ImageReference imageReference = ImageReference.parse(image);
         RegistryClient registryClient = ContainerUtil.getRegistryClient(imageReference, null, false);
         ManifestAndDigest<ManifestTemplate> result = registryClient.pullManifest(imageReference.getQualifier());
+        imageDigest = result.getDigest().toString();
         if (result.getManifest() instanceof V21ManifestTemplate) {
             V21ManifestTemplate template = (V21ManifestTemplate) result.getManifest();
             for (var layer : template.getLayerDigests()) {

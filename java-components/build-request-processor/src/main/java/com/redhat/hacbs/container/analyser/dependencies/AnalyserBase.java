@@ -63,6 +63,8 @@ public abstract class AnalyserBase implements Runnable {
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
 
+    protected String imageDigest = "";
+
     @Override
     public void run() {
         try {
@@ -120,7 +122,8 @@ public abstract class AnalyserBase implements Runnable {
                 }
             }
         }
-        resultsUpdater.get().updateResults(taskRunName, Map.of("JVM_DEPENDENCIES", result.toString()));
+        resultsUpdater.get().updateResults(taskRunName,
+                Map.of("JVM_DEPENDENCIES", result.toString(), "IMAGE_DIGEST", imageDigest));
     }
 
     abstract void doAnalysis(Set<String> gavs, Set<TrackingData> trackingData) throws Exception;

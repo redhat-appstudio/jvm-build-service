@@ -92,9 +92,12 @@ public class JvmImageScanWatcher {
     ContainerImage ensureImageExists(JvmImageScan resource) {
         var image = resource.getSpec().getImage();
         if (!image.contains("@")) {
-            Log.errorf("image %s has no digest, not saving scan result", image);
-            client.resource(resource).delete();
-            return null;
+            if (resource.getStatus() != null && resource.getStatus().getDigest() != null
+                    && !resource.getStatus().getDigest().isEmpty()) {
+                image = image + "@" + resource.getStatus().getDigest();
+            } else {
+                return null;
+            }
         }
         ContainerImage containerImage = ContainerImage.getOrCreate(image,
                 Instant.parse(resource.getMetadata().getCreationTimestamp()));

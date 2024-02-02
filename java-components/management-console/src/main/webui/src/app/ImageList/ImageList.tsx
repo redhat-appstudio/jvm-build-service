@@ -49,7 +49,7 @@ const ImageList: React.FunctionComponent = () => {
         setState('error');
         setError(err);
       });
-  }, [count, page, perPage]);
+  }, [page, perPage]);
 
   if (state === 'error')
     return (

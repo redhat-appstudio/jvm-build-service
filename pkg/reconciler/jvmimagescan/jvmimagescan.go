@@ -29,6 +29,7 @@ const (
 	ImageScanFinalizer        = "jvmbuildservice.io/image-analysis-finalizer"
 	ImageScanPipelineRunLabel = "jvmbuildservice.io/image-analysis-pipelinerun"
 	JvmDependenciesResult     = "JVM_DEPENDENCIES"
+	ImageDigestResult         = "IMAGE_DIGEST"
 )
 
 type ReconcileImageScan struct {
@@ -143,12 +144,18 @@ func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	deps := ""
 	if pr.Status.Results != nil {
 		for _, prRes := range pr.Status.Results {
 			if prRes.Name == JvmDependenciesResult {
-				return reconcile.Result{}, r.handleJavaDependencies(ctx, strings.Split(prRes.Value.StringVal, ","), &ia)
+				deps = prRes.Value.StringVal
+			} else if prRes.Name == ImageDigestResult {
+				ia.Status.Digest = prRes.Value.StringVal
 			}
 		}
+	}
+	if deps != "" {
+		return reconcile.Result{}, r.handleJavaDependencies(ctx, strings.Split(deps, ","), &ia)
 	}
 	ia.Status.State = v1alpha1.JvmImageScanStateFailed
 	return reconcile.Result{}, r.client.Status().Update(ctx, &ia)
@@ -255,14 +262,17 @@ func (r *ReconcileImageScan) createLookupPipeline(ctx context.Context, log logr.
 	//TODO: this pulls twice
 
 	return &tektonpipeline.PipelineSpec{
-		Results: []tektonpipeline.PipelineResult{{Name: JvmDependenciesResult, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks.task.results." + JvmDependenciesResult + ")"}}},
+		Results: []tektonpipeline.PipelineResult{
+			{Name: JvmDependenciesResult, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks.task.results." + JvmDependenciesResult + ")"}},
+			{Name: ImageDigestResult, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks.task.results." + ImageDigestResult + ")"}},
+		},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
 				Name: "task",
 				TaskSpec: &tektonpipeline.EmbeddedTask{
 					TaskSpec: tektonpipeline.TaskSpec{
 						Volumes: []corev1.Volume{{Name: "data", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}}},
-						Results: []tektonpipeline.TaskResult{{Name: JvmDependenciesResult}},
+						Results: []tektonpipeline.TaskResult{{Name: JvmDependenciesResult}, {Name: ImageDigestResult}},
 						Steps: []tektonpipeline.Step{
 							{
 								Name:            "run-syft",

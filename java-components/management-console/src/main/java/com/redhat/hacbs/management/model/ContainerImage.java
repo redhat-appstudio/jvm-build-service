@@ -65,7 +65,7 @@ public class ContainerImage extends PanacheEntity {
         String tag = "";
         int tagIndex = imagePart.indexOf(":");
         if (tagIndex > 0) {
-            tag = image.substring(tagIndex);
+            tag = imagePart.substring(tagIndex + 1);
             imagePart = imagePart.substring(0, tagIndex);
         }
         ContainerImageRepository repo = ContainerImageRepository.getOrCreate(imagePart);

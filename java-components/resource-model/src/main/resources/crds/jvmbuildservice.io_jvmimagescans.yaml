@@ -47,6 +47,8 @@ spec:
             type: object
           status:
             properties:
+              digest:
+                type: string
               message:
                 type: string
               results:
