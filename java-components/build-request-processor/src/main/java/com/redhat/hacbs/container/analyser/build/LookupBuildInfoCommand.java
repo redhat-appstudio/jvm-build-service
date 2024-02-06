@@ -350,7 +350,6 @@ public class LookupBuildInfoCommand implements Runnable {
         config.setCurrentProject(parent.toString());
         config.setRootProjectDir(parent);
         var newCtx = new BootstrapMavenContext(config);
-        var effective = newCtx.getCurrentProject().getModelBuildingResult().getEffectiveModel();
 
         List<RemoteRepository> repositories = newCtx.getRemoteRepositories();
         for (RemoteRepository repository : repositories) {
@@ -361,10 +360,6 @@ public class LookupBuildInfoCommand implements Runnable {
             result.add(repository.getUrl());
         }
 
-        // Check every submodule for repositories as well.
-        for (String module : effective.getModules()) {
-            result.addAll(internalHandleRepositories(config, parent.resolve(module).resolve("pom.xml")));
-        }
         return result;
     }
 

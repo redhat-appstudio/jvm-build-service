@@ -63,7 +63,7 @@ const (
 	PipelineTypeBuild     = "build"
 
 	MaxRetries      = 3
-	MemoryIncrement = 2048
+	MemoryIncrement = 1024
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	JavaHome             = "JAVA_HOME"
@@ -195,6 +195,8 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		return reconcile.Result{}, nil
 	}
 	additionalMemory := MemoryIncrement * db.Status.PipelineRetries
+
+	log.Info(fmt.Sprintf("running build discovery with %d additional memory", additionalMemory))
 	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, db, jbsConfig, additionalMemory, &systemConfig)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -205,7 +207,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}}}
 	}
 	pr.Namespace = db.Namespace
-	pr.Name = db.Name + "-build-discovery"
+	pr.Name = fmt.Sprintf("%s-build-discovery-%d", db.Name, db.Status.PipelineRetries)
 	pr.Labels = map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineTypeLabel: PipelineTypeBuildInfo}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
@@ -285,13 +287,10 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 		if (db.Status.PipelineRetries < MaxRetries) && r.failedDueToMemory(ctx, log, pr) {
 			// Abuse pipeline retries to apply the same logic
 			// We reset it back to zero before the builds start
+			log.Info("build discovery failed due to memory issues")
 			db.Status.PipelineRetries++
 			db.Status.State = v1alpha1.DependencyBuildStateNew
 			err := r.client.Status().Update(ctx, &db)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-			err = r.client.Delete(ctx, pr)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
