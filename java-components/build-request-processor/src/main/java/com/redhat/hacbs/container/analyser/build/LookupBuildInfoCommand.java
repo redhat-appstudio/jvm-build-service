@@ -214,17 +214,29 @@ public class LookupBuildInfoCommand implements Runnable {
 
             var buildScript = (Path) null;
 
-            if ((buildScript = buildScriptPaths.get(MAVEN)) != null) {
-                handleMavenBuild(builder, buildScript, skipTests, buildInfoLocator);
+            if (buildRecipeInfo == null || buildRecipeInfo.getTool() == null
+                    || Objects.equals(buildRecipeInfo.getTool(), MAVEN)) {
+                if ((buildScript = buildScriptPaths.get(MAVEN)) != null) {
+                    handleMavenBuild(builder, buildScript, skipTests, buildInfoLocator);
+                }
             }
-            if ((buildScript = buildScriptPaths.get(GRADLE)) != null) {
-                handleGradleBuild(builder, buildScript, skipTests, version);
+            if (buildRecipeInfo == null || buildRecipeInfo.getTool() == null
+                    || Objects.equals(buildRecipeInfo.getTool(), GRADLE)) {
+                if ((buildScript = buildScriptPaths.get(GRADLE)) != null) {
+                    handleGradleBuild(builder, buildScript, skipTests);
+                }
             }
-            if ((buildScript = buildScriptPaths.get(SBT)) != null) {
-                handleSbtBuild(builder, buildScript, version);
+            if (buildRecipeInfo == null || buildRecipeInfo.getTool() == null
+                    || Objects.equals(buildRecipeInfo.getTool(), SBT)) {
+                if ((buildScript = buildScriptPaths.get(SBT)) != null) {
+                    handleSbtBuild(builder, buildScript);
+                }
             }
-            if ((buildScript = buildScriptPaths.get(ANT)) != null) {
-                handleAntBuild(builder, buildScript, version);
+            if (buildRecipeInfo == null || buildRecipeInfo.getTool() == null
+                    || Objects.equals(buildRecipeInfo.getTool(), ANT)) {
+                if ((buildScript = buildScriptPaths.get(ANT)) != null) {
+                    handleAntBuild(builder, buildScript);
+                }
             }
 
             if (registries != null) {
@@ -420,7 +432,7 @@ public class LookupBuildInfoCommand implements Runnable {
         return paths;
     }
 
-    private static void handleAntBuild(InvocationBuilder builder, Path antFile, String version) {
+    private static void handleAntBuild(InvocationBuilder builder, Path antFile) {
         //TODO: this needs work, too much hard coded stuff, just try all and builds
         // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
         Log.infof("Detected Ant build file %s", antFile);
@@ -436,27 +448,16 @@ public class LookupBuildInfoCommand implements Runnable {
         //                }
         ArrayList<String> inv = new ArrayList<>(AntUtils.getAntArgs());
         builder.addToolInvocation(ANT, inv);
-        if (builder.buildRecipeInfo.isEnforceVersion()) {
-            builder.enforceVersion(version);
-        }
     }
 
-    private static void handleSbtBuild(InvocationBuilder builder, Path sbtFile, String version) {
+    private static void handleSbtBuild(InvocationBuilder builder, Path sbtFile) {
         //TODO: initial SBT support, needs more work
         Log.infof("Detected SBT build file %s", sbtFile);
         builder.addToolInvocation(SBT, List.of("--no-colors", "+publish"));
-
-        if (builder.buildRecipeInfo.isEnforceVersion()) {
-            builder.enforceVersion(version);
-        }
     }
 
-    private static void handleGradleBuild(InvocationBuilder builder, Path gradleFile, boolean skipTests, String version)
-            throws IOException {
+    private static void handleGradleBuild(InvocationBuilder builder, Path gradleFile, boolean skipTests) throws IOException {
         Log.infof("Detected Gradle build file %s", gradleFile);
-        if (builder.buildRecipeInfo.isEnforceVersion()) {
-            builder.enforceVersion(version);
-        }
         var optionalGradleVersion = GradleUtils
                 .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(gradleFile.getParent()));
         optionalGradleVersion.ifPresent(s -> builder.discoveredToolVersion(GRADLE, s));

@@ -50,6 +50,8 @@ public class BuildRecipeInfo {
 
     List<String> allowedDifferences = new ArrayList<>();
 
+    String tool;
+
     public List<String> getAdditionalArgs() {
         return additionalArgs;
     }
@@ -182,6 +184,15 @@ public class BuildRecipeInfo {
 
     public BuildRecipeInfo setDisabledPlugins(List<String> disabledPlugins) {
         this.disabledPlugins = disabledPlugins;
+        return this;
+    }
+
+    public String getTool() {
+        return tool;
+    }
+
+    public BuildRecipeInfo setTool(String tool) {
+        this.tool = tool;
         return this;
     }
 
