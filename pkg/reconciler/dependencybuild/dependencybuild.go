@@ -63,7 +63,7 @@ const (
 	PipelineTypeBuild     = "build"
 
 	MaxRetries      = 3
-	MemoryIncrement = 512
+	MemoryIncrement = 2048
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	JavaHome             = "JAVA_HOME"

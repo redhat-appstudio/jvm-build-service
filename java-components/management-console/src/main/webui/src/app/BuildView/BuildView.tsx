@@ -36,7 +36,14 @@ import {
   ToggleGroup,
   ToggleGroupItem
 } from "@patternfly/react-core";
-import {CheckCircleIcon, ErrorCircleOIcon, IceCreamIcon, WarningTriangleIcon} from "@patternfly/react-icons";
+import {
+  CheckCircleIcon,
+  ErrorCircleOIcon,
+  IceCreamIcon,
+  MinusIcon,
+  PlusIcon, QuestionIcon,
+  WarningTriangleIcon
+} from "@patternfly/react-icons";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 
 interface RouteParams {
@@ -201,10 +208,15 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                     {build.successfulBuild != undefined && Object.entries(build.successfulBuild.upstreamDifferences).map(([key, value]) => {
                       return <DescriptionListGroup key={key}>
                         <DescriptionListTerm>{key}</DescriptionListTerm>
-                        <DescriptionListDescription>
-                          <CodeBlock >
-                            <CodeBlockCode id="code-content">{value}</CodeBlockCode>
-                          </CodeBlock>
+                        <DescriptionListDescription>{value.map(d => {
+                              if (d.startsWith("+")) {
+                                return <><PlusIcon color={'green'}></PlusIcon>{d.substring(1)}<br/></>
+                              } else if (d.startsWith("-")) {
+                                return <><MinusIcon color={'red'}></MinusIcon>{d.substring(1)}<br/></>
+                              } else {
+                                return <><QuestionIcon color={'orange'}></QuestionIcon>{d.substring(1)}<br/></>
+                              }})
+                            }
                         </DescriptionListDescription>
                       </DescriptionListGroup>
                     })}

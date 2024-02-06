@@ -120,6 +120,8 @@ const BuildList: React.FunctionComponent = () => {
         return <><WarningTriangleIcon color="orange" />Contaminated</>
       case 'failed':
         return <><ErrorCircleOIcon color="red" />Failed</>
+      case 'verification-failed':
+        return <><ErrorCircleOIcon color="grey" />Verification Failed</>
     }
     return state
   }
@@ -157,6 +159,11 @@ const BuildList: React.FunctionComponent = () => {
               <DropdownItem itemId={'failed'} key={'failed'} onSelect={() => setStateFilter('failed')} >
                 <Label color="red" icon={<ErrorCircleOIcon/>}>
                   Failed
+                </Label>
+              </DropdownItem>
+              <DropdownItem itemId={'verification-failed'} key={'verification-failed'} onSelect={() => setStateFilter('verification-failed')} >
+                <Label color="grey" icon={<CheckCircleIcon/>}>
+                  Verification Failed
                 </Label>
               </DropdownItem>
             </DropdownList>
@@ -259,9 +266,15 @@ const BuildRow: React.FunctionComponent<BuildActionsType> = (initialBuild):JSX.E
         Build Contaminated
       </Label>
     } else if (build.succeeded) {
-      return <Label color="green" icon={<CheckCircleIcon />}>
-        Build Successful
-      </Label>
+      if (build.verified) {
+        return <Label color="green" icon={<CheckCircleIcon/>}>
+          Build Successful
+        </Label>
+      } else {
+        return <Label color="grey" icon={<CheckCircleIcon/>}>
+          Verification Failed
+        </Label>
+      }
     }
     return <Label color="red" icon={<ErrorCircleOIcon />}>
       Build Failed
