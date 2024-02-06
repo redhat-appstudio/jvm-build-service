@@ -169,7 +169,6 @@ public class LookupBuildInfoCommand implements Runnable {
             }
             builder.setCommitTime(
                     clone.getRepository().parseCommit(clone.getRepository().resolve(commit)).getCommitTime() * 1000L);
-
             // The context path is passed in from the golang dependencybuild::createLookupBuildInfoPipeline
             // Currently the context path is used as a base, and if that fails the auto-discovery then starts.
             if (isNotBlank(context)) {
@@ -219,13 +218,13 @@ public class LookupBuildInfoCommand implements Runnable {
                 handleMavenBuild(builder, buildScript, skipTests, buildInfoLocator);
             }
             if ((buildScript = buildScriptPaths.get(GRADLE)) != null) {
-                handleGradleBuild(builder, buildScript, skipTests);
+                handleGradleBuild(builder, buildScript, skipTests, version);
             }
             if ((buildScript = buildScriptPaths.get(SBT)) != null) {
-                handleSbtBuild(builder, buildScript);
+                handleSbtBuild(builder, buildScript, version);
             }
             if ((buildScript = buildScriptPaths.get(ANT)) != null) {
-                handleAntBuild(builder, buildScript);
+                handleAntBuild(builder, buildScript, version);
             }
 
             if (registries != null) {
@@ -359,6 +358,19 @@ public class LookupBuildInfoCommand implements Runnable {
         for (RemoteRepository repository : pluginRepositories) {
             result.add(repository.getUrl());
         }
+        for (var e : newCtx.getWorkspace().getProjects().entrySet()) {
+            Model model = e.getValue().getModelBuildingResult().getEffectiveModel();
+            if (model.getRepositories() != null) {
+                for (var i : model.getRepositories()) {
+                    result.add(i.getUrl());
+                }
+            }
+            if (model.getPluginRepositories() != null) {
+                for (var i : model.getPluginRepositories()) {
+                    result.add(i.getUrl());
+                }
+            }
+        }
 
         return result;
     }
@@ -408,7 +420,7 @@ public class LookupBuildInfoCommand implements Runnable {
         return paths;
     }
 
-    private static void handleAntBuild(InvocationBuilder builder, Path antFile) {
+    private static void handleAntBuild(InvocationBuilder builder, Path antFile, String version) {
         //TODO: this needs work, too much hard coded stuff, just try all and builds
         // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
         Log.infof("Detected Ant build file %s", antFile);
@@ -424,16 +436,27 @@ public class LookupBuildInfoCommand implements Runnable {
         //                }
         ArrayList<String> inv = new ArrayList<>(AntUtils.getAntArgs());
         builder.addToolInvocation(ANT, inv);
+        if (builder.buildRecipeInfo.isEnforceVersion()) {
+            builder.enforceVersion(version);
+        }
     }
 
-    private static void handleSbtBuild(InvocationBuilder builder, Path sbtFile) {
+    private static void handleSbtBuild(InvocationBuilder builder, Path sbtFile, String version) {
         //TODO: initial SBT support, needs more work
         Log.infof("Detected SBT build file %s", sbtFile);
         builder.addToolInvocation(SBT, List.of("--no-colors", "+publish"));
+
+        if (builder.buildRecipeInfo.isEnforceVersion()) {
+            builder.enforceVersion(version);
+        }
     }
 
-    private static void handleGradleBuild(InvocationBuilder builder, Path gradleFile, boolean skipTests) throws IOException {
+    private static void handleGradleBuild(InvocationBuilder builder, Path gradleFile, boolean skipTests, String version)
+            throws IOException {
         Log.infof("Detected Gradle build file %s", gradleFile);
+        if (builder.buildRecipeInfo.isEnforceVersion()) {
+            builder.enforceVersion(version);
+        }
         var optionalGradleVersion = GradleUtils
                 .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(gradleFile.getParent()));
         optionalGradleVersion.ifPresent(s -> builder.discoveredToolVersion(GRADLE, s));

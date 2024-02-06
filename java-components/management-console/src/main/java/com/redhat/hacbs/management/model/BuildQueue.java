@@ -66,6 +66,7 @@ public class BuildQueue extends PanacheEntity {
                 BuildQueue queue = new BuildQueue();
                 queue.mavenArtifact = mavenArtifact;
                 queue.priority = priority;
+                queue.rebuild = rebuild;
                 queue.persistAndFlush();
             }
         } else if (priority || rebuild) {

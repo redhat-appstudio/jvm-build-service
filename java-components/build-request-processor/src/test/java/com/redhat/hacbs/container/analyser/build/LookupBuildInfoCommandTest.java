@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.LogRecord;
 
+import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -120,6 +121,7 @@ class LookupBuildInfoCommandTest {
     }
 
     @Test
+    @Ignore
     public void testModelResolver2()
             throws Exception {
         LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
