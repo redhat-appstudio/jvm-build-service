@@ -179,6 +179,7 @@ public class JvmImageScanWatcher {
         }
         containerImage.analysisComplete = true;
         containerImage.persist();
+        client.resource(resource).delete();
     }
 
 }
