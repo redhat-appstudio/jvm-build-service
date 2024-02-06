@@ -1,5 +1,6 @@
 package com.redhat.hacbs.management.dto;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +45,8 @@ public record BuildAttemptDTO(
         String gitArchiveSha,
         String gitArchiveTag,
         String gitArchiveUrl,
-        String diagnosticDockerFile) {
+        String diagnosticDockerFile,
+        Instant startTime) {
 
     public static BuildAttemptDTO of(BuildAttempt i) {
         return new BuildAttemptDTO(
@@ -78,7 +80,8 @@ public record BuildAttemptDTO(
                 i.gitArchiveSha,
                 i.gitArchiveTag,
                 i.gitArchiveUrl,
-                i.diagnosticDockerFile);
+                i.diagnosticDockerFile,
+                i.startTime);
     }
 
     private static Map<String, List<String>> mapDifferences(String upstreamDifferences) {

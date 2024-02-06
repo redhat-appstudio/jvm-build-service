@@ -45,6 +45,7 @@ import {
   WarningTriangleIcon
 } from "@patternfly/react-icons";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
+import {DateTimePicker} from "@patternfly/react-core/src/demos/examples/DateTimePicker/DateTimePicker";
 
 interface RouteParams {
     name: string
@@ -194,7 +195,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 </ActionList></CardFooter>
               </Card>
             </Tab>
-            <Tab eventKey={1} disabled={build.buildAttempts == undefined || build.buildAttempts.length == 0} title={<TabTitleText>Failed Build Attempts</TabTitleText>}>
+            <Tab eventKey={1} disabled={build.buildAttempts == undefined || build.buildAttempts.length == 0} title={<TabTitleText>All Build Attempts</TabTitleText>}>
               {build.buildAttempts == undefined ? '' : build.buildAttempts.map((build) => (
                 <Card key={build.id} >
                 <BuildAttempt attempt={build}></BuildAttempt></Card>
@@ -340,8 +341,12 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
 };
 
 const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {
-    const [containerRuntime, setContainerRuntime] = useState("docker");
+    const [containerRuntime, setContainerRuntime] = useState("");
   return <>
+        <DescriptionListGroup>
+          <DescriptionListTerm>Start Time</DescriptionListTerm>
+          <DescriptionListDescription>{data.attempt.startTime}</DescriptionListDescription>
+        </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>JDK</DescriptionListTerm>
           <DescriptionListDescription>{data.attempt.jdk}</DescriptionListDescription>
@@ -371,6 +376,12 @@ const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: Bu
             <DescriptionListDescription>
               <ToggleGroup aria-label="Container Runtime">
                 <ToggleGroupItem
+                  text="None"
+                  buttonId="none"
+                  isSelected={containerRuntime === ''}
+                  onChange={() => setContainerRuntime('')}
+                />
+                <ToggleGroupItem
                   text="Docker"
                   buttonId="docker"
                   isSelected={containerRuntime === 'docker'}
@@ -383,9 +394,9 @@ const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: Bu
                   onChange={() => setContainerRuntime('podman')}
                 />
               </ToggleGroup>
-              <ClipboardCopy hoverTip="Copy" clickTip="Copied"  variant={ClipboardCopyVariant.expansion} isReadOnly>
+              {containerRuntime != "" && <ClipboardCopy hoverTip="Copy" clickTip="Copied"  variant={ClipboardCopyVariant.expansion} isReadOnly>
                 bash -c 'cd $(mktemp -d) && echo {btoa(data.attempt.diagnosticDockerFile)} | base64  -d &gt;Dockerfile && {containerRuntime} build --pull . -t diagnostic-{data.attempt.id} && {containerRuntime} run -it diagnostic-{data.attempt.id}'
-              </ClipboardCopy>
+              </ClipboardCopy>}
               </DescriptionListDescription>
           </DescriptionListGroup>}
   </>
