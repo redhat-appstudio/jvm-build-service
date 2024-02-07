@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { Instant } from './Instant';
 export type BuildAttemptDTO = {
     id: number;
     buildId: string;
@@ -34,5 +35,6 @@ export type BuildAttemptDTO = {
     gitArchiveTag?: string;
     gitArchiveUrl?: string;
     diagnosticDockerFile?: string;
+    startTime?: Instant;
 };
 

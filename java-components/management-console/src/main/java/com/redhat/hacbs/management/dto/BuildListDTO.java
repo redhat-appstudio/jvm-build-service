@@ -9,6 +9,7 @@ public record BuildListDTO(
         String tag,
         boolean succeeded,
         boolean contaminated,
+        boolean verified,
         boolean inQueue,
         @Schema(required = true) long creationTime) {
 

@@ -20,6 +20,7 @@ import com.redhat.hacbs.management.model.DependencySet;
 import com.redhat.hacbs.management.model.IdentifiedDependency;
 import com.redhat.hacbs.management.model.MavenArtifact;
 import com.redhat.hacbs.management.model.MavenArtifactLabel;
+import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
 import com.redhat.hacbs.resources.model.v1alpha1.jvmimagescanstatus.Results;
 
@@ -154,7 +155,10 @@ public class JvmImageScanWatcher {
                 MavenArtifactLabel.getOrCreate(id.mavenArtifact, "Image", containerImage.getFullName());
                 id.source = i.getSource();
                 if (Objects.equals(id.source, "unknown")) {
-                    BuildQueue.create(id.mavenArtifact, true);
+                    StoredDependencyBuild existingBuild = StoredDependencyBuild.findByArtifact(id.mavenArtifact);
+                    if (existingBuild == null) {
+                        BuildQueue.create(id.mavenArtifact, true);
+                    }
                 }
                 if (i.getAttributes() != null) {
                     id.buildId = i.getAttributes().get("build-id");
@@ -175,6 +179,7 @@ public class JvmImageScanWatcher {
         }
         containerImage.analysisComplete = true;
         containerImage.persist();
+        client.resource(resource).delete();
     }
 
 }

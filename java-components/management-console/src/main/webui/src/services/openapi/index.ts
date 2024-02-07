@@ -33,6 +33,7 @@ export type { PageParametersBuildQueueListDTO } from './models/PageParametersBui
 export type { PageParametersGithubBuildDTO } from './models/PageParametersGithubBuildDTO';
 export type { PageParametersImageDTO } from './models/PageParametersImageDTO';
 export type { ReplayEvent } from './models/ReplayEvent';
+export type { RepositoryPush } from './models/RepositoryPush';
 export type { RunningBuildDTO } from './models/RunningBuildDTO';
 export type { ShadingDetails } from './models/ShadingDetails';
 
@@ -49,4 +50,5 @@ export { DefaultService } from './services/DefaultService';
 export { DeploymentResourceService } from './services/DeploymentResourceService';
 export { GithubBuildsResourceService } from './services/GithubBuildsResourceService';
 export { ImageResourceService } from './services/ImageResourceService';
+export { QuayResourceService } from './services/QuayResourceService';
 export { RunningBuildsResourceService } from './services/RunningBuildsResourceService';

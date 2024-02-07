@@ -16,6 +16,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 
+import com.redhat.hacbs.management.dto.BuildAttemptDTO;
 import com.redhat.hacbs.management.dto.BuildDTO;
 import com.redhat.hacbs.management.dto.BuildListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
@@ -46,6 +47,9 @@ public class BuildHistoryResource extends BuildLogs {
                 query.append(" WHERE s.succeeded");
             } else if (Objects.equals(state, "failed")) {
                 query.append(" WHERE NOT s.succeeded");
+            } else if (Objects.equals(state, "verification-failed")) {
+                query.append(
+                        " WHERE (select count(b) from BuildAttempt b where b.dependencyBuild=s and b.successful and NOT b.passedVerification) > 0");
             }
         }
         //TODO: this can only find passing builds
@@ -92,8 +96,13 @@ public class BuildHistoryResource extends BuildLogs {
             if (n > 0) {
                 inQueue = true;
             }
+
+            BuildAttemptDTO successfulBuild = build.buildAttempts.stream().filter(s -> s.successful).findFirst()
+                    .map(BuildAttemptDTO::of)
+                    .orElse(null);
             ret.add(new BuildListDTO(build.id, build.buildIdentifier.dependencyBuildName, build.buildIdentifier.repository.url,
-                    build.buildIdentifier.tag, build.succeeded, build.contaminated, inQueue,
+                    build.buildIdentifier.tag, build.succeeded, build.contaminated,
+                    successfulBuild == null || successfulBuild.passedVerification(), inQueue,
                     build.creationTimestamp.toEpochMilli()));
         }
 

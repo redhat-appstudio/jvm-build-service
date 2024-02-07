@@ -169,7 +169,6 @@ public class LookupBuildInfoCommand implements Runnable {
             }
             builder.setCommitTime(
                     clone.getRepository().parseCommit(clone.getRepository().resolve(commit)).getCommitTime() * 1000L);
-
             // The context path is passed in from the golang dependencybuild::createLookupBuildInfoPipeline
             // Currently the context path is used as a base, and if that fails the auto-discovery then starts.
             if (isNotBlank(context)) {
@@ -215,17 +214,29 @@ public class LookupBuildInfoCommand implements Runnable {
 
             var buildScript = (Path) null;
 
-            if ((buildScript = buildScriptPaths.get(MAVEN)) != null) {
-                handleMavenBuild(builder, buildScript, skipTests, buildInfoLocator);
+            if (buildRecipeInfo == null || buildRecipeInfo.getTool() == null
+                    || Objects.equals(buildRecipeInfo.getTool(), MAVEN)) {
+                if ((buildScript = buildScriptPaths.get(MAVEN)) != null) {
+                    handleMavenBuild(builder, buildScript, skipTests, buildInfoLocator);
+                }
             }
-            if ((buildScript = buildScriptPaths.get(GRADLE)) != null) {
-                handleGradleBuild(builder, buildScript, skipTests);
+            if (buildRecipeInfo == null || buildRecipeInfo.getTool() == null
+                    || Objects.equals(buildRecipeInfo.getTool(), GRADLE)) {
+                if ((buildScript = buildScriptPaths.get(GRADLE)) != null) {
+                    handleGradleBuild(builder, buildScript, skipTests);
+                }
             }
-            if ((buildScript = buildScriptPaths.get(SBT)) != null) {
-                handleSbtBuild(builder, buildScript);
+            if (buildRecipeInfo == null || buildRecipeInfo.getTool() == null
+                    || Objects.equals(buildRecipeInfo.getTool(), SBT)) {
+                if ((buildScript = buildScriptPaths.get(SBT)) != null) {
+                    handleSbtBuild(builder, buildScript);
+                }
             }
-            if ((buildScript = buildScriptPaths.get(ANT)) != null) {
-                handleAntBuild(builder, buildScript);
+            if (buildRecipeInfo == null || buildRecipeInfo.getTool() == null
+                    || Objects.equals(buildRecipeInfo.getTool(), ANT)) {
+                if ((buildScript = buildScriptPaths.get(ANT)) != null) {
+                    handleAntBuild(builder, buildScript);
+                }
             }
 
             if (registries != null) {
@@ -350,7 +361,6 @@ public class LookupBuildInfoCommand implements Runnable {
         config.setCurrentProject(parent.toString());
         config.setRootProjectDir(parent);
         var newCtx = new BootstrapMavenContext(config);
-        var effective = newCtx.getCurrentProject().getModelBuildingResult().getEffectiveModel();
 
         List<RemoteRepository> repositories = newCtx.getRemoteRepositories();
         for (RemoteRepository repository : repositories) {
@@ -360,11 +370,20 @@ public class LookupBuildInfoCommand implements Runnable {
         for (RemoteRepository repository : pluginRepositories) {
             result.add(repository.getUrl());
         }
-
-        // Check every submodule for repositories as well.
-        for (String module : effective.getModules()) {
-            result.addAll(internalHandleRepositories(config, parent.resolve(module).resolve("pom.xml")));
+        for (var e : newCtx.getWorkspace().getProjects().entrySet()) {
+            Model model = e.getValue().getModelBuildingResult().getEffectiveModel();
+            if (model.getRepositories() != null) {
+                for (var i : model.getRepositories()) {
+                    result.add(i.getUrl());
+                }
+            }
+            if (model.getPluginRepositories() != null) {
+                for (var i : model.getPluginRepositories()) {
+                    result.add(i.getUrl());
+                }
+            }
         }
+
         return result;
     }
 

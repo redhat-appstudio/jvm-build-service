@@ -1,6 +1,6 @@
 package com.redhat.hacbs.management.model;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -81,7 +81,7 @@ public class BuildAttempt extends PanacheEntity {
 
     @Column
     @Temporal(TemporalType.TIMESTAMP)
-    public Date startTime;
+    public Instant startTime;
 
     //this is pretty yuck, but we don't want a whole new table to store a List<String>
     public void commandLine(List<String> commandLine) {
