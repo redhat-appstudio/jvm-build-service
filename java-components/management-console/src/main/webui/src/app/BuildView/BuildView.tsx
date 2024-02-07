@@ -24,7 +24,7 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
-  Label,
+  Label, List, ListItem,
   PageSection,
   PageSectionVariants,
   Tab,
@@ -251,29 +251,31 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 <CardHeader>Quay Image</CardHeader>
                 <CardBody>
                   <DescriptionList>
-                    <ul style={{listStyleType: 'disc'}}><li>
+                    <List>
+                      <ListItem>
                       <a
                         href={build.successfulBuild?.outputImage?.replace(/(quay.io)(.*):(.*)/, "https://quay.io/repository$2/tag/$3")}
                         target="_blank">
                         {build.successfulBuild?.outputImage}
                       </a>
-                    </li></ul>
+                      </ListItem>
+                    </List>
                   </DescriptionList>
                 </CardBody>
                 <CardHeader>Maven Repository</CardHeader>
                 <CardBody>
-                  <ul style={{ listStyleType: 'disc'}}>
-                    {build.successfulBuild?.mavenRepository == undefined || build.artifacts == undefined ? '' : build.artifacts.map((key) => (
-                      <li><a href={
+                  <List>
+                    {build.successfulBuild?.mavenRepository != undefined && build.artifacts != undefined && build.artifacts.map((key) => (
+                      <ListItem key={key}><a href={
                         build.successfulBuild?.mavenRepository + (build.successfulBuild?.mavenRepository?.endsWith("/") ? '' : '/')+
                         key.split(":")[0].replace(/\./g, "/") +
                         "/" +
                         key.split(":")[1] +
                         "/" +
                         key.split(":")[2]
-                      } target="_blank">{key}</a></li>
+                      } target="_blank">{key}</a></ListItem>
                     ))}
-                  </ul>
+                  </List>
                 </CardBody>
               </Card>
             </Tab>

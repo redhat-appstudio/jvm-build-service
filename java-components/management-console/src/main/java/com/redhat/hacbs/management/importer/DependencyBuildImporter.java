@@ -120,6 +120,7 @@ public class DependencyBuildImporter {
                     if (ba.buildId != null && Objects.equals(ba.buildId, i.getBuildId())) {
                         //existing one, just update it
                         attempt = ba;
+                        Log.infof("Existing maven repo is %s", attempt.mavenRepository);
                     }
                 }
                 if (attempt == null) {
@@ -159,8 +160,12 @@ public class DependencyBuildImporter {
                         return download;
                     }).collect(Collectors.toList());
                 }
-                mavenRepo.ifPresent(s -> finalAttempt.mavenRepository = s.replace("/repository/maven-releases",
-                        "/service/rest/repository/browse/maven-releases"));
+                Log.infof("Maven repo is %s", mavenRepo);
+                if (mavenRepo.isPresent()) {
+                    finalAttempt.mavenRepository = mavenRepo.get().replace("/repository/maven-releases",
+                            "/service/rest/repository/browse/maven-releases");
+                    Log.infof("Set maven repo to %s", finalAttempt.mavenRepository);
+                }
 
                 if (s3Bucket != null) {
                     //todo we just assume the logs are present
