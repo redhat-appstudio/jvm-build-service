@@ -22,6 +22,10 @@ type DependencySetType = {
 
 const DependencySet: React.FunctionComponent<DependencySetType> = (props) => {
 
+  if (props.dependencySetId == 0) {
+    return <></>
+  }
+
   const initial: DependencySetDTO = {
     availableBuilds: 0,
     totalDependencies: 0,

@@ -9,7 +9,6 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 
 import com.redhat.hacbs.management.dto.DeploymentDTO;
-import com.redhat.hacbs.management.dto.IdentifiedDependencyDTO;
 import com.redhat.hacbs.management.dto.ImageDTO;
 import com.redhat.hacbs.management.model.ContainerImage;
 import com.redhat.hacbs.management.watcher.DeploymentWatcher;
@@ -40,7 +39,7 @@ public class DeploymentResource {
                         continue;
                     }
                     info.images.add(new ImageDTO(existing.repository.repository, existing.tag, existing.digest,
-                            existing.analysisComplete, IdentifiedDependencyDTO.fromDependencySet(existing.dependencySet)));
+                            existing.analysisComplete, existing.dependencySet.id));
                 }
             }
             if (!info.images.isEmpty()) {

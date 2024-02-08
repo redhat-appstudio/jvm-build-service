@@ -16,6 +16,7 @@ import {ImageList} from "@app/ImageList/ImageList";
 import {AddImage} from "@app/AddImage/AddImage";
 import {ControlPanel} from "@app/ControlPanel/ControlPanel";
 import {ImageRepositoryList} from "@app/ImageRepositoryList/ImageRepositoryList";
+import {GithubBuildView} from "@app/GithubBuildView/GithubBuildView";
 
 let routeFocusTimer: number;
 export interface IAppRoute {
@@ -146,6 +147,11 @@ const routes: AppRouteConfig[] = [
         label: 'Github Actions',
         path: '/builds/github/all',
         title: 'JVM Build Service | Github Actions Builds',
+      },
+      {
+        component: GithubBuildView,
+        path: '/builds/github/build/:build',
+        title: 'JVM Build Service | Github Actions Build',
       },
     ],
   },

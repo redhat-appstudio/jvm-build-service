@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { GithubBuildDTO } from '../models/GithubBuildDTO';
 import type { PageParametersGithubBuildDTO } from '../models/PageParametersGithubBuildDTO';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -23,6 +24,22 @@ export class GithubBuildsResourceService {
             query: {
                 'page': page,
                 'perPage': perPage,
+            },
+        });
+    }
+    /**
+     * @param id
+     * @returns GithubBuildDTO OK
+     * @throws ApiError
+     */
+    public static getApiBuildsGithubId(
+        id: number,
+    ): CancelablePromise<GithubBuildDTO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/builds/github/id/{id}',
+            path: {
+                'id': id,
             },
         });
     }

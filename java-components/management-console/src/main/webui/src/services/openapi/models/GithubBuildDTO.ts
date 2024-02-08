@@ -2,14 +2,11 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { IdentifiedDependencyDTO } from './IdentifiedDependencyDTO';
 export type GithubBuildDTO = {
+    id: number;
     name: string;
     buildsComponent: boolean;
-    dependencies?: Array<IdentifiedDependencyDTO>;
-    totalDependencies: number;
-    untrustedDependencies: number;
-    trustedDependencies: number;
-    availableBuilds: number;
+    url: string;
+    dependencySetId: number;
 };
 

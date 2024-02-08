@@ -12,9 +12,6 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 
-import org.eclipse.microprofile.openapi.annotations.media.Schema;
-
-import com.redhat.hacbs.management.dto.IdentifiedDependencyDTO;
 import com.redhat.hacbs.management.dto.ImageDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.ContainerImage;
@@ -43,7 +40,8 @@ public class ImageResource {
                         new String(Base64.getUrlDecoder().decode(repository), StandardCharsets.UTF_8))
                 .page(Page.of(page - 1, perPage)).list();
         return new PageParameters<>(
-                all.stream().map(s -> new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete, s.dependencySet.id))
+                all.stream().map(
+                        s -> new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete, s.dependencySet.id))
                         .toList(),
                 ContainerImage.count(), page, perPage);
     }

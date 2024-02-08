@@ -1,25 +1,9 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {
-  DataList,
-  DataListCell,
-  DataListContent,
-  DataListItem,
-  DataListItemCells,
-  DataListItemRow,
-  DataListToggle,
-  Label, Pagination, Title, Toolbar, ToolbarContent, ToolbarItem,
-} from '@patternfly/react-core';
-import {
-  IdentifiedDependencyDTO,
-  GithubBuildDTO, GithubBuildsResourceService
-} from "../../services/openapi";
+import {Pagination, Toolbar, ToolbarContent, ToolbarItem,} from '@patternfly/react-core';
+import {GithubBuildDTO, GithubBuildsResourceService} from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
-import {
-  AttentionBellIcon,ContainerNodeIcon,
-  IceCreamIcon,
-  InProgressIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
-} from "@patternfly/react-icons";
+import {Table, Tbody, Td, Thead, Tr} from "@patternfly/react-table";
 import {Link} from "react-router-dom";
 
 const GithubBuildList: React.FunctionComponent = () => {
@@ -72,7 +56,7 @@ const GithubBuildList: React.FunctionComponent = () => {
   };
   const toolbarPagination = (
     <Pagination
-      titles={{ paginationAriaLabel: 'Search filter pagination' }}
+      titles={{paginationAriaLabel: 'Search filter pagination'}}
       itemCount={count}
       widgetId="search-input-mock-pagination"
       perPage={perPage}
@@ -93,116 +77,20 @@ const GithubBuildList: React.FunctionComponent = () => {
   return (
     <React.Fragment>
       {toolbar}
-      <DataList aria-label="Information">
-      {builds.map((build: GithubBuildDTO, index) => (
-          <BuildRow key={index} build={build}></BuildRow>
-        ))}
-        {builds.length === 0 && <EmptyTable></EmptyTable>}
-      </DataList>
+      {builds.length === 0 && <EmptyTable></EmptyTable>}
+      {builds.length > 0 && <Table>
+        <Thead>
+          <Tr><Td>Build</Td></Tr>
+        </Thead>
+        <Tbody>
+          {builds.map((build: GithubBuildDTO, index) => (
+            <Tr key={index}><Td><Link to={`/builds/github/build/${build.id}`}>{build.name}</Link></Td></Tr>
+          ))}
+        </Tbody>
+      </Table>
+      }
     </React.Fragment>
   );
 };
 
-type DeploymentActionsType = {
-  build: GithubBuildDTO,
-};
-
-const BuildRow: React.FunctionComponent<DeploymentActionsType> = (initialBuild): JSX.Element => {
-
-  const [build, setBuild] = useState(initialBuild.build);
-
-  const [imagesExpanded, setImagesExpanded] = React.useState(false);
-  const [actionsExpanded, setActionsExpanded] = React.useState(false);
-  const toggleActions = () => {
-    setActionsExpanded(!actionsExpanded);
-  };
-  const toggleImages = () => {
-    setImagesExpanded(!imagesExpanded);
-  };
-  const onActionsClick = (event: React.MouseEvent<Element, MouseEvent> | undefined) => {
-    event?.stopPropagation();
-    setActionsExpanded(!actionsExpanded);
-  };
-
-  const health = function (deployment: GithubBuildDTO) {
-    let untrusted = deployment.untrustedDependencies
-    let total = deployment.totalDependencies
-    let available = deployment.availableBuilds
-    let trusted = total - untrusted
-    if (total == 0) {
-      return <Label color="blue" icon={<StickyNoteIcon />}>
-        No Java
-      </Label>
-    }
-    return <>
-      {untrusted > 0 && <Label color="red" icon={<WarningTriangleIcon />}>{untrusted} Untrusted Dependencies</Label>}
-      {trusted > 0 && <Label color="green" icon={<OkIcon />}>{trusted} Rebuilt Dependencies</Label>}
-      {available > 0 && <Label color="orange" icon={<ListIcon />}>{available} Available Rebuilt Dependencies</Label>}
-
-    </>
-  }
-  const dependencyRow = function (dep : IdentifiedDependencyDTO) {
-
-    return <DataListItem>
-      <DataListItemRow>
-        <DataListItemCells
-          dataListCells={[
-            <DataListCell isIcon key="icon">
-              {dep.source === 'rebuilt' && <OkIcon color={"green"}></OkIcon>}
-              {dep.source === 'redhat' && <RedhatIcon color={"red"}></RedhatIcon>}
-              {(dep.source !== 'redhat' && dep.source != 'rebuilt') && <WarningTriangleIcon color={"orange"}></WarningTriangleIcon>}
-            </DataListCell>,
-            <DataListCell key="primary content">
-              {dep.dependencyBuildIdentifier != undefined && <Link to={`/builds/build/${dep.dependencyBuildIdentifier}`}>{dep.gav}</Link>}
-              {dep.dependencyBuildIdentifier == undefined && <div id="gav">{dep.gav}</div>}
-            </DataListCell>,
-            <DataListCell key="primary content">
-              {dep.inQueue && <Label color="blue" icon={<IceCreamIcon />}> In Build Queue</Label>}
-              {(dep.source !== 'redhat' && dep.source != 'rebuilt' && dep.buildSuccess) && <Label color="orange" icon={<AttentionBellIcon />}>Rebuilt Artifact Available, Image Rebuild Required</Label>}
-              {(dep.source !== 'redhat' && dep.source != 'rebuilt' && !dep.buildSuccess && dep.dependencyBuildIdentifier != undefined) && <Label color="red" icon={<OutlinedAngryIcon />}>Rebuild Failed</Label>}
-
-            </DataListCell>,
-          ]}
-        />
-      </DataListItemRow>
-    </DataListItem>
-  }
-
-  return <DataListItem aria-labelledby="ex-item1" isExpanded={imagesExpanded}>
-    <DataListItemRow>
-      <DataListToggle
-        onClick={() => toggleImages()}
-        isExpanded={imagesExpanded}
-        id="toggle"
-        aria-controls="ex-expand"
-      />
-      <DataListItemCells
-        dataListCells={[
-          <DataListCell isIcon key="icon">
-            <ContainerNodeIcon/>
-          </DataListCell>,
-          <DataListCell key="primary content">
-            <div id="ex-item1">{build.name}</div>
-          </DataListCell>,
-          <DataListCell key="health">
-            {health(build)}
-          </DataListCell>
-        ]}
-      />
-    </DataListItemRow>
-    <DataListContent
-      aria-label="First expandable content details"
-      id="ex-expand1"
-      isHidden={!imagesExpanded}
-    >
-        <><Title headingLevel={"h2"}>Build: {build.name}</Title>
-
-        <DataList aria-label="Dependencies">
-          {build.dependencies?.map(d => (dependencyRow(d)))}
-        </DataList>
-        </>
-    </DataListContent>
-  </DataListItem>
-
-}
 export {GithubBuildList};

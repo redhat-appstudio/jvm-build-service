@@ -1,8 +1,5 @@
 package com.redhat.hacbs.management.dto;
 
-import java.util.List;
-import java.util.Objects;
-
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 public record ImageDTO(

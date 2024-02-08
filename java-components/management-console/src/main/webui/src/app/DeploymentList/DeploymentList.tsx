@@ -19,6 +19,7 @@ import {
   InProgressIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
 } from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
+import {DependencySet} from "@app/DependencySet/DependencySet";
 
 const DeploymentList: React.FunctionComponent = () => {
   const [deployments, setDeployments] = useState(Array<DeploymentDTO>);
@@ -77,29 +78,6 @@ const DeploymentRow: React.FunctionComponent<DeploymentActionsType> = (initialBu
     setImagesExpanded(!imagesExpanded);
   };
 
-  const health = function (deployment: DeploymentDTO) {
-    if (!deployment.analysisComplete) {
-      return <Label color="blue" icon={<InProgressIcon />}>
-        Image Analysis in Progress
-      </Label>
-    }
-    let untrusted = 0
-    let total = 0
-    let available = 0
-    deployment.images.map((i) => {total += i.totalDependencies; untrusted += i.untrustedDependencies; available += i.availableBuilds})
-    const trusted = total - untrusted
-    if (total == 0) {
-      return <Label color="blue" icon={<StickyNoteIcon />}>
-        No Java
-      </Label>
-    }
-    return <>
-      {untrusted > 0 && <Label color="red" icon={<WarningTriangleIcon />}>{untrusted} Untrusted Dependencies</Label>}
-      {trusted > 0 && <Label color="green" icon={<OkIcon />}>{trusted} Rebuilt Dependencies</Label>}
-      {available > 0 && <Label color="orange" icon={<ListIcon />}>{available} Available Rebuilt Dependencies</Label>}
-
-    </>
-  }
   const dependencyRow = function (dep : IdentifiedDependencyDTO) {
 
     return <DataListItem>
@@ -143,9 +121,6 @@ const DeploymentRow: React.FunctionComponent<DeploymentActionsType> = (initialBu
           </DataListCell>,
           <DataListCell key="primary content">
             <div id="ex-item1">{initialBuild.deployment.namespace}/{initialBuild.deployment.name}</div>
-          </DataListCell>,
-          <DataListCell key="health">
-            {health(initialBuild.deployment)}
           </DataListCell>
         ]}
       />
@@ -157,10 +132,7 @@ const DeploymentRow: React.FunctionComponent<DeploymentActionsType> = (initialBu
     >
       {initialBuild.deployment.images.map((s) => (
         <><Title headingLevel={"h2"}>Image: {s.fullName}</Title>
-
-        <DataList aria-label="Dependencies">
-          {s.dependencies?.map(d => (dependencyRow(d)))}
-        </DataList>
+          <DependencySet dependencySetId={s.dependencySet}></DependencySet>
         </>))}
     </DataListContent>
   </DataListItem>

@@ -45,6 +45,7 @@ import io.quarkiverse.githubapp.event.WorkflowRun;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.LaunchMode;
 import io.quarkus.runtime.Startup;
+import io.vertx.ext.web.RoutingContext;
 
 @Startup
 @ApplicationScoped
@@ -60,6 +61,9 @@ public class GithubIntegration {
 
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    RoutingContext routingContext;
 
     @ConfigProperty(name = "kube.disabled", defaultValue = "false")
     boolean disabled;
@@ -253,7 +257,7 @@ public class GithubIntegration {
 
             githubBuild.workflowRunId = wfr.getId();
             for (var pr : wfr.getPullRequests()) {
-                githubBuild.prUrl = pr.getUrl().toExternalForm();
+                githubBuild.prUrl = pr.getHtmlUrl().toExternalForm();
             }
             githubBuild.repository = wfr.getRepository().getOwnerName() + "/" + wfr.getRepository().getName();
             githubBuild.dependencySet.type = "github-build";
@@ -328,7 +332,9 @@ public class GithubIntegration {
             var output = new GHCheckRunBuilder.Output(
                     failureList.size() > 0 ? "Build Contained Untrusted Dependencies" : "All dependencies are trusted",
                     finalResult.toString());
-            checkRun.update().withConclusion(conclusion).add(output).withStatus(GHCheckRun.Status.COMPLETED).create();
+            checkRun.update().withConclusion(conclusion).add(output)
+                    .withDetailsURL("https://jvmshield.dev/builds/github/build/" + githubBuild.id)
+                    .withStatus(GHCheckRun.Status.COMPLETED).create();
             break;
         }
     }
