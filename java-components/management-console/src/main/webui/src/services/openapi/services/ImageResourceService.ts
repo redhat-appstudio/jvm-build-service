@@ -2,30 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { ImageDTO } from '../models/ImageDTO';
 import type { PageParametersImageDTO } from '../models/PageParametersImageDTO';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class ImageResourceService {
-    /**
-     * @param page
-     * @param perPage
-     * @returns PageParametersImageDTO OK
-     * @throws ApiError
-     */
-    public static getApiImage(
-        page?: number,
-        perPage?: number,
-    ): CancelablePromise<PageParametersImageDTO> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/image',
-            query: {
-                'page': page,
-                'perPage': perPage,
-            },
-        });
-    }
     /**
      * @param requestBody
      * @returns void
@@ -39,6 +21,49 @@ export class ImageResourceService {
             url: '/api/image',
             body: requestBody,
             mediaType: 'text/plain',
+        });
+    }
+    /**
+     * @param repository
+     * @param page
+     * @param perPage
+     * @returns PageParametersImageDTO OK
+     * @throws ApiError
+     */
+    public static getApiImage(
+        repository: string,
+        page?: number,
+        perPage?: number,
+    ): CancelablePromise<PageParametersImageDTO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/image/{repository}',
+            path: {
+                'repository': repository,
+            },
+            query: {
+                'page': page,
+                'perPage': perPage,
+            },
+        });
+    }
+    /**
+     * @param digest
+     * @param repository
+     * @returns ImageDTO OK
+     * @throws ApiError
+     */
+    public static getApiImage1(
+        digest: string,
+        repository: string,
+    ): CancelablePromise<ImageDTO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/image/{repository}/{digest}',
+            path: {
+                'digest': digest,
+                'repository': repository,
+            },
         });
     }
 }

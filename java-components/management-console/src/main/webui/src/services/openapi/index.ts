@@ -32,6 +32,7 @@ export type { PageParametersBuildListDTO } from './models/PageParametersBuildLis
 export type { PageParametersBuildQueueListDTO } from './models/PageParametersBuildQueueListDTO';
 export type { PageParametersGithubBuildDTO } from './models/PageParametersGithubBuildDTO';
 export type { PageParametersImageDTO } from './models/PageParametersImageDTO';
+export type { PageParametersString } from './models/PageParametersString';
 export type { ReplayEvent } from './models/ReplayEvent';
 export type { RepositoryPush } from './models/RepositoryPush';
 export type { RunningBuildDTO } from './models/RunningBuildDTO';
@@ -49,6 +50,7 @@ export { BuildSummaryResourceService } from './services/BuildSummaryResourceServ
 export { DefaultService } from './services/DefaultService';
 export { DeploymentResourceService } from './services/DeploymentResourceService';
 export { GithubBuildsResourceService } from './services/GithubBuildsResourceService';
+export { ImageRepositoryResourceService } from './services/ImageRepositoryResourceService';
 export { ImageResourceService } from './services/ImageResourceService';
 export { QuayResourceService } from './services/QuayResourceService';
 export { RunningBuildsResourceService } from './services/RunningBuildsResourceService';

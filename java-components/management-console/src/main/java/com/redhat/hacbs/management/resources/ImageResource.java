@@ -1,14 +1,18 @@
 package com.redhat.hacbs.management.resources;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
+
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import com.redhat.hacbs.management.dto.IdentifiedDependencyDTO;
 import com.redhat.hacbs.management.dto.ImageDTO;
@@ -28,17 +32,30 @@ public class ImageResource {
     Instance<KubernetesClient> kubernetesClient;
 
     @GET
-    public PageParameters<ImageDTO> getImages(@QueryParam("page") int page, @QueryParam("perPage") int perPage) {
+    @Path("{repository}")
+    public PageParameters<ImageDTO> getImages(@PathParam("repository") String repository, @QueryParam("page") int page,
+            @QueryParam("perPage") int perPage) {
         if (perPage <= 0) {
             perPage = 20;
         }
         List<ContainerImage> all = ContainerImage
-                .findAll(Sort.descending("timestamp"))
+                .find("repository.repository", Sort.descending("timestamp"),
+                        new String(Base64.getUrlDecoder().decode(repository), StandardCharsets.UTF_8))
                 .page(Page.of(page - 1, perPage)).list();
         return new PageParameters<>(
-                all.stream().map(s -> new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete,
-                        IdentifiedDependencyDTO.fromDependencySet(s.dependencySet))).collect(Collectors.toList()),
+                all.stream().map(s -> new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete, List.of()))
+                        .toList(),
                 ContainerImage.count(), page, perPage);
+    }
+
+    @GET
+    @Path("{repository}/{digest}")
+    @Schema(name = "imageDetails")
+    public ImageDTO getImageDetails(@PathParam("repository") String repository, @PathParam("digest") String digest) {
+        ContainerImage s = ContainerImage
+                .find("digest", Sort.descending("timestamp"), digest).firstResult();
+        return new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete,
+                IdentifiedDependencyDTO.fromDependencySet(s.dependencySet));
     }
 
     @PUT

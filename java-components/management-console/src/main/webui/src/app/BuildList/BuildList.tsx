@@ -29,6 +29,7 @@ import {
   WarningTriangleIcon
 } from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
+import {EmptyTable} from "@app/EmptyTable/EmptyTable";
 
 
 const columnNames = {
@@ -174,14 +175,6 @@ const BuildList: React.FunctionComponent = () => {
     </Toolbar>
   );
 
-  const emptyState = (
-    <EmptyState>
-      <EmptyStateHeader headingLevel="h4" titleText="No results found" icon={<EmptyStateIcon icon={SearchIcon} />} />
-      <EmptyStateBody>No results match the criteria.</EmptyStateBody>
-    </EmptyState>
-  );
-
-
   return (
     <React.Fragment>
       {toolbar}
@@ -202,11 +195,7 @@ const BuildList: React.FunctionComponent = () => {
                   <BuildRow build={build} key={index}></BuildRow>
             ))}
           {builds.length === 0 && (
-            <Tr>
-              <Td colSpan={8}>
-                <Bullseye>{emptyState}</Bullseye>
-              </Td>
-            </Tr>
+            <EmptyTable></EmptyTable>
           )}
         </Tbody>
       </Table>

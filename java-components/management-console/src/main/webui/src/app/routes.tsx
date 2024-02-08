@@ -15,6 +15,7 @@ import {ArtifactView} from "@app/ArtifactView/ArtifactView";
 import {ImageList} from "@app/ImageList/ImageList";
 import {AddImage} from "@app/AddImage/AddImage";
 import {ControlPanel} from "@app/ControlPanel/ControlPanel";
+import {ImageRepositoryList} from "@app/ImageRepositoryList/ImageRepositoryList";
 
 let routeFocusTimer: number;
 export interface IAppRoute {
@@ -104,11 +105,16 @@ const routes: AppRouteConfig[] = [
     label: 'Images',
     routes: [
       {
-        component: ImageList,
+        component: ImageRepositoryList,
         exact: true,
         label: 'Images',
-        path: '/images/all',
-        title: 'JVM Build Service | Image List',
+        path: '/image-repositories/all',
+        title: 'JVM Build Service | Image Repository List',
+      },
+      {
+        component: ImageList,
+        path: '/images/repository/:repo',
+        title: 'JVM Build Service | Image Details',
       },
       {
         component: AddImage,
