@@ -13,10 +13,14 @@ import java.util.Properties;
 
 import org.apache.maven.index.artifact.Gav;
 import org.apache.maven.index.artifact.M2GavCalculator;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.Plugin;
+import org.apache.maven.project.MavenProject;
 import org.apache.maven.settings.Settings;
 import org.apache.maven.settings.building.DefaultSettingsBuilderFactory;
 import org.apache.maven.settings.building.DefaultSettingsBuildingRequest;
 import org.apache.maven.settings.building.SettingsBuildingException;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.DefaultArtifact;
@@ -32,6 +36,11 @@ import org.eclipse.aether.util.repository.DefaultMirrorSelector;
 import io.quarkus.logging.Log;
 
 public class MavenUtils {
+    public static final String MAVEN_COMPILER_PLUGIN_ID = "org.apache.maven.plugins:maven-compiler-plugin";
+
+    public static final String SOURCE = "source";
+
+    public static final String TARGET = "target";
 
     public static Settings newSettings(Path globalSettingsFile, Path settingsFile) {
         try {
@@ -148,5 +157,60 @@ public class MavenUtils {
         }
 
         return gavToCoords(gav);
+    }
+
+    public static Optional<Plugin> getPlugin(MavenProject project, String pluginId) {
+        var plugin = (Plugin) null;
+        var build = project.getBuild();
+
+        if (build != null) {
+            var plugins = build.getPluginsAsMap();
+            plugin = plugins.get(pluginId);
+
+            if (plugin == null) {
+                var pluginManagement = build.getPluginManagement();
+
+                if (pluginManagement != null) {
+                    plugins = pluginManagement.getPluginsAsMap();
+                    plugin = plugins.get(pluginId);
+                }
+            }
+        }
+
+        return Optional.ofNullable(plugin);
+    }
+
+    public static Optional<String> getPluginConfiguration(MavenProject project, String pluginId, String key) {
+        var value = (String) null;
+        var optPlugin = getPlugin(project, pluginId);
+
+        if (optPlugin.isPresent()) {
+            var plugin = optPlugin.get();
+            var configuration = (Xpp3Dom) plugin.getConfiguration();
+
+            if (configuration != null) {
+                var child = configuration.getChild(key);
+
+                if (child != null) {
+                    var childValue = child.getValue();
+
+                    if (!childValue.isBlank()) {
+                        value = childValue;
+                    }
+                }
+            }
+        }
+
+        return Optional.ofNullable(value);
+    }
+
+    public static Optional<String> getCompilerSource(Model model) {
+        var project = new MavenProject(model);
+        return getPluginConfiguration(project, MAVEN_COMPILER_PLUGIN_ID, SOURCE);
+    }
+
+    public static Optional<String> getCompilerTarget(Model model) {
+        var project = new MavenProject(model);
+        return getPluginConfiguration(project, MAVEN_COMPILER_PLUGIN_ID, TARGET);
     }
 }
