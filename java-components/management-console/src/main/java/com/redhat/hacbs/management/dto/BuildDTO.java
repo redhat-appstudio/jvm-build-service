@@ -6,11 +6,13 @@ import jakarta.persistence.EntityManager;
 
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
+import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.MavenArtifact;
 import com.redhat.hacbs.management.model.ShadingDetails;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
 import io.quarkus.arc.Arc;
+import io.quarkus.logging.Log;
 
 public record BuildDTO(
         @Schema(required = true) long id,
@@ -38,9 +40,23 @@ public record BuildDTO(
             inQueue = true;
         }
 
-        BuildAttemptDTO successfulBuild = build.buildAttempts.stream().filter(s -> s.successful).findFirst()
-                .map(BuildAttemptDTO::of)
-                .orElse(null);
+        BuildAttempt success = null;
+        for (var b : build.buildAttempts) {
+            if (b.successful) {
+                if (success == null) {
+                    success = b;
+                } else {
+                    if (b.startTime != null && (success.startTime == null || success.startTime.isBefore(b.startTime))) {
+                        success = b;
+                    }
+                }
+            }
+        }
+        BuildAttemptDTO successfulBuild = success == null ? null : BuildAttemptDTO.of(success);
+
+        if (successfulBuild != null) {
+            Log.infof("Build maven repo %s", successfulBuild.mavenRepository());
+        }
         List<BuildAttemptDTO> others = build.buildAttempts.stream()
                 .filter(s -> successfulBuild == null || s.id != successfulBuild.id())
                 .map(BuildAttemptDTO::of).toList();
