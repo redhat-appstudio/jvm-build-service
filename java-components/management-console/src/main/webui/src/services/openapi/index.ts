@@ -17,6 +17,7 @@ export type { BuildDTO } from './models/BuildDTO';
 export type { BuildListDTO } from './models/BuildListDTO';
 export type { BuildQueueListDTO } from './models/BuildQueueListDTO';
 export type { BuildSummaryDTO } from './models/BuildSummaryDTO';
+export type { DependencySetDTO } from './models/DependencySetDTO';
 export type { DeploymentDTO } from './models/DeploymentDTO';
 export type { EditResult } from './models/EditResult';
 export type { GithubBuildDTO } from './models/GithubBuildDTO';
@@ -48,6 +49,7 @@ export { BuildHistoryResourceService } from './services/BuildHistoryResourceServ
 export { BuildQueueResourceService } from './services/BuildQueueResourceService';
 export { BuildSummaryResourceService } from './services/BuildSummaryResourceService';
 export { DefaultService } from './services/DefaultService';
+export { DependencySetResourceService } from './services/DependencySetResourceService';
 export { DeploymentResourceService } from './services/DeploymentResourceService';
 export { GithubBuildsResourceService } from './services/GithubBuildsResourceService';
 export { ImageRepositoryResourceService } from './services/ImageRepositoryResourceService';

@@ -43,19 +43,9 @@ public class ImageResource {
                         new String(Base64.getUrlDecoder().decode(repository), StandardCharsets.UTF_8))
                 .page(Page.of(page - 1, perPage)).list();
         return new PageParameters<>(
-                all.stream().map(s -> new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete, List.of()))
+                all.stream().map(s -> new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete, s.dependencySet.id))
                         .toList(),
                 ContainerImage.count(), page, perPage);
-    }
-
-    @GET
-    @Path("{repository}/{digest}")
-    @Schema(name = "imageDetails")
-    public ImageDTO getImageDetails(@PathParam("repository") String repository, @PathParam("digest") String digest) {
-        ContainerImage s = ContainerImage
-                .find("digest", Sort.descending("timestamp"), digest).firstResult();
-        return new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete,
-                IdentifiedDependencyDTO.fromDependencySet(s.dependencySet));
     }
 
     @PUT

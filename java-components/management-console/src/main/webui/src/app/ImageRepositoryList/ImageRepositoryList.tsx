@@ -1,30 +1,10 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {
-  DataList,
-  DataListCell,
-  DataListContent,
-  DataListItem,
-  DataListItemCells,
-  DataListItemRow,
-  DataListToggle,
-  Label, Pagination,
-  Title,
-} from '@patternfly/react-core';
-import {
-  ImageDTO,
-  ImageResourceService,
-  IdentifiedDependencyDTO, ImageRepositoryResourceService,
-} from "../../services/openapi";
+import {Pagination, Toolbar, ToolbarContent, ToolbarItem,} from '@patternfly/react-core';
+import {ImageRepositoryResourceService,} from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
-import {
-  AttentionBellIcon,ContainerNodeIcon,
-  IceCreamIcon,
-  InProgressIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
-} from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
 import {Table, Td, Th, Thead, Tr} from "@patternfly/react-table";
-import {urlencoded} from "express";
 import {base64} from "../../services/openapi/core/request";
 
 const ImageRepositoryList: React.FunctionComponent = () => {
@@ -83,23 +63,28 @@ const ImageRepositoryList: React.FunctionComponent = () => {
   };
   return (
     <React.Fragment>
-
-      <Pagination
-        titles={{ paginationAriaLabel: 'Search filter pagination' }}
-        itemCount={count}
-        widgetId="search-input-mock-pagination"
-        perPage={perPage}
-        page={page}
-        onPerPageSelect={onPerPageSelect}
-        onSetPage={onSetPage}
-        isCompact
-      />
+      <Toolbar>
+        <ToolbarContent>
+          <ToolbarItem variant="pagination">
+            <Pagination
+              titles={{paginationAriaLabel: 'Search filter pagination'}}
+              itemCount={count}
+              widgetId="search-input-mock-pagination"
+              perPage={perPage}
+              page={page}
+              onPerPageSelect={onPerPageSelect}
+              onSetPage={onSetPage}
+              isCompact
+            />
+          </ToolbarItem>
+        </ToolbarContent>
+      </Toolbar>
       <Table>
         <Thead>
           <Th>Image Repository</Th>
         </Thead>
 
-        {repositories.map((image : string) => {
+        {repositories.map((image: string) => {
           return <Tr key={image}><Td><Link to={`/images/repository/${base64(image)}`}>{image}</Link></Td></Tr>
         })}
         {repositories.length === 0 && <EmptyTable></EmptyTable>}

@@ -8,17 +8,10 @@ import {
   DataListItemCells,
   DataListItemRow,
   DataListToggle,
-  EmptyState,
-  EmptyStateBody,
-  EmptyStateHeader,
-  EmptyStateIcon,
   Label, Pagination, Title, Toolbar, ToolbarContent, ToolbarItem,
 } from '@patternfly/react-core';
-import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
 import {
   IdentifiedDependencyDTO,
-  DeploymentDTO,
-  DeploymentResourceService,
   GithubBuildDTO, GithubBuildsResourceService
 } from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
