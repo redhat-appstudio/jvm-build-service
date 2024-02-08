@@ -260,15 +260,23 @@ public class GithubIntegration {
 
             String identifier = githubBuild.repository + "#" + wfr.getId() + "@" + githubBuild.commit;
             githubBuild.dependencySet.identifier = identifier;
+            Map<String, IdentifiedDependency> existing = new HashMap<>();
+            for (var i : githubBuild.dependencySet.dependencies) {
+                existing.put(i.mavenArtifact.gav(), i);
+            }
 
             Map<String, List<String>> successList = new HashMap<>();
             for (var i : sbom.getComponents()) {
                 String gav = i.getGroup() + ":" + i.getName() + ":" + i.getVersion();
-                IdentifiedDependency dep = new IdentifiedDependency();
-                dep.mavenArtifact = MavenArtifact.forGav(gav);
-                dep.dependencySet = githubBuild.dependencySet;
+
+                IdentifiedDependency dep = existing.get(gav);
+                if (dep == null) {
+                    dep = new IdentifiedDependency();
+                    githubBuild.dependencySet.dependencies.add(dep);
+                    dep.mavenArtifact = MavenArtifact.forGav(gav);
+                    dep.dependencySet = githubBuild.dependencySet;
+                }
                 dep.source = i.getPublisher();
-                githubBuild.dependencySet.dependencies.add(dep);
                 if (!Objects.equals(i.getPublisher(), "rebuilt") && !Objects.equals(i.getPublisher(), "redhat")) {
                     conclusion = GHCheckRun.Conclusion.FAILURE;
                     failureList.add(gav);
