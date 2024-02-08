@@ -1,5 +1,8 @@
 package com.redhat.hacbs.container.analyser.build.maven;
 
+import static com.redhat.hacbs.container.verifier.MavenUtils.getCompilerSource;
+import static com.redhat.hacbs.container.verifier.MavenUtils.getCompilerTarget;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +23,8 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import com.redhat.hacbs.container.analyser.build.InvocationBuilder;
 import com.redhat.hacbs.container.analyser.build.JavaVersion;
+
+import io.quarkus.logging.Log;
 
 @ApplicationScoped
 public class MavenJavaVersionDiscovery {
@@ -46,19 +51,29 @@ public class MavenJavaVersionDiscovery {
         String target = model.getProperties().getProperty("maven.compiler.target");
         if (target == null) {
             target = model.getProperties().getProperty("maven.compile.target"); //old property name
+
+            if (target == null) {
+                target = getCompilerTarget(model).orElse(null);
+            }
         }
         String source = model.getProperties().getProperty("maven.compiler.source");
         if (source == null) {
             source = model.getProperties().getProperty("maven.compile.source"); //old property name
+
+            if (source == null) {
+                source = getCompilerSource(model).orElse(null);
+            }
         }
         int javaVersion = -1;
         if (target != null) {
             target = interpolate(target, model);
             javaVersion = JavaVersion.toVersion(target);
+            Log.infof("Discovered Java target %s", javaVersion);
         }
         if (source != null) {
             source = interpolate(source, model);
             var parsed = JavaVersion.toVersion(source);
+            Log.infof("Discovered Java source %s", parsed);
             if (parsed > javaVersion) {
                 javaVersion = parsed;
             }
