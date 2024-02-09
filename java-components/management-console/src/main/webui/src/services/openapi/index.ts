@@ -17,6 +17,7 @@ export type { BuildDTO } from './models/BuildDTO';
 export type { BuildListDTO } from './models/BuildListDTO';
 export type { BuildQueueListDTO } from './models/BuildQueueListDTO';
 export type { BuildSummaryDTO } from './models/BuildSummaryDTO';
+export type { DependencySetDTO } from './models/DependencySetDTO';
 export type { DeploymentDTO } from './models/DeploymentDTO';
 export type { EditResult } from './models/EditResult';
 export type { GithubBuildDTO } from './models/GithubBuildDTO';
@@ -32,6 +33,7 @@ export type { PageParametersBuildListDTO } from './models/PageParametersBuildLis
 export type { PageParametersBuildQueueListDTO } from './models/PageParametersBuildQueueListDTO';
 export type { PageParametersGithubBuildDTO } from './models/PageParametersGithubBuildDTO';
 export type { PageParametersImageDTO } from './models/PageParametersImageDTO';
+export type { PageParametersString } from './models/PageParametersString';
 export type { ReplayEvent } from './models/ReplayEvent';
 export type { RepositoryPush } from './models/RepositoryPush';
 export type { RunningBuildDTO } from './models/RunningBuildDTO';
@@ -47,8 +49,10 @@ export { BuildHistoryResourceService } from './services/BuildHistoryResourceServ
 export { BuildQueueResourceService } from './services/BuildQueueResourceService';
 export { BuildSummaryResourceService } from './services/BuildSummaryResourceService';
 export { DefaultService } from './services/DefaultService';
+export { DependencySetResourceService } from './services/DependencySetResourceService';
 export { DeploymentResourceService } from './services/DeploymentResourceService';
 export { GithubBuildsResourceService } from './services/GithubBuildsResourceService';
+export { ImageRepositoryResourceService } from './services/ImageRepositoryResourceService';
 export { ImageResourceService } from './services/ImageResourceService';
 export { QuayResourceService } from './services/QuayResourceService';
 export { RunningBuildsResourceService } from './services/RunningBuildsResourceService';

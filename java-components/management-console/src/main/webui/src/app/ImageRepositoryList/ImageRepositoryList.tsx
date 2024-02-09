@@ -1,31 +1,14 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {
-  DataList,
-  DataListCell,
-  DataListContent,
-  DataListItem,
-  DataListItemCells,
-  DataListItemRow,
-  DataListToggle,
-  Label,
-  Title,
-} from '@patternfly/react-core';
-import {
-  ImageDTO,
-  ImageResourceService,
-  IdentifiedDependencyDTO,
-} from "../../services/openapi";
+import {Pagination, Toolbar, ToolbarContent, ToolbarItem,} from '@patternfly/react-core';
+import {ImageRepositoryResourceService,} from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
-import {
-  AttentionBellIcon,ContainerNodeIcon,
-  IceCreamIcon,
-  InProgressIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
-} from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
+import {Table, Td, Th, Thead, Tr} from "@patternfly/react-table";
+import {base64} from "../../services/openapi/core/request";
 
 const ImageRepositoryList: React.FunctionComponent = () => {
-  const [images, setImages] = useState(Array<ImageDTO>);
+  const [repositories, setRepositories] = useState(Array<string>);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
 
@@ -35,11 +18,11 @@ const ImageRepositoryList: React.FunctionComponent = () => {
 
   useEffect(() => {
     setState('loading');
-    ImageResourceService.getApiImage(page, perPage).then()
+    ImageRepositoryResourceService.getApiImageRepository(page, perPage).then()
       .then((res) => {
         console.log(res);
         setState('success');
-        setImages(res.items);
+        setRepositories(res.items);
         setCount(res.count)
         if (res.perPage != perPage) {
           setPerPage(res.perPage)
@@ -66,113 +49,48 @@ const ImageRepositoryList: React.FunctionComponent = () => {
       <h1>Loading...</h1>
     )
 
+  const onSetPage = (_event: React.MouseEvent | React.KeyboardEvent | MouseEvent, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const onPerPageSelect = (
+    _event: React.MouseEvent | React.KeyboardEvent | MouseEvent,
+    newPerPage: number,
+    newPage: number
+  ) => {
+    setPerPage(newPerPage);
+    setPage(newPage);
+  };
   return (
     <React.Fragment>
+      <Toolbar>
+        <ToolbarContent>
+          <ToolbarItem variant="pagination">
+            <Pagination
+              titles={{paginationAriaLabel: 'Search filter pagination'}}
+              itemCount={count}
+              widgetId="search-input-mock-pagination"
+              perPage={perPage}
+              page={page}
+              onPerPageSelect={onPerPageSelect}
+              onSetPage={onSetPage}
+              isCompact
+            />
+          </ToolbarItem>
+        </ToolbarContent>
+      </Toolbar>
+      <Table>
+        <Thead>
+          <Th>Image Repository</Th>
+        </Thead>
 
-      <DataList aria-label="Information">
-      {images.map((image : ImageDTO, index) => (
-          <ImageRow key={index} image={image}></ImageRow>
-        ))}
-        {images.length === 0 && <EmptyTable></EmptyTable>}
-      </DataList>
+        {repositories.map((image: string) => {
+          return <Tr key={image}><Td><Link to={`/images/repository/${base64(image)}`}>{image}</Link></Td></Tr>
+        })}
+        {repositories.length === 0 && <EmptyTable></EmptyTable>}
+      </Table>
     </React.Fragment>
   );
 };
 
-type ImageType = {
-  image: ImageDTO,
-};
-
-const ImageRow: React.FunctionComponent<ImageType> = (image): JSX.Element => {
-
-  const [imageExpanded, setImageExpanded] = React.useState(false);
-
-  const toggleImages = () => {
-    setImageExpanded(!imageExpanded);
-  };
-
-  const health = function (image: ImageDTO) {
-    if (!image.analysisComplete) {
-      return <Label color="blue" icon={<InProgressIcon />}>
-        Image Analysis in Progress
-      </Label>
-    }
-    const trusted = image.totalDependencies - image.untrustedDependencies
-
-    if (image.totalDependencies == 0) {
-      return <Label color="blue" icon={<StickyNoteIcon />}>
-        No Java
-      </Label>
-    }
-    return <>
-      {image.untrustedDependencies > 0 && <Label color="red" icon={<WarningTriangleIcon />}>{image.untrustedDependencies} Untrusted Dependencies</Label>}
-      {trusted > 0 && <Label color="green" icon={<OkIcon />}>{trusted} Rebuilt Dependencies</Label>}
-      {image.availableBuilds > 0 && <Label color="orange" icon={<ListIcon />}>{image.availableBuilds} Available Rebuilt Dependencies</Label>}
-
-    </>
-  }
-  const dependencyRow = function (dep : IdentifiedDependencyDTO) {
-
-    return <DataListItem>
-      <DataListItemRow>
-        <DataListItemCells
-          dataListCells={[
-            <DataListCell isIcon key="icon">
-              {dep.source === 'rebuilt' && <OkIcon color={"green"}></OkIcon>}
-              {dep.source === 'redhat' && <RedhatIcon color={"red"}></RedhatIcon>}
-              {(dep.source !== 'redhat' && dep.source != 'rebuilt') && <WarningTriangleIcon color={"orange"}></WarningTriangleIcon>}
-            </DataListCell>,
-            <DataListCell key="primary content">
-              {dep.dependencyBuildIdentifier != undefined && <Link to={`/builds/build/${dep.dependencyBuildIdentifier}`}>{dep.gav}</Link>}
-              {dep.dependencyBuildIdentifier == undefined && <div id="gav">{dep.gav}</div>}
-            </DataListCell>,
-            <DataListCell key="primary content">
-              {dep.inQueue && <Label color="blue" icon={<IceCreamIcon />}> In Build Queue</Label>}
-              {(dep.buildAttemptId != null) && <Label color="green" icon={<OkIcon />}>Rebuilt Artifact</Label>}
-              {(dep.buildAttemptId == null && dep.buildSuccess) && <Label color="orange" icon={<AttentionBellIcon />}>Rebuilt Artifact Available, Image Rebuild Required</Label>}
-              {(dep.buildAttemptId == null && dep.dependencyBuildIdentifier != null && !dep.buildSuccess) && <Label color="red" icon={<OutlinedAngryIcon />}>Rebuild Failed</Label>}
-              {(dep.buildAttemptId == null && dep.dependencyBuildIdentifier == null && !dep.buildSuccess) && <Label color="orange" icon={<OutlinedAngryIcon />}>Unknown Source</Label>}
-            </DataListCell>,
-          ]}
-        />
-      </DataListItemRow>
-    </DataListItem>
-  }
-
-  return <DataListItem aria-labelledby="ex-item1" isExpanded={imageExpanded}>
-    <DataListItemRow>
-      <DataListToggle
-        onClick={() => toggleImages()}
-        isExpanded={imageExpanded}
-        id="toggle"
-        aria-controls="ex-expand"
-      />
-      <DataListItemCells
-        dataListCells={[
-          <DataListCell isIcon key="icon">
-            <ContainerNodeIcon/>
-          </DataListCell>,
-          <DataListCell key="primary content">
-            <div id="ex-item1">{image.image.fullName}</div>
-          </DataListCell>,
-          <DataListCell key="health">
-            {health(image.image)}
-          </DataListCell>
-        ]}
-      />
-    </DataListItemRow>
-    <DataListContent
-      aria-label="Image Details"
-      id="ex-expand1"
-      isHidden={!imageExpanded}
-    >
-      <Title headingLevel={"h2"}>Image: {image.image.fullName}</Title>
-
-        <DataList aria-label="Dependencies">
-          {image.image.dependencies?.map(d => (dependencyRow(d)))}
-        </DataList>
-    </DataListContent>
-  </DataListItem>
-
-}
 export {ImageRepositoryList};

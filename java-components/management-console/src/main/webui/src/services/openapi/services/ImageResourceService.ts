@@ -8,25 +8,6 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class ImageResourceService {
     /**
-     * @param page
-     * @param perPage
-     * @returns PageParametersImageDTO OK
-     * @throws ApiError
-     */
-    public static getApiImage(
-        page?: number,
-        perPage?: number,
-    ): CancelablePromise<PageParametersImageDTO> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/image',
-            query: {
-                'page': page,
-                'perPage': perPage,
-            },
-        });
-    }
-    /**
      * @param requestBody
      * @returns void
      * @throws ApiError
@@ -39,6 +20,30 @@ export class ImageResourceService {
             url: '/api/image',
             body: requestBody,
             mediaType: 'text/plain',
+        });
+    }
+    /**
+     * @param repository
+     * @param page
+     * @param perPage
+     * @returns PageParametersImageDTO OK
+     * @throws ApiError
+     */
+    public static getApiImage(
+        repository: string,
+        page?: number,
+        perPage?: number,
+    ): CancelablePromise<PageParametersImageDTO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/image/{repository}',
+            path: {
+                'repository': repository,
+            },
+            query: {
+                'page': page,
+                'perPage': perPage,
+            },
         });
     }
 }

@@ -45,6 +45,7 @@ import io.quarkiverse.githubapp.event.WorkflowRun;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.LaunchMode;
 import io.quarkus.runtime.Startup;
+import io.vertx.ext.web.RoutingContext;
 
 @Startup
 @ApplicationScoped
@@ -60,6 +61,9 @@ public class GithubIntegration {
 
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    RoutingContext routingContext;
 
     @ConfigProperty(name = "kube.disabled", defaultValue = "false")
     boolean disabled;
@@ -253,22 +257,30 @@ public class GithubIntegration {
 
             githubBuild.workflowRunId = wfr.getId();
             for (var pr : wfr.getPullRequests()) {
-                githubBuild.prUrl = pr.getUrl().toExternalForm();
+                githubBuild.prUrl = pr.getHtmlUrl().toExternalForm();
             }
             githubBuild.repository = wfr.getRepository().getOwnerName() + "/" + wfr.getRepository().getName();
             githubBuild.dependencySet.type = "github-build";
 
             String identifier = githubBuild.repository + "#" + wfr.getId() + "@" + githubBuild.commit;
             githubBuild.dependencySet.identifier = identifier;
+            Map<String, IdentifiedDependency> existing = new HashMap<>();
+            for (var i : githubBuild.dependencySet.dependencies) {
+                existing.put(i.mavenArtifact.gav(), i);
+            }
 
             Map<String, List<String>> successList = new HashMap<>();
             for (var i : sbom.getComponents()) {
                 String gav = i.getGroup() + ":" + i.getName() + ":" + i.getVersion();
-                IdentifiedDependency dep = new IdentifiedDependency();
-                dep.mavenArtifact = MavenArtifact.forGav(gav);
-                dep.dependencySet = githubBuild.dependencySet;
+
+                IdentifiedDependency dep = existing.get(gav);
+                if (dep == null) {
+                    dep = new IdentifiedDependency();
+                    githubBuild.dependencySet.dependencies.add(dep);
+                    dep.mavenArtifact = MavenArtifact.forGav(gav);
+                    dep.dependencySet = githubBuild.dependencySet;
+                }
                 dep.source = i.getPublisher();
-                githubBuild.dependencySet.dependencies.add(dep);
                 if (!Objects.equals(i.getPublisher(), "rebuilt") && !Objects.equals(i.getPublisher(), "redhat")) {
                     conclusion = GHCheckRun.Conclusion.FAILURE;
                     failureList.add(gav);
@@ -320,7 +332,9 @@ public class GithubIntegration {
             var output = new GHCheckRunBuilder.Output(
                     failureList.size() > 0 ? "Build Contained Untrusted Dependencies" : "All dependencies are trusted",
                     finalResult.toString());
-            checkRun.update().withConclusion(conclusion).add(output).withStatus(GHCheckRun.Status.COMPLETED).create();
+            checkRun.update().withConclusion(conclusion).add(output)
+                    .withDetailsURL("https://jvmshield.dev/builds/github/build/" + githubBuild.id)
+                    .withStatus(GHCheckRun.Status.COMPLETED).create();
             break;
         }
     }

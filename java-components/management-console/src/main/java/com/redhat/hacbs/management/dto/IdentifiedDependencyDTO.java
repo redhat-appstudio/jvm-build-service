@@ -52,7 +52,7 @@ public record IdentifiedDependencyDTO(
                 } catch (NoResultException ignore) {
                 }
             } else {
-                BuildAttempt db = BuildAttempt.find("buildId", dep.buildId).singleResult();
+                BuildAttempt db = BuildAttempt.find("buildId", dep.buildId).firstResult();
                 if (db != null) {
                     buildId = db.dependencyBuild.buildIdentifier.dependencyBuildName;
                     buildSuccess = db.dependencyBuild.succeeded;
