@@ -6,6 +6,7 @@ import static com.redhat.hacbs.container.verifier.MavenUtils.newSettings;
 import static com.redhat.hacbs.container.verifier.MavenUtils.pathToCoords;
 import static com.redhat.hacbs.container.verifier.MavenUtils.resolveArtifact;
 import static java.nio.file.FileVisitResult.CONTINUE;
+import static org.apache.commons.lang3.StringUtils.endsWithAny;
 import static org.apache.maven.repository.RepositorySystem.DEFAULT_REMOTE_REPO_ID;
 import static org.apache.maven.repository.RepositorySystem.DEFAULT_REMOTE_REPO_URL;
 import static org.apache.maven.repository.internal.MavenRepositorySystemUtils.newSession;
@@ -150,14 +151,12 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                             var relativeFile = options.mavenOptions.deployPath.relativize(file);
                             var coords = pathToCoords(relativeFile);
                             Log.debugf("File %s has coordinates %s", relativeFile, coords);
-                            var failures = executorService.submit(new Callable<List<String>>() {
-                                @Override
-                                public List<String> call() throws Exception {
-                                    return handleJar(file, coords, excludes);
-                                }
-                            });
-
-                            futureResults.put(coords, failures);
+                            if (endsWithAny(fileName, "-javadoc.jar", "-tests.jar", "-sources.jar")) {
+                                Log.debugf("Skipping file %s", relativeFile);
+                            } else {
+                                var failures = executorService.submit(() -> handleJar(file, coords, excludes));
+                                futureResults.put(coords, failures);
+                            }
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
