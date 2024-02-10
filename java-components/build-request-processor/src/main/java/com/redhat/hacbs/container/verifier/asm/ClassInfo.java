@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.verifier.asm;
 
+import static com.redhat.hacbs.container.verifier.asm.AsmUtils.isEnumVaueOf;
 import static com.redhat.hacbs.container.verifier.asm.AsmUtils.isPublic;
 import static com.redhat.hacbs.container.verifier.asm.AsmUtils.isSyntheticBridge;
 
@@ -58,7 +59,8 @@ public record ClassInfo(ClassVersion version, AccessSet<ClassAccess> access, Str
                         : Collections.emptyMap(),
                 node.fields.stream().filter(field -> isPublic(field.access))
                         .collect(Collectors.toMap(n -> n.name, FieldInfo::new, (x, y) -> x, LinkedHashMap::new)),
-                node.methods.stream().filter(method -> isPublic(method.access) && !isSyntheticBridge(method.access))
+                node.methods.stream().filter(method -> isPublic(method.access) && !isSyntheticBridge(method.access)
+                        && !isEnumVaueOf(node.access, method.name))
                         .collect(Collectors.toMap(n -> n.name + n.desc, MethodInfo::new, (x, y) -> x, LinkedHashMap::new)));
     }
 

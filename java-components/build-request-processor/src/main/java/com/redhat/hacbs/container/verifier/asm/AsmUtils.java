@@ -1,6 +1,7 @@
 package com.redhat.hacbs.container.verifier.asm;
 
 import static org.objectweb.asm.Opcodes.ACC_BRIDGE;
+import static org.objectweb.asm.Opcodes.ACC_ENUM;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
 
@@ -47,4 +48,7 @@ public final class AsmUtils {
         return ((access & b) == b);
     }
 
+    public static boolean isEnumVaueOf(int access, String name) {
+        return ((access & ACC_ENUM) != 0 && "valueOf".equals(name));
+    }
 }
