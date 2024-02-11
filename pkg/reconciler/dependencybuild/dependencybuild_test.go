@@ -221,7 +221,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(12))
+			g.Expect(len(pr.Spec.Params)).Should(Equal(11))
 			for _, param := range pr.Spec.Params {
 				switch param.Name {
 				case PipelineParamScmHash:
@@ -235,8 +235,6 @@ func TestStateDetect(t *testing.T) {
 				case PipelineParamScmUrl:
 				case PipelineParamChainsGitUrl:
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
-				case PipelineParamImage:
-					g.Expect(param.Value.StringVal).Should(HavePrefix("quay.io/redhat-appstudio/hacbs-jdk"))
 				case PipelineParamGoals:
 					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
 				case PipelineParamEnforceVersion:
@@ -363,7 +361,7 @@ func TestStateBuilding(t *testing.T) {
 			Status:             "True",
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		pr.Status.Results = []tektonpipeline.PipelineRunResult{{Name: artifactbuild.PipelineResultDeployedResources, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: TestArtifact}}}
+		pr.Status.Results = []tektonpipeline.PipelineRunResult{{Name: PipelineResultDeployedResources, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: TestArtifact}}}
 		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
