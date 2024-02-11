@@ -607,6 +607,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			return reconcile.Result{}, nil
 		}
 		run := attempt.Build
+		run.FinishTime = pr.Status.CompletionTime.Unix()
 
 		if run.Complete {
 			//we have already seen this
@@ -775,6 +776,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		//the relevant run was not complete, mark it as failed
 		if !ba.Build.Complete {
 			ba.Build.Succeeded = false
+			ba.Build.FinishTime = pr.GetDeletionTimestamp().Unix()
 			ba.Build.Complete = true
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 			changed = true

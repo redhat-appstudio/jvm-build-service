@@ -81,6 +81,7 @@ type BuildPipelineRun struct {
 	DiagnosticDockerFile string                   `json:"diagnosticDockerFile,omitempty"`
 	Results              *BuildPipelineRunResults `json:"results,omitempty"`
 	StartTime            int64                    `json:"startTime,omitempty"`
+	FinishTime           int64                    `json:"finishTime,omitempty"`
 }
 
 type BuildPipelineRunResults struct {

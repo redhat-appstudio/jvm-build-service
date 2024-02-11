@@ -77,6 +77,9 @@ spec:
                           type: boolean
                         diagnosticDockerFile:
                           type: string
+                        finishTime:
+                          format: int64
+                          type: integer
                         pipelineName:
                           type: string
                         results:
