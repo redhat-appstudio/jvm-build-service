@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"html/template"
 	"io"
@@ -620,7 +621,7 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 				if db.Status.FailedVerification {
 					verification := ""
 					for _, res := range pipelineRun.Status.Results {
-						if res.Name == artifactbuild.PipelineResultVerificationResult {
+						if res.Name == dependencybuild.PipelineResultVerificationResult {
 							verification = res.Value.StringVal
 						}
 					}

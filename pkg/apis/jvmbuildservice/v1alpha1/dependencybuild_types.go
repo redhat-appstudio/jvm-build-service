@@ -39,6 +39,7 @@ type DependencyBuildStatus struct {
 	PipelineRetries            int              `json:"pipelineRetries,omitempty"`
 	BuildAttempts              []*BuildAttempt  `json:"buildAttempts,omitempty"`
 	DiscoveryPipelineResults   *PipelineResults `json:"discoveryPipelineResults,omitempty"`
+	PreBuildImages             []PreBuildImage  `json:"builderImages,omitempty"`
 }
 
 // +genclient
@@ -72,6 +73,10 @@ type BuildAttempt struct {
 	BuildId string            `json:"buildId,omitempty"`
 	Recipe  *BuildRecipe      `json:"buildRecipe,omitempty"`
 	Build   *BuildPipelineRun `json:"build,omitempty"`
+}
+type PreBuildImage struct {
+	BaseBuilderImage string `json:"baseBuilderImage,omitempty"`
+	BuiltImageDigest string `json:"builtImageDigest,omitempty"`
 }
 
 type BuildPipelineRun struct {

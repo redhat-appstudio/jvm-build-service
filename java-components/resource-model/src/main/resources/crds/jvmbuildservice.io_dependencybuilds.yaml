@@ -204,6 +204,15 @@ spec:
                       type: object
                   type: object
                 type: array
+              builderImages:
+                items:
+                  properties:
+                    baseBuilderImage:
+                      type: string
+                    builtImageDigest:
+                      type: string
+                  type: object
+                type: array
               commitTime:
                 format: int64
                 type: integer

@@ -39,22 +39,28 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout               = 300 * time.Second
-	PipelineBuildId              = "DEPENDENCY_BUILD"
-	PipelineParamScmUrl          = "URL"
-	PipelineParamScmTag          = "TAG"
-	PipelineParamScmHash         = "HASH"
-	PipelineParamPath            = "CONTEXT_DIR"
-	PipelineParamChainsGitUrl    = "CHAINS-GIT_URL"
-	PipelineParamChainsGitCommit = "CHAINS-GIT_COMMIT"
-	PipelineParamImage           = "IMAGE"
-	PipelineParamGoals           = "GOALS"
-	PipelineParamJavaVersion     = "JAVA_VERSION"
-	PipelineParamToolVersion     = "TOOL_VERSION"
-	PipelineParamEnforceVersion  = "ENFORCE_VERSION"
-	PipelineParamCacheUrl        = "CACHE_URL"
-	PipelineResultImage          = "IMAGE_URL"
-	PipelineResultImageDigest    = "IMAGE_DIGEST"
+	contextTimeout                   = 300 * time.Second
+	PipelineBuildId                  = "DEPENDENCY_BUILD"
+	PipelineParamScmUrl              = "URL"
+	PipelineParamScmTag              = "TAG"
+	PipelineParamScmHash             = "HASH"
+	PipelineParamPath                = "CONTEXT_DIR"
+	PipelineParamChainsGitUrl        = "CHAINS-GIT_URL"
+	PipelineParamChainsGitCommit     = "CHAINS-GIT_COMMIT"
+	PipelineParamGoals               = "GOALS"
+	PipelineParamJavaVersion         = "JAVA_VERSION"
+	PipelineParamToolVersion         = "TOOL_VERSION"
+	PipelineParamEnforceVersion      = "ENFORCE_VERSION"
+	PipelineParamCacheUrl            = "CACHE_URL"
+	PipelineResultImage              = "IMAGE_URL"
+	PipelineResultImageDigest        = "IMAGE_DIGEST"
+	PipelineResultContaminants       = "CONTAMINANTS"
+	PipelineResultDeployedResources  = "DEPLOYED_RESOURCES"
+	PipelineResultVerificationResult = "VERIFICATION_RESULTS"
+	PipelineResultPassedVerification = "PASSED_VERIFICATION" //#nosec
+	PipelineResultHermeticBuildImage = "HERMETIC_BUILD_IMAGE"
+	PipelineResultGitArchive         = "GIT_ARCHIVE"
+	PipelineResultGavs               = "GAVS"
 
 	BuildInfoPipelineResultBuildInfo = "BUILD_INFO"
 
@@ -541,7 +547,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineParamChainsGitUrl, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: scmUrl}},
 		{Name: PipelineParamChainsGitCommit, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: contextDir}},
-		{Name: PipelineParamImage, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.Image}},
 		{Name: PipelineParamGoals, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
 		{Name: PipelineParamEnforceVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.EnforceVersion}},
 		{Name: PipelineParamToolVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.ToolVersion}},
@@ -555,7 +560,11 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	}
 	diagnostic := ""
 	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
-	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId)
+	preBuildImages := map[string]string{}
+	for _, i := range db.Status.PreBuildImages {
+		preBuildImages[i.BaseBuilderImage] = i.BuiltImageDigest
+	}
+	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -622,6 +631,35 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 		run.Complete = true
 		run.Succeeded = pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+
+		//try and save the build build image name
+		//this is a big perfomance optimisation, as it can be re-used on subsequent attempts
+		alreadyExists := false
+		for _, i := range db.Status.PreBuildImages {
+			if i.BaseBuilderImage == attempt.Recipe.Image {
+				alreadyExists = true
+			}
+		}
+		if !alreadyExists {
+			for _, run := range pr.Status.ChildReferences {
+				if strings.HasSuffix(run.Name, PreBuildTaskName) {
+					tr := tektonpipeline.TaskRun{}
+					err := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: run.Name}, &tr)
+					if err != nil {
+						log.Error(err, "failed to retrieve pre build task run, image cannot be re-used")
+					} else {
+						preBuildSuccess := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+						if preBuildSuccess {
+							for _, res := range tr.Status.Results {
+								if res.Name == PreBuildImageDigest && res.Value.StringVal != "" {
+									db.Status.PreBuildImages = append(db.Status.PreBuildImages, v1alpha1.PreBuildImage{BaseBuilderImage: attempt.Recipe.Image, BuiltImageDigest: res.Value.StringVal})
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 
 		if !run.Succeeded {
 			log.Info(fmt.Sprintf("build %s failed", pr.Name))
@@ -695,32 +733,32 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					image = i.Value.StringVal
 				} else if i.Name == PipelineResultImageDigest {
 					digest = i.Value.StringVal
-				} else if i.Name == artifactbuild.PipelineResultContaminants {
+				} else if i.Name == PipelineResultContaminants {
 					db.Status.Contaminants = []*v1alpha1.Contaminant{}
 					//unmarshal directly into the contaminants field
 					err := json.Unmarshal([]byte(i.Value.StringVal), &db.Status.Contaminants)
 					if err != nil {
 						return reconcile.Result{}, err
 					}
-				} else if i.Name == artifactbuild.PipelineResultPassedVerification {
+				} else if i.Name == PipelineResultPassedVerification {
 					parseBool, _ := strconv.ParseBool(i.Value.StringVal)
 					passedVerification = parseBool
-				} else if i.Name == artifactbuild.PipelineResultVerificationResult {
+				} else if i.Name == PipelineResultVerificationResult {
 					// Note: The TaskRun stores this as
 					// 		VERIFICATION_RESULTS	{"commons-lang:commons-lang:jar:2.5":[]}
 					// 	But this is now stored as
 					// 		"verificationFailures": "{\"commons-lang:commons-lang:jar:2.5\":[]}"
 					verificationResults = i.Value.StringVal
-				} else if i.Name == artifactbuild.PipelineResultGavs {
+				} else if i.Name == PipelineResultGavs {
 					// TODO: What is the difference between this and PipelineResultDeployedResources?
 					deployed := strings.Split(i.Value.StringVal, ",")
 					db.Status.DeployedArtifacts = deployed
-				} else if i.Name == artifactbuild.PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
+				} else if i.Name == PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed = strings.Split(i.Value.StringVal, ",")
-				} else if i.Name == artifactbuild.PipelineResultHermeticBuildImage {
+				} else if i.Name == PipelineResultHermeticBuildImage {
 					hermeticBuildImage = i.Value.StringVal
-				} else if i.Name == artifactbuild.PipelineResultGitArchive {
+				} else if i.Name == PipelineResultGitArchive {
 					err := json.Unmarshal([]byte(i.Value.StringVal), &gitArchive)
 					if err != nil {
 						return reconcile.Result{}, err
