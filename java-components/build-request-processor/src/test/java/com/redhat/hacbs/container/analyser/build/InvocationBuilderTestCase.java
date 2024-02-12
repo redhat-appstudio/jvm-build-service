@@ -45,6 +45,8 @@ public class InvocationBuilderTestCase {
                 return List.of(
                         new BuildToolInfo().setReleaseDate("2019-04-26").setVersion("5.4").setMaxJdkVersion("12")
                                 .setMinJdkVersion("8"),
+                        new BuildToolInfo().setReleaseDate("2019-09-26").setVersion("6.0").setMaxJdkVersion("13")
+                                .setMinJdkVersion("8"),
                         new BuildToolInfo().setReleaseDate("2020-01-15").setVersion("6.1").setMaxJdkVersion("13")
                                 .setMinJdkVersion("8"));
             }
@@ -162,6 +164,28 @@ public class InvocationBuilderTestCase {
         builder.addToolInvocation(GRADLE, List.of("build"));
         result = builder.build(buildInfoLocator);
         Assertions.assertEquals(0, result.invocations.size());
+
+        builder = newBuilder();
+        builder.setCommitTime(df.parse("2019-10-06").getTime());
+        builder.addToolInvocation(GRADLE, List.of("build"));
+        result = builder.build(buildInfoLocator);
+        Assertions.assertEquals(4, result.invocations.size());
+        Assertions.assertTrue(
+                result.invocations
+                        .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "8"), GRADLE,
+                                buildInfoLocator.lookupDisabledPlugins(GRADLE))));
+        Assertions.assertTrue(
+                result.invocations
+                        .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "5.4", JDK, "11"), GRADLE,
+                                buildInfoLocator.lookupDisabledPlugins(GRADLE))));
+        Assertions.assertTrue(
+                result.invocations
+                        .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "6.1", JDK, "8"), GRADLE,
+                                buildInfoLocator.lookupDisabledPlugins(GRADLE))));
+        Assertions.assertTrue(
+                result.invocations
+                        .contains(new Invocation(List.of("build"), Map.of(MAVEN, "3.8.0", GRADLE, "6.1", JDK, "11"), GRADLE,
+                                buildInfoLocator.lookupDisabledPlugins(GRADLE))));
     }
 
     @Test
