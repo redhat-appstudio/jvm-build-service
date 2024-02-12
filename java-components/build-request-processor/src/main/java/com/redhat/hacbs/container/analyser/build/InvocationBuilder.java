@@ -158,6 +158,21 @@ public class InvocationBuilder {
             }
         }
 
+        //This is a bit hacky, but in general we only care about major release date
+        //e.g. if the original build was done with maven 3.9.1 but we are on 3.9.2
+        //we want to consider everything released after 3.9.0
+        for (var e : buildToolInfo.entrySet()) {
+            for (var tool : e.getValue().entrySet()) {
+                if (!tool.getKey().endsWith(".0") && tool.getKey().contains(".")) {
+                    String initialVersion = tool.getKey().substring(0, tool.getKey().lastIndexOf('.')) + ".0";
+                    var initialVersionEntry = e.getValue().get(initialVersion);
+                    if (initialVersionEntry != null) {
+                        tool.getValue().setReleaseDate(initialVersionEntry.getReleaseDate());
+                    }
+                }
+            }
+        }
+
         var jdkReleaseInfo = buildToolInfo.get("jdk");
         Date maybeAddReleaseDate = null;
         JavaVersion maybeAddJavaVersion = null;
@@ -227,6 +242,7 @@ public class InvocationBuilder {
                                 selectedVersions.add(i); //no info, always add it
                             } else {
                                 try {
+                                    //we need to use the release date of the corresponding major version
                                     Date release = simpleDate.parse(bti.getReleaseDate());
                                     if (release.before(commitTime)) {
                                         selectedVersions.add(i); //no info, always add it
