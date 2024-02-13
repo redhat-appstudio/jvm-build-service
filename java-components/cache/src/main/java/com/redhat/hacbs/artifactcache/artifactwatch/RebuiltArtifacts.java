@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,7 +28,7 @@ public class RebuiltArtifacts {
     @ConfigProperty(name = "kube.disabled", defaultValue = "false")
     boolean disabled;
 
-    final List<Consumer<String>> imageDeletionListeners = Collections.synchronizedList(new ArrayList<>());
+    final List<RebuiltArtifactDeletionListener> imageDeletionListeners = Collections.synchronizedList(new ArrayList<>());
 
     final Set<String> gavs = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -51,13 +50,13 @@ public class RebuiltArtifacts {
 
             @Override
             public void onUpdate(RebuiltArtifact old, RebuiltArtifact newObj) {
-                List<Consumer<String>> listeners = new ArrayList<>(imageDeletionListeners.size());
+                List<RebuiltArtifactDeletionListener> listeners = new ArrayList<>(imageDeletionListeners.size());
                 synchronized (imageDeletionListeners) {
                     listeners.addAll(imageDeletionListeners);
                 }
                 for (var i : listeners) {
                     try {
-                        i.accept(old.getSpec().getDigest());
+                        i.rebuiltArtifactDeleted(old.getSpec().getGav(), old.getSpec().getDigest());
                     } catch (Throwable t) {
                         Log.errorf(t, "Failed to notify deletion listener");
                     }
@@ -70,13 +69,13 @@ public class RebuiltArtifacts {
             public void onDelete(RebuiltArtifact artifactBuild, boolean deletedFinalStateUnknown) {
                 gavs.remove(artifactBuild.getSpec().getGav());
                 if (!deletedFinalStateUnknown) {
-                    List<Consumer<String>> listeners = new ArrayList<>(imageDeletionListeners.size());
+                    List<RebuiltArtifactDeletionListener> listeners = new ArrayList<>(imageDeletionListeners.size());
                     synchronized (imageDeletionListeners) {
                         listeners.addAll(imageDeletionListeners);
                     }
                     for (var i : listeners) {
                         try {
-                            i.accept(artifactBuild.getSpec().getDigest());
+                            i.rebuiltArtifactDeleted(artifactBuild.getSpec().getGav(), artifactBuild.getSpec().getDigest());
                         } catch (Throwable t) {
                             Log.errorf(t, "Failed to notify deletion listener");
                         }
@@ -86,7 +85,7 @@ public class RebuiltArtifacts {
         });
     }
 
-    public void addImageDeletionListener(Consumer<String> listener) {
+    public void addImageDeletionListener(RebuiltArtifactDeletionListener listener) {
         imageDeletionListeners.add(listener);
     }
 
@@ -94,4 +93,7 @@ public class RebuiltArtifacts {
         return gavs.contains(gav);
     }
 
+    public interface RebuiltArtifactDeletionListener {
+        void rebuiltArtifactDeleted(String gav, String imageDigest);
+    }
 }

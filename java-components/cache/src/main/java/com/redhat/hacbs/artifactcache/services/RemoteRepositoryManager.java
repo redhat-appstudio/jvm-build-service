@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
@@ -57,6 +56,7 @@ public class RemoteRepositoryManager {
     RecipeManager recipeManager;
 
     StorageManager hacbsStorageMgr;
+    private RepositoryCache rebuiltCache;
 
     @PostConstruct
     void setup() throws IOException, GitAPIException {
@@ -79,7 +79,8 @@ public class RemoteRepositoryManager {
                     new OCIRegistryRepositoryClient(host + (port == 443 ? "" : ":" + port), registryOwner.get(), repository,
                             token, prependTag,
                             insecure, rebuiltArtifacts, hacbsStorageMgr));
-            remoteStores.put("rebuilt", List.of(new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false)));
+            rebuiltCache = new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false);
+            remoteStores.put("rebuilt", List.of(rebuiltCache));
         }
         var sharedRegistries = config.getOptionalValue("shared.registries", String.class);
         // We have a semicolon separated set of potential registries.
@@ -110,17 +111,18 @@ public class RemoteRepositoryManager {
                         List.of(new RepositoryCache(storageManager.resolve(name), rebuiltRepo, false)));
             }
         }
-        rebuiltArtifacts.addImageDeletionListener(new Consumer<>() {
+        rebuiltArtifacts.addImageDeletionListener(new RebuiltArtifacts.RebuiltArtifactDeletionListener() {
             private static final String DIGEST_PREFIX = "sha256:";
 
             @Override
-            public void accept(String s) {
+            public void rebuiltArtifactDeleted(String gav, String imageDigest) {
                 try {
-                    String digestHash = s.substring(DIGEST_PREFIX.length());
+                    String digestHash = imageDigest.substring(DIGEST_PREFIX.length());
                     Log.infof("Deleting cached image with digest %s", digestHash);
-                    storageManager.delete(digestHash);
+                    hacbsStorageMgr.delete(digestHash);
+                    rebuiltCache.deleteGav(gav);
                 } catch (Exception e) {
-                    Log.errorf(e, "Failed to clear cache path for image %s", s);
+                    Log.errorf(e, "Failed to clear cache path for image %s", imageDigest);
                 }
             }
         });

@@ -286,6 +286,8 @@ public class RootStorageManager implements StorageManager {
         Path dir = path.resolve(relative);
         if (Files.exists(dir)) {
             safeDeleteRecursive(dir);
+        } else {
+            Log.errorf("Delete called on non-existent path %s", relative);
         }
         var existing = inUseMap.remove(relative);
         if (existing != null) {
