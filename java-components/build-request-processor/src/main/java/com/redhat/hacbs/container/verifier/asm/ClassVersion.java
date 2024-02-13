@@ -18,11 +18,14 @@ import static org.objectweb.asm.Opcodes.V1_5;
 import static org.objectweb.asm.Opcodes.V1_6;
 import static org.objectweb.asm.Opcodes.V1_7;
 import static org.objectweb.asm.Opcodes.V1_8;
+import static org.objectweb.asm.Opcodes.V20;
+import static org.objectweb.asm.Opcodes.V21;
+import static org.objectweb.asm.Opcodes.V22;
 import static org.objectweb.asm.Opcodes.V9;
 
 import com.redhat.hacbs.container.analyser.build.JavaVersion;
 
-record ClassVersion(int version, int majorVersion, int minorVersion,
+public record ClassVersion(int version, int majorVersion, int minorVersion,
         JavaVersion javaVersion) implements AsmDiffable<ClassVersion> {
     public ClassVersion(int version) {
         this(version, version & 0xFFFF, version >>> 16, toJavaVersion(version));
@@ -49,9 +52,29 @@ record ClassVersion(int version, int majorVersion, int minorVersion,
             case V17 -> "17";
             case V18 -> "18";
             case V19 -> "19";
+            case V20 -> "20";
+            case V21 -> "21";
+            case V22 -> "22";
             default -> throw new IllegalArgumentException("Unknown class version: " + classVersion);
         };
         return new JavaVersion(version);
+    }
+
+    public static JavaVersion toJavaVersion(ClassVersion version) {
+        return toJavaVersion(version.version);
+    }
+
+    public static ClassVersion fromVersion(String s) {
+        var v = s.split("\\.");
+
+        if (v.length != 2) {
+            throw new IllegalArgumentException("Invalid version: " + s);
+        }
+
+        var majorVersion = Integer.parseInt(v[0]);
+        var minorVersion = Integer.parseInt(v[1]);
+        var version = majorVersion | minorVersion << 16;
+        return new ClassVersion(version);
     }
 
     @Override
