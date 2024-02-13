@@ -28,6 +28,11 @@ const ControlPanel: React.FunctionComponent = () => {
             Rebuild Failed
           </Button>
         </ActionListItem>
+        <ActionListItem>
+          <Button variant="danger" id="rebuild-failed" onClick={() => AdminResourceService.postApiAdminCleanOutDatabase()}>
+            Delete All Data
+          </Button>
+        </ActionListItem>
       </ActionList>
     </CardBody>
   </Card>

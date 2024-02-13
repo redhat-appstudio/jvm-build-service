@@ -10,6 +10,16 @@ export class AdminResourceService {
      * @returns any Created
      * @throws ApiError
      */
+    public static postApiAdminCleanOutDatabase(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/clean-out-database',
+        });
+    }
+    /**
+     * @returns any Created
+     * @throws ApiError
+     */
     public static postApiAdminRebuildAll(): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
