@@ -194,9 +194,10 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                             var fromVersion = ClassVersion.fromVersion(matcher.group("fromVersion"));
                             var toVersion = ClassVersion.fromVersion(matcher.group("toVersion"));
                             var sourceVersion = ClassVersion.toJavaVersion(fromVersion);
-                            Log.errorf("Class %s version in file %s changed from %s to %s. Rerun build with -source %s -target %s",
-                                className, fileName, fromVersion,
-                                toVersion, sourceVersion, sourceVersion);
+                            Log.errorf(
+                                    "Class %s version in file %s changed from %s to %s. Rerun build with -source %s -target %s",
+                                    className, fileName, fromVersion,
+                                    toVersion, sourceVersion, sourceVersion);
                             reportOnly = false;
                             break;
                         }
@@ -205,8 +206,8 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                             var fileName = matcher.group("fileName");
                             var className = matcher.group("className");
                             Log.errorf("Class %s in file %s was removed", className, fileName);
-                           reportOnly = false;
-                           break;
+                            reportOnly = false;
+                            break;
                         }
                     }
                 }
