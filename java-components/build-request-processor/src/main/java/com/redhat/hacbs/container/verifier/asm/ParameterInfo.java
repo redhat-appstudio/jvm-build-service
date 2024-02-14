@@ -14,6 +14,6 @@ public record ParameterInfo(String name, AccessSet<ParameterAccess> access) impl
 
     @Override
     public String toString() {
-        return "parameter: " + "name=" + name + ", access=" + access;
+        return getName();
     }
 }
