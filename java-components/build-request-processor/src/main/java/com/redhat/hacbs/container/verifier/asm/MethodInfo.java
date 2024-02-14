@@ -4,6 +4,7 @@ import static org.objectweb.asm.Opcodes.ACC_FINAL;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,9 +37,9 @@ public record MethodInfo(AccessSet<MethodAccess> access, String name, String des
                 node.name, node.desc, node.signature,
                 List.copyOf(node.exceptions),
                 node.parameters != null
-                        ? node.parameters.stream()
+                        ? node.parameters.stream().filter(p -> p.name == null && p.access == 0)
                                 .collect(Collectors.toMap(n -> n.name, ParameterInfo::new, (x, y) -> x, LinkedHashMap::new))
-                        : null,
+                        : Collections.emptyMap(),
                 node.visibleAnnotations != null
                         ? node.visibleAnnotations.stream()
                                 .collect(Collectors.toMap(n -> n.desc, AnnotationInfo::new, (x, y) -> x, LinkedHashMap::new))

@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.verifier.asm;
 
+import static com.redhat.hacbs.container.verifier.asm.AsmUtils.accessSetToString;
 import static com.redhat.hacbs.container.verifier.asm.AsmUtils.accessToSet;
 
 import java.util.Objects;
@@ -37,6 +38,6 @@ public class AccessSet<E extends Enum<E> & Access> {
 
     @Override
     public String toString() {
-        return AsmUtils.accessSetToString(set);
+        return accessSetToString(set);
     }
 }
