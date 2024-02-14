@@ -156,7 +156,7 @@ func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log 
 	if deps != "" {
 		return reconcile.Result{}, r.handleJavaDependencies(ctx, strings.Split(deps, ","), &ia)
 	}
-	ia.Status.State = v1alpha1.JvmImageScanStateFailed
+	ia.Status.State = v1alpha1.JvmImageScanStateComplete
 	return reconcile.Result{}, r.client.Status().Update(ctx, &ia)
 }
 

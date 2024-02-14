@@ -40,8 +40,7 @@ public class ImageResource {
                         new String(Base64.getUrlDecoder().decode(repository), StandardCharsets.UTF_8))
                 .page(Page.of(page - 1, perPage)).list();
         return new PageParameters<>(
-                all.stream().map(
-                        s -> new ImageDTO(s.repository.repository, s.tag, s.digest, s.analysisComplete, s.dependencySet.id))
+                all.stream().map(ImageDTO::of)
                         .toList(),
                 ContainerImage.count(), page, perPage);
     }
@@ -54,5 +53,11 @@ public class ImageResource {
         scan.setMetadata(new ObjectMeta());
         scan.getMetadata().setGenerateName("user-scan-");
         kubernetesClient.get().resource(scan).create();
+    }
+
+    @GET
+    @Path("scan/{image}")
+    public ImageDTO getImage(@PathParam("image") String image) {
+        return ImageDTO.of(ContainerImage.get(image));
     }
 }

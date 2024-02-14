@@ -179,7 +179,9 @@ public class JvmImageScanWatcher {
         }
         containerImage.analysisComplete = true;
         containerImage.persist();
-        client.resource(resource).delete();
+        if (LaunchMode.current() == LaunchMode.NORMAL) {
+            Log.infof("Marking image resource %s for deletion", resource.getSpec().getImage());
+            client.resource(resource).delete();
+        }
     }
-
 }

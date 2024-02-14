@@ -38,8 +38,7 @@ public class DeploymentResource {
                     if (existing.dependencySet.dependencies.isEmpty()) {
                         continue;
                     }
-                    info.images.add(new ImageDTO(existing.repository.repository, existing.tag, existing.digest,
-                            existing.analysisComplete, existing.dependencySet.id));
+                    info.images.add(ImageDTO.of(existing));
                 }
             }
             if (!info.images.isEmpty()) {
