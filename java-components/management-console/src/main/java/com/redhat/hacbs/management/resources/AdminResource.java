@@ -2,6 +2,7 @@ package com.redhat.hacbs.management.resources;
 
 import java.util.Map;
 
+import com.redhat.hacbs.management.model.BuildAttempt;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.POST;
@@ -61,6 +62,9 @@ public class AdminResource {
         for (var i : builds.getItems()) {
             kubernetesClient.resource(i).delete();
         }
+        runner.run(() -> {
+            BuildAttempt.deleteAll();
+        });
         runner.run(() -> {
             StoredDependencyBuild.deleteAll();
         });

@@ -1046,6 +1046,19 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if len(path) > 0 {
 		args = append(args, "--context", path)
 	}
+	for _, ownerRef := range db.OwnerReferences {
+		if strings.EqualFold(ownerRef.Kind, "artifactbuild") || strings.EqualFold(ownerRef.Kind, "artifactbuilds") {
+			other := v1alpha1.ArtifactBuild{}
+			err := r.client.Get(ctx, types.NamespacedName{Name: ownerRef.Name, Namespace: db.Namespace}, &other)
+			if err != nil {
+				log.Error(err, "Could not lookup owner artifact")
+				continue
+			}
+			args = append(args, "--artifact")
+			args = append(args, other.Spec.GAV)
+			break
+		}
+	}
 
 	//don't look for existing artifacts on a rebuild
 	if (db.Annotations == nil || db.Annotations[artifactbuild.RebuiltAnnotation] != "true") &&

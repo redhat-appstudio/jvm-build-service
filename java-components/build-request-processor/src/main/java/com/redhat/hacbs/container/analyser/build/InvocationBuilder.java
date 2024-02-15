@@ -35,6 +35,7 @@ public class InvocationBuilder {
 
     JavaVersion minJavaVersion;
     JavaVersion maxJavaVersion;
+    JavaVersion preferredJavaVersion;
 
     BuildInfo info = new BuildInfo();
     /**
@@ -59,6 +60,11 @@ public class InvocationBuilder {
             throw new IllegalArgumentException("cannot use method for JDK");
         }
         discoveredToolVersions.put(tool, version);
+    }
+
+    public InvocationBuilder setPreferredJavaVersion(JavaVersion preferredJavaVersion) {
+        this.preferredJavaVersion = preferredJavaVersion;
+        return this;
     }
 
     public void addToolInvocation(String tool, List<String> invocation) {
@@ -138,6 +144,29 @@ public class InvocationBuilder {
             info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
             info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
             info.setDisabledPlugins(buildRecipeInfo.getDisabledPlugins());
+            if (buildRecipeInfo.getJavaVersion() != null) {
+                preferredJavaVersion = new JavaVersion(buildRecipeInfo.getJavaVersion());
+            }
+        }
+        if (preferredJavaVersion != null) {
+            //try and match the upstream JDK as closely as possible
+            for (var version : availableTools.get("jdk")) {
+                JavaVersion j = new JavaVersion(version);
+                if (preferredJavaVersion.intVersion() == j.intVersion()) {
+                    //exact match
+                    minJavaVersion = preferredJavaVersion;
+                    maxJavaVersion = preferredJavaVersion;
+                    break;
+                } else if (j.intVersion() < preferredJavaVersion.intVersion()
+                        && (minJavaVersion == null || minJavaVersion.intVersion() < j.intVersion())) {
+                    minJavaVersion = j;
+                } else if (j.intVersion() > preferredJavaVersion.intVersion()
+                        && (maxJavaVersion == null || maxJavaVersion.intVersion() > j.intVersion())) {
+                    maxJavaVersion = j;
+                }
+            }
+            Log.infof("Set Java version to [%s, %s] due to preferred version %s", minJavaVersion,
+                    maxJavaVersion, preferredJavaVersion);
         }
         Date commitTime = new Date(info.commitTime);
         DateFormat simpleDate = new SimpleDateFormat("yyyy-MM-dd");

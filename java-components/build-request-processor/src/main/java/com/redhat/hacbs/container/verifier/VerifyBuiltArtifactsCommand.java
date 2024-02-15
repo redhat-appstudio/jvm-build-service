@@ -268,7 +268,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
     Optional<Path> resolveArtifact(Path relativeFile) throws IOException {
         var url = options.mavenOptions.repositoryUrl.endsWith("/") ? options.mavenOptions.repositoryUrl + relativeFile
-                : options.mavenOptions.repositoryUrl + "/" + relativeFile;
+                : options.mavenOptions.repositoryUrl + "/" + relativeFile + "?upstream-only=true";
         return downloadFile(URI.create(url));
     }
 }
