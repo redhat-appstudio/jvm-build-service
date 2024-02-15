@@ -110,6 +110,7 @@ public class VerifyBuiltArtifactsCommandTest {
         assertThat(className).isNotNull().isEqualTo("io/smallrye/common/classloader/ClassDefiner");
     }
 
+    @Test
     void testResolveArtifact() throws IOException {
         var coords = "org.mock-server:mockserver-netty:jar:jar-with-dependencies:5.8.1";
         var gav = coordsToGav(coords);

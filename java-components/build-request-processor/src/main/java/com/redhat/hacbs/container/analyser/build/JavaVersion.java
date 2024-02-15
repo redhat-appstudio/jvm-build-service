@@ -1,6 +1,17 @@
 package com.redhat.hacbs.container.analyser.build;
 
 public record JavaVersion(String version, int intVersion) implements Comparable<JavaVersion> {
+
+    public static final JavaVersion JAVA_7 = new JavaVersion("7");
+
+    public static final JavaVersion JAVA_8 = new JavaVersion("8");
+
+    public static final JavaVersion JAVA_11 = new JavaVersion("11");
+
+    public static final JavaVersion JAVA_17 = new JavaVersion("17");
+
+    public static final JavaVersion JAVA_21 = new JavaVersion("21");
+
     public JavaVersion(String version) {
         this(version, toVersion(version));
     }

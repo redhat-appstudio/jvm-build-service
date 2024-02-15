@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.analyser.build;
 
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_8;
 import static com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery.filterJavaVersions;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,7 +29,7 @@ class JavaVersionDiscoveryTest {
             filterJavaVersions(pomFile, model, invocationBuilder);
 
             assertThat(invocationBuilder.minJavaVersion).isNotNull().isEqualTo(new JavaVersion("9"));
-            assertThat(invocationBuilder.maxJavaVersion).isNotNull().isEqualTo(new JavaVersion("8"));
+            assertThat(invocationBuilder.maxJavaVersion).isNotNull().isEqualTo(JAVA_8);
         }
     }
 
@@ -42,7 +43,7 @@ class JavaVersionDiscoveryTest {
             var invocationBuilder = new InvocationBuilder(null, new HashMap<>(), "1");
             filterJavaVersions(pomFile, model, invocationBuilder);
             assertThat(invocationBuilder.minJavaVersion).isNull();
-            assertThat(invocationBuilder.maxJavaVersion).isNotNull().isEqualTo(new JavaVersion("8"));
+            assertThat(invocationBuilder.maxJavaVersion).isNotNull().isEqualTo(JAVA_8);
         }
     }
 
