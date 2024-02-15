@@ -18,11 +18,13 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.HashingOutputStream;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
+import com.redhat.hacbs.recipes.GAV;
 
 import io.quarkus.logging.Log;
 
@@ -31,6 +33,7 @@ import io.quarkus.logging.Log;
  */
 public class RepositoryCache {
 
+    private static final Object DELETE_IN_PROGRESS = new Object();
     public static final String SHA_1 = ".sha1";
     public static final String DOWNLOADS = ".downloads";
     public static final String HEADERS = ".hacbs-http-headers";
@@ -49,6 +52,13 @@ public class RepositoryCache {
      */
     final ConcurrentMap<String, DownloadingFile> inProgressDownloads = new ConcurrentHashMap<>();
     final ConcurrentMap<String, CountDownLatch> inProgressTransformations = new ConcurrentHashMap<>();
+
+    /**
+     * This will either hold {@link #DELETE_IN_PROGRESS} if delete is in progress, or a countdown latch.
+     *
+     * Access must be synchronized on the map itself
+     */
+    final Map<String, Object> inUseTracker = new HashMap<>();
 
     public RepositoryCache(StorageManager storageManager, Repository repository, boolean overwriteExistingBytecodeMarkers) {
         this.storageManager = storageManager;
@@ -145,25 +155,126 @@ public class RepositoryCache {
         }
     }
 
-    private Optional<ArtifactResult> handleDownloadedFile(Path downloaded, Path trackedFileTarget, boolean tracked, String gav)
-            throws IOException, InterruptedException {
-
-        boolean jarFile = downloaded.toString().endsWith(".jar");
-        //same headers for both
-        String fileName = downloaded.getFileName().toString();
-        Path headers = downloaded.getParent().resolve(fileName + HEADERS);
-        Path originalSha1 = downloaded.getParent().resolve(fileName + SHA_1);
-        Map<String, String> headerMap = new HashMap<>();
-        if (Files.exists(headers)) {
-            try (InputStream in = Files.newInputStream(headers)) {
-                Properties p = new Properties();
-                p.load(in);
-                for (var i : p.entrySet()) {
-                    headerMap.put(i.getKey().toString().toLowerCase(), i.getValue().toString());
+    public void deleteGav(String gav) {
+        while (true) {
+            synchronized (inUseTracker) {
+                Object res = inUseTracker.get(gav);
+                if (res == DELETE_IN_PROGRESS) {
+                    //already deleting
+                    return;
+                } else if (res != null) {
+                    try {
+                        inUseTracker.wait();
+                        continue;
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
+                inUseTracker.put(gav, DELETE_IN_PROGRESS);
+                break;
             }
         }
-        if (!jarFile || !tracked) {
+        try {
+            var parsed = GAV.parse(gav);
+            String targetFile = parsed.getGroupId().replaceAll("\\.", File.separator) + File.separator + parsed.getArtifactId()
+                    + File.separator + parsed.getVersion();
+            storageManager.delete(targetFile);
+        } finally {
+            synchronized (inUseTracker) {
+                inUseTracker.remove(gav);
+                inUseTracker.notifyAll();
+            }
+        }
+
+    }
+
+    private Optional<ArtifactResult> handleDownloadedFile(Path downloaded, Path trackedFileTarget, boolean tracked, String gav)
+            throws IOException, InterruptedException {
+        var lock = new GavLock(gav);
+        try {
+
+            boolean jarFile = downloaded.toString().endsWith(".jar");
+            //same headers for both
+            String fileName = downloaded.getFileName().toString();
+            Path headers = downloaded.getParent().resolve(fileName + HEADERS);
+            Path originalSha1 = downloaded.getParent().resolve(fileName + SHA_1);
+            Map<String, String> headerMap = new HashMap<>();
+            if (Files.exists(headers)) {
+                try (InputStream in = Files.newInputStream(headers)) {
+                    Properties p = new Properties();
+                    p.load(in);
+                    for (var i : p.entrySet()) {
+                        headerMap.put(i.getKey().toString().toLowerCase(), i.getValue().toString());
+                    }
+                }
+            }
+            if (!jarFile || !tracked) {
+                String sha = null;
+                if (Files.exists(originalSha1)) {
+                    sha = Files.readString(originalSha1, StandardCharsets.UTF_8);
+                }
+                return Optional
+                        .of(new ArtifactResult(downloaded, Files.newInputStream(downloaded), Files.size(downloaded),
+                                Optional.ofNullable(sha),
+                                headerMap, lock));
+            }
+
+            Path instrumentedSha;
+            Path trackedJarFile;
+            if (jarFile) {
+                instrumentedSha = trackedFileTarget.getParent().resolve(fileName + SHA_1);
+                trackedJarFile = trackedFileTarget;
+            } else {
+                instrumentedSha = trackedFileTarget;
+                trackedJarFile = trackedFileTarget.getParent()
+                        .resolve(fileName.substring(0, fileName.length() - SHA_1.length()));
+            }
+            CountDownLatch existing = inProgressTransformations.get(gav);
+            if (existing != null) {
+                existing.await();
+            }
+            if (!Files.exists(trackedJarFile)) {
+                CountDownLatch myLatch = new CountDownLatch(1);
+                existing = inProgressTransformations.putIfAbsent(gav, myLatch);
+                if (existing != null) {
+                    existing.await();
+                } else {
+                    Files.createDirectories(trackedJarFile.getParent());
+                    try (OutputStream out = Files.newOutputStream(trackedJarFile); var in = Files.newInputStream(downloaded)) {
+                        HashingOutputStream hashingOutputStream = new HashingOutputStream(out);
+                        ClassFileTracker.addTrackingDataToJar(in,
+                                new TrackingData(gav, repository.getName(), Collections.emptyMap()), hashingOutputStream,
+                                overwriteExistingBytecodeMarkers);
+                        hashingOutputStream.close();
+
+                        Files.writeString(instrumentedSha, hashingOutputStream.getHash());
+                    } catch (Throwable e) {
+                        Log.errorf(e, "Failed to track jar %s", downloaded);
+                        Files.delete(trackedJarFile);
+                    } finally {
+                        myLatch.countDown();
+                        inProgressTransformations.remove(gav);
+                    }
+                }
+            }
+            if (Files.exists(trackedJarFile)) {
+                if (jarFile) {
+                    String sha = null;
+                    if (Files.exists(instrumentedSha)) {
+                        sha = Files.readString(instrumentedSha, StandardCharsets.UTF_8);
+                    }
+                    return Optional
+                            .of(new ArtifactResult(trackedJarFile, Files.newInputStream(trackedJarFile),
+                                    Files.size(trackedJarFile),
+                                    Optional.ofNullable(sha), headerMap, lock));
+                } else {
+                    return Optional
+                            .of(new ArtifactResult(instrumentedSha, Files.newInputStream(instrumentedSha),
+                                    Files.size(instrumentedSha),
+                                    Optional.empty(), Map.of(), lock));
+                }
+            }
+
             String sha = null;
             if (Files.exists(originalSha1)) {
                 sha = Files.readString(originalSha1, StandardCharsets.UTF_8);
@@ -171,73 +282,14 @@ public class RepositoryCache {
             return Optional
                     .of(new ArtifactResult(downloaded, Files.newInputStream(downloaded), Files.size(downloaded),
                             Optional.ofNullable(sha),
-                            headerMap));
+                            headerMap, lock));
+        } catch (IOException | RuntimeException | InterruptedException t) {
+            lock.run();
+            throw t;
+        } catch (Throwable t) {
+            lock.run();
+            throw new RuntimeException(t);
         }
-
-        Path instrumentedSha;
-        Path trackedJarFile;
-        if (jarFile) {
-            instrumentedSha = trackedFileTarget.getParent().resolve(fileName + SHA_1);
-            trackedJarFile = trackedFileTarget;
-        } else {
-            instrumentedSha = trackedFileTarget;
-            trackedJarFile = trackedFileTarget.getParent()
-                    .resolve(fileName.substring(0, fileName.length() - SHA_1.length()));
-        }
-        CountDownLatch existing = inProgressTransformations.get(gav);
-        if (existing != null) {
-            existing.await();
-        }
-        if (!Files.exists(trackedJarFile)) {
-            CountDownLatch myLatch = new CountDownLatch(1);
-            existing = inProgressTransformations.putIfAbsent(gav, myLatch);
-            if (existing != null) {
-                existing.await();
-            } else {
-                Files.createDirectories(trackedJarFile.getParent());
-                try (OutputStream out = Files.newOutputStream(trackedJarFile); var in = Files.newInputStream(downloaded)) {
-                    HashingOutputStream hashingOutputStream = new HashingOutputStream(out);
-                    ClassFileTracker.addTrackingDataToJar(in,
-                            new TrackingData(gav, repository.getName(), Collections.emptyMap()), hashingOutputStream,
-                            overwriteExistingBytecodeMarkers);
-                    hashingOutputStream.close();
-
-                    Files.writeString(instrumentedSha, hashingOutputStream.getHash());
-                } catch (Throwable e) {
-                    Log.errorf(e, "Failed to track jar %s", downloaded);
-                    Files.delete(trackedJarFile);
-                } finally {
-                    myLatch.countDown();
-                    inProgressTransformations.remove(gav);
-                }
-            }
-        }
-        if (Files.exists(trackedJarFile)) {
-            if (jarFile) {
-                String sha = null;
-                if (Files.exists(instrumentedSha)) {
-                    sha = Files.readString(instrumentedSha, StandardCharsets.UTF_8);
-                }
-                return Optional
-                        .of(new ArtifactResult(trackedJarFile, Files.newInputStream(trackedJarFile), Files.size(trackedJarFile),
-                                Optional.ofNullable(sha), headerMap));
-            } else {
-                return Optional
-                        .of(new ArtifactResult(instrumentedSha, Files.newInputStream(instrumentedSha),
-                                Files.size(instrumentedSha),
-                                Optional.empty(), Map.of()));
-            }
-        }
-
-        String sha = null;
-        if (Files.exists(originalSha1)) {
-            sha = Files.readString(originalSha1, StandardCharsets.UTF_8);
-        }
-        return Optional
-                .of(new ArtifactResult(downloaded, Files.newInputStream(downloaded), Files.size(downloaded),
-                        Optional.ofNullable(sha),
-                        headerMap));
-
     }
 
     /**
@@ -275,6 +327,7 @@ public class RepositoryCache {
                 StorageManager downloadTempDir,
                 boolean tracked,
                 String gav) {
+            GavLock lock = new GavLock(gav);
             try {
                 Optional<ArtifactResult> result = clientInvocation.apply(repositoryClient);
                 if (result.isPresent()) {
@@ -326,7 +379,7 @@ public class RepositoryCache {
                                                     } catch (IOException e) {
                                                         throw new RuntimeException(e);
                                                     }
-                                                }));
+                                                }, lock));
 
                             } else {
                                 return Optional
@@ -337,7 +390,7 @@ public class RepositoryCache {
                                                     } catch (IOException e) {
                                                         throw new RuntimeException(e);
                                                     }
-                                                }));
+                                                }, lock));
                             }
                         }
                     }
@@ -362,6 +415,7 @@ public class RepositoryCache {
                 }
                 return Optional.empty();
             } catch (Throwable e) {
+                lock.run();
                 synchronized (this) {
                     problem = e;
                 }
@@ -372,6 +426,49 @@ public class RepositoryCache {
                 synchronized (this) {
                     ready = true;
                     notifyAll();
+                }
+            }
+        }
+    }
+
+    class GavLock implements Runnable {
+        final String gav;
+        boolean closed;
+
+        GavLock(String gav) {
+            this.gav = gav;
+            while (true) {
+                synchronized (inUseTracker) {
+                    Object results = inUseTracker.get(gav);
+                    if (results == DELETE_IN_PROGRESS) {
+                        try {
+                            inUseTracker.wait();
+                            continue;
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else if (results == null) {
+                        results = new AtomicInteger();
+                        inUseTracker.put(gav, results);
+                    }
+                    AtomicInteger count = (AtomicInteger) results;
+                    count.incrementAndGet();
+                    break;
+                }
+            }
+        }
+
+        @Override
+        public void run() {
+            synchronized (inUseTracker) {
+                if (closed) {
+                    return;
+                }
+                closed = true;
+                AtomicInteger count = (AtomicInteger) inUseTracker.get(gav);
+                if (count.decrementAndGet() == 0) {
+                    inUseTracker.remove(gav);
+                    inUseTracker.notifyAll();
                 }
             }
         }
