@@ -1,12 +1,13 @@
 package com.redhat.hacbs.container.verifier;
 
+import static com.redhat.hacbs.container.verifier.MavenUtils.downloadFile;
 import static com.redhat.hacbs.container.verifier.MavenUtils.pathToCoords;
 import static java.nio.file.FileVisitResult.CONTINUE;
 import static org.apache.commons.lang3.StringUtils.endsWithAny;
-import static org.apache.http.HttpStatus.SC_OK;
 import static picocli.CommandLine.ArgGroup;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,9 +28,6 @@ import java.util.regex.Pattern;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.HttpClientBuilder;
 
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.container.verifier.asm.ClassVersion;
@@ -274,31 +272,8 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
     }
 
     Optional<Path> resolveArtifact(Path relativeFile) throws IOException {
-        try (var client = HttpClientBuilder.create().build()) {
-            var url = options.mavenOptions.repositoryUrl.endsWith("/") ? options.mavenOptions.repositoryUrl + relativeFile
-                    : options.mavenOptions.repositoryUrl + "/" + relativeFile;
-            Log.debugf("Getting URL %s", url);
-            var get = new HttpGet(url);
-
-            try (var response = client.execute(get)) {
-                var statusLine = response.getStatusLine();
-                var statusCode = statusLine.getStatusCode();
-
-                if (statusCode != SC_OK) {
-                    var reasonPhrase = statusLine.getReasonPhrase();
-                    Log.errorf("Unexpected status code %d (%s) for %s", statusCode, reasonPhrase, relativeFile);
-                    return Optional.empty();
-                }
-
-                var tempDirectory = Files.createTempDirectory("verify-built-artifacts-");
-                var jarName = relativeFile.getFileName();
-                var path = tempDirectory.resolve(jarName);
-                Log.debugf("Saving %s to %s", jarName, path);
-                var entity = response.getEntity();
-                var content = entity.getContent();
-                Files.copy(content, path);
-                return Optional.of(path);
-            }
-        }
+        var url = options.mavenOptions.repositoryUrl.endsWith("/") ? options.mavenOptions.repositoryUrl + relativeFile
+                : options.mavenOptions.repositoryUrl + "/" + relativeFile;
+        return downloadFile(URI.create(url));
     }
 }

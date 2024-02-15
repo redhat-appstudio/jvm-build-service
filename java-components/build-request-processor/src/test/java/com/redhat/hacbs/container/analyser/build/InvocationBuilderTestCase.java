@@ -4,6 +4,7 @@ import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.InvocationBuilder.findClosestVersions;
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_11;
 
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -97,8 +98,8 @@ public class InvocationBuilderTestCase {
         builder.setCommitTime(System.currentTimeMillis());
         builder.addToolInvocation(MAVEN, List.of("install"));
         builder.addToolInvocation(GRADLE, List.of("build"));
-        builder.minJavaVersion(new JavaVersion("11"));
-        builder.maxJavaVersion(new JavaVersion("11"));
+        builder.minJavaVersion(JAVA_11);
+        builder.maxJavaVersion(JAVA_11);
         result = builder.build(buildInfoLocator);
         Assertions.assertEquals(8, result.invocations.size());
         Assertions.assertTrue(result.invocations
@@ -113,8 +114,8 @@ public class InvocationBuilderTestCase {
         builder = newBuilder();
         builder.addToolInvocation(MAVEN, List.of("mvn", "install"));
         builder.addToolInvocation(GRADLE, List.of("gradle", "build"));
-        builder.minJavaVersion(new JavaVersion("11"));
-        builder.maxJavaVersion(new JavaVersion("11"));
+        builder.minJavaVersion(JAVA_11);
+        builder.maxJavaVersion(JAVA_11);
         builder.discoveredToolVersion(GRADLE, "5.2");
         result = builder.build(buildInfoLocator);
         Assertions.assertEquals(4, result.invocations.size());

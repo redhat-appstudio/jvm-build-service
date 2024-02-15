@@ -4,6 +4,12 @@ import static com.redhat.hacbs.container.analyser.build.BuildInfo.ANT;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.SBT;
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_11;
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_17;
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_21;
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_7;
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_8;
+import static com.redhat.hacbs.container.verifier.MavenUtils.getBuildJdk;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.eclipse.jgit.api.ResetCommand.ResetType.HARD;
@@ -109,6 +115,9 @@ public class LookupBuildInfoCommand implements Runnable {
 
     @CommandLine.Option(names = "--tool-versions", description = "Available Tool Versions")
     String toolVersions;
+
+    @CommandLine.Option(names = "--artifact", description = "Artifact to get manifest from")
+    String artifact;
 
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
@@ -236,6 +245,39 @@ public class LookupBuildInfoCommand implements Runnable {
                     || Objects.equals(buildRecipeInfo.getTool(), ANT)) {
                 if ((buildScript = buildScriptPaths.get(ANT)) != null) {
                     handleAntBuild(builder, buildScript);
+                }
+            }
+
+            if (artifact != null) {
+                Log.debugf("Lookup Build JDK for artifact %s", artifact);
+                var optBuildJdk = getBuildJdk(cacheUrl, artifact);
+                if (optBuildJdk.isPresent()) {
+                    var buildJdk = optBuildJdk.get();
+                    Log.debugf("Found build JDK version %s in manifest", buildJdk.version());
+                    if (buildJdk.compareTo(JAVA_7) < 0) {
+                        builder.minJavaVersion(JAVA_7);
+                        builder.maxJavaVersion(JAVA_7);
+                    } else if (buildJdk.compareTo(JAVA_8) > 0 && buildJdk.compareTo(JAVA_11) < 0) {
+                        builder.minJavaVersion(JAVA_8);
+                        builder.maxJavaVersion(JAVA_11);
+                    } else if (buildJdk.compareTo(JAVA_11) > 0 && buildJdk.compareTo(JAVA_17) < 0) {
+                        builder.minJavaVersion(JAVA_11);
+                        builder.maxJavaVersion(JAVA_17);
+                    } else if (buildJdk.compareTo(JAVA_17) > 0 && buildJdk.compareTo(JAVA_21) < 0) {
+                        builder.minJavaVersion(JAVA_17);
+                        builder.maxJavaVersion(JAVA_21);
+                    } else if (buildJdk.compareTo(JAVA_21) > 0) {
+                        builder.minJavaVersion(JAVA_21);
+                        builder.maxJavaVersion(JAVA_21);
+                    } else {
+                        builder.minJavaVersion(buildJdk);
+                        builder.maxJavaVersion(buildJdk);
+                    }
+
+                    Log.debugf("Set Java version to [%s, %s]", builder.minJavaVersion.version(),
+                            builder.maxJavaVersion.version());
+                } else {
+                    Log.debugf("No Build JDK found in JAR manifest");
                 }
             }
 

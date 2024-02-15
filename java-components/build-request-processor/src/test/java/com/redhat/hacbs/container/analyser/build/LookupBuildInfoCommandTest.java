@@ -1,8 +1,14 @@
 package com.redhat.hacbs.container.analyser.build;
 
+import static com.redhat.hacbs.container.verifier.MavenUtils.getBuildJdk;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.LogRecord;
@@ -15,6 +21,7 @@ import com.redhat.hacbs.recipes.tools.BuildToolInfo;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
+import io.quarkus.logging.Log;
 import io.quarkus.test.LogCollectingTestResource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.ResourceArg;
@@ -174,5 +181,41 @@ class LookupBuildInfoCommandTest {
                 cacheBuildInfoLocator);
         assertThat(info.invocations).isNotEmpty();
         assertTrue(info.invocations.get(0).getCommands().contains("-Prelease"));
+    }
+
+    @Test
+    void testGetBuildJdkFromJarManifest() throws IOException {
+        var v = new String[] { "1.0", "1.1", "1.2", "1.3", "1.3.1", "1.3.2", "1.4", "2.0", "2.0.1", "2.1", "2.2", "2.3", "2.4",
+                "2.5",
+                "2.6", "2.7", "2.8.0", "2.9.0", "2.10.0", "2.11.0", "2.12.0", "2.13.0", "2.14.0", "2.15.0", "2.15.1" };
+        var list = new ArrayList<String>();
+
+        for (var version : v) {
+            var coords = "commons-io:commons-io:jar:" + version;
+            var optBuildJdk = getBuildJdk("https://repo1.maven.org/maven2", coords);
+            if (optBuildJdk.isPresent()) {
+                var buildJdk = optBuildJdk.get();
+                Log.debugf("Version %s: %s", version, buildJdk);
+                list.add(buildJdk.version());
+            }
+        }
+
+        assertThat(list).containsExactly("4", "6", "5", "5", "5", "6", "6", "6", "6", "7", "8", "8", "8", "8", "8", "8", "8",
+                "8", "17", "21", "21");
+    }
+
+    @Test
+    void testBuildJdkSetsJavaVersion() throws Exception {
+        var lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.mavenContext = new BootstrapMavenContext();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        lookupBuildInfoCommand.commit = "7ab205a40853486c1d978e6a7555808b9435407d";
+        lookupBuildInfoCommand.cacheUrl = "https://repo1.maven.org/maven2";
+        lookupBuildInfoCommand.artifact = "jaxen:jaxen:1.1.6";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/codehaus/jaxen.git", new BuildRecipeInfo(),
+                cacheBuildInfoLocator);
+        List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
+        assertThat(logRecords).flatMap(LogCollectingTestResource::format).contains("Found build JDK version 6 in manifest")
+                .contains("Set Java version to [7, 7]");
     }
 }
