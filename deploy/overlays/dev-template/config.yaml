@@ -18,10 +18,4 @@ spec:
     identity: ${GIT_DEPLOY_IDENTITY}
     url: ${GIT_DEPLOY_URL}
     disableSSLVerification: ${GIT_DISABLE_SSL_VERIFICATION}
-  relocationPatterns:
-    - relocationPattern:
-        buildPolicy: "default"
-        patterns:
-          - pattern:
-              from: (io.github.stuartwdouglas.hacbs-test.simple):(simple-jdk17):(99-does-not-exist)
-              to: io.github.stuartwdouglas.hacbs-test.simple:simple-jdk17:0.1.2
+  requireArtifactVerification: true
