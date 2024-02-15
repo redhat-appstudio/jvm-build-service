@@ -4,11 +4,6 @@ import static com.redhat.hacbs.container.analyser.build.BuildInfo.ANT;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.SBT;
-import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_11;
-import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_17;
-import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_21;
-import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_7;
-import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_8;
 import static com.redhat.hacbs.container.verifier.MavenUtils.getBuildJdk;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -253,27 +248,30 @@ public class LookupBuildInfoCommand implements Runnable {
                 var optBuildJdk = getBuildJdk(cacheUrl, artifact);
                 if (optBuildJdk.isPresent()) {
                     var buildJdk = optBuildJdk.get();
-                    Log.debugf("Found build JDK version %s in manifest", buildJdk.version());
-                    if (buildJdk.compareTo(JAVA_7) < 0) {
-                        builder.minJavaVersion(JAVA_7);
-                        builder.maxJavaVersion(JAVA_7);
-                    } else if (buildJdk.compareTo(JAVA_8) > 0 && buildJdk.compareTo(JAVA_11) < 0) {
-                        builder.minJavaVersion(JAVA_8);
-                        builder.maxJavaVersion(JAVA_11);
-                    } else if (buildJdk.compareTo(JAVA_11) > 0 && buildJdk.compareTo(JAVA_17) < 0) {
-                        builder.minJavaVersion(JAVA_11);
-                        builder.maxJavaVersion(JAVA_17);
-                    } else if (buildJdk.compareTo(JAVA_17) > 0 && buildJdk.compareTo(JAVA_21) < 0) {
-                        builder.minJavaVersion(JAVA_17);
-                        builder.maxJavaVersion(JAVA_21);
-                    } else if (buildJdk.compareTo(JAVA_21) > 0) {
-                        builder.minJavaVersion(JAVA_21);
-                        builder.maxJavaVersion(JAVA_21);
-                    } else {
-                        builder.minJavaVersion(buildJdk);
-                        builder.maxJavaVersion(buildJdk);
+                    JavaVersion min = null;
+                    JavaVersion max = null;
+                    //try and match the upstream JDK as closely as possible
+                    for (var version : availableTools.get("jdk")) {
+                        JavaVersion j = new JavaVersion(version);
+                        if (buildJdk.intVersion() == j.intVersion()) {
+                            //exact match
+                            min = buildJdk;
+                            max = buildJdk;
+                            break;
+                        } else if (j.intVersion() < buildJdk.intVersion()
+                                && (min == null || min.intVersion() < j.intVersion())) {
+                            min = j;
+                        } else if (j.intVersion() > buildJdk.intVersion()
+                                && (max == null || max.intVersion() > j.intVersion())) {
+                            max = j;
+                        }
                     }
-
+                    if (min != null) {
+                        builder.minJavaVersion(min);
+                    }
+                    if (max != null) {
+                        builder.minJavaVersion(max);
+                    }
                     Log.debugf("Set Java version to [%s, %s]", builder.minJavaVersion.version(),
                             builder.maxJavaVersion.version());
                 } else {
