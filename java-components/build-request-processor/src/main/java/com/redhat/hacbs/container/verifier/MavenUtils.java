@@ -162,7 +162,7 @@ public class MavenUtils {
 
     public static Optional<Path> downloadCoordinates(String baseUrl, String coords) throws IOException {
         var path = coordsToPath(coords);
-        var url = baseUrl + "/" + path;
+        var url = baseUrl + "/" + path + "?upstream-only=true";
         return downloadFile(URI.create(url).normalize());
     }
 

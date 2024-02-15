@@ -27,4 +27,9 @@ public record JavaVersion(String version, int intVersion) implements Comparable<
     public int compareTo(JavaVersion o) {
         return Integer.compare(intVersion, o.intVersion);
     }
+
+    @Override
+    public String toString() {
+        return version;
+    }
 }

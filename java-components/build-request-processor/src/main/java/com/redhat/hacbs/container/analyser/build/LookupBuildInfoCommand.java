@@ -160,6 +160,7 @@ public class LookupBuildInfoCommand implements Runnable {
             throws Exception {
         Map<String, List<String>> availableTools = parseToolVersions();
         InvocationBuilder builder = new InvocationBuilder(buildRecipeInfo, availableTools, version);
+
         var path = Files.createTempDirectory("checkout");
         try (var clone = Git.cloneRepository()
                 .setCredentialsProvider(
@@ -243,39 +244,14 @@ public class LookupBuildInfoCommand implements Runnable {
                 }
             }
 
-            if (artifact != null) {
-                Log.debugf("Lookup Build JDK for artifact %s", artifact);
-                var optBuildJdk = getBuildJdk(cacheUrl, artifact);
+            if (artifact != null && (buildRecipeInfo == null || buildRecipeInfo.getJavaVersion() == null)) {
+                Log.infof("Lookup Build JDK for artifact %s", artifact);
+                var optBuildJdk = getBuildJdk(cacheUrl + "/v2/cache/rebuild-default/0", artifact);
                 if (optBuildJdk.isPresent()) {
                     var buildJdk = optBuildJdk.get();
-                    JavaVersion min = null;
-                    JavaVersion max = null;
-                    //try and match the upstream JDK as closely as possible
-                    for (var version : availableTools.get("jdk")) {
-                        JavaVersion j = new JavaVersion(version);
-                        if (buildJdk.intVersion() == j.intVersion()) {
-                            //exact match
-                            min = buildJdk;
-                            max = buildJdk;
-                            break;
-                        } else if (j.intVersion() < buildJdk.intVersion()
-                                && (min == null || min.intVersion() < j.intVersion())) {
-                            min = j;
-                        } else if (j.intVersion() > buildJdk.intVersion()
-                                && (max == null || max.intVersion() > j.intVersion())) {
-                            max = j;
-                        }
-                    }
-                    if (min != null) {
-                        builder.minJavaVersion(min);
-                    }
-                    if (max != null) {
-                        builder.minJavaVersion(max);
-                    }
-                    Log.debugf("Set Java version to [%s, %s]", builder.minJavaVersion.version(),
-                            builder.maxJavaVersion.version());
+                    builder.setPreferredJavaVersion(buildJdk);
                 } else {
-                    Log.debugf("No Build JDK found in JAR manifest");
+                    Log.infof("No Build JDK found in JAR manifest");
                 }
             }
 
@@ -505,13 +481,10 @@ public class LookupBuildInfoCommand implements Runnable {
         Log.infof("Detected Gradle version %s",
                 optionalGradleVersion.isPresent() ? detectedGradleVersion : "none");
         Log.infof("Chose Gradle version %s", detectedGradleVersion);
-        String javaVersion;
         var specifiedJavaVersion = GradleUtils.getSpecifiedJavaVersion(gradleFile);
 
         if (!specifiedJavaVersion.isEmpty()) {
-            builder.minJavaVersion(new JavaVersion(specifiedJavaVersion));
-            javaVersion = specifiedJavaVersion;
-            Log.infof("Chose min Java version %s based on specified Java version", javaVersion);
+            builder.setPreferredJavaVersion(new JavaVersion(specifiedJavaVersion));
         }
         ArrayList<String> inv = new ArrayList<>(GradleUtils.getGradleArgs(gradleFile));
         if (skipTests) {
