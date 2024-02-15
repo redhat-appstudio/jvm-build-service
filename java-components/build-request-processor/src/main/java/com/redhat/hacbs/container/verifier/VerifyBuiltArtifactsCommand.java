@@ -1,15 +1,9 @@
 package com.redhat.hacbs.container.verifier;
 
-import static com.redhat.hacbs.container.verifier.MavenUtils.newAuthenticationSelector;
-import static com.redhat.hacbs.container.verifier.MavenUtils.newMirrorSelector;
-import static com.redhat.hacbs.container.verifier.MavenUtils.newSettings;
 import static com.redhat.hacbs.container.verifier.MavenUtils.pathToCoords;
-import static com.redhat.hacbs.container.verifier.MavenUtils.resolveArtifact;
 import static java.nio.file.FileVisitResult.CONTINUE;
 import static org.apache.commons.lang3.StringUtils.endsWithAny;
-import static org.apache.maven.repository.RepositorySystem.DEFAULT_REMOTE_REPO_ID;
-import static org.apache.maven.repository.RepositorySystem.DEFAULT_REMOTE_REPO_URL;
-import static org.apache.maven.repository.internal.MavenRepositorySystemUtils.newSession;
+import static org.apache.http.HttpStatus.SC_OK;
 import static picocli.CommandLine.ArgGroup;
 
 import java.io.IOException;
@@ -23,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -33,18 +28,13 @@ import java.util.regex.Pattern;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
-import org.eclipse.aether.DefaultRepositorySystemSession;
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.repository.LocalRepository;
-import org.eclipse.aether.repository.RemoteRepository;
-import org.eclipse.aether.repository.RemoteRepository.Builder;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClientBuilder;
 
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.container.verifier.asm.ClassVersion;
 import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
-import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
-import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -74,12 +64,6 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
         @Option(required = true, names = { "-d", "--deploy-path" })
         Path deployPath;
-
-        @Option(names = { "-gs", "--global-settings" })
-        Path globalSettingsFile;
-
-        @Option(names = { "-s", "--settings" })
-        Path settingsFile;
     }
 
     static class Options {
@@ -113,17 +97,8 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
     @Option(names = { "--threads" }, defaultValue = "5")
     int threads;
-    private List<RemoteRepository> remoteRepositories;
-
-    private RepositorySystem system;
-
-    private DefaultRepositorySystemSession session;
-
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
-
-    @Inject
-    BootstrapMavenContext mvnCtx;
 
     public VerifyBuiltArtifactsCommand() {
 
@@ -143,11 +118,6 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 return (!numErrors.isEmpty() && !reportOnly ? 1 : 0);
             }
 
-            if (session == null) {
-                initMaven(options.mavenOptions.globalSettingsFile, options.mavenOptions.settingsFile);
-                session.setReadOnly();
-            }
-
             var futureResults = new HashMap<String, Future<List<String>>>();
 
             Files.walkFileTree(options.mavenOptions.deployPath, new SimpleFileVisitor<>() {
@@ -157,13 +127,12 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
                     if (fileName.endsWith(".jar")) {
                         try {
-                            var relativeFile = options.mavenOptions.deployPath.relativize(file);
-                            var coords = pathToCoords(relativeFile);
-                            Log.debugf("File %s has coordinates %s", relativeFile, coords);
                             if (endsWithAny(fileName, "-javadoc.jar", "-tests.jar", "-sources.jar")) {
-                                Log.debugf("Skipping file %s", relativeFile);
+                                Log.debugf("Skipping file %s", file);
                             } else {
-                                var failures = executorService.submit(() -> handleJar(file, coords, excludes));
+                                var relativeFile = options.mavenOptions.deployPath.relativize(file);
+                                var coords = pathToCoords(relativeFile);
+                                var failures = executorService.submit(() -> handleJar(file, relativeFile, coords, excludes));
                                 futureResults.put(coords, failures);
                             }
                         } catch (Exception e) {
@@ -268,61 +237,63 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
         return newExcludes;
     }
 
-    private void initMaven(Path globalSettingsFile, Path settingsFile)
-            throws IOException, BootstrapMavenException {
-        session = newSession();
-        var settings = newSettings(globalSettingsFile, settingsFile);
-        var mirrorSelector = newMirrorSelector(settings);
-        session.setMirrorSelector(mirrorSelector);
-        var authenticationSelector = newAuthenticationSelector(settings);
-        session.setAuthenticationSelector(authenticationSelector);
-        system = mvnCtx.getRepositorySystem();
-        var localRepositoryDirectory = Files.createTempDirectory("verify-built-artifacts-");
-        var localRepository = new LocalRepository(localRepositoryDirectory.toFile());
-        var manager = system.newLocalRepositoryManager(session, localRepository);
-        session.setLocalRepositoryManager(manager);
-        var centralRepository = new Builder(DEFAULT_REMOTE_REPO_ID, "default", DEFAULT_REMOTE_REPO_URL).build();
-        var mirror = mirrorSelector.getMirror(centralRepository);
-
-        if (mirror != null) {
-            Log.debugf("Mirror for %s: %s", centralRepository.getId(), mirror);
-            remoteRepositories = List.of(mirror);
-        } else {
-            Log.debugf("Using repository URL %s", options.mavenOptions.repositoryUrl);
-            remoteRepositories = List.of(new Builder("internal", "default", options.mavenOptions.repositoryUrl).build());
-        }
-    }
-
-    private List<String> handleJar(Path remoteFile, Path file, List<String> excludes) {
-        var left = new JarInfo(remoteFile);
-        var right = new JarInfo(file);
+    private List<String> handleJar(Path upstreamFile, Path rebuiltFile, List<String> excludes) {
+        var left = new JarInfo(upstreamFile);
+        var right = new JarInfo(rebuiltFile);
         return left.diffJar(right, excludes);
     }
 
-    private List<String> handleJar(Path file, String coords, List<String> excludes) {
+    private List<String> handleJar(Path rebuiltFile, Path relativeFile, String coords, List<String> excludes)
+            throws IOException {
         try {
-            var optionalRemoteFile = resolveArtifact(coords, remoteRepositories, session, system);
+            var optionalUpstreamFile = resolveArtifact(relativeFile);
 
-            if (optionalRemoteFile.isEmpty()) {
+            if (optionalUpstreamFile.isEmpty()) {
                 Log.warnf("Ignoring missing artifact %s", coords);
                 return List.of();
             }
 
-            var remoteFile = optionalRemoteFile.get();
-            Log.infof("Verifying %s (%s, %s)", coords, remoteFile.toAbsolutePath(), file.toAbsolutePath());
-            var errors = handleJar(remoteFile, file, excludes);
-            int numFailures = errors.size();
-
-            Log.debugf("Verification of %s %s", coords, numFailures > 0 ? "failed" : "passed");
-
+            var upstreamFile = optionalUpstreamFile.get();
+            Log.infof("Verifying %s (%s, %s)", coords, upstreamFile.toAbsolutePath(), rebuiltFile.toAbsolutePath());
+            var errors = handleJar(upstreamFile, rebuiltFile, excludes);
+            Log.debugf("Verification of %s %s", coords, errors.isEmpty() ? "passed" : "failed");
             return errors;
         } catch (OutOfMemoryError e) {
             //HUGE hack, but some things are just too large to diff in memory
             //but we would need a complete re-rewrite to handle this
             //these are usually tools that have heaps of classes shaded in
             //we just ignore this case for now
-            Log.errorf(e, "Failed to analyse %s as it is too big", file);
+            Log.errorf(e, "Failed to analyse %s as it is too big", rebuiltFile);
             return List.of();
+        }
+    }
+
+    Optional<Path> resolveArtifact(Path relativeFile) throws IOException {
+        try (var client = HttpClientBuilder.create().build()) {
+            var url = options.mavenOptions.repositoryUrl.endsWith("/") ? options.mavenOptions.repositoryUrl + relativeFile
+                    : options.mavenOptions.repositoryUrl + "/" + relativeFile;
+            Log.debugf("Getting URL %s", url);
+            var get = new HttpGet(url);
+
+            try (var response = client.execute(get)) {
+                var statusLine = response.getStatusLine();
+                var statusCode = statusLine.getStatusCode();
+
+                if (statusCode != SC_OK) {
+                    var reasonPhrase = statusLine.getReasonPhrase();
+                    Log.errorf("Unexpected status code %d (%s) for %s", statusCode, reasonPhrase, relativeFile);
+                    return Optional.empty();
+                }
+
+                var tempDirectory = Files.createTempDirectory("verify-built-artifacts-");
+                var jarName = relativeFile.getFileName();
+                var path = tempDirectory.resolve(jarName);
+                Log.debugf("Saving %s to %s", jarName, path);
+                var entity = response.getEntity();
+                var content = entity.getContent();
+                Files.copy(content, path);
+                return Optional.of(path);
+            }
         }
     }
 }

@@ -735,8 +735,6 @@ func verifyParameters(jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRec
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
 		"--repository-url=$(params.CACHE_URL)?upstream-only=true",
-		"--global-settings=/usr/share/maven/conf/settings.xml",
-		"--settings=$(workspaces.build-settings.path)/settings.xml",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 		"--task-run-name=$(context.taskRun.name)",
 		"--results-file=$(results." + PipelineResultPassedVerification + ".path)",
