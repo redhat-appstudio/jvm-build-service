@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.regex.Pattern;
 
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -39,6 +40,7 @@ import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.repository.RemoteRepository.Builder;
 
 import com.redhat.hacbs.container.results.ResultsUpdater;
+import com.redhat.hacbs.container.verifier.asm.ClassVersion;
 import com.redhat.hacbs.container.verifier.asm.JarInfo;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
@@ -50,6 +52,13 @@ import picocli.CommandLine.Option;
 
 @Command(name = "verify-built-artifacts")
 public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
+    private static final String CLASS_VERSION_CHANGED_REGEX = "^\\^:(?<fileName>[^:]+):(?<className>[^:]+):version:(?<fromVersion>[0-9.]+)>(?<toVersion>[0-9.]+)$";
+
+    private static final String CLASS_REMOVED_REGEX = "^-:(?<fileName>[^:]+):class:(?<className>[^:]+)$";
+
+    static final Pattern CLASS_VERSION_CHANGED_PATTERN = Pattern.compile(CLASS_VERSION_CHANGED_REGEX);
+
+    static final Pattern CLASS_REMOVED_PATTERN = Pattern.compile(CLASS_REMOVED_REGEX);
 
     static class LocalOptions {
         @Option(required = true, names = { "-of", "--original-file" })
@@ -176,6 +185,31 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 } else {
                     Log.errorf("Failed: %s:\n%s", e.getKey(), String.join("\n", results));
                     failed = true;
+
+                    for (var error : results) {
+                        var matcher = CLASS_VERSION_CHANGED_PATTERN.matcher(error);
+                        if (matcher.matches()) {
+                            var fileName = matcher.group("fileName");
+                            var className = matcher.group("className");
+                            var fromVersion = ClassVersion.fromVersion(matcher.group("fromVersion"));
+                            var toVersion = ClassVersion.fromVersion(matcher.group("toVersion"));
+                            var sourceVersion = ClassVersion.toJavaVersion(fromVersion);
+                            Log.errorf(
+                                    "Class %s version in file %s changed from %s to %s. Rerun build with -source %s -target %s",
+                                    className, fileName, fromVersion,
+                                    toVersion, sourceVersion, sourceVersion);
+                            reportOnly = false;
+                            break;
+                        }
+                        matcher = CLASS_REMOVED_PATTERN.matcher(error);
+                        if (matcher.matches()) {
+                            var fileName = matcher.group("fileName");
+                            var className = matcher.group("className");
+                            Log.errorf("Class %s in file %s was removed", className, fileName);
+                            reportOnly = false;
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -191,6 +225,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 Log.infof("Writing verification results %s", json);
                 resultsUpdater.get().updateResults(taskRunName, Map.of("VERIFICATION_RESULTS", json));
             }
+
             return (failed && !reportOnly ? 1 : 0);
         } catch (Exception e) {
             Log.errorf("%s", e.getMessage(), e);
