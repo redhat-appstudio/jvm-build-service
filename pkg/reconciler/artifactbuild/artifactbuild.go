@@ -35,7 +35,6 @@ const (
 	DependencyBuildContaminatedByAnnotation = "jvmbuildservice.io/contaminated-"
 	DependencyBuildIdLabel                  = "jvmbuildservice.io/dependencybuild-id"
 	PipelineRunLabel                        = "jvmbuildservice.io/pipelinerun"
-	BuildTaskName                           = "build"
 	HermeticBuildTaskName                   = "hermetic-build"
 	TagTaskName                             = "tag"
 

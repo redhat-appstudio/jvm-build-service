@@ -22,6 +22,7 @@ const (
 	WorkspaceTls           = "tls"
 
 	PreBuildTaskName            = "pre-build"
+	BuildTaskName               = "build"
 	OriginalContentPath         = "/original-content"
 	MavenArtifactsPath          = "/maven-artifacts"
 	PreBuildImageDigest         = "PRE_BUILD_IMAGE_DIGEST"
@@ -324,20 +325,20 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		},
 	}
 
-	tagDepends := artifactbuild.BuildTaskName
-	tagDigest := "$(tasks." + artifactbuild.BuildTaskName + ".results." + PipelineResultImageDigest + ")"
+	tagDepends := BuildTaskName
+	tagDigest := "$(tasks." + BuildTaskName + ".results." + PipelineResultImageDigest + ")"
 	if hermeticBuildRequired {
 		tagDepends = artifactbuild.HermeticBuildTaskName
 		tagDigest = "$(tasks." + artifactbuild.HermeticBuildTaskName + ".results." + PipelineResultImageDigest + ")"
 	}
 	hermeticBuildPipelineTask := tektonpipeline.PipelineTask{
 		Name:     artifactbuild.HermeticBuildTaskName,
-		RunAfter: []string{artifactbuild.BuildTaskName},
+		RunAfter: []string{BuildTaskName},
 		TaskSpec: &tektonpipeline.EmbeddedTask{
 			TaskSpec: hermeticBuildTask,
 		},
 
-		Params: []tektonpipeline.Param{{Name: HermeticPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + HermeticPreBuildImageDigest + ")"}}},
+		Params: []tektonpipeline.Param{{Name: HermeticPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + HermeticPreBuildImageDigest + ")"}}},
 		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 			{Name: WorkspaceSource, Workspace: WorkspaceSource},
@@ -365,7 +366,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	ps := &tektonpipeline.PipelineSpec{
 		Tasks: []tektonpipeline.PipelineTask{
 			{
-				Name:     artifactbuild.BuildTaskName,
+				Name:     BuildTaskName,
 				RunAfter: runAfter,
 				TaskSpec: &tektonpipeline.EmbeddedTask{
 					TaskSpec: buildTask,
@@ -450,7 +451,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	ps.Tasks = append(ps.Tasks, tagPipelineTask)
 
 	for _, i := range buildTask.Results {
-		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + i.Name + ")"}})
+		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + i.Name + ")"}})
 	}
 	for _, i := range pipelineParams {
 		ps.Params = append(ps.Params, tektonpipeline.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default, Type: i.Type})
@@ -487,7 +488,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	ps.Tasks[len(ps.Tasks)-1].Params = append(ps.Tasks[len(ps.Tasks)-1].Params, tektonpipeline.Param{
 		Name:  PipelineResultGavs,
-		Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + artifactbuild.BuildTaskName + ".results." + PipelineResultDeployedResources + ")"}})
+		Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultDeployedResources + ")"}})
 
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
