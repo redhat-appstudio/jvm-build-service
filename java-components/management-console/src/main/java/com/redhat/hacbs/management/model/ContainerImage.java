@@ -15,6 +15,7 @@ import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.logging.Log;
 import io.quarkus.panache.common.Parameters;
 
 @Entity()
@@ -58,6 +59,40 @@ public class ContainerImage extends PanacheEntity {
         return containerImage;
     }
 
+    // Retrieve image via tag or digest. Latter is preferred for predictability
+    public static ContainerImage get(String image) {
+        return get(null, image);
+    }
+
+    public static ContainerImage get(ContainerImageRepository repository, String image) {
+        int index = image.indexOf("@");
+        String digest = image.substring(index + 1);
+        String imagePart = image.substring(0, index < 0 ? image.length() : index);
+        String tag = "";
+        int tagIndex = imagePart.indexOf(":");
+        if (tagIndex > 0) {
+            tag = imagePart.substring(tagIndex + 1);
+            imagePart = imagePart.substring(0, tagIndex);
+        }
+        Log.infof("Found repository %s for digest %s with tag %s",
+                imagePart, digest, tag);
+        if (repository == null) {
+            repository = ContainerImageRepository.findByRepository(imagePart);
+            if (repository == null) {
+                throw new RuntimeException("Unable to find repository " + imagePart);
+            }
+        }
+        // TODO: Keeping the ability to lookup via digest but also via tag
+        if (index == -1) {
+            return find("tag=:tag and repository=:repository",
+                    Parameters.with("tag", tag).and("repository", repository)).firstResult();
+        } else {
+            return find("digest=:digest and repository=:repository",
+                    Parameters.with("digest", digest).and("repository", repository))
+                    .firstResult();
+        }
+    }
+
     public static ContainerImage getOrCreate(String image, Instant timestamp) {
         int index = image.indexOf("@");
         String digest = image.substring(index + 1);
@@ -69,9 +104,7 @@ public class ContainerImage extends PanacheEntity {
             imagePart = imagePart.substring(0, tagIndex);
         }
         ContainerImageRepository repo = ContainerImageRepository.getOrCreate(imagePart);
-        ContainerImage containerImage = find("digest=:digest and repository=:repository",
-                Parameters.with("digest", digest).and("repository", repo))
-                .firstResult();
+        ContainerImage containerImage = get(repo, image);
         if (containerImage == null) {
             containerImage = new ContainerImage();
             containerImage.dependencySet = new DependencySet();

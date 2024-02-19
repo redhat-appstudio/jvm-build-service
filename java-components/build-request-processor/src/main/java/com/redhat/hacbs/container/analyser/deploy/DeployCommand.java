@@ -99,7 +99,7 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--registry-owner", defaultValue = "hacbs")
     String owner;
     @ConfigProperty(name = "registry.token")
-    Optional<String> token = Optional.empty();
+    Optional<String> token;
     @CommandLine.Option(names = "--registry-repository", defaultValue = "artifact-deployments")
     String repository;
     @CommandLine.Option(names = "--registry-insecure", defaultValue = "false")
@@ -119,16 +119,16 @@ public class DeployCommand implements Runnable {
     String mvnUser;
 
     @ConfigProperty(name = "maven.password")
-    Optional<String> mvnPassword = Optional.empty();
+    Optional<String> mvnPassword;
 
     @ConfigProperty(name = "aws.profile")
-    Optional<String> awsProfile = Optional.empty();
+    Optional<String> awsProfile;
 
     @CommandLine.Option(names = "--mvn-repo")
     String mvnRepo;
 
     @ConfigProperty(name = "git.deploy.token")
-    Optional<String> gitToken = Optional.empty();
+    Optional<String> gitToken;
 
     // If endpoint is null then default GitHub API endpoint is used. Otherwise:
     // for GitHub, endpoint like https://api.github.com
@@ -178,6 +178,11 @@ public class DeployCommand implements Runnable {
             // contaminated then none of the artifacts will be deployed.
             Set<Path> toRemove = new HashSet<>();
             Map<Path, Gav> jarFiles = new HashMap<>();
+
+            if (!deploymentPath.toFile().exists()) {
+                Log.warnf("No deployed artifacts found. Has the build been correctly configured to deploy?");
+                throw new RuntimeException("Deploy failed");
+            }
             Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -281,7 +286,7 @@ public class DeployCommand implements Runnable {
                         return FileVisitResult.CONTINUE;
                     }
                 });
-                throw new RuntimeException("deploy failed");
+                throw new RuntimeException("Deploy failed");
             }
             for (var i : contaminatedGavs.entrySet()) {
                 if (!i.getValue().getAllowed()) {
@@ -345,7 +350,6 @@ public class DeployCommand implements Runnable {
                 System.out.println(IMAGE_DIGEST_OUTPUT + "sha256:" + imageDigest);
             }
             if (taskRun != null) {
-
                 List<Contaminates> newContaminates = new ArrayList<>();
                 for (var i : contaminatedGavs.entrySet()) {
                     newContaminates.add(i.getValue());

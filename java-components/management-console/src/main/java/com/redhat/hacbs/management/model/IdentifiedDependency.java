@@ -27,7 +27,7 @@ public class IdentifiedDependency extends PanacheEntity {
     public boolean buildSuccessful;
 
     public boolean isTrusted() {
-        //TODO: better defintion of trust
+        //TODO: better definition of trust
         return (buildId != null && !buildId.isEmpty()) || Objects.equals(source, "redhat") || Objects.equals(source, "rebuilt");
     }
 }

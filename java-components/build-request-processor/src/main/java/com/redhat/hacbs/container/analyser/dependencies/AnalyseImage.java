@@ -47,8 +47,8 @@ public class AnalyseImage extends AnalyserBase {
 
     void doAnalysis(Set<String> gavs, Set<TrackingData> trackingData) throws Exception {
         Set<DescriptorDigest> layersToProcess = new HashSet<>();
-        RegistryClient client = extractLayers(image, layersToProcess::add);
         Log.infof("Processing image %s", image);
+        RegistryClient client = extractLayers(image, layersToProcess::add);
         if (baseImage.isPresent()) {
             Log.infof("Processing base image %s", image);
             extractLayers(baseImage.get(), layersToProcess::remove);
