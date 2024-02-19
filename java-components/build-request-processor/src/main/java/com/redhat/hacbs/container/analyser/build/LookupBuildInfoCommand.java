@@ -484,7 +484,7 @@ public class LookupBuildInfoCommand implements Runnable {
         var specifiedJavaVersion = GradleUtils.getSpecifiedJavaVersion(gradleFile);
 
         if (!specifiedJavaVersion.isEmpty()) {
-            builder.setPreferredJavaVersion(new JavaVersion(specifiedJavaVersion));
+            builder.minJavaVersion(new JavaVersion(specifiedJavaVersion));
         }
         ArrayList<String> inv = new ArrayList<>(GradleUtils.getGradleArgs(gradleFile));
         if (skipTests) {

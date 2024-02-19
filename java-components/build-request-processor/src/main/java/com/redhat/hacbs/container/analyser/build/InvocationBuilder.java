@@ -347,49 +347,50 @@ public class InvocationBuilder {
             for (var perm : allToolPermutations) {
                 for (var javaVersion : javaVersions) {
                     boolean ignore = false;
-                    for (var tool : perm.entrySet()) {
-                        var info = buildToolInfo.get(tool.getKey());
-                        if (info != null) {
-                            var toolInfo = info.get(tool.getValue());
-                            if (toolInfo != null) {
-                                if (toolInfo.getMaxJdkVersion() != null && new JavaVersion(toolInfo.getMaxJdkVersion())
-                                        .intVersion() < javaVersion.intVersion()) {
-                                    ignore = true;
-                                } else if (toolInfo.getMinJdkVersion() != null
-                                        && new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
-                                                .intVersion()) {
-                                    ignore = true;
-                                }
+                    var tv = perm.get(invocationSet.getKey());
+                    var info = buildToolInfo.get(invocationSet.getKey());
+                    if (info != null) {
+                        var toolInfo = info.get(tv);
+                        if (toolInfo != null) {
+                            if (toolInfo.getMaxJdkVersion() != null && new JavaVersion(toolInfo.getMaxJdkVersion())
+                                    .intVersion() < javaVersion.intVersion()) {
+                                ignore = true;
+                            } else if (toolInfo.getMinJdkVersion() != null
+                                    && new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
+                                            .intVersion()) {
+                                ignore = true;
                             }
                         }
-                    }
-                    if (!ignore) {
-                        for (var invocation : invocationSet.getValue()) {
-                            Invocation result = new Invocation();
-                            Map<String, String> toolVersion = new HashMap<>(perm);
-                            toolVersion.put(BuildInfo.JDK, javaVersion.version());
 
-                            result.setToolVersion(toolVersion);
-                            String tool = invocationSet.getKey();
-                            if (tool.equals(BuildInfo.MAVEN)) {
-                                //huge hack, we need a different invocation for different java versions
-                                //Note - according to https://github.com/apache/maven-deploy-plugin/releases
-                                //  the deploy plugin >= 3.1 is JDK8 only.
-                                List<String> cmds = new ArrayList<>(invocation);
-                                if (javaVersion.intVersion() < 8) {
-                                    cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy");
+                        if (!ignore) {
+                            for (var invocation : invocationSet.getValue()) {
+                                Invocation result = new Invocation();
+                                Map<String, String> toolVersion = new HashMap<>(perm);
+                                toolVersion.put(BuildInfo.JDK, javaVersion.version());
+
+                                result.setToolVersion(toolVersion);
+                                String tool = invocationSet.getKey();
+                                if (tool.equals(BuildInfo.MAVEN)) {
+                                    //huge hack, we need a different invocation for different java versions
+                                    //Note - according to https://github.com/apache/maven-deploy-plugin/releases
+                                    //  the deploy plugin >= 3.1 is JDK8 only.
+                                    List<String> cmds = new ArrayList<>(invocation);
+                                    if (javaVersion.intVersion() < 8) {
+                                        cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy");
+                                    } else {
+                                        cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy");
+                                    }
+                                    result.setCommands(cmds);
                                 } else {
-                                    cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy");
+                                    result.setCommands(invocation);
                                 }
-                                result.setCommands(cmds);
-                            } else {
-                                result.setCommands(invocation);
+                                result.setTool(tool);
+                                result.setDisabledPlugins(
+                                        buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
+                                                ? buildRecipeInfo.getDisabledPlugins()
+                                                : buildInfoLocator.lookupDisabledPlugins(tool));
+                                this.info.invocations.add(result);
                             }
-                            result.setTool(tool);
-                            result.setDisabledPlugins(buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
-                                    ? buildRecipeInfo.getDisabledPlugins()
-                                    : buildInfoLocator.lookupDisabledPlugins(tool));
-                            info.invocations.add(result);
                         }
                     }
                 }

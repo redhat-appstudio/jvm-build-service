@@ -2,7 +2,6 @@ package com.redhat.hacbs.management.resources;
 
 import java.util.Map;
 
-import com.redhat.hacbs.management.model.BuildAttempt;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.POST;

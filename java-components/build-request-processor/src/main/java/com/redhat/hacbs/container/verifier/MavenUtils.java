@@ -21,7 +21,6 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import com.redhat.hacbs.container.analyser.build.JavaVersion;
-import com.redhat.hacbs.container.analyser.build.JdkVersion;
 
 import io.quarkus.logging.Log;
 
@@ -30,7 +29,7 @@ public class MavenUtils {
             "(?<groupId>[^: ]+):(?<artifactId>[^: ]+)(:(?<extension>[^: ]*)(:(?<classifier>[^: ]+))?)?:(?<version>[^: ]+)");
 
     public static final Pattern JAVA_VERSION_PATTERN = Pattern.compile(
-            "(?<major>[^. ]+)(.(?<minor>[^. ]+)(.(?<micro>[^._ ]+))?)?(_(?<update>[^- ]*)(-(?<identifier>[^ ]+))?)?");
+            "^(?<major>[^. ]+)(.(?<minor>[^. ]+))");
 
     public static final String MAVEN_COMPILER_PLUGIN_ID = "org.apache.maven.plugins:maven-compiler-plugin";
 
@@ -169,6 +168,9 @@ public class MavenUtils {
     public static Optional<JavaVersion> getBuildJdk(Path path) {
         try (var jar = new JarInputStream(Files.newInputStream(path))) {
             var manifest = jar.getManifest();
+            if (manifest == null) {
+                return Optional.empty();
+            }
             var buildJdk = manifest.getMainAttributes().getValue("Build-Jdk");
             Log.debugf("Build-Jdk: %s", buildJdk);
 
@@ -180,28 +182,23 @@ public class MavenUtils {
             if (buildJdk == null) {
                 return Optional.empty();
             }
+            try {
+                var version = Integer.parseInt(buildJdk);
+                return Optional.of(new JavaVersion(buildJdk, version));
+            } catch (NumberFormatException ignore) {
+
+            }
 
             var matcher = JAVA_VERSION_PATTERN.matcher(buildJdk);
 
-            Log.debugf("matches: " + matcher.matches());
-
-            if (matcher.matches()) {
+            if (matcher.find()) {
                 var major = matcher.group("major");
                 var minor = matcher.group("minor");
-                var micro = matcher.group("micro");
-                var update = matcher.group("update");
-                var identifier = matcher.group("identifier");
-                var jdkVersion = new JdkVersion(major, minor, micro, update, identifier);
-                Log.debugf("%s", jdkVersion);
 
                 if (!major.equals("1")) {
-                    buildJdk = jdkVersion.major();
+                    buildJdk = major;
                 } else {
-                    if (minor == null) {
-                        throw new IllegalArgumentException("Bad JDK version: " + buildJdk);
-                    }
-
-                    buildJdk = jdkVersion.minor();
+                    buildJdk = minor;
                 }
             } else {
                 throw new IllegalArgumentException("Bad JDK version: " + buildJdk);

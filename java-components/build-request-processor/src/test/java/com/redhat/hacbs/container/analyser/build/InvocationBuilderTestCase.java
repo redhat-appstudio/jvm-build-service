@@ -44,7 +44,9 @@ public class InvocationBuilderTestCase {
                                 .setMinJdkVersion("7"));
             } else if (name.equals("gradle")) {
                 return List.of(
-                        new BuildToolInfo().setReleaseDate("2019-04-26").setVersion("5.4").setMaxJdkVersion("12")
+                        new BuildToolInfo().setReleaseDate("2019-04-26").setVersion("5.0").setMaxJdkVersion("12")
+                                .setMinJdkVersion("8"),
+                        new BuildToolInfo().setReleaseDate("2019-08-26").setVersion("5.4").setMaxJdkVersion("12")
                                 .setMinJdkVersion("8"),
                         new BuildToolInfo().setReleaseDate("2019-09-26").setVersion("6.0").setMaxJdkVersion("13")
                                 .setMinJdkVersion("8"),
