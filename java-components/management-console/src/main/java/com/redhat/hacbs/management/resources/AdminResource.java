@@ -7,6 +7,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
+import com.redhat.hacbs.management.internal.model.BuildSBOMDiscoveryInfo;
 import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildQueue;
 import com.redhat.hacbs.management.model.ContainerImage;
@@ -75,6 +76,7 @@ public class AdminResource {
             StoredArtifactBuild.deleteAll();
         });
         runner.run(() -> {
+            BuildSBOMDiscoveryInfo.deleteAll();
             ContainerImage.deleteAll();
             GithubActionsBuild.deleteAll();
             IdentifiedDependency.deleteAll();

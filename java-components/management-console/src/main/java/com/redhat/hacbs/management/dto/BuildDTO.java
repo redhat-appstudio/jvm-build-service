@@ -21,15 +21,16 @@ public record BuildDTO(
         @Schema(required = true) String tag,
         @Schema(required = true) String commit,
         String contextPath,
-        boolean succeeded,
-        boolean contaminated,
-        boolean verified,
+        @Schema(required = true) boolean succeeded,
+        @Schema(required = true) boolean contaminated,
+        @Schema(required = true) boolean verified,
         List<String> artifacts,
         BuildAttemptDTO successfulBuild,
         List<BuildAttemptDTO> buildAttempts,
         List<ShadingDetails> shadingDetails,
 
-        boolean inQueue) {
+        @Schema(required = true) boolean inQueue,
+        @Schema(required = true) long buildSbomDependencySetId) {
     public static BuildDTO of(StoredDependencyBuild build) {
         EntityManager entityManager = Arc.container().instance(EntityManager.class).get();
         var inQueue = false;
@@ -74,7 +75,8 @@ public record BuildDTO(
                 successfulBuild,
                 others,
                 build.shadingDetails,
-                inQueue);
+                inQueue,
+                success != null ? (success.buildSbom != null ? success.buildSbom.dependencySet.id : -1) : -1);
 
     }
 }

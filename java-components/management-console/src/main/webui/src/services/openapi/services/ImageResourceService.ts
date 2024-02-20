@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { ImageDTO } from '../models/ImageDTO';
 import type { PageParametersImageDTO } from '../models/PageParametersImageDTO';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -20,6 +21,22 @@ export class ImageResourceService {
             url: '/api/image',
             body: requestBody,
             mediaType: 'text/plain',
+        });
+    }
+    /**
+     * @param image
+     * @returns ImageDTO OK
+     * @throws ApiError
+     */
+    public static getApiImageScan(
+        image: string,
+    ): CancelablePromise<ImageDTO> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/image/scan/{image}',
+            path: {
+                'image': image,
+            },
         });
     }
     /**

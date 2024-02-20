@@ -1,11 +1,12 @@
 package com.redhat.hacbs.management.internal.model;
 
-import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 
-import com.redhat.hacbs.management.model.StoredDependencyBuild;
+import com.redhat.hacbs.management.model.BuildAttempt;
+import com.redhat.hacbs.management.model.DependencySet;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 
@@ -14,11 +15,11 @@ public class BuildSBOMDiscoveryInfo extends PanacheEntity {
 
     @OneToOne(optional = false)
     @JoinColumn
-    public StoredDependencyBuild build;
+    public BuildAttempt build;
 
     public boolean succeeded;
 
-    @Column(length = -1)
-    public String discoveredGavs;
-
+    @JoinColumn(nullable = true)
+    @OneToOne(optional = true, cascade = CascadeType.ALL)
+    public DependencySet dependencySet;
 }

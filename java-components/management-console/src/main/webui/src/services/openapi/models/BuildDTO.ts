@@ -11,13 +11,14 @@ export type BuildDTO = {
     tag: string;
     commit: string;
     contextPath?: string;
-    succeeded?: boolean;
-    contaminated?: boolean;
-    verified?: boolean;
+    succeeded: boolean;
+    contaminated: boolean;
+    verified: boolean;
     artifacts?: Array<string>;
     successfulBuild?: BuildAttemptDTO;
     buildAttempts?: Array<BuildAttemptDTO>;
     shadingDetails?: Array<ShadingDetails>;
-    inQueue?: boolean;
+    inQueue: boolean;
+    buildSbomDependencySetId: number;
 };
 

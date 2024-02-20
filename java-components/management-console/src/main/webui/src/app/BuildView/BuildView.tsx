@@ -46,6 +46,7 @@ import {
 } from "@patternfly/react-icons";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 import {DateTimePicker} from "@patternfly/react-core/src/demos/examples/DateTimePicker/DateTimePicker";
+import {DependencySet} from "@app/DependencySet/DependencySet";
 
 interface RouteParams {
     name: string
@@ -57,7 +58,13 @@ interface BuildView extends RouteComponentProps<RouteParams> {
 const BuildView: React.FunctionComponent<BuildView> = (props) => {
 
     const name = props.match.params.name
-    const initial: BuildDTO = {id: 0, name: "", scmRepo: "", tag: "", commit: ""}
+    const initial: BuildDTO = {
+      buildSbomDependencySetId: 0,
+      contaminated: false,
+      inQueue: false,
+      succeeded: false,
+      verified: false,
+      id: 0, name: "", scmRepo: "", tag: "", commit: ""}
     const [build, setBuild] = useState(initial);
     const [error, setError] = useState(false);
     const [state, setState] = useState('');
@@ -299,6 +306,14 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                     </Tr>)}
                   </Tbody>
                 </Table>
+                </CardBody>
+              </Card>
+            </Tab>
+            <Tab eventKey={6} disabled={build.buildSbomDependencySetId == -1} title={<TabTitleText>Build SBom</TabTitleText>}>
+              <Card>
+                <CardHeader>Build SBom</CardHeader>
+                <CardBody>
+                  <DependencySet dependencySetId={build.buildSbomDependencySetId} ></DependencySet>
                 </CardBody>
               </Card>
             </Tab>

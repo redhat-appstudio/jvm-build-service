@@ -3,6 +3,7 @@ package com.redhat.hacbs.management.internal.discovery;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
@@ -37,6 +38,8 @@ import com.redhat.hacbs.management.events.InitialKubeImportCompleteEvent;
 import com.redhat.hacbs.management.internal.model.BuildSBOMDiscoveryInfo;
 import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildQueue;
+import com.redhat.hacbs.management.model.DependencySet;
+import com.redhat.hacbs.management.model.IdentifiedDependency;
 import com.redhat.hacbs.management.model.MavenArtifact;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
@@ -50,8 +53,11 @@ public class BuildSBOMDiscoveryManager {
     @Inject
     EntityManager entityManager;
 
-    @ConfigProperty(name = "sbom-discovery.enabled", defaultValue = "false")
+    @ConfigProperty(name = "sbom-discovery.enabled", defaultValue = "true")
     boolean enabled;
+
+    @ConfigProperty(name = "sbom-discovery-rebuild.enabled", defaultValue = "false")
+    boolean rebuildEnabled;
 
     void importComplete(@Observes InitialKubeImportCompleteEvent importComplete) {
         buildSbomDiscovery();
@@ -66,9 +72,9 @@ public class BuildSBOMDiscoveryManager {
         if (!enabled) {
             return;
         }
-        List<StoredDependencyBuild> results = entityManager
+        List<BuildAttempt> results = entityManager
                 .createQuery(
-                        "select a from StoredDependencyBuild a left join BuildSBOMDiscoveryInfo b on b.build=a where b is null and a.succeeded")
+                        "select a from BuildAttempt a left join BuildSBOMDiscoveryInfo b on b.build=a where b is null and a.successful")
                 .getResultList();
         for (var i : results) {
             handleBuild(i);
@@ -77,31 +83,41 @@ public class BuildSBOMDiscoveryManager {
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     @TransactionConfiguration(timeout = 600)
-    void handleBuild(StoredDependencyBuild build) {
-        Log.infof("Attempting to read build sbom for %s", build.buildIdentifier.dependencyBuildName);
-        BuildAttempt attempt = null;
-        for (var i : build.buildAttempts) {
-            if (i.successful && i.outputImage != null) {
-                attempt = i;
-                break;
-            }
-        }
-        if (attempt == null) {
-            BuildSBOMDiscoveryInfo queue = new BuildSBOMDiscoveryInfo();
-            queue.build = build;
-            queue.succeeded = false;
-            queue.persist();
-            return;
-        }
+    void handleBuild(BuildAttempt attempt) {
+        Log.infof("Attempting to read build sbom for %s", attempt.dependencyBuild.buildIdentifier.dependencyBuildName);
         try {
             Bom bom = locateSbom(attempt.outputImage);
-            StringBuilder gavs = new StringBuilder();
+            DependencySet dependencySet = new DependencySet();
+            dependencySet.type = "build-sbom";
+            dependencySet.identifier = "build-sbom-" + attempt.dependencyBuild.buildIdentifier.dependencyBuildName;
+            dependencySet.dependencies = new ArrayList<>();
             if (bom.getComponents() != null) {
                 for (var comp : bom.getComponents()) {
                     String gav = comp.getGroup() + ":" + comp.getName() + ":" + comp.getVersion();
                     MavenArtifact mavenArtifact = MavenArtifact.forGav(gav);
+                    IdentifiedDependency identifiedDependency = new IdentifiedDependency();
+                    identifiedDependency.mavenArtifact = mavenArtifact;
+                    identifiedDependency.dependencySet = dependencySet;
+                    identifiedDependency.source = comp.getPublisher();
+
+                    if (comp.getProperties() != null) {
+                        StringBuilder sb = new StringBuilder();
+                        for (var e : comp.getProperties()) {
+                            if (e.getName().equals("build-id")) {
+                                identifiedDependency.buildId = e.getValue();
+                            }
+                            if (!sb.isEmpty()) {
+                                sb.append(";");
+                            }
+                            sb.append(e.getName());
+                            sb.append("=");
+                            sb.append(e.getValue());
+                        }
+                        identifiedDependency.attributes = sb.toString();
+                    }
+                    dependencySet.dependencies.add(identifiedDependency);
                     BuildQueue existing = BuildQueue.find("mavenArtifact", mavenArtifact).firstResult();
-                    if (existing == null) {
+                    if (rebuildEnabled && existing == null) {
                         List<StoredDependencyBuild> existingBuild = entityManager
                                 .createQuery(
                                         "select a from StoredDependencyBuild a join a.producedArtifacts s where s=:artifact")
@@ -113,23 +129,20 @@ public class BuildSBOMDiscoveryManager {
                             queue.persistAndFlush();
                         }
                     }
-                    if (gavs.length() != 0) {
-                        gavs.append(",");
-                    }
-                    gavs.append(gav);
                 }
             }
 
-            BuildSBOMDiscoveryInfo queue = new BuildSBOMDiscoveryInfo();
-            queue.build = build;
-            queue.succeeded = true;
-            queue.discoveredGavs = gavs.toString();
-            queue.persist();
+            BuildSBOMDiscoveryInfo buildSbom = new BuildSBOMDiscoveryInfo();
+            buildSbom.build = attempt;
+            buildSbom.succeeded = true;
+            buildSbom.dependencySet = dependencySet;
+            attempt.buildSbom = buildSbom;
+            buildSbom.persistAndFlush();
 
         } catch (Exception e) {
-            Log.errorf(e, "failed to load sbom for %s", build.buildIdentifier.dependencyBuildName);
+            Log.errorf(e, "failed to load sbom for %s", attempt.dependencyBuild.buildIdentifier.dependencyBuildName);
             BuildSBOMDiscoveryInfo queue = new BuildSBOMDiscoveryInfo();
-            queue.build = build;
+            queue.build = attempt;
             queue.succeeded = false;
             queue.persist();
         }
