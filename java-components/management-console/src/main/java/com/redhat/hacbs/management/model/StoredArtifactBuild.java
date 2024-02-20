@@ -35,6 +35,6 @@ public class StoredArtifactBuild extends PanacheEntity {
     public String name;
 
     @ManyToOne
-    @JoinColumn
+    @JoinColumn(nullable = false)
     public BuildIdentifier buildIdentifier;
 }

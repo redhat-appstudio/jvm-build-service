@@ -6,13 +6,16 @@ import java.util.List;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.redhat.hacbs.management.internal.model.BuildSBOMDiscoveryInfo;
 
 import io.quarkus.arc.Arc;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
@@ -63,6 +66,7 @@ public class BuildAttempt extends PanacheEntity {
     public boolean passedVerification;
 
     @ManyToOne(optional = false)
+    @JoinColumn(nullable = false)
     public StoredDependencyBuild dependencyBuild;
 
     @OneToMany(cascade = CascadeType.ALL)
@@ -82,6 +86,9 @@ public class BuildAttempt extends PanacheEntity {
     @Column
     @Temporal(TemporalType.TIMESTAMP)
     public Instant startTime;
+
+    @OneToOne(optional = true, mappedBy = "build")
+    public BuildSBOMDiscoveryInfo buildSbom;
 
     //this is pretty yuck, but we don't want a whole new table to store a List<String>
     public void commandLine(List<String> commandLine) {

@@ -7,10 +7,15 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
+import com.redhat.hacbs.management.internal.model.BuildSBOMDiscoveryInfo;
+import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildQueue;
 import com.redhat.hacbs.management.model.ContainerImage;
+import com.redhat.hacbs.management.model.DependencySet;
 import com.redhat.hacbs.management.model.GithubActionsBuild;
+import com.redhat.hacbs.management.model.IdentifiedDependency;
 import com.redhat.hacbs.management.model.MavenArtifact;
+import com.redhat.hacbs.management.model.MavenArtifactLabel;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
@@ -62,14 +67,21 @@ public class AdminResource {
             kubernetesClient.resource(i).delete();
         }
         runner.run(() -> {
+            BuildAttempt.deleteAll();
+        });
+        runner.run(() -> {
             StoredDependencyBuild.deleteAll();
         });
         runner.run(() -> {
             StoredArtifactBuild.deleteAll();
         });
         runner.run(() -> {
+            BuildSBOMDiscoveryInfo.deleteAll();
             ContainerImage.deleteAll();
             GithubActionsBuild.deleteAll();
+            IdentifiedDependency.deleteAll();
+            DependencySet.deleteAll();
+            MavenArtifactLabel.deleteAll();
             MavenArtifact.deleteAll();
         });
     }

@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
@@ -18,5 +19,6 @@ public class BuildFile extends PanacheEntity {
     public String uri; //the s3 URI
 
     @ManyToOne(optional = false)
+    @JoinColumn(nullable = false)
     BuildAttempt build;
 }

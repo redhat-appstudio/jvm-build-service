@@ -7,6 +7,7 @@ export type ImageDTO = {
     tag: string;
     digest: string;
     analysisComplete: boolean;
+    analysisFailed: boolean;
     dependencySet: number;
     fullName?: string;
 };

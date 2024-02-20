@@ -2,6 +2,7 @@ package com.redhat.hacbs.management.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -14,6 +15,7 @@ import io.quarkus.panache.common.Parameters;
 public class MavenArtifact extends PanacheEntity {
 
     @ManyToOne
+    @JoinColumn(nullable = false)
     public ArtifactIdentifier identifier;
 
     @Column(nullable = false)

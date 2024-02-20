@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
@@ -12,9 +13,11 @@ import io.quarkus.hibernate.orm.panache.PanacheEntity;
 public class IdentifiedDependency extends PanacheEntity {
 
     @ManyToOne
+    @JoinColumn(nullable = false)
     public DependencySet dependencySet;
 
     @ManyToOne(cascade = CascadeType.PERSIST)
+    @JoinColumn(nullable = false)
     public MavenArtifact mavenArtifact;
 
     public String buildId;

@@ -10,11 +10,11 @@ import io.quarkus.panache.common.Parameters;
 public class MavenArtifactLabel extends PanacheEntity {
 
     @ManyToOne(optional = false)
-    @JoinColumn
+    @JoinColumn(nullable = false)
     public ArtifactLabelName name;
 
     @ManyToOne(optional = false)
-    @JoinColumn
+    @JoinColumn(nullable = false)
     public MavenArtifact artifact;
 
     public String value;
