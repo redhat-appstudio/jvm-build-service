@@ -800,6 +800,28 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		} else {
 			//try again, if there are no more recipes this gets handled in the submit build logic
 			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+
+			//its also possible this failed due to verification failures
+			//in this case we still get the result on the task run
+			//so we look for it to add to the build
+			for _, ref := range pr.Status.ChildReferences {
+				if strings.HasSuffix(ref.Name, BuildTaskName) {
+					tr := tektonpipeline.TaskRun{}
+					err := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &tr)
+					if err != nil {
+						log.Error(err, "failed to retrieve potential contamination results")
+					} else {
+						for _, res := range tr.Status.Results {
+							if res.Name == PipelineResultVerificationResult && res.Value.StringVal != "" {
+								run.Results = &v1alpha1.BuildPipelineRunResults{
+									VerificationResults: res.Value.StringVal,
+								}
+							}
+						}
+					}
+				}
+			}
+
 		}
 		err = r.client.Status().Update(ctx, db)
 		return reconcile.Result{}, err
