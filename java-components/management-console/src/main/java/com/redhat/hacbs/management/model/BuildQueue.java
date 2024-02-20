@@ -5,6 +5,7 @@ import java.util.Map;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
 import io.quarkus.arc.Arc;
@@ -24,6 +25,7 @@ public class BuildQueue extends PanacheEntity {
     public boolean rebuild;
 
     @ManyToOne
+    @JoinColumn(nullable = false)
     public MavenArtifact mavenArtifact;
 
     public static void create(String gav, boolean priority, Map<String, String> labels) {
