@@ -11,13 +11,10 @@ import org.apache.http.client.utils.DateUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.artifactcache.services.StorageManager;
+import com.redhat.hacbs.resources.model.v1alpha1.JBSConfig;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
-import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
-import io.fabric8.kubernetes.api.model.GenericKubernetesResourceList;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.dsl.MixedOperation;
-import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
 import io.fabric8.kubernetes.client.informers.SharedIndexInformer;
 import io.quarkus.logging.Log;
@@ -34,7 +31,7 @@ public class CacheControl {
     @Inject
     KubernetesClient client;
 
-    SharedIndexInformer<GenericKubernetesResource> informer;
+    SharedIndexInformer<JBSConfig> informer;
 
     @ConfigProperty(name = "kube.disabled", defaultValue = "false")
     boolean disabled;
@@ -47,40 +44,40 @@ public class CacheControl {
             return;
         }
 
-        MixedOperation<GenericKubernetesResource, GenericKubernetesResourceList, Resource<GenericKubernetesResource>> jbsConfig = client
-                .genericKubernetesResources(ModelConstants.GROUP + "/" + ModelConstants.VERSION, "JBSConfig");
+        var jbsConfig = client.resources(JBSConfig.class);
 
         informer = jbsConfig.inform();
-        informer.addEventHandler(new ResourceEventHandler<GenericKubernetesResource>() {
+        informer.addEventHandler(new ResourceEventHandler<JBSConfig>() {
             @Override
-            public void onAdd(GenericKubernetesResource obj) {
+            public void onAdd(JBSConfig obj) {
                 handleObject(obj);
             }
 
             @Override
-            public void onUpdate(GenericKubernetesResource oldObj, GenericKubernetesResource newObj) {
+            public void onUpdate(JBSConfig oldObj, JBSConfig newObj) {
                 handleObject(newObj);
             }
 
-            private void handleObject(GenericKubernetesResource newObj) {
+            private void handleObject(JBSConfig newObj) {
+                Log.infof("reconciling JBSConfig");
                 try {
                     var anns = newObj.getMetadata().getAnnotations();
                     if (anns != null) {
                         if (anns.containsKey(ModelConstants.CLEAR_CACHE)) {
+                            Log.infof("clearing cache");
                             storageManager.clear();
                             jbsConfig.withName(newObj.getMetadata().getName())
-                                    .edit(new UnaryOperator<GenericKubernetesResource>() {
+                                    .edit(new UnaryOperator<JBSConfig>() {
                                         @Override
-                                        public GenericKubernetesResource apply(
-                                                GenericKubernetesResource genericKubernetesResource) {
-                                            genericKubernetesResource.getMetadata()
+                                        public JBSConfig apply(JBSConfig config) {
+                                            config.getMetadata()
                                                     .getAnnotations()
                                                     .remove(ModelConstants.CLEAR_CACHE);
-                                            genericKubernetesResource.getMetadata()
+                                            config.getMetadata()
                                                     .getAnnotations()
                                                     .put(ModelConstants.LAST_CLEAR_CACHE,
                                                             DateUtils.formatDate(new Date()));
-                                            return genericKubernetesResource;
+                                            return config;
                                         }
                                     });
                         }
@@ -93,7 +90,7 @@ public class CacheControl {
             }
 
             @Override
-            public void onDelete(GenericKubernetesResource obj, boolean deletedFinalStateUnknown) {
+            public void onDelete(JBSConfig obj, boolean deletedFinalStateUnknown) {
 
             }
         });
