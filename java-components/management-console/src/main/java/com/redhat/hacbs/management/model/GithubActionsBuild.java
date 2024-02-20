@@ -26,6 +26,9 @@ public class GithubActionsBuild extends PanacheEntity {
     @JoinColumn
     @OneToOne(cascade = CascadeType.ALL)
     public DependencySet dependencySet;
+    @JoinColumn
+    @OneToOne(cascade = CascadeType.ALL)
+    public DependencySet buildDependencySet;
     public boolean complete;
 
 }

@@ -8,5 +8,6 @@ export type GithubBuildDTO = {
     buildsComponent: boolean;
     url: string;
     dependencySetId: number;
+    buildDependencySetId: number;
 };
 
