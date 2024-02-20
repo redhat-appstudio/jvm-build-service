@@ -51,6 +51,7 @@ const (
 	PipelineParamJavaVersion         = "JAVA_VERSION"
 	PipelineParamToolVersion         = "TOOL_VERSION"
 	PipelineParamEnforceVersion      = "ENFORCE_VERSION"
+	PipelineParamProjectVersion      = "PROJECT_VERSION"
 	PipelineParamCacheUrl            = "CACHE_URL"
 	PipelineResultImage              = "IMAGE_URL"
 	PipelineResultImageDigest        = "IMAGE_DIGEST"
@@ -549,6 +550,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		{Name: PipelineParamPath, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: contextDir}},
 		{Name: PipelineParamGoals, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
 		{Name: PipelineParamEnforceVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.EnforceVersion}},
+		{Name: PipelineParamProjectVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.Version}},
 		{Name: PipelineParamToolVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.ToolVersion}},
 		{Name: PipelineParamJavaVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
 	}

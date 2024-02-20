@@ -95,7 +95,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	if recipe.ToolVersions["sbt"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "SBT_DIST", Value: "/opt/sbt/" + recipe.ToolVersions["sbt"]})
 	}
-	toolEnv = append(toolEnv, v1.EnvVar{Name: "TOOL_VERSION", Value: recipe.ToolVersion})
+	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamToolVersion, Value: recipe.ToolVersion})
+	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
 
 	additionalMemory := recipe.AdditionalMemory
 	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
@@ -175,6 +176,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		{Name: PipelineParamToolVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamPath, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamEnforceVersion, Type: tektonpipeline.ParamTypeString},
+		{Name: PipelineParamProjectVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 	}
 	secretVariables := make([]v1.EnvVar, 0)
