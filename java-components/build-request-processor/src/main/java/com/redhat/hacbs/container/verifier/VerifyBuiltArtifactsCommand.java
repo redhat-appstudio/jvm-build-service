@@ -120,29 +120,34 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
             var futureResults = new HashMap<String, Future<List<String>>>();
 
-            Files.walkFileTree(options.mavenOptions.deployPath, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    var fileName = file.getFileName().toString();
+            if (options.mavenOptions.deployPath.toFile().exists()) {
+                Files.walkFileTree(options.mavenOptions.deployPath, new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                        var fileName = file.getFileName().toString();
 
-                    if (fileName.endsWith(".jar")) {
-                        try {
-                            if (endsWithAny(fileName, "-javadoc.jar", "-tests.jar", "-sources.jar")) {
-                                Log.debugf("Skipping file %s", file);
-                            } else {
-                                var relativeFile = options.mavenOptions.deployPath.relativize(file);
-                                var coords = pathToCoords(relativeFile);
-                                var failures = executorService.submit(() -> handleJar(file, relativeFile, coords, excludes));
-                                futureResults.put(coords, failures);
+                        if (fileName.endsWith(".jar")) {
+                            try {
+                                if (endsWithAny(fileName, "-javadoc.jar", "-tests.jar", "-sources.jar")) {
+                                    Log.debugf("Skipping file %s", file);
+                                } else {
+                                    var relativeFile = options.mavenOptions.deployPath.relativize(file);
+                                    var coords = pathToCoords(relativeFile);
+                                    var failures = executorService.submit(
+                                            () -> handleJar(file, relativeFile, coords, excludes));
+                                    futureResults.put(coords, failures);
+                                }
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
                             }
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
                         }
-                    }
 
-                    return CONTINUE;
-                }
-            });
+                        return CONTINUE;
+                    }
+                });
+            } else {
+                Log.warnf("Unable to find any deployed artifacts in " + options.mavenOptions.deployPath);
+            }
 
             boolean failed = false;
             var verificationResults = new HashMap<String, List<String>>();
@@ -197,7 +202,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
 
             return (failed && !reportOnly ? 1 : 0);
         } catch (Exception e) {
-            Log.errorf("%s", e.getMessage(), e);
+            Log.errorf(e, "Problem verifying artifacts");
             if (resultsFile != null) {
                 try {
                     Files.writeString(resultsFile, "false");
