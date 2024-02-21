@@ -119,7 +119,7 @@ public final class GradleUtils {
      */
     public static String getSpecifiedJavaVersion(Path buildFile) throws IOException {
         if (isInBuildGradle(buildFile,
-                "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?1[2-7][^0-9]['\"]?")) {
+                "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?1[2-7][^0-9]['\"]?")) {
             return "17";
         }
 

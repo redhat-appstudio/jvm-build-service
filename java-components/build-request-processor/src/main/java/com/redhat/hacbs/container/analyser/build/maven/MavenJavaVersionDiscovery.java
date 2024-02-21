@@ -1,5 +1,7 @@
 package com.redhat.hacbs.container.analyser.build.maven;
 
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_11;
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_8;
 import static com.redhat.hacbs.container.verifier.MavenUtils.getCompilerSource;
 import static com.redhat.hacbs.container.verifier.MavenUtils.getCompilerTarget;
 
@@ -80,9 +82,9 @@ public class MavenJavaVersionDiscovery {
         }
         if (javaVersion > 0) {
             if (javaVersion <= 5) {
-                invocationBuilder.maxJavaVersion(new JavaVersion("8"));
+                invocationBuilder.maxJavaVersion(JAVA_8);
             } else if (javaVersion == 6) {
-                invocationBuilder.maxJavaVersion(new JavaVersion("11"));
+                invocationBuilder.maxJavaVersion(JAVA_11);
             } else {
                 invocationBuilder.minJavaVersion(new JavaVersion(Integer.toString(javaVersion)));
             }

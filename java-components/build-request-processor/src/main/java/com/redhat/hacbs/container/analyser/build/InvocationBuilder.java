@@ -35,6 +35,7 @@ public class InvocationBuilder {
 
     JavaVersion minJavaVersion;
     JavaVersion maxJavaVersion;
+    JavaVersion preferredJavaVersion;
 
     BuildInfo info = new BuildInfo();
     /**
@@ -59,6 +60,11 @@ public class InvocationBuilder {
             throw new IllegalArgumentException("cannot use method for JDK");
         }
         discoveredToolVersions.put(tool, version);
+    }
+
+    public InvocationBuilder setPreferredJavaVersion(JavaVersion preferredJavaVersion) {
+        this.preferredJavaVersion = preferredJavaVersion;
+        return this;
     }
 
     public void addToolInvocation(String tool, List<String> invocation) {
@@ -138,6 +144,29 @@ public class InvocationBuilder {
             info.setAdditionalMemory(buildRecipeInfo.getAdditionalMemory());
             info.setAllowedDifferences(buildRecipeInfo.getAllowedDifferences());
             info.setDisabledPlugins(buildRecipeInfo.getDisabledPlugins());
+            if (buildRecipeInfo.getJavaVersion() != null) {
+                preferredJavaVersion = new JavaVersion(buildRecipeInfo.getJavaVersion());
+            }
+        }
+        if (preferredJavaVersion != null) {
+            //try and match the upstream JDK as closely as possible
+            for (var version : availableTools.get("jdk")) {
+                JavaVersion j = new JavaVersion(version);
+                if (preferredJavaVersion.intVersion() == j.intVersion()) {
+                    //exact match
+                    minJavaVersion = preferredJavaVersion;
+                    maxJavaVersion = preferredJavaVersion;
+                    break;
+                } else if (j.intVersion() < preferredJavaVersion.intVersion()
+                        && (minJavaVersion == null || minJavaVersion.intVersion() < j.intVersion())) {
+                    minJavaVersion = j;
+                } else if (j.intVersion() > preferredJavaVersion.intVersion()
+                        && (maxJavaVersion == null || maxJavaVersion.intVersion() > j.intVersion())) {
+                    maxJavaVersion = j;
+                }
+            }
+            Log.infof("Set Java version to [%s, %s] due to preferred version %s", minJavaVersion,
+                    maxJavaVersion, preferredJavaVersion);
         }
         Date commitTime = new Date(info.commitTime);
         DateFormat simpleDate = new SimpleDateFormat("yyyy-MM-dd");
@@ -318,49 +347,50 @@ public class InvocationBuilder {
             for (var perm : allToolPermutations) {
                 for (var javaVersion : javaVersions) {
                     boolean ignore = false;
-                    for (var tool : perm.entrySet()) {
-                        var info = buildToolInfo.get(tool.getKey());
-                        if (info != null) {
-                            var toolInfo = info.get(tool.getValue());
-                            if (toolInfo != null) {
-                                if (toolInfo.getMaxJdkVersion() != null && new JavaVersion(toolInfo.getMaxJdkVersion())
-                                        .intVersion() < javaVersion.intVersion()) {
-                                    ignore = true;
-                                } else if (toolInfo.getMinJdkVersion() != null
-                                        && new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
-                                                .intVersion()) {
-                                    ignore = true;
-                                }
+                    var tv = perm.get(invocationSet.getKey());
+                    var info = buildToolInfo.get(invocationSet.getKey());
+                    if (info != null) {
+                        var toolInfo = info.get(tv);
+                        if (toolInfo != null) {
+                            if (toolInfo.getMaxJdkVersion() != null && new JavaVersion(toolInfo.getMaxJdkVersion())
+                                    .intVersion() < javaVersion.intVersion()) {
+                                ignore = true;
+                            } else if (toolInfo.getMinJdkVersion() != null
+                                    && new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
+                                            .intVersion()) {
+                                ignore = true;
                             }
                         }
-                    }
-                    if (!ignore) {
-                        for (var invocation : invocationSet.getValue()) {
-                            Invocation result = new Invocation();
-                            Map<String, String> toolVersion = new HashMap<>(perm);
-                            toolVersion.put(BuildInfo.JDK, javaVersion.version());
 
-                            result.setToolVersion(toolVersion);
-                            String tool = invocationSet.getKey();
-                            if (tool.equals(BuildInfo.MAVEN)) {
-                                //huge hack, we need a different invocation for different java versions
-                                //Note - according to https://github.com/apache/maven-deploy-plugin/releases
-                                //  the deploy plugin >= 3.1 is JDK8 only.
-                                List<String> cmds = new ArrayList<>(invocation);
-                                if (javaVersion.intVersion() < 8) {
-                                    cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy");
+                        if (!ignore) {
+                            for (var invocation : invocationSet.getValue()) {
+                                Invocation result = new Invocation();
+                                Map<String, String> toolVersion = new HashMap<>(perm);
+                                toolVersion.put(BuildInfo.JDK, javaVersion.version());
+
+                                result.setToolVersion(toolVersion);
+                                String tool = invocationSet.getKey();
+                                if (tool.equals(BuildInfo.MAVEN)) {
+                                    //huge hack, we need a different invocation for different java versions
+                                    //Note - according to https://github.com/apache/maven-deploy-plugin/releases
+                                    //  the deploy plugin >= 3.1 is JDK8 only.
+                                    List<String> cmds = new ArrayList<>(invocation);
+                                    if (javaVersion.intVersion() < 8) {
+                                        cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy");
+                                    } else {
+                                        cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy");
+                                    }
+                                    result.setCommands(cmds);
                                 } else {
-                                    cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy");
+                                    result.setCommands(invocation);
                                 }
-                                result.setCommands(cmds);
-                            } else {
-                                result.setCommands(invocation);
+                                result.setTool(tool);
+                                result.setDisabledPlugins(
+                                        buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
+                                                ? buildRecipeInfo.getDisabledPlugins()
+                                                : buildInfoLocator.lookupDisabledPlugins(tool));
+                                this.info.invocations.add(result);
                             }
-                            result.setTool(tool);
-                            result.setDisabledPlugins(buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
-                                    ? buildRecipeInfo.getDisabledPlugins()
-                                    : buildInfoLocator.lookupDisabledPlugins(tool));
-                            info.invocations.add(result);
                         }
                     }
                 }

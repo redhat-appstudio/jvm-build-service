@@ -737,7 +737,7 @@ func prependTagToImage(imageId string, prependTag string) string {
 func verifyParameters(jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe) []string {
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
-		"--repository-url=$(params.CACHE_URL)?upstream-only=true",
+		"--repository-url=$(params.CACHE_URL)",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 		"--task-run-name=$(context.taskRun.name)",
 		"--results-file=$(results." + PipelineResultPassedVerification + ".path)",

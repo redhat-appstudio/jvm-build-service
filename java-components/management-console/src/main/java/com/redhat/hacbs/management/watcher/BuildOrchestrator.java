@@ -127,10 +127,10 @@ public class BuildOrchestrator {
             int count = 0;
             List<RunningBuildDTO> rbl = new ArrayList<>();
             for (var i : dbs.getItems()) {
-                if (i.getStatus() == null || i.getStatus().getState() == null ||
-                        Objects.equals(i.getStatus().getState(), ModelConstants.DEPENDENCY_BUILD_COMPLETE) ||
-                        Objects.equals(i.getStatus().getState(), ModelConstants.DEPENDENCY_BUILD_CONTAMINATED) ||
-                        Objects.equals(i.getStatus().getState(), ModelConstants.DEPENDENCY_BUILD_FAILED)) {
+                if (i.getStatus() != null && i.getStatus().getState() != null &&
+                        (Objects.equals(i.getStatus().getState(), ModelConstants.DEPENDENCY_BUILD_COMPLETE) ||
+                                Objects.equals(i.getStatus().getState(), ModelConstants.DEPENDENCY_BUILD_CONTAMINATED) ||
+                                Objects.equals(i.getStatus().getState(), ModelConstants.DEPENDENCY_BUILD_FAILED))) {
                     continue;
                 }
                 count++;

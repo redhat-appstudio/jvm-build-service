@@ -4,6 +4,7 @@ import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.JDK;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.InvocationBuilder.findClosestVersions;
+import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_11;
 
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -43,7 +44,9 @@ public class InvocationBuilderTestCase {
                                 .setMinJdkVersion("7"));
             } else if (name.equals("gradle")) {
                 return List.of(
-                        new BuildToolInfo().setReleaseDate("2019-04-26").setVersion("5.4").setMaxJdkVersion("12")
+                        new BuildToolInfo().setReleaseDate("2019-04-26").setVersion("5.0").setMaxJdkVersion("12")
+                                .setMinJdkVersion("8"),
+                        new BuildToolInfo().setReleaseDate("2019-08-26").setVersion("5.4").setMaxJdkVersion("12")
                                 .setMinJdkVersion("8"),
                         new BuildToolInfo().setReleaseDate("2019-09-26").setVersion("6.0").setMaxJdkVersion("13")
                                 .setMinJdkVersion("8"),
@@ -97,8 +100,8 @@ public class InvocationBuilderTestCase {
         builder.setCommitTime(System.currentTimeMillis());
         builder.addToolInvocation(MAVEN, List.of("install"));
         builder.addToolInvocation(GRADLE, List.of("build"));
-        builder.minJavaVersion(new JavaVersion("11"));
-        builder.maxJavaVersion(new JavaVersion("11"));
+        builder.minJavaVersion(JAVA_11);
+        builder.maxJavaVersion(JAVA_11);
         result = builder.build(buildInfoLocator);
         Assertions.assertEquals(8, result.invocations.size());
         Assertions.assertTrue(result.invocations
@@ -113,8 +116,8 @@ public class InvocationBuilderTestCase {
         builder = newBuilder();
         builder.addToolInvocation(MAVEN, List.of("mvn", "install"));
         builder.addToolInvocation(GRADLE, List.of("gradle", "build"));
-        builder.minJavaVersion(new JavaVersion("11"));
-        builder.maxJavaVersion(new JavaVersion("11"));
+        builder.minJavaVersion(JAVA_11);
+        builder.maxJavaVersion(JAVA_11);
         builder.discoveredToolVersion(GRADLE, "5.2");
         result = builder.build(buildInfoLocator);
         Assertions.assertEquals(4, result.invocations.size());

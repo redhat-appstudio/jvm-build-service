@@ -4,6 +4,7 @@ import static com.redhat.hacbs.container.analyser.build.BuildInfo.ANT;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.GRADLE;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.MAVEN;
 import static com.redhat.hacbs.container.analyser.build.BuildInfo.SBT;
+import static com.redhat.hacbs.container.verifier.MavenUtils.getBuildJdk;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.eclipse.jgit.api.ResetCommand.ResetType.HARD;
@@ -110,6 +111,9 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--tool-versions", description = "Available Tool Versions")
     String toolVersions;
 
+    @CommandLine.Option(names = "--artifact", description = "Artifact to get manifest from")
+    String artifact;
+
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
 
@@ -156,6 +160,7 @@ public class LookupBuildInfoCommand implements Runnable {
             throws Exception {
         Map<String, List<String>> availableTools = parseToolVersions();
         InvocationBuilder builder = new InvocationBuilder(buildRecipeInfo, availableTools, version);
+
         var path = Files.createTempDirectory("checkout");
         try (var clone = Git.cloneRepository()
                 .setCredentialsProvider(
@@ -236,6 +241,17 @@ public class LookupBuildInfoCommand implements Runnable {
                     || Objects.equals(buildRecipeInfo.getTool(), ANT)) {
                 if ((buildScript = buildScriptPaths.get(ANT)) != null) {
                     handleAntBuild(builder, buildScript);
+                }
+            }
+
+            if (artifact != null && (buildRecipeInfo == null || buildRecipeInfo.getJavaVersion() == null)) {
+                Log.infof("Lookup Build JDK for artifact %s", artifact);
+                var optBuildJdk = getBuildJdk(cacheUrl + "/v2/cache/rebuild-default/0", artifact);
+                if (optBuildJdk.isPresent()) {
+                    var buildJdk = optBuildJdk.get();
+                    builder.setPreferredJavaVersion(buildJdk);
+                } else {
+                    Log.infof("No Build JDK found in JAR manifest");
                 }
             }
 
@@ -465,13 +481,10 @@ public class LookupBuildInfoCommand implements Runnable {
         Log.infof("Detected Gradle version %s",
                 optionalGradleVersion.isPresent() ? detectedGradleVersion : "none");
         Log.infof("Chose Gradle version %s", detectedGradleVersion);
-        String javaVersion;
         var specifiedJavaVersion = GradleUtils.getSpecifiedJavaVersion(gradleFile);
 
         if (!specifiedJavaVersion.isEmpty()) {
             builder.minJavaVersion(new JavaVersion(specifiedJavaVersion));
-            javaVersion = specifiedJavaVersion;
-            Log.infof("Chose min Java version %s based on specified Java version", javaVersion);
         }
         ArrayList<String> inv = new ArrayList<>(GradleUtils.getGradleArgs(gradleFile));
         if (skipTests) {
