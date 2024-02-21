@@ -30,7 +30,7 @@ public class GithubBuildsResource {
                 .page(Page.of(page - 1, perPage)).list();
         for (var build : builds) {
             GithubBuildDTO info = new GithubBuildDTO(build.id, build.dependencySet.identifier, build.complete, build.prUrl,
-                    build.dependencySet.id);
+                    build.dependencySet.id, build.buildDependencySet == null ? -1 : build.buildDependencySet.id);
             ret.add(info);
         }
         return new PageParameters<>(ret, GithubActionsBuild.count(), page, perPage);
@@ -44,7 +44,7 @@ public class GithubBuildsResource {
             throw new NotFoundException();
         }
         return new GithubBuildDTO(build.id, build.dependencySet.identifier, build.complete, build.prUrl,
-                build.dependencySet.id);
+                build.dependencySet.id, build.buildDependencySet == null ? -1 : build.buildDependencySet.id);
     }
 
 }

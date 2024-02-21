@@ -7,6 +7,7 @@ public record GithubBuildDTO(
         @Schema(required = true) String name,
         @Schema(required = true) boolean buildsComponent,
         @Schema(required = true) String url,
-        @Schema(required = true) Long dependencySetId) {
+        @Schema(required = true) Long dependencySetId,
+        @Schema(required = true) Long buildDependencySetId) {
 
 }

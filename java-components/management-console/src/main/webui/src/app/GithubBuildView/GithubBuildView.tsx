@@ -13,7 +13,7 @@ import {
   Label,
   PageSection,
   PageSectionVariants,
-  Pagination, TabTitleText,
+  Pagination, Tab, Tabs, TabTitleText,
   Text,
   TextContent,
   TextVariants,
@@ -46,13 +46,20 @@ interface GithubBuildView extends RouteComponentProps<RouteParams> {
 const GithubBuildView: React.FunctionComponent<GithubBuildView> = (props) => {
   const initial : GithubBuildDTO = {
     url: "",
-    buildsComponent: false, dependencySetId: 0, id: 0, name: ""
+    buildsComponent: false, dependencySetId: 0, id: 0, name: "",buildDependencySetId:-1
   }
   const repo = parseInt(props.match.params.build)
   const [build, setBuild] = useState(initial);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
-
+  const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
+  // Toggle currently active tab
+  const handleTabClick = (
+    event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
+    tabIndex: string | number
+  ) => {
+    setActiveTabKey(tabIndex);
+  };
 
   useEffect(() => {
     setState('loading');
@@ -87,12 +94,29 @@ const GithubBuildView: React.FunctionComponent<GithubBuildView> = (props) => {
       </TextContent>
     </PageSection>
     <PageSection isFilled>
+
+      <Tabs  activeKey={activeTabKey}
+             onSelect={handleTabClick}
+             isBox
+             aria-label="Tabs in the box light variation example"
+             role="region" >
+        <Tab eventKey={0} title={<TabTitleText>Runtime Dependencies</TabTitleText>} aria-label="Runtime dependencies">
           <Card>
-            <CardHeader>Build Details</CardHeader>
+            <CardHeader>Build Dependencies</CardHeader>
             <CardBody >
               <DependencySet dependencySetId={build.dependencySetId}></DependencySet>
             </CardBody>
           </Card>
+        </Tab>
+        <Tab eventKey={1} title={<TabTitleText>All Build Dependencies</TabTitleText>} aria-label="All build dependencies">
+          <Card>
+            <CardHeader>All Build Dependencies</CardHeader>
+            <CardBody >
+              <DependencySet dependencySetId={build.buildDependencySetId}></DependencySet>
+            </CardBody>
+          </Card>
+        </Tab>
+      </Tabs>
     </PageSection>
     </>
 };
