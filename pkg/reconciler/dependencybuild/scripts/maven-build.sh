@@ -18,10 +18,10 @@ cat >"$TOOLCHAINS_XML" <<EOF
 <toolchains>
 EOF
 
-if [ "$(params.JAVA_VERSION)" = "1.7" ]; then
-    JAVA_VERSIONS="1.7:1.7.0 1.8:1.8.0 11:11"
+if [ "$(params.JAVA_VERSION)" = "7" ]; then
+    JAVA_VERSIONS="7:1.7.0 8:1.8.0 11:11"
 else
-    JAVA_VERSIONS="1.8:1.8.0 11:11 17:17"
+    JAVA_VERSIONS="8:1.8.0 11:11 17:17 21:21"
 fi
 
 for i in $JAVA_VERSIONS; do
