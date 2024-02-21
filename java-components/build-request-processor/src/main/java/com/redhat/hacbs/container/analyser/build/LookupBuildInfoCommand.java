@@ -549,6 +549,7 @@ public class LookupBuildInfoCommand implements Runnable {
                             "-Dgpg.skip",
                             "-Djapicmp.skip",
                             "-Dmaven.javadoc.failOnError=false",
+                            "-Dmaven.site.deploy.skip",
                             "-Dpgpverify.skip",
                             "-Drat.skip=true",
                             "-Drevapi.skip",
