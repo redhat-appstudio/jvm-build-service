@@ -221,7 +221,7 @@ func (r *ReconcileImageScan) handleJavaDependencies(ctx context.Context, deps []
 			val := split[i]
 			idx := strings.Index(val, "=")
 			if idx > 0 {
-				attrs[val[0:i]] = val[i+1:]
+				attrs[val[0:idx]] = val[idx+1:]
 			}
 		}
 		results = append(results, v1alpha1.JavaDependency{GAV: split[0], Source: source, Attributes: attrs})

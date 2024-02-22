@@ -79,7 +79,7 @@ public class ContainerImage extends PanacheEntity {
         if (repository == null) {
             repository = ContainerImageRepository.findByRepository(imagePart);
             if (repository == null) {
-                throw new RuntimeException("Unable to find repository " + imagePart);
+                return null;
             }
         }
         // TODO: Keeping the ability to lookup via digest but also via tag

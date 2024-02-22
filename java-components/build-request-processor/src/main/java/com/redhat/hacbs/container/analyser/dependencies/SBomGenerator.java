@@ -37,8 +37,14 @@ public class SBomGenerator {
             //basically the same thing, but one with name 'com.foo.bar' and no group-id, and one with name 'bar'
             //and group 'com.foo'
             //we just want the later form, if they are both there we remove the problematic one
-            for (var i : bom.getComponents()) {
-                existingIds.put(new Identifier(i.getName(), i.getGroup(), i.getVersion()), i);
+            for (var it = bom.getComponents().iterator(); it.hasNext();) {
+                var i = it.next();
+                Identifier identifier = new Identifier(i.getName(), i.getGroup(), i.getVersion());
+                if (existingIds.containsKey(identifier)) {
+                    it.remove();
+                } else {
+                    existingIds.put(identifier, i);
+                }
             }
             for (var it = bom.getComponents().iterator(); it.hasNext();) {
                 var i = it.next();
