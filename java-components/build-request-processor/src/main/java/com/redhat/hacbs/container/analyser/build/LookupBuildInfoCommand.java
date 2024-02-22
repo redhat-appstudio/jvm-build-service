@@ -249,6 +249,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 var optBuildJdk = getBuildJdk(cacheUrl + "/v2/cache/rebuild-default/0", artifact);
                 if (optBuildJdk.isPresent()) {
                     var buildJdk = optBuildJdk.get();
+                    Log.infof("Setting build JDK to %s for artifact %s", buildJdk.version(), artifact);
                     builder.setPreferredJavaVersion(buildJdk);
                 } else {
                     Log.infof("No Build JDK found in JAR manifest");

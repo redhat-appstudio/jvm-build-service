@@ -308,8 +308,8 @@ public class GithubIntegration {
                     if (!build) {
                         conclusion = GHCheckRun.Conclusion.FAILURE;
                         failureList.add(gav);
+                        BuildQueue.create(gav, true, Map.of("Github Build", identifier));
                     }
-                    BuildQueue.create(gav, true, Map.of("Github Build", identifier));
 
                     dep.source = "unknown";
                 } else {

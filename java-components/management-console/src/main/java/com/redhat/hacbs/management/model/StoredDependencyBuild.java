@@ -45,7 +45,7 @@ public class StoredDependencyBuild extends PanacheEntity {
     @OneToMany(cascade = CascadeType.ALL)
     public List<ShadingDetails> shadingDetails;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "dependencyBuild")
     @OrderBy("startTime desc")
     public List<BuildAttempt> buildAttempts;
 
