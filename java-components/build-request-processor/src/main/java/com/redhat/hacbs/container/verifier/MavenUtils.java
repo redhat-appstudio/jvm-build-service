@@ -134,6 +134,9 @@ public class MavenUtils {
     }
 
     public static Optional<Path> downloadFile(URI uri) throws IOException {
+        if (uri.getScheme().equals("file")) {
+            return Optional.of(Path.of(uri));
+        }
         try (var client = HttpClientBuilder.create().build()) {
             Log.debugf("Getting URL %s", uri);
             var get = new HttpGet(uri);
@@ -161,6 +164,10 @@ public class MavenUtils {
 
     public static Optional<Path> downloadCoordinates(String baseUrl, String coords) throws IOException {
         var path = coordsToPath(coords);
+        if (baseUrl.startsWith("file")) {
+            var url = baseUrl + "/" + path;
+            return downloadFile(URI.create(url).normalize());
+        }
         var url = baseUrl + "/" + path + "?upstream-only=true";
         return downloadFile(URI.create(url).normalize());
     }

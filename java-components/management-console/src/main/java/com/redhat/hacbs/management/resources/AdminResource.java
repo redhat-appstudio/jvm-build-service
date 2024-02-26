@@ -1,6 +1,8 @@
 package com.redhat.hacbs.management.resources;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -19,6 +21,7 @@ import com.redhat.hacbs.management.model.MavenArtifactLabel;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
+import com.redhat.hacbs.resources.model.v1alpha1.JBSConfig;
 import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -67,6 +70,12 @@ public class AdminResource {
             kubernetesClient.resource(i).delete();
         }
         runner.run(() -> {
+            IdentifiedDependency.deleteAll();
+        });
+        runner.run(() -> {
+            BuildSBOMDiscoveryInfo.deleteAll();
+        });
+        runner.run(() -> {
             BuildAttempt.deleteAll();
         });
         runner.run(() -> {
@@ -76,13 +85,23 @@ public class AdminResource {
             StoredArtifactBuild.deleteAll();
         });
         runner.run(() -> {
-            BuildSBOMDiscoveryInfo.deleteAll();
             ContainerImage.deleteAll();
             GithubActionsBuild.deleteAll();
-            IdentifiedDependency.deleteAll();
             DependencySet.deleteAll();
             MavenArtifactLabel.deleteAll();
             MavenArtifact.deleteAll();
         });
+        for (var i : kubernetesClient.resources(JBSConfig.class).list().getItems()) {
+            kubernetesClient.resource(i).edit(new UnaryOperator<JBSConfig>() {
+                @Override
+                public JBSConfig apply(JBSConfig jbsConfig) {
+                    if (jbsConfig.getMetadata().getAnnotations() == null) {
+                        jbsConfig.getMetadata().setAnnotations(new HashMap<>());
+                    }
+                    jbsConfig.getMetadata().getAnnotations().put("jvmbuildservice.io/clear-cache", "true");
+                    return jbsConfig;
+                }
+            });
+        }
     }
 }

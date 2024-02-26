@@ -7,6 +7,7 @@ import java.util.List;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -58,6 +59,10 @@ public class ImageResource {
     @GET
     @Path("scan/{image}")
     public ImageDTO getImage(@PathParam("image") String image) {
-        return ImageDTO.of(ContainerImage.get(image));
+        ContainerImage im = ContainerImage.get(image);
+        if (im == null) {
+            throw new NotFoundException();
+        }
+        return ImageDTO.of(im);
     }
 }

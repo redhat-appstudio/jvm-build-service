@@ -59,7 +59,7 @@ public class BuildAttempt extends PanacheEntity {
 
     public String mavenRepository;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "buildAttempt")
     public List<AdditionalDownload> additionalDownloads;
 
     public boolean successful;
@@ -69,7 +69,7 @@ public class BuildAttempt extends PanacheEntity {
     @JoinColumn(nullable = false)
     public StoredDependencyBuild dependencyBuild;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "build")
     public List<BuildFile> storedBuildResults;
 
     @Column(length = -1)
