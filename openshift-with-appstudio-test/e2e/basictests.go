@@ -435,11 +435,11 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 				if jdk8 {
 					return false, fmt.Errorf("build should not have been attempted with jdk8")
 				}
+				if jdk17 {
+					return false, fmt.Errorf("build should not have been attempted with jdk17")
+				}
 				if !jdk11 {
 					return false, fmt.Errorf("build should have been attempted with jdk11")
-				}
-				if !jdk17 {
-					return false, fmt.Errorf("build should have been attempted with jdk17")
 				}
 				return true, nil
 
