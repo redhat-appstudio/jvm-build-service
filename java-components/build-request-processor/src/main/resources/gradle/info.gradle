@@ -1,0 +1,5 @@
+// Ideally we would use --show-version in gradle.sh but that command
+// was only added in https://docs.gradle.org/7.5/release-notes.html
+println("------------------------------------------------------------")
+println("JDK: " + JavaVersion.current())
+println("-----------------------------------------------------------")

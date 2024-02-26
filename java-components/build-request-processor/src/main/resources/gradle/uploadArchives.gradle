@@ -1,10 +1,11 @@
 gradle.allprojects {
     project -> pluginManager.withPlugin('maven') {
         afterEvaluate {
-            def url = System.getProperty('AProxDeployUrl')
+            // Using the same property as maven-publish plugin to avoid having two different ones
+            def url = "file://" + System.getProperty('maven.repo.local')
 
             if (!url) {
-                throw new GradleException('You must set system property \'AProxDeployUrl\' to the Maven deployment repository URL')
+                throw new GradleException('You must set system property \'maven.repo.local\' to the Maven deployment repository URL')
             }
 
             uploadArchives {
