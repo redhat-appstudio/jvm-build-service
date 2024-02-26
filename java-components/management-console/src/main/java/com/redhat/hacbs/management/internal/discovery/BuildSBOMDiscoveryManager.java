@@ -89,7 +89,8 @@ public class BuildSBOMDiscoveryManager {
             Bom bom = locateSbom(attempt.outputImage);
             DependencySet dependencySet = new DependencySet();
             dependencySet.type = "build-sbom";
-            dependencySet.identifier = "build-sbom-" + attempt.dependencyBuild.buildIdentifier.dependencyBuildName;
+            dependencySet.identifier = "build-sbom-" + attempt.dependencyBuild.buildIdentifier.dependencyBuildName + "-"
+                    + attempt.buildId;
             dependencySet.dependencies = new ArrayList<>();
             if (bom.getComponents() != null) {
                 for (var comp : bom.getComponents()) {
