@@ -566,6 +566,10 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	for _, i := range db.Status.PreBuildImages {
 		preBuildImages[i.BaseBuilderImage] = i.BuiltImageDigest
 	}
+	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{
+		Pipeline: &v12.Duration{Duration: time.Hour * 3},
+		Tasks:    &v12.Duration{Duration: time.Hour * 3},
+	}
 	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
 	if err != nil {
 		return reconcile.Result{}, err

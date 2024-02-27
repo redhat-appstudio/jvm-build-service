@@ -373,7 +373,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				TaskSpec: &tektonpipeline.EmbeddedTask{
 					TaskSpec: buildTask,
 				},
-				Params: []tektonpipeline.Param{{Name: PreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
+				Timeout: &v12.Duration{Duration: time.Hour * 3},
+				Params:  []tektonpipeline.Param{{Name: PreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
 				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 					{Name: WorkspaceSource, Workspace: WorkspaceSource},
@@ -488,6 +489,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			}
 		}
 	}
+
 	ps.Tasks[len(ps.Tasks)-1].Params = append(ps.Tasks[len(ps.Tasks)-1].Params, tektonpipeline.Param{
 		Name:  PipelineResultGavs,
 		Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultDeployedResources + ")"}})
