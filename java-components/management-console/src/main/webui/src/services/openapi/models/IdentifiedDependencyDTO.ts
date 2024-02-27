@@ -7,6 +7,7 @@ export type IdentifiedDependencyDTO = {
     source: string;
     dependencyBuildIdentifier?: string;
     buildAttemptId?: string;
+    shadedInto?: string;
     inQueue: boolean;
     buildSuccess: boolean;
     attributes: Record<string, string>;

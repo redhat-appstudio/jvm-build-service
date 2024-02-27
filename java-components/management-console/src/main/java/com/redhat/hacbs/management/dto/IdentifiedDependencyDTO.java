@@ -20,6 +20,7 @@ public record IdentifiedDependencyDTO(
         @Schema(required = true) String source,
         String dependencyBuildIdentifier,
         String buildAttemptId,
+        String shadedInto,
         @Schema(required = true) boolean inQueue,
         @Schema(required = true) boolean buildSuccess,
         @Schema(required = true) Map<String, String> attributes) implements Comparable<IdentifiedDependencyDTO> {
@@ -60,7 +61,7 @@ public record IdentifiedDependencyDTO(
             }
             boolean inQueue = BuildQueue.inBuildQueue(dep.mavenArtifact);
             IdentifiedDependencyDTO d = new IdentifiedDependencyDTO(dep.mavenArtifact.gav(), dep.source, buildId, dep.buildId,
-                    inQueue, buildSuccess, attributes);
+                    dep.shadedInto, inQueue, buildSuccess, attributes);
             depList.add(d);
         }
         Collections.sort(depList);

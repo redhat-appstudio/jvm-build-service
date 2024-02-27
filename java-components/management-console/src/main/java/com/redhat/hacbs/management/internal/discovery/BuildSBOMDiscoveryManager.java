@@ -106,6 +106,8 @@ public class BuildSBOMDiscoveryManager {
                         for (var e : comp.getProperties()) {
                             if (e.getName().equals("build-id")) {
                                 identifiedDependency.buildId = e.getValue();
+                            } else if (e.getName().equals("java:shaded-into")) {
+                                identifiedDependency.shadedInto = e.getValue();
                             }
                             if (!sb.isEmpty()) {
                                 sb.append(";");

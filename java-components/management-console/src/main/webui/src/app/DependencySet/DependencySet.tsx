@@ -3,7 +3,7 @@ import {useEffect, useState} from 'react';
 import {Label, Spinner,} from '@patternfly/react-core';
 import {DependencySetDTO, DependencySetResourceService, IdentifiedDependencyDTO,} from "../../services/openapi";
 import {
-  AttentionBellIcon,
+  AttentionBellIcon, CopyIcon,
   IceCreamIcon,
   ListIcon,
   OkIcon,
@@ -100,6 +100,8 @@ const DependencySet: React.FunctionComponent<DependencySetType> = (props) => {
           <Label color="red" icon={<OutlinedAngryIcon/>}>Rebuild Failed</Label>}
         {(dep.buildAttemptId == null && dep.dependencyBuildIdentifier == null && !dep.buildSuccess) &&
           <Label color="orange" icon={<OutlinedAngryIcon/>}>Unknown Source</Label>}
+        {dep.shadedInto != null &&
+          <Label color="blue" icon={<CopyIcon/>}>Shaded into {dep.shadedInto}</Label>}
       </Td>
     </Tr>
   }

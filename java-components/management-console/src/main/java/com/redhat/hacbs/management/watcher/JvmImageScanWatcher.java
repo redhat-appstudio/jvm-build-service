@@ -162,6 +162,7 @@ public class JvmImageScanWatcher {
                 }
                 if (i.getAttributes() != null) {
                     id.buildId = i.getAttributes().get("build-id");
+                    id.shadedInto = i.getAttributes().get("shaded-into");
                     StringBuilder sb = new StringBuilder();
                     for (var e : i.getAttributes().entrySet()) {
                         if (!sb.isEmpty()) {
