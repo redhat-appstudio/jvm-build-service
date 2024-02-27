@@ -1,5 +1,7 @@
 package com.redhat.hacbs.classfile.tracker;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.objectweb.asm.Attribute;
@@ -7,8 +9,9 @@ import org.objectweb.asm.ClassVisitor;
 
 class ClassTrackingWriteDataVisitor extends ClassVisitor {
 
+    public static final String SHADED_INTO = "shaded-into";
     final TrackingData contents;
-    boolean existing = false;
+    ClassFileSourceAttribute existing = null;
     final boolean overwrite;
 
     public ClassTrackingWriteDataVisitor(int api, TrackingData contents, boolean overwrite) {
@@ -29,15 +32,24 @@ class ClassTrackingWriteDataVisitor extends ClassVisitor {
             if (overwrite) {
                 return;
             }
-            existing = true;
+            existing = (ClassFileSourceAttribute) attribute;
         }
         super.visitAttribute(attribute);
     }
 
     @Override
     public void visitEnd() {
-        if (!existing) {
+        if (existing == null) {
             super.visitAttribute(new ClassFileSourceAttribute(contents));
+        } else {
+            Map<String, String> attributes = new HashMap<>(existing.contents.getAttributes());
+            if (existing.contents.getAttributes().containsKey(SHADED_INTO)) {
+                attributes.put(SHADED_INTO, contents.gav + "," + existing.contents.getAttributes().get(SHADED_INTO));
+            } else {
+                attributes.put(SHADED_INTO, contents.gav);
+            }
+            super.visitAttribute(new ClassFileSourceAttribute(
+                    new TrackingData(existing.contents.gav, existing.contents.source, attributes)));
         }
         super.visitEnd();
     }

@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
@@ -34,7 +35,8 @@ public class ClassFileTracker {
             ClassWriter writer = new ClassWriter(classReader, 0);
             ClassTrackingWriteDataVisitor classTrackingVisitor = new ClassTrackingWriteDataVisitor(Opcodes.ASM9, writer, data,
                     overwrite);
-            classReader.accept(classTrackingVisitor, 0);
+            classReader.accept(classTrackingVisitor,
+                    new Attribute[] { new ClassFileSourceAttribute(new TrackingData("dummy", "dummy", Map.of())) }, 0);
             return writer.toByteArray();
         } catch (Exception e) {
             Logger.getLogger(ClassFileTracker.class.getName()).log(Level.SEVERE,
