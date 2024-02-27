@@ -65,7 +65,7 @@
         <quarkus-jgit.version>3.0.6</quarkus-jgit.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
         <github-api.version>1.318</github-api.version>
-        <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
+        <quarkus-github-api.version>1.319.0</quarkus-github-api.version>
         <quarkus-github-app.version>2.3.0</quarkus-github-app.version>
         <quarkus-quinoa.version>2.3.4</quarkus-quinoa.version>
     </properties>
