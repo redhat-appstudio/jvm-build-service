@@ -10,8 +10,6 @@ cp -r /maven-artifacts/.m2/* "$HOME/.m2/" || true
 cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF
 org.gradle.caching=false
 org.gradle.console=plain
-# This prevents the daemon from running (which is unnecessary in one-off builds) and increases the memory allocation
-org.gradle.daemon=false
 # For Spring/Nebula Release Plugins
 release.useLastTag=true
 
@@ -96,15 +94,6 @@ esac
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 
-#we want to pass in additional params to GME
-#but not the actual goals
-#TODO: add GME params and remove this
-ADDITIONAL_ARGS=$(echo "$@" | sed -e 's/build\($\| \)//')
-ADDITIONAL_ARGS=$(echo "$ADDITIONAL_ARGS" | sed -e 's/publish\($\| \)//')
-ADDITIONAL_ARGS=$(echo "$ADDITIONAL_ARGS" | sed -e 's/uploadArchives\($\| \)//')
-
-echo ADDITIONAL_ARGS="${ADDITIONAL_ARGS}"
-
 INIT_SCRIPTS=""
 for i in .hacbs-init/*
 do
@@ -116,13 +105,11 @@ echo "INIT SCRIPTS: $INIT_SCRIPTS"
 #TODO: should we disable tracing for these builds? It means we can't track dependencies directly, so we can't detect contaminants
 rm -f gradle/verification-metadata.xml
 
-gradle-manipulator $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --no-colour --info --stacktrace -l "${GRADLE_HOME}" -DdependencySource=NONE -DignoreUnresolvableDependencies=true -DpluginRemoval=ALL -DversionModification=false "${ADDITIONAL_ARGS}" generateAlignmentMetadata  | tee $(workspaces.source.path)/logs/gme.log
-
 echo "Running Gradle command with arguments: $@"
 if [ ! -d $(workspaces.source.path)/source ]; then
   cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 fi
-gradle $INIT_SCRIPTS -DAProxDeployUrl=file:$(workspaces.source.path)/artifacts --info --stacktrace -Prelease.version=$(params.ENFORCE_VERSION) "$@"  | tee $(workspaces.source.path)/logs/gradle.log
+gradle $INIT_SCRIPTS -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@"  | tee $(workspaces.source.path)/logs/gradle.log
 
 mkdir -p $(workspaces.source.path)/build-info
 cp -r "${GRADLE_USER_HOME}" $(workspaces.source.path)/build-info/.gradle

@@ -15,7 +15,7 @@ import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 /**
- * A simple preprocessor that attempts to get gradle build files into a state where GME can work on them.
+ * A simple preprocessor that attempts to get gradle build files into a state where they can be built.
  * <p>
  * At present it just sets up the init script
  */
@@ -23,10 +23,11 @@ import picocli.CommandLine;
 public class GradlePrepareCommand extends AbstractPreprocessor {
 
     public static final String[] INIT_SCRIPTS = {
+            "disable-plugins.gradle",
+            "info.gradle",
+            "javadoc.gradle",
             "repositories.gradle",
             "uploadArchives.gradle",
-            "javadoc.gradle",
-            "disable-plugins.gradle",
             "version.gradle"
     };
 

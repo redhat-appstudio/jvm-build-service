@@ -173,14 +173,44 @@ class LookupBuildInfoCommandTest {
     }
 
     @Test
-    public void testBuildAnalysisGradleRelease()
+    public void testBuildAnalysisAnt()
             throws Exception {
         LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
         lookupBuildInfoCommand.toolVersions = toolVersions;
+        // https://gitlab.ow2.org/asm/asm/-/tree/ASM_6_0?ref_type=tags
+        lookupBuildInfoCommand.commit = "016a5134e8bab1d4239fc8dcc47baef11e05d33e";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://gitlab.ow2.org/asm/asm.git", new BuildRecipeInfo(),
+                cacheBuildInfoLocator);
+        assertThat(info.invocations).isNotEmpty();
+        assertTrue(info.invocations.get(0).getCommands().contains("-v"));
+        assertTrue(info.invocations.get(0).getTool().contains("ant"));
+    }
+
+    @Test
+    public void testBuildAnalysisGradleReleaseLegacy()
+            throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        // https://gitlab.ow2.org/asm/asm/-/tree/ASM_7_0?ref_type=tags
         lookupBuildInfoCommand.commit = "1f6020a3f17d9d88dfd54a31370e91e3361c216b";
         var info = lookupBuildInfoCommand.doBuildAnalysis("https://gitlab.ow2.org/asm/asm.git", new BuildRecipeInfo(),
                 cacheBuildInfoLocator);
         assertThat(info.invocations).isNotEmpty();
+        assertTrue(info.invocations.get(0).getCommands().contains("uploadArchives"));
+        assertTrue(info.invocations.get(0).getCommands().contains("-Prelease"));
+    }
+
+    @Test
+    public void testBuildAnalysisGradleReleaseCurrent()
+            throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        // https://gitlab.ow2.org/asm/asm/-/tree/ASM_9_6?ref_type=tags
+        lookupBuildInfoCommand.commit = "85cf1aeb0d08be8446f6efbda962817d2a9707dd";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://gitlab.ow2.org/asm/asm.git", new BuildRecipeInfo(),
+                cacheBuildInfoLocator);
+        assertThat(info.invocations).isNotEmpty();
+        assertTrue(info.invocations.get(0).getCommands().contains("publishToMavenLocal"));
         assertTrue(info.invocations.get(0).getCommands().contains("-Prelease"));
     }
 
