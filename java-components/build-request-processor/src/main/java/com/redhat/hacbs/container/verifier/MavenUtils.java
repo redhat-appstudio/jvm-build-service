@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.jar.JarInputStream;
 import java.util.regex.Pattern;
@@ -28,8 +29,9 @@ public class MavenUtils {
     public static final Pattern COORDINATE_PATTERN = Pattern.compile(
             "(?<groupId>[^: ]+):(?<artifactId>[^: ]+)(:(?<extension>[^: ]*)(:(?<classifier>[^: ]+))?)?:(?<version>[^: ]+)");
 
-    public static final Pattern JAVA_VERSION_PATTERN = Pattern.compile(
-            "^(?<major>[^. ]+)(.(?<minor>[^. ]+))");
+    public static final Pattern JAVA_VERSION_PATTERN = Pattern.compile("^(\\d+)(\\.\\d+){0,2}");
+
+    public static final List<String> MANIFEST_KEYS = List.of("Build-Jdk-Spec", "Build-Jdk", "Created-By", "Built-JDK");
 
     public static final String MAVEN_COMPILER_PLUGIN_ID = "org.apache.maven.plugins:maven-compiler-plugin";
 
@@ -175,40 +177,46 @@ public class MavenUtils {
     public static Optional<JavaVersion> getBuildJdk(Path path) {
         try (var jar = new JarInputStream(Files.newInputStream(path))) {
             var manifest = jar.getManifest();
+
             if (manifest == null) {
                 return Optional.empty();
             }
-            var buildJdk = manifest.getMainAttributes().getValue("Build-Jdk");
-            Log.debugf("Build-Jdk: %s", buildJdk);
 
-            if (buildJdk == null) {
-                buildJdk = manifest.getMainAttributes().getValue("Build-Jdk-Spec");
-                Log.debugf("Build-Jdk-Spec: %s", buildJdk);
+            var buildJdk = (String) null;
+
+            for (var key : MANIFEST_KEYS) {
+                var mainAttributes = manifest.getMainAttributes();
+                var value = mainAttributes.getValue(key);
+
+                if (value != null) {
+                    Log.debugf("%s: %s", key, value);
+                    buildJdk = value;
+                    break;
+                }
             }
 
             if (buildJdk == null) {
                 return Optional.empty();
-            }
-            try {
-                var version = Integer.parseInt(buildJdk);
-                return Optional.of(new JavaVersion(buildJdk, version));
-            } catch (NumberFormatException ignore) {
-
             }
 
             var matcher = JAVA_VERSION_PATTERN.matcher(buildJdk);
 
-            if (matcher.find()) {
-                var major = matcher.group("major");
-                var minor = matcher.group("minor");
+            if (!matcher.find()) {
+                Log.warnf("Could not parse JDK version: %s", buildJdk);
+                return Optional.empty();
+            }
 
-                if (!major.equals("1")) {
-                    buildJdk = major;
-                } else {
-                    buildJdk = minor;
-                }
+            var versionString = matcher.group();
+            var versionComponents = versionString.split("\\.");
+            var major = Integer.parseInt(versionComponents[0]);
+
+            if ((major == 1 && versionComponents.length < 2) || (major > 1 && major < 9)) {
+                Log.warnf("Invalid JDK version: %s", versionString);
+                return Optional.empty();
+            } else if (major == 1) {
+                buildJdk = "1." + versionComponents[1];
             } else {
-                throw new IllegalArgumentException("Bad JDK version: " + buildJdk);
+                buildJdk = Integer.toString(major);
             }
 
             return Optional.of(new JavaVersion(buildJdk));

@@ -260,28 +260,6 @@ class LookupBuildInfoCommandTest {
         assertThat(info.invocations).isNotEmpty();
     }
 
-
-    @Test
-    void testGetBuildJdkFromJarManifest() throws IOException {
-        var v = new String[] { "1.0", "1.1", "1.2", "1.3", "1.3.1", "1.3.2", "1.4", "2.0", "2.0.1", "2.1", "2.2", "2.3", "2.4",
-                "2.5",
-                "2.6", "2.7", "2.8.0", "2.9.0", "2.10.0", "2.11.0", "2.12.0", "2.13.0", "2.14.0", "2.15.0", "2.15.1" };
-        var list = new ArrayList<String>();
-
-        for (var version : v) {
-            var coords = "commons-io:commons-io:jar:" + version;
-            var optBuildJdk = getBuildJdk("https://repo1.maven.org/maven2", coords);
-            if (optBuildJdk.isPresent()) {
-                var buildJdk = optBuildJdk.get();
-                Log.debugf("Version %s: %s", version, buildJdk);
-                list.add(buildJdk.version());
-            }
-        }
-
-        assertThat(list).containsExactly("4", "6", "5", "5", "5", "6", "6", "6", "6", "7", "8", "8", "8", "8", "8", "8", "8",
-                "8", "17", "21", "21");
-    }
-
     @Test
     @Disabled("Cache URL is wrong")
     void testBuildJdkSetsJavaVersion() throws Exception {
@@ -293,8 +271,30 @@ class LookupBuildInfoCommandTest {
         lookupBuildInfoCommand.artifact = "jaxen:jaxen:1.1.6";
         var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/codehaus/jaxen.git", new BuildRecipeInfo(),
                 cacheBuildInfoLocator);
-        List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-        assertThat(logRecords).flatMap(LogCollectingTestResource::format).contains("Found build JDK version 6 in manifest")
-                .contains("Set Java version to [7, 7]");
+        var logRecords = LogCollectingTestResource.current().getRecords();
+        assertThat(logRecords).flatMap(LogCollectingTestResource::format).contains("Set Java version to [7, 8]");
+    }
+
+    @Test
+    void testGetBuildJdkFromJarManifest() throws IOException {
+        var coordsList = List.of("org.bouncycastle:bcprov-jdk18on:jar:1.71", "com.github.fge:btf:1.2",
+                "com.github.mifmif:generex:1.0.2", "xom:xom:1.3.7", "com.carrotsearch:hppc:0.8.1",
+                "com.google.code.gson:gson:jar:2.8.9", "com.googlecode.javaewah:JavaEWAH:1.2.3",
+                "io.opentelemetry:opentelemetry-sdk-common:jar:1.12.0",
+                "org.apache.commons:commons-compress:1.25.0", "wsdl4j:wsdl4j:1.6.3");
+        var list = new ArrayList<String>(9);
+
+        for (var coords : coordsList) {
+            var optBuildJdk = getBuildJdk("https://repo1.maven.org/maven2", coords);
+            if (optBuildJdk.isPresent()) {
+                var buildJdk = optBuildJdk.get();
+                Log.debugf("%s: %s", coords, buildJdk);
+                list.add(buildJdk.version() + ":" + buildJdk.intVersion());
+            }
+        }
+
+        assertThat(list).containsExactly("1.5:5", "1.6:6", "1.7:7", "1.8:8", "9:9", "11:11", "16:16", "17:17", "21:21");
+        var logRecords = LogCollectingTestResource.current().getRecords();
+        assertThat(logRecords).flatMap(LogCollectingTestResource::format).contains("Invalid JDK version: 2.3");
     }
 }
