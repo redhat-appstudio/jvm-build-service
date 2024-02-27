@@ -15,7 +15,7 @@ github.com/CycloneDX/cyclonedx-go
 # github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df
 ## explicit; go 1.18
 github.com/antlr/antlr4/runtime/Go/antlr/v4
-# github.com/aws/aws-sdk-go v1.50.20
+# github.com/aws/aws-sdk-go v1.50.26
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/arn
