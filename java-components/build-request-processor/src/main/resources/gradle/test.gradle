@@ -1,0 +1,16 @@
+apply plugin: TestPlugin
+
+class TestPlugin implements Plugin<Gradle> {
+
+    void apply(Gradle gradle) {
+        if (System.getProperties().containsKey("disableTests")) {
+            gradle.allprojects {
+                project ->
+                    project.tasks.withType(Test).configureEach(task -> {
+                        project.logger.lifecycle "Skipping tests for ${project.name} task ${task.name}"
+                        task.setEnabled(false)
+                    })
+            }
+        }
+    }
+}

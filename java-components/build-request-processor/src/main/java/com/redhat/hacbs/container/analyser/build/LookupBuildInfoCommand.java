@@ -489,8 +489,10 @@ public class LookupBuildInfoCommand implements Runnable {
         }
         ArrayList<String> inv = new ArrayList<>(GradleUtils.getGradleArgs(gradleFile));
         if (skipTests) {
-            inv.add("-x");
-            inv.add("test");
+            // We can't just add -x test as some tasks are derived from the Test task and not named test so
+            // that exclusion would ignore them. Instead pass a property to activate
+            // java-components/build-request-processor/src/main/resources/gradle/test.gradle
+            inv.add("-DdisableTests");
         }
 
         final Collection<File> files = FileUtils.listFiles(
