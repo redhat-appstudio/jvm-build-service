@@ -91,13 +91,17 @@ public class MavenJavaVersionDiscovery {
         }
 
         for (var module : model.getModules()) {
-            var modulePath = pomFile.getParent().resolve(module);
-            var modulePomFile = modulePath.resolve("pom.xml");
+            try {
+                var modulePath = pomFile.getParent().resolve(module);
+                var modulePomFile = modulePath.resolve("pom.xml");
 
-            try (var pomReader = Files.newBufferedReader(modulePomFile)) {
-                var reader = new MavenXpp3Reader();
-                var submodel = reader.read(pomReader);
-                filterJavaVersions(modulePomFile, submodel, invocationBuilder);
+                try (var pomReader = Files.newBufferedReader(modulePomFile)) {
+                    var reader = new MavenXpp3Reader();
+                    var submodel = reader.read(pomReader);
+                    filterJavaVersions(modulePomFile, submodel, invocationBuilder);
+                }
+            } catch (Exception e) {
+                Log.errorf(e, "Failed to handle module %s", module);
             }
         }
     }

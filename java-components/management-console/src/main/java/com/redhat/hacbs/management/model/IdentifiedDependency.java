@@ -26,6 +26,8 @@ public class IdentifiedDependency extends PanacheEntity {
 
     public String attributes;
 
+    public String shadedInto;
+
     public boolean buildComplete;
     public boolean buildSuccessful;
 

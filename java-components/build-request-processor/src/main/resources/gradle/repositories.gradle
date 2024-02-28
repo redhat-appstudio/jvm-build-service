@@ -7,17 +7,22 @@ class RepositoryPlugin implements Plugin<Gradle> {
     void apply(Gradle gradle) {
         def fixRepositories = {
             all { ArtifactRepository repo ->
-                if (!(repo instanceof MavenArtifactRepository) ||
-                        repo.url.toString() != ENTERPRISE_REPOSITORY_URL) {
-                    if (repo.toString().contains("PluginArtifactRepository") || repo.toString().contains("MavenLocalArtifactRepository") || (Boolean.getBoolean("ALLOW_IVY_REPO") && repo.toString().contains("DefaultIvyArtifactRepository"))) {
-                        return
+                try {
+                    if (!(repo instanceof MavenArtifactRepository) ||
+                            repo.url.toString() != ENTERPRISE_REPOSITORY_URL) {
+                        if (repo.toString().contains("PluginArtifactRepository") || repo.toString().contains("MavenLocalArtifactRepository") || (Boolean.getBoolean("ALLOW_IVY_REPO") && repo.toString().contains("DefaultIvyArtifactRepository"))) {
+                            return
+                        }
+                        println "Repository ${repo.properties['url']} ${repo} removed as it does not match ${ENTERPRISE_REPOSITORY_URL}"
+                        remove repo
+                    } else if (repo instanceof MavenArtifactRepository) {
+                        if (repo.hasProperty('allowInsecureProtocol')) {
+                            repo.allowInsecureProtocol = true
+                        }
                     }
-                    println "Repository ${repo.properties['url']} ${repo} removed as it does not match ${ENTERPRISE_REPOSITORY_URL}"
-                    remove repo
-                } else if (repo instanceof MavenArtifactRepository) {
-                    if (repo.hasProperty('allowInsecureProtocol')) {
-                        repo.allowInsecureProtocol = true
-                    }
+                } catch (Exception e) {
+                    println "Failed to remove ${repo.properties['url']} ${repo}"
+                    e.printStackTrace()
                 }
             }
 

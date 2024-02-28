@@ -76,7 +76,11 @@ public record BuildDTO(
                 others,
                 build.shadingDetails,
                 inQueue,
-                success != null ? (success.buildSbom != null ? success.buildSbom.dependencySet.id : -1) : -1);
+                success != null
+                        ? (success.buildSbom != null && success.buildSbom.dependencySet != null
+                                ? success.buildSbom.dependencySet.id
+                                : -1)
+                        : -1);
 
     }
 }

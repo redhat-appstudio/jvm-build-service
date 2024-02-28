@@ -317,6 +317,8 @@ public class GithubIntegration {
                         for (var attr : i.getProperties()) {
                             if (attr.getName().equals("java:build-id")) {
                                 dep.buildId = attr.getValue();
+                            } else if (attr.getName().equals("java:shaded-into")) {
+                                dep.shadedInto = attr.getValue();
                             }
                         }
                     }
