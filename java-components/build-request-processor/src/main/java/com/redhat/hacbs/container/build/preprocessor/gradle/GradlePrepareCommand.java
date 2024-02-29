@@ -27,6 +27,7 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
             "info.gradle",
             "javadoc.gradle",
             "repositories.gradle",
+            "test.gradle",
             "uploadArchives.gradle",
             "version.gradle"
     };

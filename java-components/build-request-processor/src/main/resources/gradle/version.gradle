@@ -13,6 +13,5 @@ class VersionPlugin implements Plugin<Gradle> {
                 version VERSION
             }
         })
-
     }
 }
