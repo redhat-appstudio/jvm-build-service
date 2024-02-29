@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/openjdk-17@sha256:a8165bc2cd5051a96d6937e25ed03155bbd4b731da6e58cebfe2ea83209c16d8 AS builder
+FROM registry.access.redhat.com/ubi8/openjdk-17@sha256:7016a0c5ce878211a8b82fbeb6619f82a97a35acdba6773be1c5f92f4e85aec8 AS builder
 USER 0
 WORKDIR /work
 COPY ./ .
