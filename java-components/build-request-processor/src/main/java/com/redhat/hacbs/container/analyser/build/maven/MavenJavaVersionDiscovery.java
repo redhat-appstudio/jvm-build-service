@@ -50,6 +50,16 @@ public class MavenJavaVersionDiscovery {
 
     public static void filterJavaVersions(Path pomFile, Model model, InvocationBuilder invocationBuilder)
             throws IOException, XmlPullParserException {
+
+        //if the toolchains plugin is configured we don't filter anything
+        if (model.getBuild() != null && model.getBuild().getPlugins() != null) {
+            for (var i : model.getBuild().getPlugins()) {
+                if (i.getArtifactId().equals("maven-toolchains-plugin")) {
+                    return;
+                }
+            }
+        }
+
         String target = model.getProperties().getProperty("maven.compiler.target");
         if (target == null) {
             target = model.getProperties().getProperty("maven.compile.target"); //old property name
