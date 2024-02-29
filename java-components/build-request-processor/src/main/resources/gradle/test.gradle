@@ -6,7 +6,7 @@ class TestPlugin implements Plugin<Gradle> {
         if (System.getProperties().containsKey("disableTests")) {
             gradle.allprojects {
                 project ->
-                    project.tasks.withType(Test).configureEach(task -> {
+                    project.tasks.withType(Test).configureEach({ task ->
                         project.logger.lifecycle "Skipping tests for ${project.name} task ${task.name}"
                         task.setEnabled(false)
                     })

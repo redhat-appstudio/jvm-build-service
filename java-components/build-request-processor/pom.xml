@@ -153,9 +153,54 @@
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>net.revelc.code.formatter</groupId>
+                <artifactId>formatter-maven-plugin</artifactId>
+                <configuration>
+                    <directories>
+                        <directory>${project.basedir}/src/test/gradle</directory>
+                    </directories>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>gradle-build</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <workingDirectory>${project.basedir}/src/test/gradle</workingDirectory>
+                            <executable>${project.basedir}/src/test/gradle/gradlew</executable>
+                            <arguments>
+                                <argument>build</argument>
+                                <argument>--info</argument>
+                            </arguments>
+                            <useMavenLogger>true</useMavenLogger>
+                            <skip>${skipTests}</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <!-- Ensure we skip the Gradle test whether maven.test.skip or skipTests is set -->
+            <id>gradleSkipHandling</id>
+            <activation>
+                <property>
+                    <name>maven.test.skip</name>
+                </property>
+            </activation>
+            <properties>
+                <skipTests>true</skipTests>
+            </properties>
+        </profile>
         <profile>
             <id>native</id>
             <activation>
