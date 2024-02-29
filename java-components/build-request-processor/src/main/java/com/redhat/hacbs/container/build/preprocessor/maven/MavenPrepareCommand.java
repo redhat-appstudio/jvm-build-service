@@ -68,6 +68,17 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
                     && model.getBuild().getPluginManagement().getPlugins() != null) {
                 modified |= handlePlugins(model.getBuild().getPluginManagement().getPlugins(), true, topLevel);
             }
+            if (model.getProfiles() != null) {
+                for (var i : model.getProfiles()) {
+                    if (i.getBuild() != null && i.getBuild().getPlugins() != null) {
+                        modified |= handlePlugins(i.getBuild().getPlugins(), false, topLevel);
+                    }
+                    if (i.getBuild() != null && i.getBuild().getPluginManagement() != null
+                            && i.getBuild().getPluginManagement().getPlugins() != null) {
+                        modified |= handlePlugins(i.getBuild().getPluginManagement().getPlugins(), true, topLevel);
+                    }
+                }
+            }
 
             if (modified) {
                 MavenXpp3Writer writer = new MavenXpp3Writer();
