@@ -241,10 +241,20 @@ public class GithubIntegration {
         if (githubBuild.dependencySet == null) {
             githubBuild.dependencySet = new DependencySet();
             githubBuild.dependencySet.dependencies = new ArrayList<>();
+        } else {
+            for (var i : githubBuild.dependencySet.dependencies) {
+                i.delete();
+            }
+            githubBuild.dependencySet.dependencies.clear();
         }
         if (githubBuild.buildDependencySet == null) {
             githubBuild.buildDependencySet = new DependencySet();
             githubBuild.buildDependencySet.dependencies = new ArrayList<>();
+        } else {
+            for (var i : githubBuild.buildDependencySet.dependencies) {
+                i.delete();
+            }
+            githubBuild.buildDependencySet.dependencies.clear();
         }
         githubBuild.commit = wfr.getHeadSha();
 
@@ -288,21 +298,13 @@ public class GithubIntegration {
 
             DependencySet dependencySet = build ? githubBuild.buildDependencySet : githubBuild.dependencySet;
 
-            Map<String, IdentifiedDependency> existing = new HashMap<>();
-            for (var i : dependencySet.dependencies) {
-                existing.put(i.mavenArtifact.gav(), i);
-            }
-
             for (var i : sbom.getComponents()) {
                 String gav = i.getGroup() + ":" + i.getName() + ":" + i.getVersion();
 
-                IdentifiedDependency dep = existing.get(gav);
-                if (dep == null) {
-                    dep = new IdentifiedDependency();
-                    dependencySet.dependencies.add(dep);
-                    dep.mavenArtifact = MavenArtifact.forGav(gav);
-                    dep.dependencySet = dependencySet;
-                }
+                IdentifiedDependency dep = new IdentifiedDependency();
+                dependencySet.dependencies.add(dep);
+                dep.mavenArtifact = MavenArtifact.forGav(gav);
+                dep.dependencySet = dependencySet;
                 dep.source = i.getPublisher();
                 if (!Objects.equals(i.getPublisher(), "rebuilt") && !Objects.equals(i.getPublisher(), "redhat")) {
                     if (!build) {
