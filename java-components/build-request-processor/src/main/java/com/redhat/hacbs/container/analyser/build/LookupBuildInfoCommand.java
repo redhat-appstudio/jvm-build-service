@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.DirectoryStream;
@@ -44,6 +45,8 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 
@@ -162,11 +165,16 @@ public class LookupBuildInfoCommand implements Runnable {
         InvocationBuilder builder = new InvocationBuilder(buildRecipeInfo, availableTools, version);
 
         var path = Files.createTempDirectory("checkout");
+        StringWriter writer = new StringWriter();
+        ProgressMonitor monitor = new TextProgressMonitor( writer);
+        monitor.showDuration( true );
         try (var clone = Git.cloneRepository()
-                .setCredentialsProvider(
-                        new GitCredentials())
+                .setCredentialsProvider(new GitCredentials())
                 .setURI(scmUrl)
+                .setDepth( 1 )
+                .setProgressMonitor( monitor )
                 .setDirectory(path.toFile()).call()) {
+            Log.infof( writer.toString() );
             clone.reset().setMode(HARD).setRef(commit).call();
             boolean skipTests = !privateRepo;
             if (buildRecipeInfo != null && buildRecipeInfo.isRunTests()) {
