@@ -22,17 +22,17 @@ public record ArtifactDTO(
     public static ArtifactDTO of(StoredArtifactBuild build) {
         if (build.buildIdentifier == null) {
             return new ArtifactDTO(
-                build.id,
-                build.name,
-                build.mavenArtifact.gav(),
-               null,
-                null,
-                null,
-                null,
-                null,
-                Objects.equals(build.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
-                Objects.equals(build.state, ModelConstants.ARTIFACT_BUILD_MISSING),
-                build.message);
+                    build.id,
+                    build.name,
+                    build.mavenArtifact.gav(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Objects.equals(build.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
+                    Objects.equals(build.state, ModelConstants.ARTIFACT_BUILD_MISSING),
+                    build.message);
         }
         return new ArtifactDTO(
                 build.id,
