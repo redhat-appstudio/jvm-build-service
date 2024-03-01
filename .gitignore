@@ -27,7 +27,6 @@ graph-output.dot
 *.swp
 *.swo
 ObjectStore
-.gradle
 docker/distroless/bazel-*
 /.apt_generated_tests/
 quarkus.log
@@ -45,3 +44,9 @@ nb-configuration.xml
 
 # Kustomize overlays for openshift ci
 deploy/**/ci-final/**
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
