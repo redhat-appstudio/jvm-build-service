@@ -13,12 +13,17 @@ import io.quarkus.hibernate.orm.panache.PanacheEntity;
 @Entity
 public class ShadingDetails extends PanacheEntity {
 
+    @ManyToOne
+    @JoinColumn(nullable = false)
+    StoredDependencyBuild storedDependencyBuild;
+
     @JoinColumn(nullable = false)
     @ManyToOne
     public MavenArtifact contaminant;
     @ManyToMany
     @JoinTable
     public List<MavenArtifact> contaminatedArtifacts;
+
     public String buildId;
     public String source;
     public boolean allowed;
