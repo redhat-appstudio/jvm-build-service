@@ -38,6 +38,7 @@ public final class GradleUtils {
     static final String BUILD_GRADLE_KTS = "build.gradle.kts";
 
     private static final String GRADLE_WRAPPER_PROPERTIES = "gradle/wrapper/gradle-wrapper.properties";
+    private static final String OLD_GRADLE_WRAPPER_PROPERTIES = ".gradle-wrapper/gradle-wrapper.properties";
 
     private static final String DISTRIBUTION_URL_KEY = "distributionUrl";
 
@@ -72,6 +73,12 @@ public final class GradleUtils {
      */
     public static Path getPropertiesFile(Path basedir) {
         Path path = basedir.resolve(GRADLE_WRAPPER_PROPERTIES);
+        if (!Files.exists(path)) {
+            var old = basedir.resolve(OLD_GRADLE_WRAPPER_PROPERTIES);
+            if (Files.exists(old)) {
+                path = old;
+            }
+        }
         Log.infof("Returning path to gradle/wrapper/gradle-wrapper.properties: %s", path);
         return path;
     }
