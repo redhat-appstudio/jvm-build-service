@@ -19,6 +19,7 @@ import java.nio.charset.Charset;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,7 +46,6 @@ import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
@@ -166,15 +166,24 @@ public class LookupBuildInfoCommand implements Runnable {
 
         var path = Files.createTempDirectory("checkout");
         StringWriter writer = new StringWriter();
-        ProgressMonitor monitor = new TextProgressMonitor( writer);
-        monitor.showDuration( true );
+        TextProgressMonitor monitor = new TextProgressMonitor(writer) {
+            // Don't want percent updates, just final summaries.
+            protected void onUpdate(String taskName, int workCurr, Duration duration)
+            {
+            }
+
+            protected void onUpdate(String taskName, int cmp, int totalWork, int pcnt, Duration duration)
+            {
+            }
+        };
+        monitor.showDuration(true);
         try (var clone = Git.cloneRepository()
                 .setCredentialsProvider(new GitCredentials())
                 .setURI(scmUrl)
-                .setDepth( 1 )
-                .setProgressMonitor( monitor )
+                .setDepth(1)
+                .setProgressMonitor(monitor)
                 .setDirectory(path.toFile()).call()) {
-            Log.infof( writer.toString() );
+            Log.infof("Clone summary:\n%s", writer.toString().replaceAll( "(?m)^\\s+", ""));
             clone.reset().setMode(HARD).setRef(commit).call();
             boolean skipTests = !privateRepo;
             if (buildRecipeInfo != null && buildRecipeInfo.isRunTests()) {
