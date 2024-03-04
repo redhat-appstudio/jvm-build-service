@@ -13,14 +13,16 @@ public class ClassTrackingModificationTestCase {
 
     public static final TrackingData DATA = new TrackingData("com.acme:acme:1.0", "rebuilt", Map.of("a", "b"));
     public static final TrackingData SHADED_DATA = new TrackingData("com.acme:acme:1.0", "rebuilt",
-            Map.of("a", "b", "shaded-into", "com.acme:acme:1.0"));
-    public static final TrackingData CHANGED_DATA = new TrackingData("com.acme:acme:1.0", "central", Map.of("foo", "bar"));
+            Map.of("a", "b", "shaded-into", "com.acme:acme-lib:1.0"));
+    public static final TrackingData CHANGED_DATA = new TrackingData("com.acme:acme-lib:1.0", "central", Map.of("foo", "bar"));
 
     @Test
     public void testBytecodeClassLevelTracking() throws Exception {
         byte[] thisClass = getClass().getResourceAsStream(getClass().getSimpleName() + ".class").readAllBytes();
         var results = ClassFileTracker.addTrackingDataToClass(thisClass, DATA, "test", true);
         Assertions.assertEquals(DATA, ClassFileTracker.readTrackingInformationFromClass(results));
+        results = ClassFileTracker.addTrackingDataToClass(results, CHANGED_DATA, "changed-name", false);
+        Assertions.assertEquals(SHADED_DATA, ClassFileTracker.readTrackingInformationFromClass(results));
         results = ClassFileTracker.addTrackingDataToClass(results, CHANGED_DATA, "changed-name", false);
         Assertions.assertEquals(SHADED_DATA, ClassFileTracker.readTrackingInformationFromClass(results));
         results = ClassFileTracker.addTrackingDataToClass(results, CHANGED_DATA, "changed-name", true);

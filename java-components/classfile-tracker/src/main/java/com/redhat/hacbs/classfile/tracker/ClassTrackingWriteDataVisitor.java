@@ -41,10 +41,20 @@ class ClassTrackingWriteDataVisitor extends ClassVisitor {
     public void visitEnd() {
         if (existing == null) {
             super.visitAttribute(new ClassFileSourceAttribute(contents));
-        } else {
+        } else if (!existing.contents.gav.equals(contents.gav)) {
             Map<String, String> attributes = new HashMap<>(existing.contents.getAttributes());
             if (existing.contents.getAttributes().containsKey(SHADED_INTO)) {
-                attributes.put(SHADED_INTO, contents.gav + "," + existing.contents.getAttributes().get(SHADED_INTO));
+                String existing = this.existing.contents.getAttributes().get(SHADED_INTO);
+                var found = false;
+                for (var part : existing.split(",")) {
+                    if (part.equals(contents.gav)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    attributes.put(SHADED_INTO, contents.gav + "," + existing);
+                }
             } else {
                 attributes.put(SHADED_INTO, contents.gav);
             }
