@@ -60,6 +60,9 @@ settingsEvaluated { settings ->
     }
 }
 EOF
+if [ -d .hacbs-init ]; then
+    mv .hacbs-init "${GRADLE_USER_HOME}"/init.d
+fi
 
 #if we run out of memory we want the JVM to die with error code 134
 export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
@@ -71,8 +74,7 @@ export PATH="${JAVA_HOME}/bin:${PATH}"
 #so just create one to fool the plugin
 git config user.email "HACBS@redhat.com"
 git config user.name "HACBS"
-if [ -z "$(params.ENFORCE_VERSION)" ]
-then
+if [ -z "$(params.ENFORCE_VERSION)" ]; then
   echo "Enforce version not set, recreating original tag $(params.TAG)"
   git tag -m $(params.TAG) -a $(params.TAG) || true
 else
@@ -94,13 +96,6 @@ esac
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 
-INIT_SCRIPTS=""
-for i in .hacbs-init/*
-do
-  INIT_SCRIPTS="$INIT_SCRIPTS -I $(pwd)/$i"
-done
-echo "INIT SCRIPTS: $INIT_SCRIPTS"
-
 #our dependency tracing breaks verification-metadata.xml
 #TODO: should we disable tracing for these builds? It means we can't track dependencies directly, so we can't detect contaminants
 rm -f gradle/verification-metadata.xml
@@ -109,7 +104,7 @@ echo "Running Gradle command with arguments: $@"
 if [ ! -d $(workspaces.source.path)/source ]; then
   cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 fi
-gradle $INIT_SCRIPTS -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@"  | tee $(workspaces.source.path)/logs/gradle.log
+gradle -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@"  | tee $(workspaces.source.path)/logs/gradle.log
 
 mkdir -p $(workspaces.source.path)/build-info
 cp -r "${GRADLE_USER_HOME}" $(workspaces.source.path)/build-info/.gradle

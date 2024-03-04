@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -45,7 +46,11 @@ public class VerifyInitFilesTest {
         arguments.add("build");
 
         File[] initScripts = new File(gradleRootDirectory.getParent().getParent().toString(), "main/resources/gradle")
-                .listFiles();
+                .listFiles(new FilenameFilter() {
+                    public boolean accept(File dir, String name) {
+                        return name.endsWith(".gradle");
+                    }
+                });
         if (initScripts == null) {
             throw new RuntimeException("Init script directory not found");
         }
