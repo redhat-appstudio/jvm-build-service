@@ -8,6 +8,8 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 
 @Entity
@@ -15,7 +17,8 @@ public class ShadingDetails extends PanacheEntity {
 
     @ManyToOne
     @JoinColumn(nullable = false)
-    StoredDependencyBuild storedDependencyBuild;
+    @JsonIgnore
+    public StoredDependencyBuild storedDependencyBuild;
 
     @JoinColumn(nullable = false)
     @ManyToOne

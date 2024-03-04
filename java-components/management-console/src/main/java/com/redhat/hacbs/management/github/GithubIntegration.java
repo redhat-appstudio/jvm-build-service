@@ -256,6 +256,8 @@ public class GithubIntegration {
             }
             githubBuild.buildDependencySet.dependencies.clear();
         }
+        githubBuild.dependencySet.persistAndFlush();
+        githubBuild.buildDependencySet.persistAndFlush();
         githubBuild.commit = wfr.getHeadSha();
 
         githubBuild.workflowRunId = wfr.getId();
@@ -302,10 +304,10 @@ public class GithubIntegration {
                 String gav = i.getGroup() + ":" + i.getName() + ":" + i.getVersion();
 
                 IdentifiedDependency dep = new IdentifiedDependency();
-                dependencySet.dependencies.add(dep);
                 dep.mavenArtifact = MavenArtifact.forGav(gav);
                 dep.dependencySet = dependencySet;
                 dep.source = i.getPublisher();
+                dependencySet.dependencies.add(dep);
                 if (!Objects.equals(i.getPublisher(), "rebuilt") && !Objects.equals(i.getPublisher(), "redhat")) {
                     if (!build) {
                         conclusion = GHCheckRun.Conclusion.FAILURE;
