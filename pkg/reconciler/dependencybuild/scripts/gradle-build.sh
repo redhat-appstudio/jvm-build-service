@@ -12,6 +12,7 @@ org.gradle.caching=false
 org.gradle.console=plain
 # For Spring/Nebula Release Plugins
 release.useLastTag=true
+release.stage=final
 
 # Increase timeouts
 systemProp.org.gradle.internal.http.connectionTimeout=600000
