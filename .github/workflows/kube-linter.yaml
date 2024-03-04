@@ -26,7 +26,7 @@ jobs:
           kustomize build deploy/operator/config/ >  ../kube-linter/jvm-build-service-operator-config.yaml
 
       - name: Scan yaml files with kube-linter
-        uses: stackrox/kube-linter-action@ca0d55b925470deb5b04b556e6c4276ea94d03c3 # v1
+        uses: stackrox/kube-linter-action@5792edc6a03735d592b13c08201711327a935735 # v1
         id: kube-linter-action-scan
         with:
           # Where to do scanning
