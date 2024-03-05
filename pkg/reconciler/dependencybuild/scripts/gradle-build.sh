@@ -26,41 +26,7 @@ RELEASE_SIGNING_ENABLED=false
 mavenCentralUsername=
 mavenCentralPassword=
 EOF
-cat > "${GRADLE_USER_HOME}"/init.gradle << EOF
-allprojects {
-    buildscript {
-        repositories {
-            mavenLocal()
-            maven {
-                name "HACBS Maven Repository"
-                url "$(params.CACHE_URL)"
-                //allowInsecureProtocol = true
-            }
-        }
-    }
-    repositories {
-        mavenLocal()
-        maven {
-            name "HACBS Maven Repository"
-            url "$(params.CACHE_URL)"
-            //allowInsecureProtocol = true
-        }
-    }
-}
 
-settingsEvaluated { settings ->
-    settings.pluginManagement {
-        repositories {
-            mavenLocal()
-            maven {
-                name "HACBS Maven Repository"
-                url "$(params.CACHE_URL)"
-                //allowInsecureProtocol = true
-            }
-        }
-    }
-}
-EOF
 if [ -d .hacbs-init ]; then
     mv .hacbs-init "${GRADLE_USER_HOME}"/init.d
 fi
@@ -87,12 +53,6 @@ if [ ! -d "${GRADLE_HOME}" ]; then
     echo "Gradle home directory not found at ${GRADLE_HOME}" >&2
     exit 1
 fi
-
-case "${TOOL_VERSION}" in
-    [78].*)
-        sed -i -e 's|//allowInsecureProtocol|allowInsecureProtocol|g' ${GRADLE_USER_HOME}/init.gradle
-        ;;
-esac
 
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"

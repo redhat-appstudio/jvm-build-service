@@ -481,7 +481,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				//bit of a hack, we don't have a remote cache for the hermetic build
 				ps.Tasks[index].Params = append(ps.Tasks[index].Params, tektonpipeline.Param{
 					Name:  i.Name,
-					Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "file://" + MavenArtifactsPath}})
+					Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "file://" + MavenArtifactsPath + "/"}})
 			} else {
 				ps.Tasks[index].Params = append(ps.Tasks[index].Params, tektonpipeline.Param{
 					Name:  i.Name,
