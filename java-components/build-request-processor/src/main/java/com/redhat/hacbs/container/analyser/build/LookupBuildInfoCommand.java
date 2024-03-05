@@ -518,7 +518,7 @@ public class LookupBuildInfoCommand implements Runnable {
         for (File buildFile : files) {
             try (Stream<String> lines = Files.lines(buildFile.toPath())) {
                 if (lines.anyMatch(s -> s
-                        .matches("(.*findProperty[(].release.*|.*getProperty[(].release.*|.*hasProperty[(].release.*)"))) {
+                        .matches("(.*findProperty[(][\"']release[\"'].*|.*getProperty\\([\"']release[\"'].*|.*hasProperty[(][\"']release[\"'].*)"))) {
                     inv.add("-Prelease");
                     break;
                 }

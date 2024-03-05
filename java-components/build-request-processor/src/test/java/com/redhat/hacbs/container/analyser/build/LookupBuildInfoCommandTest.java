@@ -217,7 +217,7 @@ class LookupBuildInfoCommandTest {
     }
 
     @Test
-    public void testBuildAnalysisR7CoreSpecFinal()
+    public void testBuildAnalysisOSGIR7CoreSpecFinal()
         throws Exception {
         LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
         lookupBuildInfoCommand.toolVersions = toolVersions;
@@ -226,10 +226,23 @@ class LookupBuildInfoCommandTest {
         var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/osgi/osgi.git", new BuildRecipeInfo(),
                                                           cacheBuildInfoLocator);
         assertThat(info.invocations).isNotEmpty();
-        System.out.println("### info " + info.invocations);
         assertTrue(info.invocations.get(0).getCommands().contains("publishToMavenLocal"));
         info.invocations.forEach( i -> assertEquals( "4.10.3", i.getToolVersion().get( "gradle" ) ) );
+        assertFalse(info.invocations.get(0).getCommands().contains("-Prelease"));
+    }
+
+    @Test
+    public void testBuildAnalysisMicrometer()
+        throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        // 1.12.1
+        lookupBuildInfoCommand.commit = "3c39cb09d50ad7e5b94683e9695cc00dba346b13";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/micrometer-metrics/micrometer.git", new BuildRecipeInfo(),
+                                                          cacheBuildInfoLocator);
+        assertThat(info.invocations).isNotEmpty();
         assertTrue(info.invocations.get(0).getCommands().contains("publishToMavenLocal"));
+        // Ensure we don't have -Prelease as that conflicts with the nebula plugin using release.stage
         assertFalse(info.invocations.get(0).getCommands().contains("-Prelease"));
     }
 
