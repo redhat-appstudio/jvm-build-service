@@ -3,6 +3,7 @@ package com.redhat.hacbs.container.analyser.build;
 import static com.redhat.hacbs.container.verifier.MavenUtils.getBuildJdk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,7 +38,7 @@ class LookupBuildInfoCommandTest {
         LogCollectingTestResource.current().clear();
     }
 
-    private final String toolVersions = "maven:3.8.8;3.9.5,gradle:8.4;8.3;8.0.2;7.4.2;6.9.2,sbt:1.8.0,ant:1.10.13;1.9.16,jdk:8;11;17;7";
+    private final String toolVersions = "sbt:1.8.0,jdk:7;8;11;17;21,maven:3.8.8;3.9.5,ant:1.9.16;1.10.13,gradle:8.4;8.3;8.0.2;7.4.2;7.6.3;7.5.1;6.9.2;5.6.4;4.10.3";
 
     CacheBuildInfoLocator cacheBuildInfoLocator = new CacheBuildInfoLocator() {
         @Override
@@ -76,7 +77,8 @@ class LookupBuildInfoCommandTest {
                 .anyMatch(r -> LogCollectingTestResource.format(r)
                         .contains("Unable to locate a build script within")));
         assertThat(info.invocations).isNotEmpty();
-        assertEquals("8", info.invocations.get(0).getToolVersion().get("jdk"));
+        assertEquals("7", info.invocations.get(0).getToolVersion().get("jdk"));
+        assertEquals("8", info.invocations.get(1).getToolVersion().get("jdk"));
     }
 
     @Test
@@ -212,6 +214,23 @@ class LookupBuildInfoCommandTest {
         assertThat(info.invocations).isNotEmpty();
         assertTrue(info.invocations.get(0).getCommands().contains("publishToMavenLocal"));
         assertTrue(info.invocations.get(0).getCommands().contains("-Prelease"));
+    }
+
+    @Test
+    public void testBuildAnalysisR7CoreSpecFinal()
+        throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        // r7-core-spec-final
+        lookupBuildInfoCommand.commit = "ac877b9fdaa36e26adb939cf9dd425e77243f449";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/osgi/osgi.git", new BuildRecipeInfo(),
+                                                          cacheBuildInfoLocator);
+        assertThat(info.invocations).isNotEmpty();
+        System.out.println("### info " + info.invocations);
+        assertTrue(info.invocations.get(0).getCommands().contains("publishToMavenLocal"));
+        info.invocations.forEach( i -> assertEquals( "4.10.3", i.getToolVersion().get( "gradle" ) ) );
+        assertTrue(info.invocations.get(0).getCommands().contains("publishToMavenLocal"));
+        assertFalse(info.invocations.get(0).getCommands().contains("-Prelease"));
     }
 
     @Test
