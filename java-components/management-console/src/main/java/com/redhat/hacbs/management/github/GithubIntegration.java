@@ -256,8 +256,6 @@ public class GithubIntegration {
             }
             githubBuild.buildDependencySet.dependencies.clear();
         }
-        githubBuild.dependencySet.persistAndFlush();
-        githubBuild.buildDependencySet.persistAndFlush();
         githubBuild.commit = wfr.getHeadSha();
 
         githubBuild.workflowRunId = wfr.getId();
@@ -300,6 +298,7 @@ public class GithubIntegration {
 
             DependencySet dependencySet = build ? githubBuild.buildDependencySet : githubBuild.dependencySet;
 
+            dependencySet.persistAndFlush();
             for (var i : sbom.getComponents()) {
                 String gav = i.getGroup() + ":" + i.getName() + ":" + i.getVersion();
 
