@@ -7,10 +7,11 @@ class DisablePluginsPlugin implements Plugin<Gradle> {
 
     void apply(Gradle gradle) {
         gradle.allprojects {
-            tasks.configureEach({
+            tasks.configureEach({ task ->
                 for (i in PLUGINS) {
-                    if (it.class.getName().contains(i)) {
-                        it.setEnabled(false)
+                    if (task.class.getName().contains(i)) {
+                        println "Disabling plugin ${task.class}"
+                        task.setEnabled(false)
                         return
                     }
                 }
