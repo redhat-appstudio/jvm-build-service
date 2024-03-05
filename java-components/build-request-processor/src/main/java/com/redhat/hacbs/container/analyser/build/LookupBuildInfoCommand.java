@@ -478,10 +478,8 @@ public class LookupBuildInfoCommand implements Runnable {
         var optionalGradleVersion = GradleUtils
                 .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(gradleFile.getParent()));
         optionalGradleVersion.ifPresent(s -> builder.discoveredToolVersion(GRADLE, s));
-        var detectedGradleVersion = optionalGradleVersion.orElse("7");
         Log.infof("Detected Gradle version %s",
-                optionalGradleVersion.isPresent() ? detectedGradleVersion : "none");
-        Log.infof("Chose Gradle version %s", detectedGradleVersion);
+                optionalGradleVersion.isPresent() ? optionalGradleVersion : "none");
         var specifiedJavaVersion = GradleUtils.getSpecifiedJavaVersion(gradleFile);
 
         if (!specifiedJavaVersion.isEmpty()) {

@@ -42,7 +42,7 @@ public class StoredDependencyBuild extends PanacheEntity {
     public boolean contaminated;
 
     public String buildDiscoveryUrl;
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "storedDependencyBuild")
     public List<ShadingDetails> shadingDetails;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dependencyBuild")

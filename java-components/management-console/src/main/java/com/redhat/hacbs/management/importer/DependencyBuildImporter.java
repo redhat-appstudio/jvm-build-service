@@ -109,6 +109,7 @@ public class DependencyBuildImporter {
                 d.allowed = i.getAllowed() == null ? false : i.getAllowed();
                 d.rebuildAvailable = i.getRebuildAvailable() == null ? false : i.getRebuildAvailable();
                 d.source = i.getSource();
+                d.storedDependencyBuild = storedBuild;
 
                 storedBuild.shadingDetails.add(d);
             }

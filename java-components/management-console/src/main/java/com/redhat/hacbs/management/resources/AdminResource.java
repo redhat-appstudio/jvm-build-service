@@ -18,6 +18,7 @@ import com.redhat.hacbs.management.model.GithubActionsBuild;
 import com.redhat.hacbs.management.model.IdentifiedDependency;
 import com.redhat.hacbs.management.model.MavenArtifact;
 import com.redhat.hacbs.management.model.MavenArtifactLabel;
+import com.redhat.hacbs.management.model.ShadingDetails;
 import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
@@ -69,6 +70,11 @@ public class AdminResource {
         for (var i : builds.getItems()) {
             kubernetesClient.resource(i).delete();
         }
+        runner.run(() -> {
+            for (ShadingDetails i : ShadingDetails.<ShadingDetails> listAll()) {
+                i.delete();
+            }
+        });
         runner.run(() -> {
             IdentifiedDependency.deleteAll();
         });

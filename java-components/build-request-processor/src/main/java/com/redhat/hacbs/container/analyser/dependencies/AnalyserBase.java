@@ -89,7 +89,7 @@ public abstract class AnalyserBase implements Runnable {
         Bom bom;
         InputStream existing = null;
         try {
-            if (Files.exists(sbom)) {
+            if (sbom != null && Files.exists(sbom)) {
                 existing = Files.newInputStream(sbom);
             }
             bom = SBomGenerator.generateSBom(trackingData, existing);
