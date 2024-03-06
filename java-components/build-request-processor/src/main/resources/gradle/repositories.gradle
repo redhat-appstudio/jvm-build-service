@@ -5,6 +5,10 @@ class RepositoryPlugin implements Plugin<Gradle> {
     private static String ENTERPRISE_REPOSITORY_URL = System.getenv("CACHE_URL") != null ? System.getenv("CACHE_URL") : "http://localhost:8080/v2/cache/rebuild-default,gradle,gradleplugins/0"
 
     void apply(Gradle gradle) {
+        if (ENTERPRISE_REPOSITORY_URL.startsWith("file:/")) {
+            //hermetic build, do nothing
+            return
+        }
         def fixRepositories = {
             all { ArtifactRepository repo ->
                 try {
