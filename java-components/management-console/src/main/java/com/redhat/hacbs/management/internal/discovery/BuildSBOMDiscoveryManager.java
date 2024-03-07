@@ -86,6 +86,9 @@ public class BuildSBOMDiscoveryManager {
     void handleBuild(BuildAttempt attempt) {
         Log.infof("Attempting to read build sbom for %s", attempt.dependencyBuild.buildIdentifier.dependencyBuildName);
         try {
+            if (attempt.outputImage == null) {
+                return;
+            }
             Bom bom = locateSbom(attempt.outputImage);
             DependencySet dependencySet = new DependencySet();
             dependencySet.type = "build-sbom";

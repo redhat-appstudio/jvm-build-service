@@ -5,6 +5,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.inject.Instance;
@@ -38,10 +39,13 @@ public class InitialUserSetup {
     @ConfigProperty(name = "kube.disabled", defaultValue = "false")
     boolean disabled;
 
+    @ConfigProperty(name = "jbs.admin.password")
+    Optional<String> defaultPassword;
+
     @PostConstruct
     public void setup() {
         String userName = "admin";
-        String password = System.getenv("JBS_ADMIN_PASSWORD");
+        String password = defaultPassword.orElse(null);
         if (password == null) {
             if ((LaunchMode.current() == LaunchMode.TEST
                     && !Objects.equals(System.getProperty(Config.KUBERNETES_NAMESPACE_SYSTEM_PROPERTY), "test")) || disabled) {
