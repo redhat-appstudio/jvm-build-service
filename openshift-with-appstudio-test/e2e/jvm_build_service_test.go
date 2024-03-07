@@ -8,5 +8,5 @@ import (
 )
 
 func TestExampleRun(t *testing.T) {
-	runBasicTests(t, setupHermetic, testNamespace)
+	runBasicTests(t, setup, testNamespace)
 }
