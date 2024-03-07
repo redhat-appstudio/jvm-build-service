@@ -25,7 +25,6 @@ export type { GitHubEvent } from './models/GitHubEvent';
 export type { IdentifiedDependencyDTO } from './models/IdentifiedDependencyDTO';
 export type { ImageDTO } from './models/ImageDTO';
 export type { Instant } from './models/Instant';
-export type { JsonObject } from './models/JsonObject';
 export type { MavenArtifact } from './models/MavenArtifact';
 export type { ModifyScmRepoCommand } from './models/ModifyScmRepoCommand';
 export type { PageParametersArtifactListDTO } from './models/PageParametersArtifactListDTO';

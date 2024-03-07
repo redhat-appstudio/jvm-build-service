@@ -1,6 +1,5 @@
 package com.redhat.hacbs.management.importer;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -18,7 +17,6 @@ import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
 
 @Singleton
-//@Startup
 public class S3Importer {
 
     private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory());
@@ -36,7 +34,6 @@ public class S3Importer {
     @ConfigProperty(name = "bucket.name")
     String bucketName;
 
-    @PostConstruct
     public void doImport() {
         Log.infof("Attempting S3 import");
         importArtifactBuilds();
