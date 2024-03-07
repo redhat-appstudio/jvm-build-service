@@ -8,7 +8,6 @@ cp -r /maven-artifacts/.gradle/* "$GRADLE_USER_HOME/" || true
 cp -r /maven-artifacts/.m2/* "$HOME/.m2/" || true
 
 cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF
-org.gradle.caching=false
 org.gradle.console=plain
 # For Spring/Nebula Release Plugins
 release.useLastTag=true
