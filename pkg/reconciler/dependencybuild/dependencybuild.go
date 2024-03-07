@@ -220,11 +220,11 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 		return reconcile.Result{}, err
 	}
 	db.Status.State = v1alpha1.DependencyBuildStateAnalyzeBuild
-	if err := r.client.Status().Update(ctx, db); err != nil {
-		return reconcile.Result{}, err
-	}
 	if err := r.client.Create(ctx, &pr); err != nil {
 		return reconcile.Result{}, nil
+	}
+	if err := r.client.Status().Update(ctx, db); err != nil {
+		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
 }
@@ -784,6 +784,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				Gavs:                deployed,
 				GitArchive:          gitArchive,
 				HermeticBuildImage:  hermeticBuildImage,
+				Contaminants:        db.Status.Contaminants,
 			}
 
 			problemContaminates := db.Status.ProblemContaminates()

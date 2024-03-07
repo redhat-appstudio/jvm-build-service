@@ -1,6 +1,7 @@
 package com.redhat.hacbs.management.dto;
 
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,12 +12,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.redhat.hacbs.management.model.BuildAttempt;
+import com.redhat.hacbs.management.model.MavenArtifact;
+import com.redhat.hacbs.management.model.ShadingDetails;
 
 import io.quarkus.arc.Arc;
 
 public record BuildAttemptDTO(
         @Schema(required = true) long id,
         @Schema(required = true) String buildId,
+        @Schema(required = true) String label,
         String jdk,
         String mavenVersion,
         String gradleVersion,
@@ -41,17 +45,38 @@ public record BuildAttemptDTO(
         String mavenRepository,
         boolean successful,
         boolean passedVerification,
+        boolean contaminated,
         @Schema(required = true) Map<String, List<String>> upstreamDifferences,
         String gitArchiveSha,
         String gitArchiveTag,
         String gitArchiveUrl,
         String diagnosticDockerFile,
-        Instant startTime) {
+        Instant startTime,
+
+        List<ShadingDetails> shadingDetails,
+        List<String> artifacts) {
 
     public static BuildAttemptDTO of(BuildAttempt i) {
+        var label = "JDK " + i.jdk;
+        switch (i.tool) {
+            case "maven":
+                label += " Maven " + i.mavenVersion;
+                break;
+            case "gradle":
+                label += " Gradle " + i.gradleVersion;
+                break;
+            case "sbt":
+                label += " SBT " + i.sbtVersion;
+                break;
+            case "ant":
+                label += " Ant " + i.antVersion;
+                break;
+        }
+        label += " " + DateTimeFormatter.ISO_INSTANT.format(i.startTime);
         return new BuildAttemptDTO(
                 i.id,
                 i.buildId,
+                label,
                 i.jdk,
                 i.mavenVersion,
                 i.gradleVersion,
@@ -76,12 +101,15 @@ public record BuildAttemptDTO(
                 i.mavenRepository,
                 i.successful,
                 i.passedVerification,
+                i.contaminated,
                 mapDifferences(i.upstreamDifferences),
                 i.gitArchiveSha,
                 i.gitArchiveTag,
                 i.gitArchiveUrl,
                 i.diagnosticDockerFile,
-                i.startTime);
+                i.startTime,
+                i.shadingDetails,
+                i.producedArtifacts.stream().map(MavenArtifact::gav).toList());
     }
 
     private static Map<String, List<String>> mapDifferences(String upstreamDifferences) {

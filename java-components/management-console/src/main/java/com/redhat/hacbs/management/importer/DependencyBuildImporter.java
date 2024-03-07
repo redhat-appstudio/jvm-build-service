@@ -80,12 +80,6 @@ public class DependencyBuildImporter {
         storedBuild.contaminated = contaminated;
         storedBuild.version = spec.getVersion();
         storedBuild.creationTimestamp = Instant.parse(dependencyBuild.getMetadata().getCreationTimestamp());
-        storedBuild.producedArtifacts = new ArrayList<>();
-        if (dependencyBuild.getStatus().getDeployedArtifacts() != null) {
-            for (var i : dependencyBuild.getStatus().getDeployedArtifacts()) {
-                storedBuild.producedArtifacts.add(MavenArtifact.forGav(i));
-            }
-        }
         if (storedBuild.buildAttempts == null) {
             storedBuild.buildAttempts = new ArrayList<>();
         }
@@ -95,24 +89,6 @@ public class DependencyBuildImporter {
             storedBuild.buildDiscoveryUrl = "s3://" + s3Bucket + "/build-logs/" + dependencyBuild.getMetadata().getName() + "/"
                     + dependencyBuild.getMetadata().getUid()
                     + "/build-discovery.log";
-        }
-        if (dependencyBuild.getStatus().getContaminates() != null) {
-            storedBuild.shadingDetails = new ArrayList<>();
-            for (var i : dependencyBuild.getStatus().getContaminates()) {
-                ShadingDetails d = new ShadingDetails();
-                d.contaminant = MavenArtifact.forGav(i.getGav());
-                d.contaminatedArtifacts = new ArrayList<>();
-                for (var j : i.getContaminatedArtifacts()) {
-                    d.contaminatedArtifacts.add(MavenArtifact.forGav(j));
-                }
-                d.buildId = i.getBuildId();
-                d.allowed = i.getAllowed() == null ? false : i.getAllowed();
-                d.rebuildAvailable = i.getRebuildAvailable() == null ? false : i.getRebuildAvailable();
-                d.source = i.getSource();
-                d.storedDependencyBuild = storedBuild;
-
-                storedBuild.shadingDetails.add(d);
-            }
         }
         if (dependencyBuild.getStatus().getBuildAttempts() != null) {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {
@@ -191,6 +167,33 @@ public class DependencyBuildImporter {
                         attempt.gitArchiveTag = i.getBuild().getResults().getGitArchive().getTag();
                         attempt.gitArchiveUrl = i.getBuild().getResults().getGitArchive().getUrl();
                         attempt.gitArchiveSha = i.getBuild().getResults().getGitArchive().getSha();
+                    }
+
+                    if (i.getBuild().getResults().getContaminates() != null) {
+                        attempt.shadingDetails = new ArrayList<>();
+                        attempt.contaminated = i.getBuild().getResults().getContaminated() != null
+                                && i.getBuild().getResults().getContaminated();
+                        for (var ct : i.getBuild().getResults().getContaminates()) {
+                            ShadingDetails d = new ShadingDetails();
+                            d.contaminant = MavenArtifact.forGav(ct.getGav());
+                            d.contaminatedArtifacts = new ArrayList<>();
+                            for (var j : ct.getContaminatedArtifacts()) {
+                                d.contaminatedArtifacts.add(MavenArtifact.forGav(j));
+                            }
+                            d.buildId = ct.getBuildId();
+                            d.allowed = ct.getAllowed() == null ? false : ct.getAllowed();
+                            d.rebuildAvailable = ct.getRebuildAvailable() == null ? false : ct.getRebuildAvailable();
+                            d.source = ct.getSource();
+                            d.buildAttempt = attempt;
+                            attempt.shadingDetails.add(d);
+                        }
+                    }
+                }
+
+                attempt.producedArtifacts = new ArrayList<>();
+                if (dependencyBuild.getStatus().getDeployedArtifacts() != null) {
+                    for (var at : dependencyBuild.getStatus().getDeployedArtifacts()) {
+                        attempt.producedArtifacts.add(MavenArtifact.forGav(at));
                     }
                 }
             }

@@ -24,15 +24,15 @@ public class BuildSummaryResource {
     public BuildSummaryDTO all(@QueryParam("label") String label) {
         if (label != null && !label.isBlank()) {
             long all = (Long) entityManager.createQuery(
-                    "select count(*) from StoredDependencyBuild s where s.id in (select b.id from StoredDependencyBuild  b inner join  b.producedArtifacts a inner join MavenArtifactLabel l on l.artifact = a inner join ArtifactLabelName aln on l.name=aln where aln.name=:name)")
+                    "select count(*) from StoredDependencyBuild s where s.id in (select b.id from StoredDependencyBuild  b inner join b.buildAttempts ba inner join ba.producedArtifacts a inner join MavenArtifactLabel l on l.artifact = a inner join ArtifactLabelName aln on l.name=aln where aln.name=:name)")
                     .setParameter("name", label)
                     .getSingleResult();
             long successful = (Long) entityManager.createQuery(
-                    "select count(*) from StoredDependencyBuild s where s.id in (select b.id from StoredDependencyBuild  b inner join  b.producedArtifacts a inner join MavenArtifactLabel l on l.artifact = a inner join ArtifactLabelName aln on l.name=aln where aln.name=:name) and succeeded=true")
+                    "select count(*) from StoredDependencyBuild s where s.id in (select b.id from StoredDependencyBuild  b inner join b.buildAttempts ba inner join ba.producedArtifacts a MavenArtifactLabel l on l.artifact = a inner join ArtifactLabelName aln on l.name=aln where aln.name=:name) and succeeded=true")
                     .setParameter("name", label)
                     .getSingleResult();
             long contaminated = (Long) entityManager.createQuery(
-                    "select count(*) from StoredDependencyBuild s where s.id in (select b.id from StoredDependencyBuild  b inner join  b.producedArtifacts a inner join MavenArtifactLabel l on l.artifact = a inner join ArtifactLabelName aln on l.name=aln where aln.name=:name) and contaminated=true")
+                    "select count(*) from StoredDependencyBuild s where s.id in (select b.id from StoredDependencyBuild  b inner join b.buildAttempts ba inner join ba.producedArtifacts a MavenArtifactLabel l on l.artifact = a inner join ArtifactLabelName aln on l.name=aln where aln.name=:name) and contaminated=true")
                     .setParameter("name", label)
                     .getSingleResult();
 

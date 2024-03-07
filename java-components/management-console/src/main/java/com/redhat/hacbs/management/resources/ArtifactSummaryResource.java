@@ -21,25 +21,24 @@ public class ArtifactSummaryResource {
         if (label == null || label.isBlank()) {
             long missing = StoredArtifactBuild.count("state", ModelConstants.ARTIFACT_BUILD_MISSING);
             long failed = StoredArtifactBuild.count("state", ModelConstants.ARTIFACT_BUILD_FAILED);
-            long built = (long) entityManager
-                    .createQuery("select count(*) from StoredDependencyBuild s inner join s.producedArtifacts")
-                    .getSingleResult();
+            long built = StoredArtifactBuild.count("state", ModelConstants.ARTIFACT_BUILD_COMPLETE);
             return new ArtifactSummaryDTO(built, missing, failed, built + missing + failed);
         } else {
 
             long missing = (long) entityManager
                     .createQuery(
-                            "select count(*) from StoredArtifactBuild a inner join MavenArtifactLabel l on l.artifact=a.mavenArtifact inner join ArtifactLabelName n on l.name=n where n.name=:name and a.state=:state")
+                            "select count(a) from StoredArtifactBuild a inner join MavenArtifactLabel l on l.artifact=a.mavenArtifact inner join ArtifactLabelName n on l.name=n where n.name=:name and a.state=:state")
                     .setParameter("state", ModelConstants.ARTIFACT_BUILD_MISSING)
                     .setParameter("name", label).getSingleResult();
             long failed = (long) entityManager
                     .createQuery(
-                            "select count(*) from StoredArtifactBuild a inner join MavenArtifactLabel l on l.artifact=a.mavenArtifact inner join ArtifactLabelName n on l.name=n where n.name=:name and a.state=:state")
+                            "select count(a) from StoredArtifactBuild a inner join MavenArtifactLabel l on l.artifact=a.mavenArtifact inner join ArtifactLabelName n on l.name=n where n.name=:name and a.state=:state")
                     .setParameter("state", ModelConstants.ARTIFACT_BUILD_FAILED)
                     .setParameter("name", label).getSingleResult();
             long built = (long) entityManager
                     .createQuery(
-                            "select count(*) from StoredDependencyBuild s inner join s.producedArtifacts a inner join MavenArtifactLabel l on l.artifact=a inner join ArtifactLabelName n on l.name=n where n.name=:name")
+                            "select count(a) from StoredArtifactBuild a inner join MavenArtifactLabel l on l.artifact=a.mavenArtifact inner join ArtifactLabelName n on l.name=n where n.name=:name and a.state=:state")
+                    .setParameter("state", ModelConstants.ARTIFACT_BUILD_COMPLETE)
                     .setParameter("name", label).getSingleResult();
 
             return new ArtifactSummaryDTO(built, missing, failed, built + missing + failed);

@@ -7,8 +7,6 @@ import jakarta.persistence.EntityManager;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import com.redhat.hacbs.management.model.BuildAttempt;
-import com.redhat.hacbs.management.model.MavenArtifact;
-import com.redhat.hacbs.management.model.ShadingDetails;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
 import io.quarkus.arc.Arc;
@@ -24,10 +22,8 @@ public record BuildDTO(
         @Schema(required = true) boolean succeeded,
         @Schema(required = true) boolean contaminated,
         @Schema(required = true) boolean verified,
-        List<String> artifacts,
         BuildAttemptDTO successfulBuild,
-        List<BuildAttemptDTO> buildAttempts,
-        List<ShadingDetails> shadingDetails,
+        @Schema(required = true) List<BuildAttemptDTO> buildAttempts,
 
         @Schema(required = true) boolean inQueue,
         @Schema(required = true) long buildSbomDependencySetId) {
@@ -58,8 +54,7 @@ public record BuildDTO(
         if (successfulBuild != null) {
             Log.infof("Build maven repo %s", successfulBuild.mavenRepository());
         }
-        List<BuildAttemptDTO> others = build.buildAttempts.stream()
-                .filter(s -> successfulBuild == null || s.id != successfulBuild.id())
+        List<BuildAttemptDTO> buildAttempts = build.buildAttempts.stream()
                 .map(BuildAttemptDTO::of).toList();
         return new BuildDTO(
                 build.id,
@@ -71,10 +66,8 @@ public record BuildDTO(
                 build.succeeded,
                 build.contaminated,
                 successfulBuild == null || successfulBuild.passedVerification(),
-                build.producedArtifacts.stream().map(MavenArtifact::gav).toList(),
                 successfulBuild,
-                others,
-                build.shadingDetails,
+                buildAttempts,
                 inQueue,
                 success != null
                         ? (success.buildSbom != null && success.buildSbom.dependencySet != null

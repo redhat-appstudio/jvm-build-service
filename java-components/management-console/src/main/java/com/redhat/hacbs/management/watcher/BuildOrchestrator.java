@@ -185,7 +185,7 @@ public class BuildOrchestrator {
             }
             boolean exists = !entityManager
                     .createQuery(
-                            "select s from StoredDependencyBuild s join s.producedArtifacts artifact where artifact=:artifact")
+                            "select s from StoredDependencyBuild s join s.buildAttempts ba join ba.producedArtifacts artifact where artifact=:artifact")
                     .setParameter("artifact", bq.mavenArtifact)
                     .getResultList().isEmpty();
             if (!exists || bq.rebuild) {

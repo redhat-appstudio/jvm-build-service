@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildIdentifier;
 import com.redhat.hacbs.management.model.BuildQueue;
 import com.redhat.hacbs.management.model.MavenArtifact;
@@ -71,8 +72,12 @@ public class BuildOrchestratorTestCase {
             bd.creationTimestamp = Instant.now();
             bd.buildIdentifier = BuildIdentifier.findORCreate("http://github.com/foo", "foo" + i, "sdfsdajklfdskl", "",
                     "somename" + i);
-            bd.producedArtifacts = new ArrayList<>();
-            bd.producedArtifacts.add(MavenArtifact.forGav("com.foo:test:" + i));
+            bd.buildAttempts = new ArrayList<>();
+            BuildAttempt buildAttempt = new BuildAttempt();
+            buildAttempt.dependencyBuild = bd;
+            bd.buildAttempts.add(buildAttempt);
+            buildAttempt.producedArtifacts = new ArrayList<>();
+            buildAttempt.producedArtifacts.add(MavenArtifact.forGav("com.foo:test:" + i));
             bd.persist();
         }
 

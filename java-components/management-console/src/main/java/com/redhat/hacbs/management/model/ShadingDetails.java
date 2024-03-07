@@ -18,7 +18,7 @@ public class ShadingDetails extends PanacheEntity {
     @ManyToOne
     @JoinColumn(nullable = false)
     @JsonIgnore
-    public StoredDependencyBuild storedDependencyBuild;
+    public BuildAttempt buildAttempt;
 
     @JoinColumn(nullable = false)
     @ManyToOne
