@@ -242,9 +242,6 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 func setup(t *testing.T, namespace string) *testArgs {
 	return setupConfig(t, namespace, false)
 }
-func setupHermetic(t *testing.T, namespace string) *testArgs {
-	return setupConfig(t, namespace, true)
-}
 func setupConfig(t *testing.T, namespace string, hermetic bool) *testArgs {
 
 	ta := commonSetup(t, gitCloneTaskUrl, namespace)
