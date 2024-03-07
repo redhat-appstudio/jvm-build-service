@@ -31,3 +31,6 @@ jobs:
         run: mvn -V -B package -Dvalidate-format
       - name: Codecov
         uses: codecov/codecov-action@54bcd8715eee62d40e33596ef5e8f0f48dbbccab # v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
