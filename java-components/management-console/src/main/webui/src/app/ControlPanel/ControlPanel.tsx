@@ -33,6 +33,11 @@ const ControlPanel: React.FunctionComponent = () => {
             Delete All Data
           </Button>
         </ActionListItem>
+        <ActionListItem>
+          <Button variant="warning" id="s3-import" onClick={() => AdminResourceService.postApiAdminImportFroms3()}>
+            S3 Import
+          </Button>
+        </ActionListItem>
       </ActionList>
     </CardBody>
   </Card>

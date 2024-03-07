@@ -9,6 +9,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
+import com.redhat.hacbs.management.importer.S3Importer;
 import com.redhat.hacbs.management.internal.model.BuildSBOMDiscoveryInfo;
 import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildQueue;
@@ -37,6 +38,9 @@ public class AdminResource {
     @Inject
     KubernetesClient kubernetesClient;
 
+    @Inject
+    S3Importer s3Importer;
+
     @POST
     @Path("rebuild-all")
     public void rebuildAll() {
@@ -53,6 +57,12 @@ public class AdminResource {
             StoredArtifactBuild sa = StoredArtifactBuild.find("buildIdentifier", sb.buildIdentifier).firstResult();
             BuildQueue.rebuild(sa.mavenArtifact, false, Map.of());
         }
+    }
+
+    @POST
+    @Path("import-froms3")
+    public void s3Import() {
+        s3Importer.doImport();
     }
 
     @POST
