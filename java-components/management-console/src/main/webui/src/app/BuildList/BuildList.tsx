@@ -2,14 +2,9 @@ import * as React from 'react';
 import {useEffect, useState} from 'react';
 import {
   ActionListItem,
-  Bullseye,
   Dropdown,
   DropdownItem,
   DropdownList,
-  EmptyState,
-  EmptyStateBody,
-  EmptyStateHeader,
-  EmptyStateIcon,
   Label,
   MenuToggle,
   MenuToggleElement,
@@ -19,7 +14,6 @@ import {
   ToolbarItem,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
 import {BuildHistoryResourceService, BuildListDTO, BuildQueueResourceService} from "../../services/openapi";
 import {
   CheckCircleIcon,
@@ -51,13 +45,16 @@ const BuildList: React.FunctionComponent = () => {
 
   const [stateFilter, setStateFilter] = useState('');
   const [gavFilter, setGavFilter] = useState('');
+  const [toolFilter, setToolFilter] = useState('');
+
   const [dropDownOpen, setDropDownOpen] = useState(false);
+  const [dropDownToolOpen, setDropDownToolOpen] = useState(false);
 
   let transientGav = ''
 
   useEffect(() => {
     setState('loading');
-    BuildHistoryResourceService.getApiBuildsHistory(gavFilter, page, perPage, stateFilter).then()
+    BuildHistoryResourceService.getApiBuildsHistory(gavFilter, page, perPage, stateFilter, toolFilter).then()
       .then((res) => {
         console.log(res);
         setState('success');
@@ -69,7 +66,7 @@ const BuildList: React.FunctionComponent = () => {
         setState('error');
         setError(err);
       });
-  }, [perPage, page, gavFilter, stateFilter]);
+  }, [perPage, page, gavFilter, stateFilter, toolFilter]);
 
   if (state === 'error')
     return (
@@ -111,7 +108,7 @@ const BuildList: React.FunctionComponent = () => {
       setGavFilter(transientGav)
     }
   }
-  const dropDownLabel = (state: string) => {
+  const dropDownBuildLabel = (state: string) => {
     switch (state) {
       case '':
         return "All";
@@ -126,6 +123,22 @@ const BuildList: React.FunctionComponent = () => {
     }
     return state
   }
+  const dropDownToolLabel = (state: string) => {
+    switch (state) {
+      case '':
+        return "All";
+      case 'maven':
+        return "Maven"
+      case 'gradle':
+        return "Gradle"
+      case 'ant':
+        return "Ant"
+      case 'SBT':
+        return "SBT"
+    }
+    return state
+  }
+
   const toolbar = (
     <Toolbar id="search-input-filter-toolbar">
       <ToolbarContent>
@@ -139,7 +152,7 @@ const BuildList: React.FunctionComponent = () => {
             onOpenChangeKeys={['Escape']}
             toggle={(toggleRef) => (
               <MenuToggle ref={toggleRef} onClick={() => setDropDownOpen(!dropDownOpen)} isExpanded={dropDownOpen}>
-                {dropDownLabel(stateFilter)}
+                {dropDownBuildLabel(stateFilter)}
               </MenuToggle>
             )}
             id="context-selector"
@@ -166,6 +179,35 @@ const BuildList: React.FunctionComponent = () => {
                 <Label color="grey" icon={<CheckCircleIcon/>}>
                   Verification Failed
                 </Label>
+              </DropdownItem>
+            </DropdownList>
+          </Dropdown>
+          <Dropdown
+            isOpen={dropDownToolOpen}
+            onOpenChange={(isOpen) => setDropDownToolOpen(isOpen)}
+            onOpenChangeKeys={['Escape']}
+            toggle={(toggleRef) => (
+              <MenuToggle ref={toggleRef} onClick={() => setDropDownToolOpen(!dropDownToolOpen)} isExpanded={dropDownToolOpen}>
+                {dropDownToolLabel(toolFilter)}
+              </MenuToggle>
+            )}
+            id="context-selector-2"
+            onSelect={(e,v) => {setToolFilter(typeof v === 'string'? v :''); setDropDownToolOpen(false);}}
+            isScrollable
+          >
+            <DropdownList>
+              <DropdownItem itemId={''} key={'allitems'} onSelect={() => setToolFilter('')} >All</DropdownItem>
+              <DropdownItem itemId={'maven'} key={'maven'} onSelect={() => setToolFilter('maven')} >
+                Maven
+              </DropdownItem>
+              <DropdownItem itemId={'gradle'} key={'gradle'} onSelect={() => setToolFilter('gradle')} >
+                Gradle
+              </DropdownItem>
+              <DropdownItem itemId={'ant'} key={'ant'} onSelect={() => setToolFilter('ant')} >
+                Ant
+              </DropdownItem>
+              <DropdownItem itemId={'sbt'} key={'sbt'} onSelect={() => setToolFilter('SBT')} >
+                SBT
               </DropdownItem>
             </DropdownList>
           </Dropdown>
