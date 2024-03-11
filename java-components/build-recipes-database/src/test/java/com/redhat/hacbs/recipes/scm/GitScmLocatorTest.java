@@ -7,7 +7,27 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.recipes.GAV;
+
 class GitScmLocatorTest {
+
+    @Test
+    void lookupScmInfoRelaxNG() {
+        TagInfo tag = GitScmLocator.builder().build().resolveTagInfo(GAV.parse("relaxngDatatype:relaxngDatatype:20020414"));
+        Assertions.assertNotNull(tag);
+        Assertions.assertEquals(tag.getTag(), tag.getHash());
+        Assertions.assertEquals(tag.getRepoInfo().getUri(),
+                "https://github.com/java-schema-utilities/relaxng-datatype-java.git");
+    }
+
+    @Test
+    void lookupScmInfoCommonsLang() {
+        TagInfo tag = GitScmLocator.builder().build().resolveTagInfo(GAV.parse("commons-lang:commons-lang:2.5"));
+        Assertions.assertNotNull(tag);
+        Assertions.assertEquals(tag.getTag(), "LANG_2_5");
+        Assertions.assertNotEquals(tag.getTag(), tag.getHash());
+        Assertions.assertEquals(tag.getRepoInfo().getUri(), "https://github.com/apache/commons-lang.git");
+    }
 
     //test tag mapping heuristics
     @Test
