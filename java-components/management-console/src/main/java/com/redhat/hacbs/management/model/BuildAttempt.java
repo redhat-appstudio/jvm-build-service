@@ -7,6 +7,7 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
@@ -89,6 +90,14 @@ public class BuildAttempt extends PanacheEntity {
 
     @OneToOne(optional = true, mappedBy = "build")
     public BuildSBOMDiscoveryInfo buildSbom;
+
+    public boolean contaminated;
+
+    @ManyToMany(cascade = CascadeType.ALL)
+    public List<MavenArtifact> producedArtifacts;
+
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "buildAttempt", orphanRemoval = true)
+    public List<ShadingDetails> shadingDetails;
 
     //this is pretty yuck, but we don't want a whole new table to store a List<String>
     public void commandLine(List<String> commandLine) {

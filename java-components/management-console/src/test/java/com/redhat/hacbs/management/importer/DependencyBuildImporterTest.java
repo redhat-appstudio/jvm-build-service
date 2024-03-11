@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.ScmRepository;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
@@ -49,8 +50,9 @@ public class DependencyBuildImporterTest {
         Assertions.assertEquals("4.2.1", checkout.buildIdentifier.tag);
         Assertions.assertEquals("89edb4eac9bf57dabe59963f22549be682c33d38", checkout.buildIdentifier.hash);
         Assertions.assertEquals("2023-10-24T22:25:31Z", checkout.creationTimestamp.toString());
-        Assertions.assertEquals(9, checkout.producedArtifacts.size());
-        for (var i : checkout.producedArtifacts) {
+        BuildAttempt buildAttempt = checkout.buildAttempts.get(checkout.buildAttempts.size() - 1);
+        Assertions.assertEquals(9, buildAttempt.producedArtifacts.size());
+        for (var i : buildAttempt.producedArtifacts) {
             Assertions.assertTrue(GAVS.contains(i.gav()));
         }
 

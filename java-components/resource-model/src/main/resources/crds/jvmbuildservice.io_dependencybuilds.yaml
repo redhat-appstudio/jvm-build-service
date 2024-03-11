@@ -84,6 +84,27 @@ spec:
                           type: string
                         results:
                           properties:
+                            contaminated:
+                              type: boolean
+                            contaminates:
+                              items:
+                                properties:
+                                  allowed:
+                                    type: boolean
+                                  buildId:
+                                    type: string
+                                  contaminatedArtifacts:
+                                    items:
+                                      type: string
+                                    type: array
+                                  gav:
+                                    type: string
+                                  rebuildAvailable:
+                                    type: boolean
+                                  source:
+                                    type: string
+                                type: object
+                              type: array
                             gavs:
                               description: The produced GAVs
                               items:

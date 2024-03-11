@@ -8,7 +8,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.OneToMany;
@@ -42,15 +41,10 @@ public class StoredDependencyBuild extends PanacheEntity {
     public boolean contaminated;
 
     public String buildDiscoveryUrl;
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "storedDependencyBuild")
-    public List<ShadingDetails> shadingDetails;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dependencyBuild")
     @OrderBy("startTime desc")
     public List<BuildAttempt> buildAttempts;
-
-    @ManyToMany(cascade = CascadeType.ALL)
-    public List<MavenArtifact> producedArtifacts;
 
     public static StoredDependencyBuild findByArtifact(MavenArtifact mavenArtifact) {
         try {

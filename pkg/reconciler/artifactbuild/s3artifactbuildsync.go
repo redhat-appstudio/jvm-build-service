@@ -22,7 +22,6 @@ const (
 
 	S3StateSyncRequired = "required"
 	S3StateSyncDisable  = "disabled"
-	S3StateSyncComplete = "complete"
 )
 
 func (r *ReconcileArtifactBuild) handleS3SyncArtifactBuild(ctx context.Context, ab *v1alpha1.ArtifactBuild, log logr.Logger) (bool, error) {
@@ -32,6 +31,9 @@ func (r *ReconcileArtifactBuild) handleS3SyncArtifactBuild(ctx context.Context, 
 	if ab.Annotations == nil {
 		ab.Annotations = map[string]string{}
 	}
+	if ab.Annotations[S3SyncStateAnnotation] == ab.Status.State {
+		return false, nil
+	}
 	if ab.Status.State != v1alpha1.ArtifactBuildStateComplete &&
 		ab.Status.State != v1alpha1.ArtifactBuildStateFailed &&
 		ab.Status.State != v1alpha1.ArtifactBuildStateMissing {
@@ -40,7 +42,7 @@ func (r *ReconcileArtifactBuild) handleS3SyncArtifactBuild(ctx context.Context, 
 		}
 		//add a marker to indicate if sync is required of not
 		//if it is already synced we remove this marker as its state has changed
-		if ab.Annotations[S3SyncStateAnnotation] == "" || ab.Annotations[S3SyncStateAnnotation] == S3StateSyncComplete {
+		if ab.Annotations[S3SyncStateAnnotation] != S3StateSyncRequired && ab.Annotations[S3SyncStateAnnotation] != S3StateSyncDisable {
 			jbsConfig := &v1alpha1.JBSConfig{}
 			err := r.client.Get(ctx, types.NamespacedName{Namespace: ab.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 			if err != nil && !errors.IsNotFound(err) {
@@ -98,7 +100,7 @@ func (r *ReconcileArtifactBuild) handleS3SyncArtifactBuild(ctx context.Context, 
 		log.Error(err, "failed to upload to s3, make sure credentials are correct")
 		return false, nil
 	}
-	ab.Annotations[S3SyncStateAnnotation] = S3StateSyncComplete
+	ab.Annotations[S3SyncStateAnnotation] = ab.Status.State
 	return true, r.client.Update(ctx, ab)
 }
 

@@ -105,6 +105,8 @@ type BuildPipelineRunResults struct {
 
 	// The Tekton results
 	PipelineResults *PipelineResults `json:"pipelineResults,omitempty"`
+	Contaminants    []*Contaminant   `json:"contaminates,omitempty"`
+	Contaminated    bool             `json:"contaminated,omitempty"`
 }
 
 type GitArchive struct {

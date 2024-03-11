@@ -3,7 +3,6 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { BuildAttemptDTO } from './BuildAttemptDTO';
-import type { ShadingDetails } from './ShadingDetails';
 export type BuildDTO = {
     id: number;
     name: string;
@@ -14,10 +13,8 @@ export type BuildDTO = {
     succeeded: boolean;
     contaminated: boolean;
     verified: boolean;
-    artifacts?: Array<string>;
     successfulBuild?: BuildAttemptDTO;
-    buildAttempts?: Array<BuildAttemptDTO>;
-    shadingDetails?: Array<ShadingDetails>;
+    buildAttempts: Array<BuildAttemptDTO>;
     inQueue: boolean;
     buildSbomDependencySetId: number;
 };
