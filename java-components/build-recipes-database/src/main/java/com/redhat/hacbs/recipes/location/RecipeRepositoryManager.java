@@ -67,6 +67,7 @@ public class RecipeRepositoryManager implements RecipeDirectory {
                 .setBranch(branch)
                 .setDirectory(directory.toFile())
                 .setCredentialsProvider(new GitCredentials())
+                .setDepth(1)
                 .setURI(remote);
         var result = clone.call();
 

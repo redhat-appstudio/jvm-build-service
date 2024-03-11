@@ -13,7 +13,6 @@ lib
 bin
 !devtools/cli/distribution/java-binary/bin
 dependency-reduced-pom.xml
-derby.log
 hotspot.log
 .directory
 .java-version
@@ -27,14 +26,8 @@ graph-output.dot
 *.swp
 *.swo
 ObjectStore
-docker/distroless/bazel-*
-/.apt_generated_tests/
 quarkus.log
-replay_*.logß
-nbactions.xml
-nb-configuration.xml
 .cache
-/lsp/
 .jbang
 .sdkmanrc
 .envrc
@@ -49,4 +42,4 @@ deploy/**/ci-final/**
 .gradle
 
 # Ignore Gradle build output directory
-build
+**/gradle/build/

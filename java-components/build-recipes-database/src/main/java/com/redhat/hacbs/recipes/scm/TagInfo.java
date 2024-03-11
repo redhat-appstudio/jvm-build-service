@@ -41,4 +41,13 @@ public class TagInfo {
     public void setHash(String hash) {
         this.hash = hash;
     }
+
+    @Override
+    public String toString() {
+        return "TagInfo{" +
+                "repoInfo=" + repoInfo +
+                ", tag='" + tag + '\'' +
+                ", hash='" + hash + '\'' +
+                '}';
+    }
 }

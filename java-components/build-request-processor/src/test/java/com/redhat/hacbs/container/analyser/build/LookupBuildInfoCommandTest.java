@@ -247,6 +247,21 @@ class LookupBuildInfoCommandTest {
     }
 
     @Test
+    public void testBuildAnalysisRelaxingDatatype()
+        throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.mavenContext = new BootstrapMavenContext();
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        // 20020414
+        lookupBuildInfoCommand.tag = "a83e0896eddbd57a6c8c7afe9cae907199d5108b";
+        lookupBuildInfoCommand.commit = "a83e0896eddbd57a6c8c7afe9cae907199d5108b";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/java-schema-utilities/relaxng-datatype-java.git", new BuildRecipeInfo(),
+            cacheBuildInfoLocator);
+        assertThat(info.invocations).isNotEmpty();
+    }
+
+
+    @Test
     void testGetBuildJdkFromJarManifest() throws IOException {
         var v = new String[] { "1.0", "1.1", "1.2", "1.3", "1.3.1", "1.3.2", "1.4", "2.0", "2.0.1", "2.1", "2.2", "2.3", "2.4",
                 "2.5",
