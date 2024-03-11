@@ -13,6 +13,7 @@ export class BuildHistoryResourceService {
      * @param page
      * @param perPage
      * @param state
+     * @param tool
      * @returns PageParametersBuildListDTO OK
      * @throws ApiError
      */
@@ -21,6 +22,7 @@ export class BuildHistoryResourceService {
         page?: number,
         perPage?: number,
         state?: string,
+        tool?: string,
     ): CancelablePromise<PageParametersBuildListDTO> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -30,6 +32,7 @@ export class BuildHistoryResourceService {
                 'page': page,
                 'perPage': perPage,
                 'state': state,
+                'tool': tool,
             },
         });
     }

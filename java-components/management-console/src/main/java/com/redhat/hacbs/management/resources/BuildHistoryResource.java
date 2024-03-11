@@ -3,6 +3,7 @@ package com.redhat.hacbs.management.resources;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -20,6 +21,7 @@ import com.redhat.hacbs.management.dto.BuildAttemptDTO;
 import com.redhat.hacbs.management.dto.BuildDTO;
 import com.redhat.hacbs.management.dto.BuildListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
+import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildIdentifier;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
@@ -33,7 +35,7 @@ public class BuildHistoryResource extends BuildLogs {
 
     @GET
     public PageParameters<BuildListDTO> all(@QueryParam("page") int page, @QueryParam("perPage") int perPage,
-            @QueryParam("state") String state, @QueryParam("gav") String gav) {
+            @QueryParam("state") String state, @QueryParam("gav") String gav, @QueryParam("tool") String tool) {
         if (perPage <= 0) {
             perPage = 20;
         }
@@ -100,10 +102,25 @@ public class BuildHistoryResource extends BuildLogs {
             BuildAttemptDTO successfulBuild = build.buildAttempts.stream().filter(s -> s.successful).findFirst()
                     .map(BuildAttemptDTO::of)
                     .orElse(null);
-            ret.add(new BuildListDTO(build.id, build.buildIdentifier.dependencyBuildName, build.buildIdentifier.repository.url,
-                    build.buildIdentifier.tag, build.succeeded, build.contaminated,
-                    successfulBuild == null || successfulBuild.passedVerification(), inQueue,
-                    build.creationTimestamp.toEpochMilli()));
+
+            if (tool != null && !tool.isEmpty()) {
+                Optional<BuildAttempt> buildAttempt = build.buildAttempts.stream().findFirst();
+                if (buildAttempt.isPresent() && buildAttempt.get().tool.equals(tool)) {
+                    ret.add(
+                            new BuildListDTO(build.id, build.buildIdentifier.dependencyBuildName,
+                                    build.buildIdentifier.repository.url,
+                                    build.buildIdentifier.tag, build.succeeded, build.contaminated,
+                                    successfulBuild == null || successfulBuild.passedVerification(), inQueue,
+                                    build.creationTimestamp.toEpochMilli()));
+                }
+            } else {
+                ret.add(
+                        new BuildListDTO(build.id, build.buildIdentifier.dependencyBuildName,
+                                build.buildIdentifier.repository.url,
+                                build.buildIdentifier.tag, build.succeeded, build.contaminated,
+                                successfulBuild == null || successfulBuild.passedVerification(), inQueue,
+                                build.creationTimestamp.toEpochMilli()));
+            }
         }
 
         TypedQuery<Long> q2 = entityManager.createQuery("select count(s) from StoredDependencyBuild s " + query, Long.class);

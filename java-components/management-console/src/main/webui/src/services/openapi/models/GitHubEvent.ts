@@ -9,6 +9,7 @@ export type GitHubEvent = {
     repository?: string | null;
     event?: string;
     action?: string;
+    eventAction?: string;
     payload?: string;
     replayed?: boolean;
 };
