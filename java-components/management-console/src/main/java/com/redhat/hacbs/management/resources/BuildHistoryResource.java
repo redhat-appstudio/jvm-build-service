@@ -3,7 +3,6 @@ package com.redhat.hacbs.management.resources;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -21,7 +20,6 @@ import com.redhat.hacbs.management.dto.BuildAttemptDTO;
 import com.redhat.hacbs.management.dto.BuildDTO;
 import com.redhat.hacbs.management.dto.BuildListDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
-import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildIdentifier;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 
@@ -104,8 +102,7 @@ public class BuildHistoryResource extends BuildLogs {
                     .orElse(null);
 
             if (tool != null && !tool.isEmpty()) {
-                Optional<BuildAttempt> buildAttempt = build.buildAttempts.stream().findFirst();
-                if (buildAttempt.isPresent() && buildAttempt.get().tool.equals(tool)) {
+                if (build.buildAttempts.stream().anyMatch(b -> b.tool.equals(tool))) {
                     ret.add(
                             new BuildListDTO(build.id, build.buildIdentifier.dependencyBuildName,
                                     build.buildIdentifier.repository.url,
