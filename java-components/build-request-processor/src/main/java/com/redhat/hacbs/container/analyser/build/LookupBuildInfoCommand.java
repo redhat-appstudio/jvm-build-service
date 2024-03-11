@@ -177,12 +177,17 @@ public class LookupBuildInfoCommand implements Runnable {
             }
         };
         monitor.showDuration(true);
-        try (var clone = Git.cloneRepository()
-                .setCredentialsProvider(new GitCredentials())
-                .setURI(scmUrl)
-                .setDepth(1)
-                .setProgressMonitor(monitor)
-                .setDirectory(path.toFile()).call()) {
+        var repoClone = Git.cloneRepository()
+            .setCredentialsProvider(new GitCredentials())
+            .setURI(scmUrl)
+            .setProgressMonitor(monitor)
+            .setDirectory(path.toFile());
+        if (!commit.equals(tag)) {
+            // If commit and tag are identical it likely means there is no tag located and we are cloning
+            // a hash mid-tree. Therefore, don't set the depth.
+            repoClone.setDepth(1);
+        }
+        try (var clone = repoClone.call()) {
             Log.infof("Clone summary:\n%s", writer.toString().replaceAll( "(?m)^\\s+", ""));
             clone.reset().setMode(HARD).setRef(commit).call();
             boolean skipTests = !privateRepo;
