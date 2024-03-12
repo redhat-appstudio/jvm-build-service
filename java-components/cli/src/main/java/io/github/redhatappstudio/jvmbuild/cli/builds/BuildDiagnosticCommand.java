@@ -81,6 +81,7 @@ public class BuildDiagnosticCommand
             return;
         }
         try {
+            int counter = 0;
             for (var i : builds) {
                 String fileName;
                 String javaVersion;
@@ -92,6 +93,7 @@ public class BuildDiagnosticCommand
                     javaVersion = i.getBuildRecipe().getJavaVersion();
                     tagName = name + ".failed.jdk" + javaVersion;
                 }
+                tagName = tagName + "-" + counter++;
                 fileName = "Dockerfile." + tagName;
                 tagName = "localhost/" + tagName;
                 System.out.println(
