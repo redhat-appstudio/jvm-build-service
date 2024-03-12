@@ -10,6 +10,8 @@ import { request as __request } from '../core/request';
 export class BuildHistoryResourceService {
     /**
      * @param gav
+     * @param label
+     * @param labelValue
      * @param page
      * @param perPage
      * @param state
@@ -19,6 +21,8 @@ export class BuildHistoryResourceService {
      */
     public static getApiBuildsHistory(
         gav?: string,
+        label?: string,
+        labelValue?: string,
         page?: number,
         perPage?: number,
         state?: string,
@@ -29,6 +33,8 @@ export class BuildHistoryResourceService {
             url: '/api/builds/history',
             query: {
                 'gav': gav,
+                'label': label,
+                'labelValue': labelValue,
                 'page': page,
                 'perPage': perPage,
                 'state': state,

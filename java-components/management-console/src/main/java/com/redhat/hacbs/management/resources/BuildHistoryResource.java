@@ -33,7 +33,8 @@ public class BuildHistoryResource extends BuildLogs {
 
     @GET
     public PageParameters<BuildListDTO> all(@QueryParam("page") int page, @QueryParam("perPage") int perPage,
-            @QueryParam("state") String state, @QueryParam("gav") String gav, @QueryParam("tool") String tool) {
+            @QueryParam("state") String state, @QueryParam("gav") String gav, @QueryParam("tool") String tool,
+            @QueryParam("label") String label, @QueryParam("labelValue") String labelValue) {
         if (perPage <= 0) {
             perPage = 20;
         }
@@ -50,6 +51,23 @@ public class BuildHistoryResource extends BuildLogs {
             } else if (Objects.equals(state, "verification-failed")) {
                 query.append(
                         " WHERE (select count(b) from BuildAttempt b where b.dependencyBuild=s and b.successful and NOT b.passedVerification) > 0");
+            }
+        }
+        if (label != null && !label.isEmpty()) {
+            if (!query.isEmpty()) {
+                query.append(" and ");
+            } else {
+                query.append(" WHERE ");
+            }
+            parameters.and("label", label);
+            if (labelValue != null && !labelValue.isEmpty()) {
+                query.append(
+                        " s.id in (select b.id from StoredDependencyBuild b inner join b.buildAttempts ba inner join ba.producedArtifacts a inner join MavenArtifactLabel l on l.artifact = a inner join ArtifactLabelName aln on l.name=aln where aln.name=:label and aln.value=:labelValue) ");
+                parameters.and("labelValue", labelValue);
+            } else {
+                query.append(
+                        " s.id in (select b.id from StoredDependencyBuild b inner join b.buildAttempts ba inner join ba.producedArtifacts a inner join MavenArtifactLabel l on l.artifact = a inner join ArtifactLabelName aln on l.name=aln where aln.name=:label) ");
+
             }
         }
         //TODO: this can only find passing builds

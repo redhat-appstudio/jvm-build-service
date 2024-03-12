@@ -26,6 +26,7 @@ export type { IdentifiedDependencyDTO } from './models/IdentifiedDependencyDTO';
 export type { ImageDTO } from './models/ImageDTO';
 export type { Instant } from './models/Instant';
 export type { MavenArtifact } from './models/MavenArtifact';
+export type { MavenArtifactLabel } from './models/MavenArtifactLabel';
 export type { ModifyScmRepoCommand } from './models/ModifyScmRepoCommand';
 export type { PageParametersArtifactListDTO } from './models/PageParametersArtifactListDTO';
 export type { PageParametersBuildListDTO } from './models/PageParametersBuildListDTO';

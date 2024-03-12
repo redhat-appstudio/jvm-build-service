@@ -23,4 +23,10 @@ public class ArtifactLabelName extends PanacheEntity {
         }
         return artifactLabelName;
     }
+
+    public static ArtifactLabelName get(String name) {
+        return find("name=:name",
+                Parameters.with("name", name))
+                .firstResult();
+    }
 }

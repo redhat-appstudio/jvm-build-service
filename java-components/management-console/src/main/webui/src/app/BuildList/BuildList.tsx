@@ -8,10 +8,13 @@ import {
   Label,
   MenuToggle,
   MenuToggleElement,
-  Pagination, SearchInput, Timestamp,
+  Pagination,
+  SearchInput,
+  Timestamp,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  ToolbarItemVariant,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {BuildHistoryResourceService, BuildListDTO, BuildQueueResourceService} from "../../services/openapi";
@@ -24,6 +27,7 @@ import {
 } from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
 import {EmptyTable} from "@app/EmptyTable/EmptyTable";
+import {LabelSelector} from "@app/LabelSelector/LabelSelector";
 
 
 const columnNames = {
@@ -46,6 +50,7 @@ const BuildList: React.FunctionComponent = () => {
   const [stateFilter, setStateFilter] = useState('');
   const [gavFilter, setGavFilter] = useState('');
   const [toolFilter, setToolFilter] = useState('');
+  const [labelFilter, setLabelFilter] = useState('');
 
   const [dropDownOpen, setDropDownOpen] = useState(false);
   const [dropDownToolOpen, setDropDownToolOpen] = useState(false);
@@ -54,7 +59,7 @@ const BuildList: React.FunctionComponent = () => {
 
   useEffect(() => {
     setState('loading');
-    BuildHistoryResourceService.getApiBuildsHistory(gavFilter, page, perPage, stateFilter, toolFilter).then()
+    BuildHistoryResourceService.getApiBuildsHistory(gavFilter, labelFilter, "", page, perPage, stateFilter, toolFilter).then()
       .then((res) => {
         console.log(res);
         setState('success');
@@ -66,7 +71,7 @@ const BuildList: React.FunctionComponent = () => {
         setState('error');
         setError(err);
       });
-  }, [perPage, page, gavFilter, stateFilter, toolFilter]);
+  }, [perPage, page, gavFilter, stateFilter, toolFilter, labelFilter]);
 
   if (state === 'error')
     return (
@@ -211,6 +216,9 @@ const BuildList: React.FunctionComponent = () => {
               </DropdownItem>
             </DropdownList>
           </Dropdown>
+        </ToolbarItem>
+        <ToolbarItem variant="search-filter">
+          <LabelSelector labelSelected={setLabelFilter} ></LabelSelector>
         </ToolbarItem>
         <ToolbarItem variant="pagination">{toolbarPagination}</ToolbarItem>
       </ToolbarContent>
