@@ -7,8 +7,8 @@ spec:
   builders:
     #note that when updating the ref here you must also update kustomization.yaml
     ubi8:
-      image: quay.io/redhat-appstudio/jbs-ubi8-builder:c0f0ebc471ea1c7f233b0a15a7aea8852f8a08e8
+      image: quay.io/redhat-appstudio/jbs-ubi8-builder:a86a5a611c58358c8670851b4ced7ebb6ce915b6
       priority: 2000
     ubi7:
-      image: quay.io/redhat-appstudio/jbs-ubi7-builder:c0f0ebc471ea1c7f233b0a15a7aea8852f8a08e8
+      image: quay.io/redhat-appstudio/jbs-ubi7-builder:a86a5a611c58358c8670851b4ced7ebb6ce915b6
       priority: 1000
