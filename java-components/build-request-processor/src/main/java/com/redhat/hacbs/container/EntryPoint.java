@@ -3,6 +3,7 @@ package com.redhat.hacbs.container;
 import com.redhat.hacbs.container.analyser.build.LookupBuildInfoCommand;
 import com.redhat.hacbs.container.analyser.dependencies.AnalyseDependencies;
 import com.redhat.hacbs.container.analyser.deploy.ContainerTagCommand;
+import com.redhat.hacbs.container.analyser.deploy.CopyArtifactsCommand;
 import com.redhat.hacbs.container.analyser.deploy.DeployCommand;
 import com.redhat.hacbs.container.analyser.deploy.DeployHermeticPreBuildImageCommand;
 import com.redhat.hacbs.container.analyser.deploy.DeployPreBuildImageCommand;
@@ -21,6 +22,7 @@ import picocli.CommandLine;
         LookupScmLocationCommand.class,
         LookupBuildInfoCommand.class,
         AnalyseDependencies.class,
+        CopyArtifactsCommand.class,
         DeployCommand.class,
         GradlePrepareCommand.class,
         MavenPrepareCommand.class,

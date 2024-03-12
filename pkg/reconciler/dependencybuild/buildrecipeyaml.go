@@ -68,7 +68,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha12.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 
-	preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired, buildId)
+	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired, buildId)
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
 
@@ -205,10 +205,10 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	var buildTaskScript string
 	hermeticResults := []tektonpipeline.TaskResult{}
 	if hermeticBuildRequired {
-		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs, createHermeticImageArgs)
+		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs, createHermeticImageArgs)
 		hermeticResults = []tektonpipeline.TaskResult{{Name: HermeticPreBuildImageDigest}}
 	} else {
-		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
+		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs)
 	}
 	buildTask := tektonpipeline.TaskSpec{
 		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
@@ -632,7 +632,7 @@ func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig, hermeticBuild bool, buildId string) ([]string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig, hermeticBuild bool, buildId string) ([]string, []string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -646,6 +646,11 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
 	hermeticImageId := imageId + "-hermetic"
 
+	copyArtifactsArgs := []string{
+		"copy-artifacts",
+		"--source-path=$(workspaces.source.path)/source",
+		"--deploy-path=$(workspaces.source.path)/artifacts",
+	}
 	deployArgs := []string{
 		"deploy",
 		"--path=$(workspaces.source.path)/artifacts",
@@ -721,7 +726,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 	}
 	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
-	return preBuildImageArgs, deployArgs, hermeticDeployArgs, tagArgs, hermeticPreBuildImageArgs
+	return preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, tagArgs, hermeticPreBuildImageArgs
 }
 
 // This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
