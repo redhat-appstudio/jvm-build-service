@@ -8,10 +8,11 @@ class VersionPlugin implements Plugin<Gradle> {
         if (VERSION == null || VERSION.isEmpty()) {
             return
         }
-        gradle.allprojects({
-            afterEvaluate {
+        gradle.allprojects {
+            project -> project.afterEvaluate {
+                project.logger.lifecycle "Overriding version for ${project.name} to ${VERSION}"
                 version VERSION
             }
-        })
+        }
     }
 }
