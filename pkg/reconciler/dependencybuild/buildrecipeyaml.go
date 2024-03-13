@@ -81,6 +81,12 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 			preprocessorArgs = append(preprocessorArgs, "-dp "+i)
 		}
 	}
+	var javaHome string
+	if recipe.JavaVersion == "7" || recipe.JavaVersion == "8" {
+		javaHome = "/lib/jvm/java-1." + recipe.JavaVersion + ".0"
+	} else {
+		javaHome = "/lib/jvm/java-" + recipe.JavaVersion
+	}
 
 	toolEnv := []v1.EnvVar{}
 	if recipe.ToolVersions["maven"] != "" {
@@ -97,6 +103,8 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	}
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamToolVersion, Value: recipe.ToolVersion})
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
+	toolEnv = append(toolEnv, v1.EnvVar{Name: JavaHome, Value: javaHome})
+	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"})
 
 	additionalMemory := recipe.AdditionalMemory
 	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
@@ -149,12 +157,6 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	cacheUrl := "https://jvm-build-workspace-artifact-cache-tls." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild"
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild"
-	}
-	var javaHome string
-	if recipe.JavaVersion == "7" || recipe.JavaVersion == "8" {
-		javaHome = "/lib/jvm/java-1." + recipe.JavaVersion + ".0"
-	} else {
-		javaHome = "/lib/jvm/java-" + recipe.JavaVersion
 	}
 
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
@@ -230,11 +232,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				ImagePullPolicy: v1.PullAlways,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env: append(toolEnv, []v1.EnvVar{
-					{Name: JavaHome, Value: javaHome},
-					{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
-					{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"},
-				}...),
+				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
@@ -278,11 +276,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				ImagePullPolicy: v1.PullAlways,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
-				Env: append(toolEnv, []v1.EnvVar{
-					{Name: JavaHome, Value: javaHome},
-					{Name: PipelineParamCacheUrl, Value: "file://" + MavenArtifactsPath},
-					{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"},
-				}...),
+				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},

@@ -107,6 +107,7 @@ public class BuildDiagnosticCommand
                                                 """.formatted(javaVersion, fileName, tagName, tagName)));
                 Files.writeString(Paths.get(targetDirectory.toString(), fileName),
                         i.getBuild().getDiagnosticDockerFile());
+
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to write Dockerfile", e);

@@ -17,7 +17,7 @@ class RepositoryPlugin implements Plugin<Gradle> {
                         if (repo.toString().contains("PluginArtifactRepository") ||
                                 repo.url.toString().contains("file:/maven-artifacts") ||
                                 repo.toString().contains("MavenLocalArtifactRepository") ||
-                                (Boolean.getBoolean("ALLOW_IVY_REPO") && repo.toString().contains("DefaultIvyArtifactRepository"))) {
+                                repo.toString().contains("DefaultIvyArtifactRepository")) {
                             return
                         }
                         println "Repository ${repo.properties['url']} ${repo} removed as it does not match ${ENTERPRISE_REPOSITORY_URL}"

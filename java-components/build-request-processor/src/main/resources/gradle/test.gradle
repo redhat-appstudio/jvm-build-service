@@ -3,10 +3,15 @@ apply plugin: TestPlugin
 class TestPlugin implements Plugin<Gradle> {
 
     void apply(Gradle gradle) {
-        if (System.getProperties().containsKey("disableTests")) {
+        // It appears that sometimes System.getProperty does not return command line properties. Therefore also
+        // check the start parameter.
+        if (System.getProperties().containsKey("disableTests") ||
+                gradle.getStartParameter().getSystemPropertiesArgs().containsKey("disableTests")) {
             gradle.allprojects {
                 project ->
-                    project.tasks.withType(Test).configureEach({ task ->
+                    // Using org.gradle.api.tasks.testing.AbstractTestTask instead of Test as that then
+                    // covers Kotlin tests as well.
+                    project.tasks.withType(org.gradle.api.tasks.testing.AbstractTestTask).configureEach({ task ->
                         project.logger.lifecycle "Skipping tests for ${project.name} task ${task.name}"
                         task.setEnabled(false)
                     })
