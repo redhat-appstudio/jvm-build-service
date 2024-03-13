@@ -54,12 +54,12 @@ public final class GradleUtils {
     /**
      * Default Gradle arguments.
      */
-    public static final List<String> DEFAULT_GRADLE_ARGS = List.of("build", "publishToMavenLocal");
+    public static final List<String> DEFAULT_GRADLE_ARGS = List.of("assemble", "publishToMavenLocal");
 
     /**
      * Gradle arguments if 'maven' plugin is detected.
      */
-    public static final List<String> MAVEN_PLUGIN_GRADLE_ARGS = List.of("build", "uploadArchives");
+    public static final List<String> MAVEN_PLUGIN_GRADLE_ARGS = List.of("assemble", "uploadArchives");
 
     private GradleUtils() {
 
