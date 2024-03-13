@@ -136,6 +136,7 @@ class LookupBuildInfoCommandTest {
 
         lookupBuildInfoCommand.mavenContext = new BootstrapMavenContext();
         lookupBuildInfoCommand.toolVersions = toolVersions;
+        lookupBuildInfoCommand.tag = "02d3e524110982ec2b420ff8f9126707d483374f";
         lookupBuildInfoCommand.commit = "02d3e524110982ec2b420ff8f9126707d483374f";
         var info = lookupBuildInfoCommand.doBuildAnalysis(
                 "https://github.com/jtablesaw/tablesaw",
