@@ -13,6 +13,9 @@ org.gradle.console=plain
 release.useLastTag=true
 release.stage=final
 
+# For https://github.com/Kotlin/kotlinx.team.infra
+versionSuffix=
+
 # Increase timeouts
 systemProp.org.gradle.internal.http.connectionTimeout=600000
 systemProp.org.gradle.internal.http.socketTimeout=600000
@@ -27,6 +30,7 @@ mavenCentralPassword=
 EOF
 
 if [ -d .hacbs-init ]; then
+    rm -rf "${GRADLE_USER_HOME}"/init.d
     mv .hacbs-init "${GRADLE_USER_HOME}"/init.d
 fi
 

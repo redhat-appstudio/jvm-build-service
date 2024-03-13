@@ -11,7 +11,7 @@ class TestPlugin implements Plugin<Gradle> {
                 project ->
                     // Using org.gradle.api.tasks.testing.AbstractTestTask instead of Test as that then
                     // covers Kotlin tests as well.
-                    project.tasks.withType(org.gradle.api.tasks.testing.AbstractTestTask).configureEach({ task ->
+                    project.tasks.withType(AbstractTestTask).configureEach({ task ->
                         project.logger.lifecycle "Skipping tests for ${project.name} task ${task.name}"
                         task.setEnabled(false)
                     })
