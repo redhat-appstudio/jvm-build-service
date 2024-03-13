@@ -24,7 +24,7 @@ const BuildStatusPieChart: React.FunctionComponent<BuildStatusParamsType> = (par
                 setState('error');
                 setError(err);
             });
-    }, []);
+    }, [params.label]);
 
     if (state === 'error')
         return (

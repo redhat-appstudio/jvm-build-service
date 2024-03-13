@@ -102,7 +102,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
         setState('success');
         setBuild(res);
         if (res.buildAttempts?.length > 0) {
-          setSelectBuildAttempt(res.buildAttempts[res.buildAttempts?.length - 1]);
+          setSelectBuildAttempt(res.buildAttempts[0]);
         }
       })
       .catch((err) => {

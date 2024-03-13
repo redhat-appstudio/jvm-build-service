@@ -122,6 +122,7 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 				if err != nil {
 					return reconcile.Result{}, err
 				}
+				log.Info(fmt.Sprintf("will retry secret lookup after %d seconds", existingSeconds))
 				return reconcile.Result{RequeueAfter: time.Second * time.Duration(existingSeconds)}, nil
 			} else {
 				log.Error(err, fmt.Sprintf("Unable to enable rebuilds for namespace %s", jbsConfig.Namespace))

@@ -61,7 +61,7 @@ public class BuildQueue extends PanacheEntity {
             EntityManager entityManager = Arc.container().instance(EntityManager.class).get();
             List<StoredDependencyBuild> existingBuild = entityManager
                     .createQuery(
-                            "select a from StoredDependencyBuild a join a.producedArtifacts s where s=:artifact")
+                            "select a from StoredDependencyBuild a join a.buildAttempts ba join ba.producedArtifacts s where s=:artifact")
                     .setParameter("artifact", mavenArtifact)
                     .getResultList();
             if (existingBuild.isEmpty() || rebuild) {
