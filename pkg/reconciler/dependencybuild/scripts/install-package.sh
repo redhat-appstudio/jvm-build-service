@@ -2,7 +2,7 @@
 set -o verbose
 
 if [ "rpm" = "{TYPE}" ]; then
-    microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y {PACKAGE_NAME}
+    microdnf --setopt=tsflags=nodocs install -y {PACKAGE_NAME}
 else
     export PATH="$(workspaces.source.path)/packages:${PATH}"
 
