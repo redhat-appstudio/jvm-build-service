@@ -558,7 +558,7 @@ func memoryLimits(jbsConfig *v1alpha12.JBSConfig, additionalMemory int) (*memLim
 	if err != nil {
 		return nil, err
 	}
-	limits.defaultRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
+	limits.defaultRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "5m"))
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +566,7 @@ func memoryLimits(jbsConfig *v1alpha12.JBSConfig, additionalMemory int) (*memLim
 	if err != nil {
 		return nil, err
 	}
-	limits.buildRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
+	limits.buildRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestCPU, "5m"))
 	if err != nil {
 		return nil, err
 	}
