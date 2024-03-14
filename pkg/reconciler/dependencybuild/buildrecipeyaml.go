@@ -642,7 +642,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1
 
 	copyArtifactsArgs := []string{
 		"copy-artifacts",
-		"--source-path=$(workspaces.source.path)/source",
+		"--source-path=$(workspaces.source.path)/workspace",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 	}
 	deployArgs := []string{
