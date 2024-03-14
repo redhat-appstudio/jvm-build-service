@@ -77,6 +77,7 @@ type BuildAttempt struct {
 type PreBuildImage struct {
 	BaseBuilderImage string `json:"baseBuilderImage,omitempty"`
 	BuiltImageDigest string `json:"builtImageDigest,omitempty"`
+	Tool             string `json:"tool,omitempty"`
 }
 
 type BuildPipelineRun struct {
