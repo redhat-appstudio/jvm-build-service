@@ -27,11 +27,13 @@ buildscript {
     dependencies {
         classpath 'biz.aQute.bnd:biz.aQute.bnd.gradle:4.2.0'
         classpath(group: "org.springframework.build.gradle", name: "propdeps-plugin", version: "0.0.7");
+        classpath 'io.spring.ge.conventions:0.0.10'
     }
 };
 
 plugins {
     id("net.ltgt.errorprone") version "0.8.1" apply false
+    id("io.spring.ge.conventions") version "0.0.9" apply false
 }
 
 configure(allprojects) {
