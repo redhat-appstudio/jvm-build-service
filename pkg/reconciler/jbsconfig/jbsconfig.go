@@ -82,6 +82,7 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		}
 		return reconcile.Result{}, err
 	}
+	log.Info("reconciling JBSConfig")
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
@@ -92,13 +93,17 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		}
 		err = r.validations(ctx, log, request, &jbsConfig)
 		if err != nil {
+			log.Error(err, "validation failed for JBSConfig")
+			if errors.IsConflict(err) {
+				return reconcile.Result{}, err
+			}
 			if jbsConfig.Status.Message != err.Error() || jbsConfig.Status.RebuildsPossible {
 				jbsConfig.Status.Message = err.Error()
 				jbsConfig.Status.RebuildsPossible = false
 				//this should trigger a requeue, which will then fall through to the retry code
 				log.Error(err, fmt.Sprintf("Unable to enable rebuilds for namespace %s", jbsConfig.Namespace))
 				err2 := r.client.Status().Update(ctx, &jbsConfig)
-				return reconcile.Result{}, err2
+				return reconcile.Result{Requeue: true}, err2
 			}
 			if r.spiPresent && jbsConfig.Spec.Registry.ImageRegistry.Owner == "" {
 				//this is due to https://issues.redhat.com/browse/RHTAPBUGS-937
@@ -120,7 +125,7 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 				jbsConfig.Annotations[RetryTimeAnnotations] = strconv.Itoa(secs * 2)
 				err = r.client.Update(ctx, &jbsConfig)
 				if err != nil {
-					return reconcile.Result{}, err
+					return reconcile.Result{RequeueAfter: time.Second * time.Duration(existingSeconds)}, err
 				}
 				log.Info(fmt.Sprintf("will retry secret lookup after %d seconds", existingSeconds))
 				return reconcile.Result{RequeueAfter: time.Second * time.Duration(existingSeconds)}, nil
