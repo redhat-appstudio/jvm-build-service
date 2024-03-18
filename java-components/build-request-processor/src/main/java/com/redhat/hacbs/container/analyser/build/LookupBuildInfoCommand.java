@@ -568,7 +568,9 @@ public class LookupBuildInfoCommand implements Runnable {
                             "-Dcheckstyle.skip",
                             "-Dcobertura.skip",
                             "-Denforcer.skip",
+                            "-Dformatter.skip", // https://code.revelc.net/formatter-maven-plugin/
                             "-Dgpg.skip",
+                            "-Dimpsort.skip", // https://code.revelc.net/impsort-maven-plugin/plugin-info.html
                             "-Djapicmp.skip",
                             "-Dmaven.javadoc.failOnError=false",
                             "-Dmaven.site.deploy.skip",
