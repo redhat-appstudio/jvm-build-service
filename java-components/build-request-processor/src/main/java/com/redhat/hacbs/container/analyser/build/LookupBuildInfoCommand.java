@@ -123,6 +123,9 @@ public class LookupBuildInfoCommand implements Runnable {
     @Inject
     BootstrapMavenContext mavenContext;
 
+    // Variable so can be overridden by the tests.
+    String CACHE_PATH = "/v2/cache/rebuild-default/0";
+
     @Override
     public void run() {
         try {
@@ -268,7 +271,7 @@ public class LookupBuildInfoCommand implements Runnable {
 
             if (artifact != null && (buildRecipeInfo == null || buildRecipeInfo.getJavaVersion() == null)) {
                 Log.infof("Lookup Build JDK for artifact %s", artifact);
-                var optBuildJdk = getBuildJdk(cacheUrl + "/v2/cache/rebuild-default/0", artifact);
+                var optBuildJdk = getBuildJdk(cacheUrl + CACHE_PATH, artifact);
                 if (optBuildJdk.isPresent()) {
                     var buildJdk = optBuildJdk.get();
                     Log.infof("Setting build JDK to %s for artifact %s", buildJdk.version(), artifact);

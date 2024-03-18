@@ -42,4 +42,14 @@ public class BuildToolInfo {
         this.maxJdkVersion = maxJdkVersion;
         return this;
     }
+
+    @Override
+    public String toString() {
+        return "BuildToolInfo{" +
+                "version='" + version + '\'' +
+                ", releaseDate='" + releaseDate + '\'' +
+                ", minJdkVersion='" + minJdkVersion + '\'' +
+                ", maxJdkVersion='" + maxJdkVersion + '\'' +
+                '}';
+    }
 }
