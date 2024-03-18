@@ -78,7 +78,6 @@
         <module>resource-model</module>
         <module>build-request-processor</module>
         <module>cli</module>
-        <module>management-console</module>
         <module>common-tools</module>
     </modules>
 
@@ -540,6 +539,17 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>console</id>
+            <activation>
+                <property>
+                    <name>!dev</name>
+                </property>
+            </activation>
+            <modules>
+                <module>management-console</module>
+            </modules>
         </profile>
     </profiles>
 </project>
