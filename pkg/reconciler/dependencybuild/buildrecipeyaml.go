@@ -198,7 +198,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitRepoSecretName}, Key: v1alpha12.GitRepoSecretKey, Optional: &trueBool}}})
 	}
 
-	preBuildImage := existingImages[recipe.Image]
+	preBuildImage := existingImages[recipe.Image+"-"+recipe.Tool]
 	preBuildImageRequired := preBuildImage == ""
 	if preBuildImageRequired {
 		preBuildImage = "$(tasks." + PreBuildTaskName + ".results." + PreBuildImageDigest + ")"

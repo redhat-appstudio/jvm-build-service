@@ -564,7 +564,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
 	preBuildImages := map[string]string{}
 	for _, i := range db.Status.PreBuildImages {
-		preBuildImages[i.BaseBuilderImage] = i.BuiltImageDigest
+		preBuildImages[i.BaseBuilderImage+"-"+i.Tool] = i.BuiltImageDigest
 	}
 	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{
 		Pipeline: &v12.Duration{Duration: time.Hour * 3},
@@ -642,7 +642,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		//this is a big perfomance optimisation, as it can be re-used on subsequent attempts
 		alreadyExists := false
 		for _, i := range db.Status.PreBuildImages {
-			if i.BaseBuilderImage == attempt.Recipe.Image {
+			if i.BaseBuilderImage == attempt.Recipe.Image && i.Tool == attempt.Recipe.Tool {
 				alreadyExists = true
 			}
 		}
@@ -658,7 +658,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 						if preBuildSuccess {
 							for _, res := range tr.Status.Results {
 								if res.Name == PreBuildImageDigest && res.Value.StringVal != "" {
-									db.Status.PreBuildImages = append(db.Status.PreBuildImages, v1alpha1.PreBuildImage{BaseBuilderImage: attempt.Recipe.Image, BuiltImageDigest: res.Value.StringVal})
+									db.Status.PreBuildImages = append(db.Status.PreBuildImages, v1alpha1.PreBuildImage{BaseBuilderImage: attempt.Recipe.Image, BuiltImageDigest: res.Value.StringVal, Tool: attempt.Recipe.Tool})
 								}
 							}
 						}

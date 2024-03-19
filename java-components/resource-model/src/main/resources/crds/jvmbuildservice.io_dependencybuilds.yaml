@@ -232,6 +232,8 @@ spec:
                       type: string
                     builtImageDigest:
                       type: string
+                    tool:
+                      type: string
                   type: object
                 type: array
               commitTime:
