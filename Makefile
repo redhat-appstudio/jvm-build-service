@@ -65,7 +65,7 @@ dev-image:
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
 
 dev: dev-image
-	cd java-components && mvn clean install -Dlocal -DskipTests
+	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev
 
 dev-openshift: dev
 	./deploy/openshift-development.sh
