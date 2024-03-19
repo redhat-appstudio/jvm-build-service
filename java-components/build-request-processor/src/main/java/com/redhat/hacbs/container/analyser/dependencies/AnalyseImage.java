@@ -67,7 +67,7 @@ public class AnalyseImage extends AnalyserBase {
                 GZIPInputStream inputStream = new GZIPInputStream(in);
                 TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream);
                 for (TarArchiveEntry entry = tarArchiveInputStream
-                        .getNextTarEntry(); entry != null; entry = tarArchiveInputStream.getNextTarEntry()) {
+                        .getNextEntry(); entry != null; entry = tarArchiveInputStream.getNextEntry()) {
                     Log.debugf("Processing %s from layer %s", entry.getName(), layer.getHash());
                     handleFile(entry.getName(), new NoCloseInputStream(tarArchiveInputStream), trackingData, gavs);
                 }

@@ -188,7 +188,7 @@ public class ClassFileTracker {
                 GZIPInputStream inputStream = new GZIPInputStream(contents);
                 TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream);
                 for (TarArchiveEntry entry = tarArchiveInputStream
-                        .getNextTarEntry(); entry != null; entry = tarArchiveInputStream.getNextTarEntry()) {
+                        .getNextEntry(); entry != null; entry = tarArchiveInputStream.getNextEntry()) {
                     ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName(),
                             untrackedClassesListener));
                 }
@@ -202,7 +202,7 @@ public class ClassFileTracker {
                 Set<TrackingData> ret = new HashSet<>();
                 TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(contents);
                 for (TarArchiveEntry entry = tarArchiveInputStream
-                        .getNextTarEntry(); entry != null; entry = tarArchiveInputStream.getNextTarEntry()) {
+                        .getNextEntry(); entry != null; entry = tarArchiveInputStream.getNextEntry()) {
                     ret.addAll(readTrackingDataFromFile(new NoCloseInputStream(tarArchiveInputStream), entry.getName(),
                             untrackedClassesListener));
                 }

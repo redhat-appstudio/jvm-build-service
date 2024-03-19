@@ -314,8 +314,8 @@ public class OCIRegistryRepositoryClient implements RepositoryClient {
         try (GZIPInputStream inputStream = new GZIPInputStream(tarInput);
                 TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream)) {
 
-            for (TarArchiveEntry entry = tarArchiveInputStream.getNextTarEntry(); entry != null; entry = tarArchiveInputStream
-                    .getNextTarEntry()) {
+            for (TarArchiveEntry entry = tarArchiveInputStream.getNextEntry(); entry != null; entry = tarArchiveInputStream
+                    .getNextEntry()) {
                 extractEntry(entry, tarArchiveInputStream, folder);
             }
         }
