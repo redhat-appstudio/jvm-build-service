@@ -10,9 +10,9 @@ import org.mockito.Mockito;
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.resources.V1CacheMavenResource;
 
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
 import io.restassured.RestAssured;
 import io.restassured.parsing.Parser;
 
