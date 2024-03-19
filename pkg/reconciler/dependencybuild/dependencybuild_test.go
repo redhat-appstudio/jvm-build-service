@@ -277,9 +277,12 @@ func getBuildPipelineNo(client runtimeclient.Client, g *WithT, no int) *tektonpi
 	return &build
 }
 func getBuildInfoPipeline(client runtimeclient.Client, g *WithT) *tektonpipeline.PipelineRun {
+	return getBuildInfoPipelineNo(client, g, 0)
+}
+func getBuildInfoPipelineNo(client runtimeclient.Client, g *WithT, no int) *tektonpipeline.PipelineRun {
 	ctx := context.TODO()
 	build := tektonpipeline.PipelineRun{}
-	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-discovery"}, &build)).Should(BeNil())
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: fmt.Sprintf("test-build-discovery-%d", no)}, &build)).Should(BeNil())
 	return &build
 }
 func TestStateBuilding(t *testing.T) {
@@ -502,7 +505,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 
 	var client runtimeclient.Client
 	var reconciler *ReconcileDependencyBuild
-	taskRunName := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-build-discovery"}
+	taskRunName := types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: fmt.Sprintf("test-build-discovery-%d", 0)}
 	setup := func(g *WithT) {
 		client, reconciler = setupClientAndReconciler()
 		db := v1alpha1.DependencyBuild{}
@@ -516,7 +519,7 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 
 		pr := tektonpipeline.PipelineRun{}
 		pr.Namespace = metav1.NamespaceDefault
-		pr.Name = "test-build-discovery"
+		pr.Name = fmt.Sprintf("test-build-discovery-%d", 0)
 		pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Name, PipelineTypeLabel: PipelineTypeBuildInfo}
 		g.Expect(controllerutil.SetOwnerReference(&db, &pr, reconciler.scheme))
 		g.Expect(client.Create(ctx, &pr)).Should(BeNil())
@@ -610,5 +613,42 @@ func TestStateDependencyBuildStateAnalyzeBuild(t *testing.T) {
 		g.Expect(ra.Spec.GAV).Should(Equal("commons-lang:commons-lang:2.6"))
 		g.Expect(ra.Spec.Digest).Should(Equal("sha256:0a959a76264f7a34f1d6793ce3fb0d37b8a12768483f075cd644265b258477e3"))
 		g.Expect(ra.Spec.Image).Should(Equal("quay.io/dummy-namespace/jvm-build-service-artifacts:4f8a8179ceadcde76e4cbc037dd7c9fd"))
+	})
+
+	t.Run("Test build info discovery with OOM", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+		setup(g)
+		pr := getBuildInfoPipeline(client, g)
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "False",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
+		newTr := tektonpipeline.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "task", Namespace: pr.Namespace},
+			Status: tektonpipeline.TaskRunStatus{
+				TaskRunStatusFields: tektonpipeline.TaskRunStatusFields{
+					Steps: []tektonpipeline.StepState{{ContainerState: v1.ContainerState{Terminated: &v1.ContainerStateTerminated{Reason: "OOMKilled"}}}}},
+			},
+		}
+		g.Expect(client.Create(ctx, &newTr)).Should(BeNil())
+		pr.Status.ChildReferences = []tektonpipeline.ChildStatusReference{{Name: "task"}}
+
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+		db := getBuild(client, g)
+		g.Expect(db.Status.PipelineRetries).Should(Equal(1))
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateNew))
+
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
+
+		pr = getBuildInfoPipelineNo(client, g, 1)
+		g.Expect(pr.Spec.PipelineSpec.Tasks[0].TaskSpec.Steps[0].ComputeResources.Requests.Memory().String()).Should(Equal("2560Mi"))
+
+		db = getBuild(client, g)
+		g.Expect(db.Status.PipelineRetries).Should(Equal(1))
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateAnalyzeBuild))
 	})
 }
