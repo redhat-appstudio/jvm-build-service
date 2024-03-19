@@ -297,7 +297,12 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 			log.Info("build discovery failed due to memory issues")
 			db.Status.PipelineRetries++
 			db.Status.State = v1alpha1.DependencyBuildStateNew
-			err := r.client.Status().Update(ctx, &db)
+			// Don't need to call update on the DB here as it is called at the end of the function.
+			//
+			// Need to delete this pipeline as it has failed from OOM. If we don't delete it
+			// will loop again and cause another pipeline retries causing two new discovery builds
+			// to be started.
+			err = r.client.Delete(ctx, pr)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
