@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -189,14 +190,24 @@ public class InvocationBuilder {
 
         //This is a bit hacky, but in general we only care about major release date
         //e.g. if the original build was done with maven 3.9.1 but we are on 3.9.2
-        //we want to consider everything released after 3.9.0
+        //we want to consider everything released after 3.9.0. It also considers
+        //scenarios where 3.8.8 will be reset to release date of the earliest 3.8.x
+        //series which is 3.8.1
         for (var e : buildToolInfo.entrySet()) {
             for (var tool : e.getValue().entrySet()) {
-                if (!tool.getKey().endsWith(".0") && tool.getKey().contains(".")) {
-                    String initialVersion = tool.getKey().substring(0, tool.getKey().lastIndexOf('.')) + ".0";
-                    var initialVersionEntry = e.getValue().get(initialVersion);
-                    if (initialVersionEntry != null) {
-                        tool.getValue().setReleaseDate(initialVersionEntry.getReleaseDate());
+                if (tool.getKey().contains(".")) {
+                    String toolSubstring = tool.getKey().substring(0, tool.getKey().lastIndexOf('.'));
+                    Optional<String> smallestVersion = e.getValue().keySet().stream()
+                        .filter(f -> f.matches("^" + toolSubstring + ".*"))
+                        .sorted()
+                        .findFirst();
+                    if (smallestVersion.isPresent()) {
+                        var smallestVersionEntry = e.getValue().get(smallestVersion.get()).getReleaseDate();
+                        if (!tool.getKey().equals(smallestVersion.get())) {
+                            Log.infof("Overriding release date for %s from %s to %s (from %s)",
+                                tool.getKey(), tool.getValue().getReleaseDate(), smallestVersionEntry, smallestVersion.get());
+                            tool.getValue().setReleaseDate(smallestVersionEntry);
+                        }
                     }
                 }
             }

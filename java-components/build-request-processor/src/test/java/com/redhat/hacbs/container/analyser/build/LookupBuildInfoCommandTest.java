@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.logging.LogRecord;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
@@ -53,7 +52,33 @@ class LookupBuildInfoCommandTest {
 
         @Override
         public List<BuildToolInfo> lookupBuildToolInfo(String name) {
-            return List.of();
+            BuildToolInfo a = new BuildToolInfo();
+            BuildToolInfo b = new BuildToolInfo();
+            BuildToolInfo c = new BuildToolInfo();
+            BuildToolInfo d = new BuildToolInfo();
+            BuildToolInfo e = new BuildToolInfo();
+            BuildToolInfo j = new BuildToolInfo();
+            a.setVersion("3.8.8");
+            a.setReleaseDate("2023-03-08");
+            a.setMinJdkVersion("7");
+            b.setVersion("3.9.5");
+            b.setReleaseDate("2023-10-04");
+            b.setMinJdkVersion("8");
+            c.setVersion("3.8.1");
+            c.setReleaseDate("2021-04-04");
+            c.setMinJdkVersion("7");
+            d.setVersion("3.9.0");
+            d.setReleaseDate("2023-01-31");
+            d.setMinJdkVersion("8");
+            e.setVersion("3.3.9");
+            e.setReleaseDate("2015-03-18");
+            e.setMinJdkVersion("7");
+            j.setVersion("11");
+            j.setReleaseDate("2018-09-25");
+            j.setMinJdkVersion("11");
+            j.setMaxJdkVersion("11");
+
+            return List.of(a,b, c, d, j, e);
         }
 
         @Override
@@ -77,8 +102,9 @@ class LookupBuildInfoCommandTest {
                 .anyMatch(r -> LogCollectingTestResource.format(r)
                         .contains("Unable to locate a build script within")));
         assertThat(info.invocations).isNotEmpty();
-        assertEquals("7", info.invocations.get(0).getToolVersion().get("jdk"));
-        assertEquals("8", info.invocations.get(1).getToolVersion().get("jdk"));
+        assertEquals("8", info.invocations.get(0).getToolVersion().get("jdk"));
+        assertEquals("7", info.invocations.get(1).getToolVersion().get("jdk"));
+        assertEquals("8", info.invocations.get(2).getToolVersion().get("jdk"));
     }
 
     @Test
@@ -262,7 +288,28 @@ class LookupBuildInfoCommandTest {
     }
 
     @Test
-    @Disabled("Cache URL is wrong")
+    public void testBuildAnalysisSmallRye()
+        throws Exception {
+        LookupBuildInfoCommand lookupBuildInfoCommand = new LookupBuildInfoCommand();
+        lookupBuildInfoCommand.mavenContext = new BootstrapMavenContext();
+        lookupBuildInfoCommand.cacheUrl = "https://repo1.maven.org/maven2";
+        lookupBuildInfoCommand.toolVersions = toolVersions;
+        lookupBuildInfoCommand.artifact = "io.smallrye.config:smallrye-config:2.13.3";
+        lookupBuildInfoCommand.CACHE_PATH = "";
+        // 2.13.3
+        lookupBuildInfoCommand.commit = "e6ab5b2b6be149e028ae21be55598cfb0d2b1d37";
+        var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/smallrye/smallrye-config.git", new BuildRecipeInfo(),
+            cacheBuildInfoLocator);
+        List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
+        assertTrue(logRecords.stream()
+            .anyMatch(r -> LogCollectingTestResource.format(r).matches("Overriding release date.*")));
+        assertThat(info.invocations.size()).isEqualTo(2);
+        assertTrue(info.invocations.get(0).getToolVersion().get("maven").contains("3.9.5"));
+        assertTrue(info.invocations.get(1).getToolVersion().get("maven").contains("3.8.8"));
+    }
+
+
+    @Test
     void testBuildJdkSetsJavaVersion() throws Exception {
         var lookupBuildInfoCommand = new LookupBuildInfoCommand();
         lookupBuildInfoCommand.mavenContext = new BootstrapMavenContext();
@@ -270,10 +317,14 @@ class LookupBuildInfoCommandTest {
         lookupBuildInfoCommand.commit = "7ab205a40853486c1d978e6a7555808b9435407d";
         lookupBuildInfoCommand.cacheUrl = "https://repo1.maven.org/maven2";
         lookupBuildInfoCommand.artifact = "jaxen:jaxen:1.1.6";
-        var info = lookupBuildInfoCommand.doBuildAnalysis("https://github.com/codehaus/jaxen.git", new BuildRecipeInfo(),
+        lookupBuildInfoCommand.CACHE_PATH = "";
+        lookupBuildInfoCommand.doBuildAnalysis("https://github.com/codehaus/jaxen.git", new BuildRecipeInfo(),
                 cacheBuildInfoLocator);
         var logRecords = LogCollectingTestResource.current().getRecords();
-        assertThat(logRecords).flatMap(LogCollectingTestResource::format).contains("Set Java version to [7, 8]");
+        assertTrue(logRecords.stream()
+            .anyMatch(r -> LogCollectingTestResource.format(r).contains("Set Java version to [null, 7]")));
+        assertTrue(logRecords.stream()
+            .anyMatch(r -> LogCollectingTestResource.format(r).contains("Setting build JDK to 1.6 for artifact jaxen:jaxen:1.1.6")));
     }
 
     @Test
