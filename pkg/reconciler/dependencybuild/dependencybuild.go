@@ -70,7 +70,7 @@ const (
 	PipelineTypeBuild     = "build"
 
 	MaxRetries      = 3
-	MemoryIncrement = 1024
+	MemoryIncrement = 2048
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	JavaHome             = "JAVA_HOME"
@@ -693,10 +693,11 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					}
 
 				}
-				if !doRetry && attempt.Recipe.AdditionalMemory < 2048 {
+				// Only retry up to a limit. Recipe default memory is 1024. It then uses the MemoryIncrement (2048),
+				// and finally as the third try uses 4096.
+				if !doRetry && attempt.Recipe.AdditionalMemory < (MemoryIncrement*2) {
 					if r.failedDueToMemory(ctx, log, pr) {
-						msg := fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s, PR UID: %s, Current additional memory: %d", db.Name, pr.UID, attempt.Recipe.AdditionalMemory)
-						log.Info(msg)
+						currentAdditionalMemory := attempt.Recipe.AdditionalMemory
 						doRetry = true
 						//increase the memory limit
 						if attempt.Recipe.AdditionalMemory == 0 {
@@ -707,6 +708,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 						for i := range db.Status.PotentialBuildRecipes {
 							db.Status.PotentialBuildRecipes[i].AdditionalMemory = attempt.Recipe.AdditionalMemory
 						}
+						log.Info(fmt.Sprintf("OOMKilled Pod detected, retrying the build for DependencyBuild with more memory %s, PR UID: %s, Current additional memory: %d and new addtional memory: %d", db.Name, pr.UID, currentAdditionalMemory, attempt.Recipe.AdditionalMemory))
 					}
 				}
 

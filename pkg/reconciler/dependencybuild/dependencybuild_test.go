@@ -446,7 +446,7 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}}))
 		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
-		g.Expect(db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1].Recipe.AdditionalMemory).Should(Equal(2048))
+		g.Expect(db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1].Recipe.AdditionalMemory).Should(Equal(MemoryIncrement * 2))
 
 		//now verify that the system wide limit kicks in
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
