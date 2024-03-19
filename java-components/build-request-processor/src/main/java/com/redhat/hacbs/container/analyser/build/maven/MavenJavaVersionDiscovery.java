@@ -5,7 +5,6 @@ import static com.redhat.hacbs.container.analyser.build.JavaVersion.JAVA_8;
 import static com.redhat.hacbs.container.verifier.MavenUtils.getCompilerSource;
 import static com.redhat.hacbs.container.verifier.MavenUtils.getCompilerTarget;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -21,7 +20,6 @@ import org.codehaus.plexus.interpolation.PrefixAwareRecursionInterceptor;
 import org.codehaus.plexus.interpolation.PrefixedObjectValueSource;
 import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
 import org.codehaus.plexus.interpolation.StringSearchInterpolator;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import com.redhat.hacbs.container.analyser.build.InvocationBuilder;
 import com.redhat.hacbs.container.analyser.build.JavaVersion;
@@ -48,9 +46,7 @@ public class MavenJavaVersionDiscovery {
         return value;
     }
 
-    public static void filterJavaVersions(Path pomFile, Model model, InvocationBuilder invocationBuilder)
-            throws IOException, XmlPullParserException {
-
+    public static void filterJavaVersions(Path pomFile, Model model, InvocationBuilder invocationBuilder) {
         //if the toolchains plugin is configured we don't filter anything
         if (model.getBuild() != null && model.getBuild().getPlugins() != null) {
             for (var i : model.getBuild().getPlugins()) {
@@ -90,15 +86,8 @@ public class MavenJavaVersionDiscovery {
                 javaVersion = parsed;
             }
         }
-        if (javaVersion > 0) {
-            if (javaVersion <= 5) {
-                invocationBuilder.maxJavaVersion(JAVA_8);
-            } else if (javaVersion == 6) {
-                invocationBuilder.maxJavaVersion(JAVA_11);
-            } else {
-                invocationBuilder.minJavaVersion(new JavaVersion(Integer.toString(javaVersion)));
-            }
-        }
+
+        filterJavaVersions(invocationBuilder, javaVersion);
 
         for (var module : model.getModules()) {
             try {
@@ -112,6 +101,26 @@ public class MavenJavaVersionDiscovery {
                 }
             } catch (Exception e) {
                 Log.errorf(e, "Failed to handle module %s", module);
+            }
+        }
+    }
+
+    public static void filterJavaVersions(InvocationBuilder invocationBuilder, String javaVersion) {
+        filterJavaVersions(invocationBuilder, JavaVersion.toVersion(javaVersion));
+    }
+
+    public static void filterJavaVersions(InvocationBuilder invocationBuilder, int javaVersion) {
+        if (javaVersion > 0) {
+            if (javaVersion <= 5) {
+                invocationBuilder.maxJavaVersion(JAVA_8);
+                Log.infof("Set max Java version to %s", JAVA_8);
+            } else if (javaVersion == 6) {
+                invocationBuilder.maxJavaVersion(JAVA_11);
+                Log.infof("Set max Java version to %s", JAVA_11);
+            } else {
+                var version = new JavaVersion(Integer.toString(javaVersion));
+                invocationBuilder.minJavaVersion(version);
+                Log.infof("Set min Java version to %s", version);
             }
         }
     }

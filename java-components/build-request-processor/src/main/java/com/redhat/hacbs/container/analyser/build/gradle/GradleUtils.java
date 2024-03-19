@@ -16,7 +16,6 @@ import io.quarkus.logging.Log;
  * Utility class for Gradle.
  */
 public final class GradleUtils {
-
     /**
      * Format for applying plugins.
      */
@@ -33,11 +32,12 @@ public final class GradleUtils {
      */
     public static final String MAVEN_PUBLISH_PLUGIN = String.format(PLUGIN_FORMAT, "maven-publish", "maven-publish");
 
-    static final String BUILD_GRADLE = "build.gradle";
+    public static final String BUILD_GRADLE = "build.gradle";
 
-    static final String BUILD_GRADLE_KTS = "build.gradle.kts";
+    public static final String BUILD_GRADLE_KTS = "build.gradle.kts";
 
     private static final String GRADLE_WRAPPER_PROPERTIES = "gradle/wrapper/gradle-wrapper.properties";
+
     private static final String OLD_GRADLE_WRAPPER_PROPERTIES = ".gradle-wrapper/gradle-wrapper.properties";
 
     private static final String DISTRIBUTION_URL_KEY = "distributionUrl";
@@ -60,6 +60,8 @@ public final class GradleUtils {
      * Gradle arguments if 'maven' plugin is detected.
      */
     public static final List<String> MAVEN_PLUGIN_GRADLE_ARGS = List.of("assemble", "uploadArchives");
+
+    public static final String JAVA_COMPATIBILITY = "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(?<version>(\\d+)([._]\\d+){0,2})['\"]?";
 
     private GradleUtils() {
 
@@ -125,22 +127,9 @@ public final class GradleUtils {
      * @throws IOException if an error occurs while reading from the build files
      */
     public static String getSpecifiedJavaVersion(Path buildFile) throws IOException {
-        if (isInBuildGradle(buildFile,
-                "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?1[2-7][^0-9]['\"]?")) {
-            return "17";
-        }
-
-        if (isInBuildGradle(buildFile,
-                "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?(9|1[0-1])[^0-9]['\"]?")) {
-            return "11";
-        }
-
-        if (isInBuildGradle(buildFile,
-                "^\\s*(source|target)Compatibility\\s*=\\s*(JavaVersion\\.VERSION_)?['\"]?(1[._])?[1-8][^0-9]['\"]?")) {
-            return "8";
-        }
-
-        return "";
+        var content = Files.readString(buildFile);
+        var matcher = Pattern.compile(JAVA_COMPATIBILITY, Pattern.DOTALL | Pattern.MULTILINE).matcher(content);
+        return matcher.find() ? matcher.group("version").replace('_', '.') : "";
     }
 
     /**
