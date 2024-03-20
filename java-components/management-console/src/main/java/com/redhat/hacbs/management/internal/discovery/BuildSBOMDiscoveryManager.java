@@ -189,7 +189,7 @@ public class BuildSBOMDiscoveryManager {
                     out.close();
                     try (GZIPInputStream inputStream = new GZIPInputStream(Files.newInputStream(file));
                             TarArchiveInputStream tarArchiveInputStream = new TarArchiveInputStream(inputStream)) {
-                        var entry = tarArchiveInputStream.getNextTarEntry();
+                        var entry = tarArchiveInputStream.getNextEntry();
                         while (entry != null) {
                             if (entry.getName().equals("logs/build-sbom.json")) {
                                 try {
@@ -199,7 +199,7 @@ public class BuildSBOMDiscoveryManager {
                                     throw new RuntimeException(e);
                                 }
                             }
-                            entry = tarArchiveInputStream.getNextTarEntry();
+                            entry = tarArchiveInputStream.getNextEntry();
                         }
                     }
                 } finally {
