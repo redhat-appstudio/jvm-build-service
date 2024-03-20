@@ -184,6 +184,7 @@ public class LookupBuildInfoCommand implements Runnable {
             .setCredentialsProvider(new GitCredentials())
             .setURI(scmUrl)
             .setProgressMonitor(monitor)
+            .setNoCheckout(true)
             .setDirectory(path.toFile());
         if (!commit.equals(tag)) {
             // If commit and tag are identical it likely means there is no tag located and we are cloning
