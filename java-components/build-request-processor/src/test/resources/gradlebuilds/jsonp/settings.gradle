@@ -1,0 +1,3 @@
+plugins {
+    id 'io.spring.ge.conventions' version '0.0.11'
+}
