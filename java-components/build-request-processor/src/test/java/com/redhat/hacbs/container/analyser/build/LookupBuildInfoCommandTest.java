@@ -58,33 +58,36 @@ class LookupBuildInfoCommandTest {
 
         @Override
         public List<BuildToolInfo> lookupBuildToolInfo(String name) {
-            BuildToolInfo a = new BuildToolInfo();
-            BuildToolInfo b = new BuildToolInfo();
-            BuildToolInfo c = new BuildToolInfo();
-            BuildToolInfo d = new BuildToolInfo();
-            BuildToolInfo e = new BuildToolInfo();
-            BuildToolInfo j = new BuildToolInfo();
-            a.setVersion("3.8.8");
-            a.setReleaseDate("2023-03-08");
-            a.setMinJdkVersion("7");
-            b.setVersion("3.9.5");
-            b.setReleaseDate("2023-10-04");
-            b.setMinJdkVersion("8");
-            c.setVersion("3.8.1");
-            c.setReleaseDate("2021-04-04");
-            c.setMinJdkVersion("7");
-            d.setVersion("3.9.0");
-            d.setReleaseDate("2023-01-31");
-            d.setMinJdkVersion("8");
-            e.setVersion("3.3.9");
-            e.setReleaseDate("2015-03-18");
-            e.setMinJdkVersion("7");
-            j.setVersion("11");
-            j.setReleaseDate("2018-09-25");
-            j.setMinJdkVersion("11");
-            j.setMaxJdkVersion("11");
-
-            return List.of(a,b, c, d, j, e);
+            if (name.equals("maven")) {
+                BuildToolInfo a = new BuildToolInfo();
+                BuildToolInfo b = new BuildToolInfo();
+                BuildToolInfo c = new BuildToolInfo();
+                BuildToolInfo d = new BuildToolInfo();
+                BuildToolInfo e = new BuildToolInfo();
+                BuildToolInfo j = new BuildToolInfo();
+                a.setVersion("3.8.8");
+                a.setReleaseDate("2023-03-08");
+                a.setMinJdkVersion("7");
+                b.setVersion("3.9.5");
+                b.setReleaseDate("2023-10-04");
+                b.setMinJdkVersion("8");
+                c.setVersion("3.8.1");
+                c.setReleaseDate("2021-04-04");
+                c.setMinJdkVersion("7");
+                d.setVersion("3.9.0");
+                d.setReleaseDate("2023-01-31");
+                d.setMinJdkVersion("8");
+                e.setVersion("3.3.9");
+                e.setReleaseDate("2015-03-18");
+                e.setMinJdkVersion("7");
+                j.setVersion("11");
+                j.setReleaseDate("2018-09-25");
+                j.setMinJdkVersion("11");
+                j.setMaxJdkVersion("11");
+                return List.of(a, b, c, d, j, e);
+            } else {
+                return List.of();
+            }
         }
 
         @Override
@@ -234,6 +237,13 @@ class LookupBuildInfoCommandTest {
         // 20020414
         var info = getBuildInfo("https://github.com/java-schema-utilities/relaxng-datatype-java.git", "a83e0896eddbd57a6c8c7afe9cae907199d5108b", "a83e0896eddbd57a6c8c7afe9cae907199d5108b");
         assertThat(info.invocations.stream().map(Invocation::getTool).collect(Collectors.toSet())).containsExactlyInAnyOrder(ANT, MAVEN);
+    }
+
+    @Test
+    public void testBuildAnalysisXmlGraphics() throws Exception {
+        // fop-0_94
+        var info = getBuildInfo("https://github.com/apache/xmlgraphics-fop.git", "f3450e4bdef0df007f6011e45bb3e213e786d7ea");
+        assertThat(info.invocations).isNotEmpty();
     }
 
     @Test
