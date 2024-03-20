@@ -126,7 +126,7 @@ public class BuildSBOMDiscoveryManager {
                     if (rebuildEnabled && existing == null) {
                         List<StoredDependencyBuild> existingBuild = entityManager
                                 .createQuery(
-                                        "select a from StoredDependencyBuild a join a.producedArtifacts s where s=:artifact")
+                                        "select a from StoredDependencyBuild a join a.buildAttempts ba inner join ba.producedArtifacts s where s=:artifact")
                                 .setParameter("artifact", mavenArtifact)
                                 .getResultList();
                         if (existingBuild.isEmpty()) {
