@@ -104,7 +104,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamToolVersion, Value: recipe.ToolVersion})
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
 	toolEnv = append(toolEnv, v1.EnvVar{Name: JavaHome, Value: javaHome})
-	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamEnforceVersion, Value: "$(params." + PipelineParamEnforceVersion + ")"})
+	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamEnforceVersion, Value: recipe.EnforceVersion})
 
 	additionalMemory := recipe.AdditionalMemory
 	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
