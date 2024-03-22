@@ -4,7 +4,12 @@ class RepositoryPlugin implements Plugin<Gradle> {
 
     private static String ENTERPRISE_REPOSITORY_URL = System.getenv("CACHE_URL") != null ? System.getenv("CACHE_URL") : "http://localhost:8080/v2/cache/rebuild-default,gradle,gradleplugins/0"
 
+    private static Boolean DISABLE_JBS_REPOSITORY_PLUGIN = System.getenv("DISABLE_JBS_REPOSITORY_PLUGIN") != null;
+
     void apply(Gradle gradle) {
+        if (DISABLE_JBS_REPOSITORY_PLUGIN == false) {
+            return
+        }
         if (ENTERPRISE_REPOSITORY_URL.startsWith("file:/")) {
             //hermetic build, do nothing
             return
@@ -45,14 +50,12 @@ class RepositoryPlugin implements Plugin<Gradle> {
 
             @Override
             void execute(Project project) {
-
-                project.repositories fixRepositories
                 project.buildscript.repositories fixRepositories
+                project.repositories fixRepositories
             }
         })
         gradle.settingsEvaluated { settings ->
             settings.pluginManagement.repositories fixRepositories
         }
-
     }
 }
