@@ -7,6 +7,7 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -69,7 +70,7 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
         for (var initScript : INIT_SCRIPTS) {
             var init = initDir.resolve(initScript);
             try (var in = getClass().getClassLoader().getResourceAsStream("gradle/" + initScript)) {
-                Files.copy(in, init);
+                Files.copy(in, init, StandardCopyOption.REPLACE_EXISTING);
 
                 if ("disable-plugins.gradle".equals(init.getFileName().toString())) {
                     Files.writeString(init,

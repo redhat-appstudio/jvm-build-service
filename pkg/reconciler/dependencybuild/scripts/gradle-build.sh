@@ -31,7 +31,7 @@ EOF
 
 if [ -d .hacbs-init ]; then
     rm -rf "${GRADLE_USER_HOME}"/init.d
-    mv .hacbs-init "${GRADLE_USER_HOME}"/init.d
+    cp -r .hacbs-init "${GRADLE_USER_HOME}"/init.d
 fi
 
 #if we run out of memory we want the JVM to die with error code 134
