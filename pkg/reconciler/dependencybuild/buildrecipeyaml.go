@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -507,7 +508,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos)+"\n")) + " | base64 -d >/root/preprocessor.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\ncd /root/project/workspace\n"+extractEnvVar(toolEnv)+"\n/root/build.sh "+strings.Join(extractArrayParam(PipelineParamGoals, paramValues), " ")+"\n")) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\ncd /root/project/workspace\n"+extractEnvVar(toolEnv)+"\n/root/build.sh "+extractArrayParam(PipelineParamGoals, paramValues)+"\n")) + " | base64 -d >/root/run-full-build.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/root/entry-script.sh" +
 		"\nRUN chmod +x /root/*.sh" +
 		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
@@ -756,13 +757,19 @@ func verifyParameters(jbsConfig *v1alpha1.JBSConfig, recipe *v1alpha1.BuildRecip
 	return verifyBuiltArtifactsArgs
 }
 
-func extractArrayParam(key string, paramValues []tektonpipeline.Param) []string {
+func extractArrayParam(key string, paramValues []tektonpipeline.Param) string {
+	// Within the recipe parameters its possible variables are used as '-Pversion=$(PROJECT_VERSION)'.
+	// However, this only works in the container and not within the diagnostic container files.
+	re := regexp.MustCompile("[(]|[)]")
+	result := ""
 	for _, i := range paramValues {
 		if i.Name == key {
-			return i.Value.ArrayVal
+			for _, j := range i.Value.ArrayVal {
+				result += re.ReplaceAllString(j, "") + " "
+			}
 		}
 	}
-	return []string{}
+	return result
 }
 
 func extractEnvVar(envVar []v1.EnvVar) string {
