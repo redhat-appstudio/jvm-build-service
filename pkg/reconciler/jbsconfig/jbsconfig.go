@@ -178,7 +178,7 @@ func setEnvVarValue(field, envName string, cache *appsv1.Deployment) *appsv1.Dep
 }
 
 func setEnvVar(envVar corev1.EnvVar, cache *appsv1.Deployment) *appsv1.Deployment {
-	if len(strings.TrimSpace(envVar.Value)) > 0 {
+	if len(strings.TrimSpace(envVar.Value)) > 0 || envVar.ValueFrom != nil {
 		//insert them in alphabetical order
 		for i, e := range cache.Spec.Template.Spec.Containers[0].Env {
 
@@ -522,10 +522,12 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		cache = setEnvVarValue(imageRegistry.Repository, "REGISTRY_REPOSITORY", cache)
 		cache = setEnvVarValue(strconv.FormatBool(imageRegistry.Insecure), "REGISTRY_INSECURE", cache)
 		cache = setEnvVarValue(imageRegistry.PrependTag, "REGISTRY_PREPEND_TAG", cache)
-		cache = setEnvVar(corev1.EnvVar{
-			Name:      "REGISTRY_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}},
-		}, cache)
+		if jbsConfig.ImageRegistry().SecretName != "" {
+			cache = setEnvVar(corev1.EnvVar{
+				Name:      "REGISTRY_TOKEN",
+				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}},
+			}, cache)
+		}
 		cache = setEnvVar(corev1.EnvVar{
 			Name:      "GIT_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}},
@@ -543,6 +545,14 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			}
 			envValue := strings.Join(envValues, ",")
 			cache = setEnvVarValue(envValue, envName, cache)
+		}
+		if jbsConfig.Spec.MavenDeployment.Repository != "" {
+			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Repository, "MAVEN_REPOSITORY_URL", cache)
+			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Username, "MAVEN_REPOSITORY_USERNAME", cache)
+			cache = setEnvVar(corev1.EnvVar{
+				Name:      "MAVEN_REPOSITORY_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.MavenSecretName}, Key: v1alpha1.MavenSecretKey, Optional: &trueBool}},
+			}, cache)
 		}
 
 		sharedRegistryString := ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
