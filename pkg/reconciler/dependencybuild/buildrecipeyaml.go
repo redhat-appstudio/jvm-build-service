@@ -226,7 +226,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		}...),
 		Steps: []tektonpipeline.Step{
 			{
-				Timeout:         &v12.Duration{Duration: time.Hour * 3},
+				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha12.DefaultTimeout},
 				Name:            "build",
 				Image:           "$(params." + PreBuildImageDigest + ")",
 				ImagePullPolicy: v1.PullAlways,
@@ -367,7 +367,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				TaskSpec: &tektonpipeline.EmbeddedTask{
 					TaskSpec: buildTask,
 				},
-				Timeout: &v12.Duration{Duration: time.Hour * 3},
+				Timeout: &v12.Duration{Duration: time.Hour * v1alpha12.DefaultTimeout},
 				Params:  []tektonpipeline.Param{{Name: PreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
 				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},

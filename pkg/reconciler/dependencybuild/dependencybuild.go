@@ -572,8 +572,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		preBuildImages[i.BaseBuilderImage+"-"+i.Tool] = i.BuiltImageDigest
 	}
 	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{
-		Pipeline: &v12.Duration{Duration: time.Hour * 3},
-		Tasks:    &v12.Duration{Duration: time.Hour * 3},
+		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
+		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
 	pr.Spec.PipelineSpec, diagnostic, err = createPipelineSpec(attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
 	if err != nil {
@@ -592,7 +592,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 	} else {
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
 	}
-	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * 3}}
+	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout}}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
