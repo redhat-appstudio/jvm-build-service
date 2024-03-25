@@ -531,6 +531,14 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			envValue := strings.Join(envValues, ",")
 			cache = setEnvVarValue(envValue, envName, cache)
 		}
+		if jbsConfig.Spec.MavenDeployment.Repository != "" {
+			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Repository, "MAVEN_REPOSITORY_URL", cache)
+			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Username, "MAVEN_REPOSITORY_USERNAME", cache)
+			cache = setEnvVar(corev1.EnvVar{
+				Name:      "MAVEN_REPOSITORY_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.MavenSecretName}, Key: v1alpha1.MavenSecretKey, Optional: &trueBool}},
+			}, cache)
+		}
 
 		sharedRegistryString := ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
 		cache = setEnvVarValue(sharedRegistryString, "SHARED_REGISTRIES", cache)
