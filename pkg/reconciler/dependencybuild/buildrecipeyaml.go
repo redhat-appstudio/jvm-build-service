@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	v1alpha12 "github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1 "k8s.io/api/core/v1"
@@ -59,13 +59,13 @@ var buildEntryScript string
 //go:embed scripts/hermetic-entry.sh
 var hermeticBuildEntryScript string
 
-func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSConfig, systemConfig *v1alpha12.SystemConfig, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
+func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
 	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
 	imageId := db.Name
 	zero := int64(0)
-	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha12.HermeticBuildTypeRequired
+	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha1.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 
 	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired, buildId)
@@ -184,18 +184,18 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 	secretVariables := make([]v1.EnvVar, 0)
 	if jbsConfig.ImageRegistry().SecretName != "" {
 		secretVariables = []v1.EnvVar{
-			{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha12.ImageSecretTokenKey, Optional: &trueBool}}},
+			{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &trueBool}}},
 		}
 	}
 	if jbsConfig.Spec.MavenDeployment.Repository != "" {
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.MavenSecretName}, Key: v1alpha12.MavenSecretKey, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.MavenSecretName}, Key: v1alpha1.MavenSecretKey, Optional: &trueBool}}})
 
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_ACCESS_KEY_ID", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSAccessID, Optional: &trueBool}}})
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSSecretKey, Optional: &trueBool}}})
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.AWSSecretName}, Key: v1alpha12.AWSProfile, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_ACCESS_KEY_ID", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSAccessID, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSSecretKey, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSProfile, Optional: &trueBool}}})
 	}
 	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitRepoSecretName}, Key: v1alpha12.GitRepoSecretKey, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitRepoSecretName}, Key: v1alpha1.GitRepoSecretKey, Optional: &trueBool}}})
 	}
 
 	preBuildImage := existingImages[recipe.Image+"-"+recipe.Tool]
@@ -226,7 +226,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 		}...),
 		Steps: []tektonpipeline.Step{
 			{
-				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha12.DefaultTimeout},
+				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 				Name:            "build",
 				Image:           "$(params." + PreBuildImageDigest + ")",
 				ImagePullPolicy: v1.PullAlways,
@@ -367,7 +367,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 				TaskSpec: &tektonpipeline.EmbeddedTask{
 					TaskSpec: buildTask,
 				},
-				Timeout: &v12.Duration{Duration: time.Hour * v1alpha12.DefaultTimeout},
+				Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 				Params:  []tektonpipeline.Param{{Name: PreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
 				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
@@ -396,7 +396,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha12.JBSC
 					Script: gitArgs + "\n" + createBuildScript,
 					Env: []v1.EnvVar{
 						{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
-						{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha12.GitSecretName}, Key: v1alpha12.GitSecretTokenKey, Optional: &trueBool}}},
+						{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 					},
 				},
 				{
@@ -541,7 +541,7 @@ type memLimits struct {
 	defaultRequestMemory, defaultBuildRequestMemory, defaultRequestCPU, defaultLimitCPU, buildRequestCPU, buildRequestMemory resource.Quantity
 }
 
-func memoryLimits(jbsConfig *v1alpha12.JBSConfig, additionalMemory int) (*memLimits, error) {
+func memoryLimits(jbsConfig *v1alpha1.JBSConfig, additionalMemory int) (*memLimits, error) {
 	limits := memLimits{}
 	var err error
 	limits.defaultRequestMemory, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestMemory, "512Mi"))
@@ -574,7 +574,7 @@ func memoryLimits(jbsConfig *v1alpha12.JBSConfig, additionalMemory int) (*memLim
 	return &limits, nil
 }
 
-func additionalPackages(recipe *v1alpha12.BuildRecipe) string {
+func additionalPackages(recipe *v1alpha1.BuildRecipe) string {
 	install := ""
 	for count, i := range recipe.AdditionalDownloads {
 		if i.FileType == "tar" {
@@ -612,7 +612,7 @@ func additionalPackages(recipe *v1alpha12.BuildRecipe) string {
 	return install
 }
 
-func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) string {
+func gitArgs(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string {
 	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ")\" && "
 	if db.Spec.ScmInfo.Private {
 		gitArgs = gitArgs + "echo \"$GIT_TOKEN\" > $HOME/.git-credentials && chmod 400 $HOME/.git-credentials && "
@@ -626,7 +626,7 @@ func gitArgs(db *v1alpha12.DependencyBuild, recipe *v1alpha12.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha12.BuildRecipe, db *v1alpha12.DependencyBuild, jbsConfig *v1alpha12.JBSConfig, hermeticBuild bool, buildId string) ([]string, []string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, hermeticBuild bool, buildId string) ([]string, []string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -735,7 +735,7 @@ func prependTagToImage(imageId string, prependTag string) string {
 	return imageId
 }
 
-func verifyParameters(jbsConfig *v1alpha12.JBSConfig, recipe *v1alpha12.BuildRecipe) []string {
+func verifyParameters(jbsConfig *v1alpha1.JBSConfig, recipe *v1alpha1.BuildRecipe) []string {
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
 		"--repository-url=$(params.CACHE_URL)",
