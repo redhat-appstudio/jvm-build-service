@@ -1,58 +1,74 @@
+import org.gradle.util.GradleVersion
+
 apply plugin: RepositoryPlugin
 
 class RepositoryPlugin implements Plugin<Gradle> {
 
     private static String ENTERPRISE_REPOSITORY_URL = System.getenv("CACHE_URL") != null ? System.getenv("CACHE_URL") : "http://localhost:8080/v2/cache/rebuild-default,gradle,gradleplugins/0"
 
+    // Provided to allow this plugin to be completed disabled. Off by default.
+    private static Boolean DISABLE_JBS_REPOSITORY_PLUGIN = System.getenv("DISABLE_JBS_REPOSITORY_PLUGIN") != null;
+
+    // Provided to allow disabling of prior repositories. Off by default.
+    private static Boolean DISABLE_OLD_REPOSITORIES = System.getenv("DISABLE_OLD_REPOSITORIES") != null;
+
+
     void apply(Gradle gradle) {
+        if (DISABLE_JBS_REPOSITORY_PLUGIN) {
+            return
+        }
         if (ENTERPRISE_REPOSITORY_URL.startsWith("file:/")) {
             //hermetic build, do nothing
             return
         }
         def fixRepositories = {
-            all { ArtifactRepository repo ->
-                try {
-                    if (!(repo instanceof MavenArtifactRepository) ||
-                            repo.url.toString() != ENTERPRISE_REPOSITORY_URL) {
-                        if (repo.toString().contains("PluginArtifactRepository") ||
-                                repo.url.toString().contains("file:/maven-artifacts") ||
-                                repo.toString().contains("MavenLocalArtifactRepository") ||
-                                repo.toString().contains("DefaultIvyArtifactRepository")) {
-                            return
+            if (!DISABLE_OLD_REPOSITORIES) {
+                all { ArtifactRepository repo ->
+                    try {
+                        if (!(repo instanceof MavenArtifactRepository) ||
+                                repo.url.toString() != ENTERPRISE_REPOSITORY_URL) {
+
+                            if (repo.toString().contains("PluginArtifactRepository") ||
+                                    repo.url.toString().contains("file:/maven-artifacts") ||
+                                    repo.toString().contains("MavenLocalArtifactRepository") ||
+                                    repo.toString().contains("DefaultIvyArtifactRepository")) {
+                                return
+                            }
+                            println "Repository ${repo.properties['url']} ${repo} removed as it does not match ${ENTERPRISE_REPOSITORY_URL}"
+                            remove repo
                         }
-                        println "Repository ${repo.properties['url']} ${repo} removed as it does not match ${ENTERPRISE_REPOSITORY_URL}"
-                        remove repo
-                    } else if (repo instanceof MavenArtifactRepository) {
-                        if (repo.hasProperty('allowInsecureProtocol')) {
-                            repo.allowInsecureProtocol = true
-                        }
+                    } catch (Exception e) {
+                        println "Failed to remove ${repo.properties['url']} ${repo}"
+                        e.printStackTrace()
                     }
-                } catch (Exception e) {
-                    println "Failed to remove ${repo.properties['url']} ${repo}"
-                    e.printStackTrace()
                 }
             }
 
-            mavenLocal()
-            // add the enterprise repository
-            maven {
-                name "HACBS CACHE"
-                url ENTERPRISE_REPOSITORY_URL
+            if (GradleVersion.current() >= GradleVersion.version("6.0")) {
+                // add the enterprise repository
+                maven {
+                    name "HACBS CACHE"
+                    url ENTERPRISE_REPOSITORY_URL
+                    allowInsecureProtocol true
+                }
+            } else {
+                // add the enterprise repository
+                maven {
+                    name "HACBS CACHE"
+                    url ENTERPRISE_REPOSITORY_URL
+                }
             }
         }
 
         gradle.allprojects(new Action<Project>() {
-
             @Override
             void execute(Project project) {
-
-                project.repositories fixRepositories
                 project.buildscript.repositories fixRepositories
+                project.repositories fixRepositories
             }
         })
-        gradle.settingsEvaluated { settings ->
+        gradle.settingsEvaluated { Settings settings ->
             settings.pluginManagement.repositories fixRepositories
         }
-
     }
 }
