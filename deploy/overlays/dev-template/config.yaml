@@ -19,3 +19,7 @@ spec:
     url: ${GIT_DEPLOY_URL}
     disableSSLVerification: ${GIT_DISABLE_SSL_VERIFICATION}
   requireArtifactVerification: true
+  buildSettings:
+    buildRequestCPU: "2"
+    taskRequestCPU: "300m"
+    taskLimitCPU: "1"
