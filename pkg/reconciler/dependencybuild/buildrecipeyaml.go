@@ -237,7 +237,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory},
 				},
 				Args:   []string{"$(params.GOALS[*])"},
 				Script: OriginalContentPath + "/build.sh \"$@\"",
@@ -251,7 +251,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory},
 				},
 				Script: buildTaskScript,
 			},
@@ -296,7 +296,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory},
 				},
 				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(hermeticDeployArgs),
 			},
@@ -315,7 +315,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory},
 				},
 				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(tagArgs),
 			},
@@ -392,7 +392,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					ComputeResources: v1.ResourceRequirements{
 						Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
-						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
+						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory},
 					},
 					Script: gitArgs + "\n" + createBuildScript,
 					Env: []v1.EnvVar{
@@ -411,7 +411,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 					ComputeResources: v1.ResourceRequirements{
 						//TODO: make configurable
 						Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
-						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
+						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory},
 					},
 					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preprocessorArgs),
 				},
@@ -424,7 +424,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 					ComputeResources: v1.ResourceRequirements{
 						//TODO: make configurable
 						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory},
 					},
 					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preBuildImageArgs),
 				},
@@ -539,7 +539,7 @@ func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
 }
 
 type memLimits struct {
-	defaultRequestMemory, defaultBuildRequestMemory, defaultRequestCPU, defaultLimitCPU, buildRequestCPU, buildRequestMemory resource.Quantity
+	defaultRequestMemory, defaultBuildRequestMemory, defaultRequestCPU, buildRequestCPU, buildRequestMemory resource.Quantity
 }
 
 func memoryLimits(jbsConfig *v1alpha1.JBSConfig, additionalMemory int) (*memLimits, error) {
@@ -553,11 +553,7 @@ func memoryLimits(jbsConfig *v1alpha1.JBSConfig, additionalMemory int) (*memLimi
 	if err != nil {
 		return nil, err
 	}
-	limits.defaultRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "10m"))
-	if err != nil {
-		return nil, err
-	}
-	limits.defaultLimitCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskLimitCPU, "300m"))
+	limits.defaultRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.TaskRequestCPU, "500m"))
 	if err != nil {
 		return nil, err
 	}
