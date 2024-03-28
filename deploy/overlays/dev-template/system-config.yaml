@@ -4,5 +4,5 @@ kind: SystemConfig
 metadata:
   name: cluster
 spec:
-  maxAdditionalMemory: 4096
+  maxAdditionalMemory: ${JBS_MAX_MEMORY}
   recipeDatabase: "${JBS_RECIPE_DATABASE}"
