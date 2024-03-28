@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.stream.Stream;
 
 import jakarta.enterprise.inject.Instance;
@@ -49,6 +51,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
+import org.jboss.logmanager.LogManager;
 
 import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.ImageReference;
@@ -378,6 +381,7 @@ public class LookupBuildInfoCommand implements Runnable {
             var config = BootstrapMavenContext.config();
             config.setEffectiveModelBuilder(true);
             config.setPreferPomsFromWorkspace(true);
+            config.setWarnOnFailedWorkspaceModules(true);
             config.setRepositorySystem(mavenContext.getRepositorySystem());
             config.setRemoteRepositoryManager(mavenContext.getRemoteRepositoryManager());
 
@@ -403,8 +407,18 @@ public class LookupBuildInfoCommand implements Runnable {
         Path parent = pomFile.getParent();
         config.setCurrentProject(parent.toString());
         config.setRootProjectDir(parent);
-        var newCtx = new BootstrapMavenContext(config);
+        Handler current = LogManager.getLogManager().getLogger("").getHandlers()[0];
+        Level original = current.getLevel();
 
+        BootstrapMavenContext newCtx;
+        // The Quarkus Bootstrap can log out vast amounts of information with setWarnOnFailedWorkspaceModules
+        // enabled at warn level (rather than debug) so quieten it down.
+        try {
+            current.setLevel(Level.SEVERE);
+            newCtx = new BootstrapMavenContext(config);
+        } finally {
+            current.setLevel(original);
+        }
         List<RemoteRepository> repositories = newCtx.getRemoteRepositories();
         for (RemoteRepository repository : repositories) {
             result.add(repository.getUrl());
