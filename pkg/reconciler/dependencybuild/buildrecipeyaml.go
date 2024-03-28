@@ -783,7 +783,11 @@ func extractEnvVar(envVar []v1.EnvVar) string {
 func doSubstitution(script string, paramValues []tektonpipeline.Param, commitTime int64, buildRepos string) string {
 	for _, i := range paramValues {
 		if i.Value.Type == tektonpipeline.ParamTypeString {
+			// Handles the form "...$(params.TAG)... "
 			script = strings.ReplaceAll(script, "$(params."+i.Name+")", i.Value.StringVal)
+			// Handles the form "...$(PROJECT_VERSION)... " which could occur within preBuild/postBuildScript.
+			// We could set it to $PROJECT_VERSION or the actual value, but we will inline it for consistency.
+			script = strings.ReplaceAll(script, "$("+i.Name+")", i.Value.StringVal)
 		}
 	}
 	script = strings.ReplaceAll(script, "$(params.CACHE_URL)", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
