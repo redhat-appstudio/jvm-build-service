@@ -48,7 +48,7 @@ jobs:
           docker-images: false
           large-packages: false
           swap-storage: false
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4
       - name: Setup Registry
         run: |
           export DEV_IP=172.16.1.1
