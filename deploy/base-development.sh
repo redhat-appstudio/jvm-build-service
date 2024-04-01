@@ -26,6 +26,9 @@ fi
 if [ -z "$JBS_S3_SYNC_ENABLED" ]; then
     export JBS_S3_SYNC_ENABLED=true
 fi
+if [ -z "$JBS_MAX_MEMORY" ]; then
+    export JBS_MAX_MEMORY=4096
+fi
 # Horrendous hack to work around
 # https://github.com/kubernetes-sigs/kustomize/issues/5124
 # given an env var is a string (https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/)
@@ -64,6 +67,7 @@ ${GIT_DISABLE_SSL_VERIFICATION}
 ${JBS_BUILD_IMAGE_SECRET}
 ${JBS_GIT_CREDENTIALS}
 ${JBS_QUAY_IMAGE}
+${JBS_MAX_MEMORY}
 ${JBS_RECIPE_DATABASE}
 ${JBS_S3_SYNC_ENABLED}
 ${JBS_WORKER_NAMESPACE}

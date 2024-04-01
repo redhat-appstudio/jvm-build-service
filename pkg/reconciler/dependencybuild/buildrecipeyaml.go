@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"github.com/go-logr/logr"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"regexp"
 	"strconv"
@@ -60,7 +61,7 @@ var buildEntryScript string
 //go:embed scripts/hermetic-entry.sh
 var hermeticBuildEntryScript string
 
-func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
+func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
 	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
@@ -109,6 +110,7 @@ func createPipelineSpec(tool string, commitTime int64, jbsConfig *v1alpha1.JBSCo
 
 	additionalMemory := recipe.AdditionalMemory
 	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
+		log.Info(fmt.Sprintf("additionalMemory specified %#v but system MaxAdditionalMemory is %#v and is limiting that value", additionalMemory, systemConfig.Spec.MaxAdditionalMemory))
 		additionalMemory = systemConfig.Spec.MaxAdditionalMemory
 	}
 	var buildToolSection string
