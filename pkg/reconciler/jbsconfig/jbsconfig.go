@@ -37,6 +37,7 @@ const (
 	TlsServiceName                      = v1alpha1.CacheDeploymentName + "-tls"
 	TestRegistry                        = "jvmbuildservice.io/test-registry"
 	RetryTimeAnnotations                = "jvmbuildservice.io/retry-time"
+	RetryTimestampAnnotations           = "jvmbuildservice.io/retry-timestamp"
 	DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
 	UploadSecretName                    = "jvm-build-service-temp-upload-secret" //#nosec
 )
@@ -106,6 +107,17 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 				if jbsConfig.Annotations == nil {
 					jbsConfig.Annotations = map[string]string{}
 				}
+
+				existingRetryTimestamp := jbsConfig.Annotations[RetryTimestampAnnotations]
+				if existingRetryTimestamp != "" {
+					secs, err := strconv.ParseInt(existingRetryTimestamp, 10, 64)
+					if err == nil {
+						if time.Now().UnixMilli() < secs {
+							//too early, just return
+							return reconcile.Result{RequeueAfter: time.Millisecond * time.Duration(secs-time.Now().UnixMilli())}, err
+						}
+					}
+				}
 				existing := jbsConfig.Annotations[RetryTimeAnnotations]
 				if existing == "" {
 					existing = "1"
@@ -118,6 +130,7 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 					return reconcile.Result{}, nil
 				}
 				jbsConfig.Annotations[RetryTimeAnnotations] = strconv.Itoa(secs * 2)
+				jbsConfig.Annotations[RetryTimeAnnotations] = strconv.FormatInt(time.Now().UnixMilli()+(existingSeconds*1000), 10)
 				err = r.client.Update(ctx, &jbsConfig)
 				if err != nil {
 					return reconcile.Result{}, err
