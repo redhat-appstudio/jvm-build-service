@@ -118,7 +118,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if tool == "maven" {
 		buildToolSection = mavenSettings + "\n" + mavenBuild
 	} else if tool == "gradle" {
-		buildToolSection = gradleBuild
+		// We always add Maven information (in InvocationBuilder) so add the relevant settings.xml
+		buildToolSection = mavenSettings + "\n" + gradleBuild
 		preprocessorArgs = []string{
 			"gradle-prepare",
 			"$(workspaces." + WorkspaceSource + ".path)/workspace",
@@ -132,6 +133,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		buildToolSection = sbtBuild
 		preprocessorArgs[0] = "sbt-prepare"
 	} else if tool == "ant" {
+		// We always add Maven information (in InvocationBuilder) so add the relevant settings.xml
 		buildToolSection = mavenSettings + "\n" + antBuild
 		preprocessorArgs[0] = "ant-prepare"
 	} else {
