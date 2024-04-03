@@ -8,14 +8,14 @@ import {
   EmptyStateHeader,
   EmptyStateBody,
   Bullseye,
-  EmptyStateIcon, ActionListItem, Dropdown,
+  EmptyStateIcon,
 } from '@patternfly/react-core';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
 import { Label } from '@patternfly/react-core';
 import {BuildQueueListDTO, BuildQueueResourceService} from "../../services/openapi";
 import {useEffect, useState} from "react";
-import {CheckCircleIcon, ErrorCircleOIcon, ExclamationIcon} from "@patternfly/react-icons";
+import {ExclamationIcon} from "@patternfly/react-icons";
 
 
 const columnNames = {

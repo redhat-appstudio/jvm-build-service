@@ -3,7 +3,6 @@ import {useEffect, useState} from 'react';
 import {RunningBuildDTO, RunningBuildsResourceService} from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
-import {Timestamp} from "@patternfly/react-core";
 
 const RunningBuildList: React.FunctionComponent = () => {
   const [builds, setBuilds] = useState(Array<RunningBuildDTO>);

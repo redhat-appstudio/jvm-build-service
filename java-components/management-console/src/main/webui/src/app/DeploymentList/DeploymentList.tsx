@@ -16,7 +16,7 @@ import {EmptyTable} from '@app/EmptyTable/EmptyTable';
 import {
   AttentionBellIcon,ContainerNodeIcon,
   IceCreamIcon,
-  InProgressIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
+  OkIcon, OutlinedAngryIcon, RedhatIcon, WarningTriangleIcon
 } from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
 import {DependencySet} from "@app/DependencySet/DependencySet";
@@ -77,34 +77,6 @@ const DeploymentRow: React.FunctionComponent<DeploymentActionsType> = (initialBu
   const toggleImages = () => {
     setImagesExpanded(!imagesExpanded);
   };
-
-  const dependencyRow = function (dep : IdentifiedDependencyDTO) {
-
-    return <DataListItem>
-      <DataListItemRow>
-        <DataListItemCells
-          dataListCells={[
-            <DataListCell isIcon key="icon">
-              {dep.source === 'rebuilt' && <OkIcon color={"green"}></OkIcon>}
-              {dep.source === 'redhat' && <RedhatIcon color={"red"}></RedhatIcon>}
-              {(dep.source !== 'redhat' && dep.source != 'rebuilt') && <WarningTriangleIcon color={"orange"}></WarningTriangleIcon>}
-            </DataListCell>,
-            <DataListCell key="primary content">
-              {dep.dependencyBuildIdentifier != undefined && <Link to={`/builds/build/${dep.dependencyBuildIdentifier}`}>{dep.gav}</Link>}
-              {dep.dependencyBuildIdentifier == undefined && <div id="gav">{dep.gav}</div>}
-            </DataListCell>,
-            <DataListCell key="primary content">
-              {dep.inQueue && <Label color="blue" icon={<IceCreamIcon />}> In Build Queue</Label>}
-              {(dep.buildAttemptId != null) && <Label color="green" icon={<OkIcon />}>Rebuilt Artifact</Label>}
-              {(dep.buildAttemptId == null && dep.buildSuccess) && <Label color="orange" icon={<AttentionBellIcon />}>Rebuilt Artifact Available, Image Rebuild Required</Label>}
-              {(dep.buildAttemptId == null && dep.dependencyBuildIdentifier != null && !dep.buildSuccess) && <Label color="red" icon={<OutlinedAngryIcon />}>Rebuild Failed</Label>}
-              {(dep.buildAttemptId == null && dep.dependencyBuildIdentifier == null && !dep.buildSuccess) && <Label color="orange" icon={<OutlinedAngryIcon />}>Unknown Source</Label>}
-            </DataListCell>,
-          ]}
-        />
-      </DataListItemRow>
-    </DataListItem>
-  }
 
   return <DataListItem aria-labelledby="ex-item1" isExpanded={imagesExpanded}>
     <DataListItemRow>

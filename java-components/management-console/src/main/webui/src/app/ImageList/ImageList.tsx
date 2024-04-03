@@ -8,23 +8,18 @@ import {
   DataListItemCells,
   DataListItemRow,
   DataListToggle,
-  Label, Pagination, Spinner,
-  Title, Toolbar, ToolbarContent, ToolbarItem,
+  Pagination, Toolbar, ToolbarContent, ToolbarItem,
 } from '@patternfly/react-core';
 import {
   ImageDTO,
   ImageResourceService,
-  IdentifiedDependencyDTO,
+
 } from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
 import {
-  AttentionBellIcon,ContainerNodeIcon,
-  IceCreamIcon,
-  InProgressIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
+  ContainerNodeIcon
 } from "@patternfly/react-icons";
-import {Link, RouteComponentProps} from "react-router-dom";
-import {BuildView} from "@app/BuildView/BuildView";
-import {base64} from "../../services/openapi/core/request";
+import {RouteComponentProps} from "react-router-dom";
 import {DependencySet} from "@app/DependencySet/DependencySet";
 
 

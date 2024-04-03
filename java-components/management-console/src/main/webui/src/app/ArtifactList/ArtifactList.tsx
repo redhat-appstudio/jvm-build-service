@@ -200,8 +200,6 @@ type BuildActionsType = {
 
 const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.Element => {
 
-  const [build, setBuild] = useState(artifact.artifact);
-
   const [isOpen, setIsOpen] = React.useState(false);
   const onToggle = () => {
     setIsOpen(!isOpen);
