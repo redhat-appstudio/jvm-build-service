@@ -75,7 +75,7 @@ public class MavenDeployTest {
         deployCommand.sourcePath = source.toAbsolutePath();
         deployCommand.allowedSources = Set.of("redhat", "rebuilt"); // Default value
         deployCommand.imageDeployment = false;
-        deployCommand.mvnRepo = "file://" + deployment.toAbsolutePath();
+        deployCommand.mvnRepo = deployment.toAbsolutePath().toUri().toString();
         deployCommand.mvnCtx = mvnContext;
         deployCommand.buildId = "some-id";
         deployCommand.mvnPassword = Optional.empty();

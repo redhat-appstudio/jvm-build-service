@@ -153,10 +153,9 @@ class LookupBuildInfoCommandTest {
                 () -> getBuildInfo("https://github.com/jakartaee/jaf-api.git", "0750e49665855b4b85487aa3780bf0daf09e8e4c"),
                 "Multiple subdirectories have build files");
         List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-        assertTrue(logRecords.stream()
-                .noneMatch(r -> LogCollectingTestResource.format(r).matches("Looking for build scripts in.*\\.git.*")));
-        assertTrue(logRecords.stream()
-                .anyMatch(r -> LogCollectingTestResource.format(r).matches("Looking for build scripts in.*spec.*")));
+        assertThat(logRecords).map(LogCollectingTestResource::format)
+                .noneMatch(s -> s.matches("Looking for build scripts in.*\\.git\\.\\.\\."))
+                 .anyMatch(s -> s.matches("Looking for build scripts in.*spec.*"));
     }
 
     @Test

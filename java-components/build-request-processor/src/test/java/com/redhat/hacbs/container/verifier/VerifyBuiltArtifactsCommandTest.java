@@ -7,6 +7,7 @@ import static com.redhat.hacbs.container.verifier.VerifyBuiltArtifactsCommand.CL
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.zip.ZipEntry;
@@ -81,7 +82,7 @@ public class VerifyBuiltArtifactsCommandTest {
                 .getResource(Test.class.getName().replace(".", "/") + ".class");
         assertThat(path).isNotNull();
         String file = path.getFile();
-        return Path.of(file.substring("file:".length(), file.indexOf("!")));
+        return Path.of(URI.create(file.substring(0, file.indexOf('!'))));
     }
 
     @Test

@@ -1,7 +1,7 @@
 package io.github.redhatappstudio.jvmbuild.cli.artifacts;
 
 import static com.github.stefanbirkner.systemlambda.SystemLambda.tapSystemOut;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
@@ -32,23 +32,20 @@ public class ArtifactListCommandTest extends TestComponentManager {
 
         ArtifactListCommand alc = new ArtifactListCommand();
         String out = tapSystemOut(alc::run);
-        assertEquals("""
-                commons-net:commons-net:3.6   ArtifactBuildComplete   commons.net.3.6-65df3c98
-                commons-net:commons-net:3.7   ArtifactBuildFailed     commons.net.3.7-65df3c98
-                commons-net:commons-net:3.8   ArtifactBuildBuilding   commons.net.3.8-65df3c98
-                """, out);
+        assertThat(out.lines().toList()).containsExactly(
+                "commons-net:commons-net:3.6   ArtifactBuildComplete   commons.net.3.6-65df3c98",
+                "commons-net:commons-net:3.7   ArtifactBuildFailed     commons.net.3.7-65df3c98",
+                "commons-net:commons-net:3.8   ArtifactBuildBuilding   commons.net.3.8-65df3c98");
 
         alc.failed = true;
         out = tapSystemOut(alc::run);
-        assertEquals("""
-                commons-net:commons-net:3.7   ArtifactBuildFailed   commons.net.3.7-65df3c98
-                """, out);
+        assertThat(out.lines().toList())
+                .containsExactly("commons-net:commons-net:3.7   ArtifactBuildFailed   commons.net.3.7-65df3c98");
 
         alc.failed = false;
         alc.building = true;
         out = tapSystemOut(alc::run);
-        assertEquals("""
-                commons-net:commons-net:3.8   ArtifactBuildBuilding   commons.net.3.8-65df3c98
-                """, out);
+        assertThat(out.lines().toList())
+                .containsExactly("commons-net:commons-net:3.8   ArtifactBuildBuilding   commons.net.3.8-65df3c98");
     }
 }

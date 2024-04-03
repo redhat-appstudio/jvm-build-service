@@ -75,9 +75,9 @@ public class MavenUtils {
         return gavToCoords(gav);
     }
 
-    public static Path coordsToPath(String coords) {
+    public static String coordsToPath(String coords) {
         var gav = coordsToGav(coords);
-        return Path.of(new M2GavCalculator().gavToPath(gav));
+        return new M2GavCalculator().gavToPath(gav);
     }
 
     public static Optional<Plugin> getPlugin(MavenProject project, String pluginId) {

@@ -1,7 +1,7 @@
 package io.github.redhatappstudio.jvmbuild.cli.builds;
 
 import static com.github.stefanbirkner.systemlambda.SystemLambda.tapSystemOut;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
@@ -64,23 +64,20 @@ public class BuildListCommandTest extends TestComponentManager {
 
         BuildListCommand blc = new BuildListCommand();
         String out = tapSystemOut(blc::run);
-        assertEquals("""
-                apache/commons-net.git@NET_3_6   DependencyBuildStateComplete   b65da343c6ff99b4d15da62b349d9abb
-                apache/commons-net.git@NET_3_7   DependencyBuildStateFailed     b8febbb91585477cb5ca8822fce5bf20
-                apache/commons-net.git@NET_3_8   DependencyBuildStateBuilding   2c9b32abf0c0f5041d328a6034e30650b493eb4d
-                """, out);
+        assertThat(out.lines().toList()).containsExactly(
+                "apache/commons-net.git@NET_3_6   DependencyBuildStateComplete   b65da343c6ff99b4d15da62b349d9abb",
+                "apache/commons-net.git@NET_3_7   DependencyBuildStateFailed     b8febbb91585477cb5ca8822fce5bf20",
+                "apache/commons-net.git@NET_3_8   DependencyBuildStateBuilding   2c9b32abf0c0f5041d328a6034e30650b493eb4d");
 
         blc.failed = true;
         out = tapSystemOut(blc::run);
-        assertEquals("""
-                apache/commons-net.git@NET_3_7   DependencyBuildStateFailed   b8febbb91585477cb5ca8822fce5bf20
-                """, out);
+        assertThat(out.lines().toList()).containsExactly(
+                "apache/commons-net.git@NET_3_7   DependencyBuildStateFailed   b8febbb91585477cb5ca8822fce5bf20");
 
         blc.failed = false;
         blc.building = true;
         out = tapSystemOut(blc::run);
-        assertEquals("""
-                apache/commons-net.git@NET_3_8   DependencyBuildStateBuilding   2c9b32abf0c0f5041d328a6034e30650b493eb4d
-                """, out);
+        assertThat(out.lines().toList()).containsExactly(
+                "apache/commons-net.git@NET_3_8   DependencyBuildStateBuilding   2c9b32abf0c0f5041d328a6034e30650b493eb4d");
     }
 }

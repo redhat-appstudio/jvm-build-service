@@ -1,6 +1,6 @@
 package io.github.redhatappstudio.jvmbuild.cli.builds;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,8 +37,7 @@ public class BuildCompleterTest extends TestComponentManager {
         kubernetesClient.resource(db).create();
 
         var result = BuildCompleter.createNames();
-
-        assertEquals(1, result.size());
-        assertTrue(result.containsKey("apache/commons-net.git@NET_3_6"));
+        assertThat(result).hasSize(1);
+        assertThat(result).containsKey("apache/commons-net.git@NET_3_6");
     }
 }
