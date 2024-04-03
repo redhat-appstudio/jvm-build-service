@@ -2,7 +2,6 @@ import React from 'react';
 import {Modal, ModalVariant, Button, Form, FormGroup, Popover, TextInput, Checkbox} from '@patternfly/react-core';
 import {ArtifactEditResourceService, ArtifactListDTO, ModifyScmRepoCommand} from "../../services/openapi";
 import {GithubIcon} from "@patternfly/react-icons";
-import {LinkTo} from "@storybook/addon-links";
 import {Link} from "@reach/router";
 
 

@@ -3,36 +3,21 @@ import {useEffect, useState} from 'react';
 import {
   Card, CardBody,
   CardHeader,
-  DataList,
-  DataListCell,
-  DataListContent,
-  DataListItem,
-  DataListItemCells,
-  DataListItemRow,
-  DataListToggle,
-  Label,
   PageSection,
   PageSectionVariants,
-  Pagination, Tab, Tabs, TabTitleText,
+  Tab, Tabs, TabTitleText,
   Text,
   TextContent,
   TextVariants,
-  Title,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
+
+
+
+
 } from '@patternfly/react-core';
 import {
-  IdentifiedDependencyDTO,
   GithubBuildDTO, GithubBuildsResourceService
 } from "../../services/openapi";
-import {EmptyTable} from '@app/EmptyTable/EmptyTable';
-import {
-  AttentionBellIcon,ContainerNodeIcon,
-  IceCreamIcon,
-  InProgressIcon, ListIcon, OkIcon, OutlinedAngryIcon, RedhatIcon, StickyNoteIcon, WarningTriangleIcon
-} from "@patternfly/react-icons";
-import {Link, RouteComponentProps} from "react-router-dom";
+import {RouteComponentProps} from "react-router-dom";
 import {DependencySet} from "@app/DependencySet/DependencySet";
 
 interface RouteParams {

@@ -14,7 +14,7 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
-  ToolbarItemVariant,
+
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {BuildHistoryResourceService, BuildListDTO, BuildQueueResourceService} from "../../services/openapi";
