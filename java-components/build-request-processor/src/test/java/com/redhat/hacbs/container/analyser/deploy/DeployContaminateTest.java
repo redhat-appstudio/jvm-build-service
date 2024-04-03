@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.analyser.deploy;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -102,13 +103,9 @@ public class DeployContaminateTest {
 
         testDeployment.run();
         List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-        //        logRecords.forEach(r -> System.out.println("*** " + LogCollectingTestResource.format(r)));
-        assertTrue(logRecords.stream()
-                .anyMatch(r -> LogCollectingTestResource.format(r).contains(
-                        "com/company/foo/foo-bar/3.25.8/foobar-3.25.8-tests.jar was contaminated by org.jboss.metadata:jboss-metadata-common:9.0.0.Final from central")));
-        assertTrue(logRecords.stream().noneMatch(r -> r.getMessage().contains("Removing")));
-        assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r)
-                .contains("GAVs to deploy: [com.company.foo:foo-bar:3.25.8, com.company.foo:foo-baz:3.25.8")));
+
+        assertThat(logRecords).map(LogCollectingTestResource::format).contains("foobar-3.25.8-tests.jar was contaminated by org.jboss.metadata:jboss-metadata-common:9.0.0.Final from central", "GAVs to deploy: [com.company.foo:foo-bar:3.25.8, com.company.foo:foo-baz:3.25.8]");
+        assertThat(logRecords).extracting("message").doesNotContain("Removing");
     }
 
     @Test

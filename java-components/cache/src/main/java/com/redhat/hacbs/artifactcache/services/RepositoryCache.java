@@ -97,9 +97,9 @@ public class RepositoryCache {
 
         } else {
             //TODO: we don't really care about the policy when using standard maven repositories
-            String targetFile = group.replaceAll("\\.", File.separator) + File.separator + artifact
+            String targetFile = group.replace('.', File.separatorChar) + File.separator + artifact
                     + File.separator + version + File.separator + target;
-            return handleFile(targetFile, group.replaceAll("/", ".") + ":" + artifact + ":" + version,
+            return handleFile(targetFile, group.replace(File.separatorChar, '.') + ":" + artifact + ":" + version,
                     (c) -> c.getArtifactFile(group, artifact, version, target), tracked, cacheOnly);
         }
     }

@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.analyser.deploy.mavenrepository;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -84,8 +85,8 @@ public class MavenRepositoryDeployer {
                             if (hasPom) {
 
                                 Path relative = artifacts.relativize(dir);
-                                String group = relative.getParent().getParent().toString().replace("/",
-                                        ".");
+                                String group = relative.getParent().getParent().toString().replace(File.separatorChar,
+                                        '.');
                                 String artifact = relative.getParent().getFileName().toString();
                                 String version = dir.getFileName().toString();
                                 Log.info(

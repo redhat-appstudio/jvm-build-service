@@ -3,6 +3,7 @@ package com.redhat.hacbs.container.verifier;
 import static com.redhat.hacbs.container.verifier.MavenUtils.downloadFile;
 import static com.redhat.hacbs.container.verifier.MavenUtils.pathToCoords;
 import static java.nio.file.FileVisitResult.CONTINUE;
+import static org.apache.commons.io.FilenameUtils.normalize;
 import static org.apache.commons.lang3.StringUtils.endsWithAny;
 import static picocli.CommandLine.ArgGroup;
 
@@ -249,7 +250,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
     private List<String> handleJar(Path rebuiltFile, Path relativeFile, String coords, List<String> excludes)
             throws IOException {
         try {
-            var optionalUpstreamFile = resolveArtifact(relativeFile);
+            var optionalUpstreamFile = resolveArtifact(normalize(relativeFile.toString(), true));
 
             if (optionalUpstreamFile.isEmpty()) {
                 Log.warnf("Ignoring missing artifact %s", coords);
@@ -271,7 +272,7 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
         }
     }
 
-    Optional<Path> resolveArtifact(Path relativeFile) throws IOException {
+    Optional<Path> resolveArtifact(String relativeFile) throws IOException {
         var url = options.mavenOptions.repositoryUrl.endsWith("/") ? options.mavenOptions.repositoryUrl + relativeFile
                 : options.mavenOptions.repositoryUrl + "/" + relativeFile;
         if (options.mavenOptions.repositoryUrl.startsWith("file")) {

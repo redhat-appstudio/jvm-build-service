@@ -61,7 +61,7 @@ public class GitTest {
             throws IOException, URISyntaxException, GitAPIException {
         Path initialRepo = Files.createTempDirectory("initial-repo");
         Path testRepo = Files.createTempDirectory("test-repo");
-        String testRepoURI = "file://" + testRepo;
+        String testRepoURI = testRepo.toUri().toString();
         String imageID = "75ecd81c7a2b384151c990975eb1dd10";
         try (var testRepository = org.eclipse.jgit.api.Git.init().setDirectory(testRepo.toFile()).call();
                 var initialRepository = org.eclipse.jgit.api.Git.init().setDirectory(initialRepo.toFile()).call()) {

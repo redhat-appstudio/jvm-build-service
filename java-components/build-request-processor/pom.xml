@@ -175,7 +175,7 @@
                         </goals>
                         <configuration>
                             <workingDirectory>${project.basedir}/src/test/gradle</workingDirectory>
-                            <executable>${project.basedir}/src/test/gradle/gradlew</executable>
+                            <executable>${project.basedir}/src/test/gradle/${gradlew}</executable>
                             <arguments>
                                 <argument>build</argument>
                                 <argument>--info</argument>
@@ -236,6 +236,28 @@
             </build>
             <properties>
                 <quarkus.package.type>native</quarkus.package.type>
+            </properties>
+        </profile>
+        <profile>
+            <id>unix</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                </os>
+            </activation>
+            <properties>
+                <gradlew>gradlew</gradlew>
+            </properties>
+        </profile>
+        <profile>
+            <id>windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <gradlew>gradlew.bat</gradlew>
             </properties>
         </profile>
     </profiles>

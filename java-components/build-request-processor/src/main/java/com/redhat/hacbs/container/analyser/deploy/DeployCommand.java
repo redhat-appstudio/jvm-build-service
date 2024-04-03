@@ -3,6 +3,7 @@ package com.redhat.hacbs.container.analyser.deploy;
 import static org.apache.commons.lang3.ObjectUtils.isEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -27,6 +28,7 @@ import java.util.stream.Stream;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -186,15 +188,20 @@ public class DeployCommand implements Runnable {
             Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    String name = deploymentPath.relativize(file).toString();
+                    Path path = deploymentPath.relativize(file);
+                    String name = path.toString();
                     Optional<Gav> gav = getGav(name);
-                    gav.ifPresent(
-                            gav1 -> gavs.add(gav1.getGroupId() + ":" + gav1.getArtifactId() + ":" + gav1.getVersion()));
-                    Log.debugf("Checking %s for contaminants with GAV %s", name, gav);
+                    if (gav.isPresent()) {
+                        var coords = gav.get().stringForm();
+                        gavs.add(coords);
+                        Log.debugf("Checking %s with GAV %s for contaminants", path.getFileName(), coords);
+                    } else {
+                        Log.debugf("Checking %s for contaminants", path.getFileName());
+                    }
                     //we check every file as we also want to catch .tar.gz etc
                     var info = ClassFileTracker.readTrackingDataFromFile(Files.newInputStream(file), name);
                     for (var i : info) {
-                        Log.errorf("%s was contaminated by %s from %s", name, i.gav, i.source);
+                        Log.errorf("%s was contaminated by %s from %s", path.getFileName(), i.gav, i.source);
                         if (ALLOWED_CONTAMINANTS.stream().noneMatch(a -> file.getFileName().toString().endsWith(a))) {
                             int index = name.lastIndexOf("/");
                             boolean allowed = allowedSources.contains(i.source);
@@ -450,12 +457,11 @@ public class DeployCommand implements Runnable {
     }
 
     private Optional<Gav> getGav(String entryName) {
-        if (entryName.startsWith("./")) {
+        if (entryName.startsWith("." + File.separator)) {
             entryName = entryName.substring(2);
         }
         if (entryName.endsWith(DOT_JAR) || entryName.endsWith(DOT_POM)) {
-
-            List<String> pathParts = List.of(entryName.split(SLASH));
+            List<String> pathParts = List.of(StringUtils.split(entryName, File.separatorChar));
             int numberOfParts = pathParts.size();
 
             String version = pathParts.get(numberOfParts - 2);
