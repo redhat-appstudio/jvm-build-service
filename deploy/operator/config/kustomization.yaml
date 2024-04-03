@@ -11,4 +11,4 @@ labels:
 
 #note that when updating the ref here you must also update system-config.yaml
 patches:
-- path: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/c2e2b96a105f45bbb613f93cbfd5d7fddd96154a/image-config.yaml
+- path: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service-builder-images/d6c417eae5fe32f3207918c6395881843e534a5d/image-config.yaml
