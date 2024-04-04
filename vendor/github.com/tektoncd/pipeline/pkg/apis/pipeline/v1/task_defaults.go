@@ -19,7 +19,6 @@ package v1
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -32,12 +31,6 @@ func (t *Task) SetDefaults(ctx context.Context) {
 
 // SetDefaults set any defaults for the task spec
 func (ts *TaskSpec) SetDefaults(ctx context.Context) {
-	cfg := config.FromContextOrDefaults(ctx)
-	for _, s := range ts.Steps {
-		if s.Ref != nil && s.Ref.Name == "" && s.Ref.Resolver == "" {
-			s.Ref.Resolver = ResolverName(cfg.Defaults.DefaultResolverType)
-		}
-	}
 	for i := range ts.Params {
 		ts.Params[i].SetDefaults(ctx)
 	}
