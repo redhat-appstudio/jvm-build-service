@@ -3,5 +3,6 @@
   "extends": ["config:recommended"],
   "pinDigests": true,
   "postUpdateOptions": ["gomodTidy"],
-  "addLabels": ["ok-to-test"]
+  "addLabels": ["ok-to-test"],
+  "ignoreDeps": ["github.com/tektoncd/cli", "github.com/tektoncd/pipeline"]
 }
