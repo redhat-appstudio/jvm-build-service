@@ -55,7 +55,7 @@
         <kubernetes-client.version>6.11.0</kubernetes-client.version>
 
         <!-- Dependencies -->
-        <asm.version>9.6</asm.version>
+        <asm.version>9.7</asm.version>
         <assertj.version>3.25.3</assertj.version>
         <aws-java-sdk.version>1.12.694</aws-java-sdk.version>
         <cyclonedx-core-java.version>8.0.3</cyclonedx-core-java.version>
