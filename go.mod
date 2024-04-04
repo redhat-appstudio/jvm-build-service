@@ -12,7 +12,7 @@ require (
 	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5 // indirect
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 	github.com/prometheus/client_golang v1.19.0
-	github.com/prometheus/client_model v0.6.0
+	github.com/prometheus/client_model v0.6.1
 	github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
 	github.com/tektoncd/cli v0.34.0
 	github.com/tektoncd/pipeline v0.55.0
