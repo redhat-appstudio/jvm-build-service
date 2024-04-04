@@ -14,8 +14,8 @@ require (
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/client_model v0.6.1
 	github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
-	github.com/tektoncd/cli v0.34.0
-	github.com/tektoncd/pipeline v0.55.0
+	github.com/tektoncd/cli v0.33.0
+	github.com/tektoncd/pipeline v0.53.3
 	go.uber.org/zap v1.27.0
 	k8s.io/api v0.28.5
 	k8s.io/apiextensions-apiserver v0.28.5

@@ -33,10 +33,6 @@ func (r TaskResult) convertTo(ctx context.Context, sink *v1.TaskResult) {
 		}
 		sink.Properties = properties
 	}
-	if r.Value != nil {
-		sink.Value = &v1.ParamValue{}
-		r.Value.convertTo(ctx, sink.Value)
-	}
 }
 
 func (r *TaskResult) convertFrom(ctx context.Context, source v1.TaskResult) {
@@ -49,9 +45,5 @@ func (r *TaskResult) convertFrom(ctx context.Context, source v1.TaskResult) {
 			properties[k] = PropertySpec{Type: ParamType(v.Type)}
 		}
 		r.Properties = properties
-	}
-	if source.Value != nil {
-		r.Value = &ParamValue{}
-		r.Value.convertFrom(ctx, *source.Value)
 	}
 }

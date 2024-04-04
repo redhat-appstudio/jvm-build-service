@@ -22,11 +22,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
 )
 
@@ -55,10 +53,6 @@ type ParamSpec struct {
 	// parameter.
 	// +optional
 	Default *ParamValue `json:"default,omitempty"`
-	// Enum declares a set of allowed param input values for tasks/pipelines that can be validated.
-	// If Enum is not set, no input validation is performed for the param.
-	// +optional
-	Enum []string `json:"enum,omitempty"`
 }
 
 // ParamSpecs is a list of ParamSpec
@@ -109,8 +103,8 @@ func (pp *ParamSpec) setDefaultsForProperties() {
 	}
 }
 
-// GetNames returns all the names of the declared parameters
-func (ps ParamSpecs) GetNames() []string {
+// getNames returns all the names of the declared parameters
+func (ps ParamSpecs) getNames() []string {
 	var names []string
 	for _, p := range ps {
 		names = append(names, p.Name)
@@ -118,8 +112,8 @@ func (ps ParamSpecs) GetNames() []string {
 	return names
 }
 
-// SortByType splits the input params into string params, array params, and object params, in that order
-func (ps ParamSpecs) SortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
+// sortByType splits the input params into string params, array params, and object params, in that order
+func (ps ParamSpecs) sortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
 	var stringParams, arrayParams, objectParams ParamSpecs
 	for _, p := range ps {
 		switch p.Type {
@@ -136,52 +130,22 @@ func (ps ParamSpecs) SortByType() (ParamSpecs, ParamSpecs, ParamSpecs) {
 	return stringParams, arrayParams, objectParams
 }
 
-// ValidateNoDuplicateNames returns an error if any of the params have the same name
-func (ps ParamSpecs) ValidateNoDuplicateNames() *apis.FieldError {
-	var errs *apis.FieldError
-	names := ps.GetNames()
-	for dup := range findDups(names) {
-		errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", dup))
-	}
-	return errs
-}
-
-// validateParamEnum validates feature flag, duplication and allowed types for Param Enum
-func (ps ParamSpecs) validateParamEnums(ctx context.Context) *apis.FieldError {
-	var errs *apis.FieldError
-	for _, p := range ps {
-		if len(p.Enum) == 0 {
-			continue
-		}
-		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableParamEnum {
-			errs = errs.Also(errs, apis.ErrGeneric(fmt.Sprintf("feature flag `%s` should be set to true to use Enum", config.EnableParamEnum), "").ViaKey(p.Name))
-		}
-		if p.Type != ParamTypeString {
-			errs = errs.Also(apis.ErrGeneric("enum can only be set with string type param", "").ViaKey(p.Name))
-		}
-		for dup := range findDups(p.Enum) {
-			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("parameter enum value %v appears more than once", dup), "").ViaKey(p.Name))
-		}
-		if p.Default != nil && p.Default.StringVal != "" {
-			if !slices.Contains(p.Enum, p.Default.StringVal) {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("param default value %v not in the enum list", p.Default.StringVal), "").ViaKey(p.Name))
-			}
-		}
-	}
-	return errs
-}
-
-// findDups returns the duplicate element in the given slice
-func findDups(vals []string) sets.String {
+// validateNoDuplicateNames returns an error if any of the params have the same name
+func (ps ParamSpecs) validateNoDuplicateNames() *apis.FieldError {
+	names := ps.getNames()
 	seen := sets.String{}
 	dups := sets.String{}
-	for _, val := range vals {
-		if seen.Has(val) {
-			dups.Insert(val)
+	var errs *apis.FieldError
+	for _, n := range names {
+		if seen.Has(n) {
+			dups.Insert(n)
 		}
-		seen.Insert(val)
+		seen.Insert(n)
 	}
-	return dups
+	for n := range dups {
+		errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", n))
+	}
+	return errs
 }
 
 // Param declares an ParamValues to use for the parameter called name.
@@ -329,7 +293,7 @@ func (ps ParamSpecs) ExtractDefaultParamArrayLengths() map[string]int {
 // it would return ["$(params.array-param[1])", "$(params.other-array-param[2])"].
 func extractArrayIndexingParamRefs(paramReference string) []string {
 	l := []string{}
-	list := substitution.ExtractArrayIndexingParamsExpressions(paramReference)
+	list := substitution.ExtractParamsExpressions(paramReference)
 	for _, val := range list {
 		indexString := substitution.ExtractIndexString(val)
 		if indexString != "" {

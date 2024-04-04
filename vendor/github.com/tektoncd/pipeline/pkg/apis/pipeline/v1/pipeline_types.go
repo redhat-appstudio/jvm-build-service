@@ -248,6 +248,8 @@ type PipelineTask struct {
 
 	// OnError defines the exiting behavior of a PipelineRun on error
 	// can be set to [ continue | stopAndFail ]
+	// Note: OnError is in preview mode and not yet supported
+	// TODO(#7165)
 	// +optional
 	OnError PipelineTaskOnErrorType `json:"onError,omitempty"`
 }
