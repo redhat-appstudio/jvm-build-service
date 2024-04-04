@@ -6,7 +6,7 @@ require (
 	github.com/CycloneDX/cyclonedx-go v0.8.0
 	github.com/aws/aws-sdk-go v1.50.31
 	github.com/go-logr/logr v1.4.1
-	github.com/google/go-containerregistry v0.19.0
+	github.com/google/go-containerregistry v0.19.1
 	github.com/google/uuid v1.6.0
 	github.com/onsi/gomega v1.31.1
 	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5 // indirect
