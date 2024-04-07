@@ -55,7 +55,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "mini-css-extract-plugin": "^2.8.0",
     "openapi-typescript": "^6.7.3",
-    "openapi-typescript-codegen": "^0.28.0",
+    "openapi-typescript-codegen": "^0.29.0",
     "postcss": "^8.4.38",
     "prettier": "^3.2.4",
     "prop-types": "^15.8.1",
