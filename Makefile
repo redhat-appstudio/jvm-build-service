@@ -8,8 +8,8 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # options for generating crds with controller-gen
-CONTROLLER_GEN="${GOBIN}/controller-gen"
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
+CONTROLLER_GEN=${GOBIN}/controller-gen
+CRD_OPTIONS ?= crd:trivialVersions=true,preserveUnknownFields=false
 
 .EXPORT_ALL_VARIABLES:
 
