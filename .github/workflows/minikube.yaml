@@ -56,7 +56,7 @@ jobs:
           docker run -d -p 5000:5000 --restart=always  registry:2
           sudo echo '{ "insecure-registries": ["172.16.1.1:5000"] }' | sudo tee  /etc/docker/daemon.json
       - name: Start minikube
-        uses: medyagh/setup-minikube@606b71970c783154fe49b711486c717f5780f485 # v0.0.15
+        uses: medyagh/setup-minikube@317d92317e473a10540357f1f4b2878b80ee7b95 # v0.0.16
         with:
           cpus: max
           memory: max
