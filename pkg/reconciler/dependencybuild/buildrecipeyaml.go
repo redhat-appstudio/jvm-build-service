@@ -69,8 +69,9 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	zero := int64(0)
 	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha1.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
+	imageRegistry := jbsConfig.ImageRegistry()
 
-	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, hermeticBuildRequired, buildId)
+	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, &imageRegistry, buildId)
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
 
@@ -495,19 +496,22 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
+	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
+	log.Info(fmt.Sprintf("Generating dockerfile deriving from preBuildImage %#v with recipe build image %#v", preBuildImageFrom, recipe.Image))
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
-		"\nFROM " + recipe.Image +
+		"\nFROM " + preBuildImageFrom +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng bash-completion" +
+		// TODO: bash-completion isn't valid under UBI7
+		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng" +
 		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
 		// Copying JDK17 for the cache.
+		// TODO: Could we determine if we are using UBI8 and avoid this?
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
 		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
 		"\nCOPY --from=cache /deployments/ /root/software/cache" +
-		"\nRUN " + doSubstitution(gitArgs, paramValues, commitTime, buildRepos) +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
 		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos)+"\n")) + " | base64 -d >/root/preprocessor.sh" +
@@ -631,7 +635,7 @@ func gitArgs(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string 
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, hermeticBuild bool, buildId string) ([]string, []string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, imageRegistry *v1alpha1.ImageRegistry, buildId string) ([]string, []string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -669,7 +673,6 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 		"tag-container",
 		"--image-digest=$(params." + DeployedImageDigest + ")",
 	}
-	imageRegistry := jbsConfig.ImageRegistry()
 	registryArgs := make([]string, 0)
 	if imageRegistry.Host != "" {
 		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
