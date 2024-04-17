@@ -4,7 +4,7 @@
   "pinDigests": true,
   "postUpdateOptions": ["gomodTidy"],
   "addLabels": ["ok-to-test"],
-  "ignoreDeps": ["github.com/tektoncd/cli", "github.com/tektoncd/pipeline"],
+  "ignoreDeps": ["github.com/tektoncd/cli", "github.com/tektoncd/pipeline", "github.com/openshift/client-go", "knative.dev/pkg"],
   "packageRules": [
     {
       "matchManagers": ["npm"],
