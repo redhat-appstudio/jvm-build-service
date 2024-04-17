@@ -4,5 +4,12 @@
   "pinDigests": true,
   "postUpdateOptions": ["gomodTidy"],
   "addLabels": ["ok-to-test"],
-  "ignoreDeps": ["github.com/tektoncd/cli", "github.com/tektoncd/pipeline"]
+  "ignoreDeps": ["github.com/tektoncd/cli", "github.com/tektoncd/pipeline"],
+  "packageRules": [
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    }
+  ]
 }
