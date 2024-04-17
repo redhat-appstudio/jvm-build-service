@@ -1,6 +1,8 @@
 module github.com/redhat-appstudio/jvm-build-service
 
-go 1.20
+go 1.21
+
+toolchain go1.22.2
 
 require (
 	github.com/CycloneDX/cyclonedx-go v0.8.0
@@ -9,20 +11,20 @@ require (
 	github.com/google/go-containerregistry v0.19.1
 	github.com/google/uuid v1.6.0
 	github.com/onsi/gomega v1.32.0
-	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5 // indirect
-	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
+	github.com/openshift/api v0.0.0-20240415161129-d7aff303fa1a // indirect
+	github.com/openshift/client-go v0.0.0-20240415214935-be70f772f157
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/client_model v0.6.1
 	github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
 	github.com/tektoncd/cli v0.33.0
 	github.com/tektoncd/pipeline v0.53.3
 	go.uber.org/zap v1.27.0
-	k8s.io/api v0.28.5
+	k8s.io/api v0.29.0
 	k8s.io/apiextensions-apiserver v0.28.5
-	k8s.io/apimachinery v0.28.5
+	k8s.io/apimachinery v0.29.0
 	k8s.io/cli-runtime v0.28.3
-	k8s.io/client-go v0.28.5
-	k8s.io/code-generator v0.28.5
+	k8s.io/client-go v0.29.0
+	k8s.io/code-generator v0.29.0
 	k8s.io/klog/v2 v2.120.1
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	knative.dev/pkg v0.0.0-20240201013110-e85c3cf6d5f1
@@ -141,5 +143,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.13.5-0.20230601165947-6ce0bf390ce3 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.14.3-0.20230601165947-6ce0bf390ce3 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
