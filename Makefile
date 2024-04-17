@@ -61,6 +61,10 @@ verify-generate-deepcopy-client: generate-deepcopy-client
 	hack/verify-codegen.sh
 
 dev-image:
+	@if [ -z "$$QUAY_USERNAME" ]; then \
+            echo "ERROR: QUAY_USERNAME is not set"; \
+            exit 1; \
+    fi
 	docker build . -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
 
