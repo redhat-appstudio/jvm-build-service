@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
 
-cat >"$(workspaces.build-settings.path)"/settings.xml <<EOF
-<settings>
-  <mirrors>
-    <mirror>
-      <id>mirror.default</id>
-      <url>${CACHE_URL}</url>
-      <mirrorOf>*</mirrorOf>
-    </mirror>
-  </mirrors>
+if [ ! -z ${JBS_DISABLE_CACHE+x} ]; then
+    cat >"$(workspaces.build-settings.path)"/settings.xml <<EOF
+    <settings>
+EOF
+else
+    cat >"$(workspaces.build-settings.path)"/settings.xml <<EOF
+    <settings>
+      <mirrors>
+        <mirror>
+          <id>mirror.default</id>
+          <url>${CACHE_URL}</url>
+          <mirrorOf>*</mirrorOf>
+        </mirror>
+      </mirrors>
+EOF
+fi
 
+cat >>"$(workspaces.build-settings.path)"/settings.xml <<EOF
   <!-- Off by default, but allows a secondary Maven build to use results of prior (e.g. Gradle) deployment -->
   <profiles>
     <profile>

@@ -6,15 +6,15 @@ class RepositoryPlugin implements Plugin<Gradle> {
 
     private static String ENTERPRISE_REPOSITORY_URL = System.getenv("CACHE_URL") != null ? System.getenv("CACHE_URL") : "http://localhost:8080/v2/cache/rebuild-default,gradle,gradleplugins/0"
 
-    // Provided to allow this plugin to be completed disabled. Off by default.
-    private static Boolean DISABLE_JBS_REPOSITORY_PLUGIN = System.getenv("DISABLE_JBS_REPOSITORY_PLUGIN") != null;
+    // Provided to allow this plugin (which routes request to the cache) to be completely disabled. Off by default.
+    private static Boolean JBS_DISABLE_CACHE = System.getenv("JBS_DISABLE_CACHE") != null;
 
     // Provided to allow disabling of prior repositories. Off by default.
-    private static Boolean DISABLE_OLD_REPOSITORIES = System.getenv("DISABLE_OLD_REPOSITORIES") != null;
+    private static Boolean JBS_DISABLE_GRADLE_REPOSITORIES = System.getenv("JBS_DISABLE_GRADLE_REPOSITORIES") != null;
 
 
     void apply(Gradle gradle) {
-        if (DISABLE_JBS_REPOSITORY_PLUGIN) {
+        if (JBS_DISABLE_CACHE) {
             return
         }
         if (ENTERPRISE_REPOSITORY_URL.startsWith("file:/")) {
@@ -22,7 +22,7 @@ class RepositoryPlugin implements Plugin<Gradle> {
             return
         }
         def fixRepositories = {
-            if (!DISABLE_OLD_REPOSITORIES) {
+            if (!JBS_DISABLE_GRADLE_REPOSITORIES) {
                 all { ArtifactRepository repo ->
                     try {
                         if (!(repo instanceof MavenArtifactRepository) ||
