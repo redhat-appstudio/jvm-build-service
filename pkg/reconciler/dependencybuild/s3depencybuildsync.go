@@ -116,6 +116,8 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 	name := pr.Name
 	if pr.Labels[PipelineTypeLabel] == PipelineTypeBuildInfo {
 		name = "build-discovery"
+	} else if pr.Labels[PipelineTypeLabel] == PipelineTypeDeploy {
+		name = "deploy"
 	}
 
 	uploader := s3manager.NewUploader(sess)

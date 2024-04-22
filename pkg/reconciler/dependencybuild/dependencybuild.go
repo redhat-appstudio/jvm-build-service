@@ -68,12 +68,14 @@ const (
 	PipelineTypeLabel     = "jvmbuildservice.io/pipeline-type"
 	PipelineTypeBuildInfo = "build-info"
 	PipelineTypeBuild     = "build"
+	PipelineTypeDeploy    = "deploy"
 
 	MaxRetries      = 3
 	MemoryIncrement = 2048
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	JavaHome             = "JAVA_HOME"
+	DeploySuffix         = "-deploy"
 )
 
 type ReconcileDependencyBuild struct {
@@ -140,6 +142,8 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			return reconcile.Result{}, nil
 		case v1alpha1.DependencyBuildStateBuilding:
 			return r.handleStateBuilding(ctx, log, &db)
+		case v1alpha1.DependencyBuildStateDeploying:
+			return r.handleStateDeploying(ctx, log, &db)
 		case v1alpha1.DependencyBuildStateContaminated:
 			return r.handleStateContaminated(ctx, &db)
 		case v1alpha1.DependencyBuildStateComplete:
@@ -176,6 +180,8 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			return r.handleAnalyzeBuildPipelineRunReceived(ctx, log, &pr)
 		case PipelineTypeBuild:
 			return r.handleBuildPipelineRunReceived(ctx, log, &pr)
+		case PipelineTypeDeploy:
+			return r.handleDeployPipelineRunReceived(ctx, log, &pr)
 		}
 	}
 
@@ -796,7 +802,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 			problemContaminates := db.Status.ProblemContaminates()
 			if len(problemContaminates) == 0 {
-				db.Status.State = v1alpha1.DependencyBuildStateComplete
+				db.Status.State = v1alpha1.DependencyBuildStateDeploying
 			} else {
 				msg := "The DependencyBuild %s/%s was contaminated with community dependencies"
 				log.Info(fmt.Sprintf(msg, db.Namespace, db.Name))
@@ -1273,6 +1279,122 @@ func (r *ReconcileDependencyBuild) removePipelineFinalizer(ctx context.Context, 
 	//remove the finalizer
 	if controllerutil.RemoveFinalizer(pr, PipelineRunFinalizer) {
 		return reconcile.Result{}, r.client.Update(ctx, pr)
+	}
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+
+	//first we check to see if the pipeline exists
+
+	pr := tektonpipeline.PipelineRun{}
+	prName := db.Name + DeploySuffix
+	err := r.client.Get(ctx, types.NamespacedName{Name: prName, Namespace: db.Namespace}, &pr)
+	if err == nil {
+		//the pipeline already exists
+		//do nothing
+		return reconcile.Result{}, nil
+	}
+	if !errors.IsNotFound(err) {
+		//other error
+		return reconcile.Result{}, err
+	}
+
+	//now submit the pipeline
+	pr.Finalizers = []string{PipelineRunFinalizer}
+	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	pr.Namespace = db.Namespace
+	pr.Name = prName
+	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Name, artifactbuild.PipelineRunLabel: "", PipelineTypeLabel: PipelineTypeDeploy}
+
+	jbsConfig := &v1alpha1.JBSConfig{}
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
+	if err != nil && !errors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	}
+	pr.Spec.PipelineRef = nil
+
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
+	gavs := ""
+	for i := range attempt.Build.Results.Gavs {
+		if i != 0 {
+			gavs += ","
+		}
+		gavs += attempt.Build.Results.Gavs[i]
+	}
+
+	paramValues := []tektonpipeline.Param{
+		{Name: DeployedImageDigestParam, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.ImageDigest}},
+		{Name: GavsParam, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: gavs}},
+	}
+
+	systemConfig := v1alpha1.SystemConfig{}
+	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{
+		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
+		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
+	}
+	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	pr.Spec.Params = paramValues
+	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{}
+
+	if !jbsConfig.Spec.CacheSettings.DisableTLS {
+		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
+	} else {
+		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
+	}
+	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout}}
+	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+	//now we submit the build
+	if err := r.client.Create(ctx, &pr); err != nil {
+		if errors.IsAlreadyExists(err) {
+			log.Info(fmt.Sprintf("handleStateDeploy: pipelinerun %s:%s already exists, not retrying", pr.Namespace, pr.Name))
+			return reconcile.Result{}, nil
+		}
+		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "PipelineRunCreationFailed", "The DependencyBuild %s/%s failed to create its deploy pipeline run", db.Namespace, db.Name)
+		return reconcile.Result{}, err
+	}
+	return reconcile.Result{}, r.client.Status().Update(ctx, db)
+}
+
+func (r *ReconcileDependencyBuild) handleDeployPipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
+	if pr.Status.CompletionTime != nil || pr.DeletionTimestamp != nil {
+		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
+		if err != nil || db == nil {
+			return reconcile.Result{}, err
+		}
+		if db.Status.State != v1alpha1.DependencyBuildStateDeploying {
+			//wrong state
+			return reconcile.Result{}, nil
+		}
+
+		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+		if success {
+			db.Status.State = v1alpha1.DependencyBuildStateComplete
+		} else {
+			db.Status.State = v1alpha1.DependencyBuildStateFailed
+		}
+
+		err = r.client.Status().Update(ctx, db)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 	return reconcile.Result{}, nil
 }
