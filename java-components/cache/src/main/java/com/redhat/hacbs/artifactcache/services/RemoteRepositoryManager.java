@@ -1,7 +1,7 @@
 package com.redhat.hacbs.artifactcache.services;
 
-import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -11,7 +11,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.microprofile.config.Config;
 
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
@@ -59,12 +58,25 @@ public class RemoteRepositoryManager {
     private RepositoryCache rebuiltCache;
 
     @PostConstruct
-    void setup() throws IOException, GitAPIException {
+    void setup() throws URISyntaxException {
         hacbsStorageMgr = storageManager.resolve(HACBS);
         //TODO: this is a bit of a hack
         //we read the deployment config and if present use it to configure the 'rebuilt' repo
         var registryOwner = config.getOptionalValue("registry.owner", String.class);
-        if (registryOwner.isPresent()) {
+        var mavenRepo = config.getOptionalValue("maven.repository.url", String.class);
+        var mavenUsername = config.getOptionalValue("maven.repository.username", String.class);
+        var mavenPassword = config.getOptionalValue("maven.repository.password", String.class);
+        if (mavenRepo.isPresent()) {
+            //if we are deploying to a maven repo we use this by default
+            Repository rebuiltRepo = new Repository("rebuilt",
+                    mavenRepo.get(),
+                    RepositoryType.MAVEN2,
+                    new MavenClient("rebuilt", new URI(mavenRepo.get()), 1, mavenUsername.orElse(null),
+                            mavenPassword.orElse(null)));
+            rebuiltCache = new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false);
+            remoteStores.put("rebuilt", List.of(rebuiltCache));
+
+        } else if (registryOwner.isPresent()) {
             var host = config.getOptionalValue("registry.host", String.class).orElse("quay.io");
             var port = config.getOptionalValue("registry.port", int.class).orElse(443);
             var token = config.getOptionalValue("registry" + TOKEN, String.class);

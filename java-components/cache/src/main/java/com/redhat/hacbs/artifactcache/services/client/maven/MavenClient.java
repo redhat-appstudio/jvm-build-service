@@ -3,14 +3,19 @@ package com.redhat.hacbs.artifactcache.services.client.maven;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.http.HttpException;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.protocol.HttpContext;
 import org.eclipse.microprofile.config.ConfigProvider;
 
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
@@ -35,10 +40,22 @@ public class MavenClient implements RepositoryClient {
 
     final int networkRetries;
 
-    public MavenClient(String name, URI uri, int networkRetries) {
+    public MavenClient(String name, URI uri, int networkRetries, String username, String password) {
         this.networkRetries = networkRetries;
         int threads = ConfigProvider.getConfig().getOptionalValue("quarkus.thread.pool.max.threads", Integer.class).orElse(10);
-        remoteClient = HttpClientBuilder.create().disableAutomaticRetries().setMaxConnPerRoute(threads).setMaxConnTotal(threads)
+        HttpClientBuilder httpClientBuilder = HttpClientBuilder.create().disableAutomaticRetries().setMaxConnPerRoute(threads)
+                .setMaxConnTotal(threads);
+        if (username != null && password != null) {
+            String header = "Basic "
+                    + Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
+            httpClientBuilder.addInterceptorLast(new HttpRequestInterceptor() {
+                @Override
+                public void process(HttpRequest httpRequest, HttpContext httpContext) throws HttpException, IOException {
+                    httpRequest.addHeader("Authorization", header);
+                }
+            });
+        }
+        remoteClient = httpClientBuilder
                 .build();
         this.name = name;
         this.uri = uri;
@@ -49,7 +66,7 @@ public class MavenClient implements RepositoryClient {
 
     public static MavenClient of(String name, URI uri) {
         //we hard code a single retry at this point
-        return new MavenClient(name, uri, 1);
+        return new MavenClient(name, uri, 1, null, null);
     }
 
     @Override
