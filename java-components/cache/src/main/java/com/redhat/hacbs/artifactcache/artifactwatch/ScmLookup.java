@@ -18,6 +18,7 @@ import com.redhat.hacbs.artifactcache.services.RecipeManager;
 import com.redhat.hacbs.recipes.GAV;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildStatus;
+import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 import com.redhat.hacbs.resources.model.v1alpha1.artifactbuildstatus.Scm;
 
@@ -80,19 +81,55 @@ public class ScmLookup {
                                     // operator loop.
                                     return; //the update should trigger the watch again
                                 }
-                                var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
                                 Scm scm = new Scm();
-                                scm.setScmType("git");
-                                scm.setScmURL(result.getRepoInfo().getUri());
-                                scm.setCommitHash(result.getHash());
-                                scm.setPath(result.getRepoInfo().getPath());
-                                scm.set_private(result.getRepoInfo().isPrivateRepo());
-                                scm.setTag(result.getTag());
-                                Log.infof("Adding artifactBuild with GAV %s with URI %s and hash %s ",
-                                        newObj.getSpec().getGav(), result.getRepoInfo().getUri(), result.getHash());
+
+                                // If the DependencyBuild was created directly no need to look up the GAV source, instead gather
+                                // from existing dependency.
+                                // TODO: Should we remove the annotation after processing it? Although it likely doesn't
+                                //     matter. e.g.
+                                //     newObj.getMetadata().getAnnotations().remove(ModelConstants.DEPENDENCY);
+                                //     But, patchStatus will likely not update the metadata?
+                                if (newObj.getMetadata().getAnnotations() != null &&
+                                        newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY)) {
+                                    var depName = newObj.getMetadata().getAnnotations().get(ModelConstants.DEPENDENCY);
+                                    var dependencyBuild = client.resources(DependencyBuild.class).withName(depName);
+                                    while (dependencyBuild.get().getStatus().getState()
+                                            .equals(ModelConstants.DEPENDENCY_BUILD_DEPLOYING)) {
+                                        Log.infof("Sleeping for DependencyBuild deploy...(currently %s)",
+                                                dependencyBuild.get().getStatus().getState());
+                                        Thread.sleep(10000);
+                                    }
+                                    var scmInfo = dependencyBuild.get().getSpec().getScm();
+                                    scm.setScmType("git");
+                                    scm.setScmURL(scmInfo.getScmURL());
+                                    scm.setCommitHash(scmInfo.getCommitHash());
+                                    scm.setPath(scmInfo.getPath());
+                                    scm.set_private(scmInfo.get_private());
+                                    scm.setTag(scmInfo.getTag());
+                                    Log.infof(
+                                            "Updating artifactBuild with Dependency %s (state: %s) with GAV %s with URI %s and hash %s ",
+                                            depName, dependencyBuild.get().getStatus().getState(), newObj.getSpec().getGav(),
+                                            scm.getScmURL(), scm.getCommitHash());
+                                    if (dependencyBuild.get().getStatus().getState()
+                                            .equals(ModelConstants.DEPENDENCY_BUILD_COMPLETE)) {
+                                        newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_COMPLETE);
+                                    } else {
+                                        newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_FAILED);
+                                    }
+                                } else {
+                                    var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
+                                    scm.setScmType("git");
+                                    scm.setScmURL(result.getRepoInfo().getUri());
+                                    scm.setCommitHash(result.getHash());
+                                    scm.setPath(result.getRepoInfo().getPath());
+                                    scm.set_private(result.getRepoInfo().isPrivateRepo());
+                                    scm.setTag(result.getTag());
+                                    Log.infof("Adding artifactBuild with GAV %s with URI %s and hash %s ",
+                                            newObj.getSpec().getGav(), result.getRepoInfo().getUri(), result.getHash());
+                                    newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
+                                }
                                 newObj.getStatus().setScm(scm);
                                 newObj.getStatus().setMessage("");
-                                newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
                             } catch (Exception e) {
                                 Log.errorf(e, "Failed to update rebuilt object");
                                 newObj.getStatus().setMessage(e.getMessage());

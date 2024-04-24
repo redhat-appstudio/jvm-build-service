@@ -788,6 +788,10 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+			err = r.createArtifacts(ctx, log, pr, db, deployed)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 
 			run.Results = &v1alpha1.BuildPipelineRunResults{
 				Image:               image,
@@ -1049,6 +1053,27 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 					return err
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func (r *ReconcileDependencyBuild) createArtifacts(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun, db *v1alpha1.DependencyBuild, deployed []string) error {
+	db.Status.DeployedArtifacts = deployed
+
+	for _, i := range deployed {
+		ab := v1alpha1.ArtifactBuild{}
+		ab.Namespace = pr.Namespace
+		ab.Name = artifactbuild.CreateABRName(i)
+		ab.Annotations = map[string]string{artifactbuild.DependencyAnnotation: db.Name}
+		ab.Spec.GAV = i
+		if err := controllerutil.SetOwnerReference(&ab, db, r.scheme); err != nil {
+			return err
+		}
+
+		err := r.client.Create(ctx, &ab)
+		if err != nil && !errors.IsAlreadyExists(err) {
+			return err
 		}
 	}
 	return nil

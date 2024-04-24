@@ -40,6 +40,8 @@ const (
 
 	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
 
+	DependencyAnnotation = "jvmbuildservice.io/dependencycreated"
+
 	RebuildAnnotation = "jvmbuildservice.io/rebuild"
 	// RebuiltAnnotation annotation that is applied after a rebuild, it will affect the dependencybuild behaviour
 	RebuiltAnnotation = "jvmbuildservice.io/rebuilt"

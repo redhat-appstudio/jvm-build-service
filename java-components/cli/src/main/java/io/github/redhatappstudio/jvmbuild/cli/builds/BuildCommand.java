@@ -4,6 +4,7 @@ import picocli.CommandLine;
 
 @CommandLine.Command(name = "build", subcommands = {
         BuildLogsCommand.class,
+        BuildCreateCommand.class,
         BuildSummaryCommand.class,
         BuildFixCommand.class,
         BuildDiagnosticCommand.class,
