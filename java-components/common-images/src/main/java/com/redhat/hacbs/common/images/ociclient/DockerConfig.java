@@ -1,4 +1,4 @@
-package com.redhat.hacbs.artifactcache.services.client.ociregistry;
+package com.redhat.hacbs.common.images.ociclient;
 
 import java.util.Map;
 

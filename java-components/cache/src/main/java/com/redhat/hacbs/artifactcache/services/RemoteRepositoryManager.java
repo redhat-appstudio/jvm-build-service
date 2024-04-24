@@ -15,7 +15,7 @@ import org.eclipse.microprofile.config.Config;
 
 import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.client.maven.MavenClient;
-import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRegistryRepositoryClient;
+import com.redhat.hacbs.artifactcache.services.client.ociregistry.OCIRepositoryClient;
 import com.redhat.hacbs.resources.model.v1alpha1.Util;
 import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
 
@@ -88,7 +88,7 @@ public class RemoteRepositoryManager {
                     "http" + (insecure ? "" : "s") + "://" + host + ":" + port + "/" + registryOwner.get() + "/"
                             + repository,
                     RepositoryType.OCI_REGISTRY,
-                    new OCIRegistryRepositoryClient(host + (port == 443 ? "" : ":" + port), registryOwner.get(), repository,
+                    new OCIRepositoryClient(host + (port == 443 ? "" : ":" + port), registryOwner.get(), repository,
                             token, prependTag,
                             insecure, rebuiltArtifacts, hacbsStorageMgr));
             rebuiltCache = new RepositoryCache(storageManager.resolve("rebuilt"), rebuiltRepo, false);
@@ -108,7 +108,7 @@ public class RemoteRepositoryManager {
                                 registry.getRepository() + "/"
                                 + registry.getPrependTag(),
                         RepositoryType.OCI_REGISTRY,
-                        new OCIRegistryRepositoryClient(registry.getHost() + (registry.getPort().equals("443")
+                        new OCIRepositoryClient(registry.getHost() + (registry.getPort().equals("443")
                                 ? ""
                                 : ":" + registry.getPort()), registry.getOwner(),
                                 registry.getRepository(),
@@ -193,7 +193,7 @@ public class RemoteRepositoryManager {
                         .orElse(Boolean.FALSE);
                 String u = owner.get();
 
-                RepositoryClient client = new OCIRegistryRepositoryClient(registry, u, repository, token, prependTag,
+                RepositoryClient client = new OCIRepositoryClient(registry, u, repository, token, prependTag,
                         enableHttpAndInsecureFailover, rebuiltArtifacts, hacbsStorageMgr);
                 Log.infof("OCI registry %s added with owner %s", registry, u);
                 return List.of(new Repository(repo, "oci://" + registry + "/" + u, RepositoryType.OCI_REGISTRY, client));
