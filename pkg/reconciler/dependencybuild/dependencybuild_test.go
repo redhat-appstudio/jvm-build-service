@@ -276,6 +276,14 @@ func getBuildPipelineNo(client runtimeclient.Client, g *WithT, no int) *tektonpi
 	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: fmt.Sprintf("test-build-%d", no)}, &build)).Should(BeNil())
 	return &build
 }
+
+func getDeployPipeline(client runtimeclient.Client, g *WithT) *tektonpipeline.PipelineRun {
+	ctx := context.TODO()
+	build := tektonpipeline.PipelineRun{}
+	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-deploy"}, &build)).Should(BeNil())
+	return &build
+}
+
 func getBuildInfoPipeline(client runtimeclient.Client, g *WithT) *tektonpipeline.PipelineRun {
 	return getBuildInfoPipelineNo(client, g, 0)
 }
@@ -368,7 +376,23 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 		db := getBuild(client, g)
+		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateDeploying))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}))
+
+		pr = getDeployPipeline(client, g)
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:               apis.ConditionSucceeded,
+			Status:             "True",
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		})
+		pr.Status.Results = []tektonpipeline.PipelineRunResult{{Name: PipelineResultDeployedResources, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: TestArtifact}}}
+		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}}))
+		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}))
+		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
+
 		g.Expect(db.Status.DeployedArtifacts).Should(ContainElement(TestArtifact))
 		ra := v1alpha1.RebuiltArtifact{}
 		g.Expect(client.Get(ctx, types.NamespacedName{Name: artifactbuild.CreateABRName(TestArtifact), Namespace: metav1.NamespaceDefault}, &ra)).Should(Succeed())

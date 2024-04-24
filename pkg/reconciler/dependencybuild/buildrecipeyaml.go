@@ -29,7 +29,8 @@ const (
 	MavenArtifactsPath          = "/maven-artifacts"
 	PreBuildImageDigest         = "PRE_BUILD_IMAGE_DIGEST"
 	HermeticPreBuildImageDigest = "HERMETIC_PRE_BUILD_IMAGE_DIGEST"
-	DeployedImageDigest         = "DEPLOYED_IMAGE_DIGEST"
+	DeployedImageDigestParam    = "DEPLOYED_IMAGE_DIGEST"
+	GavsParam                   = "GAVS"
 )
 
 //go:embed scripts/maven-build.sh
@@ -61,6 +62,61 @@ var buildEntryScript string
 //go:embed scripts/hermetic-entry.sh
 var hermeticBuildEntryScript string
 
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
+	zero := int64(0)
+	tagArgs := tagCommands(jbsConfig)
+
+	limits, err := memoryLimits(jbsConfig, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	secretVariables := secretVariables(jbsConfig)
+
+	pullPolicy := pullPolicy(buildRequestProcessorImage)
+	tagTask := tektonpipeline.TaskSpec{
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}},
+		Params:     []tektonpipeline.ParamSpec{{Name: "GAVS", Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigestParam, Type: tektonpipeline.ParamTypeString}},
+		Steps: []tektonpipeline.Step{
+			{
+				Name:            "tag",
+				Image:           buildRequestProcessorImage,
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				ComputeResources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(tagArgs),
+			},
+		},
+	}
+
+	tagPipelineTask := tektonpipeline.PipelineTask{
+		Name: artifactbuild.TagTaskName,
+		TaskSpec: &tektonpipeline.EmbeddedTask{
+			TaskSpec: tagTask,
+		},
+		Params: []tektonpipeline.Param{
+			{Name: DeployedImageDigestParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + DeployedImageDigestParam + ")"}},
+			{Name: GavsParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + GavsParam + ")"}},
+		},
+		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+			{Name: WorkspaceTls, Workspace: WorkspaceTls},
+		},
+	}
+
+	ps := &tektonpipeline.PipelineSpec{
+		Params: []tektonpipeline.ParamSpec{{Name: GavsParam, Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigestParam, Type: tektonpipeline.ParamTypeString}},
+		Tasks: []tektonpipeline.PipelineTask{
+			tagPipelineTask,
+		},
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceTls}},
+	}
+	return ps, nil
+}
 func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
@@ -71,7 +127,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	imageRegistry := jbsConfig.ImageRegistry()
 
-	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, tagArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, &imageRegistry, buildId)
+	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, buildId)
+
 	gitArgs := gitArgs(db, recipe)
 	install := additionalPackages(recipe)
 
@@ -187,22 +244,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		{Name: PipelineParamProjectVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
 	}
-	secretVariables := make([]v1.EnvVar, 0)
-	if jbsConfig.ImageRegistry().SecretName != "" {
-		secretVariables = []v1.EnvVar{
-			{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &trueBool}}},
-		}
-	}
-	if jbsConfig.Spec.MavenDeployment.Repository != "" {
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.MavenSecretName}, Key: v1alpha1.MavenSecretKey, Optional: &trueBool}}})
-
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_ACCESS_KEY_ID", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSAccessID, Optional: &trueBool}}})
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSSecretKey, Optional: &trueBool}}})
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSProfile, Optional: &trueBool}}})
-	}
-	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitRepoSecretName}, Key: v1alpha1.GitRepoSecretKey, Optional: &trueBool}}})
-	}
+	secretVariables := secretVariables(jbsConfig)
 
 	preBuildImage := existingImages[recipe.Image+"-"+recipe.Tool]
 	preBuildImageRequired := preBuildImage == ""
@@ -307,32 +349,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			},
 		},
 	}
-	tagTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
-		Params:     []tektonpipeline.ParamSpec{{Name: "GAVS", Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigest, Type: tektonpipeline.ParamTypeString}},
-		Steps: []tektonpipeline.Step{
-			{
-				Name:            "tag",
-				Image:           buildRequestProcessorImage,
-				ImagePullPolicy: pullPolicy,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             secretVariables,
-				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
-					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(tagArgs),
-			},
-		},
-	}
 
-	tagDepends := BuildTaskName
-	tagDigest := "$(tasks." + BuildTaskName + ".results." + PipelineResultImageDigest + ")"
-	if hermeticBuildRequired {
-		tagDepends = artifactbuild.HermeticBuildTaskName
-		tagDigest = "$(tasks." + artifactbuild.HermeticBuildTaskName + ".results." + PipelineResultImageDigest + ")"
-	}
 	hermeticBuildPipelineTask := tektonpipeline.PipelineTask{
 		Name:     artifactbuild.HermeticBuildTaskName,
 		RunAfter: []string{BuildTaskName},
@@ -341,19 +358,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		},
 
 		Params: []tektonpipeline.Param{{Name: HermeticPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + HermeticPreBuildImageDigest + ")"}}},
-		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
-			{Name: WorkspaceSource, Workspace: WorkspaceSource},
-			{Name: WorkspaceTls, Workspace: WorkspaceTls},
-		},
-	}
-	tagPipelineTask := tektonpipeline.PipelineTask{
-		Name:     artifactbuild.TagTaskName,
-		RunAfter: []string{tagDepends},
-		TaskSpec: &tektonpipeline.EmbeddedTask{
-			TaskSpec: tagTask,
-		},
-		Params: []tektonpipeline.Param{{Name: DeployedImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: tagDigest}}},
 		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 			{Name: WorkspaceSource, Workspace: WorkspaceSource},
@@ -451,7 +455,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if hermeticBuildRequired {
 		ps.Tasks = append(ps.Tasks, hermeticBuildPipelineTask)
 	}
-	ps.Tasks = append(ps.Tasks, tagPipelineTask)
 
 	for _, i := range buildTask.Results {
 		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + i.Name + ")"}})
@@ -490,10 +493,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		}
 	}
 
-	ps.Tasks[len(ps.Tasks)-1].Params = append(ps.Tasks[len(ps.Tasks)-1].Params, tektonpipeline.Param{
-		Name:  PipelineResultGavs,
-		Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultDeployedResources + ")"}})
-
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
 	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
@@ -522,6 +521,27 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
 
 	return ps, df, nil
+}
+
+func secretVariables(jbsConfig *v1alpha1.JBSConfig) []v1.EnvVar {
+	trueBool := true
+	secretVariables := make([]v1.EnvVar, 0)
+	if jbsConfig.ImageRegistry().SecretName != "" {
+		secretVariables = []v1.EnvVar{
+			{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &trueBool}}},
+		}
+	}
+	if jbsConfig.Spec.MavenDeployment.Repository != "" {
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.MavenSecretName}, Key: v1alpha1.MavenSecretKey, Optional: &trueBool}}})
+
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_ACCESS_KEY_ID", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSAccessID, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSSecretKey, Optional: &trueBool}}})
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSProfile, Optional: &trueBool}}})
+	}
+	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
+		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitRepoSecretName}, Key: v1alpha1.GitRepoSecretKey, Optional: &trueBool}}})
+	}
+	return secretVariables
 }
 
 func createBuildScript(build string, hermeticBuildEntryScript string) string {
@@ -635,7 +655,7 @@ func gitArgs(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string 
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, imageRegistry *v1alpha1.ImageRegistry, buildId string) ([]string, []string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -669,10 +689,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
 	deployArgs = append(deployArgs, "--image-id="+imageId)
 
-	tagArgs := []string{
-		"tag-container",
-		"--image-digest=$(params." + DeployedImageDigest + ")",
-	}
+	imageRegistry := jbsConfig.ImageRegistry()
 	registryArgs := make([]string, 0)
 	if imageRegistry.Host != "" {
 		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
@@ -696,8 +713,6 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	deployArgs = append(deployArgs, registryArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
-	tagArgs = append(tagArgs, registryArgs...)
-	tagArgs = append(tagArgs, "$(params.GAVS)")
 
 	mavenArgs := make([]string, 0)
 	if jbsConfig.Spec.MavenDeployment.Repository != "" {
@@ -728,7 +743,40 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	}
 	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
-	return preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, tagArgs, hermeticPreBuildImageArgs
+	return preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
+}
+
+func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
+
+	tagArgs := []string{
+		"tag-container",
+		"--image-digest=$(params." + DeployedImageDigestParam + ")",
+	}
+	imageRegistry := jbsConfig.ImageRegistry()
+	registryArgs := make([]string, 0)
+	if imageRegistry.Host != "" {
+		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
+	}
+	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
+		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
+	}
+	if imageRegistry.Owner != "" {
+		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
+	}
+	if imageRegistry.Repository != "" {
+		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
+	}
+
+	if imageRegistry.Insecure {
+		registryArgs = append(registryArgs, "--registry-insecure")
+	}
+	if imageRegistry.PrependTag != "" {
+		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
+	}
+	tagArgs = append(tagArgs, registryArgs...)
+	tagArgs = append(tagArgs, "$(params.GAVS)")
+
+	return tagArgs
 }
 
 // This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.

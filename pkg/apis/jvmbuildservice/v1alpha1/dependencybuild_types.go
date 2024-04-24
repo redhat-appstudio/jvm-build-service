@@ -12,6 +12,7 @@ const (
 	DependencyBuildStateSubmitBuild  = "DependencyBuildStateSubmitBuild"
 	DependencyBuildStateBuilding     = "DependencyBuildStateBuilding"
 	DependencyBuildStateComplete     = "DependencyBuildStateComplete"
+	DependencyBuildStateDeploying    = "DependencyBuildStateDeploying"
 	DependencyBuildStateFailed       = "DependencyBuildStateFailed"
 	DependencyBuildStateContaminated = "DependencyBuildStateContaminated"
 )
