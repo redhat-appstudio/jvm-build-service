@@ -743,27 +743,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
 	deployArgs = append(deployArgs, "--image-id="+imageId)
 
-	imageRegistry := jbsConfig.ImageRegistry()
-	registryArgs := make([]string, 0)
-	if imageRegistry.Host != "" {
-		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
-	}
-	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
-		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
-	}
-	if imageRegistry.Owner != "" {
-		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
-	}
-	if imageRegistry.Repository != "" {
-		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
-	}
-
-	if imageRegistry.Insecure {
-		registryArgs = append(registryArgs, "--registry-insecure")
-	}
-	if imageRegistry.PrependTag != "" {
-		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
-	}
+	registryArgs := registryArgs(jbsConfig)
 	deployArgs = append(deployArgs, registryArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
@@ -800,6 +780,15 @@ func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 		"tag-container",
 		"--image-digest=$(params." + DeployedImageDigestParam + ")",
 	}
+	registryArgs := registryArgs(jbsConfig)
+	tagArgs = append(tagArgs, registryArgs...)
+	tagArgs = append(tagArgs, "$(params.GAVS)")
+
+	return tagArgs
+}
+
+func registryArgs(jbsConfig *v1alpha1.JBSConfig) []string {
+
 	imageRegistry := jbsConfig.ImageRegistry()
 	registryArgs := make([]string, 0)
 	if imageRegistry.Host != "" {
@@ -814,17 +803,13 @@ func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 	if imageRegistry.Repository != "" {
 		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
 	}
-
 	if imageRegistry.Insecure {
 		registryArgs = append(registryArgs, "--registry-insecure")
 	}
 	if imageRegistry.PrependTag != "" {
 		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
 	}
-	tagArgs = append(tagArgs, registryArgs...)
-	tagArgs = append(tagArgs, "$(params.GAVS)")
-
-	return tagArgs
+	return registryArgs
 }
 
 func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
