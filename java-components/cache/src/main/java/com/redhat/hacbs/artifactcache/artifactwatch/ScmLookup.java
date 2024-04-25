@@ -22,6 +22,7 @@ import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 import com.redhat.hacbs.resources.model.v1alpha1.artifactbuildstatus.Scm;
 
+import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
@@ -92,14 +93,16 @@ public class ScmLookup {
                                 if (newObj.getMetadata().getAnnotations() != null &&
                                         newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY)) {
                                     var depName = newObj.getMetadata().getAnnotations().get(ModelConstants.DEPENDENCY);
-                                    var dependencyBuild = client.resources(DependencyBuild.class).withName(depName);
-                                    while (dependencyBuild.get().getStatus().getState()
+                                    var resource = client.resources(DependencyBuild.class).withName(depName);
+                                    DependencyBuild dependencyBuild = resource.get();
+                                    while (dependencyBuild.getStatus().getState()
                                             .equals(ModelConstants.DEPENDENCY_BUILD_DEPLOYING)) {
                                         Log.infof("Sleeping for DependencyBuild deploy...(currently %s)",
-                                                dependencyBuild.get().getStatus().getState());
+                                                dependencyBuild.getStatus().getState());
                                         Thread.sleep(10000);
+                                        dependencyBuild = resource.get();
                                     }
-                                    var scmInfo = dependencyBuild.get().getSpec().getScm();
+                                    var scmInfo = dependencyBuild.getSpec().getScm();
                                     scm.setScmType("git");
                                     scm.setScmURL(scmInfo.getScmURL());
                                     scm.setCommitHash(scmInfo.getCommitHash());
@@ -108,14 +111,22 @@ public class ScmLookup {
                                     scm.setTag(scmInfo.getTag());
                                     Log.infof(
                                             "Updating artifactBuild with Dependency %s (state: %s) with GAV %s with URI %s and hash %s ",
-                                            depName, dependencyBuild.get().getStatus().getState(), newObj.getSpec().getGav(),
+                                            depName, dependencyBuild.getStatus().getState(), newObj.getSpec().getGav(),
                                             scm.getScmURL(), scm.getCommitHash());
-                                    if (dependencyBuild.get().getStatus().getState()
+                                    if (dependencyBuild.getStatus().getState()
                                             .equals(ModelConstants.DEPENDENCY_BUILD_COMPLETE)) {
                                         newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_COMPLETE);
                                     } else {
                                         newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_FAILED);
                                     }
+                                    OwnerReference ownerReference = new OwnerReference();
+                                    ownerReference.setApiVersion(dependencyBuild.getApiVersion());
+                                    ownerReference.setKind(newObj.getKind());
+                                    ownerReference.setName(newObj.getMetadata().getName());
+                                    ownerReference.setUid(newObj.getMetadata().getUid());
+                                    dependencyBuild = resource.get();
+                                    dependencyBuild.getMetadata().getOwnerReferences().add(ownerReference);
+                                    resource.patch(dependencyBuild);
                                 } else {
                                     var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
                                     scm.setScmType("git");
@@ -137,7 +148,6 @@ public class ScmLookup {
                                 // Not setting status label to missing here but will be handled in artifactbuild.go Reconcile
                                 // operator loop that calls updateLabel.
                             }
-
                             client.resource(newObj).patchStatus();
                             return;
                         } catch (KubernetesClientException e) {

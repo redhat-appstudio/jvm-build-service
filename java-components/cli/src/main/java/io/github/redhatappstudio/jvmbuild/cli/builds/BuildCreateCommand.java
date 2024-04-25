@@ -40,7 +40,6 @@ public class BuildCreateCommand implements Runnable {
         scm.setScmURL(url);
         scm.setTag(tag);
         scm.setPath(contextPath);
-        // TODO: Do we need to set the hash?
         scm.setCommitHash(scmHash);
         dependencyBuild.getSpec().setScm(scm);
 

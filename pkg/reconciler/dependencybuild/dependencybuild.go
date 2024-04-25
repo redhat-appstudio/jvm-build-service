@@ -1067,9 +1067,6 @@ func (r *ReconcileDependencyBuild) createArtifacts(ctx context.Context, log logr
 		ab.Name = artifactbuild.CreateABRName(i)
 		ab.Annotations = map[string]string{artifactbuild.DependencyAnnotation: db.Name}
 		ab.Spec.GAV = i
-		if err := controllerutil.SetOwnerReference(&ab, db, r.scheme); err != nil {
-			return err
-		}
 
 		err := r.client.Create(ctx, &ab)
 		if err != nil && !errors.IsAlreadyExists(err) {
