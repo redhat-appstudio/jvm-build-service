@@ -143,7 +143,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, buildId)
 
-	gitArgs := gitArgs(db, recipe)
+	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 
 	preprocessorArgs := []string{
@@ -428,7 +428,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
-					Script: gitArgs + "\n" + createBuildScript,
+					Script: gitScript + "\n" + createBuildScript,
 					Env: []v1.EnvVar{
 						{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 						{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
@@ -695,7 +695,7 @@ func additionalPackages(recipe *v1alpha1.BuildRecipe) string {
 	return install
 }
 
-func gitArgs(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string {
+func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string {
 	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ")\" && "
 	if db.Spec.ScmInfo.Private {
 		gitArgs = gitArgs + "echo \"$GIT_TOKEN\" > $HOME/.git-credentials && chmod 400 $HOME/.git-credentials && "
@@ -748,17 +748,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
 
-	gitArgs := make([]string, 0)
-	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
-		gitArgs = append(gitArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
-	}
-	if jbsConfig.Spec.GitSourceArchive.URL != "" {
-		gitArgs = append(gitArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
-	}
-	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
-		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
-	}
-	deployArgs = append(deployArgs, gitArgs...)
+	deployArgs = append(deployArgs, gitArgs(jbsConfig)...)
 
 	hermeticPreBuildImageArgs := []string{
 		"deploy-hermetic-pre-build-image",
@@ -849,6 +839,20 @@ func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 	deployArgs = append(deployArgs, mavenArgs...)
 
 	return deployArgs
+}
+
+func gitArgs(jbsConfig *v1alpha1.JBSConfig) []string {
+	gitArgs := make([]string, 0)
+	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
+		gitArgs = append(gitArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
+	}
+	if jbsConfig.Spec.GitSourceArchive.URL != "" {
+		gitArgs = append(gitArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
+	}
+	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
+		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
+	}
+	return gitArgs
 }
 
 // This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
