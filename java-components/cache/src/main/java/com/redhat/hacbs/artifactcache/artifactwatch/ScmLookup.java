@@ -84,14 +84,20 @@ public class ScmLookup {
                                 }
                                 Scm scm = new Scm();
 
-                                // If the DependencyBuild was created directly no need to look up the GAV source, instead gather
-                                // from existing dependency.
-                                // TODO: Should we remove the annotation after processing it? Although it likely doesn't
-                                //     matter. e.g.
-                                //     newObj.getMetadata().getAnnotations().remove(ModelConstants.DEPENDENCY);
-                                //     But, patchStatus will likely not update the metadata?
                                 if (newObj.getMetadata().getAnnotations() != null &&
+                                        newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY) &&
+                                        ModelConstants.ARTIFACT_BUILD_NEW.equals(newObj.getStatus().getState())) {
+                                    // If originally created from a DependencyBuild using a custom SCM but we're doing a rebuild
+                                    // then don't use the recipe DB for GAV lookup.
+                                    scm = newObj.getStatus().getScm();
+                                    newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
+                                    Log.infof("Tagging artifactBuild for rebuild with URI %s and hash %s ", scm.getScmURL(),
+                                            scm.getCommitHash());
+
+                                } else if (newObj.getMetadata().getAnnotations() != null &&
                                         newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY)) {
+                                    // If the DependencyBuild was created directly no need to look up the GAV source, instead gather
+                                    // from existing dependency.
                                     var depName = newObj.getMetadata().getAnnotations().get(ModelConstants.DEPENDENCY);
                                     var resource = client.resources(DependencyBuild.class).withName(depName);
                                     DependencyBuild dependencyBuild = resource.get();
