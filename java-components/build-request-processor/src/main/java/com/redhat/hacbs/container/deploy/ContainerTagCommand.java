@@ -1,11 +1,11 @@
-package com.redhat.hacbs.container.analyser.deploy;
+package com.redhat.hacbs.container.deploy;
 
 import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
+import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDeployer;
 
 import picocli.CommandLine;
 

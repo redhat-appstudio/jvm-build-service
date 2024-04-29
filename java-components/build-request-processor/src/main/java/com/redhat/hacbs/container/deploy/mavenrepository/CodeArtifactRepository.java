@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy.mavenrepository;
+package com.redhat.hacbs.container.deploy.mavenrepository;
 
 import com.amazonaws.services.codeartifact.AWSCodeArtifact;
 

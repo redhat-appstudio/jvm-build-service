@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy.mavenrepository;
+package com.redhat.hacbs.container.deploy.mavenrepository;
 
 import java.io.File;
 import java.io.IOException;

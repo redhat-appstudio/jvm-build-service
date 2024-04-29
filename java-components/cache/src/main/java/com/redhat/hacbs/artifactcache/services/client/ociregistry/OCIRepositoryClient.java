@@ -14,6 +14,7 @@ import com.redhat.hacbs.artifactcache.artifactwatch.RebuiltArtifacts;
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
 import com.redhat.hacbs.artifactcache.services.StorageManager;
+import com.redhat.hacbs.common.images.ociclient.LocalImage;
 import com.redhat.hacbs.common.images.ociclient.OCIRegistryClient;
 import com.redhat.hacbs.resources.util.ShaUtil;
 
@@ -104,7 +105,7 @@ public class OCIRepositoryClient implements RepositoryClient {
         return Optional.empty();
     }
 
-    private Optional<Path> getLocalCachePath(OCIRegistryClient.LocalImage image)
+    private Optional<Path> getLocalCachePath(LocalImage image)
             throws IOException {
         String digestHash = image.getDigestHash();
         Path digestHashPath = storageManager.accessDirectory(digestHash);
@@ -135,7 +136,7 @@ public class OCIRepositoryClient implements RepositoryClient {
         }
     }
 
-    private Optional<Path> pullFromRemoteAndCache(OCIRegistryClient.LocalImage image,
+    private Optional<Path> pullFromRemoteAndCache(LocalImage image,
             Path digestHashPath)
             throws IOException {
         //layer 2 is artifacts, should be a 3 layer image

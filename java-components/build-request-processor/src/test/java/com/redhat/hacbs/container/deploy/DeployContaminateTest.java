@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy;
+package com.redhat.hacbs.container.deploy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.redhat.hacbs.container.analyser.deploy.mavenrepository.CodeArtifactRepository;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.resources.util.HashUtil;
 
@@ -161,8 +160,7 @@ public class DeployContaminateTest {
         }
 
         @Override
-        protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs,
-                CodeArtifactRepository codeArtifactRepository)
+        protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs)
                 throws Exception {
             System.out.println("Skipping doDeployment for " + deploymentPath + " from " + sourcePath);
         }

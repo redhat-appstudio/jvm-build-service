@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy.git;
+package com.redhat.hacbs.container.deploy.git;
 
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 

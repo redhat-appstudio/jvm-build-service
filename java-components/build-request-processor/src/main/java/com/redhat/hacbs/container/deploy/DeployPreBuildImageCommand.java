@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy;
+package com.redhat.hacbs.container.deploy;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,7 +8,7 @@ import java.util.function.BiConsumer;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
+import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDeployer;
 
 import picocli.CommandLine;
 

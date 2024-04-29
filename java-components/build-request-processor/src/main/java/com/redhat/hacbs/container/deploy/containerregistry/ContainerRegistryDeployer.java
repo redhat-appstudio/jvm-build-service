@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy.containerregistry;
+package com.redhat.hacbs.container.deploy.containerregistry;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -31,8 +31,8 @@ import com.google.cloud.tools.jib.api.buildplan.FileEntriesLayer;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissions;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissionsProvider;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
-import com.redhat.hacbs.container.analyser.deploy.DeployData;
-import com.redhat.hacbs.container.analyser.deploy.Gav;
+import com.redhat.hacbs.container.deploy.DeployData;
+import com.redhat.hacbs.container.deploy.Gav;
 
 import io.quarkus.logging.Log;
 

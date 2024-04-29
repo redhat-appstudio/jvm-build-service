@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy.git;
+package com.redhat.hacbs.container.deploy.git;
 
 import java.io.IOException;
 import java.net.URI;

@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy.containerregistry;
+package com.redhat.hacbs.container.deploy.containerregistry;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

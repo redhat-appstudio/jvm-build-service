@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy;
+package com.redhat.hacbs.container.deploy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

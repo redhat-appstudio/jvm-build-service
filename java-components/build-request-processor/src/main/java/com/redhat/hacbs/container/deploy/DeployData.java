@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy;
+package com.redhat.hacbs.container.deploy;
 
 import java.nio.file.Path;
 import java.util.Objects;

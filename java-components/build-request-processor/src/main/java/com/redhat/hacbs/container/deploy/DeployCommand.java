@@ -1,12 +1,10 @@
-package com.redhat.hacbs.container.analyser.deploy;
+package com.redhat.hacbs.container.deploy;
 
-import static org.apache.commons.lang3.ObjectUtils.isEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -21,7 +19,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -33,19 +30,11 @@ import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.codeartifact.AWSCodeArtifactClientBuilder;
-import com.amazonaws.services.codeartifact.model.GetAuthorizationTokenRequest;
-import com.amazonaws.util.AwsHostNameUtils;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
-import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerRegistryDeployer;
-import com.redhat.hacbs.container.analyser.deploy.git.Git;
-import com.redhat.hacbs.container.analyser.deploy.mavenrepository.CodeArtifactRepository;
-import com.redhat.hacbs.container.analyser.deploy.mavenrepository.MavenRepositoryDeployer;
+import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDeployer;
+import com.redhat.hacbs.container.deploy.git.Git;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
@@ -116,18 +105,8 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
     String prependTag;
 
-    // Maven Repo Deployment specification
-    @CommandLine.Option(names = "--mvn-username")
-    String mvnUser;
-
-    @ConfigProperty(name = "maven.password")
-    Optional<String> mvnPassword;
-
     @ConfigProperty(name = "aws.profile")
     Optional<String> awsProfile;
-
-    @CommandLine.Option(names = "--mvn-repo")
-    String mvnRepo;
 
     @ConfigProperty(name = "git.deploy.token")
     Optional<String> gitToken;
@@ -301,42 +280,6 @@ public class DeployCommand implements Runnable {
                 }
             }
             generateBuildSbom();
-            CodeArtifactRepository codeArtifactRepository = null;
-            if (isNotEmpty(mvnRepo) && mvnPassword.isEmpty()) {
-                Log.infof("Maven repository specified as %s and no password specified", mvnRepo);
-                URL url = new URL(mvnRepo);
-                String repo = url.getHost();
-                // This is special handling for AWS CodeArtifact. It will automatically retrieve a token
-                // (which normally only last up to 12 hours). Token information will be retrieved from
-                // the AWS configuration which will utilise the configuration file and/or scan environment
-                // variables such as AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_PROFILE
-                if (repo.endsWith(".amazonaws.com")) {
-                    if (isEmpty(mvnUser)) {
-                        Log.warnf("Username for deployment is empty");
-                    }
-                    Matcher matcher = CODE_ARTIFACT_PATTERN.matcher(mvnRepo);
-                    if (matcher.matches()) {
-                        var mr = matcher.toMatchResult();
-                        int firstDash = repo.indexOf("-");
-                        String parsedRegion = AwsHostNameUtils.parseRegion(repo, null);
-                        String domain = repo.substring(0, firstDash);
-                        String domainOwner = repo.substring(firstDash + 1, repo.indexOf("."));
-                        Log.infof("Generating AWS token for domain %s, owner %s, region %s", domain, domainOwner, parsedRegion);
-
-                        Regions region = Regions.fromName(parsedRegion);
-                        var awsClient = AWSCodeArtifactClientBuilder.standard()
-                                .withCredentials(awsProfile.isEmpty() ? DefaultAWSCredentialsProviderChain.getInstance()
-                                        : new ProfileCredentialsProvider(awsProfile.get()))
-                                .withRegion(region).build();
-                        mvnPassword = Optional.of(awsClient.getAuthorizationToken(
-                                new GetAuthorizationTokenRequest().withDomain(domain).withDomainOwner(domainOwner))
-                                .getAuthorizationToken());
-                        codeArtifactRepository = new CodeArtifactRepository(awsClient, mr.group(1), mr.group(2));
-                    } else {
-                        Log.errorf("Unable to parse AWS CodeArtifact URL: %s", mvnRepo);
-                    }
-                }
-            }
 
             //we still deploy, but without the contaminates
             // This means the build failed to produce any deployable output.
@@ -344,7 +287,7 @@ public class DeployCommand implements Runnable {
             if (!gavs.isEmpty()) {
                 try {
                     cleanBrokenSymlinks(sourcePath);
-                    doDeployment(sourcePath, logsPath, gavs, codeArtifactRepository);
+                    doDeployment(sourcePath, logsPath, gavs);
                 } catch (Throwable t) {
                     Log.error("Deployment failed", t);
                     flushLogs();
@@ -429,7 +372,7 @@ public class DeployCommand implements Runnable {
 
     }
 
-    protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs, CodeArtifactRepository codeArtifactRepository)
+    protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs)
             throws Exception {
         if (imageDeployment) {
             ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
@@ -442,12 +385,6 @@ public class DeployCommand implements Runnable {
                             imageDigest = hash;
                         }
                     });
-        }
-        if (isNotEmpty(mvnRepo)) {
-            // Maven Repo Deployment
-            MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo,
-                    deploymentPath, codeArtifactRepository);
-            deployer.deploy();
         }
     }
 

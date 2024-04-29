@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy;
+package com.redhat.hacbs.container.deploy;
 
 import static com.redhat.hacbs.container.verifier.MavenUtils.gavToCoords;
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;

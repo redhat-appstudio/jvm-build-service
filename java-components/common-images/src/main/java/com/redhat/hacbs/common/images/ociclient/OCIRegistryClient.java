@@ -130,7 +130,7 @@ public class OCIRegistryClient {
                 if (cause instanceof ResponseException) {
                     ResponseException e = (ResponseException) cause;
                     if (e.getStatusCode() == 404) {
-                        log.debugf("Failed to find image %s/%s/%s", registry, repository, tagOrDigest);
+                        log.warnf("Failed to find image %s/%s/%s", registry, repository, tagOrDigest);
                         return Optional.empty();
                     }
                 }
@@ -151,7 +151,7 @@ public class OCIRegistryClient {
         String manifestMediaType = manifest.getManifestMediaType();
 
         if (OCI_MEDIA_TYPE.equalsIgnoreCase(manifestMediaType)) {
-            return new LocalImage(registryClient, (OciManifestTemplate) manifest, descriptorDigest, digestHash);
+            return new LocalImageImpl(registryClient, (OciManifestTemplate) manifest, descriptorDigest, digestHash);
         } else {
             // TODO: handle docker type?
             // application/vnd.docker.distribution.manifest.v2+json = V22ManifestTemplate
@@ -205,7 +205,7 @@ public class OCIRegistryClient {
      * A local representation of a downloaded image.
      *
      */
-    public class LocalImage {
+    public class LocalImageImpl implements LocalImage {
 
         private final RegistryClient registryClient;
         private final OciManifestTemplate manifest;
@@ -213,7 +213,7 @@ public class OCIRegistryClient {
 
         private final String digestHash;
 
-        LocalImage(RegistryClient registryClient, OciManifestTemplate manifest, DescriptorDigest descriptorDigest,
+        LocalImageImpl(RegistryClient registryClient, OciManifestTemplate manifest, DescriptorDigest descriptorDigest,
                 String digestHash) {
             this.registryClient = registryClient;
             this.manifest = manifest;
@@ -221,28 +221,34 @@ public class OCIRegistryClient {
             this.digestHash = digestHash;
         }
 
+        @Override
         public int getLayerCount() {
             return manifest.getLayers().size();
         }
 
+        @Override
         public OciManifestTemplate getManifest() {
             return manifest;
         }
 
+        @Override
         public DescriptorDigest getDescriptorDigest() {
             return descriptorDigest;
         }
 
+        @Override
         public String getDigestHash() {
             return digestHash;
         }
 
+        @Override
         public void pullLayer(int layer, Path target) throws IOException {
             pullLayer(layer, target, s -> {
             }, s -> {
             });
         }
 
+        @Override
         public void pullLayer(int layer,
                 Path outputPath,
                 Consumer<Long> blobSizeListener,

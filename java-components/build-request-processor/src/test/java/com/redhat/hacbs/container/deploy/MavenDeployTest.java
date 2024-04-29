@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.deploy;
+package com.redhat.hacbs.container.deploy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -14,15 +14,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.logging.LogRecord;
 
 import jakarta.inject.Inject;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.google.cloud.tools.jib.api.DescriptorDigest;
+import com.google.cloud.tools.jib.image.json.OciManifestTemplate;
+import com.redhat.hacbs.common.images.ociclient.LocalImage;
+import com.redhat.hacbs.common.images.ociclient.OCIRegistryClient;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.resources.util.HashUtil;
 
@@ -67,23 +73,55 @@ public class MavenDeployTest {
         Path deployment = Files.createTempDirectory("deployment");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        DeployCommand deployCommand = new DeployCommand(null, resultsUpdater);
-        deployCommand.deploymentPath = onDiskRepo.toAbsolutePath();
-        deployCommand.imageId = "test-image";
-        deployCommand.scmUri = REPO;
-        deployCommand.commit = COMMIT;
-        deployCommand.sourcePath = source.toAbsolutePath();
-        deployCommand.allowedSources = Set.of("redhat", "rebuilt"); // Default value
-        deployCommand.imageDeployment = false;
-        deployCommand.mvnRepo = deployment.toAbsolutePath().toUri().toString();
+        MavenDeployCommand deployCommand = new MavenDeployCommand() {
+            @Override
+            OCIRegistryClient getRegistryClient() {
+                return new OCIRegistryClient("", "", "", Optional.empty(), false) {
+                    @Override
+                    public Optional<LocalImage> pullImage(String tagOrDigest) {
+                        return Optional.of(new LocalImage() {
+
+                            @Override
+                            public int getLayerCount() {
+                                return 1;
+                            }
+
+                            @Override
+                            public OciManifestTemplate getManifest() {
+                                return null;
+                            }
+
+                            @Override
+                            public DescriptorDigest getDescriptorDigest() {
+                                return null;
+                            }
+
+                            @Override
+                            public String getDigestHash() {
+                                return null;
+                            }
+
+                            @Override
+                            public void pullLayer(int layer, Path target) throws IOException {
+                                FileUtils.copyDirectory(onDiskRepo.toFile(), target.resolve("artifacts").toFile());
+                            }
+
+                            @Override
+                            public void pullLayer(int layer, Path outputPath, Consumer<Long> blobSizeListener, Consumer<Long> writtenByteCountListener) throws IOException {
+                                FileUtils.copyDirectory(onDiskRepo.toFile(), outputPath.resolve("artifacts").toFile());
+                            }
+                        });
+
+                    }
+                };
+            }
+        };
         deployCommand.mvnCtx = mvnContext;
-        deployCommand.buildId = "some-id";
         deployCommand.mvnPassword = Optional.empty();
+        deployCommand.mvnRepo = deployment.toAbsolutePath().toUri().toString();
 
         deployCommand.run();
         List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-        assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r)
-                .contains("GAVs to deploy: [com.company.foo:foo-bar:3.25.8, com.company.foo:foo-baz:3.25.8]")));
         assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r)
                 .contains("Deploying [com.company.foo:foo-baz:pom:3.25.8]")));
         assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r)
