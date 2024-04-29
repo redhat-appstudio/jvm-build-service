@@ -2,7 +2,7 @@ import React from 'react';
 import {Modal, ModalVariant, Button, Form, FormGroup, Popover, TextInput, Checkbox} from '@patternfly/react-core';
 import {ArtifactEditResourceService, ArtifactListDTO, ModifyScmRepoCommand} from "../../services/openapi";
 import {GithubIcon} from "@patternfly/react-icons";
-import {Link} from "@reach/router";
+import {Link} from "react-router-dom";
 
 
 type ArtifactEditModalData = {
