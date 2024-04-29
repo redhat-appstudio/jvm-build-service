@@ -108,6 +108,7 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 		}
 	}
 
+	log.Info(fmt.Sprintf("### artifactBuild prerr %#v and aberr %#v", prerr, abrerr))
 	if prerr != nil && abrerr != nil {
 		log.Info(fmt.Sprintf("Reconcile key %s received not found errors for pipelineruns and artifactbuilds (probably deleted)", request.NamespacedName.String()))
 		return ctrl.Result{}, nil

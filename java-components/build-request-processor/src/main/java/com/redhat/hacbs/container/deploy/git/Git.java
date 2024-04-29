@@ -4,16 +4,25 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 
 import io.quarkus.logging.Log;
 
@@ -25,11 +34,48 @@ public abstract class Git {
 
     protected boolean newGitRepository = false;
 
+    /**
+     * Creates a Git repository using the supplied scm name
+     * @param name a SCM URI.
+     * @throws IOException if an error occurs.
+     * @throws URISyntaxException if an error occurs.
+     */
     public abstract void create(String name)
             throws IOException, URISyntaxException;
 
+    /**
+     * Initialises an existing Git repository using the supplied scm name
+     * @param name a SCM URI.
+     * @throws IOException if an error occurs.
+     */
+    public abstract void initialise(String name)
+        throws IOException;
+
+    /**
+     * Using the repository at path, push all files with the associated commit.
+     * using imageId to create a tag for uniqueness.
+     * @param path the path to the repository.
+     * @param commit the commit (tag or hash) to push.
+     * @param imageId the string to use for uniqueness.
+     * @return a {@link GitStatus} object describing the result.
+     * @throws IOException if an error occurs.
+     */
     public abstract GitStatus add(Path path, String commit, String imageId)
             throws IOException;
+
+
+    /**
+     * Using the repository at path, push all files with the associated commit.
+     * using imageId to create a tag for uniqueness.
+     * @param path the path to the repository.
+     * @param commit the commit (tag or hash) to push.
+     * @param imageId the string to use for uniqueness.
+     * @param untracked whether to create a new commit containing any untracked/modified files.
+     * @return a {@link GitStatus} object describing the result.
+     * @throws IOException if an error occurs.
+     */
+    public abstract GitStatus add(Path path, String commit, String imageId, boolean untracked)
+        throws IOException;
 
     /**
      *
@@ -66,7 +112,7 @@ public abstract class Git {
         }
     }
 
-    protected GitStatus pushRepository(Path path, String httpTransportUrl, String commit, String imageId) {
+    protected GitStatus pushRepository(Path path, String httpTransportUrl, String commit, String imageId, boolean untracked) {
         try (var jGit = org.eclipse.jgit.api.Git.init().setDirectory(path.toFile()).call()) {
             // Find the tag name associated with the commit. Then append the unique imageId. This is from the Go code
             // and is a hash of abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path
@@ -76,7 +122,10 @@ public abstract class Git {
             //   rel/commons-net-3.9.0-75ecd81c7a2b384151c990975eb1dd10
             var tagName = jGit.describe().setTags(true).setTarget(commit).call();
             var jRepo = jGit.getRepository();
-
+            if (tagName == null) {
+                // No tag found - might be using a branch; default to commit.
+                tagName = commit;
+            }
             StoredConfig jConfig = jRepo.getConfig();
             Log.infof("Updating current origin of %s to %s", jConfig.getString("remote", "origin", "url"),
                     httpTransportUrl);
@@ -87,6 +136,16 @@ public abstract class Git {
             jConfig.save();
             Log.infof("Pushing to %s with content from %s (branch %s, commit %s, tag %s)", httpTransportUrl, path,
                     jRepo.getBranch(), commit, tagName);
+
+            if (untracked) {
+                jGit.add().addFilepattern(".").call();
+                RevCommit revCommit = jGit.commit().setNoVerify(true).setAuthor("JBS", "").setMessage("JBS created modifications").call();
+                List<DiffEntry> diffs = jGit.diff()
+                    .setOldTree(prepareTreeParser(jRepo, commit))
+                    .setNewTree(prepareTreeParser(jRepo, revCommit.getName()))
+                    .call();
+                Log.infof("Committed new files and changes %s", diffs.stream().map(DiffEntry::getNewPath).sorted().collect(Collectors.toList()));
+            }
 
             Ref tagRefStable = jGit.tag().setAnnotated(true).setName(tagName + "-" + imageId).setForceUpdate(true).call();
             Ref tagRefUnique = jGit.tag().setAnnotated(true).setName(tagName + "-" + UUID.randomUUID()).setForceUpdate(true)
@@ -153,6 +212,13 @@ public abstract class Git {
         return (host == null ? "" : host + split()) + group + split() + name;
     }
 
+    protected String processRepoName(String name) {
+        var index = name.lastIndexOf('/');
+        var scmRepo = name.substring(index == -1 ? 0 : index + 1);
+        index = scmRepo.lastIndexOf(".git");
+        return scmRepo.substring(0, index == -1 ? scmRepo.length() : index);
+    }
+
     abstract String split();
 
     public static class GitStatus {
@@ -172,6 +238,21 @@ public abstract class Git {
         @Override
         public String toString() {
             return "GitStatus{url='" + url + "', tag='" + tag + "', sha='" + sha + "'}";
+        }
+    }
+
+    // https://github.com/centic9/jgit-cookbook/blob/master/src/main/java/org/dstadler/jgit/porcelain/DiffFilesInCommit.java
+    private static AbstractTreeIterator prepareTreeParser(Repository repository, String objectId) throws IOException {
+        // from the commit we can build the tree which allows us to construct the TreeParser
+        try (RevWalk walk = new RevWalk(repository)) {
+            RevCommit commit = walk.parseCommit(repository.resolve(objectId));
+            RevTree tree = walk.parseTree(commit.getTree().getId());
+            CanonicalTreeParser treeParser = new CanonicalTreeParser();
+            try (ObjectReader reader = repository.newObjectReader()) {
+                treeParser.reset(reader, tree.getId());
+            }
+            walk.dispose();
+            return treeParser;
         }
     }
 }

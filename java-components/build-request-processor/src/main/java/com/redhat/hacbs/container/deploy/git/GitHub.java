@@ -55,6 +55,22 @@ public class GitHub extends Git {
         github = null;
     }
 
+
+    @Override
+    public void initialise(String name) throws IOException {
+        var scmRepo = processRepoName(name);
+        if (type == Type.USER) {
+            repository = github.getUser(owner).getRepository(scmRepo);
+        } else {
+            repository = github.getOrganization(owner).getRepository(scmRepo);
+        }
+        if (repository == null) {
+            throw new IOException("Unable to find the repository " + scmRepo);
+        }
+    }
+
+
+
     @Override
     public void create(String scmUri)
             throws IOException, URISyntaxException {
@@ -64,10 +80,10 @@ public class GitHub extends Git {
             if (repository == null) {
                 Log.infof("Creating repository with name %s", name);
                 repository = github.createRepository(name)
-                        .wiki(false)
-                        .defaultBranch("main")
-                        .projects(false)
-                        .private_(false).create();
+                    .wiki(false)
+                    .defaultBranch("main")
+                    .projects(false)
+                    .private_(false).create();
                 newGitRepository = true;
             } else {
                 Log.warnf("Repository %s already exists", name);
@@ -77,10 +93,10 @@ public class GitHub extends Git {
             if (repository == null) {
                 Log.infof("Creating repository with name %s", name);
                 repository = github.getOrganization(owner).createRepository(name)
-                        .wiki(false)
-                        .defaultBranch("main")
-                        .projects(false)
-                        .private_(false).create();
+                    .wiki(false)
+                    .defaultBranch("main")
+                    .projects(false)
+                    .private_(false).create();
                 newGitRepository = true;
             } else {
                 Log.warnf("Repository %s already exists", name);
@@ -93,7 +109,15 @@ public class GitHub extends Git {
         if (repository == null) {
             throw new RuntimeException("Call create first");
         }
-        return pushRepository(path, repository.getHttpTransportUrl(), commit, imageId);
+        return pushRepository(path, repository.getHttpTransportUrl(), commit, imageId, false);
+    }
+
+    @Override
+    public GitStatus add(Path path, String commit, String imageId, boolean untracked) {
+        if (repository == null) {
+            throw new RuntimeException("Call create first");
+        }
+        return pushRepository(path, repository.getHttpTransportUrl(), commit, imageId, untracked);
     }
 
     @Override

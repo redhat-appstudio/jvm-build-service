@@ -141,10 +141,12 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	imageRegistry := jbsConfig.ImageRegistry()
 
-	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, buildId)
+	preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, buildId)
 
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
+
+	log.Info(fmt.Sprintf("### Got Konflux arg %#v", konfluxArgs))
 
 	preprocessorArgs := []string{
 		"maven-prepare",
@@ -235,6 +237,52 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild"
 	}
+
+	//we generate a docker file that can be used to reproduce this build
+	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
+	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
+	log.Info(fmt.Sprintf("Generating dockerfile deriving from preBuildImage %#v with recipe build image %#v", preBuildImageFrom, recipe.Image))
+	preprocessorScript := "#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
+	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
+	envVars := extractEnvVar(toolEnv)
+	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
+	konfluxScript := "#!/bin/sh\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
+
+	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
+		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
+		"\nFROM " + preBuildImageFrom +
+		"\nUSER 0" +
+		"\nWORKDIR /root" +
+		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
+		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng" +
+		// TODO: Debug only
+		// "\nRUN rpm -ivh https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
+		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
+		// Copying JDK17 for the cache.
+		// TODO: Could we determine if we are using UBI8 and avoid this?
+		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
+		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
+		"\nCOPY --from=cache /deployments/ /root/software/cache" +
+		"\nRUN cp -ar /original-content/workspace /root/project/workspace" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
+		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(buildScript)) + " | base64 -d >/root/build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\n"+envVars+"\n/root/build.sh "+cmdArgs+"\n")) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/root/entry-script.sh" +
+		"\nRUN chmod +x /root/*.sh" +
+		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
+
+	kf := "FROM " + recipe.Image +
+		"\nUSER 0" +
+		"\nWORKDIR /root" +
+		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl" +
+		"\nENV JBS_DISABLE_CACHE=true" +
+		"\nCOPY .jbs/run-build.sh /root" +
+		"\nCOPY . /root/project/workspace/" +
+		"\nRUN /root/run-build.sh" +
+		"\nFROM scratch" +
+		"\nCOPY --from=0 /root/project/artifacts /root/artifacts"
 
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	limits, err := memoryLimits(jbsConfig, additionalMemory)
@@ -462,6 +510,19 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preBuildImageArgs),
 				},
+				{
+					Name:            "create-konflux",
+					Image:           buildRequestProcessorImage,
+					ImagePullPolicy: pullPolicy,
+					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+					Env:             secretVariables,
+					ComputeResources: v1.ResourceRequirements{
+						//TODO: make configurable
+						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+					},
+					Script: createKonfluxScripts(kf, konfluxScript) + "\n" + artifactbuild.InstallKeystoreIntoBuildRequestProcessor(konfluxArgs),
+				},
 			},
 		}
 		pipelineTask := []tektonpipeline.PipelineTask{{
@@ -518,58 +579,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		}
 	}
 
-	//we generate a docker file that can be used to reproduce this build
-	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
-	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
-	log.Info(fmt.Sprintf("Generating dockerfile deriving from preBuildImage %#v with recipe build image %#v", preBuildImageFrom, recipe.Image))
-	preprocessorScript := "#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
-	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
-	envVars := extractEnvVar(toolEnv)
-	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
-	konfluxScript := preprocessorScript + "\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
-
-	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
-		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
-		"\nFROM " + preBuildImageFrom +
-		"\nUSER 0" +
-		"\nWORKDIR /root" +
-		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng" +
-		// TODO: Debug only
-		// "\nRUN rpm -ivh https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
-		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
-		// Copying JDK17 for the cache.
-		// TODO: Could we determine if we are using UBI8 and avoid this?
-		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
-		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
-		"\nCOPY --from=cache /deployments/ /root/software/cache" +
-		"\nRUN cp -ar /original-content/workspace /root/project/workspace" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
-		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(buildScript)) + " | base64 -d >/root/build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\n"+envVars+"\n/root/build.sh "+cmdArgs+"\n")) + " | base64 -d >/root/run-full-build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/root/entry-script.sh" +
-		"\nRUN chmod +x /root/*.sh" +
-		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
-
-	kf := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
-		"\nFROM " + recipe.Image +
-		"\nUSER 0" +
-		"\nWORKDIR /root" +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl" +
-		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
-		// Copying JDK17 for the cache.
-		// TODO: Could we determine if we are using UBI8 and avoid this?
-		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
-		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
-		"\nENV JBS_DISABLE_CACHE=true" +
-		"\nCOPY .jbs/run-build.sh /root" +
-		"\nCOPY . /root/project/workspace/" +
-		"\nRUN /root/run-build.sh" +
-		"\nFROM scratch" +
-		"\nCOPY --from=1 /root/project/artifacts /root/artifacts"
-
 	return ps, df, kf, konfluxScript, nil
 }
 
@@ -603,6 +612,18 @@ func createBuildScript(build string, hermeticBuildEntryScript string) string {
 	ret += hermeticBuildEntryScript
 	ret += "\nRHTAPEOF\n"
 	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/hermetic-build.sh"
+	return ret
+}
+
+func createKonfluxScripts(containerfile string, konfluxScript string) string {
+	ret := "mkdir -p $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs\n"
+	ret += "tee $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/Containerfile <<'RHTAPEOF'\n"
+	ret += containerfile
+	ret += "\nRHTAPEOF\n"
+	ret += "tee $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/run-build.sh <<'RHTAPEOF'\n"
+	ret += konfluxScript
+	ret += "\nRHTAPEOF\n"
+	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/run-build.sh\n"
 	return ret
 }
 
@@ -709,7 +730,7 @@ func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -748,7 +769,18 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
 
-	deployArgs = append(deployArgs, gitArgs(jbsConfig)...)
+	gitArgs := gitArgs(jbsConfig)
+	deployArgs = append(deployArgs, gitArgs...)
+
+	konfluxArgs := []string{
+		"create-konflux-source",
+		"--source-path=$(workspaces.source.path)/workspace",
+		"--task-run-name=$(context.taskRun.name)",
+		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
+		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
+	}
+	konfluxArgs = append(konfluxArgs, gitArgs...)
+	konfluxArgs = append(konfluxArgs, "--image-id="+imageId)
 
 	hermeticPreBuildImageArgs := []string{
 		"deploy-hermetic-pre-build-image",
@@ -761,7 +793,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	}
 	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
-	return preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
+	return preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
 }
 
 func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {

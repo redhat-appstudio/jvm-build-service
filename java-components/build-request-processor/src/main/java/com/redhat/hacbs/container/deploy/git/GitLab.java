@@ -41,9 +41,21 @@ public class GitLab extends Git {
     }
 
     @Override
+    public void initialise(String name) throws IOException {
+        try {
+            handle_repository(processRepoName(name), true);
+        } catch (URISyntaxException ignored) {
+        }
+    }
+
+    @Override
     public void create(String scmUri)
-            throws URISyntaxException {
-        String name = parseScmURI(scmUri);
+        throws URISyntaxException, IOException {
+        handle_repository(parseScmURI(scmUri), false);
+    }
+
+    public void handle_repository(String name, boolean initialiseOnly)
+        throws URISyntaxException, IOException {
         Long namespace = null;
         try {
             Optional<Group> groupOptional = gitLabApi.getGroupApi().getOptionalGroup(owner);
@@ -68,12 +80,13 @@ public class GitLab extends Git {
                         .filter(p -> p.getName().equals(name))
                         .findFirst().orElse(null);
             }
-            if (project != null) {
-                Log.warnf("Repository %s already exists", name);
-            } else {
-                // Can't set public visibility after creation for some reason with this API.
-                Log.infof("Creating repository with name %s", name);
-                project = gitLabApi.getProjectApi().createProject(name,
+            if (!initialiseOnly) {
+                if (project != null) {
+                    Log.warnf("Repository %s already exists", name);
+                } else {
+                    // Can't set public visibility after creation for some reason with this API.
+                    Log.infof("Creating repository with name %s", name);
+                    project = gitLabApi.getProjectApi().createProject(name,
                         namespace,
                         null,
                         null,
@@ -83,10 +96,11 @@ public class GitLab extends Git {
                         Visibility.PUBLIC,
                         null,
                         null);
-                newGitRepository = true;
+                    newGitRepository = true;
+                }
             }
         } catch (GitLabApiException e) {
-            throw new RuntimeException(e);
+            throw new IOException(e);
         }
     }
 
@@ -96,7 +110,16 @@ public class GitLab extends Git {
         if (project == null) {
             throw new RuntimeException("Call create first");
         }
-        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
+        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId, false);
+    }
+
+    @Override
+    public GitStatus add(Path path, String commit, String imageId, boolean untracked)
+        throws IOException {
+        if (project == null) {
+            throw new RuntimeException("Call create first");
+        }
+        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId, untracked);
     }
 
     @Override

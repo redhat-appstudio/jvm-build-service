@@ -12,6 +12,7 @@ import com.redhat.hacbs.container.deploy.CopyArtifactsCommand;
 import com.redhat.hacbs.container.deploy.DeployCommand;
 import com.redhat.hacbs.container.deploy.DeployHermeticPreBuildImageCommand;
 import com.redhat.hacbs.container.deploy.DeployPreBuildImageCommand;
+import com.redhat.hacbs.container.deploy.KonfluxCommand;
 import com.redhat.hacbs.container.deploy.MavenDeployCommand;
 import com.redhat.hacbs.container.verifier.VerifyBuiltArtifactsCommand;
 
@@ -20,20 +21,21 @@ import picocli.CommandLine;
 
 @TopCommand
 @CommandLine.Command(mixinStandardHelpOptions = true, subcommands = {
-        LookupScmLocationCommand.class,
-        LookupBuildInfoCommand.class,
         AnalyseDependencies.class,
+        AntPrepareCommand.class,
+        ContainerTagCommand.class,
         CopyArtifactsCommand.class,
         DeployCommand.class,
-        GradlePrepareCommand.class,
-        MavenPrepareCommand.class,
-        VerifyBuiltArtifactsCommand.class,
-        SBTPrepareCommand.class,
-        AntPrepareCommand.class,
-        DeployPreBuildImageCommand.class,
         DeployHermeticPreBuildImageCommand.class,
-        ContainerTagCommand.class,
-    MavenDeployCommand.class
+        DeployPreBuildImageCommand.class,
+        GradlePrepareCommand.class,
+        KonfluxCommand.class,
+        LookupBuildInfoCommand.class,
+        LookupScmLocationCommand.class,
+        MavenDeployCommand.class,
+        MavenPrepareCommand.class,
+        SBTPrepareCommand.class,
+        VerifyBuiltArtifactsCommand.class
 })
 public class EntryPoint {
 }
