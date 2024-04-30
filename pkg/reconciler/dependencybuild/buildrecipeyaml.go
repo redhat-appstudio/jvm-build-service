@@ -298,7 +298,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
 				Args:   []string{"$(params.GOALS[*])"},
 				Script: OriginalContentPath + "/build.sh \"$@\"",
@@ -342,6 +342,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				ComputeResources: v1.ResourceRequirements{
 					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
 
 				Args: []string{"$(params.GOALS[*])"},
@@ -581,7 +582,7 @@ func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
 }
 
 type memLimits struct {
-	defaultRequestMemory, defaultBuildRequestMemory, defaultRequestCPU, defaultLimitCPU, buildRequestCPU, buildRequestMemory resource.Quantity
+	defaultRequestMemory, defaultBuildRequestMemory, defaultRequestCPU, defaultLimitCPU, buildRequestCPU, buildLimitCPU, buildRequestMemory resource.Quantity
 }
 
 func memoryLimits(jbsConfig *v1alpha1.JBSConfig, additionalMemory int) (*memLimits, error) {
@@ -604,6 +605,10 @@ func memoryLimits(jbsConfig *v1alpha1.JBSConfig, additionalMemory int) (*memLimi
 		return nil, err
 	}
 	limits.buildRequestCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildRequestCPU, "300m"))
+	if err != nil {
+		return nil, err
+	}
+	limits.buildLimitCPU, err = resource.ParseQuantity(settingOrDefault(jbsConfig.Spec.BuildSettings.BuildLimitCPU, "2"))
 	if err != nil {
 		return nil, err
 	}

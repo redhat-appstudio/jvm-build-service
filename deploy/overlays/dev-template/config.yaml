@@ -20,6 +20,7 @@ spec:
     disableSSLVerification: ${GIT_DISABLE_SSL_VERIFICATION}
   requireArtifactVerification: true
   buildSettings:
-    buildRequestCPU: "2"
+    buildRequestCPU: "300m"
+    buildLimitCPU: "4"
     taskRequestCPU: "300m"
     taskLimitCPU: "1"

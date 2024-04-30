@@ -45,6 +45,10 @@ spec:
                 type: array
               buildSettings:
                 properties:
+                  buildLimitCPU:
+                    description: The CPU limit for the build and deploy steps of a
+                      pipeline
+                    type: string
                   buildRequestCPU:
                     description: The requested CPU for the build and deploy steps
                       of a pipeline

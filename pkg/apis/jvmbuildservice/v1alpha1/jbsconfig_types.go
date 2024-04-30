@@ -88,6 +88,8 @@ type BuildSettings struct {
 	BuildRequestMemory string `json:"buildRequestMemory,omitempty"`
 	// The requested CPU for the build and deploy steps of a pipeline
 	BuildRequestCPU string `json:"buildRequestCPU,omitempty"`
+	// The CPU limit for the build and deploy steps of a pipeline
+	BuildLimitCPU string `json:"buildLimitCPU,omitempty"`
 	// The requested memory for all other steps of a pipeline
 	TaskRequestMemory string `json:"taskRequestMemory,omitempty"`
 	// The requested CPU for all other steps of a pipeline
