@@ -66,6 +66,7 @@ const (
 	BuildInfoPipelineResultBuildInfo = "BUILD_INFO"
 
 	PipelineTypeLabel     = "jvmbuildservice.io/pipeline-type"
+	RedeployAnnotation    = "jvmbuildservice.io/redeploy"
 	PipelineTypeBuildInfo = "build-info"
 	PipelineTypeBuild     = "build"
 	PipelineTypeDeploy    = "deploy"
@@ -133,6 +134,11 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		if done || err != nil {
 			return reconcile.Result{}, err
 		}
+		if db.Annotations != nil && db.Annotations[RedeployAnnotation] != "" {
+
+			return r.handleRedeployAnnotation(ctx, db)
+		}
+
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
 			return r.handleStateNew(ctx, log, &db)
@@ -186,6 +192,29 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileDependencyBuild) handleRedeployAnnotation(ctx context.Context, db v1alpha1.DependencyBuild) (reconcile.Result, error) {
+	//delete the existing pipeline if it exists
+	pr := tektonpipeline.PipelineRun{}
+	prName := db.Name + DeploySuffix
+	err := r.client.Get(ctx, types.NamespacedName{Name: prName, Namespace: db.Namespace}, &pr)
+	if err == nil {
+		//the pipeline already exists
+		//do nothing
+		err = r.client.Delete(ctx, &pr)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	//handle redeployment
+	db.Status.State = v1alpha1.DependencyBuildStateDeploying
+	err = r.client.Status().Update(ctx, &db)
+
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	return reconcile.Result{}, r.client.Update(ctx, &db)
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {

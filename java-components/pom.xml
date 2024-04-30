@@ -79,6 +79,7 @@
         <module>build-request-processor</module>
         <module>cli</module>
         <module>common-tools</module>
+        <module>common-images</module>
     </modules>
 
     <dependencyManagement>
@@ -105,6 +106,11 @@
             <dependency>
                 <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
                 <artifactId>hacbs-classfile-tracker</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+                <artifactId>common-images</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

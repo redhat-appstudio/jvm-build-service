@@ -65,7 +65,7 @@ import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.redhat.hacbs.container.analyser.build.ant.AntUtils;
 import com.redhat.hacbs.container.analyser.build.gradle.GradleUtils;
 import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery;
-import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
+import com.redhat.hacbs.container.deploy.containerregistry.ContainerUtil;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipes.scm.ScmInfo;

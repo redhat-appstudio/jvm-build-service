@@ -65,6 +65,7 @@ var hermeticBuildEntryScript string
 func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
 	zero := int64(0)
 	tagArgs := tagCommands(jbsConfig)
+	mavenDeployArgs := mavenDeployCommands(jbsConfig)
 
 	limits, err := memoryLimits(jbsConfig, 0)
 	if err != nil {
@@ -78,6 +79,19 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}},
 		Params:     []tektonpipeline.ParamSpec{{Name: "GAVS", Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigestParam, Type: tektonpipeline.ParamTypeString}},
 		Steps: []tektonpipeline.Step{
+			{
+				Name:            "maven-deployment",
+				Image:           buildRequestProcessorImage,
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				ComputeResources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(mavenDeployArgs),
+			},
 			{
 				Name:            "tag",
 				Image:           buildRequestProcessorImage,
@@ -714,23 +728,17 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
 
-	mavenArgs := make([]string, 0)
-	if jbsConfig.Spec.MavenDeployment.Repository != "" {
-		mavenArgs = append(mavenArgs, "--mvn-repo="+jbsConfig.Spec.MavenDeployment.Repository)
-	}
-	if jbsConfig.Spec.MavenDeployment.Username != "" {
-		mavenArgs = append(mavenArgs, "--mvn-username="+jbsConfig.Spec.MavenDeployment.Username)
-	}
+	gitArgs := make([]string, 0)
 	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
-		mavenArgs = append(mavenArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
+		gitArgs = append(gitArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
 	}
 	if jbsConfig.Spec.GitSourceArchive.URL != "" {
-		mavenArgs = append(mavenArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
+		gitArgs = append(gitArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
 	}
 	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
-		mavenArgs = append(mavenArgs, "--git-disable-ssl-verification")
+		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
 	}
-	deployArgs = append(deployArgs, mavenArgs...)
+	deployArgs = append(deployArgs, gitArgs...)
 
 	hermeticPreBuildImageArgs := []string{
 		"deploy-hermetic-pre-build-image",
@@ -777,6 +785,45 @@ func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 	tagArgs = append(tagArgs, "$(params.GAVS)")
 
 	return tagArgs
+}
+
+func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
+
+	deployArgs := []string{
+		"maven-repository-deploy",
+		"--image-digest=$(params." + DeployedImageDigestParam + ")",
+	}
+
+	imageRegistry := jbsConfig.ImageRegistry()
+	registryArgs := make([]string, 0)
+	if imageRegistry.Host != "" {
+		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
+	}
+	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
+		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
+	}
+	if imageRegistry.Owner != "" {
+		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
+	}
+	if imageRegistry.Repository != "" {
+		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
+	}
+
+	if imageRegistry.Insecure {
+		registryArgs = append(registryArgs, "--registry-insecure")
+	}
+	deployArgs = append(deployArgs, registryArgs...)
+
+	mavenArgs := make([]string, 0)
+	if jbsConfig.Spec.MavenDeployment.Repository != "" {
+		mavenArgs = append(mavenArgs, "--mvn-repo="+jbsConfig.Spec.MavenDeployment.Repository)
+	}
+	if jbsConfig.Spec.MavenDeployment.Username != "" {
+		mavenArgs = append(mavenArgs, "--mvn-username="+jbsConfig.Spec.MavenDeployment.Username)
+	}
+	deployArgs = append(deployArgs, mavenArgs...)
+
+	return deployArgs
 }
 
 // This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.

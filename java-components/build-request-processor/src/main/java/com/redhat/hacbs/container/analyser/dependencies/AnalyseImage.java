@@ -28,7 +28,7 @@ import com.google.cloud.tools.jib.registry.RegistryClient;
 import com.google.cloud.tools.jib.registry.credentials.CredentialRetrievalException;
 import com.redhat.hacbs.classfile.tracker.NoCloseInputStream;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
-import com.redhat.hacbs.container.analyser.deploy.containerregistry.ContainerUtil;
+import com.redhat.hacbs.container.deploy.containerregistry.ContainerUtil;
 
 import io.quarkus.arc.Unremovable;
 import io.quarkus.logging.Log;
