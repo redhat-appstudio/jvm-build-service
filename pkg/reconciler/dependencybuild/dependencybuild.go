@@ -601,6 +601,8 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		return reconcile.Result{}, err
 	}
 	diagnosticContainerfile := ""
+	konfluxContainerfile := ""
+	konfluxScript := ""
 	// TODO: set owner, pass parameter to do verify if true, via an annoaton on the dependency build, may eed to wait for dep build to exist verify is an optional, use append on each step in build recipes
 	preBuildImages := map[string]string{}
 	for _, i := range db.Status.PreBuildImages {
@@ -610,12 +612,14 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, diagnosticContainerfile, _, _, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
+	pr.Spec.PipelineSpec, diagnosticContainerfile, konfluxContainerfile, konfluxScript, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	attempt.Build.DiagnosticDockerFile = diagnosticContainerfile
+	attempt.Build.KonfluxDockerFile = konfluxContainerfile
+	attempt.Build.KonfluxScriptFile = konfluxScript
 
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{

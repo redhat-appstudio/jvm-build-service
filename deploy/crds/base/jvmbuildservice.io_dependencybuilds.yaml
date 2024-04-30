@@ -80,6 +80,10 @@ spec:
                         finishTime:
                           format: int64
                           type: integer
+                        konfluxDockerFile:
+                          type: string
+                        konfluxScriptFile:
+                          type: string
                         pipelineName:
                           type: string
                         results:

@@ -85,6 +85,8 @@ type BuildPipelineRun struct {
 	PipelineName         string                   `json:"pipelineName"`
 	Complete             bool                     `json:"complete"`
 	Succeeded            bool                     `json:"succeeded,omitempty"`
+	KonfluxDockerFile    string                   `json:"konfluxDockerFile,omitempty"`
+	KonfluxScriptFile    string                   `json:"konfluxScriptFile,omitempty"`
 	DiagnosticDockerFile string                   `json:"diagnosticDockerFile,omitempty"`
 	Results              *BuildPipelineRunResults `json:"results,omitempty"`
 	StartTime            int64                    `json:"startTime,omitempty"`
