@@ -131,7 +131,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	}
 	return ps, nil
 }
-func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
+func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, string, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
 	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
@@ -239,7 +239,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	limits, err := memoryLimits(jbsConfig, additionalMemory)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", "", err
 	}
 
 	createBuildScript := createBuildScript(build, hermeticBuildEntryScript)
@@ -512,30 +512,55 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
 	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
 	log.Info(fmt.Sprintf("Generating dockerfile deriving from preBuildImage %#v with recipe build image %#v", preBuildImageFrom, recipe.Image))
+	preprocessorScript := "#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
+	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
+	envVars := extractEnvVar(toolEnv)
+	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
+	konfluxScript := preprocessorScript + "\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
+
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
 		"\nFROM " + preBuildImageFrom +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		// TODO: bash-completion isn't valid under UBI7
 		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng" +
+		// TODO: Debug only
+		// "\nRUN rpm -ivh https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
 		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
 		// Copying JDK17 for the cache.
 		// TODO: Could we determine if we are using UBI8 and avoid this?
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
 		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
 		"\nCOPY --from=cache /deployments/ /root/software/cache" +
+		"\nRUN cp -ar /original-content/workspace /root/project/workspace" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
 		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar "+doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos)+"\n")) + " | base64 -d >/root/preprocessor.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(doSubstitution(build, paramValues, commitTime, buildRepos))) + " | base64 -d >/root/build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\ncd /root/project/workspace\n"+extractEnvVar(toolEnv)+"\n/root/build.sh "+extractArrayParam(PipelineParamGoals, paramValues)+"\n")) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(buildScript)) + " | base64 -d >/root/build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\n"+envVars+"\n/root/build.sh "+cmdArgs+"\n")) + " | base64 -d >/root/run-full-build.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/root/entry-script.sh" +
 		"\nRUN chmod +x /root/*.sh" +
 		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
 
-	return ps, df, nil
+	kf := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
+		"\nFROM " + recipe.Image +
+		"\nUSER 0" +
+		"\nWORKDIR /root" +
+		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl" +
+		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
+		// Copying JDK17 for the cache.
+		// TODO: Could we determine if we are using UBI8 and avoid this?
+		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
+		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
+		"\nENV JBS_DISABLE_CACHE=true" +
+		"\nCOPY .jbs/run-build.sh /root" +
+		"\nCOPY . /root/project/workspace/" +
+		"\nRUN /root/run-build.sh" +
+		"\nFROM scratch" +
+		"\nCOPY --from=1 /root/project/artifacts /root/artifacts"
+
+	return ps, df, kf, konfluxScript, nil
 }
 
 func secretVariables(jbsConfig *v1alpha1.JBSConfig) []v1.EnvVar {
