@@ -77,6 +77,8 @@ const (
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	JavaHome             = "JAVA_HOME"
 	DeploySuffix         = "-deploy"
+
+	DependencyScmAnnotation = "jvmbuildservice.io/deploy-source-reuse-scm"
 )
 
 type ReconcileDependencyBuild struct {

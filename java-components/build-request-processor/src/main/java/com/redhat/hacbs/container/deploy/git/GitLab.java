@@ -43,7 +43,7 @@ public class GitLab extends Git {
     @Override
     public void initialise(String scmUri) throws IOException {
         try {
-            handleRepository(parseScmURI(scmUri), true);
+            handleRepository(processRepoName(scmUri), true);
         } catch (URISyntaxException ignored) {
         }
     }
@@ -103,7 +103,7 @@ public class GitLab extends Git {
             throw new IOException(e);
         }
         if (project == null) {
-            throw new RuntimeException("failed to associate project");
+            throw new RuntimeException("Failed to associate project using name " + name);
         }
     }
 
@@ -128,5 +128,10 @@ public class GitLab extends Git {
     @Override
     String split() {
         return "-";
+    }
+
+    @Override
+    public String getName() {
+        return project.getNamespace().getPath() + "/" + project.getName();
     }
 }

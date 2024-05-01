@@ -124,4 +124,9 @@ public class GitHub extends Git {
     String split() {
         return "--";
     }
+
+    @Override
+    public String getName() {
+        return repository.getFullName();
+    }
 }

@@ -146,8 +146,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 
-	log.Info(fmt.Sprintf("### Got Konflux arg %#v", konfluxArgs))
-
 	preprocessorArgs := []string{
 		"maven-prepare",
 		"$(workspaces." + WorkspaceSource + ".path)/workspace",
@@ -511,7 +509,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preBuildImageArgs),
 				},
 				{
-					Name:            "create-konflux",
+					Name:            "create-pre-build-source",
 					Image:           buildRequestProcessorImage,
 					ImagePullPolicy: pullPolicy,
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
@@ -769,11 +767,11 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
 
-	gitArgs := gitArgs(jbsConfig)
+	gitArgs := gitArgs(jbsConfig, db)
 	deployArgs = append(deployArgs, gitArgs...)
 
 	konfluxArgs := []string{
-		"create-konflux-source",
+		"deploy-pre-build-source",
 		"--source-path=$(workspaces.source.path)/workspace",
 		"--task-run-name=$(context.taskRun.name)",
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
@@ -873,7 +871,7 @@ func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 	return deployArgs
 }
 
-func gitArgs(jbsConfig *v1alpha1.JBSConfig) []string {
+func gitArgs(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []string {
 	gitArgs := make([]string, 0)
 	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
 		gitArgs = append(gitArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
@@ -883,6 +881,9 @@ func gitArgs(jbsConfig *v1alpha1.JBSConfig) []string {
 	}
 	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
 		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
+	}
+	if db.Annotations[DependencyScmAnnotation] == "true" {
+		gitArgs = append(gitArgs, "--git-reuse-repository")
 	}
 	return gitArgs
 }

@@ -221,6 +221,8 @@ public abstract class Git {
 
     abstract String split();
 
+    public abstract String getName();
+
     public static class GitStatus {
         public String url;
         public String tag;

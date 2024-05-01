@@ -2,7 +2,6 @@ package com.redhat.hacbs.container.deploy;
 
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
@@ -15,9 +14,8 @@ import com.redhat.hacbs.container.results.ResultsUpdater;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-@CommandLine.Command(name = "create-konflux-source")
-public class KonfluxCommand implements Runnable {
+@CommandLine.Command(name = "deploy-pre-build-source")
+public class DeployPreBuildSourceCommand implements Runnable {
 
     final ResultsUpdater resultsUpdater;
 
@@ -51,23 +49,26 @@ public class KonfluxCommand implements Runnable {
     @CommandLine.Option(names = "--git-disable-ssl-verification")
     boolean gitDisableSSLVerification;
 
-    public KonfluxCommand(ResultsUpdater resultsUpdater) {
+    @CommandLine.Option(names = "--git-reuse-repository")
+    boolean reuseRepository;
+
+    public DeployPreBuildSourceCommand(ResultsUpdater resultsUpdater) {
         this.resultsUpdater = resultsUpdater;
     }
 
     public void run() {
         try {
-            // Konflux files should be in the source code in <root>/.jbs/Containerfile|run-build.sh
-            Log.warnf("Source list files %s", sourcePath.toFile().listFiles());
-            Log.warnf("#### DOCKER:\n" + Files.readString(Path.of(sourcePath.toString(), ".jbs/Containerfile")));
-
             Git.GitStatus archivedSourceTags = new Git.GitStatus();
 
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-                Log.infof("Pushing changes back to URL %s with identity '%s'", gitURL, gitIdentity);
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
-                git.create(scmUri);
+                if (reuseRepository) {
+                    git.initialise(scmUri);
+                } else {
+                    git.create(scmUri);
+                }
+                Log.infof("Pushing changes back to URL %s", git.getName());
                 archivedSourceTags = git.add(sourcePath, commit, imageId, true);
             }
             if (taskRun != null) {

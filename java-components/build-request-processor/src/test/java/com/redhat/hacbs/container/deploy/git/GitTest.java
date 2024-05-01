@@ -33,6 +33,36 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTestResource(value = LogCollectingTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = LogCollectingTestResource.LEVEL, value = "FINE"))
 public class GitTest {
 
+    Git test = new Git() {
+        @Override
+        public void create(String name) {
+        }
+
+        @Override
+        public void initialise(String name) {
+        }
+
+        @Override
+        public GitStatus add(Path path, String commit, String imageId) {
+            return null;
+        }
+
+        @Override
+        public GitStatus add(Path path, String commit, String imageId, boolean untracked) {
+            return null;
+        }
+
+        @Override
+        public String split() {
+            return null;
+        }
+
+        @Override
+        public String getName() {
+            return null;
+        }
+    };
+
     @BeforeEach
     public void clearLogs() {
         LogCollectingTestResource.current().clear();
@@ -61,6 +91,10 @@ public class GitTest {
         var git = Git.builder(null, "rnc", "", true);
         git.initialise("commons-net");
         git.initialise("https://github.com/rnc/commons-net");
+        assertEquals("rnc/commons-net", git.getName());
+        git = Git.builder("https://gitlab.com", "rnc", "", true);
+        git.initialise("https://gitlab.com/rnc/testRepo");
+        assertEquals("rnc/testRepo", git.getName());
     }
 
     @Test
@@ -92,30 +126,6 @@ public class GitTest {
                         .setRemote(newRemote).call();
             }
 
-            Git test = new Git() {
-                @Override
-                public void create(String name) {
-                }
-
-                @Override
-                public void initialise(String name) {
-                }
-
-                @Override
-                public GitStatus add(Path path, String commit, String imageId) {
-                    return null;
-                }
-
-                @Override
-                public GitStatus add(Path path, String commit, String imageId, boolean untracked) {
-                    return null;
-                }
-
-                @Override
-                public String split() {
-                    return null;
-                }
-            };
             Git.GitStatus tagResults = test.pushRepository(
                     initialRepo,
                     testRepoURI,
@@ -169,30 +179,6 @@ public class GitTest {
             new File(jbs.toFile(), "Dockerfile").createNewFile();
             new File(jbs.toFile(), "run-build.sh").createNewFile();
 
-            Git test = new Git() {
-                @Override
-                public void create(String name) {
-                }
-
-                @Override
-                public void initialise(String name) {
-                }
-
-                @Override
-                public GitStatus add(Path path, String commit, String imageId) {
-                    return null;
-                }
-
-                @Override
-                public GitStatus add(Path path, String commit, String imageId, boolean untracked) {
-                    return null;
-                }
-
-                @Override
-                public String split() {
-                    return null;
-                }
-            };
             Git.GitStatus tagResults = test.pushRepository(
                 initialRepo,
                 testRepoURI,
@@ -234,30 +220,6 @@ public class GitTest {
         try (var testRepository = org.eclipse.jgit.api.Git.init().setDirectory(testRepo.toFile()).call();
             var ignored = org.eclipse.jgit.api.Git.cloneRepository().setURI("https://github.com/rnc/commons-net.git").setDirectory(initialRepo.toFile()).call() ) {
 
-            Git test = new Git() {
-                @Override
-                public void create(String name) {
-                }
-
-                @Override
-                public void initialise(String name) {
-                }
-
-                @Override
-                public GitStatus add(Path path, String commit, String imageId) {
-                    return null;
-                }
-
-                @Override
-                public GitStatus add(Path path, String commit, String imageId, boolean untracked) {
-                    return null;
-                }
-
-                @Override
-                public String split() {
-                    return null;
-                }
-            };
             Git.GitStatus tagResults = test.pushRepository(
                 initialRepo,
                 testRepoURI,
@@ -276,7 +238,6 @@ public class GitTest {
                     r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
 
             List<Ref> tags = testRepository.tagList().call();
-            System.out.println("#### tags " + tags);
             assertEquals(2, tags.size());
             assertTrue(tags.stream().anyMatch(r -> r.getName().equals("refs/tags/ac654a25f2c20876ac5b1a5c1de19d60bcc3290c-75ecd81c7a2b384151c990975eb1dd10")));
 

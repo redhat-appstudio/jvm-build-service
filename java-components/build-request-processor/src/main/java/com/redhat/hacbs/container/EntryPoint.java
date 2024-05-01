@@ -12,7 +12,7 @@ import com.redhat.hacbs.container.deploy.CopyArtifactsCommand;
 import com.redhat.hacbs.container.deploy.DeployCommand;
 import com.redhat.hacbs.container.deploy.DeployHermeticPreBuildImageCommand;
 import com.redhat.hacbs.container.deploy.DeployPreBuildImageCommand;
-import com.redhat.hacbs.container.deploy.KonfluxCommand;
+import com.redhat.hacbs.container.deploy.DeployPreBuildSourceCommand;
 import com.redhat.hacbs.container.deploy.MavenDeployCommand;
 import com.redhat.hacbs.container.verifier.VerifyBuiltArtifactsCommand;
 
@@ -29,7 +29,7 @@ import picocli.CommandLine;
         DeployHermeticPreBuildImageCommand.class,
         DeployPreBuildImageCommand.class,
         GradlePrepareCommand.class,
-        KonfluxCommand.class,
+        DeployPreBuildSourceCommand.class,
         LookupBuildInfoCommand.class,
         LookupScmLocationCommand.class,
         MavenDeployCommand.class,

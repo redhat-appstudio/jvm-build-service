@@ -24,4 +24,7 @@ public class ModelConstants {
     public static final String DEPENDENCY_BUILD_FAILED = "DependencyBuildStateFailed";
     public static final String DEPENDENCY_BUILD_CONTAMINATED = "DependencyBuildStateContaminated";
     public static final String DEPENDENCY_BUILD_DEPLOYING = "DependencyBuildStateDeploying";
+
+    public static final String REUSE_SCM = GROUP + "/deploy-source-reuse-scm";
+
 }
