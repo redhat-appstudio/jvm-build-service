@@ -41,9 +41,9 @@ public class GitLab extends Git {
     }
 
     @Override
-    public void initialise(String name) throws IOException {
+    public void initialise(String scmUri) throws IOException {
         try {
-            handle_repository(processRepoName(name), true);
+            handleRepository(parseScmURI(scmUri), true);
         } catch (URISyntaxException ignored) {
         }
     }
@@ -51,10 +51,10 @@ public class GitLab extends Git {
     @Override
     public void create(String scmUri)
         throws URISyntaxException, IOException {
-        handle_repository(parseScmURI(scmUri), false);
+        handleRepository(parseScmURI(scmUri), false);
     }
 
-    public void handle_repository(String name, boolean initialiseOnly)
+    public void handleRepository(String name, boolean initialiseOnly)
         throws URISyntaxException, IOException {
         Long namespace = null;
         try {
@@ -101,6 +101,9 @@ public class GitLab extends Git {
             }
         } catch (GitLabApiException e) {
             throw new IOException(e);
+        }
+        if (project == null) {
+            throw new RuntimeException("failed to associate project");
         }
     }
 

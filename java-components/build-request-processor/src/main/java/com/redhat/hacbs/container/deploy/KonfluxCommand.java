@@ -7,8 +7,6 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
 
-import jakarta.enterprise.inject.spi.BeanManager;
-
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.container.deploy.git.Git;
@@ -21,7 +19,6 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "create-konflux-source")
 public class KonfluxCommand implements Runnable {
 
-    final BeanManager beanManager;
     final ResultsUpdater resultsUpdater;
 
     @CommandLine.Option(names = "--task-run-name")
@@ -54,9 +51,7 @@ public class KonfluxCommand implements Runnable {
     @CommandLine.Option(names = "--git-disable-ssl-verification")
     boolean gitDisableSSLVerification;
 
-    public KonfluxCommand(BeanManager beanManager,
-            ResultsUpdater resultsUpdater) {
-        this.beanManager = beanManager;
+    public KonfluxCommand(ResultsUpdater resultsUpdater) {
         this.resultsUpdater = resultsUpdater;
     }
 
@@ -72,7 +67,7 @@ public class KonfluxCommand implements Runnable {
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
                 Log.infof("Pushing changes back to URL %s with identity '%s'", gitURL, gitIdentity);
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
-                git.initialise(scmUri);
+                git.create(scmUri);
                 archivedSourceTags = git.add(sourcePath, commit, imageId, true);
             }
             if (taskRun != null) {
