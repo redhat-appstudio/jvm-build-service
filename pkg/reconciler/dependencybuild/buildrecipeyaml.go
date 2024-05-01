@@ -86,7 +86,6 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
@@ -99,7 +98,6 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
@@ -352,7 +350,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
@@ -366,7 +363,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
@@ -396,7 +392,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
@@ -412,7 +407,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
@@ -489,7 +483,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 					},
 					ComputeResources: v1.ResourceRequirements{
-						//TODO: make configurable
 						Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
@@ -502,7 +495,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Env:             secretVariables,
 					ComputeResources: v1.ResourceRequirements{
-						//TODO: make configurable
 						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
@@ -515,7 +507,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Env:             secretVariables,
 					ComputeResources: v1.ResourceRequirements{
-						//TODO: make configurable
 						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 					},

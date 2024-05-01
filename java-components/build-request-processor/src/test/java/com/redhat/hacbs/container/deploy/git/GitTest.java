@@ -33,7 +33,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTestResource(value = LogCollectingTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = LogCollectingTestResource.LEVEL, value = "FINE"))
 public class GitTest {
 
-    Git test = new Git() {
+    private Git test = new Git() {
         @Override
         public void create(String name) {
         }
@@ -223,7 +223,7 @@ public class GitTest {
             Git.GitStatus tagResults = test.pushRepository(
                 initialRepo,
                 testRepoURI,
-                "ac654a25f2c20876ac5b1a5c1de19d60bcc3290c",
+                "e0aa3a2aace28061bb4ee7dcdd87e5960d173037",
                 imageID,
                 false);
 
@@ -232,14 +232,14 @@ public class GitTest {
             assertTrue(Files.readString(Paths.get(initialRepo.toString(), ".git/config")).contains(testRepoURI));
             assertTrue(logRecords.stream()
                 .anyMatch(r -> LogCollectingTestResource.format(r)
-                    .contains("commit ac654a25f2c20876ac5b1a5c1de19d60bcc3290c")));
+                    .contains("commit e0aa3a2aace28061bb4ee7dcdd87e5960d173037")));
             assertTrue(logRecords.stream()
                 .anyMatch(
                     r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
 
             List<Ref> tags = testRepository.tagList().call();
             assertEquals(2, tags.size());
-            assertTrue(tags.stream().anyMatch(r -> r.getName().equals("refs/tags/ac654a25f2c20876ac5b1a5c1de19d60bcc3290c-75ecd81c7a2b384151c990975eb1dd10")));
+            assertTrue(tags.stream().anyMatch(r -> r.getName().equals("refs/tags/e0aa3a2aace28061bb4ee7dcdd87e5960d173037-75ecd81c7a2b384151c990975eb1dd10")));
 
             var found = tags.stream().filter(t -> Repository.shortenRefName(t.getName()).matches(tagResults.tag)).findFirst();
             assertTrue(found.isPresent());

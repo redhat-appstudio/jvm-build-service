@@ -258,7 +258,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 	switch {
 	case err == nil:
 
-		log.Info(fmt.Sprintf("### handleStateDiscovering build exists for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
+		//		log.Info(fmt.Sprintf("### handleStateDiscovering build exists for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
 
 		//build already exists, add us to the owner references
 		found := false
@@ -302,7 +302,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 			return err
 		}
-		log.Info(fmt.Sprintf("### handleStateDiscovering creating depbuild for %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Annotations, abr.Annotations))
+		//		log.Info(fmt.Sprintf("### handleStateDiscovering creating depbuild for %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Annotations, abr.Annotations))
 
 		db.Spec = v1alpha1.DependencyBuildSpec{ScmInfo: v1alpha1.SCMInfo{
 			SCMURL:     abr.Status.SCMInfo.SCMURL,
@@ -464,7 +464,7 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 		err := r.client.Get(ctx, dbKey, db)
 		notFound := errors.IsNotFound(err)
 
-		log.Info(fmt.Sprintf("### handleRebuild for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
+		//		log.Info(fmt.Sprintf("### handleRebuild for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
 
 		if err == nil {
 			//make sure to annotate all other owners so they also see state updates
