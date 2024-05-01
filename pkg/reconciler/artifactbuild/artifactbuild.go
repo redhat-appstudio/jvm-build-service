@@ -40,7 +40,9 @@ const (
 
 	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
 
-	DependencyAnnotation = "jvmbuildservice.io/dependencycreated"
+	DependencyCreatedAnnotation = "jvmbuildservice.io/dependency-created"
+
+	DependencyScmAnnotation = "jvmbuildservice.io/deploy-source-reuse-scm"
 
 	RebuildAnnotation = "jvmbuildservice.io/rebuild"
 	// RebuiltAnnotation annotation that is applied after a rebuild, it will affect the dependencybuild behaviour
@@ -255,6 +257,9 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 
 	switch {
 	case err == nil:
+
+		log.Info(fmt.Sprintf("### handleStateDiscovering build exists for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
+
 		//build already exists, add us to the owner references
 		found := false
 		for _, or := range db.OwnerReferences {
@@ -297,6 +302,8 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 			return err
 		}
+		log.Info(fmt.Sprintf("### handleStateDiscovering creating depbuild for %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Annotations, abr.Annotations))
+
 		db.Spec = v1alpha1.DependencyBuildSpec{ScmInfo: v1alpha1.SCMInfo{
 			SCMURL:     abr.Status.SCMInfo.SCMURL,
 			SCMType:    abr.Status.SCMInfo.SCMType,
@@ -308,6 +315,9 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 
 		if abr.Annotations != nil && abr.Annotations[RebuiltAnnotation] == "true" {
 			db.Annotations[RebuiltAnnotation] = "true"
+		}
+		if abr.Annotations != nil && abr.Annotations[DependencyScmAnnotation] == "true" {
+			db.Annotations[DependencyScmAnnotation] = "true"
 		}
 		//move the state to building
 		if err := r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateBuilding); err != nil {
@@ -453,6 +463,9 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 		dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}
 		err := r.client.Get(ctx, dbKey, db)
 		notFound := errors.IsNotFound(err)
+
+		log.Info(fmt.Sprintf("### handleRebuild for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
+
 		if err == nil {
 			//make sure to annotate all other owners so they also see state updates
 			//this won't cause a 'thundering herd' type problem as they are all deleted anyway

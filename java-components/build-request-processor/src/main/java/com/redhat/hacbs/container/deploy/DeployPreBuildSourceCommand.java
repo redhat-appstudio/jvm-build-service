@@ -68,7 +68,7 @@ public class DeployPreBuildSourceCommand implements Runnable {
                 } else {
                     git.create(scmUri);
                 }
-                Log.infof("Pushing changes back to URL %s", git.getName());
+                Log.infof("Pushing changes back to repository %s", git.getName());
                 archivedSourceTags = git.add(sourcePath, commit, imageId, true);
             }
             if (taskRun != null) {

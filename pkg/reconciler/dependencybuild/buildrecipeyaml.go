@@ -882,7 +882,7 @@ func gitArgs(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []stri
 	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
 		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
 	}
-	if db.Annotations[DependencyScmAnnotation] == "true" {
+	if db.Annotations[artifactbuild.DependencyScmAnnotation] == "true" {
 		gitArgs = append(gitArgs, "--git-reuse-repository")
 	}
 	return gitArgs
