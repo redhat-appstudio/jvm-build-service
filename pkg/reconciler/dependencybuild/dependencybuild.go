@@ -256,7 +256,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	}
 	db.Status.State = v1alpha1.DependencyBuildStateAnalyzeBuild
 	if err := r.client.Create(ctx, &pr); err != nil {
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, err
 	}
 	if err := r.client.Status().Update(ctx, db); err != nil {
 		return reconcile.Result{}, err
