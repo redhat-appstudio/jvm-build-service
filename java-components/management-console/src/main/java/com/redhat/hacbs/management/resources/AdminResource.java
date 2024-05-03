@@ -55,7 +55,9 @@ public class AdminResource {
     public void rebuildFailed() {
         for (StoredDependencyBuild sb : StoredDependencyBuild.<StoredDependencyBuild> list("succeeded", false)) {
             StoredArtifactBuild sa = StoredArtifactBuild.find("buildIdentifier", sb.buildIdentifier).firstResult();
-            BuildQueue.rebuild(sa.mavenArtifact, false, Map.of());
+            if (sa != null) {
+                BuildQueue.rebuild(sa.mavenArtifact, false, Map.of());
+            }
         }
     }
 
