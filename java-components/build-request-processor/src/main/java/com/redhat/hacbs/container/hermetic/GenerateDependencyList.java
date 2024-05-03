@@ -1,4 +1,4 @@
-package com.redhat.hacbs.container.analyser.dependencies;
+package com.redhat.hacbs.container.hermetic;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +25,7 @@ import picocli.CommandLine;
 @Unremovable
 public class GenerateDependencyList implements Runnable {
 
-    private static final Pattern MAVEN_PATTERN = Pattern.compile("^(.*?)/([^/]*?)/([^/]*?)/\\2-\\3(-?[^/\\.]*?)\\.([^/\\.]*)$");
+    private static final Pattern MAVEN_PATTERN = Pattern.compile("^(.*?)/([^/]*?)/([^/]*?)/\\2-\\3-?([^/\\.]*?)\\.([^/\\.]*)$");
 
     @CommandLine.Option(names = "--m2-dir")
     Optional<Path> m2Dir;
@@ -33,7 +33,7 @@ public class GenerateDependencyList implements Runnable {
     @CommandLine.Option(names = "--gradle-dir")
     Optional<Path> gradleDir;
 
-    @CommandLine.Parameters
+    @CommandLine.Option(names = "--dep-file", required = true)
     Path output;
 
     @Override
@@ -45,7 +45,7 @@ public class GenerateDependencyList implements Runnable {
             deps.addAll(collectMavenDependencies(m2));
             deps.addAll(collectGradleDependencies(gradle));
             Collections.sort(deps);
-            System.out.println(deps);
+            Files.write(output, deps);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -75,7 +75,7 @@ public class GenerateDependencyList implements Runnable {
                     }
                     return FileVisitResult.SKIP_SUBTREE;
                 }
-                        return FileVisitResult.CONTINUE;
+                return FileVisitResult.CONTINUE;
             }
 
             @Override
@@ -85,7 +85,8 @@ public class GenerateDependencyList implements Runnable {
                 Matcher matcher = MAVEN_PATTERN.matcher(relative);
                 boolean matches = matcher.matches();
                 if (matches) {
-                    ret.add(matcher.group(1).replace("/", ".") + ":" + matcher.group(2) + ":" + matcher.group(3) + ":" + matcher.group(4) + ":" + matcher.group(5));
+                    ret.add(matcher.group(1).replace("/", ".") + ":" + matcher.group(2) + ":" + matcher.group(3) + ":"
+                            + matcher.group(4) + ":" + matcher.group(5));
                 }
                 return FileVisitResult.CONTINUE;
             }
