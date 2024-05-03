@@ -2,6 +2,7 @@ package com.redhat.hacbs.container;
 
 import com.redhat.hacbs.container.analyser.build.LookupBuildInfoCommand;
 import com.redhat.hacbs.container.analyser.dependencies.AnalyseDependencies;
+import com.redhat.hacbs.container.analyser.dependencies.GenerateDependencyList;
 import com.redhat.hacbs.container.analyser.location.LookupScmLocationCommand;
 import com.redhat.hacbs.container.build.preprocessor.ant.AntPrepareCommand;
 import com.redhat.hacbs.container.build.preprocessor.gradle.GradlePrepareCommand;
@@ -33,7 +34,8 @@ import picocli.CommandLine;
         DeployPreBuildImageCommand.class,
         DeployHermeticPreBuildImageCommand.class,
         ContainerTagCommand.class,
-    MavenDeployCommand.class
+        MavenDeployCommand.class,
+        GenerateDependencyList.class
 })
 public class EntryPoint {
 }
