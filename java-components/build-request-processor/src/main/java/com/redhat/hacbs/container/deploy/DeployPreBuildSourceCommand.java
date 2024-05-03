@@ -69,7 +69,8 @@ public class DeployPreBuildSourceCommand implements Runnable {
                     git.create(scmUri);
                 }
                 Log.infof("Pushing changes back to repository %s", git.getName());
-                archivedSourceTags = git.add(sourcePath, commit, imageId, true);
+                // TODO: Should removing workflow files be conditional?
+                archivedSourceTags = git.add(sourcePath, commit, imageId, true, true);
             }
             if (taskRun != null) {
                 String serialisedGitArchive = ResultsUpdater.MAPPER.writeValueAsString(archivedSourceTags);

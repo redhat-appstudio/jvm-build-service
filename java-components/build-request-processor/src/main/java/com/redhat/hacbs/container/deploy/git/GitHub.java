@@ -109,15 +109,15 @@ public class GitHub extends Git {
         if (repository == null) {
             throw new RuntimeException("Call create first");
         }
-        return pushRepository(path, repository.getHttpTransportUrl(), commit, imageId, false);
+        return pushRepository(path, repository.getHttpTransportUrl(), commit, imageId, false, false);
     }
 
     @Override
-    public GitStatus add(Path path, String commit, String imageId, boolean untracked) {
+    public GitStatus add(Path path, String commit, String imageId, boolean untracked, boolean workflow) {
         if (repository == null) {
             throw new RuntimeException("Call create first");
         }
-        return pushRepository(path, repository.getHttpTransportUrl(), commit, imageId, untracked);
+        return pushRepository(path, repository.getHttpTransportUrl(), commit, imageId, untracked, workflow);
     }
 
     @Override
@@ -128,5 +128,10 @@ public class GitHub extends Git {
     @Override
     public String getName() {
         return repository.getFullName();
+    }
+
+    @Override
+    public String getWorkflowPath() {
+        return ".github/workflows";
     }
 }

@@ -53,28 +53,26 @@ public abstract class Git {
 
     /**
      * Using the repository at path, push all files with the associated commit.
-     * using imageId to create a tag for uniqueness.
      * @param path the path to the repository.
      * @param commit the commit (tag or hash) to push.
-     * @param imageId the string to use for uniqueness.
+     * @param imageId the string to use for tag uniqueness.
      * @return a {@link GitStatus} object describing the result.
      * @throws IOException if an error occurs.
      */
     public abstract GitStatus add(Path path, String commit, String imageId)
             throws IOException;
 
-
     /**
      * Using the repository at path, push all files with the associated commit.
-     * using imageId to create a tag for uniqueness.
      * @param path the path to the repository.
      * @param commit the commit (tag or hash) to push.
-     * @param imageId the string to use for uniqueness.
+     * @param imageId the string to use for tag uniqueness.
      * @param untracked whether to create a new commit containing any untracked/modified files.
+     * @param workflow whether to remove any preexisting workflow files.
      * @return a {@link GitStatus} object describing the result.
      * @throws IOException if an error occurs.
      */
-    public abstract GitStatus add(Path path, String commit, String imageId, boolean untracked)
+    public abstract GitStatus add(Path path, String commit, String imageId, boolean untracked, boolean workflow)
         throws IOException;
 
     /**
@@ -112,7 +110,8 @@ public abstract class Git {
         }
     }
 
-    protected GitStatus pushRepository(Path path, String httpTransportUrl, String commit, String imageId, boolean untracked) {
+    protected GitStatus pushRepository(Path path, String httpTransportUrl, String commit, String imageId, boolean untracked,
+        boolean workflow) {
         try (var jGit = org.eclipse.jgit.api.Git.init().setDirectory(path.toFile()).call()) {
             // Find the tag name associated with the commit. Then append the unique imageId. This is from the Go code
             // and is a hash of abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path
@@ -121,11 +120,12 @@ public abstract class Git {
             // Tag would be
             //   rel/commons-net-3.9.0-75ecd81c7a2b384151c990975eb1dd10
             var tagName = jGit.describe().setTags(true).setTarget(commit).call();
-            var jRepo = jGit.getRepository();
             if (tagName == null) {
                 // No tag found - might be using a branch; default to commit.
                 tagName = commit;
             }
+            var ref = jGit.checkout().setStartPoint(tagName).setName(tagName + "-jbs-branch").setCreateBranch(true).call();
+            var jRepo = jGit.getRepository();
             StoredConfig jConfig = jRepo.getConfig();
             Log.infof("Updating current origin of %s to %s", jConfig.getString("remote", "origin", "url"),
                     httpTransportUrl);
@@ -134,17 +134,23 @@ public abstract class Git {
                 jConfig.setBoolean("http", null, "sslVerify", false);
             }
             jConfig.save();
-            Log.infof("Pushing to %s with content from %s (branch %s, commit %s, tag %s)", httpTransportUrl, path,
-                    jRepo.getBranch(), commit, tagName);
 
+            Log.infof("Pushing to %s with content from %s (commit %s, tag %s, ref %s)", httpTransportUrl, path, commit, tagName, ref);
+
+            if (workflow) {
+                jGit.rm().addFilepattern(getWorkflowPath()).call();
+            }
             if (untracked) {
-                jGit.add().addFilepattern(".").call();
-                RevCommit revCommit = jGit.commit().setNoVerify(true).setAuthor("JBS", "").setMessage("JBS created modifications").call();
+                // setRenormalize configures line endings. JGit defaults to true while git defaults to false. Keep it as per CLI.
+                jGit.add().setRenormalize(false).addFilepattern(".").call();
+            }
+            if (untracked || workflow) {
+                RevCommit revCommit = jGit.commit().setNoVerify(true).setAuthor("JBS", "").setMessage("JBS modifications for workflows and pre-build changes.").call();
                 List<DiffEntry> diffs = jGit.diff()
                     .setOldTree(prepareTreeParser(jRepo, commit))
                     .setNewTree(prepareTreeParser(jRepo, revCommit.getName()))
                     .call();
-                Log.infof("Committed new files and changes %s", diffs.stream().map(DiffEntry::getNewPath).sorted().collect(Collectors.toList()));
+                Log.infof("Committed JBS changes to %s", diffs.stream().map(this::formatDiffEntry).sorted().collect(Collectors.toList()));
             }
 
             Ref tagRefStable = jGit.tag().setAnnotated(true).setName(tagName + "-" + imageId).setForceUpdate(true).call();
@@ -171,7 +177,7 @@ public abstract class Git {
                         throw new RuntimeException("Failed to push updates due to " + r.getMessage());
                     }
                 });
-                Log.infof("Pushed " + result.getMessages() + " " + result.getURI() + " updates: "
+                Log.infof("Pushed " + result.getURI() + " updates: "
                         + result.getRemoteUpdates());
             }
 
@@ -223,6 +229,9 @@ public abstract class Git {
 
     public abstract String getName();
 
+    public abstract String getWorkflowPath();
+
+
     public static class GitStatus {
         public String url;
         public String tag;
@@ -241,6 +250,15 @@ public abstract class Git {
         public String toString() {
             return "GitStatus{url='" + url + "', tag='" + tag + "', sha='" + sha + "'}";
         }
+    }
+
+
+    private String formatDiffEntry(DiffEntry diffEntry) {
+        return switch (diffEntry.getChangeType()) {
+            case ADD -> diffEntry.getNewPath();
+            case COPY, RENAME -> diffEntry.getOldPath() + "->" + diffEntry.getNewPath();
+            case DELETE, MODIFY -> diffEntry.getOldPath();
+        };
     }
 
     // https://github.com/centic9/jgit-cookbook/blob/master/src/main/java/org/dstadler/jgit/porcelain/DiffFilesInCommit.java

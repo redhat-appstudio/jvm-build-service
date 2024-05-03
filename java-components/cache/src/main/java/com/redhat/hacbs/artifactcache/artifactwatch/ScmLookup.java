@@ -86,7 +86,7 @@ public class ScmLookup {
 
                                 Log.warnf("### newObj annotations %s", newObj.getMetadata().getAnnotations());
                                 if (newObj.getMetadata().getAnnotations() != null &&
-                                    newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY_CREATED)) {
+                                        newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY_CREATED)) {
                                     // If the DependencyBuild was created directly no need to look up the GAV source, instead gather
                                     // from existing dependency.
                                     var depName = newObj.getMetadata().getAnnotations().get(ModelConstants.DEPENDENCY_CREATED);

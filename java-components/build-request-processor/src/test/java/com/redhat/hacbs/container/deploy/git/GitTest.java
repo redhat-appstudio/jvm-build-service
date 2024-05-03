@@ -33,7 +33,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTestResource(value = LogCollectingTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = LogCollectingTestResource.LEVEL, value = "FINE"))
 public class GitTest {
 
-    private Git test = new Git() {
+    private final Git test = new Git() {
         @Override
         public void create(String name) {
         }
@@ -48,7 +48,7 @@ public class GitTest {
         }
 
         @Override
-        public GitStatus add(Path path, String commit, String imageId, boolean untracked) {
+        public GitStatus add(Path path, String commit, String imageId, boolean untracked, boolean workflow) {
             return null;
         }
 
@@ -60,6 +60,12 @@ public class GitTest {
         @Override
         public String getName() {
             return null;
+        }
+
+        @Override
+        public String getWorkflowPath() {
+            // Duplicate of GitHub ; required for testPush3.
+            return ".github/workflows";
         }
     };
 
@@ -110,15 +116,11 @@ public class GitTest {
                     .getParent().getParent();
             FileUtils.copyDirectory(new File(repoRoot.toFile(), ".git"), new File(initialRepo.toFile(), ".git"));
             FileUtils.copyFile(new File(repoRoot.toFile(), ".gitignore"), new File(initialRepo.toFile(), ".gitignore"));
-            Path jbs = Path.of(initialRepo.toString(), ".jbs");
-            jbs.toFile().mkdir();
-            new File(jbs.toFile(), "Dockerfile").createNewFile();
-            new File(jbs.toFile(), "run-build.sh").createNewFile();
 
             if (initialRepository.tagList().call().stream().noneMatch(r -> r.getName().equals("refs/tags/0.1"))) {
                 // Don't have the tag and cannot guarantee a fork will have it so fetch from primary repository.
                 String newRemote = RandomStringUtils.randomAlphabetic(8);
-                Log.infof("Current repo does not have 0.1 tag; configuring %s to fetch it.", newRemote);
+                Log.infof("Current repo does not have 0.1 tag; configuring %s to fetch it.", initialRepo);
                 initialRepository.remoteAdd()
                         .setUri(new URIish("https://github.com/redhat-appstudio/jvm-build-service.git")).setName(newRemote)
                         .call();
@@ -130,10 +132,9 @@ public class GitTest {
                     initialRepo,
                     testRepoURI,
                     "c396268fb90335bde5c9272b9a194c3d4302bf24",
-                    imageID, false);
+                    imageID, true, false);
 
             List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-
             assertTrue(Files.readString(Paths.get(initialRepo.toString(), ".git/config")).contains(testRepoURI));
             assertTrue(logRecords.stream()
                     .anyMatch(r -> LogCollectingTestResource.format(r)
@@ -141,6 +142,9 @@ public class GitTest {
             assertTrue(logRecords.stream()
                     .anyMatch(
                             r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
+            assertTrue(logRecords.stream()
+                .anyMatch(r -> LogCollectingTestResource.format(r)
+                    .contains("Committed JBS changes to []")));
 
             List<Ref> tags = testRepository.tagList().call();
             assertEquals(2, tags.size());
@@ -183,14 +187,16 @@ public class GitTest {
                 initialRepo,
                 testRepoURI,
                 head.getObjectId().getName(),
-                imageID, true);
+                imageID, true, false);
 
             List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-
             assertTrue(Files.readString(Paths.get(initialRepo.toString(), ".git/config")).contains(testRepoURI));
             assertTrue(logRecords.stream()
                 .anyMatch(r -> LogCollectingTestResource.format(r)
                     .contains("commit 5b05d61932ec510edf6737f55843a73ec5fdec82")));
+            assertTrue(logRecords.stream()
+                .anyMatch(r -> LogCollectingTestResource.format(r)
+                    .contains("Committed JBS changes to [.jbs/Dockerfile, .jbs/run-build.sh, pom.xml]")));
             assertTrue(logRecords.stream()
                 .anyMatch(
                     r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
@@ -220,12 +226,16 @@ public class GitTest {
         try (var testRepository = org.eclipse.jgit.api.Git.init().setDirectory(testRepo.toFile()).call();
             var ignored = org.eclipse.jgit.api.Git.cloneRepository().setURI("https://github.com/rnc/commons-net.git").setDirectory(initialRepo.toFile()).call() ) {
 
+            // Simulate modified file by preprocessor.
+            Path pom = Paths.get(initialRepo.toString(), "pom.xml");
+            Files.writeString(pom, Files.readString(pom).replace("<version>69</version>", "<version>68</version>"));
+
             Git.GitStatus tagResults = test.pushRepository(
                 initialRepo,
                 testRepoURI,
                 "e0aa3a2aace28061bb4ee7dcdd87e5960d173037",
                 imageID,
-                false);
+                true, true);
 
             List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
 
@@ -236,6 +246,9 @@ public class GitTest {
             assertTrue(logRecords.stream()
                 .anyMatch(
                     r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
+            assertTrue(logRecords.stream()
+                .anyMatch(r -> LogCollectingTestResource.format(r)
+                    .contains("Committed JBS changes to [.github/workflows/codeql-analysis.yml, .github/workflows/coverage.yml, .github/workflows/maven.yml, .github/workflows/maven_adhoc.yml, .github/workflows/scorecards-analysis.yml, pom.xml]")));
 
             List<Ref> tags = testRepository.tagList().call();
             assertEquals(2, tags.size());
@@ -251,7 +264,6 @@ public class GitTest {
                 .getName()));
         }
     }
-
 
     @Test
     public void testIdentity() throws IOException {
