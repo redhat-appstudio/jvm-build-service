@@ -198,14 +198,15 @@ public class InvocationBuilder {
                 if (tool.getKey().contains(".")) {
                     String toolSubstring = tool.getKey().substring(0, tool.getKey().lastIndexOf('.'));
                     Optional<String> smallestVersion = e.getValue().keySet().stream()
-                        .filter(f -> f.matches("^" + toolSubstring + ".*"))
-                        .sorted()
-                        .findFirst();
+                            .filter(f -> f.matches("^" + toolSubstring + ".*"))
+                            .sorted()
+                            .findFirst();
                     if (smallestVersion.isPresent()) {
                         var smallestVersionEntry = e.getValue().get(smallestVersion.get()).getReleaseDate();
                         if (!tool.getKey().equals(smallestVersion.get())) {
                             Log.infof("Overriding release date for %s from %s to %s (from %s)",
-                                tool.getKey(), tool.getValue().getReleaseDate(), smallestVersionEntry, smallestVersion.get());
+                                    tool.getKey(), tool.getValue().getReleaseDate(), smallestVersionEntry,
+                                    smallestVersion.get());
                             tool.getValue().setReleaseDate(smallestVersionEntry);
                         }
                     }
@@ -305,6 +306,22 @@ public class InvocationBuilder {
                     }
                 }
             }
+            //make sure that we don't end up with an empty list when combining with Java versions
+            boolean ok = false;
+            Set<String> versions = selectedToolVersions.get(tool);
+            if (versions != null) {
+                for (var i : versions) {
+                    for (var java : javaVersions) {
+                         ok |= isToolCompatibleWithJavaVersion(java, tool, i, buildToolInfo);
+                    }
+                    if (ok) {
+                        break;
+                    }
+                }
+            }
+            if (versions == null || !ok) {
+                selectedToolVersions.put(tool, new LinkedHashSet<>(toolVersions));
+            }
         }
         if (!selectedToolVersions.containsKey(BuildInfo.MAVEN)) {
             //we always add a maven version
@@ -357,53 +374,37 @@ public class InvocationBuilder {
         for (var invocationSet : toolInvocations.entrySet()) {
             for (var perm : allToolPermutations) {
                 for (var javaVersion : javaVersions) {
-                    boolean ignore = false;
-                    var tv = perm.get(invocationSet.getKey());
-                    var info = buildToolInfo.get(invocationSet.getKey());
-                    if (info != null) {
-                        var toolInfo = info.get(tv);
-                        if (toolInfo != null) {
-                            if (toolInfo.getMaxJdkVersion() != null && new JavaVersion(toolInfo.getMaxJdkVersion())
-                                    .intVersion() < javaVersion.intVersion()) {
-                                ignore = true;
-                            } else if (toolInfo.getMinJdkVersion() != null
-                                    && new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
-                                            .intVersion()) {
-                                ignore = true;
-                            }
-                        }
+                    String tool = invocationSet.getKey();
+                    if (isToolCompatibleWithJavaVersion( javaVersion, tool, perm.get(tool), buildToolInfo)) {
+                        for (var invocation : invocationSet.getValue()) {
+                            Invocation result = new Invocation();
+                            Map<String, String> toolVersion = new HashMap<>(perm);
+                            toolVersion.put(BuildInfo.JDK, javaVersion.version());
 
-                        if (!ignore) {
-                            for (var invocation : invocationSet.getValue()) {
-                                Invocation result = new Invocation();
-                                Map<String, String> toolVersion = new HashMap<>(perm);
-                                toolVersion.put(BuildInfo.JDK, javaVersion.version());
-
-                                result.setToolVersion(toolVersion);
-                                String tool = invocationSet.getKey();
-                                if (tool.equals(BuildInfo.MAVEN)) {
-                                    //huge hack, we need a different invocation for different java versions
-                                    //Note - according to https://github.com/apache/maven-deploy-plugin/releases
-                                    //  the deploy plugin >= 3.1 is JDK8 only.
-                                    List<String> cmds = new ArrayList<>(invocation);
-                                    if (javaVersion.intVersion() < 8) {
-                                        cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy");
-                                    } else {
-                                        cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy");
-                                    }
-                                    result.setCommands(cmds);
+                            result.setToolVersion(toolVersion);
+                            if (tool.equals(BuildInfo.MAVEN)) {
+                                //huge hack, we need a different invocation for different java versions
+                                //Note - according to https://github.com/apache/maven-deploy-plugin/releases
+                                //  the deploy plugin >= 3.1 is JDK8 only.
+                                List<String> cmds = new ArrayList<>(invocation);
+                                if (javaVersion.intVersion() < 8) {
+                                    cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.0.0-M2:deploy");
                                 } else {
-                                    result.setCommands(invocation);
+                                    cmds.add("org.apache.maven.plugins:maven-deploy-plugin:3.1.1:deploy");
                                 }
-                                result.setTool(tool);
-                                result.setDisabledPlugins(
-                                        buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
-                                                ? buildRecipeInfo.getDisabledPlugins()
-                                                : buildInfoLocator.lookupDisabledPlugins(tool));
-                                this.info.invocations.add(result);
+                                result.setCommands(cmds);
+                            } else {
+                                result.setCommands(invocation);
                             }
+                            result.setTool(tool);
+                            result.setDisabledPlugins(
+                                    buildRecipeInfo != null && buildRecipeInfo.getDisabledPlugins() != null
+                                            ? buildRecipeInfo.getDisabledPlugins()
+                                            : buildInfoLocator.lookupDisabledPlugins(tool));
+                            this.info.invocations.add(result);
                         }
                     }
+
                 }
             }
         }
@@ -414,6 +415,25 @@ public class InvocationBuilder {
             info.setContextPath(contextPath);
         }
         return info;
+    }
+
+    private static boolean isToolCompatibleWithJavaVersion( JavaVersion javaVersion, String tool,String toolVersion, Map<String, Map<String, BuildToolInfo>> buildToolInfo) {
+        var info = buildToolInfo.get(tool);
+        boolean problem = false;
+        if (info != null) {
+            var toolInfo = info.get(toolVersion);
+            if (toolInfo != null) {
+                if (toolInfo.getMaxJdkVersion() != null && new JavaVersion(toolInfo.getMaxJdkVersion())
+                        .intVersion() < javaVersion.intVersion()) {
+                    problem = true;
+                } else if (toolInfo.getMinJdkVersion() != null
+                        && new JavaVersion(toolInfo.getMinJdkVersion()).intVersion() > javaVersion
+                                .intVersion()) {
+                    problem = true;
+                }
+            }
+        }
+        return !problem;
     }
 
     static Set<String> findClosestVersions(List<String> toolVersions, String discovered) {
