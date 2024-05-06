@@ -271,10 +271,13 @@ rules:
     resources:
       - rebuiltartifacts
       - artifactbuilds
+      - dependencybuilds
     verbs:
       - get
       - list
       - watch
+      - patch
+      - delete
   - apiGroups:
       - jvmbuildservice.io
     resources:

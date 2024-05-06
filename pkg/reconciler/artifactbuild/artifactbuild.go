@@ -40,6 +40,8 @@ const (
 
 	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
 
+	DependencyAnnotation = "jvmbuildservice.io/dependencycreated"
+
 	RebuildAnnotation = "jvmbuildservice.io/rebuild"
 	// RebuiltAnnotation annotation that is applied after a rebuild, it will affect the dependencybuild behaviour
 	RebuiltAnnotation = "jvmbuildservice.io/rebuilt"
@@ -497,7 +499,6 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 		}
 	}
 	//set our state back to new
-	abr.Status.SCMInfo = v1alpha1.SCMInfo{}
 	abr.Status.Message = ""
 	return r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateNew)
 }
