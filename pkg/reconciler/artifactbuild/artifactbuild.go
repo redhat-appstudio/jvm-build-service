@@ -242,14 +242,6 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 }
 
 func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) error {
-	// if pipelinerun to update SCM/Message has not completed, just return
-	if len(abr.Status.SCMInfo.SCMURL) == 0 &&
-		len(abr.Status.SCMInfo.Tag) == 0 &&
-		len(abr.Status.SCMInfo.SCMType) == 0 &&
-		len(abr.Status.SCMInfo.Path) == 0 &&
-		len(abr.Status.Message) == 0 {
-		return nil
-	}
 	if len(abr.Status.SCMInfo.SCMURL) == 0 || len(abr.Status.SCMInfo.Tag) == 0 {
 		//discovery failed
 		return r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateMissing)

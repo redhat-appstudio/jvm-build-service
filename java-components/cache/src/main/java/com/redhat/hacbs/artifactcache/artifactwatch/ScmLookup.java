@@ -85,29 +85,12 @@ public class ScmLookup {
                                 Scm scm = new Scm();
 
                                 if (newObj.getMetadata().getAnnotations() != null &&
-                                        newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY) &&
-                                        ModelConstants.ARTIFACT_BUILD_NEW.equals(newObj.getStatus().getState())) {
-                                    // If originally created from a DependencyBuild using a custom SCM but we're doing a rebuild
-                                    // then don't use the recipe DB for GAV lookup.
-                                    scm = newObj.getStatus().getScm();
-                                    newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
-                                    Log.infof("Tagging artifactBuild for rebuild with URI %s and hash %s ", scm.getScmURL(),
-                                            scm.getCommitHash());
-
-                                } else if (newObj.getMetadata().getAnnotations() != null &&
                                         newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY)) {
                                     // If the DependencyBuild was created directly no need to look up the GAV source, instead gather
                                     // from existing dependency.
                                     var depName = newObj.getMetadata().getAnnotations().get(ModelConstants.DEPENDENCY);
                                     var resource = client.resources(DependencyBuild.class).withName(depName);
                                     DependencyBuild dependencyBuild = resource.get();
-                                    while (dependencyBuild.getStatus().getState()
-                                            .equals(ModelConstants.DEPENDENCY_BUILD_DEPLOYING)) {
-                                        Log.infof("Sleeping for DependencyBuild deploy...(currently %s)",
-                                                dependencyBuild.getStatus().getState());
-                                        Thread.sleep(10000);
-                                        dependencyBuild = resource.get();
-                                    }
                                     var scmInfo = dependencyBuild.getSpec().getScm();
                                     scm.setScmType("git");
                                     scm.setScmURL(scmInfo.getScmURL());
@@ -119,12 +102,6 @@ public class ScmLookup {
                                             "Updating artifactBuild with Dependency %s (state: %s) with GAV %s with URI %s and hash %s ",
                                             depName, dependencyBuild.getStatus().getState(), newObj.getSpec().getGav(),
                                             scm.getScmURL(), scm.getCommitHash());
-                                    if (dependencyBuild.getStatus().getState()
-                                            .equals(ModelConstants.DEPENDENCY_BUILD_COMPLETE)) {
-                                        newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_COMPLETE);
-                                    } else {
-                                        newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_FAILED);
-                                    }
                                     OwnerReference ownerReference = new OwnerReference();
                                     ownerReference.setApiVersion(dependencyBuild.getApiVersion());
                                     ownerReference.setKind(newObj.getKind());
@@ -133,6 +110,7 @@ public class ScmLookup {
                                     dependencyBuild = resource.get();
                                     dependencyBuild.getMetadata().getOwnerReferences().add(ownerReference);
                                     resource.patch(dependencyBuild);
+                                    newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
                                 } else {
                                     var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
                                     scm.setScmType("git");
