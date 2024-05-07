@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -119,13 +121,25 @@ public abstract class Git {
             //   apache/commons-net.git@rel/commons-net-3.9.0    DependencyBuildStateComplete   75ecd81c7a2b384151c990975eb1dd10
             // Tag would be
             //   rel/commons-net-3.9.0-75ecd81c7a2b384151c990975eb1dd10
-            var tagName = jGit.describe().setTags(true).setTarget(commit).call();
+            // While we could use jGit describe as there may be more than one tag associated with 'commit' we will parse the
+            // ref database (using code from tagList command) instead.
+            //var tagNameFromDescribe = jGit.describe().setTags(true).setTarget(commit).call();
+            var objectId = ObjectId.fromString(commit);
+            var jRepo = jGit.getRepository();
+            @SuppressWarnings("deprecation")
+            var tagName = jRepo.getRefDatabase().getRefsByPrefix(Constants.R_TAGS).stream().
+                filter(ref -> objectId.equals(jRepo.peel(ref).getPeeledObjectId()) || objectId.equals(ref.getObjectId())).
+                map(r -> r.getName().replace("refs/tags/", "")).
+                // Exclude our own tag format of tag-<uuid|commit> if we've previously run and fallen back to branch
+                // commit for the tag name.
+                filter(t -> !t.startsWith(commit)).
+                findFirst().orElse(null);
+
             if (tagName == null) {
                 // No tag found - might be using a branch; default to commit.
                 tagName = commit;
             }
             var ref = jGit.checkout().setStartPoint(tagName).setName(tagName + "-jbs-branch").setCreateBranch(true).call();
-            var jRepo = jGit.getRepository();
             StoredConfig jConfig = jRepo.getConfig();
             Log.infof("Updating current origin of %s to %s", jConfig.getString("remote", "origin", "url"),
                     httpTransportUrl);
@@ -153,14 +167,20 @@ public abstract class Git {
                 Log.infof("Committed JBS changes to %s", diffs.stream().map(this::formatDiffEntry).sorted().collect(Collectors.toList()));
             }
 
-            Ref tagRefStable = jGit.tag().setAnnotated(true).setName(tagName + "-" + imageId).setForceUpdate(true).call();
+            Ref tagRefStable = null;
+            if (!tagName.endsWith(imageId)) {
+                // Avoid repeatedly concatenating the imageId to an existing tag.
+                tagRefStable = jGit.tag().setAnnotated(true).setName(tagName + "-" + imageId).setForceUpdate(true).call();
+            }
             Ref tagRefUnique = jGit.tag().setAnnotated(true).setName(tagName + "-" + UUID.randomUUID()).setForceUpdate(true)
                     .call();
 
             PushCommand pushCommand = jGit.push().setForce(true).setRemote("origin")
-                    .add(tagRefStable)
                     .add(tagRefUnique)
                     .setCredentialsProvider(credentialsProvider);
+            if (tagRefStable != null) {
+                pushCommand.add(tagRefStable);
+            }
             // If it is a new repository we should push
             // the default branch else it doesn't show the code
             if (newGitRepository) {
