@@ -157,7 +157,6 @@ public class MavenDeployTest {
             }
             Optional<String> jarFile = artifactFiles.getValue().stream().filter(s -> s.endsWith(VERSION + ".jar")).findAny();
             if (jarFile.isPresent()) {
-                System.err.println("### [TEST] Generating pom file for " + jarFile.get());
                 Path pomFile = Paths.get(testDir.toString(), jarFile.get().replace(".jar", ".pom"));
                 Model model = new Model();
                 model.setArtifactId(artifactFiles.getKey());
