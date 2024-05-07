@@ -22,7 +22,6 @@ import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 import com.redhat.hacbs.resources.model.v1alpha1.artifactbuildstatus.Scm;
 
-import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
@@ -74,7 +73,9 @@ public class ScmLookup {
                             }
                             try {
                                 if (newObj.getMetadata().getAnnotations() != null
-                                        && newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILD)) {
+                                        && newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILD)
+                                        && !newObj.getMetadata().getAnnotations()
+                                                .containsKey(ModelConstants.DEPENDENCY_CREATED)) {
                                     //if this is a forced rebuild we always update the SCM info
                                     //there is a good chance there may be a new recipe
                                     recipeManager.forceUpdate();
@@ -84,8 +85,15 @@ public class ScmLookup {
                                 }
                                 Scm scm = new Scm();
 
-                                Log.warnf("### newObj annotations %s", newObj.getMetadata().getAnnotations());
                                 if (newObj.getMetadata().getAnnotations() != null &&
+                                        newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY_CREATED) &&
+                                        ModelConstants.ARTIFACT_BUILD_NEW.equals(newObj.getStatus().getState())) {
+                                    // If originally created from a DependencyBuild using a custom SCM but we're doing a rebuild
+                                    // then don't use the recipe DB for GAV lookup.
+                                    scm = newObj.getStatus().getScm();
+                                    Log.infof("Tagging artifactBuild for rebuild with URI %s and hash %s ", scm.getScmURL(),
+                                            scm.getCommitHash());
+                                } else if (newObj.getMetadata().getAnnotations() != null &&
                                         newObj.getMetadata().getAnnotations().containsKey(ModelConstants.DEPENDENCY_CREATED)) {
                                     // If the DependencyBuild was created directly no need to look up the GAV source, instead gather
                                     // from existing dependency.
@@ -103,15 +111,6 @@ public class ScmLookup {
                                             "Updating artifactBuild with Dependency %s (state: %s) with GAV %s with URI %s and hash %s ",
                                             depName, dependencyBuild.getStatus().getState(), newObj.getSpec().getGav(),
                                             scm.getScmURL(), scm.getCommitHash());
-                                    OwnerReference ownerReference = new OwnerReference();
-                                    ownerReference.setApiVersion(dependencyBuild.getApiVersion());
-                                    ownerReference.setKind(newObj.getKind());
-                                    ownerReference.setName(newObj.getMetadata().getName());
-                                    ownerReference.setUid(newObj.getMetadata().getUid());
-                                    dependencyBuild = resource.get();
-                                    dependencyBuild.getMetadata().getOwnerReferences().add(ownerReference);
-                                    resource.patch(dependencyBuild);
-                                    newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
                                 } else {
                                     var result = recipeManager.locator().resolveTagInfo(GAV.parse(newObj.getSpec().getGav()));
                                     scm.setScmType("git");
@@ -122,8 +121,8 @@ public class ScmLookup {
                                     scm.setTag(result.getTag());
                                     Log.infof("Adding artifactBuild with GAV %s with URI %s and hash %s ",
                                             newObj.getSpec().getGav(), result.getRepoInfo().getUri(), result.getHash());
-                                    newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
                                 }
+                                newObj.getStatus().setState(ModelConstants.ARTIFACT_BUILD_DISCOVERING);
                                 newObj.getStatus().setScm(scm);
                                 newObj.getStatus().setMessage("");
                             } catch (Exception e) {

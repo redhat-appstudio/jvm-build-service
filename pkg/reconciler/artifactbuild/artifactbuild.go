@@ -246,6 +246,7 @@ func (r *ReconcileArtifactBuild) handleStateNew(ctx context.Context, log logr.Lo
 func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log logr.Logger, abr *v1alpha1.ArtifactBuild) error {
 	if len(abr.Status.SCMInfo.SCMURL) == 0 || len(abr.Status.SCMInfo.Tag) == 0 {
 		//discovery failed
+		log.Info(fmt.Sprintf("### handleStateDiscovering returning as state missing %#v", abr.Status.SCMInfo))
 		return r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateMissing)
 	}
 
@@ -258,7 +259,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 	switch {
 	case err == nil:
 
-		//		log.Info(fmt.Sprintf("### handleStateDiscovering build exists for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
+		log.Info(fmt.Sprintf("### handleStateDiscovering build exists for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
 
 		//build already exists, add us to the owner references
 		found := false
@@ -268,16 +269,12 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 				break
 			}
 		}
+		log.Info(fmt.Sprintf("### handleStateDiscovering found for ownerreference %#v", found))
 		if !found {
 			if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 				return err
 			}
-			if abr.Annotations != nil && abr.Annotations[RebuiltAnnotation] == "true" {
-				if db.Annotations == nil {
-					db.Annotations = map[string]string{}
-				}
-				db.Annotations[RebuiltAnnotation] = "true"
-			}
+			r.copyAnnotations(abr, db)
 			if err := r.client.Update(ctx, db); err != nil {
 				return err
 			}
@@ -302,7 +299,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 			return err
 		}
-		//		log.Info(fmt.Sprintf("### handleStateDiscovering creating depbuild for %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Annotations, abr.Annotations))
+		log.Info(fmt.Sprintf("### handleStateDiscovering creating depbuild for %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Annotations, abr.Annotations))
 
 		db.Spec = v1alpha1.DependencyBuildSpec{ScmInfo: v1alpha1.SCMInfo{
 			SCMURL:     abr.Status.SCMInfo.SCMURL,
@@ -313,12 +310,8 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 			Private:    abr.Status.SCMInfo.Private,
 		}, Version: abr.Spec.GAV[strings.LastIndex(abr.Spec.GAV, ":")+1:]}
 
-		if abr.Annotations != nil && abr.Annotations[RebuiltAnnotation] == "true" {
-			db.Annotations[RebuiltAnnotation] = "true"
-		}
-		if abr.Annotations != nil && abr.Annotations[DependencyScmAnnotation] == "true" {
-			db.Annotations[DependencyScmAnnotation] = "true"
-		}
+		r.copyAnnotations(abr, db)
+
 		//move the state to building
 		if err := r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateBuilding); err != nil {
 			return err
@@ -464,7 +457,7 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 		err := r.client.Get(ctx, dbKey, db)
 		notFound := errors.IsNotFound(err)
 
-		//		log.Info(fmt.Sprintf("### handleRebuild for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
+		log.Info(fmt.Sprintf("### handleRebuild for %#v with state %#v with annotations %#v and artifactannotation %#v", abr.Status.SCMInfo.SCMURL, db.Status.State, db.Annotations, abr.Annotations))
 
 		if err == nil {
 			//make sure to annotate all other owners so they also see state updates
@@ -591,6 +584,23 @@ func (r *ReconcileArtifactBuild) updateLabel(ctx context.Context, log logr.Logge
 		}
 	}
 	return result, nil
+}
+
+func (r *ReconcileArtifactBuild) copyAnnotations(abr *v1alpha1.ArtifactBuild, db *v1alpha1.DependencyBuild) {
+	if abr.Annotations != nil {
+		if db.Annotations == nil {
+			db.Annotations = map[string]string{}
+		}
+		if abr.Annotations[RebuiltAnnotation] == "true" {
+			db.Annotations[RebuiltAnnotation] = "true"
+		}
+		if abr.Annotations[DependencyScmAnnotation] == "true" {
+			db.Annotations[DependencyScmAnnotation] = "true"
+		}
+		if abr.Annotations[DependencyCreatedAnnotation] != "" {
+			db.Annotations[DependencyCreatedAnnotation] = db.Name
+		}
+	}
 }
 
 func InstallKeystoreIntoBuildRequestProcessor(args ...[]string) string {

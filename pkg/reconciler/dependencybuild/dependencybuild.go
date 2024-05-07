@@ -218,6 +218,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
+	log.Info(fmt.Sprintf("### handleStateNew for %#v", db))
 	// create pipeline run
 	pr := tektonpipeline.PipelineRun{}
 	pr.Finalizers = []string{PipelineRunFinalizer}
