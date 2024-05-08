@@ -103,6 +103,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	ctx, cancel = context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 	log := ctrl.Log.WithName("dependencybuild").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name)
+	ctx = logr.NewContext(ctx, log)
 
 	db := v1alpha1.DependencyBuild{}
 	dberr := r.client.Get(ctx, request.NamespacedName, &db)
@@ -136,7 +137,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 		if db.Annotations != nil && db.Annotations[RedeployAnnotation] != "" {
 
-			return r.handleRedeployAnnotation(ctx, db)
+			return r.handleRedeployAnnotation(ctx, &db)
 		}
 
 		switch db.Status.State {
@@ -194,7 +195,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) handleRedeployAnnotation(ctx context.Context, db v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleRedeployAnnotation(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//delete the existing pipeline if it exists
 	pr := tektonpipeline.PipelineRun{}
 	prName := db.Name + DeploySuffix
@@ -208,13 +209,7 @@ func (r *ReconcileDependencyBuild) handleRedeployAnnotation(ctx context.Context,
 		}
 	}
 	//handle redeployment
-	db.Status.State = v1alpha1.DependencyBuildStateDeploying
-	err = r.client.Status().Update(ctx, &db)
-
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	return reconcile.Result{}, r.client.Update(ctx, &db)
+	return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateDeploying, "redeployment was requested")
 }
 
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
@@ -254,16 +249,12 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
-	db.Status.State = v1alpha1.DependencyBuildStateAnalyzeBuild
 	if err := r.client.Create(ctx, &pr); err != nil {
 		if !errors.IsAlreadyExists(err) {
 			return reconcile.Result{}, err
 		}
 	}
-	if err := r.client.Status().Update(ctx, db); err != nil {
-		return reconcile.Result{}, err
-	}
-	return reconcile.Result{}, nil
+	return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateAnalyzeBuild, "build discovery pipeline created")
 }
 
 func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
@@ -331,9 +322,7 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 		if (db.Status.PipelineRetries < MaxRetries) && r.failedDueToMemory(ctx, log, pr) {
 			// Abuse pipeline retries to apply the same logic
 			// We reset it back to zero before the builds start
-			log.Info("build discovery failed due to memory issues")
 			db.Status.PipelineRetries++
-			db.Status.State = v1alpha1.DependencyBuildStateNew
 			// Don't need to call update on the DB here as it is called at the end of the function.
 			//
 			// Need to delete this pipeline as it has failed from OOM. If we don't delete it
@@ -343,20 +332,18 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+			return reconcile.Result{}, r.updateDependencyBuildState(ctx, &db, v1alpha1.DependencyBuildStateNew, "build discovery failed due to memory issues")
 		} else {
-			db.Status.State = v1alpha1.DependencyBuildStateFailed
 			db.Status.Message = buildInfo
+			return reconcile.Result{}, r.updateDependencyBuildState(ctx, &db, v1alpha1.DependencyBuildStateFailed, "build discovery pipelineFailed")
 		}
-
 	} else {
 		db.Status.PipelineRetries = 0
 		unmarshalled := marshalledBuildInfo{}
-
 		if err := json.Unmarshal([]byte(buildInfo), &unmarshalled); err != nil {
 			r.eventRecorder.Eventf(&db, v1.EventTypeWarning, "InvalidJson", "Failed to unmarshal build info for AB %s/%s JSON: %s", db.Namespace, db.Name, buildInfo)
-			db.Status.State = v1alpha1.DependencyBuildStateFailed
 			db.Status.Message = "failed to unmarshal json build info: " + err.Error() + ": " + buildInfo
-			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+			return reconcile.Result{}, r.updateDependencyBuildState(ctx, &db, v1alpha1.DependencyBuildStateFailed, "failed to unmarshal json build")
 		}
 
 		//read our builder images from the config
@@ -372,8 +359,7 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 
 		if len(unmarshalled.Invocations) == 0 {
 			log.Error(nil, "Unable to determine build tool", "info", unmarshalled)
-			db.Status.State = v1alpha1.DependencyBuildStateFailed
-			return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+			return reconcile.Result{}, r.updateDependencyBuildState(ctx, &db, v1alpha1.DependencyBuildStateFailed, "Unable to determine build tool")
 		}
 		for _, command := range unmarshalled.Invocations {
 			//loop through the builder images to find one that meets all the requirements
@@ -417,23 +403,15 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 		db.Status.PotentialBuildRecipesIndex = 0
 
 		if len(unmarshalled.Image) > 0 {
-			log.Info(fmt.Sprintf("Found preexisting shared build with deployed GAVs %#v from image %#v", unmarshalled.Gavs, unmarshalled.Image))
-			db.Status.State = v1alpha1.DependencyBuildStateComplete
 			err := r.createRebuiltArtifacts(ctx, log, pr, &db, unmarshalled.Image, unmarshalled.Digest, unmarshalled.Gavs)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+			return reconcile.Result{}, r.updateDependencyBuildState(ctx, &db, v1alpha1.DependencyBuildStateComplete, fmt.Sprintf("Found preexisting shared build with deployed GAVs %#v from image %#v", unmarshalled.Gavs, unmarshalled.Image))
 		} else {
-			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
+			return reconcile.Result{}, r.updateDependencyBuildState(ctx, &db, v1alpha1.DependencyBuildStateSubmitBuild, "Starting build process")
 		}
 	}
-
-	err = r.client.Status().Update(ctx, &db)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	return reconcile.Result{}, nil
 }
 
 type marshalledBuildInfo struct {
@@ -512,10 +490,8 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, l
 	//no more attempts
 	if len(db.Status.PotentialBuildRecipes) == db.Status.PotentialBuildRecipesIndex {
 		msg := "The DependencyBuild %s/%s moved to failed, all recipes exhausted"
-		log.Info(fmt.Sprintf(msg, db.Namespace, db.Name))
 		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "BuildFailed", msg, db.Namespace, db.Name)
-		db.Status.State = v1alpha1.DependencyBuildStateFailed
-		return reconcile.Result{}, r.client.Status().Update(ctx, db)
+		return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateFailed, fmt.Sprintf(msg, db.Namespace, db.Name))
 	}
 	ba := v1alpha1.BuildAttempt{}
 	ba.BuildId = uuid.New().String()
@@ -528,9 +504,8 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, l
 	//and remove if from the potential list via the index
 	db.Status.PotentialBuildRecipesIndex++
 	db.Status.BuildAttempts = append(db.Status.BuildAttempts, &ba)
-	db.Status.State = v1alpha1.DependencyBuildStateBuilding
 	//create the pipeline run
-	return reconcile.Result{}, r.client.Status().Update(ctx, db)
+	return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateBuilding, "selected build recipe")
 
 }
 
@@ -756,13 +731,10 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				}
 
 				if doRetry {
-					log.Info(fmt.Sprintf("Resetting %d to retry build for %s", db.Status.PotentialBuildRecipesIndex,
-						db.Name))
 					db.Status.PotentialBuildRecipesIndex--
 					db.Status.PipelineRetries++
-					db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
-					err := r.client.Status().Update(ctx, db)
-					return reconcile.Result{}, err
+					return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateSubmitBuild, fmt.Sprintf("Resetting %d to retry build for %s", db.Status.PotentialBuildRecipesIndex,
+						db.Name))
 				}
 			}
 
@@ -838,7 +810,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 			problemContaminates := db.Status.ProblemContaminates()
 			if len(problemContaminates) == 0 {
-				db.Status.State = v1alpha1.DependencyBuildStateDeploying
+				return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateDeploying, "build was completed")
 			} else {
 				msg := "The DependencyBuild %s/%s was contaminated with community dependencies"
 				log.Info(fmt.Sprintf(msg, db.Namespace, db.Name))
@@ -855,8 +827,6 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			}
 		} else {
 			//try again, if there are no more recipes this gets handled in the submit build logic
-			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
-
 			//its also possible this failed due to verification failures
 			//in this case we still get the result on the task run
 			//so we look for it to add to the build
@@ -877,9 +847,8 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					}
 				}
 			}
-
 		}
-		err = r.client.Status().Update(ctx, db)
+		err = r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateSubmitBuild, "build pipeline failed")
 		return reconcile.Result{}, err
 	} else if pr.GetDeletionTimestamp() != nil {
 		//pr is being deleted
@@ -894,11 +863,10 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			ba.Build.Succeeded = false
 			ba.Build.FinishTime = pr.GetDeletionTimestamp().Unix()
 			ba.Build.Complete = true
-			db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 			changed = true
 		}
 		if changed {
-			err = r.client.Status().Update(ctx, db)
+			err = r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateSubmitBuild, "build pipeline was removed")
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -967,7 +935,6 @@ func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Con
 func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger, problemContaminates []*v1alpha1.Contaminant) error {
 
 	ownerGavs := map[string]bool{}
-	db.Status.State = v1alpha1.DependencyBuildStateComplete
 	l.Info("Build was contaminated, attempting to rebuild contaminants if required", "build", db.Name)
 	//get all the owning artifact builds
 	//if any of these are contaminated
@@ -987,11 +954,12 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 			ownerGavs[ab.Spec.GAV] = true
 		}
 	}
+	contaminated := false
 
 	for _, contaminant := range problemContaminates {
 		for _, artifact := range contaminant.ContaminatedArtifacts {
 			if ownerGavs[artifact] {
-				db.Status.State = v1alpha1.DependencyBuildStateContaminated
+				contaminated = true
 				abrName := artifactbuild.CreateABRName(contaminant.GAV)
 				abr := v1alpha1.ArtifactBuild{}
 				//look for existing ABR
@@ -1024,12 +992,11 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 			}
 		}
 	}
-	if db.Status.State == v1alpha1.DependencyBuildStateContaminated {
-		l.Info("build was marked as contaminated as some required artifacts were contaminated", "build", db.Name)
+	if contaminated {
+		return r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateContaminated, "build was marked as contaminated as some required artifacts were contaminated")
 	} else {
-		l.Info("build was marked as complete as no contaminated artifacts were requested", "build", db.Name)
+		return r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateComplete, "build was marked as complete as no contaminated artifacts were requested")
 	}
-	return r.client.Status().Update(ctx, db)
 }
 func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	contaminants := db.Status.Contaminants
@@ -1044,10 +1011,9 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 		//all fixed, just set the state back to building and try again
 		//this is triggered when contaminants are removed by the ABR controller
 		//setting it back to building should re-try the recipe that actually worked
-		db.Status.State = v1alpha1.DependencyBuildStateSubmitBuild
 		db.Status.PotentialBuildRecipesIndex = 0
 		db.Status.PipelineRetries = 0
-		return reconcile.Result{}, r.client.Update(ctx, db)
+		return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateSubmitBuild, "retrying contaminated build")
 	}
 	return reconcile.Result{}, nil
 }
@@ -1440,15 +1406,11 @@ func (r *ReconcileDependencyBuild) handleDeployPipelineRunReceived(ctx context.C
 
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
-			db.Status.State = v1alpha1.DependencyBuildStateComplete
+			return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateComplete, "deploy pipeline complete")
 		} else {
-			db.Status.State = v1alpha1.DependencyBuildStateFailed
+			return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateFailed, "deploy pipeline failed")
 		}
 
-		err = r.client.Status().Update(ctx, db)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
 	}
 	return reconcile.Result{}, nil
 }
@@ -1462,4 +1424,17 @@ func modifyURLFragment(log logr.Logger, scmURL string) string {
 		result = scmURL[:hashIndex]
 	}
 	return result
+}
+
+func (r *ReconcileDependencyBuild) updateDependencyBuildState(ctx context.Context, db *v1alpha1.DependencyBuild, state string, reason string) error {
+	if db.Status.State != state {
+		log, err := logr.FromContext(ctx)
+		if err != nil {
+			return err
+		}
+		log.Info(fmt.Sprintf("DependencyBuild %s changing state from %s to %s due to: %s", db.Name, db.Status.State, state, reason))
+		db.Status.State = state
+		return r.client.Status().Update(ctx, db)
+	}
+	return nil
 }
