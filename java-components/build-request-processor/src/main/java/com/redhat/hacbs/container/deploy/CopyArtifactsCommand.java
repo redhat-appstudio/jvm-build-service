@@ -55,10 +55,6 @@ public class CopyArtifactsCommand implements Runnable {
                                 var packaging = project.getPackaging();
                                 var gav = new Gav(project.getGroupId(), project.getArtifactId(), version, null, packaging, null, null, null, false, null, false, null);
 
-                                if (!packaging.equals("pom") && !packaging.equals("jar")) {
-                                    throw new RuntimeException("Unhandled packaging " + packaging + " for artifact " + gavToCoords(gav));
-                                }
-
                                 var existingPath = pomFiles.get(gav);
 
                                 if (existingPath == null) {
@@ -92,6 +88,9 @@ public class CopyArtifactsCommand implements Runnable {
                 var fullPath = deployPath.resolve(repoPath);
                 Log.debugf("Deploying to path %s", repoPath);
                 var pomDestFile = Path.of(fullPath + ".pom");
+                if (Files.exists(pomDestFile)) {
+                    continue;
+                }
                 Files.createDirectories(fullPath.getParent());
                 var pomSourceFile = entry.getValue();
                 Log.infof("Copying %s to %s", pomSourceFile, pomDestFile);
