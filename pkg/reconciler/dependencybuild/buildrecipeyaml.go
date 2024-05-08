@@ -268,11 +268,21 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	var buildTaskScript string
 	hermeticResults := []tektonpipeline.TaskResult{}
-	if hermeticBuildRequired {
-		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs, createHermeticImageArgs)
-		hermeticResults = []tektonpipeline.TaskResult{{Name: HermeticPreBuildImageDigest}}
+
+	if tool == "ant" {
+		if hermeticBuildRequired {
+			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs, createHermeticImageArgs)
+			hermeticResults = []tektonpipeline.TaskResult{{Name: HermeticPreBuildImageDigest}}
+		} else {
+			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs)
+		}
 	} else {
-		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs)
+		if hermeticBuildRequired {
+			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs, createHermeticImageArgs)
+			hermeticResults = []tektonpipeline.TaskResult{{Name: HermeticPreBuildImageDigest}}
+		} else {
+			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
+		}
 	}
 	buildTask := tektonpipeline.TaskSpec{
 		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
