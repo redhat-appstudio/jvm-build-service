@@ -13,6 +13,8 @@ import com.redhat.hacbs.container.deploy.DeployCommand;
 import com.redhat.hacbs.container.deploy.DeployHermeticPreBuildImageCommand;
 import com.redhat.hacbs.container.deploy.DeployPreBuildImageCommand;
 import com.redhat.hacbs.container.deploy.MavenDeployCommand;
+import com.redhat.hacbs.container.hermetic.DownloadDependencies;
+import com.redhat.hacbs.container.hermetic.GenerateDependencyList;
 import com.redhat.hacbs.container.verifier.VerifyBuiltArtifactsCommand;
 
 import io.quarkus.picocli.runtime.annotations.TopCommand;
@@ -33,7 +35,9 @@ import picocli.CommandLine;
         DeployPreBuildImageCommand.class,
         DeployHermeticPreBuildImageCommand.class,
         ContainerTagCommand.class,
-    MavenDeployCommand.class
+        MavenDeployCommand.class,
+        GenerateDependencyList.class,
+        DownloadDependencies.class
 })
 public class EntryPoint {
 }
