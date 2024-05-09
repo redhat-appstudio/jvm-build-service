@@ -1,4 +1,4 @@
-/* generated using openapi-typescript-codegen -- do no edit */
+/* generated using openapi-typescript-codegen -- do not edit */
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
@@ -39,6 +39,22 @@ export class BuildHistoryResourceService {
                 'perPage': perPage,
                 'state': state,
                 'tool': tool,
+            },
+        });
+    }
+    /**
+     * @param name
+     * @returns any OK
+     * @throws ApiError
+     */
+    public static getApiBuildsHistoryDeployLogs(
+        name: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/builds/history/deploy-logs/{name}',
+            path: {
+                'name': name,
             },
         });
     }

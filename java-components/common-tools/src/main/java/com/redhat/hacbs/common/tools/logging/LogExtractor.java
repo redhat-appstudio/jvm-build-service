@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 
 import io.fabric8.kubernetes.api.model.ContainerStatus;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.fabric8.tekton.pipeline.v1beta1.PipelineRun;
 import io.fabric8.tekton.pipeline.v1beta1.TaskRun;
@@ -37,8 +38,9 @@ public class LogExtractor {
 
     private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
-    public static String discoveryLogRetrieval(OpenShiftClient client, String host, int port, String restPath,
-            DependencyBuild theBuild) {
+    private static String logRetrieval(OpenShiftClient client, String host, int port, String restPath,
+            String logs) {
+
         StringBuilder result = new StringBuilder();
         LogsApi logsApi = QuarkusRestClientBuilder.newBuilder()
                 .register(((ClientRequestFilter) context -> context.getHeaders().add(HttpHeaders.AUTHORIZATION,
@@ -46,20 +48,36 @@ public class LogExtractor {
                 .baseUri(URI.create("https://" + host + ":" + port + restPath))
                 .build(LogsApi.class);
 
+        String[] discoverySplit = logs.split("/");
+        result.append("Discovery Log information: ").append(Arrays.toString(discoverySplit)).append("\n");
+        // Equivalent to using this Quarkus API would be to call the client raw method.
+        // client.raw("https://" + host + ":" + defaultPort + restPath + "/v1alpha2/parents/" + split[0]
+        //          + "/results/" + split[2] + "/logs/" + split[4]);
+        String log = logsApi.getLogByUid(discoverySplit[0], UUID.fromString(discoverySplit[2]),
+                UUID.fromString(discoverySplit[4]));
+        parseLog(result, log);
+
+        return result.toString();
+    }
+
+    public static String discoveryLogRetrieval(OpenShiftClient client, String host, int port, String restPath,
+            DependencyBuild theBuild) {
         String discoveryPipeLineLogs = theBuild.getStatus().getDiscoveryPipelineResults().getLogs();
         if (discoveryPipeLineLogs == null) {
-            result.append("No logs founds");
+            return "No logs founds";
         } else {
-            String[] discoverySplit = theBuild.getStatus().getDiscoveryPipelineResults().getLogs().split("/");
-            result.append("Discovery Log information: ").append(Arrays.toString(discoverySplit)).append("\n");
-            // Equivalent to using this Quarkus API would be to call the client raw method.
-            // client.raw("https://" + host + ":" + defaultPort + restPath + "/v1alpha2/parents/" + split[0]
-            //          + "/results/" + split[2] + "/logs/" + split[4]);
-            String log = logsApi.getLogByUid(discoverySplit[0], UUID.fromString(discoverySplit[2]),
-                    UUID.fromString(discoverySplit[4]));
-            parseLog(result, log);
+            return logRetrieval(client, host, port, restPath, discoveryPipeLineLogs);
         }
-        return result.toString();
+    }
+
+    public static String deployLogRetrieval(OpenShiftClient client, String host, int port, String restPath,
+            DependencyBuild theBuild) {
+        String discoveryPipeLineLogs = theBuild.getStatus().getDeployPipelineResults().getLogs();
+        if (discoveryPipeLineLogs == null) {
+            return "No logs founds";
+        } else {
+            return logRetrieval(client, host, port, restPath, discoveryPipeLineLogs);
+        }
     }
 
     public static String buildLogRetrieval(OpenShiftClient client, String host, int port, String restPath,
@@ -110,10 +128,8 @@ public class LogExtractor {
         }
     }
 
-    public static String legacyDiscoveryLogRetrieval(OpenShiftClient client, DependencyBuild theBuild) {
+    private static String legacyLogRetrieval(OpenShiftClient client, String type, Resource<PipelineRun> pr) {
         StringBuilder result = new StringBuilder();
-        var pr = client.resources(PipelineRun.class)
-                .withName(theBuild.getMetadata().getName() + "-build-discovery");
         if (pr == null || pr.get() == null) {
             result.append("PipelineRun not found so unable to extract logs.");
             return result.toString();
@@ -132,7 +148,7 @@ public class LogExtractor {
             }
         }
 
-        result.append("---------   Logs for Discovery PipelineRun ")
+        result.append("---------   Logs for " + type + " PipelineRun ")
                 .append(pipelineRun.getMetadata().getName())
                 .append(" (")
                 .append(success ? "SUCCEEDED" : "FAILED")
@@ -140,6 +156,19 @@ public class LogExtractor {
         result.append(appendTaskRunLogs(client, pipelineRun));
 
         return result.toString();
+    }
+
+    public static String legacyDiscoveryLogRetrieval(OpenShiftClient client, DependencyBuild theBuild) {
+        var pr = client.resources(PipelineRun.class)
+                .withName(theBuild.getMetadata().getName() + "-build-discovery");
+        return legacyLogRetrieval(client, "Discovery", pr);
+
+    }
+
+    public static String legacyDeployLogRetrieval(OpenShiftClient client, DependencyBuild theBuild) {
+        var pr = client.resources(PipelineRun.class)
+                .withName(theBuild.getMetadata().getName() + "-deploy");
+        return legacyLogRetrieval(client, "Deploy", pr);
     }
 
     public static String legacyBuildLogRetrieval(OpenShiftClient client, Set<Integer> buildNumbers,

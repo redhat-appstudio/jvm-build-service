@@ -95,6 +95,10 @@ public class BuildSBOMDiscoveryManager {
             dependencySet.identifier = "build-sbom-" + attempt.dependencyBuild.buildIdentifier.dependencyBuildName + "-"
                     + attempt.buildId;
             dependencySet.dependencies = new ArrayList<>();
+            DependencySet existingDs = DependencySet.find("identifier", dependencySet.identifier).firstResult();
+            if (existingDs != null) {
+                dependencySet = existingDs;
+            }
             if (bom.getComponents() != null) {
                 for (var comp : bom.getComponents()) {
                     String gav = comp.getGroup() + ":" + comp.getName() + ":" + comp.getVersion();

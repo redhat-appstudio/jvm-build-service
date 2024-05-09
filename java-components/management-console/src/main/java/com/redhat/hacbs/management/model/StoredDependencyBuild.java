@@ -42,6 +42,8 @@ public class StoredDependencyBuild extends PanacheEntity {
 
     public String buildDiscoveryUrl;
 
+    public String deployLogsUrl;
+
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dependencyBuild")
     @OrderBy("startTime desc")
     public List<BuildAttempt> buildAttempts;

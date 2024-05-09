@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type EditResult = {
-    prUrl: string;
-};
-
+export type JsonObject = Array<{
+    key?: string;
+    value?: any;
+}>;
