@@ -69,7 +69,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
   const initial: BuildDTO = {
     artifactList: new Array<ArtifactListDTO>(),
     buildAttempts: new Array<BuildAttemptDTO>(),
-    buildSbomDependencySetId: 0,
     contaminated: false,
     inQueue: false,
     succeeded: false,
@@ -78,7 +77,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
   }
   const rec: Record<string, Array<string>> = {};
 
-  const initialSelected: BuildAttemptDTO = {label: "", id: 0, upstreamDifferences: rec, buildId: ""}
+  const initialSelected: BuildAttemptDTO = {label: "", id: 0, upstreamDifferences: rec, buildId: "", buildSbomDependencySetId: -1}
   const [build, setBuild] = useState(initial);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
@@ -217,8 +216,8 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
             aria-label="Tabs in the box light variation example"
             role="region">
 
-        <Tab eventKey={0} title={<TabTitleText>Build Details</TabTitleText>}
-             aria-label="Box light variation content - users">
+        <Tab eventKey={0} title={<TabTitleText>SCM Details</TabTitleText>}
+             aria-label="SCM Details">
         <Card>
           <CardHeader>Source Code Details</CardHeader>
           <CardBody>
@@ -264,98 +263,22 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               </ActionListItem>
             </ActionList></CardFooter>
         </Card>
-            <Card>
-              <CardHeader>Build Details</CardHeader>
-               <BuildAttempt attempt={selectBuildAttempt}></BuildAttempt>
-            </Card>
-          </Tab>
-          <Tab eventKey={2}
-               disabled={Object.entries(selectBuildAttempt.upstreamDifferences).length == 0}
-               title={<TabTitleText>Verification Failures</TabTitleText>}>
-            <Card>
-              <CardHeader>Verification Failures</CardHeader>
-              <CardBody>
-                <DescriptionList>
-                  {Object.entries(selectBuildAttempt.upstreamDifferences).map(([key, value]) => {
-                    return <DescriptionListGroup key={key}>
-                      <DescriptionListTerm>{key}</DescriptionListTerm>
-                      <DescriptionListDescription>{value.map(d => {
-                        if (d.startsWith("+")) {
-                          return <><PlusIcon color={'green'}></PlusIcon>{d.substring(1)}<br/></>
-                        } else if (d.startsWith("-")) {
-                          return <><MinusIcon color={'red'}></MinusIcon>{d.substring(1)}<br/></>
-                        } else {
-                          return <><QuestionIcon color={'orange'}></QuestionIcon>{d.substring(1)}<br/></>
-                        }
-                      })
-                      }
-                      </DescriptionListDescription>
-                    </DescriptionListGroup>
-                  })}
-                </DescriptionList>
-              </CardBody>
-            </Card>
-          </Tab>
-          <Tab eventKey={4}
-               title={<TabTitleText>Artifacts</TabTitleText>}>
-            <Card>
-              <CardHeader>Quay Image</CardHeader>
-              <CardBody>
-                <DescriptionList>
-                  <List>
-                    <ListItem>
-                      <a
-                        href={selectBuildAttempt.outputImage?.replace(/(quay.io)(.*):(.*)/, "https://quay.io/repository$2/tag/$3")}
-                        target="_blank">
-                        {build.successfulBuild?.outputImage}
-                      </a>
-                    </ListItem>
-                  </List>
-                </DescriptionList>
-              </CardBody>
-            </Card>
-            <Card>
-              <CardHeader>Maven Artifacts</CardHeader>
-              <CardBody>
 
-                <StoredArtifactList artifacts={build.artifactList} mavenRepo={build.successfulBuild?.mavenRepository} ></StoredArtifactList>
-              </CardBody>
-            </Card>
-          </Tab>
-          <Tab eventKey={5} disabled={selectBuildAttempt.shadingDetails?.length == 0}
-               title={<TabTitleText>Shading Details</TabTitleText>}>
-            <Card>
-              <CardHeader>Shading</CardHeader>
-              <CardBody>
-                <Table>
-                  <Thead>
-                    <Th>Shaded Artifact</Th>
-                    <Th>Source</Th>
-                    <Th>Affected Build Artifacts</Th>
-                  </Thead>
-                  <Tbody>
-                    {selectBuildAttempt.shadingDetails?.map(data => <Tr>
-                      <Td>{data.contaminant?.identifier?.group}:{data.contaminant?.identifier?.artifact}:{data.contaminant?.version}</Td>
-                      <Td>{data.allowed ?
-                        <Label color="green" icon={<CheckCircleIcon/>}>{data.source}</Label> :
-                        <Label color="red" icon={<ErrorCircleOIcon/>}>{data.source}</Label>}</Td>
-                      <Td>{data.contaminatedArtifacts?.map(key => <>{key.identifier?.artifact} &nbsp;</>)}</Td>
-                    </Tr>)}
-                  </Tbody>
-                </Table>
-              </CardBody>
-            </Card>
-          </Tab>
-          <Tab eventKey={6} disabled={build.buildSbomDependencySetId == -1}
-               title={<TabTitleText>Build SBom</TabTitleText>}>
-            <Card>
-              <CardHeader>Build SBom</CardHeader>
-              <CardBody>
-                <DependencySet dependencySetId={build.buildSbomDependencySetId}></DependencySet>
-              </CardBody>
-            </Card>
-          </Tab>
-        </Tabs>
+        </Tab>
+
+        <Tab eventKey={1} title={<TabTitleText>Artifacts</TabTitleText>}
+             aria-label="Artifacts">
+          <Card>
+            <CardHeader>Maven Artifacts</CardHeader>
+            <CardBody>
+
+              <StoredArtifactList artifacts={build.artifactList} mavenRepo={build.successfulBuild?.mavenRepository} ></StoredArtifactList>
+            </CardBody>
+          </Card>
+        </Tab>
+      </Tabs>
+        <BuildAttempt attempt={selectBuildAttempt}></BuildAttempt>
+
       </PageSection>
     </>);
 };
@@ -365,6 +288,15 @@ type BuildAttemptType = {
 };
 
 const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {
+
+  const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
+  const handleTabClick = (
+    event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
+    tabIndex: string | number
+  ) => {
+    setActiveTabKey(tabIndex);
+  };
+  const selectBuildAttempt = data.attempt;
   const statusIcon = function (build: BuildAttemptDTO) {
 
     if (build.successful) {
@@ -377,23 +309,112 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
     </Label>
   }
 
-  return (<Card>
-    <CardHeader>{'JDK' + data.attempt.jdk + " " + data.attempt.tool + " " + (data.attempt.tool === "maven" ? data.attempt.mavenVersion : data.attempt.tool === "gradle" ? data.attempt.gradleVersion : "")}{statusIcon(data.attempt)}</CardHeader>
-    <CardBody>
-      <DescriptionList
-        columnModifier={{
-          default: '2Col'
-        }}>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Logs</DescriptionListTerm>
-          <DescriptionListDescription><Link to={"/api/builds/attempts/logs/" + data.attempt?.buildId}
-                                            target="_blank"> Build Logs</Link></DescriptionListDescription>
-        </DescriptionListGroup>
-        <BuildAttemptDetails attempt={data.attempt}></BuildAttemptDetails>
-      </DescriptionList>
+  return (<Tabs activeKey={activeTabKey}
+          onSelect={handleTabClick}
+          isBox
+          aria-label="Build Tabs"
+          role="region">
+      <Tab eventKey={0} title={<TabTitleText>Build Details</TabTitleText>}
+           aria-label="Box light variation content - users">
+        <Card>
+            <CardHeader>{'JDK' + data.attempt.jdk + " " + data.attempt.tool + " " + (data.attempt.tool === "maven" ? data.attempt.mavenVersion : data.attempt.tool === "gradle" ? data.attempt.gradleVersion : "")}{statusIcon(data.attempt)}</CardHeader>
+            <CardBody>
+              <DescriptionList
+                columnModifier={{
+                  default: '2Col'
+                }}>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Logs</DescriptionListTerm>
+                  <DescriptionListDescription><Link to={"/api/builds/attempts/logs/" + data.attempt?.buildId}
+                                                    target="_blank"> Build Logs</Link></DescriptionListDescription>
+                </DescriptionListGroup>
+                <BuildAttemptDetails attempt={data.attempt}></BuildAttemptDetails>
+              </DescriptionList>
 
-    </CardBody>
-  </Card>);
+            </CardBody>
+          </Card>
+      </Tab>
+
+      <Tab eventKey={2}
+           disabled={Object.entries(selectBuildAttempt.upstreamDifferences).length == 0}
+           title={<TabTitleText>Verification Failures</TabTitleText>}>
+        <Card>
+          <CardHeader>Verification Failures</CardHeader>
+          <CardBody>
+            <DescriptionList>
+              {Object.entries(selectBuildAttempt.upstreamDifferences).map(([key, value]) => {
+                return <DescriptionListGroup key={key}>
+                  <DescriptionListTerm>{key}</DescriptionListTerm>
+                  <DescriptionListDescription>{value.map(d => {
+                    if (d.startsWith("+")) {
+                      return <><PlusIcon color={'green'}></PlusIcon>{d.substring(1)}<br/></>
+                    } else if (d.startsWith("-")) {
+                      return <><MinusIcon color={'red'}></MinusIcon>{d.substring(1)}<br/></>
+                    } else {
+                      return <><QuestionIcon color={'orange'}></QuestionIcon>{d.substring(1)}<br/></>
+                    }
+                  })
+                  }
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
+              })}
+            </DescriptionList>
+          </CardBody>
+        </Card>
+      </Tab>
+      <Tab eventKey={4}
+           title={<TabTitleText>Artifacts</TabTitleText>}>
+        <Card>
+          <CardHeader>Quay Image</CardHeader>
+          <CardBody>
+            <DescriptionList>
+              <List>
+                <ListItem>
+                  <a
+                    href={selectBuildAttempt.outputImage?.replace(/(quay.io)(.*):(.*)/, "https://quay.io/repository$2/tag/$3")}
+                    target="_blank">
+                    {selectBuildAttempt.outputImage}
+                  </a>
+                </ListItem>
+              </List>
+            </DescriptionList>
+          </CardBody>
+        </Card>
+      </Tab>
+      <Tab eventKey={5} disabled={selectBuildAttempt.shadingDetails?.length == 0}
+           title={<TabTitleText>Shading Details</TabTitleText>}>
+        <Card>
+          <CardHeader>Shading</CardHeader>
+          <CardBody>
+            <Table>
+              <Thead>
+                <Th>Shaded Artifact</Th>
+                <Th>Source</Th>
+                <Th>Affected Build Artifacts</Th>
+              </Thead>
+              <Tbody>
+                {selectBuildAttempt.shadingDetails?.map(data => <Tr>
+                  <Td>{data.contaminant?.identifier?.group}:{data.contaminant?.identifier?.artifact}:{data.contaminant?.version}</Td>
+                  <Td>{data.allowed ?
+                    <Label color="green" icon={<CheckCircleIcon/>}>{data.source}</Label> :
+                    <Label color="red" icon={<ErrorCircleOIcon/>}>{data.source}</Label>}</Td>
+                  <Td>{data.contaminatedArtifacts?.map(key => <>{key.identifier?.artifact} &nbsp;</>)}</Td>
+                </Tr>)}
+              </Tbody>
+            </Table>
+          </CardBody>
+        </Card>
+      </Tab>
+      <Tab eventKey={6} disabled={selectBuildAttempt.buildSbomDependencySetId == -1}
+           title={<TabTitleText>Build SBom</TabTitleText>}>
+        <Card>
+          <CardHeader>Build SBom</CardHeader>
+          <CardBody>
+            <DependencySet dependencySetId={selectBuildAttempt.buildSbomDependencySetId}></DependencySet>
+          </CardBody>
+        </Card>
+      </Tab>
+    </Tabs>);
 };
 
 const BuildAttemptDetails: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {

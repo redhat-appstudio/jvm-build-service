@@ -4,15 +4,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import com.redhat.hacbs.management.model.StoredArtifactBuild;
-import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
-import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 import jakarta.persistence.EntityManager;
 
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import com.redhat.hacbs.management.model.BuildAttempt;
+import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
+import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import io.quarkus.arc.Arc;
 import io.quarkus.logging.Log;
@@ -31,7 +30,6 @@ public record BuildDTO(
         @Schema(required = true) List<BuildAttemptDTO> buildAttempts,
 
         @Schema(required = true) boolean inQueue,
-        @Schema(required = true) long buildSbomDependencySetId,
         @Schema(required = true) List<ArtifactListDTO> artifactList) {
     public static BuildDTO of(StoredDependencyBuild build) {
         EntityManager entityManager = Arc.container().instance(EntityManager.class).get();
@@ -42,7 +40,7 @@ public record BuildDTO(
         if (n > 0) {
             inQueue = true;
         }
-        List<StoredArtifactBuild> artifactBuilds = StoredArtifactBuild.find("buildIdentifier",build.buildIdentifier).list();
+        List<StoredArtifactBuild> artifactBuilds = StoredArtifactBuild.find("buildIdentifier", build.buildIdentifier).list();
 
         BuildAttempt success = null;
         for (var b : build.buildAttempts) {
@@ -76,13 +74,11 @@ public record BuildDTO(
                 successfulBuild,
                 buildAttempts,
                 inQueue,
-                success != null
-                        ? (success.buildSbom != null && success.buildSbom.dependencySet != null
-                                ? success.buildSbom.dependencySet.id
-                                : -1)
-                        : -1,
-            artifactBuilds.stream().map(s -> new ArtifactListDTO(s.id, s.name, s.mavenArtifact.gav(), Objects.equals(s.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
-                Objects.equals(s.state, ModelConstants.ARTIFACT_BUILD_MISSING))).collect(Collectors.toList()));
+                artifactBuilds.stream()
+                        .map(s -> new ArtifactListDTO(s.id, s.name, s.mavenArtifact.gav(),
+                                Objects.equals(s.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
+                                Objects.equals(s.state, ModelConstants.ARTIFACT_BUILD_MISSING)))
+                        .collect(Collectors.toList()));
 
     }
 }

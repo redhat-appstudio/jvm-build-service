@@ -17,7 +17,6 @@ export type BuildDTO = {
     successfulBuild?: BuildAttemptDTO;
     buildAttempts: Array<BuildAttemptDTO>;
     inQueue: boolean;
-    buildSbomDependencySetId: number;
     artifactList: Array<ArtifactListDTO>;
 };
 
