@@ -4,10 +4,12 @@ import org.apache.commons.codec.digest.DigestUtils;
 
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuildSpec;
+import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildspec.Scm;
 
-import io.fabric8.openshift.client.OpenShiftClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.arc.Arc;
+import io.quarkus.arc.InstanceHandle;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "create", mixinStandardHelpOptions = true, description = "Creates a dependency build")
@@ -28,21 +30,29 @@ public class BuildCreateCommand implements Runnable {
     @CommandLine.Option(names = "-v", description = "Version", required = true)
     String version;
 
+    @CommandLine.Option(names = "-r", description = "Reuse existing SCM repository for pushing changes")
+    boolean reuse;
+
     @Override
     public void run() {
-        var client = Arc.container().instance(OpenShiftClient.class).get();
-        DependencyBuild dependencyBuild = new DependencyBuild();
-        dependencyBuild.setSpec(new DependencyBuildSpec());
-        dependencyBuild.getMetadata().setName(DigestUtils.md5Hex(url + tag + contextPath));
-        dependencyBuild.getSpec().setVersion(version);
-        Scm scm = new Scm();
-        scm.setScmType("git");
-        scm.setScmURL(url);
-        scm.setTag(tag);
-        scm.setPath(contextPath);
-        scm.setCommitHash(scmHash);
-        dependencyBuild.getSpec().setScm(scm);
+        try (InstanceHandle<KubernetesClient> instanceHandle = Arc.container().instance(KubernetesClient.class)) {
+            DependencyBuild dependencyBuild = new DependencyBuild();
+            dependencyBuild.setSpec(new DependencyBuildSpec());
+            dependencyBuild.getMetadata().setName(DigestUtils.md5Hex(url + tag + contextPath));
+            dependencyBuild.getSpec().setVersion(version);
+            Scm scm = new Scm();
+            scm.setScmType("git");
+            scm.setScmURL(url);
+            scm.setTag(tag);
+            scm.setPath(contextPath);
+            scm.setCommitHash(scmHash);
+            dependencyBuild.getSpec().setScm(scm);
 
-        client.resource(dependencyBuild).create();
+            if (reuse) {
+                dependencyBuild.getMetadata().getAnnotations().put(ModelConstants.REUSE_SCM, "true");
+            }
+
+            instanceHandle.get().resource(dependencyBuild).create();
+        }
     }
 }

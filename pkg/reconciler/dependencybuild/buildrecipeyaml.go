@@ -86,7 +86,6 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
@@ -99,7 +98,6 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
@@ -141,9 +139,9 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	imageRegistry := jbsConfig.ImageRegistry()
 
-	preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, buildId)
+	preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, buildId)
 
-	gitArgs := gitArgs(db, recipe)
+	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 
 	preprocessorArgs := []string{
@@ -236,6 +234,52 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild"
 	}
 
+	//we generate a docker file that can be used to reproduce this build
+	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
+	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
+	log.Info(fmt.Sprintf("Generating dockerfile deriving from preBuildImage %#v with recipe build image %#v", preBuildImageFrom, recipe.Image))
+	preprocessorScript := "#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
+	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
+	envVars := extractEnvVar(toolEnv)
+	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
+	konfluxScript := "#!/bin/sh\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
+
+	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
+		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
+		"\nFROM " + preBuildImageFrom +
+		"\nUSER 0" +
+		"\nWORKDIR /root" +
+		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
+		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng" +
+		// TODO: Debug only
+		// "\nRUN rpm -ivh https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
+		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
+		// Copying JDK17 for the cache.
+		// TODO: Could we determine if we are using UBI8 and avoid this?
+		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
+		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
+		"\nCOPY --from=cache /deployments/ /root/software/cache" +
+		"\nRUN cp -ar /original-content/workspace /root/project/workspace" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
+		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(buildScript)) + " | base64 -d >/root/build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\n"+envVars+"\n/root/build.sh "+cmdArgs+"\n")) + " | base64 -d >/root/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/root/entry-script.sh" +
+		"\nRUN chmod +x /root/*.sh" +
+		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
+
+	kf := "FROM " + recipe.Image +
+		"\nUSER 0" +
+		"\nWORKDIR /root" +
+		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl" +
+		"\nENV JBS_DISABLE_CACHE=true" +
+		"\nCOPY .jbs/run-build.sh /root" +
+		"\nCOPY . /root/project/workspace/" +
+		"\nRUN /root/run-build.sh" +
+		"\nFROM scratch" +
+		"\nCOPY --from=0 /root/project/artifacts /root/artifacts"
+
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	limits, err := memoryLimits(jbsConfig, additionalMemory)
 	if err != nil {
@@ -306,7 +350,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
@@ -320,7 +363,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
@@ -350,7 +392,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: limits management and configuration
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
@@ -366,7 +407,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
-					//TODO: make configurable
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
@@ -428,7 +468,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
-					Script: gitArgs + "\n" + createBuildScript,
+					Script: gitScript + "\n" + createBuildScript,
 					Env: []v1.EnvVar{
 						{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 						{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
@@ -443,7 +483,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
 					},
 					ComputeResources: v1.ResourceRequirements{
-						//TODO: make configurable
 						Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
@@ -456,11 +495,22 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Env:             secretVariables,
 					ComputeResources: v1.ResourceRequirements{
-						//TODO: make configurable
 						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
 					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preBuildImageArgs),
+				},
+				{
+					Name:            "create-pre-build-source",
+					Image:           buildRequestProcessorImage,
+					ImagePullPolicy: pullPolicy,
+					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+					Env:             secretVariables,
+					ComputeResources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+					},
+					Script: createKonfluxScripts(kf, konfluxScript) + "\n" + artifactbuild.InstallKeystoreIntoBuildRequestProcessor(konfluxArgs),
 				},
 			},
 		}
@@ -518,58 +568,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		}
 	}
 
-	//we generate a docker file that can be used to reproduce this build
-	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
-	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
-	log.Info(fmt.Sprintf("Generating dockerfile deriving from preBuildImage %#v with recipe build image %#v", preBuildImageFrom, recipe.Image))
-	preprocessorScript := "#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
-	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
-	envVars := extractEnvVar(toolEnv)
-	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
-	konfluxScript := preprocessorScript + "\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
-
-	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
-		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
-		"\nFROM " + preBuildImageFrom +
-		"\nUSER 0" +
-		"\nWORKDIR /root" +
-		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng" +
-		// TODO: Debug only
-		// "\nRUN rpm -ivh https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
-		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
-		// Copying JDK17 for the cache.
-		// TODO: Could we determine if we are using UBI8 and avoid this?
-		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
-		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
-		"\nCOPY --from=cache /deployments/ /root/software/cache" +
-		"\nRUN cp -ar /original-content/workspace /root/project/workspace" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
-		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(buildScript)) + " | base64 -d >/root/build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\n"+envVars+"\n/root/build.sh "+cmdArgs+"\n")) + " | base64 -d >/root/run-full-build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/root/entry-script.sh" +
-		"\nRUN chmod +x /root/*.sh" +
-		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
-
-	kf := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
-		"\nFROM " + recipe.Image +
-		"\nUSER 0" +
-		"\nWORKDIR /root" +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl" +
-		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
-		// Copying JDK17 for the cache.
-		// TODO: Could we determine if we are using UBI8 and avoid this?
-		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
-		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
-		"\nENV JBS_DISABLE_CACHE=true" +
-		"\nCOPY .jbs/run-build.sh /root" +
-		"\nCOPY . /root/project/workspace/" +
-		"\nRUN /root/run-build.sh" +
-		"\nFROM scratch" +
-		"\nCOPY --from=1 /root/project/artifacts /root/artifacts"
-
 	return ps, df, kf, konfluxScript, nil
 }
 
@@ -603,6 +601,18 @@ func createBuildScript(build string, hermeticBuildEntryScript string) string {
 	ret += hermeticBuildEntryScript
 	ret += "\nRHTAPEOF\n"
 	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/hermetic-build.sh"
+	return ret
+}
+
+func createKonfluxScripts(containerfile string, konfluxScript string) string {
+	ret := "mkdir -p $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs\n"
+	ret += "tee $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/Containerfile <<'RHTAPEOF'\n"
+	ret += containerfile
+	ret += "\nRHTAPEOF\n"
+	ret += "tee $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/run-build.sh <<'RHTAPEOF'\n"
+	ret += konfluxScript
+	ret += "\nRHTAPEOF\n"
+	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/run-build.sh\n"
 	return ret
 }
 
@@ -695,7 +705,7 @@ func additionalPackages(recipe *v1alpha1.BuildRecipe) string {
 	return install
 }
 
-func gitArgs(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string {
+func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string {
 	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ")\" && "
 	if db.Spec.ScmInfo.Private {
 		gitArgs = gitArgs + "echo \"$GIT_TOKEN\" > $HOME/.git-credentials && chmod 400 $HOME/.git-credentials && "
@@ -709,7 +719,7 @@ func gitArgs(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string 
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
@@ -743,42 +753,23 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
 	deployArgs = append(deployArgs, "--image-id="+imageId)
 
-	imageRegistry := jbsConfig.ImageRegistry()
-	registryArgs := make([]string, 0)
-	if imageRegistry.Host != "" {
-		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
-	}
-	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
-		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
-	}
-	if imageRegistry.Owner != "" {
-		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
-	}
-	if imageRegistry.Repository != "" {
-		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
-	}
-
-	if imageRegistry.Insecure {
-		registryArgs = append(registryArgs, "--registry-insecure")
-	}
-	if imageRegistry.PrependTag != "" {
-		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
-	}
+	registryArgs := registryArgs(jbsConfig)
 	deployArgs = append(deployArgs, registryArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
 
-	gitArgs := make([]string, 0)
-	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
-		gitArgs = append(gitArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
-	}
-	if jbsConfig.Spec.GitSourceArchive.URL != "" {
-		gitArgs = append(gitArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
-	}
-	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
-		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
-	}
+	gitArgs := gitArgs(jbsConfig, db)
 	deployArgs = append(deployArgs, gitArgs...)
+
+	konfluxArgs := []string{
+		"deploy-pre-build-source",
+		"--source-path=$(workspaces.source.path)/workspace",
+		"--task-run-name=$(context.taskRun.name)",
+		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
+		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
+	}
+	konfluxArgs = append(konfluxArgs, gitArgs...)
+	konfluxArgs = append(konfluxArgs, "--image-id="+imageId)
 
 	hermeticPreBuildImageArgs := []string{
 		"deploy-hermetic-pre-build-image",
@@ -791,7 +782,7 @@ func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1a
 	}
 	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
-	return preBuildImageArgs, copyArtifactsArgs, deployArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
+	return preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
 }
 
 func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
@@ -800,6 +791,15 @@ func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 		"tag-container",
 		"--image-digest=$(params." + DeployedImageDigestParam + ")",
 	}
+	registryArgs := registryArgs(jbsConfig)
+	tagArgs = append(tagArgs, registryArgs...)
+	tagArgs = append(tagArgs, "$(params.GAVS)")
+
+	return tagArgs
+}
+
+func registryArgs(jbsConfig *v1alpha1.JBSConfig) []string {
+
 	imageRegistry := jbsConfig.ImageRegistry()
 	registryArgs := make([]string, 0)
 	if imageRegistry.Host != "" {
@@ -814,17 +814,13 @@ func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 	if imageRegistry.Repository != "" {
 		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
 	}
-
 	if imageRegistry.Insecure {
 		registryArgs = append(registryArgs, "--registry-insecure")
 	}
 	if imageRegistry.PrependTag != "" {
 		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
 	}
-	tagArgs = append(tagArgs, registryArgs...)
-	tagArgs = append(tagArgs, "$(params.GAVS)")
-
-	return tagArgs
+	return registryArgs
 }
 
 func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
@@ -864,6 +860,23 @@ func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 	deployArgs = append(deployArgs, mavenArgs...)
 
 	return deployArgs
+}
+
+func gitArgs(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []string {
+	gitArgs := make([]string, 0)
+	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
+		gitArgs = append(gitArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
+	}
+	if jbsConfig.Spec.GitSourceArchive.URL != "" {
+		gitArgs = append(gitArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
+	}
+	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
+		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
+	}
+	if db.Annotations[artifactbuild.DependencyScmAnnotation] == "true" {
+		gitArgs = append(gitArgs, "--git-reuse-repository")
+	}
+	return gitArgs
 }
 
 // This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.

@@ -1063,7 +1063,10 @@ func (r *ReconcileDependencyBuild) createArtifacts(ctx context.Context, log logr
 		ab := v1alpha1.ArtifactBuild{}
 		ab.Namespace = pr.Namespace
 		ab.Name = artifactbuild.CreateABRName(i)
-		ab.Annotations = map[string]string{artifactbuild.DependencyAnnotation: db.Name}
+		ab.Annotations = map[string]string{artifactbuild.DependencyCreatedAnnotation: db.Name}
+		if db.Annotations != nil && db.Annotations[artifactbuild.DependencyScmAnnotation] == "true" {
+			ab.Annotations[artifactbuild.DependencyScmAnnotation] = "true"
+		}
 		ab.Spec.GAV = i
 
 		err := r.client.Create(ctx, &ab)

@@ -33,6 +33,42 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTestResource(value = LogCollectingTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = LogCollectingTestResource.LEVEL, value = "FINE"))
 public class GitTest {
 
+    private final Git test = new Git() {
+        @Override
+        public void create(String name) {
+        }
+
+        @Override
+        public void initialise(String name) {
+        }
+
+        @Override
+        public GitStatus add(Path path, String commit, String imageId) {
+            return null;
+        }
+
+        @Override
+        public GitStatus add(Path path, String commit, String imageId, boolean untracked, boolean workflow) {
+            return null;
+        }
+
+        @Override
+        public String split() {
+            return null;
+        }
+
+        @Override
+        public String getName() {
+            return null;
+        }
+
+        @Override
+        public String getWorkflowPath() {
+            // Duplicate of GitHub ; required for testPush3.
+            return ".github/workflows";
+        }
+    };
+
     @BeforeEach
     public void clearLogs() {
         LogCollectingTestResource.current().clear();
@@ -57,6 +93,17 @@ public class GitTest {
     }
 
     @Test
+    public void testInitialise() throws IOException {
+        var git = Git.builder(null, "rnc", "", true);
+        git.initialise("commons-net");
+        git.initialise("https://github.com/rnc/commons-net");
+        assertEquals("rnc/commons-net", git.getName());
+        git = Git.builder("https://gitlab.com", "rnc", "", true);
+        git.initialise("https://gitlab.com/rnc/testRepo");
+        assertEquals("rnc/testRepo", git.getName());
+    }
+
+    @Test
     public void testPush()
             throws IOException, URISyntaxException, GitAPIException {
         Path initialRepo = Files.createTempDirectory("initial-repo");
@@ -68,10 +115,12 @@ public class GitTest {
             Path repoRoot = Paths.get(Objects.requireNonNull(getClass().getResource("/")).toURI()).getParent().getParent()
                     .getParent().getParent();
             FileUtils.copyDirectory(new File(repoRoot.toFile(), ".git"), new File(initialRepo.toFile(), ".git"));
+            FileUtils.copyFile(new File(repoRoot.toFile(), ".gitignore"), new File(initialRepo.toFile(), ".gitignore"));
+
             if (initialRepository.tagList().call().stream().noneMatch(r -> r.getName().equals("refs/tags/0.1"))) {
                 // Don't have the tag and cannot guarantee a fork will have it so fetch from primary repository.
                 String newRemote = RandomStringUtils.randomAlphabetic(8);
-                Log.infof("Current repo does not have 0.1 tag; configuring %s to fetch it.", newRemote);
+                Log.infof("Current repo does not have 0.1 tag; configuring %s to fetch it.", initialRepo);
                 initialRepository.remoteAdd()
                         .setUri(new URIish("https://github.com/redhat-appstudio/jvm-build-service.git")).setName(newRemote)
                         .call();
@@ -79,29 +128,13 @@ public class GitTest {
                         .setRemote(newRemote).call();
             }
 
-            Git test = new Git() {
-                @Override
-                public void create(String name) {
-                }
-
-                @Override
-                public GitStatus add(Path path, String commit, String imageId) {
-                    return null;
-                }
-
-                @Override
-                public String split() {
-                    return null;
-                }
-            };
             Git.GitStatus tagResults = test.pushRepository(
                     initialRepo,
                     testRepoURI,
                     "c396268fb90335bde5c9272b9a194c3d4302bf24",
-                    imageID);
+                    imageID, true, false);
 
             List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-
             assertTrue(Files.readString(Paths.get(initialRepo.toString(), ".git/config")).contains(testRepoURI));
             assertTrue(logRecords.stream()
                     .anyMatch(r -> LogCollectingTestResource.format(r)
@@ -109,6 +142,9 @@ public class GitTest {
             assertTrue(logRecords.stream()
                     .anyMatch(
                             r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
+            assertTrue(logRecords.stream()
+                .anyMatch(r -> LogCollectingTestResource.format(r)
+                    .contains("Committed JBS changes to []")));
 
             List<Ref> tags = testRepository.tagList().call();
             assertEquals(2, tags.size());
@@ -122,6 +158,110 @@ public class GitTest {
                     .peel(found.get())
                     .getPeeledObjectId()
                     .getName()));
+        }
+    }
+
+
+    @Test
+    public void testPush2()
+        throws IOException, GitAPIException {
+        Path initialRepo = Files.createTempDirectory("initial-repo");
+        Path testRepo = Files.createTempDirectory("test-repo");
+        String testRepoURI = testRepo.toUri().toString();
+        String imageID = "75ecd81c7a2b384151c990975eb1dd10";
+        try (var testRepository = org.eclipse.jgit.api.Git.init().setDirectory(testRepo.toFile()).call();
+            var initialRepository = org.eclipse.jgit.api.Git.cloneRepository().setURI("https://github.com/rnc/example-maven.git").setDirectory(initialRepo.toFile()).call()) {
+            Ref head = initialRepository.getRepository().getRefDatabase().findRef("HEAD");
+
+            // Simulate modified file by preprocessor.
+            Path pom = Paths.get(initialRepo.toString(), "pom.xml");
+            Files.writeString(pom, Files.readString(pom).replace("<javaVersion>11</javaVersion>", "<javaVersion>17</javaVersion>"));
+
+            // Simulate JBS adding files
+            Path jbs = Path.of(initialRepo.toString(), ".jbs");
+            jbs.toFile().mkdir();
+            new File(jbs.toFile(), "Dockerfile").createNewFile();
+            new File(jbs.toFile(), "run-build.sh").createNewFile();
+
+            Git.GitStatus tagResults = test.pushRepository(
+                initialRepo,
+                testRepoURI,
+                head.getObjectId().getName(),
+                imageID, true, false);
+
+            List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
+            assertTrue(Files.readString(Paths.get(initialRepo.toString(), ".git/config")).contains(testRepoURI));
+            assertTrue(logRecords.stream()
+                .anyMatch(r -> LogCollectingTestResource.format(r)
+                    .contains("commit 5b05d61932ec510edf6737f55843a73ec5fdec82")));
+            assertTrue(logRecords.stream()
+                .anyMatch(r -> LogCollectingTestResource.format(r)
+                    .contains("Committed JBS changes to [.jbs/Dockerfile, .jbs/run-build.sh, pom.xml]")));
+            assertTrue(logRecords.stream()
+                .anyMatch(
+                    r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
+
+            List<Ref> tags = testRepository.tagList().call();
+            assertEquals(2, tags.size());
+            assertTrue(tags.stream().anyMatch(r -> r.getName().equals("refs/tags/0.6.8.Final-75ecd81c7a2b384151c990975eb1dd10")));
+
+            var found = tags.stream().filter(t -> Repository.shortenRefName(t.getName()).matches(tagResults.tag)).findFirst();
+            assertTrue(found.isPresent());
+            assertTrue(tagResults.url.contains(testRepoURI));
+            assertTrue(tagResults.sha.matches(testRepository.getRepository()
+                .getRefDatabase()
+                .peel(found.get())
+                .getPeeledObjectId()
+                .getName()));
+        }
+    }
+
+    @Test
+    public void testPush3()
+        throws IOException, GitAPIException {
+        Path initialRepo = Files.createTempDirectory("initial-repo");
+        Path testRepo = Files.createTempDirectory("test-repo");
+        String testRepoURI = testRepo.toUri().toString();
+        String imageID = "75ecd81c7a2b384151c990975eb1dd10";
+        try (var testRepository = org.eclipse.jgit.api.Git.init().setDirectory(testRepo.toFile()).call();
+            var ignored = org.eclipse.jgit.api.Git.cloneRepository().setURI("https://github.com/rnc/commons-net.git").setDirectory(initialRepo.toFile()).call() ) {
+
+            // Simulate modified file by preprocessor.
+            Path pom = Paths.get(initialRepo.toString(), "pom.xml");
+            Files.writeString(pom, Files.readString(pom).replace("<version>69</version>", "<version>68</version>"));
+
+            Git.GitStatus tagResults = test.pushRepository(
+                initialRepo,
+                testRepoURI,
+                "e0aa3a2aace28061bb4ee7dcdd87e5960d173037",
+                imageID,
+                true, true);
+
+            List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
+
+            assertTrue(Files.readString(Paths.get(initialRepo.toString(), ".git/config")).contains(testRepoURI));
+            assertTrue(logRecords.stream()
+                .anyMatch(r -> LogCollectingTestResource.format(r)
+                    .contains("commit e0aa3a2aace28061bb4ee7dcdd87e5960d173037")));
+            assertTrue(logRecords.stream()
+                .anyMatch(
+                    r -> LogCollectingTestResource.format(r).matches("Updating current origin of.*to " + testRepoURI)));
+            assertTrue(logRecords.stream()
+                .anyMatch(r -> LogCollectingTestResource.format(r)
+                    .contains("Committed JBS changes to [.github/workflows/codeql-analysis.yml, .github/workflows/coverage.yml, .github/workflows/maven.yml, .github/workflows/maven_adhoc.yml, .github/workflows/scorecards-analysis.yml, pom.xml]")));
+
+            List<Ref> tags = testRepository.tagList().call();
+            assertEquals(2, tags.size());
+            assertTrue(tags.stream().anyMatch(r -> r.getName().equals("refs/tags/e0aa3a2aace28061bb4ee7dcdd87e5960d173037-75ecd81c7a2b384151c990975eb1dd10")));
+
+            var found = tags.stream().filter(t -> Repository.shortenRefName(t.getName()).matches(tagResults.tag)).findFirst();
+            assertTrue(found.isPresent());
+            assertTrue(tagResults.url.contains(testRepoURI));
+            assertTrue(tagResults.sha.matches(testRepository.getRepository()
+                .getRefDatabase()
+                .peel(found.get())
+                .getPeeledObjectId()
+                .getName()));
         }
     }
 

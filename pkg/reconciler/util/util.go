@@ -71,7 +71,6 @@ func GetImageName(ctx context.Context, client client.Client, log logr.Logger, su
 			return "", fmt.Errorf("no containers in controller deployment !!!")
 		}
 		depImg = controllerDeployment.Spec.Template.Spec.Containers[0].Image
-		log.Info(fmt.Sprintf("GetImageName controller image %s", depImg))
 	}
 
 	retImg := ""

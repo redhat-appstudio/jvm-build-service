@@ -10,7 +10,7 @@ public class ModelConstants {
 
     public static final String REBUILD = GROUP + "/rebuild";
 
-    public static final String DEPENDENCY = GROUP + "/dependencycreated";
+    public static final String DEPENDENCY_CREATED = GROUP + "/dependency-created";
 
     public static final String ARTIFACT_BUILD_COMPLETE = "ArtifactBuildComplete";
     public static final String ARTIFACT_BUILD_NEW = "ArtifactBuildNew";
@@ -24,4 +24,7 @@ public class ModelConstants {
     public static final String DEPENDENCY_BUILD_FAILED = "DependencyBuildStateFailed";
     public static final String DEPENDENCY_BUILD_CONTAMINATED = "DependencyBuildStateContaminated";
     public static final String DEPENDENCY_BUILD_DEPLOYING = "DependencyBuildStateDeploying";
+
+    public static final String REUSE_SCM = GROUP + "/deploy-source-reuse-scm";
+
 }

@@ -23,7 +23,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import jakarta.enterprise.inject.spi.BeanManager;
-import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.BomGeneratorFactory;
@@ -40,7 +39,6 @@ import com.redhat.hacbs.recipes.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
 import com.redhat.hacbs.resources.util.HashUtil;
 
-import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
@@ -49,7 +47,6 @@ import picocli.CommandLine;
 public class DeployCommand implements Runnable {
 
     static final Pattern CODE_ARTIFACT_PATTERN = Pattern.compile("https://([^.]*)-\\d+\\..*\\.amazonaws\\.com/maven/(.*)/");
-    private static final String SLASH = "/";
     private static final String DOT_JAR = ".jar";
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";
@@ -123,6 +120,9 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--git-disable-ssl-verification")
     boolean gitDisableSSLVerification;
 
+    @CommandLine.Option(names = "--git-reuse-repository")
+    boolean reuseRepository;
+
     @CommandLine.Option(names = "--build-id")
     String buildId;
     // Testing only ; used to disable image deployment
@@ -130,9 +130,6 @@ public class DeployCommand implements Runnable {
 
     protected String imageName;
     protected String imageDigest;
-
-    @Inject
-    BootstrapMavenContext mvnCtx;
 
     public DeployCommand(BeanManager beanManager,
             ResultsUpdater resultsUpdater) {
@@ -149,9 +146,13 @@ public class DeployCommand implements Runnable {
 
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-                Log.infof("Git credentials are identity '%s' and URL '%s'", gitIdentity, gitURL);
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
-                git.create(scmUri);
+                if (reuseRepository) {
+                    git.initialise(scmUri);
+                } else {
+                    git.create(scmUri);
+                }
+                Log.infof("Pushing changes back to URL %s", git.getName());
                 archivedSourceTags = git.add(sourcePath, commit, imageId);
             }
 

@@ -47,7 +47,7 @@ public class ArtifactRebuildCommand implements Runnable {
                                     if (artifactBuild.getMetadata().getAnnotations() == null) {
                                         artifactBuild.getMetadata().setAnnotations(new HashMap<>());
                                     }
-                                    artifactBuild.getMetadata().getAnnotations().put("jvmbuildservice.io/rebuild", "failed");
+                                    artifactBuild.getMetadata().getAnnotations().put(ModelConstants.REBUILD, "failed");
                                     return artifactBuild;
                                 }
                             });
@@ -79,7 +79,7 @@ public class ArtifactRebuildCommand implements Runnable {
                         if (artifactBuild.getMetadata().getAnnotations() == null) {
                             artifactBuild.getMetadata().setAnnotations(new HashMap<>());
                         }
-                        artifactBuild.getMetadata().getAnnotations().put("jvmbuildservice.io/rebuild", "true");
+                        artifactBuild.getMetadata().getAnnotations().put(ModelConstants.REBUILD, "true");
                         return artifactBuild;
                     }
                 });

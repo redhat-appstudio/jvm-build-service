@@ -40,7 +40,9 @@ const (
 
 	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
 
-	DependencyAnnotation = "jvmbuildservice.io/dependencycreated"
+	DependencyCreatedAnnotation = "jvmbuildservice.io/dependency-created"
+
+	DependencyScmAnnotation = "jvmbuildservice.io/deploy-source-reuse-scm"
 
 	RebuildAnnotation = "jvmbuildservice.io/rebuild"
 	// RebuiltAnnotation annotation that is applied after a rebuild, it will affect the dependencybuild behaviour
@@ -165,7 +167,6 @@ func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context
 		} else if abr.Annotations[RebuildAnnotation] == "failed" {
 			if abr.Status.State != v1alpha1.ArtifactBuildStateComplete && abr.Status.State != v1alpha1.ArtifactBuildStateNew {
 				return result, r.handleRebuild(log, ctx, &abr)
-
 			} else {
 				delete(abr.Annotations, RebuildAnnotation)
 				return result, r.client.Update(ctx, &abr)
@@ -267,12 +268,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 			if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 				return err
 			}
-			if abr.Annotations != nil && abr.Annotations[RebuiltAnnotation] == "true" {
-				if db.Annotations == nil {
-					db.Annotations = map[string]string{}
-				}
-				db.Annotations[RebuiltAnnotation] = "true"
-			}
+			r.copyAnnotations(abr, db)
 			if err := r.client.Update(ctx, db); err != nil {
 				return err
 			}
@@ -297,6 +293,7 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 		if err := controllerutil.SetOwnerReference(abr, db, r.scheme); err != nil {
 			return err
 		}
+
 		db.Spec = v1alpha1.DependencyBuildSpec{ScmInfo: v1alpha1.SCMInfo{
 			SCMURL:     abr.Status.SCMInfo.SCMURL,
 			SCMType:    abr.Status.SCMInfo.SCMType,
@@ -306,9 +303,8 @@ func (r *ReconcileArtifactBuild) handleStateDiscovering(ctx context.Context, log
 			Private:    abr.Status.SCMInfo.Private,
 		}, Version: abr.Spec.GAV[strings.LastIndex(abr.Spec.GAV, ":")+1:]}
 
-		if abr.Annotations != nil && abr.Annotations[RebuiltAnnotation] == "true" {
-			db.Annotations[RebuiltAnnotation] = "true"
-		}
+		r.copyAnnotations(abr, db)
+
 		//move the state to building
 		if err := r.updateArtifactState(ctx, log, abr, v1alpha1.ArtifactBuildStateBuilding); err != nil {
 			return err
@@ -453,6 +449,7 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 		dbKey := types.NamespacedName{Namespace: abr.Namespace, Name: depId}
 		err := r.client.Get(ctx, dbKey, db)
 		notFound := errors.IsNotFound(err)
+
 		if err == nil {
 			//make sure to annotate all other owners so they also see state updates
 			//this won't cause a 'thundering herd' type problem as they are all deleted anyway
@@ -578,6 +575,23 @@ func (r *ReconcileArtifactBuild) updateLabel(ctx context.Context, log logr.Logge
 		}
 	}
 	return result, nil
+}
+
+func (r *ReconcileArtifactBuild) copyAnnotations(abr *v1alpha1.ArtifactBuild, db *v1alpha1.DependencyBuild) {
+	if abr.Annotations != nil {
+		if db.Annotations == nil {
+			db.Annotations = map[string]string{}
+		}
+		if abr.Annotations[RebuiltAnnotation] == "true" {
+			db.Annotations[RebuiltAnnotation] = "true"
+		}
+		if abr.Annotations[DependencyScmAnnotation] == "true" {
+			db.Annotations[DependencyScmAnnotation] = "true"
+		}
+		if abr.Annotations[DependencyCreatedAnnotation] != "" {
+			db.Annotations[DependencyCreatedAnnotation] = db.Name
+		}
+	}
 }
 
 func InstallKeystoreIntoBuildRequestProcessor(args ...[]string) string {

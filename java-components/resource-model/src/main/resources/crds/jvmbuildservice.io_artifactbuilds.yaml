@@ -67,7 +67,6 @@ spec:
                     type: string
                 type: object
               state:
-                description: 'TODO: conditions?'
                 type: string
             type: object
         required:

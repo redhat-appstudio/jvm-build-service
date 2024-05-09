@@ -1,5 +1,7 @@
 package com.redhat.hacbs.container.deploy.git;
 
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
@@ -41,9 +43,21 @@ public class GitLab extends Git {
     }
 
     @Override
+    public void initialise(String scmUri) throws IOException {
+        try {
+            handleRepository(processRepoName(scmUri), true);
+        } catch (URISyntaxException ignored) {
+        }
+    }
+
+    @Override
     public void create(String scmUri)
-            throws URISyntaxException {
-        String name = parseScmURI(scmUri);
+        throws URISyntaxException, IOException {
+        handleRepository(parseScmURI(scmUri), false);
+    }
+
+    public void handleRepository(String name, boolean initialiseOnly)
+        throws URISyntaxException, IOException {
         Long namespace = null;
         try {
             Optional<Group> groupOptional = gitLabApi.getGroupApi().getOptionalGroup(owner);
@@ -68,12 +82,13 @@ public class GitLab extends Git {
                         .filter(p -> p.getName().equals(name))
                         .findFirst().orElse(null);
             }
-            if (project != null) {
-                Log.warnf("Repository %s already exists", name);
-            } else {
-                // Can't set public visibility after creation for some reason with this API.
-                Log.infof("Creating repository with name %s", name);
-                project = gitLabApi.getProjectApi().createProject(name,
+            if (!initialiseOnly) {
+                if (project != null) {
+                    Log.warnf("Repository %s already exists", name);
+                } else {
+                    // Can't set public visibility after creation for some reason with this API.
+                    Log.infof("Creating repository with name %s", name);
+                    project = gitLabApi.getProjectApi().createProject(name,
                         namespace,
                         null,
                         null,
@@ -83,10 +98,14 @@ public class GitLab extends Git {
                         Visibility.PUBLIC,
                         null,
                         null);
-                newGitRepository = true;
+                    newGitRepository = true;
+                }
             }
         } catch (GitLabApiException e) {
-            throw new RuntimeException(e);
+            throw new IOException(e);
+        }
+        if (project == null) {
+            throw new RuntimeException("Failed to associate project using name " + name);
         }
     }
 
@@ -96,11 +115,30 @@ public class GitLab extends Git {
         if (project == null) {
             throw new RuntimeException("Call create first");
         }
-        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId);
+        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId, false, false);
+    }
+
+    @Override
+    public GitStatus add(Path path, String commit, String imageId, boolean untracked, boolean workflow)
+        throws IOException {
+        if (project == null) {
+            throw new RuntimeException("Call create first");
+        }
+        return pushRepository(path, project.getHttpUrlToRepo(), commit, imageId, untracked, workflow);
     }
 
     @Override
     String split() {
         return "-";
+    }
+
+    @Override
+    public String getName() {
+        return project.getNamespace().getPath() + "/" + project.getName();
+    }
+
+    @Override
+    public String getWorkflowPath() {
+        return isEmpty(project.getCiConfigPath()) ? ".gitlab-ci.yml" : project.getCiConfigPath();
     }
 }
