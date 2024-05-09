@@ -23,6 +23,7 @@ import {Link} from "react-router-dom";
 
 type StoredArtifactListType = {
   artifacts: Array<ArtifactListDTO>
+  mavenRepo: string | undefined
 };
 
 const columnNames = {
@@ -59,7 +60,8 @@ const StoredArtifactList: React.FunctionComponent<StoredArtifactListType> = (pro
         <Thead>
           <Tr>
             <Th width={10}>{columnNames.status}</Th>
-            <Th width={10}>{columnNames.name}</Th>
+            <Th width={10}>{columnNames.name}
+            </Th>
             <Th width={10}>{columnNames.gav}</Th>
             <Th width={10}>{columnNames.actions}</Th>
           </Tr>
@@ -67,7 +69,7 @@ const StoredArtifactList: React.FunctionComponent<StoredArtifactListType> = (pro
         <Tbody>
           {builds.length > 0 &&
             builds.sort((a, b) => a.gav.localeCompare(b.gav)).map((value: ArtifactListDTO, index) => (
-              <ArtifactRow key={index} artifact={value} selectArtifact={editArtifact}></ArtifactRow>
+              <ArtifactRow key={index} artifact={value} selectArtifact={editArtifact} mavenRepo={props.mavenRepo}></ArtifactRow>
             ))}
           {builds.length === 0 && (
             <EmptyTable></EmptyTable>
@@ -81,6 +83,7 @@ const StoredArtifactList: React.FunctionComponent<StoredArtifactListType> = (pro
 type BuildActionsType = {
   artifact: ArtifactListDTO,
   selectArtifact: (artifact: ArtifactListDTO) => void
+  mavenRepo: string | undefined
 };
 
 const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.Element => {
@@ -136,7 +139,14 @@ const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.E
       <Link to={`/artifacts/artifact/${artifact.artifact.name}`}>{artifact.artifact.name}</Link>
     </Td>
     <Td dataLabel={columnNames.gav} modifier="truncate">
-      {artifact.artifact.gav}
+      {artifact.mavenRepo == undefined ? artifact.artifact.gav : <a href={
+        artifact.mavenRepo + (artifact.mavenRepo?.endsWith("/") ? '' : '/') +
+        artifact.artifact.gav.split(":")[0].replace(/\./g, "/") +
+        "/" +
+        artifact.artifact.gav.split(":")[1] +
+        "/" +
+        artifact.artifact.gav.split(":")[2]
+      } target="_blank">{artifact.artifact.gav}</a>}
     </Td>
     <Td dataLabel={columnNames.actions}>
       <ActionListItem>

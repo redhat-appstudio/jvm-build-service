@@ -209,7 +209,16 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
             <Label color="blue" icon={<IceCreamIcon/>}>In Build Queue</Label>}</Text>
         </TextContent>
       </PageSection>
+
       <PageSection variant={PageSectionVariants.light}>
+      <Tabs activeKey={activeTabKey}
+            onSelect={handleTabClick}
+            isBox
+            aria-label="Tabs in the box light variation example"
+            role="region">
+
+        <Tab eventKey={0} title={<TabTitleText>Build Details</TabTitleText>}
+             aria-label="Box light variation content - users">
         <Card>
           <CardHeader>Source Code Details</CardHeader>
           <CardBody>
@@ -255,23 +264,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               </ActionListItem>
             </ActionList></CardFooter>
         </Card>
-        <Card>
-          <CardHeader>Artifacts</CardHeader>
-          <CardBody>
-            <StoredArtifactList artifacts={build.artifactList} ></StoredArtifactList>
-
-          </CardBody>
-        </Card>
-      </PageSection>
-      {build.buildAttempts.length > 0 &&
-      <PageSection isFilled>
-        <Tabs activeKey={activeTabKey}
-              onSelect={handleTabClick}
-              isBox
-              aria-label="Tabs in the box light variation example"
-              role="region">
-          <Tab eventKey={0} title={<TabTitleText>Build Details</TabTitleText>}
-               aria-label="Box light variation content - users">
             <Card>
               <CardHeader>Build Details</CardHeader>
                <BuildAttempt attempt={selectBuildAttempt}></BuildAttempt>
@@ -304,7 +296,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               </CardBody>
             </Card>
           </Tab>
-          <Tab eventKey={4} disabled={build.successfulBuild == undefined}
+          <Tab eventKey={4}
                title={<TabTitleText>Artifacts</TabTitleText>}>
             <Card>
               <CardHeader>Quay Image</CardHeader>
@@ -323,22 +315,10 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               </CardBody>
             </Card>
             <Card>
-              <CardHeader>Maven Artifacts Repository</CardHeader>
+              <CardHeader>Maven Artifacts</CardHeader>
               <CardBody>
-                <List>
-                  {selectBuildAttempt.artifacts != undefined && selectBuildAttempt.artifacts.map((key) => (
-                    <ListItem key={key}>
-                      {build.successfulBuild?.mavenRepository != undefined ?
-                      <a href={
-                      build.successfulBuild?.mavenRepository + (build.successfulBuild?.mavenRepository?.endsWith("/") ? '' : '/') +
-                      key.split(":")[0].replace(/\./g, "/") +
-                      "/" +
-                      key.split(":")[1] +
-                      "/" +
-                      key.split(":")[2]
-                    } target="_blank">{key}</a> : {key}}</ListItem>
-                  ))}
-                </List>
+
+                <StoredArtifactList artifacts={build.artifactList} mavenRepo={build.successfulBuild?.mavenRepository} ></StoredArtifactList>
               </CardBody>
             </Card>
           </Tab>
@@ -376,7 +356,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
             </Card>
           </Tab>
         </Tabs>
-      </PageSection>}
+      </PageSection>
     </>);
 };
 
