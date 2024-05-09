@@ -133,7 +133,7 @@ public class InvocationBuilder {
     public BuildInfo build(CacheBuildInfoLocator buildInfoLocator) {
         if (buildRecipeInfo != null) {
             if (buildRecipeInfo.isEnforceVersion() && !versionCorrect) {
-                info.enforceVersion = version;
+                info.enforceVersion = "true";
             }
             if (buildRecipeInfo.getRepositories() != null && !buildRecipeInfo.getRepositories().isEmpty()) {
                 info.setRepositories(buildRecipeInfo.getRepositories());
