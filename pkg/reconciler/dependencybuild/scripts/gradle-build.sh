@@ -27,6 +27,10 @@ RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/artifacts
 RELEASE_SIGNING_ENABLED=false
 mavenCentralUsername=
 mavenCentralPassword=
+
+# Default values for common enforced properties
+sonatypeUsername=jbs
+sonatypePassword=jbs
 EOF
 
 if [ -d .hacbs-init ]; then
