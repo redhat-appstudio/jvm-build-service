@@ -453,6 +453,11 @@ func (in *DependencyBuildStatus) DeepCopyInto(out *DependencyBuildStatus) {
 		*out = new(PipelineResults)
 		**out = **in
 	}
+	if in.DeployPipelineResults != nil {
+		in, out := &in.DeployPipelineResults, &out.DeployPipelineResults
+		*out = new(PipelineResults)
+		**out = **in
+	}
 	if in.PreBuildImages != nil {
 		in, out := &in.PreBuildImages, &out.PreBuildImages
 		*out = make([]PreBuildImage, len(*in))

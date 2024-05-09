@@ -28,6 +28,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 public class BuildLogs {
 
     protected enum Type {
+        DEPLOY,
         DISCOVERY,
         BUILD
     }
@@ -103,6 +104,7 @@ public class BuildLogs {
                 switch (logType) {
                     case BUILD -> result.append(LogExtractor.legacyBuildLogRetrieval(client, buildNumbers, theBuild));
                     case DISCOVERY -> result.append(LogExtractor.legacyDiscoveryLogRetrieval(client, theBuild));
+                    case DEPLOY -> result.append(LogExtractor.legacyDeployLogRetrieval(client, theBuild));
                 }
                 return Response.ok(result.toString(), MediaType.TEXT_PLAIN_TYPE).build();
             }
@@ -123,6 +125,7 @@ public class BuildLogs {
             case BUILD ->
                 result.append(LogExtractor.buildLogRetrieval(client, host, 443, restPath, buildNumbers, theBuild));
             case DISCOVERY -> result.append(LogExtractor.discoveryLogRetrieval(client, host, 443, restPath, theBuild));
+            case DEPLOY -> result.append(LogExtractor.deployLogRetrieval(client, host, 443, restPath, theBuild));
         }
         return Response.ok(result.toString(), MediaType.TEXT_PLAIN_TYPE).build();
     }

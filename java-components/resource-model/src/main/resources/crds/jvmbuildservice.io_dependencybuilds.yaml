@@ -332,6 +332,17 @@ spec:
                       type: string
                   type: object
                 type: array
+              deployPipelineResults:
+                description: A representation of the Tekton Results records for a
+                  pipeline
+                properties:
+                  logs:
+                    type: string
+                  record:
+                    type: string
+                  result:
+                    type: string
+                type: object
               deployedArtifacts:
                 items:
                   type: string

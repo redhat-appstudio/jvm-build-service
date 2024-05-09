@@ -89,6 +89,9 @@ public class DependencyBuildImporter {
             storedBuild.buildDiscoveryUrl = "s3://" + s3Bucket + "/build-logs/" + dependencyBuild.getMetadata().getName() + "/"
                     + dependencyBuild.getMetadata().getUid()
                     + "/build-discovery.log";
+            storedBuild.deployLogsUrl = "s3://" + s3Bucket + "/build-logs/" + dependencyBuild.getMetadata().getName() + "/"
+                    + dependencyBuild.getMetadata().getUid()
+                    + "/deploy.log";
         }
         if (dependencyBuild.getStatus().getBuildAttempts() != null) {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {
@@ -170,7 +173,11 @@ public class DependencyBuildImporter {
                     }
 
                     if (i.getBuild().getResults().getContaminates() != null) {
-                        attempt.shadingDetails = new ArrayList<>();
+                        if (attempt.shadingDetails == null) {
+                            attempt.shadingDetails = new ArrayList<>();
+                        } else {
+                            attempt.shadingDetails.clear();
+                        }
                         attempt.contaminated = i.getBuild().getResults().getContaminated() != null
                                 && i.getBuild().getResults().getContaminated();
                         for (var ct : i.getBuild().getResults().getContaminates()) {

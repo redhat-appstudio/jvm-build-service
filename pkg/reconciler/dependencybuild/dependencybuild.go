@@ -1402,6 +1402,11 @@ func (r *ReconcileDependencyBuild) handleDeployPipelineRunReceived(ctx context.C
 		if err != nil || db == nil {
 			return reconcile.Result{}, err
 		}
+
+		if db.Status.DeployPipelineResults == nil {
+			db.Status.DeployPipelineResults = &v1alpha1.PipelineResults{}
+		}
+		r.handleTektonResultsForPipeline(db.Status.DeployPipelineResults, pr)
 		if db.Status.State != v1alpha1.DependencyBuildStateDeploying {
 			//wrong state
 			return reconcile.Result{}, nil

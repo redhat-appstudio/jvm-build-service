@@ -238,6 +238,8 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 <DescriptionListDescription>
                   <Link to={"/api/builds/history/discovery-logs/" + build.name} target="_blank">Discovery
                     Logs</Link>
+                  <Link to={"/api/builds/history/deploy-logs/" + build.name} target="_blank">Deploy
+                    Logs</Link>
                 </DescriptionListDescription>
               </DescriptionListGroup>
             </DescriptionList>

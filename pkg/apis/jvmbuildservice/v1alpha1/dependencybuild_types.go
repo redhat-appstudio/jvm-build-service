@@ -40,6 +40,7 @@ type DependencyBuildStatus struct {
 	PipelineRetries            int              `json:"pipelineRetries,omitempty"`
 	BuildAttempts              []*BuildAttempt  `json:"buildAttempts,omitempty"`
 	DiscoveryPipelineResults   *PipelineResults `json:"discoveryPipelineResults,omitempty"`
+	DeployPipelineResults      *PipelineResults `json:"deployPipelineResults,omitempty"`
 	PreBuildImages             []PreBuildImage  `json:"builderImages,omitempty"`
 }
 

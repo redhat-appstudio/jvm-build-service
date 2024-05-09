@@ -167,6 +167,16 @@ public class BuildHistoryResource extends BuildLogs {
         return extractLog(Type.DISCOVERY, attempt.buildDiscoveryUrl, attempt.buildIdentifier.dependencyBuildName);
     }
 
+    @GET
+    @Path("/deploy-logs/{name}")
+    public Response deploylogs(@PathParam("name") String name) {
+        StoredDependencyBuild attempt = getDependencyBuild(name);
+        if (attempt == null) {
+            throw new NotFoundException();
+        }
+        return extractLog(Type.DEPLOY, attempt.deployLogsUrl, attempt.buildIdentifier.dependencyBuildName);
+    }
+
     private StoredDependencyBuild getDependencyBuild(String name) {
         BuildIdentifier identifier = BuildIdentifier
                 .find("dependencyBuildName = :dependencyBuildName",
