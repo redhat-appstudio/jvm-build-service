@@ -169,6 +169,11 @@ public class InvocationBuilder {
             Log.infof("Set Java version to [%s, %s] due to preferred version %s", minJavaVersion,
                     maxJavaVersion, preferredJavaVersion);
         }
+        if (maxJavaVersion != null && maxJavaVersion.intVersion() < 8 && toolInvocations.containsKey(BuildInfo.GRADLE)) {
+            //Gradle build don't work properly on JDK7
+            //so we always allow for JDK8 as well
+            maxJavaVersion = JavaVersion.JAVA_8;
+        }
         Date commitTime = new Date(info.commitTime);
         DateFormat simpleDate = new SimpleDateFormat("yyyy-MM-dd");
         //now we need to figure out what possible build recipes we can try
