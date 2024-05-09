@@ -19,7 +19,7 @@ import {
   OkIcon, OutlinedAngryIcon, RedhatIcon, WarningTriangleIcon
 } from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
-import {DependencySet} from "@app/DependencySet/DependencySet";
+import {DependencySet} from "../../components";
 
 const DeploymentList: React.FunctionComponent = () => {
   const [deployments, setDeployments] = useState(Array<DeploymentDTO>);

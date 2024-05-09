@@ -2,6 +2,7 @@ import * as React from 'react';
 import {useEffect, useState} from 'react';
 
 import {
+  ArtifactListDTO,
   BuildAttemptDTO,
   BuildDTO,
   BuildHistoryResourceService,
@@ -53,7 +54,7 @@ import {
   WarningTriangleIcon
 } from "@patternfly/react-icons";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
-import {DependencySet} from "@app/DependencySet/DependencySet";
+import {DependencySet, StoredArtifactList} from "../../components";
 
 interface RouteParams {
   name: string
@@ -65,9 +66,9 @@ interface BuildView extends RouteComponentProps<RouteParams> {
 const BuildView: React.FunctionComponent<BuildView> = (props) => {
 
   const name = props.match.params.name
-  const initialArray : Array<BuildAttemptDTO> = new Array<BuildAttemptDTO>();
   const initial: BuildDTO = {
-    buildAttempts: initialArray,
+    artifactList: new Array<ArtifactListDTO>(),
+    buildAttempts: new Array<BuildAttemptDTO>(),
     buildSbomDependencySetId: 0,
     contaminated: false,
     inQueue: false,
@@ -244,6 +245,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               </DescriptionListGroup>
             </DescriptionList>
           </CardBody>
+
           <CardFooter>
             <ActionList>
               <ActionListItem>
@@ -252,6 +254,13 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                 </Button>
               </ActionListItem>
             </ActionList></CardFooter>
+        </Card>
+        <Card>
+          <CardHeader>Artifacts</CardHeader>
+          <CardBody>
+            <StoredArtifactList artifacts={build.artifactList} ></StoredArtifactList>
+
+          </CardBody>
         </Card>
       </PageSection>
       {build.buildAttempts.length > 0 &&
@@ -312,6 +321,8 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
                   </List>
                 </DescriptionList>
               </CardBody>
+            </Card>
+            <Card>
               <CardHeader>Maven Artifacts Repository</CardHeader>
               <CardBody>
                 <List>

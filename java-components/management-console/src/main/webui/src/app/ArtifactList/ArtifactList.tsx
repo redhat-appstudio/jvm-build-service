@@ -19,6 +19,7 @@ import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, WarningTriangleIcon} f
 import {ArtifactEditModal} from "@app/ArtifactEditModal/ArtifactEditModal";
 import {EmptyTable} from "@app/EmptyTable/EmptyTable";
 import {Link} from "react-router-dom";
+import {StoredArtifactList} from "../../components";
 
 
 const columnNames = {
@@ -169,26 +170,8 @@ const ArtifactList: React.FunctionComponent = () => {
   return (
     <React.Fragment>
       {toolbar}
-      <ArtifactEditModal artifact={artifact} open={modalOpen} setOpen={setModalOpen}></ArtifactEditModal>
-      <Table aria-label="Artifact List">
-        <Thead>
-          <Tr>
-            <Th width={10}>{columnNames.status}</Th>
-            <Th width={10}>{columnNames.name}</Th>
-            <Th width={10}>{columnNames.gav}</Th>
-            <Th width={10}>{columnNames.actions}</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {builds.length > 0 &&
-            builds.sort((a, b) => a.gav.localeCompare(b.gav)).map((value: ArtifactListDTO, index) => (
-              <ArtifactRow key={index} artifact={value} selectArtifact={editArtifact}></ArtifactRow>
-            ))}
-          {builds.length === 0 && (
-            <EmptyTable></EmptyTable>
-          )}
-        </Tbody>
-      </Table>
+      <StoredArtifactList artifacts={builds}></StoredArtifactList>
+
     </React.Fragment>
   );
 };

@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { ArtifactListDTO } from './ArtifactListDTO';
 import type { BuildAttemptDTO } from './BuildAttemptDTO';
 export type BuildDTO = {
     id: number;
@@ -17,5 +18,6 @@ export type BuildDTO = {
     buildAttempts: Array<BuildAttemptDTO>;
     inQueue: boolean;
     buildSbomDependencySetId: number;
+    artifactList: Array<ArtifactListDTO>;
 };
 

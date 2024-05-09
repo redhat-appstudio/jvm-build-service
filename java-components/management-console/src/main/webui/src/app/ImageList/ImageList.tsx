@@ -20,7 +20,7 @@ import {
   ContainerNodeIcon
 } from "@patternfly/react-icons";
 import {RouteComponentProps} from "react-router-dom";
-import {DependencySet} from "@app/DependencySet/DependencySet";
+import {DependencySet} from "../../components";
 
 
 interface RouteParams {
