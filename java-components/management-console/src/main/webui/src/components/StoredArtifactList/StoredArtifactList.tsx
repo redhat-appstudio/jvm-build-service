@@ -23,7 +23,7 @@ import {Link} from "react-router-dom";
 
 type StoredArtifactListType = {
   artifacts: Array<ArtifactListDTO>
-  mavenRepo: string | undefined
+  mavenRepo?: string
 };
 
 const columnNames = {
