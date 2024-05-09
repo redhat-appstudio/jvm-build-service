@@ -1,7 +1,8 @@
 package com.redhat.hacbs.recipes.scm;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,8 +15,8 @@ public class ScmInfoManager implements RecipeManager<ScmInfo> {
             .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
 
     @Override
-    public ScmInfo parse(Path file) throws IOException {
-        ScmInfo info = MAPPER.readValue(file.toFile(), ScmInfo.class);
+    public ScmInfo parse(InputStream file) throws IOException {
+        ScmInfo info = MAPPER.readValue(file, ScmInfo.class);
         if (info == null) {
             return new ScmInfo(); //can happen on empty file
         }
@@ -23,7 +24,7 @@ public class ScmInfoManager implements RecipeManager<ScmInfo> {
     }
 
     @Override
-    public void write(ScmInfo data, Path file) throws IOException {
-        MAPPER.writeValue(file.toFile(), data);
+    public void write(ScmInfo data, OutputStream out) throws IOException {
+        MAPPER.writeValue(out, data);
     }
 }

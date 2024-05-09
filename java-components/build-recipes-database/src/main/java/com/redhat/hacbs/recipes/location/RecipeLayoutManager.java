@@ -164,7 +164,6 @@ public class RecipeLayoutManager implements RecipeDirectory {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 
     @Override

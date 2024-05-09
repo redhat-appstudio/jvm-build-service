@@ -1,13 +1,17 @@
 package com.redhat.hacbs.common.tools.recipes;
 
-import java.util.Set;
+import static com.redhat.hacbs.recipes.location.RecipeRepositoryManager.BUILD_INFO;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
 
 import com.redhat.hacbs.common.tools.repo.RepositoryChange;
 import com.redhat.hacbs.recipes.BuildRecipe;
-import com.redhat.hacbs.recipes.build.AddBuildRecipeRequest;
 import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
-import com.redhat.hacbs.recipes.location.BuildInfoRequest;
+import com.redhat.hacbs.recipes.location.RecipeGroupManager;
+import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuildSpec;
 
@@ -23,32 +27,32 @@ public class ModifyBuildRecipeCommand {
         this.editFunction = editFunction;
     }
 
-    public void run() {
+    public String run() {
 
         DependencyBuildSpec buildSpec = theBuild.getSpec();
         String branchName = "branch-" + System.currentTimeMillis(); //TODO: better branch names
         String message = "Updated build-info for " + buildSpec.getScm().getScmURL();
+        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(buildSpec.getScm().getScmURL());
+        if (versionSpecific) {
+            target += "/" + RecipeLayoutManager.VERSION + "/" + buildSpec.getVersion();
+        }
+        try {
 
-        RepositoryChange.createPullRequest(branchName, message, (repositoryRoot, groupManager, recipeLayoutManager) -> {
-            var existing = groupManager
-                    .requestBuildInformation(new BuildInfoRequest(buildSpec.getScm().getScmURL(), buildSpec.getVersion(),
-                            Set.of(BuildRecipe.BUILD)));
+            var existing = RepositoryChange.getContent(target);
             BuildRecipeInfo buildRecipe = null;
-            if (existing != null && existing.getData().containsKey(BuildRecipe.BUILD)) {
-                buildRecipe = BuildRecipe.BUILD.getHandler().parse(existing.getData().get(BuildRecipe.BUILD));
+            if (existing != null) {
+                buildRecipe = BuildRecipe.BUILD.getHandler()
+                        .parse(new ByteArrayInputStream(existing.getBytes(StandardCharsets.UTF_8)));
             } else {
                 buildRecipe = new BuildRecipeInfo();
             }
             buildRecipe = editFunction.apply(buildRecipe);
-
-            for (var addRepository : buildRecipe.getRepositories()) {
-                if (recipeLayoutManager.getRepositoryPaths(addRepository).isEmpty()) {
-                    throw new IllegalArgumentException("Unknown repository " + addRepository);
-                }
-            }
-            recipeLayoutManager.writeBuildData(new AddBuildRecipeRequest<>(BuildRecipe.BUILD, buildRecipe,
-                    buildSpec.getScm().getScmURL(), versionSpecific ? buildSpec.getVersion() : null));
-        });
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            BuildRecipe.BUILD.getHandler().write(buildRecipe, baos);
+            return RepositoryChange.createPullRequest(branchName, message, target, baos.toByteArray());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public ModifyBuildRecipeCommand setVersionSpecific(boolean versionSpecific) {

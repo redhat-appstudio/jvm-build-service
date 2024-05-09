@@ -1,6 +1,8 @@
 package com.redhat.hacbs.recipes.disabledplugins;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -24,12 +26,12 @@ public class DisabledPluginsManager implements RecipeManager<DisabledPlugins> {
     }
 
     @Override
-    public DisabledPlugins parse(Path file) throws IOException {
-        return MAPPER.readValue(file.toFile(), DisabledPlugins.class);
+    public DisabledPlugins parse(InputStream file) throws IOException {
+        return MAPPER.readValue(file, DisabledPlugins.class);
     }
 
     @Override
-    public void write(DisabledPlugins data, Path file) throws IOException {
-        MAPPER.writeValue(file.toFile(), data);
+    public void write(DisabledPlugins data, OutputStream out) throws IOException {
+        MAPPER.writeValue(out, data);
     }
 }

@@ -1,7 +1,8 @@
 package com.redhat.hacbs.recipes.mavenrepo;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,12 +17,12 @@ public class MavenRepositoryInfoManager implements RecipeManager<MavenRepository
             .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
 
     @Override
-    public MavenRepositoryInfo parse(Path file) throws IOException {
-        return MAPPER.readValue(file.toFile(), MavenRepositoryInfo.class);
+    public MavenRepositoryInfo parse(InputStream file) throws IOException {
+        return MAPPER.readValue(file, MavenRepositoryInfo.class);
     }
 
     @Override
-    public void write(MavenRepositoryInfo data, Path file) throws IOException {
-        MAPPER.writeValue(file.toFile(), data);
+    public void write(MavenRepositoryInfo data, OutputStream out) throws IOException {
+        MAPPER.writeValue(out, data);
     }
 }
