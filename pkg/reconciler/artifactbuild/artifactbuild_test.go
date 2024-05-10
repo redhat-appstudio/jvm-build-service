@@ -295,8 +295,7 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test"}}))
 		abr = getABR(client, g)
 		g.Expect(abr.Status.State).Should(Equal(v1alpha1.ArtifactBuildStateNew))
-		g.Expect(abr.Annotations[RebuildAnnotation]).Should(Equal(""))     //second reconcile removes the annotation
-		g.Expect(abr.Annotations[RebuiltAnnotation]).Should(Equal("true")) //second reconcile removes the annotation
+		g.Expect(abr.Annotations[RebuildAnnotation]).Should(Equal("")) //second reconcile removes the annotation
 	})
 	t.Run("Contaminated build", func(t *testing.T) {
 		g := NewGomegaWithT(t)

@@ -10,6 +10,8 @@ public class ModelConstants {
 
     public static final String REBUILD = GROUP + "/rebuild";
 
+    public static final String REBUILT = GROUP + "/rebuilt";
+
     public static final String DEPENDENCY_CREATED = GROUP + "/dependency-created";
 
     public static final String ARTIFACT_BUILD_COMPLETE = "ArtifactBuildComplete";
