@@ -10,7 +10,7 @@ import {
   MenuToggleElement,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import {ArtifactEditResourceService, ArtifactHistoryResourceService, ArtifactListDTO} from "../../services/openapi";
+import {ArtifactEditResourceService, ArtifactListDTO} from "../../services/openapi";
 import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
 import {ArtifactEditModal} from "../../components";
 import {EmptyTable} from "@app/EmptyTable/EmptyTable";
@@ -36,8 +36,6 @@ const StoredArtifactView: React.FunctionComponent<StoredArtifactListType> = (pro
   const emptyArtifact: ArtifactListDTO = {id: 0, gav: "", name: ""}
   const [artifact, setArtifact] = useState(emptyArtifact);
   const [modalOpen, setModalOpen] = useState(false);
-
-  let transientGav = ''
 
   const editArtifact = (artifact: ArtifactListDTO) => {
     setArtifact(artifact)

@@ -23,13 +23,9 @@ import {
   DescriptionListDescription,
   DescriptionListGroup,
   DescriptionListTerm,
-  Dropdown,
-  DropdownItem,
-  DropdownList,
   Label,
   List,
   ListItem,
-  MenuToggle,
   PageSection,
   PageSectionVariants,
   Tab,
@@ -39,10 +35,7 @@ import {
   TextContent,
   TextVariants,
   ToggleGroup,
-  ToggleGroupItem,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem
+  ToggleGroupItem
 } from "@patternfly/react-core";
 import {
   CheckCircleIcon,
