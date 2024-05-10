@@ -1,33 +1,19 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
 import {
-  ActionListItem,
   Dropdown,
   DropdownItem,
   DropdownList,
   Label,
   MenuToggle,
-  MenuToggleElement,
   Pagination, SearchInput,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
-import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import {ArtifactEditResourceService, ArtifactHistoryResourceService, ArtifactListDTO} from "../../services/openapi";
-import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
-import {ArtifactEditModal} from "@app/ArtifactEditModal/ArtifactEditModal";
-import {EmptyTable} from "@app/EmptyTable/EmptyTable";
-import {Link} from "react-router-dom";
-import {StoredArtifactList} from "../../components";
-
-
-const columnNames = {
-  status: 'Status',
-  name: 'Artifact ID',
-  gav: 'GAV',
-  actions: 'Actions',
-};
+import {ArtifactHistoryResourceService, ArtifactListDTO} from "../../services/openapi";
+import {CheckCircleIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
+import {StoredArtifactView} from "../../components";
 
 const ArtifactList: React.FunctionComponent = () => {
   const [builds, setBuilds] = useState(Array<ArtifactListDTO>);
@@ -41,9 +27,6 @@ const ArtifactList: React.FunctionComponent = () => {
   const [count, setCount] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(20);
-  const emptyArtifact: ArtifactListDTO = {id: 0, gav: "", name: ""}
-  const [artifact, setArtifact] = useState(emptyArtifact);
-  const [modalOpen, setModalOpen] = useState(false);
 
   let transientGav = ''
 
@@ -77,11 +60,6 @@ const ArtifactList: React.FunctionComponent = () => {
     setPage(newPage);
   };
 
-  const editArtifact = (artifact: ArtifactListDTO) => {
-    setArtifact(artifact)
-    setModalOpen(true)
-  }
-
   const onPerPageSelect = (
     _event: React.MouseEvent | React.KeyboardEvent | MouseEvent,
     newPerPage: number,
@@ -111,7 +89,7 @@ const ArtifactList: React.FunctionComponent = () => {
   const dropDownLabel = (state: string) => {
     switch (state) {
       case '':
-        return "All";
+        return "State";
       case'complete':
           return <><CheckCircleIcon color="green"/>Successful</>
       case 'missing':
@@ -170,94 +148,10 @@ const ArtifactList: React.FunctionComponent = () => {
   return (
     <React.Fragment>
       {toolbar}
-      <StoredArtifactList artifacts={builds}></StoredArtifactList>
+      <StoredArtifactView artifacts={builds}></StoredArtifactView>
 
     </React.Fragment>
   );
 };
 
-type BuildActionsType = {
-  artifact: ArtifactListDTO,
-  selectArtifact: (artifact: ArtifactListDTO) => void
-};
-
-const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.Element => {
-
-  const [isOpen, setIsOpen] = React.useState(false);
-  const onToggle = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const onSelect = (event: React.MouseEvent<Element, MouseEvent> | undefined) => {
-    event?.stopPropagation();
-    setIsOpen(!isOpen);
-  };
-
-  const edit = (event: React.SyntheticEvent<HTMLLIElement>) => {
-    artifact.selectArtifact(artifact.artifact)
-  };
-  const rebuild = (event: React.SyntheticEvent<HTMLLIElement>) => {
-    ArtifactEditResourceService.postApiArtifactsEditRebuild(artifact.artifact.gav)
-  };
-
-
-  const dropdownItems = (
-    <>
-      <DropdownItem key="edit" onSelect={edit} onClick={edit}>
-        Edit
-      </DropdownItem>
-      <DropdownItem key="rebuild" onSelect={rebuild} onClick={rebuild}>
-        Rebuild
-      </DropdownItem>
-    </>
-  );
-  const statusIcon = function (build: ArtifactListDTO) {
-    if (build.succeeded) {
-      return <Label color="green" icon={<CheckCircleIcon/>}>
-        Artifact Successful
-      </Label>
-    } else if (build.missing) {
-      return <Label color="orange" icon={<WarningTriangleIcon/>}>
-        Artifact Missing
-      </Label>
-    }
-    return <Label color="red" icon={<ErrorCircleOIcon/>}>
-      Artifact Failed
-    </Label>
-  }
-
-  return <Tr key={artifact.artifact.gav}>
-    <Td>
-      {statusIcon(artifact.artifact)}
-    </Td>
-    <Td dataLabel={columnNames.name} modifier="truncate">
-      <Link to={`/artifacts/artifact/${artifact.artifact.name}`}>{artifact.artifact.name}</Link>
-    </Td>
-    <Td dataLabel={columnNames.gav} modifier="truncate">
-      {artifact.artifact.gav}
-    </Td>
-    <Td dataLabel={columnNames.actions}>
-      <ActionListItem>
-        <Dropdown
-          onSelect={onSelect}
-          toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-            <MenuToggle
-              ref={toggleRef}
-              onClick={onToggle}
-              variant="plain"
-              isExpanded={isOpen}
-              aria-label="Artifact Actions"
-            >
-              <EllipsisVIcon/>
-            </MenuToggle>
-          )}
-          isOpen={isOpen}
-          onOpenChange={(isOpen: boolean) => setIsOpen(isOpen)}
-        >
-          <DropdownList>{dropdownItems}</DropdownList>
-        </Dropdown>
-      </ActionListItem>
-    </Td>
-  </Tr>
-}
 export {ArtifactList};

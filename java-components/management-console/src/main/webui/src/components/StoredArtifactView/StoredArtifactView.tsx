@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 import {
   ActionListItem,
   Dropdown,
@@ -8,15 +8,11 @@ import {
   Label,
   MenuToggle,
   MenuToggleElement,
-  Pagination, SearchInput,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {ArtifactEditResourceService, ArtifactHistoryResourceService, ArtifactListDTO} from "../../services/openapi";
 import {CheckCircleIcon, EllipsisVIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
-import {ArtifactEditModal} from "@app/ArtifactEditModal/ArtifactEditModal";
+import {ArtifactEditModal} from "../../components";
 import {EmptyTable} from "@app/EmptyTable/EmptyTable";
 import {Link} from "react-router-dom";
 
@@ -31,16 +27,12 @@ const columnNames = {
   name: 'Artifact ID',
   gav: 'GAV',
   actions: 'Actions',
+  message: 'Message',
 };
 
-const StoredArtifactList: React.FunctionComponent<StoredArtifactListType> = (props) => {
+const StoredArtifactView: React.FunctionComponent<StoredArtifactListType> = (props) => {
   const builds = props.artifacts;
 
-  const [dropDownOpen, setDropDownOpen] = useState(false);
-
-  const [count, setCount] = React.useState(0);
-  const [page, setPage] = React.useState(1);
-  const [perPage, setPerPage] = React.useState(20);
   const emptyArtifact: ArtifactListDTO = {id: 0, gav: "", name: ""}
   const [artifact, setArtifact] = useState(emptyArtifact);
   const [modalOpen, setModalOpen] = useState(false);
@@ -60,9 +52,9 @@ const StoredArtifactList: React.FunctionComponent<StoredArtifactListType> = (pro
         <Thead>
           <Tr>
             <Th width={10}>{columnNames.status}</Th>
-            <Th width={10}>{columnNames.name}
-            </Th>
+            <Th width={10}>{columnNames.name}</Th>
             <Th width={10}>{columnNames.gav}</Th>
+            <Th width={30}>{columnNames.message}</Th>
             <Th width={10}>{columnNames.actions}</Th>
           </Tr>
         </Thead>
@@ -148,6 +140,10 @@ const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.E
         artifact.artifact.gav.split(":")[2]
       } target="_blank">{artifact.artifact.gav}</a>}
     </Td>
+
+    <Td dataLabel={columnNames.message}>
+      {artifact.artifact.message}
+    </Td>
     <Td dataLabel={columnNames.actions}>
       <ActionListItem>
         <Dropdown
@@ -172,4 +168,4 @@ const ArtifactRow: React.FunctionComponent<BuildActionsType> = (artifact): JSX.E
     </Td>
   </Tr>
 }
-export {StoredArtifactList};
+export {StoredArtifactView};

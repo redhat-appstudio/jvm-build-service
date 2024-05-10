@@ -123,7 +123,7 @@ export const ArtifactEditModal: React.FunctionComponent<ArtifactEditModalData> =
             <Checkbox id="artifact-edit-legacy" name="artifact-edit-legacy" isChecked={legacyValue} onChange={handleLegacyInputChange}></Checkbox>
           </FormGroup>
           {prUrl.length == 0 ? <></> :
-              <Link to={prUrl} target={'_blank'}><GithubIcon></GithubIcon>{prUrl}</Link>
+              <a href={prUrl} target={'_blank'}><GithubIcon></GithubIcon>{prUrl}</a>
           }
         </Form>
       </Modal>

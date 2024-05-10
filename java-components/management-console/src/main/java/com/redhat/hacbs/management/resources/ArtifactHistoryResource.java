@@ -89,7 +89,8 @@ public class ArtifactHistoryResource {
                     storedArtifactBuild.name,
                     storedArtifactBuild.mavenArtifact.gav(),
                     Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
-                    Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_MISSING)));
+                    Objects.equals(storedArtifactBuild.state, ModelConstants.ARTIFACT_BUILD_MISSING),
+                    storedArtifactBuild.message));
         }
         TypedQuery<Long> q2 = entityManager.createQuery("select count(s) from StoredArtifactBuild s " + query,
                 Long.class);

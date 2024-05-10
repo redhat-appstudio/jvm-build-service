@@ -77,7 +77,7 @@ public record BuildDTO(
                 artifactBuilds.stream()
                         .map(s -> new ArtifactListDTO(s.id, s.name, s.mavenArtifact.gav(),
                                 Objects.equals(s.state, ModelConstants.ARTIFACT_BUILD_COMPLETE),
-                                Objects.equals(s.state, ModelConstants.ARTIFACT_BUILD_MISSING)))
+                                Objects.equals(s.state, ModelConstants.ARTIFACT_BUILD_MISSING), s.message))
                         .collect(Collectors.toList()));
 
     }

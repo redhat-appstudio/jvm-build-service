@@ -1,2 +1,3 @@
-export {StoredArtifactList} from './StoredArtifactList/StoredArtifactList';
+export {StoredArtifactView} from './StoredArtifactView/StoredArtifactView';
 export {DependencySet} from './DependencySet/DependencySet';
+export {ArtifactEditModal} from './ArtifactEditModal/ArtifactEditModal';

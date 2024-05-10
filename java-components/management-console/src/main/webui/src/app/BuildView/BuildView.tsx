@@ -54,7 +54,7 @@ import {
   WarningTriangleIcon
 } from "@patternfly/react-icons";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
-import {DependencySet, StoredArtifactList} from "../../components";
+import {DependencySet, StoredArtifactView} from "../../components";
 
 interface RouteParams {
   name: string
@@ -245,8 +245,8 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
               <CardHeader>Maven Artifacts</CardHeader>
               <CardBody>
 
-                <StoredArtifactList artifacts={build.artifactList}
-                                    mavenRepo={build.successfulBuild?.mavenRepository}></StoredArtifactList>
+                <StoredArtifactView artifacts={build.artifactList}
+                                    mavenRepo={build.successfulBuild?.mavenRepository}></StoredArtifactView>
               </CardBody>
             </Card>
           </Tab>
