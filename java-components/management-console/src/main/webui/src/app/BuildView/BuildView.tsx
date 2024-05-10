@@ -248,7 +248,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
           </Tab>
         </Tabs>
 
-        <Tabs activeKey={activeBuildTabKey}
+        {build.buildAttempts.length > 0 && <Tabs activeKey={activeBuildTabKey}
               onSelect={handleBuildTabClick}
               isBox
               width={"200px"}
@@ -257,7 +257,7 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
 
           {build.buildAttempts.map((at, idx) => <Tab  eventKey={idx} title={dropDownLabel(at)}
                                                      aria-label="{dropDownLabel(at)}" children={<BuildAttempt attempt={at}></BuildAttempt>} />)}
-        </Tabs>
+        </Tabs>}
 
       </PageSection>
     </>);

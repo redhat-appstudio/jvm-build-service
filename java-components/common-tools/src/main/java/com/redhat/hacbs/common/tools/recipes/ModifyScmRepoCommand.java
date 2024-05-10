@@ -42,7 +42,7 @@ public class ModifyScmRepoCommand {
         GAV parsed = GAV.parse(gav);
         String branchName = "branch-" + System.currentTimeMillis(); //TODO: better branch names
         String message = "Updated scm-info for " + gav;
-        String target = SCM_INFO + "/" + parsed.getGroupId();
+        String target = SCM_INFO + "/" + parsed.getGroupId().replace('.','/');
         if (!group) {
             target += "/" + ARTIFACT + "/" + parsed.getArtifactId();
         }
