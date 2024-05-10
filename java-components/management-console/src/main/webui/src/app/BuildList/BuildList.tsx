@@ -116,7 +116,7 @@ const BuildList: React.FunctionComponent = () => {
   const dropDownBuildLabel = (state: string) => {
     switch (state) {
       case '':
-        return "All";
+        return "State";
       case'complete':
         return <><CheckCircleIcon color="green" />Successful</>
       case 'contaminated':
@@ -131,7 +131,7 @@ const BuildList: React.FunctionComponent = () => {
   const dropDownToolLabel = (state: string) => {
     switch (state) {
       case '':
-        return "All";
+        return "Build Tool";
       case 'maven':
         return "Maven"
       case 'gradle':

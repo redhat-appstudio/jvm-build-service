@@ -161,6 +161,9 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
   }
 
   const dropDownLabel = (state: BuildAttemptDTO) => {
+    if (Object.keys(state.upstreamDifferences).length > 0) {
+      return <><ErrorCircleOIcon color="orange"/> {state.label}</>
+    }
     if (state.contaminated) {
       return <><CheckCircleIcon color="orange"/> {state.label}</>
     }
@@ -347,7 +350,7 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
         </CardBody>
       </Card>
     </Tab>
-    <Tab eventKey={4}
+    <Tab eventKey={4} disabled={!selectBuildAttempt.successful}
          title={<TabTitleText>Artifacts</TabTitleText>}>
       <Card>
         <CardHeader>Quay Image</CardHeader>

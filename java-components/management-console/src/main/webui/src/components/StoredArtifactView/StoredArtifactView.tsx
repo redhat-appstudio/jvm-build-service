@@ -54,7 +54,7 @@ const StoredArtifactView: React.FunctionComponent<StoredArtifactListType> = (pro
             <Th width={10}>{columnNames.status}</Th>
             <Th width={10}>{columnNames.name}</Th>
             <Th width={10}>{columnNames.gav}</Th>
-            <Th width={30}>{columnNames.message}</Th>
+            <Th width={10}>{columnNames.message}</Th>
             <Th width={10}>{columnNames.actions}</Th>
           </Tr>
         </Thead>

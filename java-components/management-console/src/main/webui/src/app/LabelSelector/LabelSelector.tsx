@@ -55,7 +55,7 @@ const LabelSelector: React.FunctionComponent<LabelSelectorType> = (props) => {
     onOpenChangeKeys={['Escape']}
     toggle={(toggleRef) => (
       <MenuToggle ref={toggleRef} onClick={() => setDropDownOpen(!dropDownOpen)} isExpanded={dropDownOpen}>
-        {label == '' ? 'All' : label}
+        {label == '' ? 'Label' : label}
       </MenuToggle>
     )}
     id="context-selector"
@@ -71,7 +71,7 @@ const LabelSelector: React.FunctionComponent<LabelSelectorType> = (props) => {
             key={index}
             onSelect={() => setLabel(item.name == undefined ? '' : item.name)}
           >
-            {item.name}
+            {item.name == '' ? 'All' : item.name}
           </DropdownItem>
         );
       })}
