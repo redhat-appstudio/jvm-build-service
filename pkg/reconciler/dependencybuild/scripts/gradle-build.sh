@@ -27,6 +27,10 @@ RELEASE_REPOSITORY_URL=file:$(workspaces.source.path)/artifacts
 RELEASE_SIGNING_ENABLED=false
 mavenCentralUsername=
 mavenCentralPassword=
+
+# Default values for common enforced properties
+sonatypeUsername=jbs
+sonatypePassword=jbs
 EOF
 
 if [ -d .hacbs-init ]; then
@@ -44,12 +48,9 @@ export PATH="${JAVA_HOME}/bin:${PATH}"
 #so just create one to fool the plugin
 git config user.email "HACBS@redhat.com"
 git config user.name "HACBS"
-if [ -z "$(params.ENFORCE_VERSION)" ]; then
-  echo "Enforce version not set, recreating original tag $(params.TAG)"
-  git tag -m $(params.TAG) -a $(params.TAG) || true
-else
-  echo "Creating tag $(params.ENFORCE_VERSION) to match enforced version"
-  git tag -m $(params.ENFORCE_VERSION) -a $(params.ENFORCE_VERSION) || true
+if [ -n "$(params.ENFORCE_VERSION)" ]; then
+  echo "Creating tag $(params.PROJECT_VERSION) to match enforced version"
+  git tag -m $(params.PROJECT_VERSION) -a $(params.PROJECT_VERSION) || true
 fi
 
 if [ ! -d "${GRADLE_HOME}" ]; then

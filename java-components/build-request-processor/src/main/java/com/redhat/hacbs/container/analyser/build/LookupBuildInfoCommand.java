@@ -563,7 +563,7 @@ public class LookupBuildInfoCommand implements Runnable {
             //TODO: we should do discovery on the whole tree
             if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
                 //not tagged properly, deal with it automatically
-                builder.enforceVersion(version);
+                builder.enforceVersion("true");
             } else if (model.getVersion() == null || Objects.equals(version, model.getVersion())) {
                 //if the version is null we can't run enforce version at this point
                 //version is correct, don't run enforce version as it can fail on things
