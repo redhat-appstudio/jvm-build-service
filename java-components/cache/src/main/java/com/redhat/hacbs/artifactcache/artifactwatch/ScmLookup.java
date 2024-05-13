@@ -120,7 +120,11 @@ public class ScmLookup {
                                     scm.setScmType("git");
                                     scm.setScmURL(result.getRepoInfo().getUri());
                                     scm.setCommitHash(result.getHash());
-                                    scm.setPath(result.getRepoInfo().getPath());
+                                    String path = result.getRepoInfo().getPath();
+                                    if (path != null && path.startsWith("/")) {
+                                        path = path.substring(1);
+                                    }
+                                    scm.setPath(path);
                                     scm.set_private(result.getRepoInfo().isPrivateRepo());
                                     scm.setTag(result.getTag());
                                     Log.infof("Adding artifactBuild with GAV %s with URI %s and hash %s ",
