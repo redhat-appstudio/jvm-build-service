@@ -27,7 +27,7 @@ import {
   List,
   ListItem,
   PageSection,
-  PageSectionVariants,
+  PageSectionVariants, Popover,
   Tab,
   Tabs,
   TabTitleText,
@@ -39,7 +39,7 @@ import {
 } from "@patternfly/react-core";
 import {
   CheckCircleIcon,
-  ErrorCircleOIcon,
+  ErrorCircleOIcon, HelpIcon,
   IceCreamIcon,
   MinusIcon,
   PlusIcon,
@@ -250,7 +250,19 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
           <Tab eventKey={2} title={<TabTitleText>Build Recipe</TabTitleText>}
                aria-label="Build Recipe">
             <Card>
-              <CardHeader>Build Recipe</CardHeader>
+              <CardHeader>Build Recipe
+                <Popover
+                  bodyContent={
+                    <div>
+                      See <a target="_blank" href="https://github.com/redhat-appstudio/jvm-build-data#build-yaml">here</a> for documentation.
+                    </div>
+                  }
+                >
+                  <Button variant="plain" aria-label="Help">
+                    <HelpIcon />
+                  </Button>
+                </Popover>
+              </CardHeader>
               <CardBody>
 
                 <BuildEdit build={build}></BuildEdit>

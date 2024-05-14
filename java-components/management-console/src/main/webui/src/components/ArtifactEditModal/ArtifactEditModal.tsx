@@ -17,7 +17,7 @@ import {
   ScmEditInfo,
   ScmInfo
 } from "../../services/openapi";
-import {GithubIcon} from "@patternfly/react-icons";
+import {GithubIcon, HelpIcon} from "@patternfly/react-icons";
 
 
 type ArtifactEditModalData = {
@@ -81,11 +81,24 @@ export const ArtifactEditModal: React.FunctionComponent<ArtifactEditModalData> =
     <React.Fragment>
       <Modal
         variant={ModalVariant.small}
-        title="Edit Artifact"
+        title="Edit Artifact SCM"
         isOpen={data.open}
         onClose={() => {
           data.setOpen(false)
         }}
+        help={
+          <Popover
+            bodyContent={
+              <div>
+                See <a target="_blank" href="https://github.com/redhat-appstudio/jvm-build-data#scm-yaml">here</a> for documentation.
+              </div>
+            }
+          >
+            <Button variant="plain" aria-label="Help">
+              <HelpIcon />
+            </Button>
+          </Popover>
+        }
         actions={[
           <Button key="create" variant="primary" form="modal-with-form-form" onClick={save} disabled={prUrl.length > 0}>
             Confirm
