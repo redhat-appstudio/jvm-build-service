@@ -57,12 +57,12 @@ public class RepositoryChange {
                         + ", please fork the repo");
             }
             String sha = null;
-            var ref = myfork.createRef("refs/heads/" + branchName, myfork.getBranch("main").getSHA1());
+            var ref = myfork.createRef("refs/heads/" + branchName, mainRepo.getBranch("main").getSHA1());
             try {
-                var existing = myfork.getFileContent(filePath, ref.getRef());
+                var existing = mainRepo.getFileContent(filePath, "main");
                 sha = existing.getSha();
             } catch (GHFileNotFoundException e) {
-                return null;
+
             }
             var commit = myfork.createContent().branch(branchName).path(filePath).content(fileContent)
                     .message(commitMessage)

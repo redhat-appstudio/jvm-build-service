@@ -48,6 +48,7 @@ import {
 } from "@patternfly/react-icons";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 import {DependencySet, StoredArtifactView} from "../../components";
+import {BuildEdit} from "../../components/BuildEdit/BuildEdit";
 
 interface RouteParams {
   name: string
@@ -243,6 +244,16 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
 
                 <StoredArtifactView artifacts={build.artifactList}
                                     mavenRepo={build.successfulBuild?.mavenRepository}></StoredArtifactView>
+              </CardBody>
+            </Card>
+          </Tab>
+          <Tab eventKey={2} title={<TabTitleText>Build Recipe</TabTitleText>}
+               aria-label="Build Recipe">
+            <Card>
+              <CardHeader>Build Recipe</CardHeader>
+              <CardBody>
+
+                <BuildEdit build={build}></BuildEdit>
               </CardBody>
             </Card>
           </Tab>

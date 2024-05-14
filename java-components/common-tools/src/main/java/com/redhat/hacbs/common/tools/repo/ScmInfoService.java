@@ -81,7 +81,7 @@ public class ScmInfoService {
         return target;
     }
 
-    public static record ScmEditInfo(@Schema(required = true) ScmInfo scmInfo, @Schema(required = true) boolean group,
+    public record ScmEditInfo(@Schema(required = true) ScmInfo scmInfo, @Schema(required = true) boolean group,
             @Schema(required = true) boolean version, @Schema(required = true) String gav) {
 
     }
