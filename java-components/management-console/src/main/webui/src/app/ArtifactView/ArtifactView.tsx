@@ -167,6 +167,10 @@ const ArtifactView: React.FunctionComponent<ArtifactView> = (props) => {
                         <Link to={`/builds/build/${artifact.dependencyBuildName}`}>{artifact.dependencyBuildName}</Link>
                       </DescriptionListDescription>
                     </DescriptionListGroup>
+                    <DescriptionListGroup>
+                      <DescriptionListTerm>Context Path</DescriptionListTerm>
+                      <DescriptionListDescription>{artifact.contextPath}</DescriptionListDescription>
+                    </DescriptionListGroup>
                   </DescriptionList>
                 </CardBody>
 

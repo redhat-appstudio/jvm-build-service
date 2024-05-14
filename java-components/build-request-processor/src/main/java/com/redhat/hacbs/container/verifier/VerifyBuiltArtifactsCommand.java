@@ -16,6 +16,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -156,10 +157,9 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                 if (results.isEmpty()) {
                     Log.infof("Passed: %s", e.getKey());
                 } else {
-                    Log.errorf("Failed: %s:\n%s", e.getKey(), String.join("\n", results));
-                    failed = true;
 
-                    for (var error : results) {
+                    for (Iterator<String> iterator = results.iterator(); iterator.hasNext();) {
+                        var error = iterator.next();
                         var matcher = CLASS_VERSION_CHANGED_PATTERN.matcher(error);
                         if (matcher.matches()) {
                             var fileName = matcher.group("fileName");
@@ -167,6 +167,14 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                             var fromVersion = ClassVersion.fromVersion(matcher.group("fromVersion"));
                             var toVersion = ClassVersion.fromVersion(matcher.group("toVersion"));
                             var sourceVersion = ClassVersion.toJavaVersion(fromVersion);
+                            if (sourceVersion.intVersion() < 5) {
+                                Log.errorf(
+                                        "Class %s version in file %s changed from %s to %s. This has been ignored as bytecode level is smaller than 5",
+                                        className, fileName, fromVersion,
+                                        toVersion, sourceVersion, sourceVersion);
+                                iterator.remove();
+                                continue;
+                            }
                             Log.errorf(
                                     "Class %s version in file %s changed from %s to %s. Rerun build with -source %s -target %s",
                                     className, fileName, fromVersion,
@@ -182,6 +190,10 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
                             reportOnly = false;
                             break;
                         }
+                    }
+                    if (!results.isEmpty()) {
+                        Log.errorf("Failed: %s:\n%s", e.getKey(), String.join("\n", results));
+                        failed = true;
                     }
                 }
             }

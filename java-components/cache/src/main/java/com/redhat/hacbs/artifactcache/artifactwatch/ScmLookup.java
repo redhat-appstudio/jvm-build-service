@@ -60,6 +60,10 @@ public class ScmLookup {
 
             @Override
             public void onAdd(ArtifactBuild newObj) {
+                if (newObj.getMetadata().getAnnotations() != null &&
+                        newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILD)) {
+                    return;
+                }
                 if (newObj.getStatus() == null) {
                     newObj.setStatus(new ArtifactBuildStatus());
                 }
@@ -73,7 +77,7 @@ public class ScmLookup {
                             }
                             try {
                                 if (newObj.getMetadata().getAnnotations() != null
-                                        && newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILD)
+                                        && newObj.getMetadata().getAnnotations().containsKey(ModelConstants.REBUILT)
                                         && !newObj.getMetadata().getAnnotations()
                                                 .containsKey(ModelConstants.DEPENDENCY_CREATED)) {
                                     //if this is a forced rebuild we always update the SCM info
@@ -116,7 +120,11 @@ public class ScmLookup {
                                     scm.setScmType("git");
                                     scm.setScmURL(result.getRepoInfo().getUri());
                                     scm.setCommitHash(result.getHash());
-                                    scm.setPath(result.getRepoInfo().getPath());
+                                    String path = result.getRepoInfo().getPath();
+                                    if (path != null && path.startsWith("/")) {
+                                        path = path.substring(1);
+                                    }
+                                    scm.setPath(path);
                                     scm.set_private(result.getRepoInfo().isPrivateRepo());
                                     scm.setTag(result.getTag());
                                     Log.infof("Adding artifactBuild with GAV %s with URI %s and hash %s ",

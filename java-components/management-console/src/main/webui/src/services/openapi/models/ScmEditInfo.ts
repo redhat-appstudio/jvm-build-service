@@ -2,12 +2,11 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type ArtifactListDTO = {
-    id: number;
-    name: string;
+import type { ScmInfo } from './ScmInfo';
+export type ScmEditInfo = {
+    scmInfo: ScmInfo;
+    group: boolean;
+    version: boolean;
     gav: string;
-    succeeded?: boolean;
-    missing?: boolean;
-    message?: string;
 };
 

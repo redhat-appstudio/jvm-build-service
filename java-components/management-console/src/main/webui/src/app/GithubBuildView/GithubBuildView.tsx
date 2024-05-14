@@ -18,7 +18,7 @@ import {
   GithubBuildDTO, GithubBuildsResourceService
 } from "../../services/openapi";
 import {RouteComponentProps} from "react-router-dom";
-import {DependencySet} from "@app/DependencySet/DependencySet";
+import {DependencySet} from "../../components";
 
 interface RouteParams {
   build: string

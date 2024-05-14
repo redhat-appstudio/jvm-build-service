@@ -1,7 +1,8 @@
 package com.redhat.hacbs.recipes.build;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -20,19 +21,19 @@ public class BuildRecipeInfoManager implements RecipeManager<BuildRecipeInfo> {
     private static final Logger log = Logger.getLogger(BuildRecipeInfoManager.class.getName());
 
     @Override
-    public BuildRecipeInfo parse(Path file)
+    public BuildRecipeInfo parse(InputStream file)
             throws IOException {
         log.info("Parsing " + file + " for build recipe information");
         BuildRecipeInfo buildRecipeInfo = null;
-        if (file.toFile().length() != 0) {
-            buildRecipeInfo = MAPPER.readValue(file.toFile(), BuildRecipeInfo.class);
+        if (file.available() != 0) {
+            buildRecipeInfo = MAPPER.readValue(file, BuildRecipeInfo.class);
         }
         return Objects.requireNonNullElseGet(buildRecipeInfo, BuildRecipeInfo::new);
     }
 
     @Override
-    public void write(BuildRecipeInfo data, Path file)
+    public void write(BuildRecipeInfo data, OutputStream out)
             throws IOException {
-        MAPPER.writeValue(file.toFile(), data);
+        MAPPER.writeValue(out, data);
     }
 }

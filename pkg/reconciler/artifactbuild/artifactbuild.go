@@ -153,23 +153,19 @@ func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context
 			}
 		}
 
-		// TODO: if verify = true, then find dependency build and add veify = false to dep build, add ourself to the owner references, if new dep created, also add it to that
-		//log.Info("cluster set on obj ", r.clusterSetOnObj(&abr))
-		//first check for a rebuild annotation
 		if abr.Annotations[RebuildAnnotation] == "true" {
 			if abr.Status.State != v1alpha1.ArtifactBuildStateNew {
 				return result, r.handleRebuild(log, ctx, &abr)
 			} else {
 				delete(abr.Annotations, RebuildAnnotation)
-				abr.Annotations[RebuiltAnnotation] = "true"
-				return result, r.client.Update(ctx, &abr)
+				return reconcile.Result{Requeue: true}, r.client.Update(ctx, &abr)
 			}
 		} else if abr.Annotations[RebuildAnnotation] == "failed" {
 			if abr.Status.State != v1alpha1.ArtifactBuildStateComplete && abr.Status.State != v1alpha1.ArtifactBuildStateNew {
 				return result, r.handleRebuild(log, ctx, &abr)
 			} else {
 				delete(abr.Annotations, RebuildAnnotation)
-				return result, r.client.Update(ctx, &abr)
+				return reconcile.Result{Requeue: true}, r.client.Update(ctx, &abr)
 			}
 		}
 	}
@@ -466,12 +462,8 @@ func (r *ReconcileArtifactBuild) handleRebuild(log logr.Logger, ctx context.Cont
 							//no need to retry it would just result in an infinite loop
 							return nil
 						}
-						if other.Annotations == nil {
-							other.Annotations = map[string]string{RebuildAnnotation: "true"}
-						} else {
-							other.Annotations[RebuildAnnotation] = "true"
-						}
-						err = r.client.Update(ctx, &other)
+						other.Status.State = v1alpha1.ArtifactBuildStateNew
+						err = r.client.Status().Update(ctx, &other)
 						if err != nil {
 							return err
 						}

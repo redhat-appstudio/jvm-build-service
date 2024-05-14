@@ -300,7 +300,7 @@ public class GitScmLocator implements ScmLocator {
             } catch (RuntimeException ex) {
                 log.error("Failure to determine tag", ex);
                 if (firstFailure == null) {
-                    firstFailure = ex;
+                    firstFailure = new RuntimeException("Failed to determine tag for repo " + parsedInfo.getUri(), ex);
                 } else {
                     firstFailure.addSuppressed(ex);
                 }

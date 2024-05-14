@@ -3,18 +3,34 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { EditResult } from '../models/EditResult';
-import type { ModifyScmRepoCommand } from '../models/ModifyScmRepoCommand';
+import type { ScmEditInfo } from '../models/ScmEditInfo';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class ArtifactEditResourceService {
+    /**
+     * @param gav
+     * @returns ScmEditInfo OK
+     * @throws ApiError
+     */
+    public static getApiArtifactsEdit(
+        gav?: string,
+    ): CancelablePromise<ScmEditInfo> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/artifacts/edit',
+            query: {
+                'gav': gav,
+            },
+        });
+    }
     /**
      * @param requestBody
      * @returns EditResult OK
      * @throws ApiError
      */
     public static postApiArtifactsEdit(
-        requestBody?: ModifyScmRepoCommand,
+        requestBody?: ScmEditInfo,
     ): CancelablePromise<EditResult> {
         return __request(OpenAPI, {
             method: 'POST',

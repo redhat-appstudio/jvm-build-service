@@ -1,13 +1,18 @@
 package com.redhat.hacbs.common.tools.recipes;
 
-import java.nio.file.Path;
+import static com.redhat.hacbs.recipes.location.RecipeLayoutManager.ARTIFACT;
+import static com.redhat.hacbs.recipes.location.RecipeLayoutManager.VERSION;
+import static com.redhat.hacbs.recipes.location.RecipeRepositoryManager.SCM_INFO;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Map;
 
 import com.redhat.hacbs.common.tools.repo.RepositoryChange;
 import com.redhat.hacbs.recipes.BuildRecipe;
 import com.redhat.hacbs.recipes.GAV;
-import com.redhat.hacbs.recipes.location.AddRecipeRequest;
 import com.redhat.hacbs.recipes.scm.RepositoryInfo;
 import com.redhat.hacbs.recipes.scm.ScmInfo;
 import com.redhat.hacbs.recipes.scm.TagMapping;
@@ -34,75 +39,87 @@ public class ModifyScmRepoCommand {
     }
 
     public String run() {
-        return RepositoryChange.createPullRequest(gav.replace(":", "-"), "Add scm-info for " + gav,
-                (repositoryRoot, groupManager, recipeLayoutManager) -> {
-                    GAV parsed = GAV.parse(gav);
-                    var existing = groupManager.lookupScmInformation(parsed);
-                    if (!legacy) {
-                        ScmInfo scmInfo = null;
-                        Path existingFile = null;
-                        if (!existing.isEmpty()) {
-                            existingFile = existing.get(0);
-                            scmInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
-                            if (scmInfo.getUri().equals(uri)) {
-                                System.err.println("Provided URI matches existing URI");
-                            }
-                            if (uri != null) {
-                                scmInfo.setUri(uri);
-                            }
-                            if (path != null) {
-                                scmInfo.setPath(path.equals("/") ? null : path);
-                            }
-                        } else {
-                            if (uri == null) {
-                                throw new RuntimeException("URI not specified, and no existing information");
-                            }
-                            scmInfo = new ScmInfo("git", uri, path);
-                        }
-                        if (tagMapping != null) {
-                            for (var e : tagMapping.entrySet()) {
-                                if (scmInfo.getTagMapping() == null) {
-                                    scmInfo.setTagMapping(new ArrayList<>());
-                                }
-                                scmInfo.getTagMapping().add(new TagMapping().setPattern(e.getKey()).setTag(e.getValue()));
-                            }
-                        }
-                        if (existingFile != null && uri == null) {
-                            BuildRecipe.SCM.getHandler().write(scmInfo, existingFile);
-                        } else {
-                            recipeLayoutManager.writeArtifactData(new AddRecipeRequest<>(BuildRecipe.SCM, scmInfo,
-                                    parsed.getGroupId(), group ? null : parsed.getArtifactId(),
-                                    version ? parsed.getVersion() : null));
-                        }
-
-                    } else {
-                        //legacy mode, we just want to add legacy info to an existing file
-                        if (existing.isEmpty()) {
-                            throw new RuntimeException("Cannot use --legacy when there is no existing data");
-                        }
-                        Path existingFile = existing.get(0);
-                        ScmInfo existingInfo = BuildRecipe.SCM.getHandler().parse(existingFile);
-                        RepositoryInfo repo = null;
-                        for (var existingLegacy : existingInfo.getLegacyRepos()) {
-                            if (existingLegacy.getUri().equals(uri)) {
-                                repo = existingInfo;
-                                break;
-                            }
-                        }
-                        if (repo == null) {
-                            existingInfo.getLegacyRepos().add(repo = new RepositoryInfo("git", uri, path));
-                        }
-                        if (tagMapping != null) {
-                            if (repo.getTagMapping() == null) {
-                                repo.setTagMapping(new ArrayList<>());
-                            }
-                            for (var e : tagMapping.entrySet()) {
-                                repo.getTagMapping().add(new TagMapping().setPattern(e.getKey()).setTag(e.getValue()));
-                            }
-                        }
-                        BuildRecipe.SCM.getHandler().write(existingInfo, existingFile);
+        GAV parsed = GAV.parse(gav);
+        String branchName = "branch-" + System.currentTimeMillis(); //TODO: better branch names
+        String message = "Updated scm-info for " + gav;
+        String target = SCM_INFO + "/" + parsed.getGroupId().replace('.', '/');
+        if (!group) {
+            target += "/" + ARTIFACT + "/" + parsed.getArtifactId();
+        }
+        if (version) {
+            target += "/" + VERSION + "/" + parsed.getVersion();
+        }
+        target += "/scm.yaml";
+        try {
+            var existing = RepositoryChange.getContent(target);
+            ScmInfo scmInfo = null;
+            if (existing != null) {
+                scmInfo = BuildRecipe.SCM.getHandler()
+                        .parse(new ByteArrayInputStream(existing.getBytes(StandardCharsets.UTF_8)));
+            } else {
+                scmInfo = new ScmInfo();
+            }
+            if (!legacy) {
+                if (existing != null) {
+                    if (scmInfo.getUri().equals(uri)) {
+                        System.err.println("Provided URI matches existing URI");
                     }
-                });
+                    if (uri != null) {
+                        scmInfo.setUri(uri);
+                    }
+                    if (path != null) {
+                        scmInfo.setPath(path.equals("/") ? null : path);
+                    }
+                } else {
+                    if (uri == null) {
+                        throw new RuntimeException("URI not specified, and no existing information");
+                    }
+                    scmInfo = new ScmInfo("git", uri, path);
+                }
+                if (tagMapping != null) {
+                    for (var e : tagMapping.entrySet()) {
+                        if (scmInfo.getTagMapping() == null) {
+                            scmInfo.setTagMapping(new ArrayList<>());
+                        }
+                        scmInfo.getTagMapping().add(new TagMapping().setPattern(e.getKey()).setTag(e.getValue()));
+                    }
+                }
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                BuildRecipe.SCM.getHandler().write(scmInfo, baos);
+                return RepositoryChange.createPullRequest(branchName, message, target, baos.toByteArray());
+
+            } else {
+                //legacy mode, we just want to add legacy info to an existing file
+                if (existing == null) {
+                    throw new RuntimeException("Cannot use --legacy when there is no existing data");
+                }
+                RepositoryInfo repo = null;
+                for (var existingLegacy : scmInfo.getLegacyRepos()) {
+                    if (existingLegacy.getUri().equals(uri)) {
+                        repo = scmInfo;
+                        break;
+                    }
+                }
+                if (repo == null) {
+                    scmInfo.getLegacyRepos().add(repo = new RepositoryInfo("git", uri, path));
+                }
+                if (tagMapping != null) {
+                    if (repo.getTagMapping() == null) {
+                        repo.setTagMapping(new ArrayList<>());
+                    }
+                    for (var e : tagMapping.entrySet()) {
+                        repo.getTagMapping().add(new TagMapping().setPattern(e.getKey()).setTag(e.getValue()));
+                    }
+                }
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                BuildRecipe.SCM.getHandler().write(scmInfo, baos);
+                return RepositoryChange.createPullRequest(branchName, message, target, baos.toByteArray());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public ModifyScmRepoCommand setGroup(boolean group) {

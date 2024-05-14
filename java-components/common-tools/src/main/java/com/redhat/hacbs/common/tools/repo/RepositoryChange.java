@@ -1,28 +1,37 @@
 package com.redhat.hacbs.common.tools.repo;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
-import org.eclipse.jgit.api.CreateBranchCommand;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.transport.URIish;
+import org.kohsuke.github.GHFileNotFoundException;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
-
-import com.redhat.hacbs.recipes.location.RecipeGroupManager;
-import com.redhat.hacbs.recipes.location.RecipeLayoutManager;
-import com.redhat.hacbs.recipes.util.FileUtil;
-
-import io.quarkus.logging.Log;
 
 /**
  * Utility class that can create a pull request against the build recipe repository
  */
 public class RepositoryChange {
 
-    public static String createPullRequest(String branchName, String commitMessage, PullRequestCreator creator) {
+    public static String getContent(String filePath) {
+        try {
+            var gh = GitHub.connect();
+            var me = gh.getMyself().getLogin();
+            System.out.println("GitHub User: " + me);
+            GHRepository mainRepo = gh.getRepository("redhat-appstudio/jvm-build-data");
+            try {
+                try (InputStream in = mainRepo.getFileContent(filePath).read()) {
+                    return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            } catch (GHFileNotFoundException e) {
+                return null;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String createPullRequest(String branchName, String commitMessage, String filePath, byte[] fileContent) {
         File homeDir = new File(System.getProperty("user.home"));
         File propertyFile = new File(homeDir, ".github");
         if (!propertyFile.exists()) {
@@ -47,36 +56,20 @@ public class RepositoryChange {
                 throw new RuntimeException("Could not find fork of the redhat-appstudio/jvm-build-data repo owned by" + me
                         + ", please fork the repo");
             }
-            Path checkoutPath = Files.createTempDirectory("open-pr");
-            try (Git checkout = Git.cloneRepository().setDirectory(checkoutPath.toFile())
-                    .setURI(myfork.getHttpTransportUrl()).call()) {
-                System.out.println("Checked out " + myfork.getHttpTransportUrl());
-                checkout.remoteAdd().setName("upstream").setUri(new URIish(mainRepo.getHttpTransportUrl())).call();
-                checkout.fetch().setRemote("upstream").call();
-                checkout.checkout().setName("upstream/main").call();
-                checkout.checkout().setCreateBranch(true).setName(branchName)
-                        .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM).setForceRefUpdate(true).call();
-                RecipeLayoutManager recipeLayoutManager = new RecipeLayoutManager(checkoutPath);
-                RecipeGroupManager groupManager = new RecipeGroupManager(List.of(recipeLayoutManager));
-                creator.makeModifications(checkoutPath, groupManager, recipeLayoutManager);
-                //commit the changes
-                checkout.add().addFilepattern("scm-info").addFilepattern("build-info").call();
-                checkout.commit().setMessage(commitMessage)
-                        .setAll(true)
-                        .call();
+            String sha = null;
+            var ref = myfork.createRef("refs/heads/" + branchName, mainRepo.getBranch("main").getSHA1());
+            try {
+                var existing = mainRepo.getFileContent(filePath, "main");
+                sha = existing.getSha();
+            } catch (GHFileNotFoundException e) {
 
-                //push the changes to our fork
-                checkout.push().setForce(true).setCredentialsProvider(new GithubCredentials(me)).setRemote("origin").call();
-
-                String head = me + ":" + branchName;
-                System.out.println("head:" + head);
-                var pr = mainRepo.createPullRequest(commitMessage, head, "main", "");
-                String prUrl = pr.getIssueUrl().toExternalForm().replace("https://api.github.com/repos", "https://github.com");
-                Log.infof("Created Pull Request: " + prUrl);
-                return prUrl;
-            } finally {
-                FileUtil.deleteRecursive(checkoutPath);
             }
+            var commit = myfork.createContent().branch(branchName).path(filePath).content(fileContent)
+                    .message(commitMessage)
+                    .sha(sha)
+                    .commit();
+            return mainRepo.createPullRequest(commitMessage, me + ":" + branchName, "main", commitMessage, true).getHtmlUrl()
+                    .toExternalForm();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

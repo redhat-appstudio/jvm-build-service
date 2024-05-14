@@ -8,18 +8,14 @@ import {
   DataListItemCells,
   DataListItemRow,
   DataListToggle,
-  Label,
   Title,
 } from '@patternfly/react-core';
-import {DeploymentDTO, DeploymentResourceService, IdentifiedDependencyDTO} from "../../services/openapi";
+import {DeploymentDTO, DeploymentResourceService} from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
 import {
-  AttentionBellIcon,ContainerNodeIcon,
-  IceCreamIcon,
-  OkIcon, OutlinedAngryIcon, RedhatIcon, WarningTriangleIcon
+  ContainerNodeIcon
 } from "@patternfly/react-icons";
-import {Link} from "react-router-dom";
-import {DependencySet} from "@app/DependencySet/DependencySet";
+import {DependencySet} from "../../components";
 
 const DeploymentList: React.FunctionComponent = () => {
   const [deployments, setDeployments] = useState(Array<DeploymentDTO>);
