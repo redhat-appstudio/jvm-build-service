@@ -17,7 +17,7 @@ import {
   ScmEditInfo,
   ScmInfo
 } from "../../services/openapi";
-import {GithubIcon} from "@patternfly/react-icons";
+import {GithubIcon, HelpIcon} from "@patternfly/react-icons";
 
 
 type BuildEditModalData = {
@@ -82,7 +82,7 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
           <FormGroup
             label="Apply to Specific Version"
             labelIcon={
-              <Popover bodyContent={<div>If this change should be applied to this version and lower.</div>}></Popover>
+              <Popover bodyContent={<div>If this change should be applied to this version and lower.</div>}><HelpIcon/></Popover>
             }
             fieldId="artifact-edit-version">
             <Checkbox id="artifact-edit-version" name="artifact-edit-version"
@@ -94,7 +94,7 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
           <FormGroup
             label="Additional Memory"
             labelIcon={
-              <Popover bodyContent={<div>Additional Build Memory</div>}></Popover>
+              <Popover bodyContent={<div>Additional Build Memory</div>}><HelpIcon/></Popover>
             }
             fieldId="artifact-edit-uri">
             <TextInput
@@ -121,7 +121,7 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
             <FormGroup
               label="Additional Arg"
               labelIcon={
-                <Popover bodyContent={<div>An additional param</div>}></Popover>
+                <Popover bodyContent={<div>An additional param</div>}><HelpIcon/></Popover>
               }
               fieldId="artifact-edit-additional-arg">
               <TextInput
