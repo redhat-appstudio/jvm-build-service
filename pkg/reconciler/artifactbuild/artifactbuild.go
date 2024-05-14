@@ -158,6 +158,7 @@ func (r *ReconcileArtifactBuild) handleArtifactBuildReceived(ctx context.Context
 				return result, r.handleRebuild(log, ctx, &abr)
 			} else {
 				delete(abr.Annotations, RebuildAnnotation)
+				abr.Annotations[RebuiltAnnotation] = "true"
 				return reconcile.Result{Requeue: true}, r.client.Update(ctx, &abr)
 			}
 		} else if abr.Annotations[RebuildAnnotation] == "failed" {
