@@ -92,17 +92,57 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
                       })}></Checkbox>
           </FormGroup>
           <FormGroup
+            label="Enforce Version"
+            labelIcon={
+              <Popover bodyContent={<div>If the version should be enforced when building.</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-enforce-version">
+            <Checkbox id="artifact-enforce-version" name="artifact-enforce-version"
+                      isChecked={info.buildInfo.enforceVersion}
+                      onChange={stateChange((s, v) => {
+                        s.buildInfo.enforceVersion = v
+                      })}></Checkbox>
+          </FormGroup>
+          <FormGroup
             label="Additional Memory"
             labelIcon={
               <Popover bodyContent={<div>Additional Build Memory</div>}><HelpIcon/></Popover>
             }
-            fieldId="artifact-edit-uri">
+            fieldId="artifact-edit-memory">
             <TextInput
               type="url"
               id="artifact-edit-memory"
               name="artifact-edit-memory"
               value={info.buildInfo.additionalMemory}
               onChange={stateChange((s, v) => {s.buildInfo.additionalMemory = v})}
+            />
+          </FormGroup>
+          <FormGroup
+            label="Pre-build Script"
+            labelIcon={
+              <Popover bodyContent={<div>A script to run before the build</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-prebuild">
+            <TextInput
+              type="url"
+              id="artifact-edit-prebuild"
+              name="artifact-edit-prebuild"
+              value={info.buildInfo.preBuildScript}
+              onChange={stateChange((s, v) => {s.buildInfo.preBuildScript = v})}
+            />
+          </FormGroup>
+          <FormGroup
+            label="Post-build Script"
+            labelIcon={
+              <Popover bodyContent={<div>A script to run after the build</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-postbuild">
+            <TextInput
+              type="url"
+              id="artifact-edit-postbuild"
+              name="artifact-edit-postbuild"
+              value={info.buildInfo.postBuildScript}
+              onChange={stateChange((s, v) => {s.buildInfo.postBuildScript = v})}
             />
           </FormGroup>
           <FormGroup label="Additional Args">
