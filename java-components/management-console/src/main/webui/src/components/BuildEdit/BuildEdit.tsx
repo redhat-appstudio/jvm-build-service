@@ -7,7 +7,7 @@ import {
   Modal,
   ModalVariant,
   Popover,
-  Spinner,
+  Spinner, TextArea,
   TextInput
 } from '@patternfly/react-core';
 import {
@@ -110,7 +110,6 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
             }
             fieldId="artifact-edit-memory">
             <TextInput
-              type="url"
               id="artifact-edit-memory"
               name="artifact-edit-memory"
               value={info.buildInfo.additionalMemory}
@@ -123,8 +122,8 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
               <Popover bodyContent={<div>A script to run before the build</div>}><HelpIcon/></Popover>
             }
             fieldId="artifact-edit-prebuild">
-            <TextInput
-              type="url"
+            <TextArea
+              resizeOrientation="vertical"
               id="artifact-edit-prebuild"
               name="artifact-edit-prebuild"
               value={info.buildInfo.preBuildScript}
@@ -137,8 +136,8 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
               <Popover bodyContent={<div>A script to run after the build</div>}><HelpIcon/></Popover>
             }
             fieldId="artifact-edit-postbuild">
-            <TextInput
-              type="url"
+            <TextArea
+              resizeOrientation="vertical"
               id="artifact-edit-postbuild"
               name="artifact-edit-postbuild"
               value={info.buildInfo.postBuildScript}
