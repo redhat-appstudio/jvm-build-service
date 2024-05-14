@@ -17,7 +17,7 @@ import {
   ScmEditInfo,
   ScmInfo
 } from "../../services/openapi";
-import {GithubIcon} from "@patternfly/react-icons";
+import {GithubIcon, HelpIcon} from "@patternfly/react-icons";
 
 
 type ArtifactEditModalData = {
@@ -81,11 +81,24 @@ export const ArtifactEditModal: React.FunctionComponent<ArtifactEditModalData> =
     <React.Fragment>
       <Modal
         variant={ModalVariant.small}
-        title="Edit Artifact"
+        title="Edit Artifact SCM"
         isOpen={data.open}
         onClose={() => {
           data.setOpen(false)
         }}
+        help={
+          <Popover
+            bodyContent={
+              <div>
+                See <a target="_blank" href="https://github.com/redhat-appstudio/jvm-build-data#scm-yaml">here</a> for documentation.
+              </div>
+            }
+          >
+            <Button variant="plain" aria-label="Help">
+              <HelpIcon />
+            </Button>
+          </Popover>
+        }
         actions={[
           <Button key="create" variant="primary" form="modal-with-form-form" onClick={save} disabled={prUrl.length > 0}>
             Confirm
@@ -102,7 +115,7 @@ export const ArtifactEditModal: React.FunctionComponent<ArtifactEditModalData> =
           <FormGroup
             label="Apply to Group"
             labelIcon={
-              <Popover bodyContent={<div>If this change should be applied at a group level</div>}></Popover>
+              <Popover bodyContent={<div>If this change should be applied at a group level</div>}><HelpIcon/></Popover>
             }
             fieldId="artifact-edit-group">
             <Checkbox id="artifact-edit-group" name="artifact-edit-group"
@@ -114,7 +127,7 @@ export const ArtifactEditModal: React.FunctionComponent<ArtifactEditModalData> =
           <FormGroup
             label="Apply to Specific Version"
             labelIcon={
-              <Popover bodyContent={<div>If this change should be applied to this version and lower.</div>}></Popover>
+              <Popover bodyContent={<div>If this change should be applied to this version and lower.</div>}><HelpIcon/></Popover>
             }
             fieldId="artifact-edit-version">
             <Checkbox id="artifact-edit-version" name="artifact-edit-version"
@@ -179,7 +192,7 @@ export const RepositorySection: React.FunctionComponent<RepositorySectionData> =
       <FormGroup
         label="URI"
         labelIcon={
-          <Popover bodyContent={<div>The SCM URI</div>}></Popover>
+          <Popover bodyContent={<div>The SCM URI</div>}><HelpIcon/></Popover>
         }
         fieldId="artifact-edit-uri">
         <TextInput
@@ -195,7 +208,7 @@ export const RepositorySection: React.FunctionComponent<RepositorySectionData> =
       <FormGroup
         label="Path"
         labelIcon={
-          <Popover bodyContent={<div>The path inside the repo to build from</div>}></Popover>
+          <Popover bodyContent={<div>The path inside the repo to build from</div>}><HelpIcon/></Popover>
         }
         fieldId="artifact-edit-path">
         <TextInput
@@ -225,7 +238,7 @@ export const RepositorySection: React.FunctionComponent<RepositorySectionData> =
           <FormGroup key={index}
                      label="Tag Pattern"
                      labelIcon={
-                       <Popover bodyContent={<div>A tag Mapping</div>}></Popover>
+                       <Popover bodyContent={<div>A tag Mapping</div>}><HelpIcon/></Popover>
                      }
                      fieldId="artifact-edit-path">
             <TextInput
@@ -242,7 +255,7 @@ export const RepositorySection: React.FunctionComponent<RepositorySectionData> =
           <FormGroup key={index}
                      label="Tag Mapping"
                      labelIcon={
-                       <Popover bodyContent={<div>A tag Mapping</div>}></Popover>
+                       <Popover bodyContent={<div>A tag Mapping</div>}><HelpIcon/></Popover>
                      }
                      fieldId="artifact-edit-path">
             <TextInput

@@ -17,7 +17,7 @@ import com.redhat.hacbs.recipes.location.RecipeGroupManager;
 public class BuildInfoService {
 
     public static Optional<BuildEditInfo> getBuildInfo(String scmUri) {
-        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(scmUri);
+        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(scmUri) + "/build.yaml";
         var existing = RepositoryChange.getContent(target);
         if (existing == null) {
             return Optional.empty();
@@ -35,7 +35,7 @@ public class BuildInfoService {
     }
 
     public static String writeBuildInfo(BuildEditInfo buildEditInfo) {
-        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(buildEditInfo.scmUri);
+        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(buildEditInfo.scmUri) + "/build.yaml";
         String branchName = "branch-" + System.currentTimeMillis(); //TODO: better branch names
         String message = "Updated build-info for " + buildEditInfo.scmUri;
         ByteArrayOutputStream data = new ByteArrayOutputStream();
