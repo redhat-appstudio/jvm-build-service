@@ -1,6 +1,5 @@
 package com.redhat.hacbs.common.tools.repo;
 
-import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -32,13 +31,6 @@ public class RepositoryChange {
     }
 
     public static String createPullRequest(String branchName, String commitMessage, String filePath, byte[] fileContent) {
-        File homeDir = new File(System.getProperty("user.home"));
-        File propertyFile = new File(homeDir, ".github");
-        if (!propertyFile.exists()) {
-            throw new RuntimeException(
-                    "You must create a .github file as specified at https://github-api.kohsuke.org/ to be able to modify the build recipes.");
-        }
-        //TODO: should not be hard coded
         try {
             var gh = GitHub.connect();
             var me = gh.getMyself().getLogin();
