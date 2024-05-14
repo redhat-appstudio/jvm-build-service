@@ -17,7 +17,7 @@ import com.redhat.hacbs.recipes.location.RecipeGroupManager;
 public class BuildInfoService {
 
     public static Optional<BuildEditInfo> getBuildInfo(String scmUri) {
-        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(scmUri);
+        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(scmUri) + "/build.yaml";
         var existing = RepositoryChange.getContent(target);
         if (existing == null) {
             return Optional.empty();
