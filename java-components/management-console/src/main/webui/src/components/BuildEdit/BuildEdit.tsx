@@ -4,18 +4,12 @@ import {
   Checkbox,
   Form,
   FormGroup,
-  Modal,
-  ModalVariant,
   Popover,
   Spinner, TextArea,
   TextInput
 } from '@patternfly/react-core';
 import {
-  ArtifactEditResourceService,
-  ArtifactListDTO, BuildDTO, BuildEditInfo, BuildInfoEditResourceService, BuildRecipeInfo,
-  RepositoryInfo,
-  ScmEditInfo,
-  ScmInfo
+  BuildDTO, BuildEditInfo, BuildInfoEditResourceService, BuildRecipeInfo, RepositoryInfo, ScmInfo
 } from "../../services/openapi";
 import {GithubIcon, HelpIcon} from "@patternfly/react-icons";
 

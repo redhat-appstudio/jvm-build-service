@@ -35,7 +35,7 @@ public class BuildInfoService {
     }
 
     public static String writeBuildInfo(BuildEditInfo buildEditInfo) {
-        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(buildEditInfo.scmUri);
+        String target = BUILD_INFO + "/" + RecipeGroupManager.normalizeScmUri(buildEditInfo.scmUri) + "/build.yaml";
         String branchName = "branch-" + System.currentTimeMillis(); //TODO: better branch names
         String message = "Updated build-info for " + buildEditInfo.scmUri;
         ByteArrayOutputStream data = new ByteArrayOutputStream();
