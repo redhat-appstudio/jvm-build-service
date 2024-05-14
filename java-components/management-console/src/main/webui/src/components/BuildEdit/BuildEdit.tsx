@@ -138,6 +138,19 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
               onChange={stateChange((s, v) => {s.buildInfo.postBuildScript = v})}
             />
           </FormGroup>
+          <FormGroup
+            label="Java Version"
+            labelIcon={
+              <Popover bodyContent={<div>Override Java version detection</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-java-version">
+            <TextInput
+              id="artifact-edit-java-version"
+              name="artifact-edit-java-version"
+              value={info.buildInfo.javaVersion}
+              onChange={stateChange((s, v) => {s.buildInfo.javaVersion = v})}
+            />
+          </FormGroup>
           <FormGroup label="Additional Args">
             <Button variant="control" onClick={() => {
               stateChange((s, v) => {
