@@ -49,9 +49,9 @@ public class ModifyScmRepoCommand {
         if (version) {
             target += "/" + VERSION + "/" + parsed.getVersion();
         }
-        target += "/scm/yaml";
+        target += "/scm.yaml";
         try {
-            var existing = RepositoryChange.getContent(target );
+            var existing = RepositoryChange.getContent(target);
             ScmInfo scmInfo = null;
             if (existing != null) {
                 scmInfo = BuildRecipe.SCM.getHandler()

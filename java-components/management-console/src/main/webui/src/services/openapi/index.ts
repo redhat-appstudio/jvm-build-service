@@ -28,7 +28,6 @@ export type { Instant } from './models/Instant';
 export type { JsonObject } from './models/JsonObject';
 export type { MavenArtifact } from './models/MavenArtifact';
 export type { MavenArtifactLabel } from './models/MavenArtifactLabel';
-export type { ModifyScmRepoCommand } from './models/ModifyScmRepoCommand';
 export type { PageParametersArtifactListDTO } from './models/PageParametersArtifactListDTO';
 export type { PageParametersBuildListDTO } from './models/PageParametersBuildListDTO';
 export type { PageParametersBuildQueueListDTO } from './models/PageParametersBuildQueueListDTO';
@@ -36,9 +35,13 @@ export type { PageParametersGithubBuildDTO } from './models/PageParametersGithub
 export type { PageParametersImageDTO } from './models/PageParametersImageDTO';
 export type { PageParametersString } from './models/PageParametersString';
 export type { ReplayEvent } from './models/ReplayEvent';
+export type { RepositoryInfo } from './models/RepositoryInfo';
 export type { RepositoryPush } from './models/RepositoryPush';
 export type { RunningBuildDTO } from './models/RunningBuildDTO';
+export type { ScmEditInfo } from './models/ScmEditInfo';
+export type { ScmInfo } from './models/ScmInfo';
 export type { ShadingDetails } from './models/ShadingDetails';
+export type { TagMapping } from './models/TagMapping';
 
 export { AdminResourceService } from './services/AdminResourceService';
 export { ArtifactEditResourceService } from './services/ArtifactEditResourceService';

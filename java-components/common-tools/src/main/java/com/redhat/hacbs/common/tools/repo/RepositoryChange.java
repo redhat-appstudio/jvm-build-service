@@ -56,10 +56,17 @@ public class RepositoryChange {
                 throw new RuntimeException("Could not find fork of the redhat-appstudio/jvm-build-data repo owned by" + me
                         + ", please fork the repo");
             }
-            myfork.createRef("refs/heads/" + branchName, myfork.getBranch("main").getSHA1());
-
+            String sha = null;
+            var ref = myfork.createRef("refs/heads/" + branchName, myfork.getBranch("main").getSHA1());
+            try {
+                var existing = myfork.getFileContent(filePath, ref.getRef());
+                sha = existing.getSha();
+            } catch (GHFileNotFoundException e) {
+                return null;
+            }
             var commit = myfork.createContent().branch(branchName).path(filePath).content(fileContent)
                     .message(commitMessage)
+                    .sha(sha)
                     .commit();
             return mainRepo.createPullRequest(commitMessage, me + ":" + branchName, "main", commitMessage, true).getHtmlUrl()
                     .toExternalForm();

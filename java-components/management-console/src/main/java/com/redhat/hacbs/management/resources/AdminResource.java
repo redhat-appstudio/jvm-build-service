@@ -26,6 +26,7 @@ import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.JBSConfig;
 import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
+import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -54,11 +55,13 @@ public class AdminResource {
     @POST
     @Path("rebuild-failed")
     public void rebuildFailed() {
-        for (StoredDependencyBuild sb : StoredDependencyBuild.<StoredDependencyBuild> list("succeeded", false)) {
-            StoredArtifactBuild sa = StoredArtifactBuild.find("buildIdentifier", sb.buildIdentifier).firstResult();
-            if (sa != null) {
-                BuildQueue.rebuild(sa.mavenArtifact, false, Map.of());
-            }
+        for (StoredArtifactBuild sb : StoredArtifactBuild.<StoredArtifactBuild> list("state",
+                ModelConstants.ARTIFACT_BUILD_MISSING)) {
+            BuildQueue.rebuild(sb.mavenArtifact, false, Map.of());
+        }
+        for (StoredArtifactBuild sb : StoredArtifactBuild.<StoredArtifactBuild> list("state",
+                ModelConstants.ARTIFACT_BUILD_FAILED)) {
+            BuildQueue.rebuild(sb.mavenArtifact, false, Map.of());
         }
     }
 

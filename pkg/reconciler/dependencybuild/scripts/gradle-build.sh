@@ -51,6 +51,9 @@ git config user.name "HACBS"
 if [ -n "$(params.ENFORCE_VERSION)" ]; then
   echo "Creating tag $(params.PROJECT_VERSION) to match enforced version"
   git tag -m $(params.PROJECT_VERSION) -a $(params.PROJECT_VERSION) || true
+else
+  echo "Enforce version not set, recreating original tag $(params.TAG)"
+  git tag -m $(params.TAG) -a $(params.TAG) || true
 fi
 
 if [ ! -d "${GRADLE_HOME}" ]; then
