@@ -71,6 +71,7 @@ public class ScmLookup {
                     if (newObj.getStatus() == null || newObj.getStatus().getState() == null
                             || Objects.equals(newObj.getStatus().getState(), "")
                             || Objects.equals(newObj.getStatus().getState(), ModelConstants.ARTIFACT_BUILD_NEW)) {
+                        Log.infof("updating SCM info for %s", newObj.getMetadata().getName());
                         try {
                             if (newObj.getStatus() == null) {
                                 newObj.setStatus(new ArtifactBuildStatus());
@@ -83,9 +84,6 @@ public class ScmLookup {
                                     //if this is a forced rebuild we always update the SCM info
                                     //there is a good chance there may be a new recipe
                                     recipeManager.forceUpdate();
-                                    // Not updating rebuild annotation as that will be handled in artifactbuild.go Reconcile
-                                    // operator loop.
-                                    return; //the update should trigger the watch again
                                 }
                                 Scm scm = new Scm();
 
