@@ -1,7 +1,9 @@
 package com.redhat.hacbs.management.resources;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import jakarta.inject.Inject;
@@ -55,14 +57,26 @@ public class AdminResource {
     @POST
     @Path("rebuild-failed")
     public void rebuildFailed() {
+        Set<String> seen = new HashSet<>();
         for (StoredArtifactBuild sb : StoredArtifactBuild.<StoredArtifactBuild> list("state",
                 ModelConstants.ARTIFACT_BUILD_MISSING)) {
             BuildQueue.rebuild(sb.mavenArtifact, false, Map.of());
         }
         for (StoredArtifactBuild sb : StoredArtifactBuild.<StoredArtifactBuild> list("state",
                 ModelConstants.ARTIFACT_BUILD_FAILED)) {
-            BuildQueue.rebuild(sb.mavenArtifact, false, Map.of());
+            if (sb.buildIdentifier == null || sb.buildIdentifier.dependencyBuildName == null) {
+                BuildQueue.rebuild(sb.mavenArtifact, false, Map.of());
+            } else if (!seen.contains(sb.buildIdentifier.dependencyBuildName)) {
+                BuildQueue.rebuild(sb.mavenArtifact, false, Map.of());
+                seen.add(sb.buildIdentifier.dependencyBuildName);
+            }
         }
+    }
+
+    @POST
+    @Path("clear-build-queue")
+    public void clearBuildQueue() {
+        BuildQueue.deleteAll();
     }
 
     @POST

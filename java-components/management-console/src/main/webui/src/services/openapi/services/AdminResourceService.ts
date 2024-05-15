@@ -20,6 +20,16 @@ export class AdminResourceService {
      * @returns any Created
      * @throws ApiError
      */
+    public static postApiAdminClearBuildQueue(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/clear-build-queue',
+        });
+    }
+    /**
+     * @returns any Created
+     * @throws ApiError
+     */
     public static postApiAdminImportFroms3(): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'POST',
