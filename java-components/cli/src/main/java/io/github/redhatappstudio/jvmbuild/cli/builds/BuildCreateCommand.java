@@ -51,6 +51,7 @@ public class BuildCreateCommand implements Runnable {
             if (reuse) {
                 dependencyBuild.getMetadata().getAnnotations().put(ModelConstants.REUSE_SCM, "true");
             }
+            dependencyBuild.getMetadata().getAnnotations().put(ModelConstants.DEPENDENCY_CREATED, "true");
 
             instanceHandle.get().resource(dependencyBuild).create();
         }

@@ -792,9 +792,11 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-			err = r.createArtifacts(ctx, log, pr, db, deployed)
-			if err != nil {
-				return reconcile.Result{}, err
+			if db.Annotations[artifactbuild.DependencyCreatedAnnotation] != "" {
+				err = r.createArtifacts(ctx, log, pr, db, deployed)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
 			}
 
 			run.Results = &v1alpha1.BuildPipelineRunResults{
