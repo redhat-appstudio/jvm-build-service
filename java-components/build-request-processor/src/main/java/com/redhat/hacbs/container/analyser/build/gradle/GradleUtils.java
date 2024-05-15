@@ -32,6 +32,11 @@ public final class GradleUtils {
      */
     public static final String MAVEN_PUBLISH_PLUGIN = String.format(PLUGIN_FORMAT, "maven-publish", "maven-publish");
 
+    /**
+     * Code for applying the plugin {@code nebula-plugin}.
+     */
+    public static final String NEBULA_PLUGIN = String.format(PLUGIN_FORMAT, "nebula.release", "nebula.release");
+
     public static final String BUILD_GRADLE = "build.gradle";
 
     public static final String BUILD_GRADLE_KTS = "build.gradle.kts";
