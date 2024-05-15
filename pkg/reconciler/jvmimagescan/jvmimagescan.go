@@ -53,6 +53,7 @@ func (r *ReconcileImageScan) Reconcile(ctx context.Context, request reconcile.Re
 	defer cancel()
 	log := ctrl.Log.WithName("jvmimagescan").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name)
 
+	ctx = logr.NewContext(ctx, log)
 	ia := v1alpha1.JvmImageScan{}
 	iaerr := r.client.Get(ctx, request.NamespacedName, &ia)
 	if iaerr != nil {
@@ -79,10 +80,11 @@ func (r *ReconcileImageScan) Reconcile(ctx context.Context, request reconcile.Re
 	switch {
 	case prerr == nil:
 		log = log.WithValues("kind", "PipelineRun")
-		return r.handlePipelineRunReceived(ctx, log, &pr)
+		ctx = logr.NewContext(ctx, log)
+		return r.handlePipelineRunReceived(ctx, &pr)
 
 	case iaerr == nil:
-		result, err := r.handleImageScan(ctx, ia, log)
+		result, err := r.handleImageScan(ctx, ia)
 		if err != nil {
 			log.Error(err, "failure reconciling JvmImageScan")
 		}
@@ -92,16 +94,16 @@ func (r *ReconcileImageScan) Reconcile(ctx context.Context, request reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileImageScan) handleImageScan(ctx context.Context, ia v1alpha1.JvmImageScan, log logr.Logger) (reconcile.Result, error) {
+func (r *ReconcileImageScan) handleImageScan(ctx context.Context, ia v1alpha1.JvmImageScan) (reconcile.Result, error) {
 
 	switch ia.Status.State {
 	case v1alpha1.JvmImageScanStateNew, "":
-		return r.handleStateNew(ctx, log, &ia)
+		return r.handleStateNew(ctx, &ia)
 	}
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
 
 	if pr.DeletionTimestamp != nil {
 		//always remove the finalizer if it is deleted
@@ -132,6 +134,7 @@ func (r *ReconcileImageScan) handlePipelineRunReceived(ctx context.Context, log 
 	if len(ownerName) == 0 {
 		msg := "pipelinerun missing jvmimagescan ownerrefs %s:%s"
 		r.eventRecorder.Eventf(pr, corev1.EventTypeWarning, "MissingOwner", msg, pr.Namespace, pr.Name)
+		log, _ := logr.FromContext(ctx)
 		log.Info(fmt.Sprintf(msg, pr.Namespace, pr.Name))
 
 		return reconcile.Result{}, nil
@@ -168,15 +171,16 @@ func removePipelineFinalizer(ctx context.Context, pr *tektonpipeline.PipelineRun
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileImageScan) handleStateNew(ctx context.Context, log logr.Logger, ia *v1alpha1.JvmImageScan) (reconcile.Result, error) {
+func (r *ReconcileImageScan) handleStateNew(ctx context.Context, ia *v1alpha1.JvmImageScan) (reconcile.Result, error) {
 	//guard against " in image name, to prevent script injection
 	if strings.Contains(ia.Spec.Image, "\"") {
 		ia.Status.State = v1alpha1.JvmImageScanStateFailed
 		ia.Status.Message = "invalid image name " + ia.Spec.Image
 		return reconcile.Result{}, r.client.Status().Update(ctx, ia)
 	}
-	spec, err := r.createLookupPipeline(ctx, log, ia.Spec.Image)
+	spec, err := r.createLookupPipeline(ctx, ia.Spec.Image)
 	if err != nil {
+		log, _ := logr.FromContext(ctx)
 		log.Info(fmt.Sprintf("Create lookup pipeline failed for %s", ia.Spec.Image))
 		ia.Status.State = v1alpha1.JvmImageScanStateFailed
 		ia.Status.Message = err.Error()
@@ -232,9 +236,9 @@ func (r *ReconcileImageScan) handleJavaDependencies(ctx context.Context, deps []
 	return r.client.Status().Update(ctx, ia)
 }
 
-func (r *ReconcileImageScan) createLookupPipeline(ctx context.Context, log logr.Logger, image string) (*tektonpipeline.PipelineSpec, error) {
+func (r *ReconcileImageScan) createLookupPipeline(ctx context.Context, image string) (*tektonpipeline.PipelineSpec, error) {
 
-	buildReqProcessorImages, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+	buildReqProcessorImages, err := util.GetImageName(ctx, r.client, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	if err != nil {
 		return nil, err
 	}

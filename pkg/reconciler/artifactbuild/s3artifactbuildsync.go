@@ -24,7 +24,8 @@ const (
 	S3StateSyncDisable  = "disabled"
 )
 
-func (r *ReconcileArtifactBuild) handleS3SyncArtifactBuild(ctx context.Context, ab *v1alpha1.ArtifactBuild, log logr.Logger) (bool, error) {
+func (r *ReconcileArtifactBuild) handleS3SyncArtifactBuild(ctx context.Context, ab *v1alpha1.ArtifactBuild) (bool, error) {
+	log, _ := logr.FromContext(ctx)
 	if !util.S3Enabled {
 		return false, nil
 	}

@@ -35,10 +35,11 @@ const (
 	Logs      = "logs"
 )
 
-func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (*reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, pr *tektonpipeline.PipelineRun) (*reconcile.Result, error) {
 	if !util.S3Enabled {
 		return nil, nil
 	}
+	log, _ := logr.FromContext(ctx)
 	if pr.GetDeletionTimestamp() != nil {
 		//we use finalizers to handle pipeline runs that have been cleaned
 		if controllerutil.ContainsFinalizer(pr, util.S3Finalizer) {
@@ -60,7 +61,7 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 	if pr.Annotations == nil {
 		pr.Annotations = map[string]string{}
 	}
-	dep, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
+	dep, err := r.dependencyBuildForPipelineRun(ctx, pr)
 	if err != nil || dep == nil {
 		return nil, err
 	}
@@ -247,7 +248,8 @@ func (r *ReconcileDependencyBuild) handleS3SyncPipelineRun(ctx context.Context, 
 	return &reconcile.Result{}, r.client.Update(ctx, pr)
 }
 
-func (r *ReconcileDependencyBuild) handleS3SyncDependencyBuild(ctx context.Context, db *v1alpha1.DependencyBuild, log logr.Logger) (bool, error) {
+func (r *ReconcileDependencyBuild) handleS3SyncDependencyBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (bool, error) {
+	log, _ := logr.FromContext(ctx)
 	if !util.S3Enabled {
 		return false, nil
 	}

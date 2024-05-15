@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-logr/logr"
-
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,7 +37,8 @@ var (
 	S3Enabled bool
 )
 
-func GetImageName(ctx context.Context, client client.Client, log logr.Logger, substr, envvar string) (string, error) {
+func GetImageName(ctx context.Context, client client.Client, substr, envvar string) (string, error) {
+
 	var err error
 	imgTag := ""
 	depImg := ""

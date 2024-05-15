@@ -2,7 +2,6 @@ package jbsconfig
 
 import (
 	"context"
-	"github.com/go-logr/logr"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -279,7 +278,7 @@ func TestImageRegistryArrayToString(t *testing.T) {
 		Insecure:   false,
 		PrependTag: "foo",
 	})
-	g.Expect(ImageRegistriesToString(logr.Discard(), []v1alpha1.ImageRegistry{})).To(Equal(""))
-	g.Expect(ImageRegistriesToString(logr.Discard(), registries1)).To(Equal("quay.io,,nobody,foo,false,"))
-	g.Expect(ImageRegistriesToString(logr.Discard(), registries2)).To(Equal("quay.io,,nobody,foo,false,;quay.io,784,nobody,foo,false,foo"))
+	g.Expect(ImageRegistriesToString([]v1alpha1.ImageRegistry{})).To(Equal(""))
+	g.Expect(ImageRegistriesToString(registries1)).To(Equal("quay.io,,nobody,foo,false,"))
+	g.Expect(ImageRegistriesToString(registries2)).To(Equal("quay.io,,nobody,foo,false,;quay.io,784,nobody,foo,false,foo"))
 }
