@@ -181,6 +181,37 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
                 })}
               />
             </FormGroup>)}
+
+          <FormGroup label="Allowed Differences to Upstream">
+            <Button variant="control" onClick={() => {
+              stateChange((s, v) => {
+                if (s.buildInfo.allowedDifferences) {
+                  s.buildInfo.allowedDifferences.push("")
+                } else {
+                  s.buildInfo.allowedDifferences = [""]
+                }
+              })(info.buildInfo, null)
+            }}>Add Allowed Difference</Button>
+
+          </FormGroup>
+          {info.buildInfo.allowedDifferences?.map((s, index) =>
+            <FormGroup
+              label="Difference"
+              labelIcon={
+                <Popover bodyContent={<div>A regex that matches a validation failure to ignore</div>}><HelpIcon/></Popover>
+              }
+              fieldId="artifact-edit-upstream-diff">
+              <TextInput
+                id="artifact-edit-upstream-diff"
+                name="artifact-edit-upstream-diff"
+                value={s}
+                onChange={stateChange((s, v) => {
+                  if (s.buildInfo.allowedDifferences) {
+                    s.buildInfo.allowedDifferences[index] = v
+                  }
+                })}
+              />
+            </FormGroup>)}
 <FormGroup>
   <Button key="create" variant="primary" form="modal-with-form-form" onClick={save} disabled={prUrl.length > 0}>
     Confirm
