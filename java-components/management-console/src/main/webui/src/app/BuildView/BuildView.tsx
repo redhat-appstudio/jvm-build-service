@@ -5,7 +5,7 @@ import {
   ArtifactListDTO,
   BuildAttemptDTO,
   BuildDTO,
-  BuildHistoryResourceService,
+  BuildHistoryResourceService, BuildInfoEditResourceService,
   BuildQueueResourceService
 } from "../../services/openapi";
 import {Link, RouteComponentProps} from "react-router-dom";
@@ -44,7 +44,8 @@ import {
   MinusIcon,
   PlusIcon,
   QuestionIcon,
-  WarningTriangleIcon
+  WarningTriangleIcon,
+  GithubIcon
 } from "@patternfly/react-icons";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 import {DependencySet, StoredArtifactView} from "../../components";
@@ -293,6 +294,7 @@ type BuildAttemptType = {
 const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAttemptType) => {
 
   const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
+  const [prUrl, setPrUrl] = useState('');
   const handleTabClick = (
     event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
     tabIndex: string | number
@@ -311,7 +313,14 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
       Build Failed
     </Label>
   }
+  const saveVerificationInfo = () => {
 
+    BuildInfoEditResourceService.postApiBuildInfoEditApproveValidation(data.attempt)
+      .then((ret) => {
+        console.log(ret.prUrl)
+        setPrUrl(ret.prUrl)
+      })
+  }
   return (<Tabs activeKey={activeTabKey}
                 onSelect={handleTabClick}
                 isBox
@@ -346,6 +355,17 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
         <CardHeader>Verification Failures</CardHeader>
         <CardBody>
           <DescriptionList>
+            <DescriptionListGroup>
+                <DescriptionListTerm>Fix Errors</DescriptionListTerm>
+                <DescriptionListDescription>
+                    <Button key="create" variant="primary" form="modal-with-form-form" onClick={saveVerificationInfo} disabled={prUrl.length > 0}>
+                      Approve Validation Differences
+                    </Button>
+                  {prUrl.length == 0 ? <></> :
+                    <a href={prUrl} target={'_blank'}><GithubIcon></GithubIcon>{prUrl}</a>
+                  }
+                </DescriptionListDescription>
+              </DescriptionListGroup>
             {Object.entries(selectBuildAttempt.upstreamDifferences).map(([key, value]) => {
               return <DescriptionListGroup key={key}>
                 <DescriptionListTerm>{key}</DescriptionListTerm>

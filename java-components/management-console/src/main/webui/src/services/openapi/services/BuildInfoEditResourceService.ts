@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { BuildAttemptDTO } from '../models/BuildAttemptDTO';
 import type { BuildEditInfo } from '../models/BuildEditInfo';
 import type { EditResult1 } from '../models/EditResult1';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -35,6 +36,21 @@ export class BuildInfoEditResourceService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/build-info/edit',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+    /**
+     * @param requestBody
+     * @returns EditResult1 OK
+     * @throws ApiError
+     */
+    public static postApiBuildInfoEditApproveValidation(
+        requestBody?: BuildAttemptDTO,
+    ): CancelablePromise<EditResult1> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/build-info/edit/approve-validation',
             body: requestBody,
             mediaType: 'application/json',
         });

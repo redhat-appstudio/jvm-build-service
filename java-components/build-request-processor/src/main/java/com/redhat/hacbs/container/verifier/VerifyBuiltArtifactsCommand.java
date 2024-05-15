@@ -242,12 +242,12 @@ public class VerifyBuiltArtifactsCommand implements Callable<Integer> {
         }
 
         for (var exclude : excludes) {
-            if (!exclude.matches("^[+-^]:.*$")) {
-                Log.errorf("Invalid exclude %s", exclude);
-                return null;
+            if (exclude.matches("^[+-^]:.*$")) {
+                newExcludes.add(exclude.replaceAll("^([+-^])", "^\\\\$1"));
+            } else {
+                newExcludes.add(exclude);
             }
 
-            newExcludes.add(exclude.replaceAll("^([+-^])", "^\\\\$1"));
         }
 
         return newExcludes;
