@@ -173,10 +173,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			if err2 != nil {
 				return result, err2
 			}
-			if !pr.IsDone() {
-				// If this is not done then we just return immediately
-				return reconcile.Result{}, r.client.Update(ctx, &pr)
-			}
 		}
 		log = log.WithValues("kind", "PipelineRun")
 		pipelineType := pr.Labels[PipelineTypeLabel]
@@ -258,7 +254,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 }
 
 func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
-	if pr.Status.CompletionTime == nil {
+	if pr.Status.CompletionTime == nil && pr.DeletionTimestamp == nil {
 		return reconcile.Result{}, nil
 	}
 	ownerRefs := pr.GetOwnerReferences()
@@ -286,6 +282,14 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 	key := types.NamespacedName{Namespace: pr.Namespace, Name: ownerName}
 	db := v1alpha1.DependencyBuild{}
 	err := r.client.Get(ctx, key, &db)
+
+	if db.Status.State == v1alpha1.DependencyBuildStateAnalyzeBuild && !pr.IsDone() && pr.DeletionTimestamp != nil {
+		//analysis pipeline deleted mid analysis
+		db.Status.State = v1alpha1.DependencyBuildStateFailed
+		db.Status.Message = "Analysis pipeline deleted"
+		return reconcile.Result{}, r.client.Status().Update(ctx, &db)
+	}
+
 	if err != nil {
 		msg := "get for pipelinerun %s:%s owning db %s:%s yielded error %s"
 		r.eventRecorder.Eventf(pr, v1.EventTypeWarning, "GetError", msg, pr.Namespace, pr.Name, pr.Namespace,
