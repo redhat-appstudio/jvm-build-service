@@ -18,6 +18,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.management.dto.RunningBuildDTO;
 import com.redhat.hacbs.management.model.BuildQueue;
+import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildSpec;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
@@ -185,12 +186,12 @@ public class BuildOrchestrator {
             if (bq == null) {
                 return false;
             }
-            boolean exists = !entityManager
+            List<StoredDependencyBuild> existBuilds = entityManager
                     .createQuery(
                             "select s from StoredDependencyBuild s join s.buildAttempts ba join ba.producedArtifacts artifact where artifact=:artifact")
                     .setParameter("artifact", bq.mavenArtifact)
-                    .getResultList().isEmpty();
-            if (!exists || bq.rebuild) {
+                    .getResultList();
+            if (existBuilds.isEmpty() || bq.rebuild) {
                 String targetGav = bq.mavenArtifact.gav();
                 String name = ResourceNameUtils.nameFromGav(targetGav);
                 ArtifactBuild existing = client.resources(ArtifactBuild.class).withName(name).get();
@@ -211,6 +212,17 @@ public class BuildOrchestrator {
                     }
                     existing.getMetadata().getAnnotations().put(ModelConstants.REBUILD, "true");
                     client.resource(existing).update();
+                    for (var build : existBuilds) {
+                        List<BuildQueue> toDelete = entityManager.createQuery(
+                                "select b from StoredArtifactBuild a inner join BuildQueue b on b.mavenArtifact=a.mavenArtifact where a.buildIdentifier =:buildId")
+                                .setParameter("buildId", build.buildIdentifier)
+                                .getResultList();
+                        toDelete.forEach(s -> s.delete());
+                    }
+                    if (existBuilds.isEmpty()) {
+                        bq.delete();
+                    }
+                    return true;
                 }
             }
             bq.delete();

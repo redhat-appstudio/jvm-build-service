@@ -2,6 +2,7 @@ package com.redhat.hacbs.management.resources;
 
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.transaction.Transactional;
@@ -62,9 +63,9 @@ public class BuildInfoEditResource {
         }
         for (var i : buildAttemptDTO.upstreamDifferences().entrySet()) {
             for (var dif : i.getValue()) {
-                var val = Pattern.quote(dif);
-                if (!info.buildInfo().getAllowedDifferences().contains(val)) {
-                    info.buildInfo().getAllowedDifferences().add(val);
+                var pat = failureToPattern(dif);
+                if (!info.buildInfo().getAllowedDifferences().contains(pat)) {
+                    info.buildInfo().getAllowedDifferences().add(pat);
                 }
             }
         }
@@ -72,6 +73,16 @@ public class BuildInfoEditResource {
         EditResult ret = new EditResult();
         ret.prUrl = prUrul;
         return ret;
+    }
+
+    static String failureToPattern(String failure) {
+        Pattern p = Pattern.compile("([+-^]:.+-)(.*)(.jar:.*)");
+        Matcher matcher = p.matcher(failure);
+        if (matcher.matches()) {
+            return matcher.group(1) + ".*?" + matcher.group(3);
+        } else {
+            return failure;
+        }
     }
 
     public static class EditResult {
