@@ -85,72 +85,6 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
                         s.version = v
                       })}></Checkbox>
           </FormGroup>
-          <FormGroup
-            label="Enforce Version"
-            labelIcon={
-              <Popover bodyContent={<div>If the version should be enforced when building.</div>}><HelpIcon/></Popover>
-            }
-            fieldId="artifact-enforce-version">
-            <Checkbox id="artifact-enforce-version" name="artifact-enforce-version"
-                      isChecked={info.buildInfo.enforceVersion}
-                      onChange={stateChange((s, v) => {
-                        s.buildInfo.enforceVersion = v
-                      })}></Checkbox>
-          </FormGroup>
-          <FormGroup
-            label="Additional Memory"
-            labelIcon={
-              <Popover bodyContent={<div>Additional Build Memory</div>}><HelpIcon/></Popover>
-            }
-            fieldId="artifact-edit-memory">
-            <TextInput
-              id="artifact-edit-memory"
-              name="artifact-edit-memory"
-              value={info.buildInfo.additionalMemory}
-              onChange={stateChange((s, v) => {s.buildInfo.additionalMemory = v})}
-            />
-          </FormGroup>
-          <FormGroup
-            label="Pre-build Script"
-            labelIcon={
-              <Popover bodyContent={<div>A script to run before the build</div>}><HelpIcon/></Popover>
-            }
-            fieldId="artifact-edit-prebuild">
-            <TextArea
-              resizeOrientation="vertical"
-              id="artifact-edit-prebuild"
-              name="artifact-edit-prebuild"
-              value={info.buildInfo.preBuildScript}
-              onChange={stateChange((s, v) => {s.buildInfo.preBuildScript = v})}
-            />
-          </FormGroup>
-          <FormGroup
-            label="Post-build Script"
-            labelIcon={
-              <Popover bodyContent={<div>A script to run after the build</div>}><HelpIcon/></Popover>
-            }
-            fieldId="artifact-edit-postbuild">
-            <TextArea
-              resizeOrientation="vertical"
-              id="artifact-edit-postbuild"
-              name="artifact-edit-postbuild"
-              value={info.buildInfo.postBuildScript}
-              onChange={stateChange((s, v) => {s.buildInfo.postBuildScript = v})}
-            />
-          </FormGroup>
-          <FormGroup
-            label="Java Version"
-            labelIcon={
-              <Popover bodyContent={<div>Override Java version detection</div>}><HelpIcon/></Popover>
-            }
-            fieldId="artifact-edit-java-version">
-            <TextInput
-              id="artifact-edit-java-version"
-              name="artifact-edit-java-version"
-              value={info.buildInfo.javaVersion}
-              onChange={stateChange((s, v) => {s.buildInfo.javaVersion = v})}
-            />
-          </FormGroup>
           <FormGroup label="Additional Args">
             <Button variant="control" onClick={() => {
               stateChange((s, v) => {
@@ -181,7 +115,6 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
                 })}
               />
             </FormGroup>)}
-
           <FormGroup label="Allowed Differences to Upstream">
             <Button variant="control" onClick={() => {
               stateChange((s, v) => {
@@ -212,6 +145,115 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
                 })}
               />
             </FormGroup>)}
+          <FormGroup
+            label="Additional Memory"
+            labelIcon={
+              <Popover bodyContent={<div>Additional Build Memory</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-memory">
+            <TextInput
+              id="artifact-edit-memory"
+              name="artifact-edit-memory"
+              value={info.buildInfo.additionalMemory}
+              onChange={stateChange((s, v) => {s.buildInfo.additionalMemory = v})}
+            />
+          </FormGroup>
+          <FormGroup
+            label="Enforce Version"
+            labelIcon={
+              <Popover bodyContent={<div>If the version should be enforced when building.</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-enforce-version">
+            <Checkbox id="artifact-enforce-version" name="artifact-enforce-version"
+                      isChecked={info.buildInfo.enforceVersion}
+                      onChange={stateChange((s, v) => {
+                        s.buildInfo.enforceVersion = v
+                      })}></Checkbox>
+          </FormGroup>
+          <FormGroup
+            label="Java Version"
+            labelIcon={
+              <Popover bodyContent={<div>Override Java version detection</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-java-version">
+            <TextInput
+              id="artifact-edit-java-version"
+              name="artifact-edit-java-version"
+              value={info.buildInfo.javaVersion}
+              onChange={stateChange((s, v) => {s.buildInfo.javaVersion = v})}
+            />
+          </FormGroup>
+          <FormGroup
+            label="Pre-build Script"
+            labelIcon={
+              <Popover bodyContent={<div>A script to run before the build</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-prebuild">
+            <TextArea
+              resizeOrientation="vertical"
+              id="artifact-edit-prebuild"
+              name="artifact-edit-prebuild"
+              value={info.buildInfo.preBuildScript}
+              onChange={stateChange((s, v) => {s.buildInfo.preBuildScript = v})}
+            />
+          </FormGroup>
+          <FormGroup
+            label="Post-build Script"
+            labelIcon={
+              <Popover bodyContent={<div>A script to run after the build</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-postbuild">
+            <TextArea
+              resizeOrientation="vertical"
+              id="artifact-edit-postbuild"
+              name="artifact-edit-postbuild"
+              value={info.buildInfo.postBuildScript}
+              onChange={stateChange((s, v) => {s.buildInfo.postBuildScript = v})}
+            />
+          </FormGroup>
+          <FormGroup label="Repositories">
+            <Button variant="control" onClick={() => {
+              stateChange((s, v) => {
+                if (s.buildInfo.repositories) {
+                  s.buildInfo.repositories.push("")
+                } else {
+                  s.buildInfo.repositories = [""]
+                }
+              })(info.buildInfo, null)
+            }}>Add Additional Repositories</Button>
+
+          </FormGroup>
+          {info.buildInfo.repositories?.map((s, index) =>
+            <FormGroup
+              label="Additional Repository"
+              labelIcon={
+                <Popover bodyContent={<div>An additional repository from <a target="_blank" href="https://github.com/redhat-appstudio/jvm-build-data/tree/main/repository-info">here</a></div>}><HelpIcon/></Popover>
+              }
+              fieldId="artifact-edit-repository-arg">
+              <TextInput
+                id="artifact-edit-repository-arg"
+                name="artifact-edit-repository-arg"
+                value={s}
+                onChange={stateChange((s, v) => {
+                  if (s.buildInfo.repositories) {
+                    s.buildInfo.repositories[index] = v
+                  }
+                })}
+              />
+            </FormGroup>)}
+          <FormGroup
+            label="Tool Version"
+            labelIcon={
+              <Popover bodyContent={<div>Override Tool version detection</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-tool-version">
+            <TextInput
+              id="artifact-edit-tool-version"
+              name="artifact-edit-tool-version"
+              value={info.buildInfo.toolVersion}
+              onChange={stateChange((s, v) => {s.buildInfo.toolVersion = v})}
+            />
+          </FormGroup>
 <FormGroup>
   <Button key="create" variant="primary" form="modal-with-form-form" onClick={save} disabled={prUrl.length > 0}>
     Confirm
