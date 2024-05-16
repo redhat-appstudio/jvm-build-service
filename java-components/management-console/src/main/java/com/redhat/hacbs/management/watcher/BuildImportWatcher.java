@@ -83,7 +83,7 @@ public class BuildImportWatcher {
                         try {
                             artifactBuildImporter.doImport(build);
                         } catch (Exception e) {
-                            Log.errorf(e, "Failed to import DependencyBuild %s", build.getMetadata().getName());
+                            Log.errorf(e, "Failed to import ArtifactBuild %s", build.getMetadata().getName());
                         }
                     }
 
@@ -92,7 +92,7 @@ public class BuildImportWatcher {
                         try {
                             artifactBuildImporter.doImport(newObj);
                         } catch (Exception e) {
-                            Log.errorf(e, "Failed to import DependencyBuild %s", newObj.getMetadata().getName());
+                            Log.errorf(e, "Failed to import ArtifactBuild %s", newObj.getMetadata().getName());
                         }
                     }
 
