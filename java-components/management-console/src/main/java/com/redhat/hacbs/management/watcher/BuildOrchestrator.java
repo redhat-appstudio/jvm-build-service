@@ -143,7 +143,9 @@ public class BuildOrchestrator {
                         i.getStatus().getState() == null ||
                         Objects.equals(i.getStatus().getState(), ModelConstants.ARTIFACT_BUILD_NEW) ||
                         Objects.equals(i.getStatus().getState(), ModelConstants.ARTIFACT_BUILD_DISCOVERING) ||
-                        Objects.equals(i.getStatus().getState(), "")) {
+                        Objects.equals(i.getStatus().getState(), "") ||
+                        (i.getMetadata().getAnnotations() != null
+                                && i.getMetadata().getAnnotations().get(ModelConstants.REBUILD) != null)) {
                     count++; //we also count new ABRs
                     rbl.add(new RunningBuildDTO(i.getSpec().getGav(), i.getStatus() == null ? "" : i.getStatus().getState(),
                             Instant.parse(i.getMetadata().getCreationTimestamp())));
