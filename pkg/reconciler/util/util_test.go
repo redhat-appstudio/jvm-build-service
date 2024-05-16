@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	v1core "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,8 +21,6 @@ const (
 	reqprocessorImageEnvVarValue  = "reqprocessor_image"
 	substr                        = "build-request-processor"
 )
-
-var logger = logr.New(logr.Discard().GetSink())
 
 func setupControllerDeployment(noContainers bool) *appsv1.Deployment {
 	var containers []v1core.Container
@@ -98,7 +95,7 @@ func TestGetImageName(t *testing.T) {
 			d := setupControllerDeployment(tt.noContainerImage)
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(d).Build()
 
-			got, err := GetImageName(context.Background(), fakeClient, logger, substr, reqprocessorImageEnvVarName)
+			got, err := GetImageName(context.Background(), fakeClient, substr, reqprocessorImageEnvVarName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetImageName() error = %v, wantErr %v", err, tt.wantErr)
 				return

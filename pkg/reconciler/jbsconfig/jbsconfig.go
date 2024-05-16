@@ -555,7 +555,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			}, cache)
 		}
 
-		sharedRegistryString := ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
+		sharedRegistryString := ImageRegistriesToString(jbsConfig.Spec.SharedRegistries)
 		cache = setEnvVarValue(sharedRegistryString, "SHARED_REGISTRIES", cache)
 	}
 
@@ -600,7 +600,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	cache = setEnvVarValue(sb.String(), "BUILD_POLICY_DEFAULT_STORE_LIST", cache)
 
 	if len(r.configuredCacheImage) == 0 {
-		r.configuredCacheImage, err = util.GetImageName(ctx, r.client, log, "cache", "JVM_BUILD_SERVICE_CACHE_IMAGE")
+		r.configuredCacheImage, err = util.GetImageName(ctx, r.client, "cache", "JVM_BUILD_SERVICE_CACHE_IMAGE")
 		if err != nil {
 			return err
 		}
@@ -665,7 +665,7 @@ func (r *ReconcilerJBSConfig) handleNoOwnerSpecified(ctx context.Context, log lo
 	return nil
 }
 
-func ImageRegistriesToString(log logr.Logger, sharedRegistries []v1alpha1.ImageRegistry) string {
+func ImageRegistriesToString(sharedRegistries []v1alpha1.ImageRegistry) string {
 	sharedRegistryString := ""
 	for i, shared := range sharedRegistries {
 		if i > 0 {

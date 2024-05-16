@@ -131,7 +131,8 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	switch {
 	case dberr == nil:
 		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
-		done, err := r.handleS3SyncDependencyBuild(ctx, &db, log)
+		ctx = logr.NewContext(ctx, log)
+		done, err := r.handleS3SyncDependencyBuild(ctx, &db)
 		if done || err != nil {
 			return reconcile.Result{}, err
 		}
@@ -142,15 +143,17 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 
 		switch db.Status.State {
 		case "", v1alpha1.DependencyBuildStateNew:
-			return r.handleStateNew(ctx, log, &db)
+			return r.handleStateNew(ctx, &db)
 		case v1alpha1.DependencyBuildStateSubmitBuild:
-			return r.handleStateSubmitBuild(ctx, log, &db)
+			return r.handleStateSubmitBuild(ctx, &db)
+		case v1alpha1.DependencyBuildStateAnalyzeBuild:
+			return r.handleStateAnalyzeBuild(ctx, &db)
 		case v1alpha1.DependencyBuildStateFailed:
 			return reconcile.Result{}, nil
 		case v1alpha1.DependencyBuildStateBuilding:
-			return r.handleStateBuilding(ctx, log, &db)
+			return r.handleStateBuilding(ctx, &db)
 		case v1alpha1.DependencyBuildStateDeploying:
-			return r.handleStateDeploying(ctx, log, &db)
+			return r.handleStateDeploying(ctx, &db)
 		case v1alpha1.DependencyBuildStateContaminated:
 			return r.handleStateContaminated(ctx, &db)
 		case v1alpha1.DependencyBuildStateComplete:
@@ -158,7 +161,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-		result, err := r.handleS3SyncPipelineRun(ctx, log, &pr)
+		result, err := r.handleS3SyncPipelineRun(ctx, &pr)
 		if result != nil || err != nil {
 			if result != nil {
 				return *result, nil
@@ -175,16 +178,17 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			}
 		}
 		log = log.WithValues("kind", "PipelineRun")
+		ctx = logr.NewContext(ctx, log)
 		pipelineType := pr.Labels[PipelineTypeLabel]
 		switch pipelineType {
 		case PipelineTypeBuildInfo:
 			// Note in the case where shared repositories are configured the build discovery pipeline can shortcut
 			// setting the DependencyBuild state to Complete utilising the pre-existing builds.
-			return r.handleAnalyzeBuildPipelineRunReceived(ctx, log, &pr)
+			return r.handleAnalyzeBuildPipelineRunReceived(ctx, &pr)
 		case PipelineTypeBuild:
-			return r.handleBuildPipelineRunReceived(ctx, log, &pr)
+			return r.handleBuildPipelineRunReceived(ctx, &pr)
 		case PipelineTypeDeploy:
-			return r.handleDeployPipelineRunReceived(ctx, log, &pr)
+			return r.handleDeployPipelineRunReceived(ctx, &pr)
 		}
 	}
 
@@ -208,7 +212,9 @@ func (r *ReconcileDependencyBuild) handleRedeployAnnotation(ctx context.Context,
 	return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateDeploying, "redeployment was requested")
 }
 
-func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+
+	log, _ := logr.FromContext(ctx)
 	jbsConfig := &v1alpha1.JBSConfig{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 	if err != nil && !errors.IsNotFound(err) {
@@ -230,7 +236,7 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	additionalMemory := MemoryIncrement * db.Status.PipelineRetries
 
 	log.Info(fmt.Sprintf("running build discovery with %d additional memory", additionalMemory))
-	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, log, db, jbsConfig, additionalMemory, &systemConfig)
+	pr.Spec.PipelineSpec, err = r.createLookupBuildInfoPipeline(ctx, db, jbsConfig, additionalMemory, &systemConfig)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -253,7 +259,8 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, log logr.
 	return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateAnalyzeBuild, "build discovery pipeline created")
 }
 
-func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx context.Context, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
+	log, _ := logr.FromContext(ctx)
 	if pr.Status.CompletionTime == nil && pr.DeletionTimestamp == nil {
 		return reconcile.Result{}, nil
 	}
@@ -407,7 +414,7 @@ func (r *ReconcileDependencyBuild) handleAnalyzeBuildPipelineRunReceived(ctx con
 		db.Status.PotentialBuildRecipesIndex = 0
 
 		if len(unmarshalled.Image) > 0 {
-			err := r.createRebuiltArtifacts(ctx, log, pr, &db, unmarshalled.Image, unmarshalled.Digest, unmarshalled.Gavs)
+			err := r.createRebuiltArtifacts(ctx, pr, &db, unmarshalled.Image, unmarshalled.Digest, unmarshalled.Gavs)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -478,7 +485,7 @@ func (r *ReconcileDependencyBuild) processBuilderImageTags(tags string) map[stri
 	return tools
 }
 
-func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	//the current recipe has been built, we need to pick a new one
 	//pick the first recipe in the potential list
 	//new build, kick off a pipeline run to run the build
@@ -513,8 +520,9 @@ func (r *ReconcileDependencyBuild) handleStateSubmitBuild(ctx context.Context, l
 
 }
 
-func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 
+	log, _ := logr.FromContext(ctx)
 	//first we check to see if the pipeline exists
 	attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
 
@@ -532,7 +540,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, log 
 
 	//now submit the pipeline
 	pr.Finalizers = []string{PipelineRunFinalizer}
-	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
+	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -629,9 +637,10 @@ func currentDependencyBuildPipelineName(db *v1alpha1.DependencyBuild) string {
 	return fmt.Sprintf("%s-build-%d", db.Name, len(db.Status.BuildAttempts))
 }
 
-func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Context, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
+	log, _ := logr.FromContext(ctx)
 	if pr.Status.CompletionTime != nil {
-		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
+		db, err := r.dependencyBuildForPipelineRun(ctx, pr)
 		if err != nil || db == nil {
 			return reconcile.Result{}, err
 		}
@@ -792,12 +801,12 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					}
 				}
 			}
-			err = r.createRebuiltArtifacts(ctx, log, pr, db, image, digest, deployed)
+			err = r.createRebuiltArtifacts(ctx, pr, db, image, digest, deployed)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 			if db.Annotations[artifactbuild.DependencyCreatedAnnotation] != "" {
-				err = r.createArtifacts(ctx, log, pr, db, deployed)
+				err = r.createArtifacts(ctx, pr, db, deployed)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
@@ -825,7 +834,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				//most likely shaded in
 				//we don't need to update the status here, it will be handled by the handleStateComplete method
 				//even though there are contaminates they may not be in artifacts we care about
-				err := r.handleBuildCompletedWithContaminants(ctx, db, log, problemContaminates)
+				err := r.handleBuildCompletedWithContaminants(ctx, db, problemContaminates)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
@@ -858,7 +867,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		return reconcile.Result{}, err
 	} else if pr.GetDeletionTimestamp() != nil {
 		//pr is being deleted
-		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
+		db, err := r.dependencyBuildForPipelineRun(ctx, pr)
 		if err != nil || db == nil {
 			return reconcile.Result{}, err
 		}
@@ -883,8 +892,9 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 }
 
-func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (*v1alpha1.DependencyBuild, error) {
+func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Context, pr *tektonpipeline.PipelineRun) (*v1alpha1.DependencyBuild, error) {
 	// get db
+	log, _ := logr.FromContext(ctx)
 	ownerRefs := pr.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		msg := "pipelinerun missing ownerrefs %s:%s"
@@ -938,10 +948,10 @@ func (r *ReconcileDependencyBuild) dependencyBuildForPipelineRun(ctx context.Con
 // no actual request for these artifacts. This can change if new artifacts are requested, so even when complete
 // we still need to verify that hte build is ok
 // this method will always update the status if it does not return an error
-func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx context.Context, db *v1alpha1.DependencyBuild, l logr.Logger, problemContaminates []*v1alpha1.Contaminant) error {
-
+func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx context.Context, db *v1alpha1.DependencyBuild, problemContaminates []*v1alpha1.Contaminant) error {
+	log, _ := logr.FromContext(ctx)
 	ownerGavs := map[string]bool{}
-	l.Info("Build was contaminated, attempting to rebuild contaminants if required", "build", db.Name)
+	log.Info("Build was contaminated, attempting to rebuild contaminants if required", "build", db.Name)
 	//get all the owning artifact builds
 	//if any of these are contaminated
 	for _, ownerRef := range db.OwnerReferences {
@@ -949,7 +959,7 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 			ab := v1alpha1.ArtifactBuild{}
 			err := r.client.Get(ctx, types.NamespacedName{Name: ownerRef.Name, Namespace: db.Namespace}, &ab)
 			if err != nil {
-				l.Info(fmt.Sprintf("Unable to find owner %s to to mark as affected by contamination from %s", ownerRef.Name, db.Name), "action", "UPDATE")
+				log.Info(fmt.Sprintf("Unable to find owner %s to to mark as affected by contamination from %s", ownerRef.Name, db.Name), "action", "UPDATE")
 				if !errors.IsNotFound(err) {
 					return err
 				}
@@ -972,7 +982,7 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 				err := r.client.Get(ctx, types.NamespacedName{Name: abrName, Namespace: db.Namespace}, &abr)
 				suffix := util.HashString(contaminant.GAV)[0:20]
 				if err != nil {
-					l.Info(fmt.Sprintf("Creating ArtifactBuild %s for GAV %s to resolve contamination of %s", abrName, contaminant.GAV, artifact), "contaminate", contaminant, "owner", artifact, "action", "ADD")
+					log.Info(fmt.Sprintf("Creating ArtifactBuild %s for GAV %s to resolve contamination of %s", abrName, contaminant.GAV, artifact), "contaminate", contaminant, "owner", artifact, "action", "ADD")
 					//we just assume this is because it does not exist
 					//TODO: how to check the type of the error?
 					abr.Spec = v1alpha1.ArtifactBuildSpec{GAV: contaminant.GAV}
@@ -988,7 +998,7 @@ func (r *ReconcileDependencyBuild) handleBuildCompletedWithContaminants(ctx cont
 				} else {
 					abr.Annotations = map[string]string{}
 					abr.Annotations[artifactbuild.DependencyBuildContaminatedByAnnotation+suffix] = db.Name
-					l.Info(fmt.Sprintf("Marking ArtifactBuild %s as a contaminant of %s", abr.Name, db.Name))
+					log.Info(fmt.Sprintf("Marking ArtifactBuild %s as a contaminant of %s", abr.Name, db.Name))
 					err := r.client.Update(ctx, &abr)
 					if err != nil {
 						return err
@@ -1024,10 +1034,11 @@ func (r *ReconcileDependencyBuild) handleStateContaminated(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun, db *v1alpha1.DependencyBuild,
+func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, pr *tektonpipeline.PipelineRun, db *v1alpha1.DependencyBuild,
 	image string, digest string, deployed []string) error {
 	db.Status.DeployedArtifacts = deployed
 
+	log, _ := logr.FromContext(ctx)
 	for _, i := range deployed {
 		ra := v1alpha1.RebuiltArtifact{}
 
@@ -1062,7 +1073,7 @@ func (r *ReconcileDependencyBuild) createRebuiltArtifacts(ctx context.Context, l
 	return nil
 }
 
-func (r *ReconcileDependencyBuild) createArtifacts(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun, db *v1alpha1.DependencyBuild, deployed []string) error {
+func (r *ReconcileDependencyBuild) createArtifacts(ctx context.Context, pr *tektonpipeline.PipelineRun, db *v1alpha1.DependencyBuild, deployed []string) error {
 	db.Status.DeployedArtifacts = deployed
 
 	for _, i := range deployed {
@@ -1083,8 +1094,9 @@ func (r *ReconcileDependencyBuild) createArtifacts(ctx context.Context, log logr
 	return nil
 }
 
-func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*tektonpipeline.PipelineSpec, error) {
-	image, err := r.buildRequestProcessorImage(ctx, log)
+func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Context, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, additionalMemory int, systemConfig *v1alpha1.SystemConfig) (*tektonpipeline.PipelineSpec, error) {
+	log, _ := logr.FromContext(ctx)
+	image, err := r.buildRequestProcessorImage(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1095,7 +1107,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local"
 	}
-	registries := jbsconfig.ImageRegistriesToString(log, jbsConfig.Spec.SharedRegistries)
+	registries := jbsconfig.ImageRegistriesToString(jbsConfig.Spec.SharedRegistries)
 
 	trueBool := true
 	args := []string{
@@ -1259,8 +1271,8 @@ func (r *ReconcileDependencyBuild) failedDueToMemory(ctx context.Context, log lo
 	return false
 }
 
-func (r *ReconcileDependencyBuild) buildRequestProcessorImage(ctx context.Context, log logr.Logger) (string, error) {
-	image, err := util.GetImageName(ctx, r.client, log, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
+func (r *ReconcileDependencyBuild) buildRequestProcessorImage(ctx context.Context) (string, error) {
+	image, err := util.GetImageName(ctx, r.client, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	return image, err
 }
 
@@ -1312,8 +1324,9 @@ func (r *ReconcileDependencyBuild) removePipelineFinalizer(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, log logr.Logger, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 
+	log, _ := logr.FromContext(ctx)
 	//first we check to see if the pipeline exists
 
 	pr := tektonpipeline.PipelineRun{}
@@ -1331,7 +1344,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, log
 
 	//now submit the pipeline
 	pr.Finalizers = []string{PipelineRunFinalizer}
-	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx, log)
+	buildRequestProcessorImage, err := r.buildRequestProcessorImage(ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -1402,9 +1415,10 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, log
 	return reconcile.Result{}, r.client.Status().Update(ctx, db)
 }
 
-func (r *ReconcileDependencyBuild) handleDeployPipelineRunReceived(ctx context.Context, log logr.Logger, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
+func (r *ReconcileDependencyBuild) handleDeployPipelineRunReceived(ctx context.Context, pr *tektonpipeline.PipelineRun) (reconcile.Result, error) {
+
 	if pr.Status.CompletionTime != nil || pr.DeletionTimestamp != nil {
-		db, err := r.dependencyBuildForPipelineRun(ctx, log, pr)
+		db, err := r.dependencyBuildForPipelineRun(ctx, pr)
 		if err != nil || db == nil {
 			return reconcile.Result{}, err
 		}
@@ -1451,4 +1465,23 @@ func (r *ReconcileDependencyBuild) updateDependencyBuildState(ctx context.Contex
 		return r.client.Status().Update(ctx, db)
 	}
 	return nil
+}
+
+func (r *ReconcileDependencyBuild) handleStateAnalyzeBuild(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
+	p := tektonpipeline.PipelineRunList{}
+	listOpts := &client.ListOptions{
+		Namespace:     db.Namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{artifactbuild.PipelineRunLabel: "", artifactbuild.DependencyBuildIdLabel: db.Name, PipelineTypeLabel: PipelineTypeBuildInfo}),
+	}
+	err := r.client.List(ctx, &p, listOpts)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if len(p.Items) == 0 {
+		log, _ := logr.FromContext(ctx)
+		log.Info("analysis pipeline not found, moving to failed")
+		db.Status.State = v1alpha1.DependencyBuildStateFailed
+		return reconcile.Result{}, r.client.Status().Update(ctx, db)
+	}
+	return reconcile.Result{}, nil
 }
