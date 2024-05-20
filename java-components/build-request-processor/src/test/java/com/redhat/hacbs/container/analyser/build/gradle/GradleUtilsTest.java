@@ -4,6 +4,7 @@ import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.DEFAU
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.MAVEN_PLUGIN;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.MAVEN_PLUGIN_GRADLE_ARGS;
 import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.MAVEN_PUBLISH_PLUGIN;
+import static com.redhat.hacbs.container.analyser.build.gradle.GradleUtils.STAGE_VOTE_RELEASE_PLUGIN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -119,6 +120,17 @@ class GradleUtilsTest {
         assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PUBLISH_PLUGIN)).isTrue();
         assertThat(GradleUtils.isInBuildGradle(buildGradle, MAVEN_PLUGIN)).isFalse();
         assertThat(GradleUtils.getGradleArgs(buildGradle)).isEqualTo(DEFAULT_GRADLE_ARGS);
+    }
+
+    @Test
+    void testFindStageReleasePlugin(@TempDir Path basedir) throws IOException {
+        Path buildGradle = basedir.resolve(GradleUtils.BUILD_GRADLE_KTS);
+        Files.writeString(buildGradle, "id('com.github.vlsi.stage-vote-release')  version '1.90'" + System.lineSeparator());
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, STAGE_VOTE_RELEASE_PLUGIN)).isTrue();
+        Files.writeString(buildGradle, "id('com.github.vlsi.stage-vote-release')" + System.lineSeparator());
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, STAGE_VOTE_RELEASE_PLUGIN)).isTrue();
+        Files.writeString(buildGradle, "id \"com.github.vlsi.stage-vote-release\"  version \"1.90\"" + System.lineSeparator());
+        assertThat(GradleUtils.isInBuildGradle(buildGradle, STAGE_VOTE_RELEASE_PLUGIN)).isTrue();
     }
 
     @Test

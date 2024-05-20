@@ -533,8 +533,12 @@ public class LookupBuildInfoCommand implements Runnable {
             inv.add("-DdisableTests");
         }
         if (GradleUtils.isInBuildGradle(gradleFile, GradleUtils.NEBULA_PLUGIN)) {
-            Log.infof("Found Nebula plugin to add 'release.version=%s'", version );
+            Log.infof("Found Nebula plugin to add '-Prelease.version=%s'", version );
             inv.add("-Prelease.version=" + version);
+        }
+        if (GradleUtils.isInBuildGradle(gradleFile, GradleUtils.STAGE_VOTE_RELEASE_PLUGIN)) {
+            Log.infof("Found StageVoteRelease plugin to add '-Prelease");
+            inv.add("-Prelease");
         }
 
         final Collection<File> files = FileUtils.listFiles(
