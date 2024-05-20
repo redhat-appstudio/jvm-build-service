@@ -9,11 +9,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import org.cyclonedx.BomParserFactory;
 import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Property;
+import org.cyclonedx.parsers.BomParserFactory;
 
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 
