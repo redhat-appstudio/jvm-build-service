@@ -13,7 +13,7 @@ require (
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.6.1
-	github.com/redhat-appstudio/image-controller v0.0.0-20231003082540-48893226ba8b
+	github.com/redhat-appstudio/image-controller v0.0.0-20240517120231-4f18f640e7d9
 	github.com/tektoncd/cli v0.33.0
 	github.com/tektoncd/pipeline v0.53.3
 	go.uber.org/zap v1.27.0
