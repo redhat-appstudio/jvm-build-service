@@ -14,8 +14,8 @@ import java.util.Set;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
-import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
+import org.cyclonedx.generators.BomGeneratorFactory;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.model.Bom;
 
@@ -142,7 +142,7 @@ public abstract class AnalyserBase implements Runnable {
             }
         }
 
-        BomJsonGenerator generator = BomGeneratorFactory.createJson(CycloneDxSchema.Version.VERSION_14, bom);
+        BomJsonGenerator generator = BomGeneratorFactory.createJson(CycloneDxSchema.VERSION_LATEST, bom);
         String sbom = generator.toJsonString();
         Log.infof("Generated SBOM:\n%s", sbom);
         if (this.sbom != null) {

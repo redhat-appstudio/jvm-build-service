@@ -15,9 +15,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.cyclonedx.BomParserFactory;
 import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.model.Bom;
+import org.cyclonedx.parsers.BomParserFactory;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.google.cloud.tools.jib.api.Credential;

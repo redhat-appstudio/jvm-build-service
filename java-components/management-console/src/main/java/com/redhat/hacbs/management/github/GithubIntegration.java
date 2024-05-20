@@ -15,9 +15,9 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
-import org.cyclonedx.BomParserFactory;
 import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.model.Bom;
+import org.cyclonedx.parsers.BomParserFactory;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.kohsuke.github.GHArtifact;
 import org.kohsuke.github.GHCheckRun;

@@ -25,8 +25,8 @@ import java.util.stream.Stream;
 import jakarta.enterprise.inject.spi.BeanManager;
 
 import org.apache.commons.lang3.StringUtils;
-import org.cyclonedx.BomGeneratorFactory;
-import org.cyclonedx.CycloneDxSchema;
+import org.cyclonedx.Version;
+import org.cyclonedx.generators.BomGeneratorFactory;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
@@ -345,7 +345,7 @@ public class DeployCommand implements Runnable {
                 }
             });
             var sbom = SBomGenerator.generateSBom(data, null);
-            var json = BomGeneratorFactory.createJson(CycloneDxSchema.Version.VERSION_12, sbom);
+            var json = BomGeneratorFactory.createJson(Version.VERSION_12, sbom);
             String sbomStr = json.toJsonString();
             Log.debugf("Build Sbom \n%s", sbomStr);
             Files.writeString(logsPath.resolve("build-sbom.json"), sbomStr, StandardCharsets.UTF_8);
