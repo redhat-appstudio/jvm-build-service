@@ -242,6 +242,19 @@ export const BuildEdit: React.FunctionComponent<BuildEditModalData> = (data) => 
               />
             </FormGroup>)}
           <FormGroup
+            label="Tool Type"
+            labelIcon={
+              <Popover bodyContent={<div>Override Tool type detection</div>}><HelpIcon/></Popover>
+            }
+            fieldId="artifact-edit-tool">
+            <TextInput
+              id="artifact-edit-tool"
+              name="artifact-edit-tool"
+              value={info.buildInfo.tool}
+              onChange={stateChange((s, v) => {s.buildInfo.tool = v})}
+            />
+          </FormGroup>
+          <FormGroup
             label="Tool Version"
             labelIcon={
               <Popover bodyContent={<div>Override Tool version detection</div>}><HelpIcon/></Popover>
