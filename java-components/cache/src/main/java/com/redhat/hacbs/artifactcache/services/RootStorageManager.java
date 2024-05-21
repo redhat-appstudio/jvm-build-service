@@ -187,7 +187,7 @@ public class RootStorageManager implements StorageManager {
                         formatSize(lowWaterFreeSpace), formatSize(fileStore.getTotalSpace()));
             }
         } catch (IOException e) {
-            Log.errorf("Failed to scan existing files", e);
+            Log.error("Failed to scan existing files", e);
         } finally {
             Log.infof("Initial load of existing entries completed, found %s", count.get());
         }

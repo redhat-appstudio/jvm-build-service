@@ -193,8 +193,8 @@ public abstract class Git {
                 result.getRemoteUpdates().forEach(r -> {
                     if (!r.getStatus().equals(RemoteRefUpdate.Status.OK)
                             && !r.getStatus().equals(RemoteRefUpdate.Status.UP_TO_DATE)) {
-                        Log.errorf("Push failure " + r);
-                        throw new RuntimeException("Failed to push updates due to " + r.getMessage());
+                        Log.errorf("Push failure:\n" + result.getMessages());
+                        throw new RuntimeException("Failed to push updates due to " + r);
                     }
                 });
                 Log.infof("Pushed " + result.getURI() + " updates: "
@@ -204,7 +204,7 @@ public abstract class Git {
             return new GitStatus(httpTransportUrl, Repository.shortenRefName(tagRefUnique.getName()),
                     jRepo.getRefDatabase().peel(tagRefUnique).getPeeledObjectId().getName());
         } catch (GitAPIException | IOException e) {
-            Log.errorf("Caught JGit problems processing the push", e);
+            Log.error("Caught JGit problems processing the push", e);
             throw new RuntimeException(e);
         }
     }
