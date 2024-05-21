@@ -19,18 +19,34 @@ public final class GradleUtils {
     /**
      * Format for applying plugins.
      */
-    public static final String PLUGIN_FORMAT = "^\\s*(" + "apply\\s*\\(\\s*plugin:\\s*[\"']%s[\"']\\s*\\)\\s*;?" + "|"
-            + "apply\\s+plugin:\\s*[\"']%s[\"']\\s*;?" + ")";
+    public static final String PLUGIN_FORMAT = "^\\s*(" +
+        "apply\\s*\\(\\s*plugin:\\s*[\"']%s[\"']\\s*\\)\\s*;?"
+        + "|"
+        + "apply\\s+plugin:\\s*[\"']%s[\"']\\s*;?" + ")"
+        + "|"
+        + "id\\s*\\(\\s*[\"']%s[\"']\\s*\\)\\s*;?"
+        + "|"
+        + "id\\s*[\"']%s[\"']\\s*;?";
 
     /**
      * Code for applying the plugin {@code maven}.
      */
-    public static final String MAVEN_PLUGIN = String.format(PLUGIN_FORMAT, "maven", "maven");
+    public static final String MAVEN_PLUGIN = String.format(PLUGIN_FORMAT, "maven", "maven", "maven", "maven");
 
     /**
      * Code for applying the plugin {@code maven-publish}.
      */
-    public static final String MAVEN_PUBLISH_PLUGIN = String.format(PLUGIN_FORMAT, "maven-publish", "maven-publish");
+    public static final String MAVEN_PUBLISH_PLUGIN = String.format(PLUGIN_FORMAT, "maven-publish", "maven-publish", "maven-publish", "maven-publish");
+
+    /**
+     * Code for handling the plugin {@code nebula-plugin}. See <a href="https://github.com/nebula-plugins/nebula-release-plugin">here</a>
+     */
+    public static final String NEBULA_PLUGIN = String.format(PLUGIN_FORMAT, "nebula.release", "nebula.release", "nebula.release", "nebula.release");
+
+    /**
+     * Code for handling the plugin {@code stage-vote-release-plugin}. See <a href="https://github.com/vlsi/vlsi-release-plugins/blob/master/plugins/stage-vote-release-plugin/README.md">here</a>
+     */
+    public static final String STAGE_VOTE_RELEASE_PLUGIN = String.format(PLUGIN_FORMAT, "com.github.vlsi.stage-vote-release", "com.github.vlsi.stage-vote-release", "com.github.vlsi.stage-vote-release", "com.github.vlsi.stage-vote-release");
 
     public static final String BUILD_GRADLE = "build.gradle";
 

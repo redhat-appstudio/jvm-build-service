@@ -489,7 +489,7 @@ public class LookupBuildInfoCommand implements Runnable {
         return paths;
     }
 
-    private static void handleAntBuild(InvocationBuilder builder, Path antFile) {
+    private void handleAntBuild(InvocationBuilder builder, Path antFile) {
         //TODO: this needs work, too much hard coded stuff, just try all and builds
         // XXX: It is possible to change the build file location via -buildfile/-file/-f or -find/-s
         Log.infof("Detected Ant build file %s", antFile);
@@ -507,13 +507,13 @@ public class LookupBuildInfoCommand implements Runnable {
         builder.addToolInvocation(ANT, inv);
     }
 
-    private static void handleSbtBuild(InvocationBuilder builder, Path sbtFile) {
+    private void handleSbtBuild(InvocationBuilder builder, Path sbtFile) {
         //TODO: initial SBT support, needs more work
         Log.infof("Detected SBT build file %s", sbtFile);
         builder.addToolInvocation(SBT, List.of("--no-colors", "+publish"));
     }
 
-    private static void handleGradleBuild(InvocationBuilder builder, Path gradleFile, boolean skipTests) throws IOException {
+    private void handleGradleBuild(InvocationBuilder builder, Path gradleFile, boolean skipTests) throws IOException {
         Log.infof("Detected Gradle build file %s", gradleFile);
         var optionalGradleVersion = GradleUtils
                 .getGradleVersionFromWrapperProperties(GradleUtils.getPropertiesFile(gradleFile.getParent()));
@@ -531,6 +531,14 @@ public class LookupBuildInfoCommand implements Runnable {
             // that exclusion would ignore them. Instead pass a property to activate
             // java-components/build-request-processor/src/main/resources/gradle/test.gradle
             inv.add("-DdisableTests");
+        }
+        if (GradleUtils.isInBuildGradle(gradleFile, GradleUtils.NEBULA_PLUGIN)) {
+            Log.infof("Found Nebula plugin to add '-Prelease.version=%s'", version );
+            inv.add("-Prelease.version=" + version);
+        }
+        if (GradleUtils.isInBuildGradle(gradleFile, GradleUtils.STAGE_VOTE_RELEASE_PLUGIN)) {
+            Log.infof("Found StageVoteRelease plugin to add '-Prelease");
+            inv.add("-Prelease");
         }
 
         final Collection<File> files = FileUtils.listFiles(

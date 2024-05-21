@@ -9,9 +9,6 @@ cp -r /maven-artifacts/.m2/* "$HOME/.m2/" || true
 
 cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF
 org.gradle.console=plain
-# For Spring/Nebula Release Plugins
-release.useLastTag=true
-release.stage=final
 
 # For https://github.com/Kotlin/kotlinx.team.infra
 versionSuffix=
@@ -69,7 +66,7 @@ echo "Running Gradle command with arguments: $@"
 if [ ! -d $(workspaces.source.path)/source ]; then
   cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
 fi
-gradle -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@"  | tee $(workspaces.source.path)/logs/gradle.log
+gradle -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@" | tee $(workspaces.source.path)/logs/gradle.log
 
 mkdir -p $(workspaces.source.path)/build-info
 cp -r "${GRADLE_USER_HOME}" $(workspaces.source.path)/build-info/.gradle
