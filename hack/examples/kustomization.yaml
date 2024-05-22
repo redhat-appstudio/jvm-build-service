@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
 - gradle-v0.1.yaml
-- https://raw.githubusercontent.com/redhat-appstudio/build-definitions/main/task/git-clone/0.1/git-clone.yaml
+- https://raw.githubusercontent.com/konflux-ci/build-definitions/main/task/git-clone/0.1/git-clone.yaml
 - maven-v0.2.yaml
 - pipeline.yaml
 - pipeline-gradle.yaml
