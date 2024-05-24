@@ -19,21 +19,13 @@ import {EmptyTable} from '@app/EmptyTable/EmptyTable';
 import {
   ContainerNodeIcon
 } from "@patternfly/react-icons";
-import {RouteComponentProps} from "react-router-dom";
+import {useParams} from "react-router-dom";
 import {DependencySet} from "../../components";
 
 
-interface RouteParams {
-  repo: string
-}
+const ImageList = () => {
 
-interface ImageList extends RouteComponentProps<RouteParams> {
-}
-
-
-const ImageList: React.FunctionComponent<ImageList> = (props) => {
-
-  const repo = props.match.params.repo
+  const { repo } = useParams() as { repo: string}
   const [images, setImages] = useState(Array<ImageDTO>);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
@@ -44,7 +36,7 @@ const ImageList: React.FunctionComponent<ImageList> = (props) => {
 
   useEffect(() => {
     setState('loading');
-    ImageResourceService.getApiImage(repo,page, perPage).then()
+    ImageResourceService.getApiImage(repo, page, perPage).then()
       .then((res) => {
         console.log(res);
         setState('success');

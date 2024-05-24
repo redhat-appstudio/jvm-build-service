@@ -4,7 +4,7 @@ import {Pagination, Toolbar, ToolbarContent, ToolbarItem,} from '@patternfly/rea
 import {ImageRepositoryResourceService,} from "../../services/openapi";
 import {EmptyTable} from '@app/EmptyTable/EmptyTable';
 import {Link} from "react-router-dom";
-import {Table, Td, Th, Thead, Tr} from "@patternfly/react-table";
+import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 import {base64} from "../../services/openapi/core/request";
 
 const ImageRepositoryList: React.FunctionComponent = () => {
@@ -81,13 +81,16 @@ const ImageRepositoryList: React.FunctionComponent = () => {
       </Toolbar>
       <Table>
         <Thead>
-          <Th>Image Repository</Th>
+          <Tr>
+            <Th>Image Repository</Th>
+          </Tr>
         </Thead>
-
+        <Tbody>
         {repositories.map((image: string) => {
           return <Tr key={image}><Td><Link to={`/images/repository/${base64(image)}`}>{image}</Link></Td></Tr>
         })}
-        {repositories.length === 0 && <EmptyTable></EmptyTable>}
+          {repositories.length === 0 && <EmptyTable></EmptyTable>}
+        </Tbody>
       </Table>
     </React.Fragment>
   );

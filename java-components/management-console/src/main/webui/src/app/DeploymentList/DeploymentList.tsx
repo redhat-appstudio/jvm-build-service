@@ -16,6 +16,7 @@ import {
   ContainerNodeIcon
 } from "@patternfly/react-icons";
 import {DependencySet} from "../../components";
+import {Table, Tbody} from "@patternfly/react-table";
 
 const DeploymentList: React.FunctionComponent = () => {
   const [deployments, setDeployments] = useState(Array<DeploymentDTO>);
@@ -56,7 +57,7 @@ const DeploymentList: React.FunctionComponent = () => {
       {deployments.map((deployment : DeploymentDTO, index) => (
           <DeploymentRow key={index} deployment={deployment}></DeploymentRow>
         ))}
-        {deployments.length === 0 && <EmptyTable></EmptyTable>}
+        {deployments.length === 0 && <Table><Tbody><EmptyTable></EmptyTable></Tbody></Table>}
       </DataList>
     </React.Fragment>
   );
