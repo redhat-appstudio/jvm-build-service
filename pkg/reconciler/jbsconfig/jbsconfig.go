@@ -4,7 +4,7 @@ import (
 	"context"
 	errors2 "errors"
 	"fmt"
-	imagecontroller "github.com/redhat-appstudio/image-controller/api/v1alpha1"
+	imagecontroller "github.com/konflux-ci/image-controller/api/v1alpha1"
 	"regexp"
 	"sort"
 	"strconv"
