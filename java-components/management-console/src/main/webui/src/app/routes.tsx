@@ -1,28 +1,28 @@
 import * as React from 'react';
-import { Route, RouteComponentProps, Switch, useLocation } from 'react-router-dom';
-import { Dashboard } from '@app/Dashboard/Dashboard';
-import { NotFound } from '@app/NotFound/NotFound';
-import { useDocumentTitle } from '@app/utils/useDocumentTitle';
-import {GithubBuildList} from "@app/GithubBuildList/GithubBuildList";
+import {Route, Routes, useLocation} from 'react-router-dom';
+import {Dashboard} from '@app/Dashboard/Dashboard';
+import {NotFound} from '@app/NotFound/NotFound';
+import {useDocumentTitle} from '@app/utils/useDocumentTitle';
 import {BuildQueueList} from "@app/BuildQueueList/BuildQueueList";
 import {BuildView} from "@app/BuildView/BuildView";
-import {DeploymentList} from "@app/DeploymentList/DeploymentList";
-import {AddArtifact} from "@app/AddArtifact/AddArtifact";
-import {ArtifactList} from "@app/ArtifactList/ArtifactList";
 import {BuildList} from "@app/BuildList/BuildList";
 import {RunningBuildList} from "@app/RunningBuildList/RunningBuildList";
+import {ControlPanel} from "@app/ControlPanel/ControlPanel";
+import {ArtifactList} from "@app/ArtifactList/ArtifactList";
 import {ArtifactView} from "@app/ArtifactView/ArtifactView";
+import {AddArtifact} from "@app/AddArtifact/AddArtifact";
+import {ImageRepositoryList} from "@app/ImageRepositoryList/ImageRepositoryList";
 import {ImageList} from "@app/ImageList/ImageList";
 import {AddImage} from "@app/AddImage/AddImage";
-import {ControlPanel} from "@app/ControlPanel/ControlPanel";
-import {ImageRepositoryList} from "@app/ImageRepositoryList/ImageRepositoryList";
+import {DeploymentList} from "@app/DeploymentList/DeploymentList";
+import {GithubBuildList} from "@app/GithubBuildList/GithubBuildList";
 import {GithubBuildView} from "@app/GithubBuildView/GithubBuildView";
 
 let routeFocusTimer: number;
 export interface IAppRoute {
   label?: string; // Excluding the label will exclude the route from the nav sidebar in AppLayout
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  component: React.ComponentType<RouteComponentProps<any>> | React.ComponentType<any>;
+  component: | React.ComponentType<any>;
   /* eslint-enable @typescript-eslint/no-explicit-any */
   exact?: boolean;
   path: string;
@@ -188,34 +188,32 @@ const useA11yRouteChange = () => {
   }, [pathname]);
 };
 
-const RouteWithTitleUpdates = ({ component: Component, title, ...rest }: IAppRoute) => {
+const RouteWithTitle = ({ component: Component, title, ...rest }: IAppRoute) => {
   useA11yRouteChange();
   useDocumentTitle(title);
-
-  function routeWithTitle(routeProps: RouteComponentProps) {
-    return <Component {...rest} {...routeProps} />;
-  }
-
-  return <Route render={routeWithTitle} {...rest} />;
-};
+  return <Component {...rest}/>
+}
 
 const PageNotFound = ({ title }: { title: string }) => {
   useDocumentTitle(title);
-  return <Route component={NotFound} />;
+  return <NotFound/>;
 };
 
 const flattenedRoutes: IAppRoute[] = routes.reduce(
   (flattened, route) => [...flattened, ...(route.routes ? route.routes : [route])],
   [] as IAppRoute[]
 );
-
 const AppRoutes = (): React.ReactElement => (
-  <Switch>
-    {flattenedRoutes.map(({ path, exact, component, title }, idx) => (
-      <RouteWithTitleUpdates path={path} exact={exact} component={component} key={idx} title={title} />
+  <Routes>
+    {flattenedRoutes.map(({ path, component, title }, idx) => (
+      <Route path={path} key={idx} element={
+        <RouteWithTitle path={path} component={component} key={idx} title={title} />
+      }/>
     ))}
-    <PageNotFound title="404 Page Not Found" />
-  </Switch>
+    <Route path="*" element={
+      <PageNotFound title="404 Page Not Found" />
+    }/>
+  </Routes>
 );
 
 export { AppRoutes, routes };

@@ -9,32 +9,21 @@ import {
   Text,
   TextContent,
   TextVariants,
-
-
-
-
 } from '@patternfly/react-core';
 import {
   GithubBuildDTO, GithubBuildsResourceService
 } from "../../services/openapi";
-import {RouteComponentProps} from "react-router-dom";
+import {useParams} from "react-router-dom";
 import {DependencySet} from "../../components";
 
-interface RouteParams {
-  build: string
-}
-
-interface GithubBuildView extends RouteComponentProps<RouteParams> {
-}
-
-
-const GithubBuildView: React.FunctionComponent<GithubBuildView> = (props) => {
+const GithubBuildView = () => {
   const initial : GithubBuildDTO = {
     url: "",
     buildsComponent: false, dependencySetId: 0, id: 0, name: "",buildDependencySetId:-1
   }
-  const repo = parseInt(props.match.params.build)
-  const [build, setBuild] = useState(initial);
+  const { build } = useParams() as { build : string}
+  const repo = parseInt(build)
+  const [ghBuild, setGhBuild] = useState(initial);
   const [error, setError] = useState(false);
   const [state, setState] = useState('');
   const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
@@ -51,7 +40,7 @@ const GithubBuildView: React.FunctionComponent<GithubBuildView> = (props) => {
     GithubBuildsResourceService.getApiBuildsGithubId(repo).then()
       .then((res) => {
         console.log(res);
-        setBuild(res);
+        setGhBuild(res);
         setState('success');
       })
       .catch((err) => {
@@ -75,7 +64,7 @@ const GithubBuildView: React.FunctionComponent<GithubBuildView> = (props) => {
   return <>
     <PageSection variant={PageSectionVariants.light}>
       <TextContent>
-        <a href={build.url} target="_blank"><Text component={TextVariants.h1}>Github Build {build.name}</Text></a>
+        <a href={ghBuild.url} target="_blank"><Text component={TextVariants.h1}>Github Build {ghBuild.name}</Text></a>
       </TextContent>
     </PageSection>
     <PageSection isFilled>
@@ -89,7 +78,7 @@ const GithubBuildView: React.FunctionComponent<GithubBuildView> = (props) => {
           <Card>
             <CardHeader>Build Dependencies</CardHeader>
             <CardBody >
-              <DependencySet dependencySetId={build.dependencySetId}></DependencySet>
+              <DependencySet dependencySetId={ghBuild.dependencySetId}></DependencySet>
             </CardBody>
           </Card>
         </Tab>
@@ -97,7 +86,7 @@ const GithubBuildView: React.FunctionComponent<GithubBuildView> = (props) => {
           <Card>
             <CardHeader>All Build Dependencies</CardHeader>
             <CardBody >
-              <DependencySet dependencySetId={build.buildDependencySetId}></DependencySet>
+              <DependencySet dependencySetId={ghBuild.buildDependencySetId}></DependencySet>
             </CardBody>
           </Card>
         </Tab>

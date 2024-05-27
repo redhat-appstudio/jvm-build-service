@@ -13,7 +13,7 @@ import {
   WarningTriangleIcon
 } from "@patternfly/react-icons";
 import {Link} from "react-router-dom";
-import {Table, Td, Tr} from "@patternfly/react-table";
+import {Table, Tbody, Td, Tr} from "@patternfly/react-table";
 
 
 type DependencySetType = {
@@ -108,8 +108,10 @@ const DependencySet: React.FunctionComponent<DependencySetType> = (props) => {
 
   return <>
     <Table>
-      <Tr><Td></Td><Td>Totals</Td><Td>{health(image)}</Td></Tr>
-      {image.dependencies?.map(d => (dependencyRow(d)))}
+      <Tbody>
+        <Tr><Td></Td><Td>Totals</Td><Td>{health(image)}</Td></Tr>
+        {image.dependencies?.map(d => (dependencyRow(d)))}
+      </Tbody>
     </Table></>
 }
 export {DependencySet};

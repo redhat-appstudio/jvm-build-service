@@ -5,7 +5,7 @@ import {
   ArtifactDTO,
   ArtifactHistoryResourceService, BuildQueueResourceService,
 } from "../../services/openapi";
-import {Link, RouteComponentProps} from "react-router-dom";
+import {Link, useParams} from "react-router-dom";
 import {
   ActionList,
   ActionListItem,
@@ -30,20 +30,13 @@ import {
 } from "@patternfly/react-core";
 import {CheckCircleIcon, ErrorCircleOIcon, WarningTriangleIcon} from "@patternfly/react-icons";
 
-interface RouteParams {
-    name: string
-}
 
-interface ArtifactView extends RouteComponentProps<RouteParams> {
-}
-
-const ArtifactView: React.FunctionComponent<ArtifactView> = (props) => {
-
-    const name = props.match.params.name
-    const initial: ArtifactDTO = {id: 0, name: "", gav: "", scmRepo: "", tag: "", commit: ""}
-    const [artifact, setArtifact] = useState(initial);
-    const [error, setError] = useState(false);
-    const [state, setState] = useState('');
+const ArtifactView = () => {
+  const { name } = useParams() as { name: string}
+  const initial: ArtifactDTO = {id: 0, name: "", gav: "", scmRepo: "", tag: "", commit: ""}
+  const [artifact, setArtifact] = useState(initial);
+  const [error, setError] = useState(false);
+  const [state, setState] = useState('');
 
   const [activeTabKey, setActiveTabKey] = React.useState<string | number>(0);
   // Toggle currently active tab

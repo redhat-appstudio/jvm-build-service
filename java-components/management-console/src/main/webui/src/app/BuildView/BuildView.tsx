@@ -8,7 +8,7 @@ import {
   BuildHistoryResourceService, BuildInfoEditResourceService,
   BuildQueueResourceService
 } from "../../services/openapi";
-import {Link, RouteComponentProps} from "react-router-dom";
+import {Link, useParams} from "react-router-dom";
 import {
   ActionList,
   ActionListItem,
@@ -51,16 +51,9 @@ import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";
 import {DependencySet, StoredArtifactView} from "../../components";
 import {BuildEdit} from "../../components/BuildEdit/BuildEdit";
 
-interface RouteParams {
-  name: string
-}
+const BuildView = () => {
 
-interface BuildView extends RouteComponentProps<RouteParams> {
-}
-
-const BuildView: React.FunctionComponent<BuildView> = (props) => {
-
-  const name = props.match.params.name
+  const { name } = useParams() as { name: string }
   const initial: BuildDTO = {
     artifactList: new Array<ArtifactListDTO>(),
     buildAttempts: new Array<BuildAttemptDTO>(),
@@ -242,7 +235,6 @@ const BuildView: React.FunctionComponent<BuildView> = (props) => {
             <Card>
               <CardHeader>Maven Artifacts</CardHeader>
               <CardBody>
-
                 <StoredArtifactView artifacts={build.artifactList}
                                     mavenRepo={build.successfulBuild?.mavenRepository}></StoredArtifactView>
               </CardBody>
@@ -412,9 +404,11 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
         <CardBody>
           <Table>
             <Thead>
-              <Th>Shaded Artifact</Th>
-              <Th>Source</Th>
-              <Th>Affected Build Artifacts</Th>
+              <Tr>
+                <Th>Shaded Artifact</Th>
+                <Th>Source</Th>
+                <Th>Affected Build Artifacts</Th>
+              </Tr>
             </Thead>
             <Tbody>
               {selectBuildAttempt.shadingDetails?.map(data => <Tr>
