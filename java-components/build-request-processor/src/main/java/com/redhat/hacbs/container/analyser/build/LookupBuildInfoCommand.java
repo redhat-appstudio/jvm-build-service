@@ -568,6 +568,8 @@ public class LookupBuildInfoCommand implements Runnable {
         try (BufferedReader pomReader = Files.newBufferedReader(buildScript)) {
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(pomReader);
+            List<Model> models = new ArrayList<>();
+            models.add(model);
             //TODO: we should do discovery on the whole tree
             if (model.getVersion() != null && model.getVersion().endsWith("-SNAPSHOT")) {
                 //not tagged properly, deal with it automatically
@@ -578,7 +580,8 @@ public class LookupBuildInfoCommand implements Runnable {
                 //that are tagged correctly
                 builder.versionCorrect();
             }
-            MavenJavaVersionDiscovery.filterJavaVersions(buildScript, model, builder);
+
+            MavenJavaVersionDiscovery.filterJavaVersions(buildScript, models, builder);
             if (builder.minJavaVersion != null && builder.maxJavaVersion != null) {
                 if (builder.minJavaVersion.compareTo(builder.maxJavaVersion) > 0
                         || builder.maxJavaVersion.compareTo(builder.minJavaVersion) < 0) {
