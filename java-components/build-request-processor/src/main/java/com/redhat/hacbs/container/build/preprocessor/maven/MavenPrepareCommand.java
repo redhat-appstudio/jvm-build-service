@@ -11,11 +11,21 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.release.config.ReleaseDescriptorBuilder;
+import org.apache.maven.shared.release.config.ReleaseUtils;
+import org.apache.maven.shared.release.transform.ModelETL;
+import org.apache.maven.shared.release.transform.ModelETLRequest;
+import org.apache.maven.shared.release.transform.jdom2.JDomModelETL;
+import org.apache.maven.shared.release.transform.jdom2.JDomModelETLFactory;
+import org.apache.maven.shared.release.util.ReleaseUtil;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.commonjava.maven.ext.common.jdom.JDOMModelConverter;
+import org.jdom2.Document;
 
 import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
@@ -57,41 +67,56 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
 
     private void handleBuild(Path file, boolean topLevel) {
         try (BufferedReader pomReader = Files.newBufferedReader(file)) {
+            ModelETLRequest request = new ModelETLRequest();
+
             MavenXpp3Reader reader = new MavenXpp3Reader();
             Model model = reader.read(pomReader);
 
             boolean modified = false;
             if (model.getBuild() != null && model.getBuild().getPlugins() != null) {
-                modified |= handlePlugins(model.getBuild().getPlugins(), false, topLevel);
+                modified |= handlePlugins(model.getBuild().getPlugins(), topLevel);
             }
             if (model.getBuild() != null && model.getBuild().getPluginManagement() != null
                     && model.getBuild().getPluginManagement().getPlugins() != null) {
-                modified |= handlePlugins(model.getBuild().getPluginManagement().getPlugins(), true, topLevel);
+                modified |= handlePlugins(model.getBuild().getPluginManagement().getPlugins(), topLevel);
             }
             if (model.getProfiles() != null) {
                 for (var i : model.getProfiles()) {
                     if (i.getBuild() != null && i.getBuild().getPlugins() != null) {
-                        modified |= handlePlugins(i.getBuild().getPlugins(), false, topLevel);
+                        modified |= handlePlugins(i.getBuild().getPlugins(), topLevel);
                     }
                     if (i.getBuild() != null && i.getBuild().getPluginManagement() != null
                             && i.getBuild().getPluginManagement().getPlugins() != null) {
-                        modified |= handlePlugins(i.getBuild().getPluginManagement().getPlugins(), true, topLevel);
+                        modified |= handlePlugins(i.getBuild().getPluginManagement().getPlugins(), topLevel);
                     }
                 }
             }
 
             if (modified) {
-                MavenXpp3Writer writer = new MavenXpp3Writer();
-                try (var out = Files.newOutputStream(file)) {
-                    writer.write(out, model);
-                }
+                // Adapted from https://github.com/release-engineering/pom-manipulation-ext/blob/main/io/src/main/java/org/commonjava/maven/ext/io/PomIO.java
+                JDomModelETLFactory modelETLFactories = new JDomModelETLFactory();
+                ReleaseDescriptorBuilder releaseDescriptorBuilder = new ReleaseDescriptorBuilder();
+                MavenProject mp = new MavenProject(model);
+                releaseDescriptorBuilder.setLineSeparator(ReleaseUtil.LS);
+                request.setReleaseDescriptor( ReleaseUtils.buildReleaseDescriptor( releaseDescriptorBuilder ) );
+                request.setProject( mp );
+                ModelETL etl = modelETLFactories.newInstance( request );
+                // Reread in order to fill in JdomModelETL
+                etl.extract(file.toFile());
+                // Currently the field we want to access is private; https://issues.apache.org/jira/browse/MRELEASE-1044 requests
+                // them to be protected to avoid this reflection.
+                Document doc = (Document) FieldUtils.getDeclaredField( JDomModelETL.class, "document", true ).get( etl );
+                JDOMModelConverter jdomModelConverter = new JDOMModelConverter( );
+                jdomModelConverter.convertModelToJDOM( model, doc );
+                etl.load( file.toFile() );
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private boolean handlePlugins(List<Plugin> plugins, boolean pluginManagement, boolean topLevel)
+
+    private boolean handlePlugins(List<Plugin> plugins, boolean topLevel)
             throws IOException {
         boolean modified = false;
         List<PluginInfo> toRemove = new ArrayList<>();
