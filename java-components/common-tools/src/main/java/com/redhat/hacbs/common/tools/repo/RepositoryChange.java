@@ -2,6 +2,7 @@ package com.redhat.hacbs.common.tools.repo;
 
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +31,9 @@ public class RepositoryChange {
             } catch (GHFileNotFoundException e) {
                 return null;
             }
+        } catch (IOException e) {
+            System.err.println("Unable to retrieve information from GitHub " + e.getMessage());
+            return null;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
