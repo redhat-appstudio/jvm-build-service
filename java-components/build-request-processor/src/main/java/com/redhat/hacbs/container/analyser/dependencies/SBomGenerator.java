@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.exception.ParseException;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
@@ -76,6 +77,7 @@ public class SBomGenerator {
 
             Component component = existingIds.get(new Identifier(name, group, version));
             List<Property> properties = new ArrayList<>();
+            Map<String, String> attributes = i.getAttributes();
             if (component == null) {
                 component = new Component();
                 bom.getComponents().add(component);
@@ -83,16 +85,23 @@ public class SBomGenerator {
                 component.setGroup(group);
                 component.setName(name);
                 component.setVersion(version);
-                component.setPurl(String.format("pkg:maven/%s/%s@%s", group, name, version));
+                String purl = String.format("pkg:maven/%s/%s@%s", group, name, version);
+                String classifier = attributes.get("classifier");
+                if (StringUtils.isNotBlank(classifier)) {
+                    purl += String.format("?classifier=%s", classifier);
+                }
+                component.setPurl(purl);
             } else if (component.getProperties() != null) {
                 properties.addAll(component.getProperties());
             }
             component.setPublisher(i.source);
             for (var e : i.getAttributes().entrySet()) {
-                Property property = new Property();
-                property.setName("java:" + e.getKey());
-                property.setValue(e.getValue());
-                properties.add(property);
+                if (!e.getKey().equals("classifier")) {
+                    Property property = new Property();
+                    property.setName("java:" + e.getKey());
+                    property.setValue(e.getValue());
+                    properties.add(property);
+                }
             }
 
             Property packageTypeProperty = new Property();

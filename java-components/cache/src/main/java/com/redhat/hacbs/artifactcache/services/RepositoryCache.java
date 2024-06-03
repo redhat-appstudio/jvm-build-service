@@ -1,5 +1,7 @@
 package com.redhat.hacbs.artifactcache.services;
 
+import static com.redhat.hacbs.classfile.tracker.TrackingData.extractClassifier;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -10,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -20,6 +21,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+
+import org.apache.commons.lang3.StringUtils;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.HashingOutputStream;
@@ -100,7 +103,8 @@ public class RepositoryCache {
             String targetFile = group.replace('.', File.separatorChar) + File.separator + artifact
                     + File.separator + version + File.separator + target;
             return handleFile(targetFile, group.replace(File.separatorChar, '.') + ":" + artifact + ":" + version,
-                    (c) -> c.getArtifactFile(group, artifact, version, target), tracked, cacheOnly);
+                    (c) -> c.getArtifactFile(group, artifact, version, target), tracked, cacheOnly,
+                    extractClassifier(artifact, version, target));
         }
     }
 
@@ -114,7 +118,8 @@ public class RepositoryCache {
     }
 
     private Optional<ArtifactResult> handleFile(String targetFile, String gav,
-            Function<RepositoryClient, Optional<ArtifactResult>> clientInvocation, boolean tracked, boolean cacheOnly) {
+            Function<RepositoryClient, Optional<ArtifactResult>> clientInvocation, boolean tracked, boolean cacheOnly,
+            String classifier) {
         try {
             var check = inProgressDownloads.get(targetFile);
             if (check != null) {
@@ -129,7 +134,7 @@ public class RepositoryCache {
                 if (check != null) {
                     check.awaitReady();
                 }
-                return handleDownloadedFile(actual, trackedFile, tracked, gav);
+                return handleDownloadedFile(actual, trackedFile, tracked, gav, classifier);
             }
             if (cacheOnly) {
                 return Optional.empty();
@@ -143,12 +148,12 @@ public class RepositoryCache {
                 //if the file is not there it may mean that the sha1 was wrong
                 //so we never cache it
                 if (Files.exists(actual)) {
-                    return handleDownloadedFile(actual, trackedFile, tracked, gav);
+                    return handleDownloadedFile(actual, trackedFile, tracked, gav, classifier);
                 }
                 existing = inProgressDownloads.putIfAbsent(targetFile, newFile);
             }
             return newFile.download(clientInvocation, repository.getClient(), actual, trackedFile,
-                    tempDownloads, tracked, gav);
+                    tempDownloads, tracked, gav, classifier);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -188,7 +193,8 @@ public class RepositoryCache {
 
     }
 
-    private Optional<ArtifactResult> handleDownloadedFile(Path downloaded, Path trackedFileTarget, boolean tracked, String gav)
+    private Optional<ArtifactResult> handleDownloadedFile(Path downloaded, Path trackedFileTarget, boolean tracked, String gav,
+            String classifier)
             throws IOException, InterruptedException {
         var lock = new GavLock(gav);
         try {
@@ -242,8 +248,11 @@ public class RepositoryCache {
                     Files.createDirectories(trackedJarFile.getParent());
                     try (OutputStream out = Files.newOutputStream(trackedJarFile); var in = Files.newInputStream(downloaded)) {
                         HashingOutputStream hashingOutputStream = new HashingOutputStream(out);
+                        Map<String, String> attributes = StringUtils.isNotBlank(classifier) ? Map.of("classifier", classifier)
+                                : Map.of();
                         ClassFileTracker.addTrackingDataToJar(in,
-                                new TrackingData(gav, repository.getName(), Collections.emptyMap()), hashingOutputStream,
+                                new TrackingData(gav, repository.getName(), attributes),
+                                hashingOutputStream,
                                 overwriteExistingBytecodeMarkers);
                         hashingOutputStream.close();
 
@@ -326,7 +335,8 @@ public class RepositoryCache {
                 Path trackedFile,
                 StorageManager downloadTempDir,
                 boolean tracked,
-                String gav) {
+                String gav,
+                String classifier) {
             GavLock lock = new GavLock(gav);
             try {
                 Optional<ArtifactResult> result = clientInvocation.apply(repositoryClient);
@@ -365,8 +375,11 @@ public class RepositoryCache {
                                         "transformed", ".part");
                                 try (var inFromFile = Files.newInputStream(tempFile);
                                         var transformedOut = Files.newOutputStream(tempTransformedFile)) {
+                                    Map<String, String> attributes = StringUtils.isNotBlank(classifier)
+                                            ? Map.of("classifier", classifier)
+                                            : Map.of();
                                     ClassFileTracker.addTrackingDataToJar(inFromFile,
-                                            new TrackingData(gav, repository.getName(), Collections.emptyMap()),
+                                            new TrackingData(gav, repository.getName(), attributes),
                                             transformedOut, overwriteExistingBytecodeMarkers);
                                 }
                                 Files.delete(tempFile);
@@ -411,7 +424,7 @@ public class RepositoryCache {
                             downloadTarget.getParent().resolve(downloadTarget.getFileName().toString() + HEADERS))) {
                         p.store(out, "");
                     }
-                    return handleDownloadedFile(downloadTarget, trackedFile, tracked, gav);
+                    return handleDownloadedFile(downloadTarget, trackedFile, tracked, gav, classifier);
                 }
                 return Optional.empty();
             } catch (Throwable e) {

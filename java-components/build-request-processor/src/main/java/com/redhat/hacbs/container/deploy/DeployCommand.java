@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.deploy;
 
+import static com.redhat.hacbs.classfile.tracker.TrackingData.extractClassifier;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
 import java.io.File;
@@ -226,13 +227,21 @@ public class DeployCommand implements Runnable {
                 try {
                     String fileName = file.getFileName().toString();
                     Path temp = file.getParent().resolve(fileName + ".temp");
+                    String classifier = extractClassifier(gav.getArtifactId(), gav.getVersion(), fileName);
+                    Map<String, String> attributes;
+                    if (StringUtils.isNotBlank(classifier)) {
+                        attributes = Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
+                            Boolean.toString(hermetic), BUILD_ID, buildId, "classifier", classifier);
+                    } else {
+                        attributes = Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
+                            Boolean.toString(hermetic), BUILD_ID, buildId);
+                    }
                     ClassFileTracker.addTrackingDataToJar(Files.newInputStream(file),
                             new TrackingData(
                                     gav.getGroupId() + ":" + gav.getArtifactId() + ":"
                                             + gav.getVersion(),
                                     "rebuilt",
-                                    Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
-                                            Boolean.toString(hermetic), BUILD_ID, buildId)),
+                                    attributes),
                             Files.newOutputStream(temp), false);
                     Files.delete(file);
                     Files.move(temp, file);
