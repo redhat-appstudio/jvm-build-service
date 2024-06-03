@@ -29,25 +29,28 @@ import io.quarkus.logging.Log;
 @ApplicationScoped
 public class MavenJavaVersionDiscovery {
 
-    public static String interpolate(String value, Model model) {
+    public static String interpolate(String value, List<Model> models) {
         if (value != null && value.contains("${")) {
             StringSearchInterpolator interpolator = new StringSearchInterpolator();
             List<String> pomPrefixes = Arrays.asList("pom.", "project.");
-            interpolator.addValueSource(new PrefixedObjectValueSource(pomPrefixes, model, false));
-            interpolator.addValueSource(new PropertiesBasedValueSource(model.getProperties()));
-            interpolator.addValueSource(new ObjectBasedValueSource(model));
+            for (Model model : models) {
+                interpolator.addValueSource(new PrefixedObjectValueSource(pomPrefixes, model, false));
+                interpolator.addValueSource(new PropertiesBasedValueSource(model.getProperties()));
+                interpolator.addValueSource(new ObjectBasedValueSource(model));
+            }
             try {
                 value = interpolator.interpolate(value, new PrefixAwareRecursionInterceptor(pomPrefixes));
             } catch (InterpolationException e) {
                 throw new RuntimeException(
-                        "Failed to interpolate " + value + " for project " + model.getId(), e);
+                        "Failed to interpolate " + value + " for project " + models.get(0).getId(), e);
             }
         }
         return value;
     }
 
-    public static void filterJavaVersions(Path pomFile, Model model, InvocationBuilder invocationBuilder) {
+    public static void filterJavaVersions(Path pomFile, List<Model> models, InvocationBuilder invocationBuilder) {
         //if the toolchains plugin is configured we don't filter anything
+        Model model = models.get(models.size() - 1);
         if (model.getBuild() != null && model.getBuild().getPlugins() != null) {
             for (var i : model.getBuild().getPlugins()) {
                 if (i.getArtifactId().equals("maven-toolchains-plugin")) {
@@ -74,20 +77,18 @@ public class MavenJavaVersionDiscovery {
         }
         int javaVersion = -1;
         if (target != null) {
-            target = interpolate(target, model);
+            target = interpolate(target, models);
             javaVersion = JavaVersion.toVersion(target);
             Log.infof("Discovered Java target %s", javaVersion);
         }
         if (source != null) {
-            source = interpolate(source, model);
+            source = interpolate(source, models);
             var parsed = JavaVersion.toVersion(source);
             Log.infof("Discovered Java source %s", parsed);
             if (parsed > javaVersion) {
                 javaVersion = parsed;
             }
         }
-
-        filterJavaVersions(invocationBuilder, javaVersion);
 
         for (var module : model.getModules()) {
             try {
@@ -97,12 +98,15 @@ public class MavenJavaVersionDiscovery {
                 try (var pomReader = Files.newBufferedReader(modulePomFile)) {
                     var reader = new MavenXpp3Reader();
                     var submodel = reader.read(pomReader);
-                    filterJavaVersions(modulePomFile, submodel, invocationBuilder);
+                    models.add(submodel);
+                    filterJavaVersions(modulePomFile, models, invocationBuilder);
                 }
             } catch (Exception e) {
                 Log.errorf(e, "Failed to handle module %s", module);
             }
         }
+
+        filterJavaVersions(invocationBuilder, javaVersion);
     }
 
     public static void filterJavaVersions(InvocationBuilder invocationBuilder, String javaVersion) {
