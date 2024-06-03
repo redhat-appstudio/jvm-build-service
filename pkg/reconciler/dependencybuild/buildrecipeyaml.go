@@ -706,7 +706,7 @@ func additionalPackages(recipe *v1alpha1.BuildRecipe) string {
 }
 
 func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string {
-	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ")\" && "
+	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ") and resetting to $(params." + PipelineParamScmHash + ")\" && "
 	if db.Spec.ScmInfo.Private {
 		gitArgs = gitArgs + "echo \"$GIT_TOKEN\" > $HOME/.git-credentials && chmod 400 $HOME/.git-credentials && "
 		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig && "

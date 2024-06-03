@@ -1,5 +1,6 @@
 package com.redhat.hacbs.recipes;
 
+import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR;
 import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.MINIMIZE_QUOTES;
 import static com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature.SPLIT_LINES;
 
@@ -11,15 +12,22 @@ import java.nio.file.Path;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 public interface RecipeManager<T> {
 
-    ObjectMapper MAPPER = new ObjectMapper(
-            new YAMLFactory().disable(SPLIT_LINES).enable(MINIMIZE_QUOTES))
+    ObjectMapper MAPPER = JsonMapper.builder(new YAMLFactory()
+            .disable(SPLIT_LINES)
+            .disable(MINIMIZE_QUOTES)
+            .enable(INDENT_ARRAYS_WITH_INDICATOR))
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
+            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+            .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+            .build().setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
 
     default T parse(Path file) throws IOException {
         try (var in = Files.newInputStream(file)) {
