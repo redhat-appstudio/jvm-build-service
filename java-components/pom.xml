@@ -62,6 +62,7 @@
         <gradle-tooling-api.version>8.7</gradle-tooling-api.version>
         <maven-indexer.version>7.1.3</maven-indexer.version>
         <maven-resolver.version>1.9.20</maven-resolver.version>
+        <maven-release.version>3.0.1</maven-release.version>
         <quarkus-jgit.version>3.1.0</quarkus-jgit.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
         <github-api.version>1.321</github-api.version>
@@ -193,6 +194,28 @@
                 <version>${cyclonedx-core-java.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.maven.release</groupId>
+                <artifactId>maven-release-manager</artifactId>
+                <version>${maven-release.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.maven.scm</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven.release</groupId>
+                <artifactId>maven-release-api</artifactId>
+                <version>${maven-release.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.maven.scm</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.maven.indexer</groupId>
                 <artifactId>indexer-core</artifactId>
                 <version>${maven-indexer.version}</version>
@@ -281,6 +304,20 @@
                 <artifactId>picocli-shell-jline2</artifactId>
                 <version>4.7.6</version>
             </dependency>
+            <dependency>
+                <groupId>org.commonjava.maven.ext</groupId>
+                <artifactId>pom-manipulation-common</artifactId>
+                <version>4.16</version>
+                <!-- As we only want the immediate dependency and some of the transitives cause -->
+                <!-- clashes then exclude everything for simplicity -->
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
             <dependency>
                 <groupId>com.github.stefanbirkner</groupId>
                 <artifactId>system-lambda</artifactId>
