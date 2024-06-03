@@ -605,7 +605,9 @@ public class LookupBuildInfoCommand implements Runnable {
                             "-Drat.skip=true",
                             "-Drevapi.skip",
                             "-Dsort.skip", // https://github.com/Ekryd/sortpom
-                            "-Dspotbugs.skip"));
+                            "-Dspotbugs.skip",
+                            "-Dspotless.check.skip=true" // https://github.com/diffplug/spotless/tree/main/plugin-maven
+                    ));
             if (skipTests) {
                 //we assume private repos are essentially fresh tags we have control of
                 //so we should run the tests
