@@ -22,6 +22,8 @@ import java.util.zip.ZipInputStream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
+import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -102,19 +104,23 @@ public class LocalCacheTest {
                 current = new ArtifactResult(
                         null, new ByteArrayInputStream(jarFile), jarFile.length, Optional.of(HashUtil.sha1(jarFile)),
                         Map.of());
-                localCache.getArtifactFile("default", "test", "test", "1.0", "test.jar.sha1", true);
-                var result = localCache.getArtifactFile("default", "test", "test", "1.0", "test.jar", true);
+                localCache.getArtifactFile("default", "test", "test", "1.0", "test-1.0-dummy.jar.sha1", true);
+                var result = localCache.getArtifactFile("default", "test", "test", "1.0", "test-1.0-dummy.jar", true);
                 try (ZipInputStream in = new ZipInputStream(result.get().getData())) {
                     var entry = in.getNextEntry();
                     boolean found = false;
+                    TrackingData trackingData = null;
                     while (entry != null) {
                         System.out.println(entry);
                         if (entry.getName().equals(getClass().getName().replace(".", "/") + ".class")) {
                             found = true;
+                            trackingData = ClassFileTracker.readTrackingInformationFromClass(in.readAllBytes());
                         }
                         entry = in.getNextEntry();
                     }
                     Assertions.assertTrue(found);
+                    Assertions.assertNotNull(trackingData);
+                    Assertions.assertEquals("dummy", trackingData.getAttributes().get("classifier"));
                 }
 
             } catch (Exception e) {

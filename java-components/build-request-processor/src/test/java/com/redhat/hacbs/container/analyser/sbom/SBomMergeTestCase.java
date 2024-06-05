@@ -29,7 +29,7 @@ public class SBomMergeTestCase {
         var sbom = SBomGenerator.generateSBom(
                 Set.of(
                         new TrackingData("commons-digester:commons-digester:2.1", "rebuilt", Map.of()),
-                        new TrackingData("com.test:test:1.0", "central", Map.of())),
+                        new TrackingData("com.test:test:1.0", "central", Map.of("classifier", "foo"))),
                 getClass().getClassLoader().getResourceAsStream("syft-sbom.json"));
         Component test = null;
         Component digester = null;
@@ -49,6 +49,6 @@ public class SBomMergeTestCase {
         Assertions.assertEquals("rebuilt", digester.getPublisher());
         Assertions.assertNotNull(digester.getBomRef());
         Assertions.assertEquals("central", test.getPublisher());
-
+        Assertions.assertEquals("pkg:maven/com.test/test@1.0?classifier=foo", test.getPurl());
     }
 }

@@ -1,9 +1,13 @@
 package com.redhat.hacbs.classfile.tracker;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.Map;
 import java.util.Objects;
 
 public class TrackingData {
+
+    public static final Logger LOGGER = System.getLogger(TrackingData.class.getName());
 
     public final String gav;
     public final String source;
@@ -50,5 +54,20 @@ public class TrackingData {
                 ", source='" + source + '\'' +
                 ", attributes=" + attributes +
                 '}';
+    }
+
+    public static String extractClassifier(String artifact, String version, String target) {
+        String jarExtension = ".jar";
+        String classifier = null;
+        String artifactAndVersionPrefix = artifact + "-" + version + "-";
+        // Has classifier due to presence of '-' after version
+        if (target.startsWith(artifactAndVersionPrefix) && target.endsWith(jarExtension)) {
+            classifier = target.substring(artifactAndVersionPrefix.length(), target.length() - jarExtension.length());
+            if (LOGGER.isLoggable(Level.DEBUG)) {
+                LOGGER.log(Level.DEBUG, "Extracted classifier '%s' for artifact '%s' and version '%s'".formatted(classifier,
+                        artifact, version));
+            }
+        }
+        return classifier;
     }
 }
