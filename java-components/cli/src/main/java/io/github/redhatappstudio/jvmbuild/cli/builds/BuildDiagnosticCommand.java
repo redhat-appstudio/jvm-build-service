@@ -95,7 +95,7 @@ public class BuildDiagnosticCommand
                 }
                 tagName = tagName + "-" + counter++;
                 fileName = "Dockerfile." + tagName;
-                tagName = "localhost/" + tagName;
+                tagName = "localhost/" + tagName.toLowerCase();
                 System.out.println(
                         CommandLine.Help.Ansi.AUTO
                                 .string(

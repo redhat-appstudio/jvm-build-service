@@ -106,24 +106,22 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 		},
 	}
 
-	tagPipelineTask := tektonpipeline.PipelineTask{
-		Name: artifactbuild.TagTaskName,
-		TaskSpec: &tektonpipeline.EmbeddedTask{
-			TaskSpec: tagTask,
-		},
-		Params: []tektonpipeline.Param{
-			{Name: DeployedImageDigestParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + DeployedImageDigestParam + ")"}},
-			{Name: GavsParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + GavsParam + ")"}},
-		},
-		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-			{Name: WorkspaceTls, Workspace: WorkspaceTls},
-		},
-	}
-
 	ps := &tektonpipeline.PipelineSpec{
 		Params: []tektonpipeline.ParamSpec{{Name: GavsParam, Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigestParam, Type: tektonpipeline.ParamTypeString}},
 		Tasks: []tektonpipeline.PipelineTask{
-			tagPipelineTask,
+			{
+				Name: artifactbuild.TagTaskName,
+				TaskSpec: &tektonpipeline.EmbeddedTask{
+					TaskSpec: tagTask,
+				},
+				Params: []tektonpipeline.Param{
+					{Name: DeployedImageDigestParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + DeployedImageDigestParam + ")"}},
+					{Name: GavsParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + GavsParam + ")"}},
+				},
+				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+					{Name: WorkspaceTls, Workspace: WorkspaceTls},
+				},
+			},
 		},
 		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceTls}},
 	}
@@ -139,7 +137,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	imageRegistry := jbsConfig.ImageRegistry()
 
-	preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, recipe, db, jbsConfig, buildId)
+	preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, db, jbsConfig, buildId)
 
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
@@ -246,20 +244,21 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
-		"\nFROM " + preBuildImageFrom +
+		"\nFROM " + preBuildImageFrom + " AS pre-build" +
+		"\nFROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
 		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng" +
 		// TODO: Debug only
-		// "\nRUN rpm -ivh https://rpmfind.net/linux/centos/8-stream/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
+		"\nRUN rpm -ivh https://vault.centos.org/8.5.2111/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
 		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
 		// Copying JDK17 for the cache.
 		// TODO: Could we determine if we are using UBI8 and avoid this?
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
 		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
 		"\nCOPY --from=cache /deployments/ /root/software/cache" +
-		"\nRUN cp -ar /original-content/workspace /root/project/workspace" +
+		"\nCOPY --from=pre-build /original-content/workspace /root/project/workspace" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
 		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
@@ -328,6 +327,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
 		}
 	}
+
 	buildTask := tektonpipeline.TaskSpec{
 		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
@@ -342,9 +342,17 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		}...),
 		Steps: []tektonpipeline.Step{
 			{
+				Name:            "establish-source",
+				Image:           "$(params." + PreBuildImageDigest + ")",
+				ImagePullPolicy: v1.PullAlways,
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Script:          "echo 'Copying source to workspace'\ncp -r -a " + OriginalContentPath + "/* $(workspaces.source.path)",
+			},
+			{
 				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 				Name:            "build",
-				Image:           "$(params." + PreBuildImageDigest + ")",
+				Image:           recipe.Image,
 				ImagePullPolicy: v1.PullAlways,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
@@ -354,7 +362,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
 				Args:   []string{"$(params.GOALS[*])"},
-				Script: OriginalContentPath + "/build.sh \"$@\"",
+				Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
 			},
 			{
 				Name:            "verify-deploy-and-check-for-contaminates",
@@ -719,12 +727,11 @@ func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	preBuildImageArgs := []string{
 		"deploy-pre-build-image",
-		"--builder-image=" + recipe.Image,
 		"--source-path=$(workspaces.source.path)",
 		"--image-source-path=" + OriginalContentPath,
 		"--image-name=" + preBuildImageTag,

@@ -148,8 +148,9 @@ func (r *DependencyBuildStatus) ProblemContaminates() []*Contaminant {
 
 type BuildRecipe struct {
 	//Deprecated
-	Pipeline            string               `json:"pipeline,omitempty"`
-	Tool                string               `json:"tool,omitempty"`
+	Pipeline string `json:"pipeline,omitempty"`
+	Tool     string `json:"tool,omitempty"`
+	// The base builder image (ubi7 / ubi8)
 	Image               string               `json:"image,omitempty"`
 	ContextPath         string               `json:"contextPath,omitempty"`
 	CommandLine         []string             `json:"commandLine,omitempty"`

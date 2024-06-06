@@ -24,6 +24,7 @@ import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
 import com.google.cloud.tools.jib.api.Jib;
 import com.google.cloud.tools.jib.api.JibContainerBuilder;
+import com.google.cloud.tools.jib.api.LogEvent;
 import com.google.cloud.tools.jib.api.RegistryException;
 import com.google.cloud.tools.jib.api.RegistryImage;
 import com.google.cloud.tools.jib.api.buildplan.AbsoluteUnixPath;
@@ -84,8 +85,6 @@ public class ContainerRegistryDeployer {
 
     public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs, String imageId, String buildId,
             BiConsumer<String, String> imageNameHashCallback) throws Exception {
-        Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
-
         // Read the tar to get the gavs and files
         DeployData imageData = new DeployData(deployDir, gavs);
 
@@ -111,24 +110,23 @@ public class ContainerRegistryDeployer {
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
+                .addEventHandler(LogEvent.class, logEvent -> Log.infof(logEvent.getMessage()))
                 .setAllowInsecureRegistries(insecure);
 
         JibContainerBuilder containerBuilder = Jib.from(existingRegistryImage)
                 .setFormat(ImageFormat.OCI);
 
-        Log.infof("Deploying image with tag %s", first.getTag());
+        Log.infof("Deploying image with tag %s (GAV: %s)", first.getTag(), first.stringForm());
         for (Gav gav : gavs) {
-            Log.infof("Deploying image with tag %s", gav.getTag());
+            Log.infof("Deploying image with tag %s (GAV: %s)", gav.getTag(), gav.stringForm());
             containerizer = containerizer.withAdditionalTag(gav.getTag());
         }
         containerBuilder.addLabel("io.jvmbuildservice.gavs", String.join(",", gavNames));
         containerBuilder.containerize(containerizer);
     }
 
-    public void deployPreBuildImage(String baseImage, Path sourcePath, String imageSourcePath, String tag,
-            BiConsumer<String, String> imageNameHashCallback)
+    public void deployPreBuildImage(Path sourcePath, String imageSourcePath, String tag, BiConsumer<String, String> imageNameHashCallback)
             throws Exception {
-        Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
         String imageName = createImageName(tag);
         RegistryImage registryImage = RegistryImage.named(imageName);
         if (credential != null) {
@@ -136,10 +134,12 @@ public class ContainerRegistryDeployer {
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
+                .addEventHandler(LogEvent.class, logEvent -> Log.infof(logEvent.getMessage()))
                 .setAllowInsecureRegistries(insecure);
         Log.infof("Deploying pre build image %s", imageName);
 
-        JibContainerBuilder containerBuilder = Jib.from(baseImage)
+        // TODO: Change from to Jib.fromScratch(). Using micro to allow easy examination of pre-build-images
+        JibContainerBuilder containerBuilder = Jib.from("registry.access.redhat.com/ubi8-micro:latest")
                 .setFormat(ImageFormat.OCI)
                 .addLabel("quay.expires-after", "24h"); //we don't want to keep these around forever, they are an intermediate step
 
@@ -163,7 +163,6 @@ public class ContainerRegistryDeployer {
             }
 
             containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
-            Log.debugf("Image %s created", imageName);
             var result = containerBuilder.containerize(containerizer);
 
             if (imageNameHashCallback != null) {
@@ -175,7 +174,6 @@ public class ContainerRegistryDeployer {
     public void deployHermeticPreBuildImage(String baseImage, Path buildArtifactsPath, Path repositoryPath,
             String imageSourcePath, String tag,
             BiConsumer<String, String> imageNameHashCallback) throws Exception {
-        Log.debugf("Using Container registry %s:%d/%s/%s", host, port, owner, repository);
         String imageName = createImageName(tag);
         RegistryImage registryImage = RegistryImage.named(imageName);
         if (credential != null) {
@@ -183,6 +181,7 @@ public class ContainerRegistryDeployer {
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
+                .addEventHandler(LogEvent.class, logEvent -> Log.infof(logEvent.getMessage()))
                 .setAllowInsecureRegistries(insecure);
         Log.infof("Deploying hermetic pre build image %s", imageName);
 
@@ -208,7 +207,6 @@ public class ContainerRegistryDeployer {
             }
         });
         containerBuilder.addFileEntriesLayer(layerConfigurationBuilder.build());
-        Log.debugf("Image %s created", imageName);
         var result = containerBuilder.containerize(containerizer);
 
         if (imageNameHashCallback != null) {
@@ -228,6 +226,7 @@ public class ContainerRegistryDeployer {
         }
         Containerizer containerizer = Containerizer
                 .to(registryImage)
+                .addEventHandler(LogEvent.class, logEvent -> Log.infof(logEvent.getMessage()))
                 .withAdditionalTag(imageId)
                 .setAllowInsecureRegistries(insecure);
         Log.infof("Deploying base image %s", imageName);
@@ -247,8 +246,6 @@ public class ContainerRegistryDeployer {
         for (Path layer : layers) {
             containerBuilder = containerBuilder.addLayer(List.of(layer), imageRoot);
         }
-
-        Log.debugf("Image %s created", imageName);
 
         var result = containerBuilder.containerize(containerizer);
 

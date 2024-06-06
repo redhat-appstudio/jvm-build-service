@@ -103,9 +103,6 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
     String prependTag;
 
-    @ConfigProperty(name = "aws.profile")
-    Optional<String> awsProfile;
-
     @ConfigProperty(name = "git.deploy.token")
     Optional<String> gitToken;
 

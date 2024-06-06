@@ -17,8 +17,6 @@ import picocli.CommandLine;
         "This image is used in a later step to actually build the artifact.")
 public class DeployPreBuildImageCommand implements Runnable {
 
-    @CommandLine.Option(names = "--builder-image", required = true)
-    String builderImage;
     @CommandLine.Option(names = "--source-path", required = true)
     Path sourcePath;
     @CommandLine.Option(names = "--image-hash", required = true)
@@ -51,7 +49,7 @@ public class DeployPreBuildImageCommand implements Runnable {
                 prependTag);
         try {
             DeployCommand.cleanBrokenSymlinks(sourcePath);
-            deployer.deployPreBuildImage(builderImage, sourcePath, imageSourcePath, imageName,
+            deployer.deployPreBuildImage(sourcePath, imageSourcePath, imageName,
                     new BiConsumer<String, String>() {
                         @Override
                         public void accept(String name, String hash) {
