@@ -5,7 +5,7 @@ COPY ./ .
 
 RUN mvn -V -B package -pl cli -am -DskipTests
 
-FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:1431c7b8b4ebe450d2ad67029b0310c93ca878224ac0917818ea93ba50411cba
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:2778e85c6f28969c2b25998cd6e106b7215cdb7e7ca311a13ca4b6adf8545e7f
 WORKDIR /work/
 
 COPY --from=builder /work/cli/target/quarkus-app/lib/ /deployments/lib/
