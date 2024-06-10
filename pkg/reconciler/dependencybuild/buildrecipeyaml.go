@@ -62,6 +62,9 @@ var buildEntryScript string
 //go:embed scripts/hermetic-entry.sh
 var hermeticBuildEntryScript string
 
+//go:embed scripts/Dockerfile.build-trusted-artifacts
+var buildTrustedArtifacts string
+
 func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
 	zero := int64(0)
 	tagArgs := tagCommands(jbsConfig)
@@ -328,6 +331,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		}
 	}
 
+	fmt.Printf("### createPipelineSpec::prebuild size %d \n", len(db.Status.PreBuildImages))
+	fmt.Printf("### createPipelineSpec::recipe image %s \n ", recipe.Image)
+	fmt.Printf("### createPipelineSpec::recipe buildTrusted %s \n ", strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]))
+
 	buildTask := tektonpipeline.TaskSpec{
 		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
@@ -342,18 +349,23 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		}...),
 		Steps: []tektonpipeline.Step{
 			{
-				Name:            "establish-source",
-				Image:           "$(params." + PreBuildImageDigest + ")",
-				ImagePullPolicy: v1.PullAlways,
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
+				Name:            "restore-pre-build-source",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Script:          "echo 'Copying source to workspace'\ncp -r -a " + OriginalContentPath + "/* $(workspaces.source.path)",
+				Env:             secretVariables,
+				Script: fmt.Sprintf(`echo ""Restoring source to workspace""
+echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+mv ~/config.json ~/.docker/config.json
+echo "### DEBUG : Final config.json is:"
+cat ~/.docker/config.json 2> /dev/null
+use-archive $(params.%s)=$(workspaces.source.path)`, PreBuildImageDigest),
 			},
 			{
 				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 				Name:            "build",
 				Image:           recipe.Image,
-				ImagePullPolicy: v1.PullAlways,
+				ImagePullPolicy: pullPolicy,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
@@ -364,6 +376,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				Args:   []string{"$(params.GOALS[*])"},
 				Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
 			},
+			// TODO: Need to split verify-deploy up as the DeployCommand does several things including a tag deploy
 			{
 				Name:            "verify-deploy-and-check-for-contaminates",
 				Image:           buildRequestProcessorImage,
@@ -509,7 +522,7 @@ cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath)
 				},
 				{
 					Name:            "create-pre-build-image",
-					Image:           buildRequestProcessorImage,
+					Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
 					ImagePullPolicy: pullPolicy,
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Env:             secretVariables,
@@ -517,7 +530,7 @@ cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath)
 						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
-					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preBuildImageArgs),
+					Script: preBuildImageArgs,
 				},
 				{
 					Name:            "create-pre-build-source",
@@ -738,16 +751,16 @@ func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, []string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
-	preBuildImageArgs := []string{
-		"deploy-pre-build-image",
-		"--source-path=$(workspaces.source.path)",
-		"--image-source-path=" + OriginalContentPath,
-		"--image-name=" + preBuildImageTag,
-		"--image-hash=$(results." + PreBuildImageDigest + ".path)",
-	}
+	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json
+	// so merge with any existing one before running the tooling.
+	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
+echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+mv ~/config.json ~/.docker/config.json
+create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PreBuildImageDigest)
+	fmt.Printf("### got prebuildimageargs %s\n", preBuildImageArgs)
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
 	hermeticImageId := imageId + "-hermetic"
 
@@ -774,7 +787,6 @@ func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 	registryArgs := registryArgs(jbsConfig)
 	deployArgs = append(deployArgs, registryArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
-	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
 
 	gitArgs := gitArgs(jbsConfig, db)
 	deployArgs = append(deployArgs, gitArgs...)
@@ -814,6 +826,42 @@ func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 	tagArgs = append(tagArgs, "$(params.GAVS)")
 
 	return tagArgs
+}
+
+// This effectively duplicates the defaults from DeployPreBuildImageCommand.java
+func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag string) string {
+
+	imageRegistry := jbsConfig.ImageRegistry()
+	var registryArgs strings.Builder
+	if imageRegistry.Host != "" {
+		registryArgs.WriteString(imageRegistry.Host)
+	} else {
+		registryArgs.WriteString("quay.io")
+	}
+	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
+		registryArgs.WriteString(imageRegistry.Port)
+	} else {
+		// TODO: Passing a default port causes problems with select-oci-auth.sh
+		//    https://github.com/konflux-ci/build-trusted-artifacts/pull/101
+		//    registryArgs.WriteString(":443")
+		// TODO: Do we need a default port?
+	}
+	registryArgs.WriteString("/")
+	if imageRegistry.Owner != "" {
+		registryArgs.WriteString(imageRegistry.Owner)
+	} else {
+		// TODO: Should we keep the owner defaulted as 'hacbs' ? I think this is legacy and should be removed?
+		registryArgs.WriteString("hacbs")
+	}
+	registryArgs.WriteString("/")
+	if imageRegistry.Repository != "" {
+		registryArgs.WriteString(imageRegistry.Repository)
+	} else {
+		registryArgs.WriteString("artifact-deployments")
+	}
+	registryArgs.WriteString(":")
+	registryArgs.WriteString(prependTagToImage(preBuildImageTag, imageRegistry.PrependTag))
+	return registryArgs.String()
 }
 
 func registryArgs(jbsConfig *v1alpha1.JBSConfig) []string {
@@ -897,15 +945,25 @@ func gitArgs(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []stri
 	return gitArgs
 }
 
-// This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
+// This is similar to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
 func prependTagToImage(imageId string, prependTag string) string {
 	i := strings.LastIndex(imageId, ":")
-	slice := imageId[0:i]
-	tag := prependTag + "_" + imageId[i+1:]
+	var slice, tag string
+	if i != -1 {
+		slice = imageId[0:i] + ":"
+		tag = prependTag + "_" + imageId[i+1:]
+	} else {
+		slice = ""
+		if prependTag != "" {
+			tag = prependTag + "_" + tag
+		} else {
+			tag = imageId
+		}
+	}
 	if len(tag) > 128 {
 		tag = tag[0:128]
 	}
-	imageId = slice + ":" + tag
+	imageId = slice + tag
 	return imageId
 }
 
