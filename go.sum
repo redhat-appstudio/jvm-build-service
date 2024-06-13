@@ -323,8 +323,8 @@ github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.17.2 h1:RlWWUY/Dr4fL8qk9YG7DTZ7PDgME2V4csBXA8L/ixi4=
 github.com/klauspost/compress v1.17.2/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
-github.com/konflux-ci/image-controller v0.0.0-20240517120231-4f18f640e7d9 h1:SP8frApdLgyD7GOiiQs8fEAjiqEuZQSqiCq+lEUUK84=
-github.com/konflux-ci/image-controller v0.0.0-20240517120231-4f18f640e7d9/go.mod h1:j++ZId8WNY0Vo6GvBGYtQCICnzy0ERHCM8Eol2lE8mA=
+github.com/konflux-ci/image-controller v0.0.0-20240612103453-659966f94667 h1:uRi6rW223RZmShI+YVGd9ugDBFgqmBWU5RWT/WeccA4=
+github.com/konflux-ci/image-controller v0.0.0-20240612103453-659966f94667/go.mod h1:a/94a7ohVwjq6/MayAi15Ylcahl+zzkAzVeVFak/PUQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/konsorten/go-windows-terminal-sequences v1.0.3/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=

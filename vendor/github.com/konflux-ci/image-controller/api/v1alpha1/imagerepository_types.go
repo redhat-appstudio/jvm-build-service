@@ -29,6 +29,10 @@ type ImageRepositorySpec struct {
 	// Credentials management.
 	// +optional
 	Credentials *ImageCredentials `json:"credentials,omitempty"`
+
+	// Notifications defines configuration for image repository notifications.
+	// +optional
+	Notifications []Notifications `json:"notifications,omitempty"`
 }
 
 // ImageParameters describes requested image repository configuration.
@@ -62,6 +66,37 @@ type ImageCredentials struct {
 	RegenerateToken *bool `json:"regenerate-token,omitempty"`
 }
 
+type Notifications struct {
+	Title string `json:"title,omitempty"`
+	// +kubebuilder:validation:Enum=repo_push
+	Event NotificationEvent `json:"event,omitempty"`
+	// +kubebuilder:validation:Enum=email;webhook
+	Method NotificationMethod `json:"method,omitempty"`
+	Config NotificationConfig `json:"config,omitempty"`
+}
+
+type NotificationEvent string
+
+const (
+	NotificationEventRepoPush NotificationEvent = "repo_push"
+)
+
+type NotificationMethod string
+
+const (
+	NotificationMethodEmail   NotificationMethod = "email"
+	NotificationMethodWebhook NotificationMethod = "webhook"
+)
+
+type NotificationConfig struct {
+	// Email is the email address to send notifications to.
+	// +optional
+	Email string `json:"email,omitempty"`
+	// Webhook is the URL to send notifications to.
+	// +optional
+	Url string `json:"url,omitempty"`
+}
+
 // ImageRepositoryStatus defines the observed state of ImageRepository
 type ImageRepositoryStatus struct {
 	// State shows if image repository could be used.
@@ -79,6 +114,10 @@ type ImageRepositoryStatus struct {
 
 	// Credentials contain information related to image repository credentials.
 	Credentials CredentialsStatus `json:"credentials,omitempty"`
+
+	// Notifications shows the status of the notifications configuration.
+	// +optional
+	Notifications []NotificationStatus `json:"notifications,omitempty"`
 }
 
 type ImageRepositoryState string
@@ -117,13 +156,12 @@ type CredentialsStatus struct {
 	// PullRobotAccountName is present only if ImageRepository has labels that connect it to Application and Component.
 	// Holds name of the quay robot account with real (pull only) permissions from the generated repository.
 	PullRobotAccountName string `json:"pull-robot-account,omitempty"`
+}
 
-	// PushRemoteSecretName holds name of RemoteSecret object that manages push Secret and its linking to appstudio-pipeline Service Account.
-	PushRemoteSecretName string `json:"push-remote-secret,omitempty"`
-
-	// PullRemoteSecretName is present only if ImageRepository has labels that connect it to Application and Component.
-	// Holds the name of the RemoteSecret object that manages pull Secret.
-	PullRemoteSecretName string `json:"pull-remote-secret,omitempty"`
+// NotificationStatus shows the status of the notification configuration.
+type NotificationStatus struct {
+	Title string `json:"title,omitempty"`
+	UUID  string `json:"uuid,omitempty"`
 }
 
 //+kubebuilder:object:root=true
