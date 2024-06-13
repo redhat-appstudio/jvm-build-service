@@ -200,6 +200,7 @@ spec:
                         enforceVersion:
                           type: string
                         image:
+                          description: The base builder image (ubi7 / ubi8)
                           type: string
                         javaVersion:
                           type: string
@@ -411,6 +412,7 @@ spec:
                     enforceVersion:
                       type: string
                     image:
+                      description: The base builder image (ubi7 / ubi8)
                       type: string
                     javaVersion:
                       type: string

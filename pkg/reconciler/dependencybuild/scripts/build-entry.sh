@@ -3,7 +3,6 @@ set -o verbose
 set -eu
 set -o pipefail
 
-cp -r -a  /original-content/* $(workspaces.source.path)
 cd $(workspaces.source.path)/workspace
 
 if [ -n "$(params.CONTEXT_DIR)" ]
