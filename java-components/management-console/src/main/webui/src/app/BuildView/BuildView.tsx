@@ -391,6 +391,7 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
                   target="_blank">
                   {selectBuildAttempt.outputImage}
                 </a>
+                ( and {selectBuildAttempt.outputImageDigest})
               </ListItem>
             </List>
           </DescriptionList>

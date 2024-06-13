@@ -12,6 +12,7 @@ import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDepl
 
 import picocli.CommandLine;
 
+@Deprecated
 @CommandLine.Command(name = "deploy-pre-build-image", description = "This command will deploy a builder image containing the checked out source to an image registry."
         +
         "This image is used in a later step to actually build the artifact.")

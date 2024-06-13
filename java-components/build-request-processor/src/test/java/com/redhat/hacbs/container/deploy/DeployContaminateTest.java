@@ -18,7 +18,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.logging.LogRecord;
 
-import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Assertions;
@@ -64,7 +63,7 @@ public class DeployContaminateTest {
         Path source = Files.createTempDirectory("hacbs");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        TestDeployment testDeployment = new TestDeployment(null, resultsUpdater);
+        DeployCommand testDeployment = new DeployCommand(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
         testDeployment.imageId = "test-image";
         testDeployment.scmUri = REPO;
@@ -91,7 +90,7 @@ public class DeployContaminateTest {
         Path source = Files.createTempDirectory("hacbs");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        TestDeployment testDeployment = new TestDeployment(null, resultsUpdater);
+        DeployCommand testDeployment = new DeployCommand(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
         testDeployment.buildId = "some-id";
         testDeployment.imageId = "test-image";
@@ -153,17 +152,5 @@ public class DeployContaminateTest {
         }
 
         return artifacts;
-    }
-
-    public static class TestDeployment extends DeployCommand {
-        public TestDeployment(BeanManager beanManager, ResultsUpdater resultsUpdater) {
-            super(beanManager, resultsUpdater);
-        }
-
-        @Override
-        protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs)
-                throws Exception {
-            System.out.println("Skipping doDeployment for " + deploymentPath + " from " + sourcePath);
-        }
     }
 }

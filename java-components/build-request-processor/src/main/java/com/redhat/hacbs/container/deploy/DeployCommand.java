@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -34,7 +33,6 @@ import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
-import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDeployer;
 import com.redhat.hacbs.container.deploy.git.Git;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.util.FileUtil;
@@ -44,7 +42,6 @@ import com.redhat.hacbs.resources.util.HashUtil;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 @CommandLine.Command(name = "deploy")
 public class DeployCommand implements Runnable {
 
@@ -82,27 +79,11 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(required = true, names = "--scm-commit")
     String commit;
 
-    @CommandLine.Option(names = "--registry-host", defaultValue = "quay.io")
-    String host;
-    @CommandLine.Option(names = "--registry-port", defaultValue = "443")
-    int port;
-    @CommandLine.Option(names = "--registry-owner", defaultValue = "hacbs")
-    String owner;
-    @ConfigProperty(name = "registry.token")
-    Optional<String> token;
-    @CommandLine.Option(names = "--registry-repository", defaultValue = "artifact-deployments")
-    String repository;
-    @CommandLine.Option(names = "--registry-insecure", defaultValue = "false")
-    boolean insecure;
-
     @CommandLine.Option(names = "--image-id")
     String imageId;
 
     @CommandLine.Option(names = "--hermetic")
     boolean hermetic;
-
-    @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
-    String prependTag;
 
     @ConfigProperty(name = "git.deploy.token")
     Optional<String> gitToken;
@@ -124,8 +105,6 @@ public class DeployCommand implements Runnable {
 
     @CommandLine.Option(names = "--build-id")
     String buildId;
-    // Testing only ; used to disable image deployment
-    protected boolean imageDeployment = true;
 
     protected String imageName;
     protected String imageDigest;
@@ -292,18 +271,21 @@ public class DeployCommand implements Runnable {
             //we still deploy, but without the contaminates
             // This means the build failed to produce any deployable output.
             // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
-            if (!gavs.isEmpty()) {
-                try {
-                    cleanBrokenSymlinks(sourcePath);
-                    doDeployment(sourcePath, logsPath, gavs);
-                } catch (Throwable t) {
-                    Log.error("Deployment failed", t);
-                    flushLogs();
-                    throw t;
-                }
-            } else {
-                Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
-            }
+            // TODO: ### Remove
+            Log.infof("### Will be deploying source %s logs %s and gavs %s (deploymentPath %s)", sourcePath, logsPath, gavs, deploymentPath );
+//            if (!gavs.isEmpty()) {
+//                try {
+//                    cleanBrokenSymlinks(sourcePath);
+//                    doDeployment(sourcePath, logsPath, gavs);
+//                } catch (Throwable t) {
+//                    Log.error("Deployment failed", t);
+//                    flushLogs();
+//                    throw t;
+//                }
+//            } else {
+//                Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
+//            }
+            Log.warnf("### imageName %s imageDigest %s ", imageName, imageDigest);
             if (imageDigest != null) {
                 System.out.println(IMAGE_DIGEST_OUTPUT + "sha256:" + imageDigest);
             }
@@ -319,8 +301,6 @@ public class DeployCommand implements Runnable {
                 resultsUpdater.updateResults(taskRun, Map.of(
                         "CONTAMINANTS", serialisedContaminants,
                         "DEPLOYED_RESOURCES", String.join(",", gavs),
-                        "IMAGE_URL", imageName == null ? "" : imageName,
-                        "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest,
                         "GIT_ARCHIVE", serialisedGitArchive));
             }
         } catch (Exception e) {
@@ -380,27 +360,6 @@ public class DeployCommand implements Runnable {
 
     }
 
-    protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs)
-            throws Exception {
-        if (imageDeployment) {
-            ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
-                    insecure, prependTag);
-            deployer.deployArchive(deploymentPath, sourcePath, logsPath, gavs, imageId, buildId,
-                    new BiConsumer<String, String>() {
-                        @Override
-                        public void accept(String s, String hash) {
-                            imageName = s;
-                            imageDigest = hash;
-                        }
-                    });
-        }
-    }
-
-    private void flushLogs() {
-        System.err.flush();
-        System.out.flush();
-    }
-
     private Optional<GAV> getGav(String entryName) {
         if (entryName.startsWith("." + File.separator)) {
             entryName = entryName.substring(2);
@@ -418,5 +377,4 @@ public class DeployCommand implements Runnable {
         }
         return Optional.empty();
     }
-
 }

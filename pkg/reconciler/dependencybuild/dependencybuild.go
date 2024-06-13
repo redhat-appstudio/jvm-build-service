@@ -669,7 +669,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		run.Complete = true
 		run.Succeeded = pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 
-		//try and save the build build image name
+		//try and save the build image name
 		//this is a big perfomance optimisation, as it can be re-used on subsequent attempts
 		alreadyExists := false
 		for _, i := range db.Status.PreBuildImages {
@@ -812,6 +812,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				}
 			}
 
+			fmt.Printf("### Got pipeline run results of image %s and digest %s \n ", image, digest)
 			run.Results = &v1alpha1.BuildPipelineRunResults{
 				Image:               image,
 				ImageDigest:         digest,
@@ -1371,8 +1372,9 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		gavs += attempt.Build.Results.Gavs[i]
 	}
 
+	fmt.Printf("### handleStateDeploying and setting deployed params image to %s digest %s and gavs to %s", attempt.Build.Results.Image, attempt.Build.Results.ImageDigest, gavs)
 	paramValues := []tektonpipeline.Param{
-		{Name: DeployedImageDigestParam, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.ImageDigest}},
+		{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.ImageDigest}},
 		{Name: GavsParam, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: gavs}},
 	}
 
@@ -1392,7 +1394,9 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 	}
 
 	pr.Spec.Params = paramValues
-	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{}
+	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
+		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
+	}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})

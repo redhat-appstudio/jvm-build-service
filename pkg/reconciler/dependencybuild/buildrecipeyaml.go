@@ -29,7 +29,6 @@ const (
 	MavenArtifactsPath          = "/maven-artifacts"
 	PreBuildImageDigest         = "PRE_BUILD_IMAGE_DIGEST"
 	HermeticPreBuildImageDigest = "HERMETIC_PRE_BUILD_IMAGE_DIGEST"
-	DeployedImageDigestParam    = "DEPLOYED_IMAGE_DIGEST"
 	GavsParam                   = "GAVS"
 )
 
@@ -76,12 +75,33 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	}
 
 	secretVariables := secretVariables(jbsConfig)
-
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
+	regUrl := registryArgsWithDefaults(jbsConfig, "")
+
+	fmt.Printf("### createDeployPipelineSpec regUrl %s", regUrl)
+
 	tagTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}},
-		Params:     []tektonpipeline.ParamSpec{{Name: "GAVS", Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigestParam, Type: tektonpipeline.ParamTypeString}},
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}, {Name: WorkspaceSource}},
+		Params:     []tektonpipeline.ParamSpec{{Name: "GAVS", Type: tektonpipeline.ParamTypeString}, {Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Steps: []tektonpipeline.Step{
+			{
+				Name:            "restore-post-build-artifacts",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				// While the manifest digest is available we need the manifest of the layer within the archive hence
+				// using 'oras manifest fetch' to extract the correct layer.
+				Script: fmt.Sprintf(`set -x
+echo "Restoring artifacts to workspace"
+echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+mv ~/config.json ~/.docker/config.json
+URL=%s
+DIGEST=$(params.%s)
+ARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[1].digest')
+use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, PipelineResultImageDigest),
+			},
+			// TODO: Could we also use the above to extract source to get the final changes from the build step? To move deploy source here?
 			{
 				Name:            "maven-deployment",
 				Image:           buildRequestProcessorImage,
@@ -94,6 +114,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				},
 				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(mavenDeployArgs),
 			},
+			// TODO: What is this actually for ?
 			{
 				Name:            "tag",
 				Image:           buildRequestProcessorImage,
@@ -110,7 +131,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	}
 
 	ps := &tektonpipeline.PipelineSpec{
-		Params: []tektonpipeline.ParamSpec{{Name: GavsParam, Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigestParam, Type: tektonpipeline.ParamTypeString}},
+		Params: []tektonpipeline.ParamSpec{{Name: GavsParam, Type: tektonpipeline.ParamTypeString}, {Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
 				Name: artifactbuild.TagTaskName,
@@ -118,15 +139,16 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 					TaskSpec: tagTask,
 				},
 				Params: []tektonpipeline.Param{
-					{Name: DeployedImageDigestParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + DeployedImageDigestParam + ")"}},
+					{Name: PipelineResultImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + PipelineResultImageDigest + ")"}},
 					{Name: GavsParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + GavsParam + ")"}},
 				},
 				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 					{Name: WorkspaceTls, Workspace: WorkspaceTls},
+					{Name: WorkspaceSource, Workspace: WorkspaceSource},
 				},
 			},
 		},
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceTls}},
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
 	return ps, nil
 }
@@ -140,7 +162,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	imageRegistry := jbsConfig.ImageRegistry()
 
-	preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, db, jbsConfig, buildId)
+	preBuildImageArgs, postBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, db, jbsConfig, buildId)
 
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
@@ -247,7 +269,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
-		"\nFROM " + preBuildImageFrom + " AS pre-build" +
 		"\nFROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
@@ -261,7 +282,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
 		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
 		"\nCOPY --from=cache /deployments/ /root/software/cache" +
-		"\nCOPY --from=pre-build /original-content/workspace /root/project/workspace" +
+		"\nRUN " + doSubstitution(gitScript, paramValues, commitTime, buildRepos) +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
 		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
@@ -357,8 +378,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				Script: fmt.Sprintf(`echo ""Restoring source to workspace""
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
 mv ~/config.json ~/.docker/config.json
-echo "### DEBUG : Final config.json is:"
-cat ~/.docker/config.json 2> /dev/null
 use-archive $(params.%s)=$(workspaces.source.path)`, PreBuildImageDigest),
 			},
 			{
@@ -376,7 +395,19 @@ use-archive $(params.%s)=$(workspaces.source.path)`, PreBuildImageDigest),
 				Args:   []string{"$(params.GOALS[*])"},
 				Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
 			},
-			// TODO: Need to split verify-deploy up as the DeployCommand does several things including a tag deploy
+			// TODO: ### Need to split verify-deploy up as the DeployCommand does several things including a tag deploy
+			//    DeployCommand currently:
+			//			Pushes source change
+			//			Checks for contaminants
+			//			Collects set of GAVs to deploy
+			//			Generate SBOM
+			//			Push archive of source , logs, and GAVS to Quay
+			//    We want to keep all previous but for the last.
+			//
+			//    Issue is the gav list is all gavs under /workspace/source/artifacts (-> /artifacts) BUT with contaminants removed
+			//    Other paths are source /workspace/source/source (-> /source) logs /workspace/source/logs (-> /logs)
+			//
+			//    Jib currently adds some labels; create-oci.sh doesn't support that.
 			{
 				Name:            "verify-deploy-and-check-for-contaminates",
 				Image:           buildRequestProcessorImage,
@@ -388,6 +419,19 @@ use-archive $(params.%s)=$(workspaces.source.path)`, PreBuildImageDigest),
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
 				Script: buildTaskScript,
+			},
+			// TODO: ### Need a task after this like create-pre-build-image to archive the source,logs and sbom (in multiple layers)
+			{
+				Name:            "create-post-build-image",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				ComputeResources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: postBuildImageArgs,
 			},
 		},
 	}
@@ -751,7 +795,7 @@ func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, []string, []string, []string, []string, []string) {
+func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, string, []string, []string, []string, []string, []string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json
@@ -760,6 +804,7 @@ func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
 mv ~/config.json ~/.docker/config.json
 create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PreBuildImageDigest)
+
 	fmt.Printf("### got prebuildimageargs %s\n", preBuildImageArgs)
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
 	hermeticImageId := imageId + "-hermetic"
@@ -780,12 +825,29 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registr
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
+
+	// postBuildImageTag := imageId + "-pre-build-image"
+	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json
+	// so merge with any existing one before running the tooling.
+	// [/workspace/source/source, /workspace/source/logs, /workspace/source/artifacts]
+	regUrl := registryArgsWithDefaults(jbsConfig, buildId)
+	postBuildImageArgs := fmt.Sprintf(`set -x
+	echo "Creating post-build-image archive"
+	echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+	mv ~/config.json ~/.docker/config.json
+	IMGURL=%s
+	create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/artifacts=$(workspaces.source.path)/artifacts /tmp/logs=$(workspaces.source.path)/logs
+	IMGDIGEST=$(oras resolve $IMGURL)
+	echo "$IMGURL" >> $(results.%s.path)
+	echo "$IMGDIGEST" >> $(results.%s.path)
+	echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, regUrl, PipelineResultImage, PipelineResultImageDigest)
+	fmt.Printf("### got postBuildImageArgs %s\n", postBuildImageArgs)
+
 	hermeticDeployArgs := append([]string{}, deployArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
 	deployArgs = append(deployArgs, "--image-id="+imageId)
 
 	registryArgs := registryArgs(jbsConfig)
-	deployArgs = append(deployArgs, registryArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
 
 	gitArgs := gitArgs(jbsConfig, db)
@@ -812,14 +874,14 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registr
 	}
 	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
-	return preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
+	return preBuildImageArgs, postBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
 }
 
 func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 
 	tagArgs := []string{
 		"tag-container",
-		"--image-digest=$(params." + DeployedImageDigestParam + ")",
+		"--image-digest=$(params." + PipelineResultImageDigest + ")",
 	}
 	registryArgs := registryArgs(jbsConfig)
 	tagArgs = append(tagArgs, registryArgs...)
@@ -840,17 +902,15 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 	}
 	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
 		registryArgs.WriteString(imageRegistry.Port)
-	} else {
-		// TODO: Passing a default port causes problems with select-oci-auth.sh
-		//    https://github.com/konflux-ci/build-trusted-artifacts/pull/101
-		//    registryArgs.WriteString(":443")
-		// TODO: Do we need a default port?
 	}
+	// 'else' :
+	// No need to pass a default port (of 443) and its not supported by select-oci-auth.sh according
+	// to the tests in https://github.com/konflux-ci/build-trusted-artifacts/pull/103
 	registryArgs.WriteString("/")
 	if imageRegistry.Owner != "" {
 		registryArgs.WriteString(imageRegistry.Owner)
 	} else {
-		// TODO: Should we keep the owner defaulted as 'hacbs' ? I think this is legacy and should be removed?
+		// TODO: Should we keep the owner defaulted as 'hacbs' (or even jbs) ? I think this is legacy and should be removed?
 		registryArgs.WriteString("hacbs")
 	}
 	registryArgs.WriteString("/")
@@ -859,8 +919,11 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 	} else {
 		registryArgs.WriteString("artifact-deployments")
 	}
-	registryArgs.WriteString(":")
-	registryArgs.WriteString(prependTagToImage(preBuildImageTag, imageRegistry.PrependTag))
+	// If no tag (or digest) is passed in that allows just the host:owner:repo to be reconstructed.
+	if preBuildImageTag != "" {
+		registryArgs.WriteString(":")
+		registryArgs.WriteString(prependTagToImage(preBuildImageTag, imageRegistry.PrependTag))
+	}
 	return registryArgs.String()
 }
 
@@ -893,28 +956,8 @@ func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 
 	deployArgs := []string{
 		"maven-repository-deploy",
-		"--image-digest=$(params." + DeployedImageDigestParam + ")",
+		"--directory=$(workspaces.source.path)/artifacts",
 	}
-
-	imageRegistry := jbsConfig.ImageRegistry()
-	registryArgs := make([]string, 0)
-	if imageRegistry.Host != "" {
-		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
-	}
-	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
-		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
-	}
-	if imageRegistry.Owner != "" {
-		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
-	}
-	if imageRegistry.Repository != "" {
-		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
-	}
-
-	if imageRegistry.Insecure {
-		registryArgs = append(registryArgs, "--registry-insecure")
-	}
-	deployArgs = append(deployArgs, registryArgs...)
 
 	mavenArgs := make([]string, 0)
 	if jbsConfig.Spec.MavenDeployment.Repository != "" {
