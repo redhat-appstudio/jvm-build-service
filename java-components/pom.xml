@@ -81,6 +81,7 @@
         <module>cli</module>
         <module>common-tools</module>
         <module>common-images</module>
+        <module>domainproxy</module>
     </modules>
 
     <dependencyManagement>
