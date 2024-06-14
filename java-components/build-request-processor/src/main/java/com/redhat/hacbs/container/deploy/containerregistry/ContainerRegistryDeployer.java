@@ -93,12 +93,17 @@ public class ContainerRegistryDeployer {
         createImages(imageData, sourcePath, logsPath, imageId, buildId, imageNameHashCallback);
     }
 
+    @Deprecated
     public void tagArchive(String imageDigest, List<String> gavNames) throws Exception {
         if (gavNames.isEmpty()) {
             throw new RuntimeException("Empty GAV list");
         }
 
         Deque<GAV> gavs = new ArrayDeque<>();
+        Log.warnf("### Gavs we would be tagging with %s ", gavNames);
+        for ( var g : gavNames) {
+            Log.warnf("### Parsed Gavs we would be tagging with %s ", GAV.parse(g).getTag());
+        }
         for (var i : gavNames) {
             gavs.push(GAV.parse(i));
         }

@@ -2,6 +2,8 @@ package dependencybuild
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -1365,17 +1367,19 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 	}
 	attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
 	gavs := ""
+	shaCalc := sha256.New()
 	for i := range attempt.Build.Results.Gavs {
 		if i != 0 {
 			gavs += ","
 		}
-		gavs += attempt.Build.Results.Gavs[i]
+		// Same as DigestUtils.sha256Hex(String.format(GAV_FORMAT, groupId, artifactId, version))
+		shaCalc.Reset()
+		shaCalc.Write([]byte(attempt.Build.Results.Gavs[i]))
+		gavs += hex.EncodeToString(shaCalc.Sum(nil))
 	}
 
-	fmt.Printf("### handleStateDeploying and setting deployed params image to %s digest %s and gavs to %s", attempt.Build.Results.Image, attempt.Build.Results.ImageDigest, gavs)
 	paramValues := []tektonpipeline.Param{
 		{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.ImageDigest}},
-		{Name: GavsParam, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: gavs}},
 	}
 
 	systemConfig := v1alpha1.SystemConfig{}
@@ -1388,7 +1392,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage)
+	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage, gavs)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

@@ -9,6 +9,7 @@ import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDepl
 
 import picocli.CommandLine;
 
+@Deprecated
 @CommandLine.Command(name = "tag-container")
 public class ContainerTagCommand implements Runnable {
 

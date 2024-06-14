@@ -50,7 +50,6 @@ public class DeployCommand implements Runnable {
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";
     private static final Set<String> ALLOWED_CONTAMINANTS = Set.of("-tests.jar");
-//    public static final String IMAGE_DIGEST_OUTPUT = "Image Digest: ";
     public static final String BUILD_ID = "build-id";
     final BeanManager beanManager;
     final ResultsUpdater resultsUpdater;
@@ -263,7 +262,7 @@ public class DeployCommand implements Runnable {
             }
             for (var i : contaminatedGavs.entrySet()) {
                 if (!i.getValue().getAllowed()) {
-                    gavs.removeAll(i.getValue().getContaminatedArtifacts());
+                    i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
                 }
             }
             generateBuildSbom();
@@ -271,24 +270,6 @@ public class DeployCommand implements Runnable {
             //we still deploy, but without the contaminates
             // This means the build failed to produce any deployable output.
             // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
-            // TODO: ### Remove
-            Log.infof("### Will be deploying source %s logs %s and gavs %s (deploymentPath %s)", sourcePath, logsPath, gavs, deploymentPath );
-//            if (!gavs.isEmpty()) {
-//                try {
-//                    cleanBrokenSymlinks(sourcePath);
-//                    doDeployment(sourcePath, logsPath, gavs);
-//                } catch (Throwable t) {
-//                    Log.error("Deployment failed", t);
-//                    flushLogs();
-//                    throw t;
-//                }
-//            } else {
-//                Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
-//            }
-//            Log.warnf("### imageName %s imageDigest %s ", imageName, imageDigest);
-//            if (imageDigest != null) {
-//                System.out.println(IMAGE_DIGEST_OUTPUT + "sha256:" + imageDigest);
-//            }
             if (taskRun != null) {
                 List<Contaminates> newContaminates = new ArrayList<>();
                 for (var i : contaminatedGavs.entrySet()) {

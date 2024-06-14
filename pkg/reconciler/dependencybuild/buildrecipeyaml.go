@@ -29,7 +29,6 @@ const (
 	MavenArtifactsPath          = "/maven-artifacts"
 	PreBuildImageDigest         = "PRE_BUILD_IMAGE_DIGEST"
 	HermeticPreBuildImageDigest = "HERMETIC_PRE_BUILD_IMAGE_DIGEST"
-	GavsParam                   = "GAVS"
 )
 
 //go:embed scripts/maven-build.sh
@@ -64,9 +63,8 @@ var hermeticBuildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
-func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string, gavs string) (*tektonpipeline.PipelineSpec, error) {
 	zero := int64(0)
-	tagArgs := tagCommands(jbsConfig)
 	mavenDeployArgs := mavenDeployCommands(jbsConfig)
 
 	limits, err := memoryLimits(jbsConfig, 0)
@@ -78,11 +76,11 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	regUrl := registryArgsWithDefaults(jbsConfig, "")
 
-	fmt.Printf("### createDeployPipelineSpec regUrl %s", regUrl)
+	fmt.Printf("### createDeployPipelineSpec regUrl '%s' and gavs '%s' \n", regUrl, gavs)
 
 	tagTask := tektonpipeline.TaskSpec{
 		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}, {Name: WorkspaceSource}},
-		Params:     []tektonpipeline.ParamSpec{{Name: "GAVS", Type: tektonpipeline.ParamTypeString}, {Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
+		Params:     []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Steps: []tektonpipeline.Step{
 			{
 				Name:            "restore-post-build-artifacts",
@@ -92,8 +90,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				Env:             secretVariables,
 				// While the manifest digest is available we need the manifest of the layer within the archive hence
 				// using 'oras manifest fetch' to extract the correct layer.
-				Script: fmt.Sprintf(`set -x
-echo "Restoring artifacts to workspace"
+				Script: fmt.Sprintf(`echo "Restoring artifacts to workspace"
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
 mv ~/config.json ~/.docker/config.json
 URL=%s
@@ -114,24 +111,24 @@ use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, Pipe
 				},
 				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(mavenDeployArgs),
 			},
-			// TODO: What is this actually for ?
 			{
 				Name:            "tag",
-				Image:           buildRequestProcessorImage,
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
-				ComputeResources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(tagArgs),
+				// gavs is a comma separated list so split it into spaces
+				Script: fmt.Sprintf(`echo "Tagging for GAVs"
+echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+mv ~/config.json ~/.docker/config.json
+GAVS=%s
+oras tag --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, regUrl, PipelineResultImageDigest),
 			},
 		},
 	}
 
 	ps := &tektonpipeline.PipelineSpec{
-		Params: []tektonpipeline.ParamSpec{{Name: GavsParam, Type: tektonpipeline.ParamTypeString}, {Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
+		Params: []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
 				Name: artifactbuild.TagTaskName,
@@ -140,7 +137,6 @@ use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, Pipe
 				},
 				Params: []tektonpipeline.Param{
 					{Name: PipelineResultImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + PipelineResultImageDigest + ")"}},
-					{Name: GavsParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + GavsParam + ")"}},
 				},
 				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 					{Name: WorkspaceTls, Workspace: WorkspaceTls},
@@ -420,7 +416,6 @@ use-archive $(params.%s)=$(workspaces.source.path)`, PreBuildImageDigest),
 				},
 				Script: buildTaskScript,
 			},
-			// TODO: ### Need a task after this like create-pre-build-image to archive the source,logs and sbom (in multiple layers)
 			{
 				Name:            "create-post-build-image",
 				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
@@ -826,22 +821,19 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registr
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
 
-	// postBuildImageTag := imageId + "-pre-build-image"
 	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json
 	// so merge with any existing one before running the tooling.
 	// [/workspace/source/source, /workspace/source/logs, /workspace/source/artifacts]
 	regUrl := registryArgsWithDefaults(jbsConfig, buildId)
-	postBuildImageArgs := fmt.Sprintf(`set -x
-	echo "Creating post-build-image archive"
-	echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
-	mv ~/config.json ~/.docker/config.json
-	IMGURL=%s
-	create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/artifacts=$(workspaces.source.path)/artifacts /tmp/logs=$(workspaces.source.path)/logs
-	IMGDIGEST=$(oras resolve $IMGURL)
-	echo "$IMGURL" >> $(results.%s.path)
-	echo "$IMGDIGEST" >> $(results.%s.path)
-	echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, regUrl, PipelineResultImage, PipelineResultImageDigest)
-	fmt.Printf("### got postBuildImageArgs %s\n", postBuildImageArgs)
+	postBuildImageArgs := fmt.Sprintf(`echo "Creating post-build-image archive"
+echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+mv ~/config.json ~/.docker/config.json
+IMGURL=%s
+create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/artifacts=$(workspaces.source.path)/artifacts /tmp/logs=$(workspaces.source.path)/logs
+IMGDIGEST=$(oras resolve $IMGURL)
+echo -n "$IMGURL" >> $(results.%s.path)
+echo -n "$IMGDIGEST" >> $(results.%s.path)
+echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, regUrl, PipelineResultImage, PipelineResultImageDigest)
 
 	hermeticDeployArgs := append([]string{}, deployArgs...)
 	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
@@ -875,19 +867,6 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registr
 	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
 	return preBuildImageArgs, postBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
-}
-
-func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
-
-	tagArgs := []string{
-		"tag-container",
-		"--image-digest=$(params." + PipelineResultImageDigest + ")",
-	}
-	registryArgs := registryArgs(jbsConfig)
-	tagArgs = append(tagArgs, registryArgs...)
-	tagArgs = append(tagArgs, "$(params.GAVS)")
-
-	return tagArgs
 }
 
 // This effectively duplicates the defaults from DeployPreBuildImageCommand.java
