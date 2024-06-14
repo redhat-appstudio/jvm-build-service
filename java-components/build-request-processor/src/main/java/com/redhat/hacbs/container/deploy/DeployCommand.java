@@ -105,9 +105,6 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--build-id")
     String buildId;
 
-//    protected String imageName;
-//    protected String imageDigest;
-
     public DeployCommand(BeanManager beanManager,
             ResultsUpdater resultsUpdater) {
         this.beanManager = beanManager;

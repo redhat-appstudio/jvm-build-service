@@ -76,7 +76,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	regUrl := registryArgsWithDefaults(jbsConfig, "")
 
-	fmt.Printf("### createDeployPipelineSpec regUrl '%s' and gavs '%s' \n", regUrl, gavs)
+	fmt.Printf("### createDeployPipelineSpec regUrl '%s' and gavs '%s' pullPolicy %s \n", regUrl, gavs, pullPolicy)
 
 	tagTask := tektonpipeline.TaskSpec{
 		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}, {Name: WorkspaceSource}},
@@ -85,7 +85,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 			{
 				Name:            "restore-post-build-artifacts",
 				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-				ImagePullPolicy: pullPolicy,
+				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				// While the manifest digest is available we need the manifest of the layer within the archive hence
@@ -113,7 +113,7 @@ AUTHFILE=~/config.json use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/a
 			{
 				Name:            "tag",
 				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-				ImagePullPolicy: pullPolicy,
+				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				// gavs is a comma separated list so split it into spaces
@@ -366,7 +366,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			{
 				Name:            "restore-pre-build-source",
 				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-				ImagePullPolicy: pullPolicy,
+				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				Script: fmt.Sprintf(`echo ""Restoring source to workspace""
@@ -416,7 +416,7 @@ AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, PreB
 			{
 				Name:            "create-post-build-image",
 				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-				ImagePullPolicy: pullPolicy,
+				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				ComputeResources: v1.ResourceRequirements{
@@ -559,7 +559,7 @@ cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath)
 				{
 					Name:            "create-pre-build-image",
 					Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-					ImagePullPolicy: pullPolicy,
+					ImagePullPolicy: v1.PullIfNotPresent,
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Env:             secretVariables,
 					ComputeResources: v1.ResourceRequirements{
