@@ -92,11 +92,10 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				// using 'oras manifest fetch' to extract the correct layer.
 				Script: fmt.Sprintf(`echo "Restoring artifacts to workspace"
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
-mv ~/config.json ~/.docker/config.json
 URL=%s
 DIGEST=$(params.%s)
 ARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[1].digest')
-use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, PipelineResultImageDigest),
+AUTHFILE=~/config.json use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, PipelineResultImageDigest),
 			},
 			// TODO: Could we also use the above to extract source to get the final changes from the build step? To move deploy source here?
 			{
@@ -120,9 +119,8 @@ use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, Pipe
 				// gavs is a comma separated list so split it into spaces
 				Script: fmt.Sprintf(`echo "Tagging for GAVs"
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
-mv ~/config.json ~/.docker/config.json
 GAVS=%s
-oras tag --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, regUrl, PipelineResultImageDigest),
+oras tag --registry-config ~/.config.json --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, regUrl, PipelineResultImageDigest),
 			},
 		},
 	}
@@ -373,8 +371,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				Env:             secretVariables,
 				Script: fmt.Sprintf(`echo ""Restoring source to workspace""
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
-mv ~/config.json ~/.docker/config.json
-use-archive $(params.%s)=$(workspaces.source.path)`, PreBuildImageDigest),
+AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, PreBuildImageDigest),
 			},
 			{
 				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
@@ -797,12 +794,23 @@ func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 	// so merge with any existing one before running the tooling.
 	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
-mv ~/config.json ~/.docker/config.json
-create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PreBuildImageDigest)
+AUTHFILE=~/config.json create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PreBuildImageDigest)
 
 	fmt.Printf("### got prebuildimageargs %s\n", preBuildImageArgs)
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
 	hermeticImageId := imageId + "-hermetic"
+	// TODO: ### We need to make the hermetic pre-build image similar to the one above. The complexity is that we want to base it upon
+	//    the previous image.
+	hermeticPreBuildImageArgs := []string{
+		"deploy-hermetic-pre-build-image",
+		"--source-image=$(params." + PreBuildImageDigest + ")",
+		"--image-name=" + hermeticPreBuildImageTag,
+		"--build-artifact-path=$(workspaces.source.path)/artifacts",
+		"--image-source-path=" + MavenArtifactsPath,
+		"--repository-path=$(workspaces.source.path)/build-info/",
+		"--image-hash=$(results." + HermeticPreBuildImageDigest + ".path)",
+	}
+	//	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
 	copyArtifactsArgs := []string{
 		"copy-artifacts",
@@ -827,9 +835,8 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registr
 	regUrl := registryArgsWithDefaults(jbsConfig, buildId)
 	postBuildImageArgs := fmt.Sprintf(`echo "Creating post-build-image archive"
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
-mv ~/config.json ~/.docker/config.json
 IMGURL=%s
-create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/artifacts=$(workspaces.source.path)/artifacts /tmp/logs=$(workspaces.source.path)/logs
+AUTHFILE=~/config.json create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/artifacts=$(workspaces.source.path)/artifacts /tmp/logs=$(workspaces.source.path)/logs
 IMGDIGEST=$(oras resolve $IMGURL)
 echo -n "$IMGURL" >> $(results.%s.path)
 echo -n "$IMGDIGEST" >> $(results.%s.path)
@@ -854,17 +861,6 @@ echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, regUrl, Pip
 	}
 	konfluxArgs = append(konfluxArgs, gitArgs...)
 	konfluxArgs = append(konfluxArgs, "--image-id="+imageId)
-
-	hermeticPreBuildImageArgs := []string{
-		"deploy-hermetic-pre-build-image",
-		"--source-image=$(params." + PreBuildImageDigest + ")",
-		"--image-name=" + hermeticPreBuildImageTag,
-		"--build-artifact-path=$(workspaces.source.path)/artifacts",
-		"--image-source-path=" + MavenArtifactsPath,
-		"--repository-path=$(workspaces.source.path)/build-info/",
-		"--image-hash=$(results." + HermeticPreBuildImageDigest + ".path)",
-	}
-	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
 
 	return preBuildImageArgs, postBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
 }
