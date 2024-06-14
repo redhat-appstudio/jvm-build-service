@@ -50,7 +50,7 @@ public class DeployCommand implements Runnable {
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";
     private static final Set<String> ALLOWED_CONTAMINANTS = Set.of("-tests.jar");
-    public static final String IMAGE_DIGEST_OUTPUT = "Image Digest: ";
+//    public static final String IMAGE_DIGEST_OUTPUT = "Image Digest: ";
     public static final String BUILD_ID = "build-id";
     final BeanManager beanManager;
     final ResultsUpdater resultsUpdater;
@@ -106,8 +106,8 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--build-id")
     String buildId;
 
-    protected String imageName;
-    protected String imageDigest;
+//    protected String imageName;
+//    protected String imageDigest;
 
     public DeployCommand(BeanManager beanManager,
             ResultsUpdater resultsUpdater) {
@@ -285,10 +285,10 @@ public class DeployCommand implements Runnable {
 //            } else {
 //                Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
 //            }
-            Log.warnf("### imageName %s imageDigest %s ", imageName, imageDigest);
-            if (imageDigest != null) {
-                System.out.println(IMAGE_DIGEST_OUTPUT + "sha256:" + imageDigest);
-            }
+//            Log.warnf("### imageName %s imageDigest %s ", imageName, imageDigest);
+//            if (imageDigest != null) {
+//                System.out.println(IMAGE_DIGEST_OUTPUT + "sha256:" + imageDigest);
+//            }
             if (taskRun != null) {
                 List<Contaminates> newContaminates = new ArrayList<>();
                 for (var i : contaminatedGavs.entrySet()) {
