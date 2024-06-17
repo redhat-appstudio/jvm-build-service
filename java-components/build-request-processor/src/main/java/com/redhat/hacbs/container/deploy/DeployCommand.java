@@ -118,6 +118,7 @@ public class DeployCommand implements Runnable {
             Map<String, Contaminates> contaminatedGavs = new HashMap<>();
             Git.GitStatus archivedSourceTags = new Git.GitStatus();
 
+            // TODO: Move this to deploy pipeline under MavenRepositoryDeploy (or new SourceDeploy command)
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);

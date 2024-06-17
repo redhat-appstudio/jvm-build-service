@@ -32,7 +32,6 @@ const (
 	ConfigArtifactCacheWorkerThreadsDefault = "50"
 	ConfigArtifactCacheStorageDefault       = "10Gi"
 
-	HermeticBuildTypeNone     HermeticBuildType = "None"
 	HermeticBuildTypeRequired HermeticBuildType = "Required"
 )
 

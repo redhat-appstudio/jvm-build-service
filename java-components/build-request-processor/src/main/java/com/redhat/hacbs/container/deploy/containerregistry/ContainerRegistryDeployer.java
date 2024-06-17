@@ -37,6 +37,7 @@ import com.redhat.hacbs.container.deploy.DeployData;
 
 import io.quarkus.logging.Log;
 
+@Deprecated
 public class ContainerRegistryDeployer {
 
     static {
@@ -180,6 +181,7 @@ public class ContainerRegistryDeployer {
         }
     }
 
+    @Deprecated
     public void deployHermeticPreBuildImage(String baseImage, Path buildArtifactsPath, Path repositoryPath,
             String imageSourcePath, String tag,
             BiConsumer<String, String> imageNameHashCallback) throws Exception {

@@ -91,6 +91,7 @@ public class ContainerRegistryDeployerTest {
 //                "--registry-insecure"
         );
 
+        // TODO: ### What to do with this test... if we can get rid of Hermetic use of it that purges Jib completely so this will be redundant.
         Assertions.assertEquals(0, result.exitCode());
 //        // Now we validate that the image and tags exist in the registry
 //        ContainerRegistryDetails containerRegistryDetails = getContainerRegistryDetails();
