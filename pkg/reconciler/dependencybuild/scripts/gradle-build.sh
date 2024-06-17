@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
 mkdir -p "${GRADLE_USER_HOME}"
-mkdir -p "$HOME/.m2/"
+mkdir -p "${HOME}/.m2/repository"
 
 #copy back the gradle folder for hermetic
-cp -r /maven-artifacts/.gradle/* "$GRADLE_USER_HOME/" || true
-cp -r /maven-artifacts/.m2/* "$HOME/.m2/" || true
+cp -r $(workspaces.source.path)/source/maven-artifacts/.gradle/* "$GRADLE_USER_HOME/" || true
+cp -r $(workspaces.source.path)/source/maven-artifacts/* "$HOME/.m2/repository/" || true
 
 cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF
 org.gradle.console=plain
@@ -68,6 +68,5 @@ if [ ! -d $(workspaces.source.path)/source ]; then
 fi
 gradle -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@" | tee $(workspaces.source.path)/logs/gradle.log
 
-mkdir -p $(workspaces.source.path)/build-info
 cp -r "${GRADLE_USER_HOME}" $(workspaces.source.path)/build-info/.gradle
-cp -r "${HOME}/.m2" $(workspaces.source.path)/build-info/.m2
+cp -r "${HOME}"/.m2/repository/* $(workspaces.source.path)/build-info

@@ -393,9 +393,21 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		},
 		Steps: []tektonpipeline.Step{
 			{
-				Name:            "hermetic-build",
+				Name:            "restore-pre-build-source",
 				Image:           "$(params." + HermeticPreBuildImageDigest + ")",
 				ImagePullPolicy: v1.PullAlways,
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Script: fmt.Sprintf(`
+echo 'Copying source to workspace'
+cp -r -a %s/* $(workspaces.source.path)
+echo 'Copying maven artifacts to workspace'
+cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath),
+			},
+			{
+				Name:            "hermetic-build",
+				Image:           recipe.Image,
+				ImagePullPolicy: pullPolicy,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
@@ -404,9 +416,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
 
-				Args: []string{"$(params.GOALS[*])"},
-
-				Script: OriginalContentPath + "/hermetic-build.sh \"$@\"",
+				Args:   []string{"$(params.GOALS[*])"},
+				Script: "$(workspaces." + WorkspaceSource + ".path)/hermetic-build.sh \"$@\"",
 			},
 			{
 				Name:            "verify-deploy-and-check-for-contaminates",
@@ -567,7 +578,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				//bit of a hack, we don't have a remote cache for the hermetic build
 				ps.Tasks[index].Params = append(ps.Tasks[index].Params, tektonpipeline.Param{
 					Name:  i.Name,
-					Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "file://" + MavenArtifactsPath + "/"}})
+					Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "file://$(workspaces.source.path)" + MavenArtifactsPath + "/"}})
 			} else {
 				ps.Tasks[index].Params = append(ps.Tasks[index].Params, tektonpipeline.Param{
 					Name:  i.Name,

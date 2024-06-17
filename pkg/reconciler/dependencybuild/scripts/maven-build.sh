@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 mkdir -p "${HOME}/.m2/repository"
-#copy back the gradle folder for hermetic
-cp -r /maven-artifacts/* "$HOME/.m2/repository/" || true
+#copy back the maven folder for hermetic
+cp -r $(workspaces.source.path)/source/maven-artifacts/* "$HOME/.m2/repository/" || true
 
 echo "MAVEN_HOME=${MAVEN_HOME}"
 

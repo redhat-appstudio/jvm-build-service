@@ -24,3 +24,4 @@ spec:
     buildLimitCPU: "4"
     taskRequestCPU: "300m"
     taskLimitCPU: "1"
+  hermeticBuilds: ${JBS_HERMETIC_BUILDS}
