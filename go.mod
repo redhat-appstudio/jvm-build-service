@@ -1,6 +1,8 @@
 module github.com/redhat-appstudio/jvm-build-service
 
-go 1.20
+go 1.21
+
+toolchain go1.22.4
 
 require (
 	github.com/CycloneDX/cyclonedx-go v0.8.0
@@ -8,7 +10,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-containerregistry v0.19.1
 	github.com/google/uuid v1.6.0
-	github.com/konflux-ci/image-controller v0.0.0-20240517120231-4f18f640e7d9
+	github.com/konflux-ci/image-controller v0.0.0-20240618145642-2d0165fccbad
 	github.com/onsi/gomega v1.33.1
 	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5 // indirect
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
