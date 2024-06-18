@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.22.4
 
 require (
-	github.com/CycloneDX/cyclonedx-go v0.8.0
+	github.com/CycloneDX/cyclonedx-go v0.9.0
 	github.com/aws/aws-sdk-go v1.53.9
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-containerregistry v0.19.1
