@@ -1,5 +1,7 @@
 package com.redhat.hacbs.artifactcache.relocation;
 
+import com.redhat.hacbs.common.sbom.GAV;
+
 public class RelocationCreator {
     private RelocationCreator() {
     }
@@ -20,7 +22,7 @@ public class RelocationCreator {
                 </distributionManagement>
             </project>""";
 
-    public static byte[] create(Gav from, Gav to) {
+    public static byte[] create(GAV from, GAV to) {
         String pom = TEMPLATE.replace("${fromGroupId}", from.getGroupId())
                 .replace("${fromArtifactId}", from.getArtifactId())
                 .replace("${fromVersion}", from.getVersion())

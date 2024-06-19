@@ -25,6 +25,10 @@
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
             <artifactId>common-images</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>common-sbom</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.amazonaws</groupId>
@@ -149,15 +153,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${compiler-plugin.version}</version>
-                <configuration>
-                    <compilerArgs>
-                        <arg>-parameters</arg>
-                    </compilerArgs>
-                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>

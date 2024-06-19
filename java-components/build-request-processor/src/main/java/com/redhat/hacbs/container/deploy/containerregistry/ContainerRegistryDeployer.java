@@ -32,8 +32,8 @@ import com.google.cloud.tools.jib.api.buildplan.FileEntriesLayer;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissions;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissionsProvider;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.deploy.DeployData;
-import com.redhat.hacbs.container.deploy.Gav;
 
 import io.quarkus.logging.Log;
 
@@ -97,11 +97,11 @@ public class ContainerRegistryDeployer {
             throw new RuntimeException("Empty GAV list");
         }
 
-        Deque<Gav> gavs = new ArrayDeque<>();
+        Deque<GAV> gavs = new ArrayDeque<>();
         for (var i : gavNames) {
-            gavs.push(Gav.parse(i));
+            gavs.push(GAV.parse(i));
         }
-        Gav first = gavs.pop();
+        GAV first = gavs.pop();
         String existingImage = createImageNameFromDigest(imageDigest);
         RegistryImage existingRegistryImage = RegistryImage.named(existingImage);
         RegistryImage registryImage = RegistryImage.named(createImageName(first.getTag()));
@@ -117,7 +117,7 @@ public class ContainerRegistryDeployer {
                 .setFormat(ImageFormat.OCI);
 
         Log.infof("Deploying image with tag %s (GAV: %s)", first.getTag(), first.stringForm());
-        for (Gav gav : gavs) {
+        for (GAV gav : gavs) {
             Log.infof("Deploying image with tag %s (GAV: %s)", gav.getTag(), gav.stringForm());
             containerizer = containerizer.withAdditionalTag(gav.getTag());
         }
@@ -231,7 +231,7 @@ public class ContainerRegistryDeployer {
                 .setAllowInsecureRegistries(insecure);
         Log.infof("Deploying base image %s", imageName);
 
-        Set<Gav> gavs = imageData.getGavs();
+        Set<GAV> gavs = imageData.getGavs();
 
         AbsoluteUnixPath imageRoot = AbsoluteUnixPath.get("/");
         JibContainerBuilder containerBuilder = Jib.fromScratch()
@@ -241,7 +241,7 @@ public class ContainerRegistryDeployer {
                 .addLabel("artifactId", imageData.getArtifactIds());
 
         containerBuilder.addLabel("io.jvmbuildservice.gavs",
-                gavs.stream().map(Gav::stringForm).collect(Collectors.joining(",")));
+                gavs.stream().map(GAV::stringForm).collect(Collectors.joining(",")));
         List<Path> layers = getLayers(imageData.getArtifactsPath(), sourcePath, logsPath);
         for (Path layer : layers) {
             containerBuilder = containerBuilder.addLayer(List.of(layer), imageRoot);

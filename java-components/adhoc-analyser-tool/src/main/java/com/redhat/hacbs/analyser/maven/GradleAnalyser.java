@@ -9,7 +9,7 @@ import org.gradle.tooling.ProjectConnection;
 import org.gradle.tooling.model.gradle.GradleBuild;
 import org.gradle.tooling.model.gradle.ProjectPublications;
 
-import com.redhat.hacbs.recipes.GAV;
+import com.redhat.hacbs.common.sbom.GAV;
 
 public class GradleAnalyser {
 

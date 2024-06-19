@@ -10,9 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Map;
 
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.common.tools.repo.RepositoryChange;
 import com.redhat.hacbs.recipes.BuildRecipe;
-import com.redhat.hacbs.recipes.GAV;
 import com.redhat.hacbs.recipes.scm.RepositoryInfo;
 import com.redhat.hacbs.recipes.scm.ScmInfo;
 import com.redhat.hacbs.recipes.scm.TagMapping;

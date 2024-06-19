@@ -15,7 +15,7 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.artifactcache.services.RecipeManager;
-import com.redhat.hacbs.recipes.GAV;
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuildStatus;
 import com.redhat.hacbs.resources.model.v1alpha1.DependencyBuild;
