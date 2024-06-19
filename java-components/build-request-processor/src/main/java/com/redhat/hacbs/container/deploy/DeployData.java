@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import com.redhat.hacbs.common.sbom.GAV;
 
+@Deprecated
 public final class DeployData {
 
     private final Path artifactsPath;

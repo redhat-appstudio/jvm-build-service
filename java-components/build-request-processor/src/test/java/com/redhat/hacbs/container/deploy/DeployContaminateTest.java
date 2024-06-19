@@ -63,7 +63,7 @@ public class DeployContaminateTest {
         Path source = Files.createTempDirectory("hacbs");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        DeployCommand testDeployment = new DeployCommand(null, resultsUpdater);
+        BuildVerifyCommand testDeployment = new BuildVerifyCommand(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
         testDeployment.scmUri = REPO;
         testDeployment.commit = COMMIT;
@@ -88,7 +88,7 @@ public class DeployContaminateTest {
         Path source = Files.createTempDirectory("hacbs");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        DeployCommand testDeployment = new DeployCommand(null, resultsUpdater);
+        BuildVerifyCommand testDeployment = new BuildVerifyCommand(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
         testDeployment.buildId = "some-id";
         testDeployment.scmUri = REPO;
@@ -105,7 +105,7 @@ public class DeployContaminateTest {
 
     @Test
     public void testCodeArtifactRegex() {
-        var m = DeployCommand.CODE_ARTIFACT_PATTERN
+        var m = BuildVerifyCommand.CODE_ARTIFACT_PATTERN
                 .matcher("https://demo-151537584421.d.codeartifact.us-east-1.amazonaws.com/maven/jbs-demo/");
         Assertions.assertTrue(m.matches());
         Assertions.assertEquals("demo", m.group(1));

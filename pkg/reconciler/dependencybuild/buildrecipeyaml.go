@@ -80,7 +80,6 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.Depend
 	tagTask := tektonpipeline.TaskSpec{
 		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}, {Name: WorkspaceSource}},
 		Params:     []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
-		//		Results: []tektonpipeline.TaskResult{{Name: PipelineResultGitArchive}},
 		Steps: []tektonpipeline.Step{
 			{
 				Name:            "restore-post-build-artifacts",
@@ -95,11 +94,10 @@ echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.js
 URL=%s
 DIGEST=$(params.%s)
 echo "URL $URL DIGEST $DIGEST"
-SARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[0].digest')
-AARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[1].digest')
+SARCHIVE=$(oras manifest fetch --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[0].digest')
+AARCHIVE=$(oras manifest fetch --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[1].digest')
 AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/source oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, PipelineResultImageDigest),
 			},
-			// TODO: Could we also use the above to extract source to get the final changes from the build step? To move deploy source here?
 			{
 				Name:            "maven-deployment",
 				Image:           buildRequestProcessorImage,
@@ -110,7 +108,7 @@ AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
-				Script: "ls -laR $(workspaces.source.path)\n" + artifactbuild.InstallKeystoreIntoBuildRequestProcessor(mavenDeployArgs),
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(mavenDeployArgs),
 			},
 			{
 				Name:            "tag",
@@ -119,10 +117,10 @@ AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				// gavs is a comma separated list so split it into spaces
-				Script: fmt.Sprintf(`echo "Tagging for GAVs"
+				Script: fmt.Sprintf(`set -x ; GAVS=%s
+echo "Tagging for GAVs ($GAVS)"
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
-GAVS=%s
-oras tag --registry-config ~/.config.json --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, regUrl, PipelineResultImageDigest),
+oras tag --registry-config ~/config.json --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, regUrl, PipelineResultImageDigest),
 			},
 		},
 	}
@@ -348,7 +346,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			{Name: PipelineResultImageDigest},
 			{Name: PipelineResultPassedVerification},
 			{Name: PipelineResultVerificationResult},
-			{Name: PipelineResultGitArchive},
+			// TODO: ### DeployPreBuildSource and Deploy push to git. Currently the former is used for GitArchive results.
+			//			{Name: PipelineResultGitArchive},
 		}...),
 		Steps: []tektonpipeline.Step{
 			{
@@ -376,21 +375,8 @@ AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, PreB
 				Args:   []string{"$(params.GOALS[*])"},
 				Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
 			},
-			// TODO: ### Need to split verify-deploy up as the DeployCommand does several things including a tag deploy
-			//    DeployCommand currently:
-			//			Pushes source change
-			//			Checks for contaminants
-			//			Collects set of GAVs to deploy
-			//			Generate SBOM
-			//			Push archive of source , logs, and GAVS to Quay
-			//    We want to keep all previous but for the last.
-			//
-			//    Issue is the gav list is all gavs under /workspace/source/artifacts (-> /artifacts) BUT with contaminants removed
-			//    Other paths are source /workspace/source/source (-> /source) logs /workspace/source/logs (-> /logs)
-			//
-			//    Jib currently adds some labels; create-oci.sh doesn't support that.
 			{
-				Name:            "verify-deploy-and-check-for-contaminates",
+				Name:            "verify-and-check-for-contaminates",
 				Image:           buildRequestProcessorImage,
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
@@ -435,7 +421,6 @@ AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, PreB
 			{Name: PipelineResultImageDigest},
 			{Name: PipelineResultPassedVerification},
 			{Name: PipelineResultVerificationResult},
-			{Name: PipelineResultGitArchive},
 		},
 		Steps: []tektonpipeline.Step{
 			{
@@ -448,8 +433,8 @@ AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, PreB
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
 URL=%s
 DIGEST=$(params.%s)
-SARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[0].digest')
-MARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[1].digest')
+SARCHIVE=$(oras manifest fetch --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[0].digest')
+MARCHIVE=$(oras manifest fetch --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[1].digest')
 AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/workspace oci:$URL@$MARCHIVE=$(workspaces.source.path)/maven-artifacts
 # Hack to grab the build scripts but avoiding copying other build artifacts
 mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
@@ -528,7 +513,10 @@ mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
 		buildSetup := tektonpipeline.TaskSpec{
 			Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 			Params:     pipelineParams,
-			Results:    []tektonpipeline.TaskResult{{Name: PreBuildImageDigest, Type: tektonpipeline.ResultsTypeString}},
+			Results: []tektonpipeline.TaskResult{
+				{Name: PreBuildImageDigest, Type: tektonpipeline.ResultsTypeString},
+				{Name: PipelineResultGitArchive, Type: tektonpipeline.ResultsTypeString},
+			},
 			Steps: []tektonpipeline.Step{
 				{
 					Name:            "git-clone-and-settings",
@@ -596,6 +584,10 @@ mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
 			},
 		}}
 		ps.Tasks = append(pipelineTask, ps.Tasks...)
+
+		for _, i := range buildSetup.Results {
+			ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + i.Name + ")"}})
+		}
 	}
 	if hermeticBuildRequired {
 		ps.Tasks = append(ps.Tasks, hermeticBuildPipelineTask)
@@ -806,7 +798,7 @@ AUTHFILE=~/config.json create-archive --store %s $(results.%s.path)=$(workspaces
 	// _remote.repositories
 	// <any artifact within artifacts should be excluded from build-info>
 	// TODO: Ideally add 'findutils' to https://github.com/konflux-ci/build-trusted-artifacts/blob/main/Containerfile
-	hermeticPreBuildImageArgs := fmt.Sprintf(`set -x ; echo "Creating hermetic pre-build-image archive"
+	hermeticPreBuildImageArgs := fmt.Sprintf(`echo "Creating hermetic pre-build-image archive"
 microdnf --assumeyes install findutils
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
 IMGURL=%s
@@ -819,10 +811,9 @@ done
 # Hack to grab the build scripts but avoiding copying other build artifacts
 cp $(workspaces.source.path)/*.sh $(workspaces.source.path)/source
 AUTHFILE=~/config.json create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/build-info=$(workspaces.source.path)/build-info
-IMGDIGEST=$(oras resolve $IMGURL)
+IMGDIGEST=$(oras resolve --registry-config ~/config.json $IMGURL)
 echo -n "$IMGDIGEST" >> $(results.%s.path)
 echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, registryArgsWithDefaults(jbsConfig, hermeticPreBuildImageTag), HermeticPreBuildImageDigest)
-	fmt.Printf("### got hermeticprebuildimageargs %s\n", hermeticPreBuildImageArgs)
 
 	copyArtifactsArgs := []string{
 		"copy-artifacts",
@@ -830,7 +821,7 @@ echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, registryArg
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 	}
 	deployArgs := []string{
-		"deploy",
+		"verify",
 		"--path=$(workspaces.source.path)/artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--build-info-path=$(workspaces.source.path)/build-info",
@@ -848,7 +839,7 @@ echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, registryArg
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
 IMGURL=%s
 AUTHFILE=~/config.json create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/artifacts=$(workspaces.source.path)/artifacts /tmp/logs=$(workspaces.source.path)/logs
-IMGDIGEST=$(oras resolve $IMGURL)
+IMGDIGEST=$(oras resolve --registry-config ~/config.json $IMGURL)
 echo -n "$IMGURL" >> $(results.%s.path)
 echo -n "$IMGDIGEST" >> $(results.%s.path)
 echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, regUrl, PipelineResultImage, PipelineResultImageDigest)
@@ -907,12 +898,18 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 
 func pipelineDeployCommands(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []string {
 
+	imageId := db.Name
+	if jbsConfig.Spec.HermeticBuilds == v1alpha1.HermeticBuildTypeRequired {
+		imageId = imageId + "-hermetic"
+	}
+
 	deployArgs := []string{
-		"maven-repository-deploy",
+		"deploy",
 		"--directory=$(workspaces.source.path)/artifacts",
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 		"--source-path=$(workspaces.source.path)/source",
+		"--image-id=" + imageId,
 	}
 
 	mavenArgs := make([]string, 0)

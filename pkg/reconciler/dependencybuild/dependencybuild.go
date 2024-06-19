@@ -654,7 +654,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			log.Info(fmt.Sprintf(msg, db.Name, pr.Namespace, pr.Name))
 			return reconcile.Result{}, nil
 		}
-		fmt.Printf("### pr.Name %#v and attempt %#v \n", pr.Name, attempt.Build.PipelineName)
+		fmt.Printf("### handleBuildPipelineRunReceived pr.Name %#v and attempt %#v \n", pr.Name, attempt.Build.PipelineName)
 		run := attempt.Build
 		run.FinishTime = pr.Status.CompletionTime.Unix()
 
@@ -815,7 +815,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				}
 			}
 
-			fmt.Printf("### Got pipeline run results of image %s and digest %s \n ", image, digest)
+			fmt.Printf("### handleBuildPipelineRunReceived::got pipeline run results of image %s and digest %s \n ", image, digest)
 			run.Results = &v1alpha1.BuildPipelineRunResults{
 				Image:               image,
 				ImageDigest:         digest,
@@ -1379,6 +1379,8 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		gavs += hex.EncodeToString(shaCalc.Sum(nil))
 	}
 
+	fmt.Printf("### handleStateDeploying GAVS %#v and attempt %#v \n", gavs, attempt)
+
 	paramValues := []tektonpipeline.Param{
 		{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.ImageDigest}},
 	}
@@ -1443,6 +1445,12 @@ func (r *ReconcileDependencyBuild) handleDeployPipelineRunReceived(ctx context.C
 
 		success := pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 		if success {
+
+			fmt.Printf("### handleDeployPipelineRunReceived pr.Name %#v \n", pr.Name)
+			attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
+
+			fmt.Printf("### handleDeployPipelineRunReceived attempt %#v \n", attempt.Build)
+
 			return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateComplete, "deploy pipeline complete")
 		} else {
 			return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateFailed, "deploy pipeline failed")

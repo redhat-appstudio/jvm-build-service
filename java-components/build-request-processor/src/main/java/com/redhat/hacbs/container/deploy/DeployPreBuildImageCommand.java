@@ -1,8 +1,12 @@
 package com.redhat.hacbs.container.deploy;
 
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
@@ -44,12 +48,31 @@ public class DeployPreBuildImageCommand implements Runnable {
     @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
     String prependTag;
 
+    private static void cleanBrokenSymlinks(Path sourcePath) throws IOException {
+        Files.walkFileTree(sourcePath, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                try (var s = Files.list(dir)) {
+                    List<Path> paths = s.toList();
+                    for (var i : paths) {
+                        //broken symlinks will fail this check
+                        if (!Files.exists(i)) {
+                            Files.delete(i);
+                        }
+                    }
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+
+    }
+
     public void run() {
         ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
                 insecure,
                 prependTag);
         try {
-            DeployCommand.cleanBrokenSymlinks(sourcePath);
+            cleanBrokenSymlinks(sourcePath);
             deployer.deployPreBuildImage(sourcePath, imageSourcePath, imageName,
                     new BiConsumer<String, String>() {
                         @Override

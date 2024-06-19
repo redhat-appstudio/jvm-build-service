@@ -31,7 +31,6 @@ import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
-import com.redhat.hacbs.container.deploy.git.Git;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
@@ -40,8 +39,8 @@ import com.redhat.hacbs.resources.util.HashUtil;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "deploy")
-public class DeployCommand implements Runnable {
+@CommandLine.Command(name = "verify")
+public class BuildVerifyCommand implements Runnable {
 
     static final Pattern CODE_ARTIFACT_PATTERN = Pattern.compile("https://([^.]*)-\\d+\\..*\\.amazonaws\\.com/maven/(.*)/");
     private static final String DOT_JAR = ".jar";
@@ -79,7 +78,7 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--build-id")
     String buildId;
 
-    public DeployCommand(BeanManager beanManager,
+    public BuildVerifyCommand(BeanManager beanManager,
             ResultsUpdater resultsUpdater) {
         this.beanManager = beanManager;
         this.resultsUpdater = resultsUpdater;
@@ -90,20 +89,6 @@ public class DeployCommand implements Runnable {
             Set<String> gavs = new HashSet<>();
             Map<String, Set<String>> contaminatedPaths = new HashMap<>();
             Map<String, Contaminates> contaminatedGavs = new HashMap<>();
-            Git.GitStatus archivedSourceTags = new Git.GitStatus();
-
-            // TODO: Move this to deploy pipeline under MavenRepositoryDeploy (or new SourceDeploy command)
-//            // Save the source first regardless of deployment checks
-//            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-//                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
-//                if (reuseRepository) {
-//                    git.initialise(scmUri);
-//                } else {
-//                    git.create(scmUri);
-//                }
-//                Log.infof("Pushing changes back to URL %s", git.getName());
-//                archivedSourceTags = git.add(sourcePath, commit, imageId);
-//            }
 
             // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
             // contaminated then none of the artifacts will be deployed.
@@ -234,7 +219,8 @@ public class DeployCommand implements Runnable {
             }
             for (var i : contaminatedGavs.entrySet()) {
                 if (!i.getValue().getAllowed()) {
-                    i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
+                    gavs.removeAll(i.getValue().getContaminatedArtifacts());
+//                    i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
                 }
             }
             generateBuildSbom();
@@ -248,13 +234,11 @@ public class DeployCommand implements Runnable {
                     newContaminates.add(i.getValue());
                 }
                 String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
-                String serialisedGitArchive = ResultsUpdater.MAPPER.writeValueAsString(archivedSourceTags);
-                Log.infof("Updating results %s for deployed resources %s with contaminants %s and gitArchiveTags %s",
-                        taskRun, gavs, serialisedContaminants, serialisedGitArchive);
+                Log.infof("Updating results %s for deployed resources %s with contaminants %s",
+                        taskRun, gavs, serialisedContaminants);
                 resultsUpdater.updateResults(taskRun, Map.of(
                         "CONTAMINANTS", serialisedContaminants,
-                        "DEPLOYED_RESOURCES", String.join(",", gavs),
-                        "GIT_ARCHIVE", serialisedGitArchive));
+                        "DEPLOYED_RESOURCES", String.join(",", gavs)));
             }
         } catch (Exception e) {
             Log.error("Deployment failed", e);
@@ -292,25 +276,6 @@ public class DeployCommand implements Runnable {
         } catch (IOException e) {
             Log.errorf(e, "Failed to generate build sbom");
         }
-    }
-
-    static void cleanBrokenSymlinks(Path sourcePath) throws IOException {
-        Files.walkFileTree(sourcePath, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                try (var s = Files.list(dir)) {
-                    List<Path> paths = s.toList();
-                    for (var i : paths) {
-                        //broken symlinks will fail this check
-                        if (!Files.exists(i)) {
-                            Files.delete(i);
-                        }
-                    }
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-
     }
 
     private Optional<GAV> getGav(String entryName) {

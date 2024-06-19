@@ -10,13 +10,9 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
@@ -33,9 +29,8 @@ import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-@CommandLine.Command(name = "maven-repository-deploy")
-public class MavenDeployCommand implements Runnable {
+@CommandLine.Command(name = "deploy")
+public class TagDeployCommand implements Runnable {
 
     private static final Pattern CODE_ARTIFACT_PATTERN = Pattern.compile("https://([^.]*)-\\d+\\..*\\.amazonaws\\.com/maven/(.*)/");
 
@@ -91,18 +86,10 @@ public class MavenDeployCommand implements Runnable {
     public void run() {
         try {
 
-            var deploymentPath = Path.of(artifactDirectory); //directory.resolve(ARTIFACTS);
-            Log.warnf("### sourcePath " + sourcePath);
-            Log.warnf("### imageDigest " + artifactDirectory);
-            Log.warnf("### recurse files in image digest are %s", FileUtils.listFiles(deploymentPath.toFile(), TrueFileFilter.TRUE, TrueFileFilter.INSTANCE));
-            Log.warnf("### files in image digest are %s" , Stream.of(deploymentPath.toFile().listFiles())
-                .map(java.io.File::getName)
-                .collect(Collectors.toSet()));
+            var deploymentPath = Path.of(artifactDirectory);
 
-            // TODO: Do we want to write out a PipelineRun results with e.g.
-            // {"url":"https://github.com/rnc/github--wrandelshofer--FastDoubleParser.git","tag":"v1.0.0-6977aab6-24b4-463f-85f1-4049beb7bace","sha":"6080865ed6ba7a3dfa3264bdeffc7d997f1a9934"}
+            // TODO: Should we write out to a 'DependencyPipelineResults' a GitArchive?
             Git.GitStatus archivedSourceTags = new Git.GitStatus();
-
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
@@ -120,10 +107,6 @@ public class MavenDeployCommand implements Runnable {
                 Log.infof("### FILES " + Arrays.toString(sourcePath.toFile().list()));
                 archivedSourceTags = git.add(sourcePath, commit, imageId);
             }
-
-//            OCIRegistryClient client = getRegistryClient();
-//            var image = client.pullImage(imageDigest);
-//>>>>>>> Stashed changes
 
             if (!deploymentPath.toFile().exists()) {
                 Log.warnf("No deployed artifacts found. Has the build been correctly configured to deploy?");

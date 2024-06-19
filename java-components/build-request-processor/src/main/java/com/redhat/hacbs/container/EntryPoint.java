@@ -7,13 +7,13 @@ import com.redhat.hacbs.container.build.preprocessor.ant.AntPrepareCommand;
 import com.redhat.hacbs.container.build.preprocessor.gradle.GradlePrepareCommand;
 import com.redhat.hacbs.container.build.preprocessor.maven.MavenPrepareCommand;
 import com.redhat.hacbs.container.build.preprocessor.sbt.SBTPrepareCommand;
+import com.redhat.hacbs.container.deploy.BuildVerifyCommand;
 import com.redhat.hacbs.container.deploy.ContainerTagCommand;
 import com.redhat.hacbs.container.deploy.CopyArtifactsCommand;
-import com.redhat.hacbs.container.deploy.DeployCommand;
 import com.redhat.hacbs.container.deploy.DeployHermeticPreBuildImageCommand;
 import com.redhat.hacbs.container.deploy.DeployPreBuildImageCommand;
 import com.redhat.hacbs.container.deploy.DeployPreBuildSourceCommand;
-import com.redhat.hacbs.container.deploy.MavenDeployCommand;
+import com.redhat.hacbs.container.deploy.TagDeployCommand;
 import com.redhat.hacbs.container.verifier.VerifyBuiltArtifactsCommand;
 
 import io.quarkus.picocli.runtime.annotations.TopCommand;
@@ -25,14 +25,14 @@ import picocli.CommandLine;
         AntPrepareCommand.class,
         ContainerTagCommand.class,
         CopyArtifactsCommand.class,
-        DeployCommand.class,
+        BuildVerifyCommand.class,
         DeployHermeticPreBuildImageCommand.class,
         DeployPreBuildImageCommand.class,
         GradlePrepareCommand.class,
         DeployPreBuildSourceCommand.class,
         LookupBuildInfoCommand.class,
         LookupScmLocationCommand.class,
-        MavenDeployCommand.class,
+        TagDeployCommand.class,
         MavenPrepareCommand.class,
         SBTPrepareCommand.class,
         VerifyBuiltArtifactsCommand.class
