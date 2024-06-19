@@ -1,7 +1,6 @@
 package com.redhat.hacbs.container.deploy;
 
 import static com.redhat.hacbs.classfile.tracker.TrackingData.extractClassifier;
-import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,7 +26,6 @@ import jakarta.enterprise.inject.spi.BeanManager;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.Version;
 import org.cyclonedx.generators.BomGeneratorFactory;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
@@ -63,9 +61,6 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--task-run-name")
     String taskRun;
 
-    @CommandLine.Option(required = true, names = "--source-path")
-    Path sourcePath;
-
     @CommandLine.Option(names = "--logs-path")
     Path logsPath;
 
@@ -78,29 +73,8 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(required = true, names = "--scm-commit")
     String commit;
 
-    @CommandLine.Option(names = "--image-id")
-    String imageId;
-
     @CommandLine.Option(names = "--hermetic")
     boolean hermetic;
-
-    @ConfigProperty(name = "git.deploy.token")
-    Optional<String> gitToken;
-
-    // If endpoint is null then default GitHub API endpoint is used. Otherwise:
-    // for GitHub, endpoint like https://api.github.com
-    // for GitLib, endpoint like https://gitlab.com
-    @CommandLine.Option(names = "--git-url")
-    String gitURL;
-
-    @CommandLine.Option(names = "--git-identity")
-    String gitIdentity;
-
-    @CommandLine.Option(names = "--git-disable-ssl-verification")
-    boolean gitDisableSSLVerification;
-
-    @CommandLine.Option(names = "--git-reuse-repository")
-    boolean reuseRepository;
 
     @CommandLine.Option(names = "--build-id")
     String buildId;
@@ -119,17 +93,17 @@ public class DeployCommand implements Runnable {
             Git.GitStatus archivedSourceTags = new Git.GitStatus();
 
             // TODO: Move this to deploy pipeline under MavenRepositoryDeploy (or new SourceDeploy command)
-            // Save the source first regardless of deployment checks
-            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
-                if (reuseRepository) {
-                    git.initialise(scmUri);
-                } else {
-                    git.create(scmUri);
-                }
-                Log.infof("Pushing changes back to URL %s", git.getName());
-                archivedSourceTags = git.add(sourcePath, commit, imageId);
-            }
+//            // Save the source first regardless of deployment checks
+//            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
+//                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
+//                if (reuseRepository) {
+//                    git.initialise(scmUri);
+//                } else {
+//                    git.create(scmUri);
+//                }
+//                Log.infof("Pushing changes back to URL %s", git.getName());
+//                archivedSourceTags = git.add(sourcePath, commit, imageId);
+//            }
 
             // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
             // contaminated then none of the artifacts will be deployed.

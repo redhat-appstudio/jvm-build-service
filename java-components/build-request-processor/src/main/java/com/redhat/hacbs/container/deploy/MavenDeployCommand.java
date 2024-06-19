@@ -3,8 +3,10 @@ package com.redhat.hacbs.container.deploy;
 import static org.apache.commons.lang3.ObjectUtils.isEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
+import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,6 +25,7 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.codeartifact.AWSCodeArtifactClientBuilder;
 import com.amazonaws.services.codeartifact.model.GetAuthorizationTokenRequest;
 import com.amazonaws.util.AwsHostNameUtils;
+import com.redhat.hacbs.container.deploy.git.Git;
 import com.redhat.hacbs.container.deploy.mavenrepository.CodeArtifactRepository;
 import com.redhat.hacbs.container.deploy.mavenrepository.MavenRepositoryDeployer;
 
@@ -52,17 +55,75 @@ public class MavenDeployCommand implements Runnable {
     @CommandLine.Option(names = "--mvn-repo")
     String mvnRepo;
 
+    @ConfigProperty(name = "git.deploy.token")
+    Optional<String> gitToken;
+
+    // If endpoint is null then default GitHub API endpoint is used. Otherwise:
+    // for GitHub, endpoint like https://api.github.com
+    // for GitLib, endpoint like https://gitlab.com
+    @CommandLine.Option(names = "--git-url")
+    String gitURL;
+
+    @CommandLine.Option(names = "--git-identity")
+    String gitIdentity;
+
+    @CommandLine.Option(names = "--git-disable-ssl-verification")
+    boolean gitDisableSSLVerification;
+
+    @CommandLine.Option(names = "--git-reuse-repository")
+    boolean reuseRepository;
+
+    @CommandLine.Option(names = "--image-id")
+    String imageId;
+
+    @CommandLine.Option(required = true, names = "--scm-uri")
+    String scmUri;
+
+    @CommandLine.Option(required = true, names = "--scm-commit")
+    String commit;
+
+    @CommandLine.Option(required = true, names = "--source-path")
+    Path sourcePath;
+
     @Inject
     BootstrapMavenContext mvnCtx;
 
     public void run() {
         try {
+
             var deploymentPath = Path.of(artifactDirectory); //directory.resolve(ARTIFACTS);
+            Log.warnf("### sourcePath " + sourcePath);
             Log.warnf("### imageDigest " + artifactDirectory);
             Log.warnf("### recurse files in image digest are %s", FileUtils.listFiles(deploymentPath.toFile(), TrueFileFilter.TRUE, TrueFileFilter.INSTANCE));
             Log.warnf("### files in image digest are %s" , Stream.of(deploymentPath.toFile().listFiles())
                 .map(java.io.File::getName)
                 .collect(Collectors.toSet()));
+
+            // TODO: Do we want to write out a PipelineRun results with e.g.
+            // {"url":"https://github.com/rnc/github--wrandelshofer--FastDoubleParser.git","tag":"v1.0.0-6977aab6-24b4-463f-85f1-4049beb7bace","sha":"6080865ed6ba7a3dfa3264bdeffc7d997f1a9934"}
+            Git.GitStatus archivedSourceTags = new Git.GitStatus();
+
+            // Save the source first regardless of deployment checks
+            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
+                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
+                if (reuseRepository) {
+                    git.initialise(scmUri);
+                } else {
+                    git.create(scmUri);
+                }
+                Log.infof("Pushing changes back to URL %s", git.getName());
+                File original = new File("/original-content/workspace/");
+                Log.infof("### FILES " + Arrays.toString(original.list()));
+                Log.infof("### FILES " + Arrays.toString(sourcePath.toFile().list()));
+                original = new File("/workspace/source/workspace/");
+                Log.infof("### FILES " + Arrays.toString(original.list()));
+                Log.infof("### FILES " + Arrays.toString(sourcePath.toFile().list()));
+                archivedSourceTags = git.add(sourcePath, commit, imageId);
+            }
+
+//            OCIRegistryClient client = getRegistryClient();
+//            var image = client.pullImage(imageDigest);
+//>>>>>>> Stashed changes
 
             if (!deploymentPath.toFile().exists()) {
                 Log.warnf("No deployed artifacts found. Has the build been correctly configured to deploy?");

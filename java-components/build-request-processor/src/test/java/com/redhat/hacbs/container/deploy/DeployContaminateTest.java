@@ -65,10 +65,8 @@ public class DeployContaminateTest {
 
         DeployCommand testDeployment = new DeployCommand(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
-        testDeployment.imageId = "test-image";
         testDeployment.scmUri = REPO;
         testDeployment.commit = COMMIT;
-        testDeployment.sourcePath = source.toAbsolutePath();
         testDeployment.allowedSources = Set.of("redhat", "rebuilt"); // Default value
 
         try {
@@ -93,10 +91,8 @@ public class DeployContaminateTest {
         DeployCommand testDeployment = new DeployCommand(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
         testDeployment.buildId = "some-id";
-        testDeployment.imageId = "test-image";
         testDeployment.scmUri = REPO;
         testDeployment.commit = COMMIT;
-        testDeployment.sourcePath = source.toAbsolutePath();
         testDeployment.allowedSources = Set.of("redhat", "rebuilt"); // Default value
 
         testDeployment.run();

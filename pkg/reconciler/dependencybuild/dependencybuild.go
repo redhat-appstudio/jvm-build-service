@@ -654,6 +654,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			log.Info(fmt.Sprintf(msg, db.Name, pr.Namespace, pr.Name))
 			return reconcile.Result{}, nil
 		}
+		fmt.Printf("### pr.Name %#v and attempt %#v \n", pr.Name, attempt.Build.PipelineName)
 		run := attempt.Build
 		run.FinishTime = pr.Status.CompletionTime.Unix()
 
@@ -1392,7 +1393,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage, gavs)
+	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, db, buildRequestProcessorImage, gavs)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
