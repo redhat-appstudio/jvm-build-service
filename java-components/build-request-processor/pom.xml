@@ -25,6 +25,10 @@
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
             <artifactId>common-images</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>common-sbom</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.amazonaws</groupId>

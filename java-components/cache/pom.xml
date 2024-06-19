@@ -26,6 +26,10 @@
             <artifactId>hacbs-resource-model</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>common-sbom</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-repository-metadata</artifactId>
         </dependency>

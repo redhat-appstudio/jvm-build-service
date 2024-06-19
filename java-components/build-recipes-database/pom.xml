@@ -12,14 +12,14 @@
 
     <artifactId>hacbs-build-recipes-database</artifactId>
 
-    <properties>
-        <maven.compiler.release>11</maven.compiler.release>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+            <artifactId>common-sbom</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>

@@ -12,7 +12,7 @@ import org.apache.maven.model.Parent;
 import org.apache.maven.model.Scm;
 import org.jboss.logging.Logger;
 
-import com.redhat.hacbs.recipes.GAV;
+import com.redhat.hacbs.common.sbom.GAV;
 
 public abstract class AbstractPomScmLocator implements ScmLocator {
 

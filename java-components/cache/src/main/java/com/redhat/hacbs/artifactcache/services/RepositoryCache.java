@@ -27,7 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.HashingOutputStream;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
-import com.redhat.hacbs.recipes.GAV;
+import com.redhat.hacbs.common.sbom.GAV;
 
 import io.quarkus.logging.Log;
 

@@ -1,10 +1,16 @@
-package com.redhat.hacbs.container.deploy;
+package com.redhat.hacbs.common.sbom;
 
 import java.util.Objects;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
-public final class Gav {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+/**
+ * A maven artifact identifier
+ */
+public final class GAV {
 
     private static final String GAV_FORMAT = "%s:%s:%s";
 
@@ -13,21 +19,33 @@ public final class Gav {
     private final String version;
     private final String tag;
 
-    private Gav(String groupId, String artifactId, String version, String tag) {
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    public GAV(@JsonProperty("groupId") String groupId, @JsonProperty("artifactId") String artifactId,
+            @JsonProperty("version") String version) {
+        this.groupId = groupId;
+        this.artifactId = artifactId;
+        this.version = version;
+        this.tag = null;
+    }
+
+    private GAV(String groupId, String artifactId, String version, String tag) {
         this.groupId = groupId;
         this.artifactId = artifactId;
         this.version = version;
         this.tag = tag;
     }
 
-    public static Gav parse(String gav) {
+    public static GAV parse(String gav) {
         var parts = gav.split(":");
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("not a GAV: " + gav);
+        }
         return create(parts[0], parts[1], parts[2]);
     }
 
-    public static Gav create(String groupId, String artifactId, String version) {
+    public static GAV create(String groupId, String artifactId, String version) {
         String tag = DigestUtils.sha256Hex(String.format(GAV_FORMAT, groupId, artifactId, version));
-        return new Gav(groupId, artifactId, version, tag);
+        return new GAV(groupId, artifactId, version, tag);
     }
 
     public String getGroupId() {
@@ -67,7 +85,7 @@ public final class Gav {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Gav other = (Gav) obj;
+        final GAV other = (GAV) obj;
         if (!Objects.equals(this.groupId, other.groupId)) {
             return false;
         }

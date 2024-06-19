@@ -24,6 +24,7 @@ import com.amazonaws.services.codeartifact.AWSCodeArtifactClientBuilder;
 import com.amazonaws.services.codeartifact.model.GetAuthorizationTokenRequest;
 import com.amazonaws.util.AwsHostNameUtils;
 import com.redhat.hacbs.common.images.ociclient.OCIRegistryClient;
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.deploy.mavenrepository.CodeArtifactRepository;
 import com.redhat.hacbs.container.deploy.mavenrepository.MavenRepositoryDeployer;
 
@@ -146,7 +147,7 @@ public class MavenDeployCommand implements Runnable {
                 insecure);
     }
 
-    private Optional<Gav> getGav(String entryName) {
+    private Optional<GAV> getGav(String entryName) {
         if (entryName.startsWith("." + File.separator)) {
             entryName = entryName.substring(2);
         }
@@ -159,7 +160,7 @@ public class MavenDeployCommand implements Runnable {
             List<String> groupIdList = pathParts.subList(0, numberOfParts - 3);
             String groupId = String.join(DOT, groupIdList);
 
-            return Optional.of(Gav.create(groupId, artifactId, version));
+            return Optional.of(GAV.create(groupId, artifactId, version));
         }
         return Optional.empty();
     }

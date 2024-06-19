@@ -8,7 +8,7 @@ If you want to learn more about Quarkus, please visit its website: https://quark
 
 You can run your application in dev mode that enables live coding using:
 ```shell script
-./mvnw compile quarkus:dev
+mvn compile quarkus:dev
 ```
 
 > **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
@@ -17,35 +17,55 @@ You can run your application in dev mode that enables live coding using:
 
 The application can be packaged using:
 ```shell script
-./mvnw package
+mvn package
 ```
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directories for both server and client.
+Be aware that it’s not an _über-jar_ as the dependencies are copied into the corresponding `target/quarkus-app/lib/` directories.
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+The application is now runnable using:
+
+`java -jar server/target/quarkus-app/quarkus-run.jar`
+
+`java -jar client/target/quarkus-app/quarkus-run.jar`
 
 If you want to build an _über-jar_, execute the following command:
 ```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
+mvn package -Dquarkus.package.jar.type=uber-jar
 ```
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+The application, packaged as an _über-jar_, is now runnable using:
+
+`java -jar server/target/domainproxy-server-999-SNAPSHOT-runner.jar`
+
+`java -jar client/target/domainproxy-client-999-SNAPSHOT-runner.jar`
 
 ## Creating a native executable
 
-You can create a native executable using: 
+You can create a native executable using:
 ```shell script
-./mvnw package -Dnative
+mvn package -Dnative
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using: 
+Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
 ```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
+mvn package -Dnative -Dquarkus.native.container-build=true
 ```
 
-You can then execute your native executable with: `./target/domainproxy-1.0.0-SNAPSHOT-runner`
+You can then execute your native executables with:
+
+`./server/target/domainproxy-server-999-SNAPSHOT-runner`
+
+`./client/target/domainproxy-client-999-SNAPSHOT-runner`
 
 If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.
+
+## Building and pushing Docker image
+
+`docker build . -t quay.io/<repository>/domain-proxy`
+
+`docker login quay.io`
+
+`docker push quay.io/<repository>/domain-proxy:latest`
 
 ## Related Guides
 

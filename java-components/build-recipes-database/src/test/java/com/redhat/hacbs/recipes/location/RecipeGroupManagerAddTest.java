@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.recipes.BuildRecipe;
-import com.redhat.hacbs.recipes.GAV;
 import com.redhat.hacbs.recipes.scm.ScmInfo;
 
 public class RecipeGroupManagerAddTest {

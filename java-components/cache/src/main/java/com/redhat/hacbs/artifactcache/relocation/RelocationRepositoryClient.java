@@ -13,6 +13,7 @@ import jakarta.ws.rs.NotFoundException;
 
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.resources.util.HashUtil;
 
 public class RelocationRepositoryClient implements RepositoryClient {
@@ -79,7 +80,7 @@ public class RelocationRepositoryClient implements RepositoryClient {
             for (int i = 1; i <= matcher.groupCount(); ++i) {
                 toKey = toKey.replaceAll(DOLLAR_VAR + i, matcher.group(i));
             }
-            return RelocationCreator.create(new Gav(group, artifact, version), toGav(toKey));
+            return RelocationCreator.create(new GAV(group, artifact, version), toGav(toKey));
         }
         throw new NotFoundException();
     }
@@ -111,11 +112,11 @@ public class RelocationRepositoryClient implements RepositoryClient {
         return String.format(GAV_PATTERN, group, artifact, version);
     }
 
-    private Gav toGav(String key) {
+    private GAV toGav(String key) {
         if (key.contains(DOUBLE_POINT)) {
             String[] parts = key.split(DOUBLE_POINT);
             if (parts.length == 3) {
-                return new Gav(parts[0], parts[1], parts[2]);
+                return new GAV(parts[0], parts[1], parts[2]);
             }
         }
         throw new RuntimeException("Invalid mapping for [" + key + "].");

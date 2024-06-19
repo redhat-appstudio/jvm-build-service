@@ -16,13 +16,15 @@ import java.nio.file.Path;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 
-import org.cyclonedx.BomGeneratorFactory;
 import org.cyclonedx.CycloneDxSchema;
+import org.cyclonedx.generators.BomGeneratorFactory;
 import org.cyclonedx.generators.json.BomJsonGenerator;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Property;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import com.redhat.hacbs.common.sbom.GAV;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
@@ -129,10 +131,13 @@ public class DomainProxyHack {
             GAV gav = dependency.GAV();
             Component component = new Component();
             component.setType(Component.Type.LIBRARY);
-            component.setGroup(gav.group());
-            component.setName(gav.artifact());
-            component.setVersion(gav.version());
-            String purl = String.format("pkg:maven/%s/%s@%s", gav.group(), gav.artifact(), gav.version());
+            String groupId = gav.getGroupId();
+            String artifactId = gav.getArtifactId();
+            String version = gav.getVersion();
+            component.setGroup(groupId);
+            component.setName(artifactId);
+            component.setVersion(version);
+            String purl = String.format("pkg:maven/%s/%s@%s", groupId, artifactId, version);
             if (dependency.classifier() != null) {
                 purl += String.format("?classifier=%s", dependency.classifier());
             }

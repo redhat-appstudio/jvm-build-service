@@ -9,8 +9,8 @@ import java.util.Map;
 
 import org.jboss.logging.Logger;
 
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.recipes.BuildRecipe;
-import com.redhat.hacbs.recipes.GAV;
 
 /**
  * Entry point for requesting build information

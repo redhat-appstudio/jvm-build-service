@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.recipes.BuildRecipe;
-import com.redhat.hacbs.recipes.GAV;
 import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipes.scm.ScmInfo;
 

@@ -81,6 +81,7 @@
         <module>cli</module>
         <module>common-tools</module>
         <module>common-images</module>
+        <module>common-sbom</module>
         <module>domainproxy</module>
     </modules>
 
@@ -144,6 +145,11 @@
             <dependency>
                 <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
                 <artifactId>common-tools</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+                <artifactId>common-sbom</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

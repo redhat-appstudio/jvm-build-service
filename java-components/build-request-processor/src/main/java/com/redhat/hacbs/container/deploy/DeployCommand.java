@@ -32,6 +32,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
+import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
 import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDeployer;
 import com.redhat.hacbs.container.deploy.git.Git;
@@ -157,7 +158,7 @@ public class DeployCommand implements Runnable {
             // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
             // contaminated then none of the artifacts will be deployed.
             Set<Path> toRemove = new HashSet<>();
-            Map<Path, Gav> jarFiles = new HashMap<>();
+            Map<Path, GAV> jarFiles = new HashMap<>();
 
             if (!deploymentPath.toFile().exists()) {
                 Log.warnf("No deployed artifacts found. Has the build been correctly configured to deploy?");
@@ -168,7 +169,7 @@ public class DeployCommand implements Runnable {
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     Path path = deploymentPath.relativize(file);
                     String name = path.toString();
-                    Optional<Gav> gav = getGav(name);
+                    Optional<GAV> gav = getGav(name);
                     if (gav.isPresent()) {
                         var coords = gav.get().stringForm();
                         gavs.add(coords);
@@ -220,7 +221,7 @@ public class DeployCommand implements Runnable {
             });
             for (var e : jarFiles.entrySet()) {
                 Path file = e.getKey();
-                Gav gav = e.getValue();
+                GAV gav = e.getValue();
                 try {
                     String fileName = file.getFileName().toString();
                     Path temp = file.getParent().resolve(fileName + ".temp");
@@ -400,7 +401,7 @@ public class DeployCommand implements Runnable {
         System.out.flush();
     }
 
-    private Optional<Gav> getGav(String entryName) {
+    private Optional<GAV> getGav(String entryName) {
         if (entryName.startsWith("." + File.separator)) {
             entryName = entryName.substring(2);
         }
@@ -413,7 +414,7 @@ public class DeployCommand implements Runnable {
             List<String> groupIdList = pathParts.subList(0, numberOfParts - 3);
             String groupId = String.join(DOT, groupIdList);
 
-            return Optional.of(Gav.create(groupId, artifactId, version));
+            return Optional.of(GAV.create(groupId, artifactId, version));
         }
         return Optional.empty();
     }
