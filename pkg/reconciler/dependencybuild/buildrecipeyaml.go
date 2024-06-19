@@ -92,8 +92,10 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
 URL=%s
 DIGEST=$(params.%s)
-ARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[1].digest')
-AUTHFILE=~/config.json use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, PipelineResultImageDigest),
+echo "URL $URL DIGEST $DIGEST"
+SARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[0].digest')
+AARCHIVE=$(oras manifest fetch $URL@$DIGEST | jq --raw-output '.layers[1].digest')
+AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/source oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, regUrl, PipelineResultImageDigest),
 			},
 			// TODO: Could we also use the above to extract source to get the final changes from the build step? To move deploy source here?
 			{
@@ -106,7 +108,7 @@ AUTHFILE=~/config.json use-archive oci:$URL@$ARCHIVE=$(workspaces.source.path)/a
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(mavenDeployArgs),
+				Script: "ls -laR $(workspaces.source.path)\n" + artifactbuild.InstallKeystoreIntoBuildRequestProcessor(mavenDeployArgs),
 			},
 			{
 				Name:            "tag",
@@ -152,7 +154,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	zero := int64(0)
 	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha1.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
-	preBuildImageArgs, postBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, db, jbsConfig, buildId)
+	preBuildImageArgs, postBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageCommands(imageId, db, jbsConfig, buildId)
 
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
@@ -785,7 +787,7 @@ func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, string, []string, []string, []string, []string, string) {
+func imageCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, string, []string, []string, []string, []string, string) {
 
 	preBuildImageTag := imageId + "-pre-build-image"
 	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json
@@ -907,31 +909,6 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 		registryArgs.WriteString(prependTagToImage(preBuildImageTag, imageRegistry.PrependTag))
 	}
 	return registryArgs.String()
-}
-
-func registryArgs(jbsConfig *v1alpha1.JBSConfig) []string {
-
-	imageRegistry := jbsConfig.ImageRegistry()
-	registryArgs := make([]string, 0)
-	if imageRegistry.Host != "" {
-		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
-	}
-	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
-		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
-	}
-	if imageRegistry.Owner != "" {
-		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
-	}
-	if imageRegistry.Repository != "" {
-		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
-	}
-	if imageRegistry.Insecure {
-		registryArgs = append(registryArgs, "--registry-insecure")
-	}
-	if imageRegistry.PrependTag != "" {
-		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
-	}
-	return registryArgs
 }
 
 func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {

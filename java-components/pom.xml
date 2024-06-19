@@ -69,6 +69,8 @@
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
         <quarkus-github-app.version>2.6.0</quarkus-github-app.version>
         <quarkus-quinoa.version>2.3.8</quarkus-quinoa.version>
+
+        <format.skip>false</format.skip>
     </properties>
 
     <modules>
