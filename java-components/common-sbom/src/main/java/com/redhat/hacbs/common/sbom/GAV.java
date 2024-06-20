@@ -1,5 +1,6 @@
 package com.redhat.hacbs.common.sbom;
 
+import java.util.Comparator;
 import java.util.Objects;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -10,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * A maven artifact identifier
  */
-public final class GAV {
+public final class GAV implements Comparable<GAV> {
 
     private static final String GAV_FORMAT = "%s:%s:%s";
 
@@ -105,5 +106,14 @@ public final class GAV {
     @Override
     public String toString() {
         return "GAV{" + "groupId=" + groupId + ", artifactId=" + artifactId + ", version=" + version + ", tag=" + tag + '}';
+    }
+
+    @Override
+    public int compareTo(GAV o) {
+        return Comparator.comparing(GAV::getGroupId)
+                .thenComparing(GAV::getArtifactId)
+                .thenComparing(GAV::getVersion)
+                .thenComparing(GAV::getTag, Comparator.nullsFirst(Comparator.naturalOrder()))
+                .compare(this, o);
     }
 }

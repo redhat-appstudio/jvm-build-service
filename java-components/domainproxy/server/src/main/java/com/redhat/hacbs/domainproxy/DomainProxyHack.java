@@ -15,6 +15,7 @@ import java.nio.file.Path;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
 import org.cyclonedx.CycloneDxSchema;
 import org.cyclonedx.generators.BomGeneratorFactory;
@@ -31,6 +32,7 @@ import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.Startup;
 
 @Startup
+@Singleton
 public class DomainProxyHack {
 
     @Inject
@@ -125,7 +127,7 @@ public class DomainProxyHack {
         }).start();
     }
 
-    private void createBom() throws IOException {
+    void createBom() throws IOException {
         Bom bom = new Bom();
         for (Dependency dependency : dependencies) {
             GAV gav = dependency.GAV();
