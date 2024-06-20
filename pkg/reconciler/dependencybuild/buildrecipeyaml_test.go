@@ -21,6 +21,8 @@ func TestImageRegistryArrayToString(t *testing.T) {
 	imageId = "quay.io/foo/artifact-deployments:975ea3800099190263d38f051c1a188a975ea3800099190263d38f051c1a188a975ea3800099190263d38f051c1a188a975ea3800099190263d38f051c1a188a"
 	imageId = prependTagToImage(imageId, prependTag)
 	g.Expect(imageId).To(Equal("quay.io/foo/artifact-deployments:123456_975ea3800099190263d38f051c1a188a975ea3800099190263d38f051c1a188a975ea3800099190263d38f051c1a188a975ea3800099190263d38f051"))
+	imageId = prependTagToImage("65ad275dfafd4c607186d4e99e793cdf-pre-build-image", prependTag)
+	g.Expect(imageId).To(Equal("123456_65ad275dfafd4c607186d4e99e793cdf-pre-build-image"))
 }
 
 func TestExtractArrayParam(t *testing.T) {
