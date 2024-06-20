@@ -90,7 +90,8 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.Depend
 				// While the manifest digest is available we need the manifest of the layer within the archive hence
 				// using 'oras manifest fetch' to extract the correct layer.
 				Script: fmt.Sprintf(`echo "Restoring artifacts to workspace"
-echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+[[ -z "$REGISTRY_TOKEN" ]] && REGISTRY_TOKEN="{}"
+echo $REGISTRY_TOKEN > ~/config.json
 URL=%s
 DIGEST=$(params.%s)
 echo "URL $URL DIGEST $DIGEST"
@@ -119,7 +120,8 @@ AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/
 				// gavs is a comma separated list so split it into spaces
 				Script: fmt.Sprintf(`set -x ; GAVS=%s
 echo "Tagging for GAVs ($GAVS)"
-echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+[[ -z "$REGISTRY_TOKEN" ]] && REGISTRY_TOKEN="{}"
+echo $REGISTRY_TOKEN > ~/config.json
 oras tag --registry-config ~/config.json --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, regUrl, PipelineResultImageDigest),
 			},
 		},
@@ -357,7 +359,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				Script: fmt.Sprintf(`echo "Restoring source to workspace"
-echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+[[ -z "$REGISTRY_TOKEN" ]] && REGISTRY_TOKEN="{}"
+echo $REGISTRY_TOKEN > ~/config.json
 AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, PreBuildImageDigest),
 			},
 			{
@@ -430,7 +433,8 @@ AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, PreB
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				Script: fmt.Sprintf(`echo "Restoring hermetic source to workspace"
-echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+[[ -z "$REGISTRY_TOKEN" ]] && REGISTRY_TOKEN="{}"
+echo $REGISTRY_TOKEN > ~/config.json
 URL=%s
 DIGEST=$(params.%s)
 SARCHIVE=$(oras manifest fetch --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[0].digest')
@@ -787,9 +791,14 @@ func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json
 	// so merge with any existing one before running the tooling.
 	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
-echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
-AUTHFILE=~/config.json create-archive --store %s $(results.%s.path)=$(workspaces.source.path)`, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PreBuildImageDigest)
-
+set -x
+[[ -z "$REGISTRY_TOKEN" ]] && REGISTRY_TOKEN="{}"
+echo $REGISTRY_TOKEN > ~/config.json
+archive_dir="$(mktemp -d)"
+tar cvf ${archive_dir}/%s -C $(workspaces.source.path) .
+oras push --insecure --plain-http -d -v --registry-config ~/.docker/config.json %s
+`, PreBuildImageDigest, registryArgsWithDefaults(jbsConfig, preBuildImageTag))
+	// #AUTHFILE=~/config.json create-archive --store %s $(results.%s.path)=$(workspaces.source.path)
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
 	// Previously hermeticPreBuildImage was based upon preBuildImage. That latter image has a copy of the source code. As this task
 	// will be run after the build stage it still has access to the source in $(workspaces.source.path)/source and for
@@ -797,10 +806,11 @@ AUTHFILE=~/config.json create-archive --store %s $(results.%s.path)=$(workspaces
 	// However we want to match what ContainerRegistryDeployer::deployHermeticPreBuildImage did and exclude the following:
 	// _remote.repositories
 	// <any artifact within artifacts should be excluded from build-info>
-	// TODO: Ideally add 'findutils' to https://github.com/konflux-ci/build-trusted-artifacts/blob/main/Containerfile
+	// TODO: microdnf command and empty REGISTRY_TOKEN will be removed if this is merged: https://github.com/konflux-ci/build-trusted-artifacts/pull/105
 	hermeticPreBuildImageArgs := fmt.Sprintf(`echo "Creating hermetic pre-build-image archive"
 microdnf --assumeyes install findutils
-echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+[[ -z "$REGISTRY_TOKEN" ]] && REGISTRY_TOKEN="{}"
+echo $REGISTRY_TOKEN > ~/config.json
 IMGURL=%s
 ARTIFACTS=$(workspaces.source.path)/artifacts
 find $(workspaces.source.path)/build-info -name _remote.repositories -delete
@@ -836,7 +846,8 @@ echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, registryArg
 	// [/workspace/source/source, /workspace/source/logs, /workspace/source/artifacts]
 	regUrl := registryArgsWithDefaults(jbsConfig, buildId)
 	postBuildImageArgs := fmt.Sprintf(`echo "Creating post-build-image archive"
-echo $REGISTRY_TOKEN | jq -s '.[0] * .[1]' ~/.docker/config.json - > ~/config.json
+[[ -z "$REGISTRY_TOKEN" ]] && REGISTRY_TOKEN="{}"
+echo $REGISTRY_TOKEN > ~/config.json
 IMGURL=%s
 AUTHFILE=~/config.json create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/artifacts=$(workspaces.source.path)/artifacts /tmp/logs=$(workspaces.source.path)/logs
 IMGDIGEST=$(oras resolve --registry-config ~/config.json $IMGURL)
@@ -870,6 +881,7 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 		registryArgs.WriteString("quay.io")
 	}
 	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
+		registryArgs.WriteString(":")
 		registryArgs.WriteString(imageRegistry.Port)
 	}
 	// 'else' :
