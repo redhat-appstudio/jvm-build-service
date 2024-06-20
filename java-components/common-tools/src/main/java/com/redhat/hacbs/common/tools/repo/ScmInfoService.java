@@ -12,9 +12,9 @@ import java.util.Optional;
 
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.recipes.scm.ScmInfo;
 import com.redhat.hacbs.recipes.scm.ScmInfoManager;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 public class ScmInfoService {
 

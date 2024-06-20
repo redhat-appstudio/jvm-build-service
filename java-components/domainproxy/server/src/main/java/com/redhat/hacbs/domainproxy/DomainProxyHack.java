@@ -24,7 +24,7 @@ import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Property;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;

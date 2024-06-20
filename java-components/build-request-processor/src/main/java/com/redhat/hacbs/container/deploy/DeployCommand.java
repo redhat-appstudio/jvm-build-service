@@ -32,13 +32,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
-import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
 import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDeployer;
 import com.redhat.hacbs.container.deploy.git.Git;
 import com.redhat.hacbs.container.results.ResultsUpdater;
-import com.redhat.hacbs.recipes.util.FileUtil;
+import com.redhat.hacbs.resources.model.maven.GAV;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
+import com.redhat.hacbs.resources.util.FileUtil;
 import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.quarkus.logging.Log;

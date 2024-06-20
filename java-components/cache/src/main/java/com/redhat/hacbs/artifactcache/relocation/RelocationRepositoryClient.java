@@ -13,7 +13,7 @@ import jakarta.ws.rs.NotFoundException;
 
 import com.redhat.hacbs.artifactcache.services.ArtifactResult;
 import com.redhat.hacbs.artifactcache.services.RepositoryClient;
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.resources.model.maven.GAV;
 import com.redhat.hacbs.resources.util.HashUtil;
 
 public class RelocationRepositoryClient implements RepositoryClient {

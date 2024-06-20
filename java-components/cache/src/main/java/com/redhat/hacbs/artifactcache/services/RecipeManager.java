@@ -33,7 +33,7 @@ import com.redhat.hacbs.recipes.mavenrepo.MavenRepositoryInfoManager;
 import com.redhat.hacbs.recipes.scm.GitScmLocator;
 import com.redhat.hacbs.recipes.tools.BuildToolInfo;
 import com.redhat.hacbs.recipes.tools.BuildToolInfoManager;
-import com.redhat.hacbs.recipes.util.FileUtil;
+import com.redhat.hacbs.resources.util.FileUtil;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Startup;

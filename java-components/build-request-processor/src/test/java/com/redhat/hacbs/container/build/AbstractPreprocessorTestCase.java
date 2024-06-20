@@ -20,7 +20,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import com.redhat.hacbs.recipes.util.FileUtil;
+import com.redhat.hacbs.resources.util.FileUtil;
 
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
 

@@ -1,4 +1,4 @@
-package com.redhat.hacbs.recipes.util;
+package com.redhat.hacbs.resources.util;
 
 import java.io.IOException;
 import java.nio.file.Files;

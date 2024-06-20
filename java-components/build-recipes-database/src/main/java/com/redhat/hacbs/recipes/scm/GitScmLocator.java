@@ -21,12 +21,12 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.jboss.logging.Logger;
 
-import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.recipes.BuildRecipe;
 import com.redhat.hacbs.recipes.location.RecipeDirectory;
 import com.redhat.hacbs.recipes.location.RecipeGroupManager;
 import com.redhat.hacbs.recipes.location.RecipeRepositoryManager;
 import com.redhat.hacbs.recipes.util.GitCredentials;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 public class GitScmLocator implements ScmLocator {
 

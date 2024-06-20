@@ -1,6 +1,6 @@
 package com.redhat.hacbs.artifactcache.relocation;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 public class RelocationCreator {
     private RelocationCreator() {

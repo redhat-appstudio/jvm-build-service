@@ -8,9 +8,9 @@ import jakarta.ws.rs.core.MediaType;
 
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
-import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.recipes.scm.ScmLocator;
 import com.redhat.hacbs.recipes.scm.TagInfo;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 @RegisterRestClient()
 @Path("/v2/recipe-lookup/scm-info")

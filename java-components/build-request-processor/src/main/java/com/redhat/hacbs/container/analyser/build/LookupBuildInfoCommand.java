@@ -70,8 +70,8 @@ import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
 import com.redhat.hacbs.recipes.scm.ScmInfo;
 import com.redhat.hacbs.recipes.util.GitCredentials;
-import com.redhat.hacbs.resources.model.v1alpha1.Util;
 import com.redhat.hacbs.resources.model.v1alpha1.jbsconfigstatus.ImageRegistry;
+import com.redhat.hacbs.resources.util.RegistryUtil;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenException;
@@ -289,7 +289,7 @@ public class LookupBuildInfoCommand implements Runnable {
                 String[] splitRegistries = registries.split(";", -1);
 
                 for (String value : splitRegistries) {
-                    ImageRegistry registry = Util.parseRegistry(value);
+                    ImageRegistry registry = RegistryUtil.parseRegistry(value);
                     // Meant to match Go code that does
                     // util.HashString(abr.Status.SCMInfo.SCMURL + abr.Status.SCMInfo.Tag + abr.Status.SCMInfo.Path)
                     String contextPath = context == null ? "" : context;

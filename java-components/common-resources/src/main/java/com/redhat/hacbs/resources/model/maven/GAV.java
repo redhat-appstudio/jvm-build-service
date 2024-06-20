@@ -1,4 +1,4 @@
-package com.redhat.hacbs.common.sbom;
+package com.redhat.hacbs.resources.model.maven;
 
 import java.util.Objects;
 

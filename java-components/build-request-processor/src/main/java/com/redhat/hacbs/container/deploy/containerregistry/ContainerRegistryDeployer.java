@@ -32,8 +32,8 @@ import com.google.cloud.tools.jib.api.buildplan.FileEntriesLayer;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissions;
 import com.google.cloud.tools.jib.api.buildplan.FilePermissionsProvider;
 import com.google.cloud.tools.jib.api.buildplan.ImageFormat;
-import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.deploy.DeployData;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 import io.quarkus.logging.Log;
 

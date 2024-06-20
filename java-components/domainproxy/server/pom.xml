@@ -34,7 +34,7 @@
         </dependency>
         <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>common-sbom</artifactId>
+            <artifactId>common-resources</artifactId>
         </dependency>
     </dependencies>
 

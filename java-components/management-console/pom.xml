@@ -16,7 +16,7 @@
     <dependencies>
         <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-resource-model</artifactId>
+            <artifactId>common-resources</artifactId>
         </dependency>
         <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>

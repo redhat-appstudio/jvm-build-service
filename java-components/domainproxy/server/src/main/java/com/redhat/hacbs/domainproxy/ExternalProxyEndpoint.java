@@ -17,7 +17,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 import io.quarkus.logging.Log;
 import io.vertx.core.Vertx;

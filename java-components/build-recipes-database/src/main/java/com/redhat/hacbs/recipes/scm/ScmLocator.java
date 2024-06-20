@@ -1,6 +1,6 @@
 package com.redhat.hacbs.recipes.scm;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 public interface ScmLocator {
 

@@ -24,9 +24,9 @@ import com.amazonaws.services.codeartifact.AWSCodeArtifactClientBuilder;
 import com.amazonaws.services.codeartifact.model.GetAuthorizationTokenRequest;
 import com.amazonaws.util.AwsHostNameUtils;
 import com.redhat.hacbs.common.images.ociclient.OCIRegistryClient;
-import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.deploy.mavenrepository.CodeArtifactRepository;
 import com.redhat.hacbs.container.deploy.mavenrepository.MavenRepositoryDeployer;
+import com.redhat.hacbs.resources.model.maven.GAV;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.logging.Log;

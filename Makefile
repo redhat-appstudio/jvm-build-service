@@ -55,7 +55,7 @@ generate-crds:
 	client-gen --go-header-file "hack/boilerplate.go.txt" --input jvmbuildservice/v1alpha1 --input-base github.com/redhat-appstudio/jvm-build-service/pkg/apis --output-package github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset --output-base ../../../ -v 100 --clientset-name versioned
 
 generate: generate-crds
-	cp deploy/crds/base/* java-components/resource-model/src/main/resources/crds
+	cp deploy/crds/base/* java-components/common-resources/src/main/resources/crds
 
 verify-generate-deepcopy-client: generate-deepcopy-client
 	hack/verify-codegen.sh
