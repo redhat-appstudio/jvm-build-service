@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -27,7 +27,7 @@ public class ExternalProxyEndpoint {
 
     final Client client;
     final Map<String, String> proxyTargets;
-    static final Set<Dependency> dependencies = ConcurrentHashMap.newKeySet();
+    static final Set<Dependency> dependencies = new ConcurrentSkipListSet<>();
     static final String JAR_EXTENSION = ".jar";
 
     public ExternalProxyEndpoint(Config config,
