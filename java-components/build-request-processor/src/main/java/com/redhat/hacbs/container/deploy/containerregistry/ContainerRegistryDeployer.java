@@ -101,19 +101,13 @@ public class ContainerRegistryDeployer {
         }
 
         Deque<GAV> gavs = new ArrayDeque<>();
-        Log.warnf("### Gavs we would be tagging with %s ", gavNames);
-        for ( var g : gavNames) {
-            Log.warnf("### Parsed Gavs we would be tagging with %s ", GAV.parse(g).getTag());
-        }
         for (var i : gavNames) {
             gavs.push(GAV.parse(i));
         }
         GAV first = gavs.pop();
         String existingImage = createImageNameFromDigest(imageDigest);
-        Log.warnf("### Using imageDigest %s and existingImage %s", imageDigest, existingImage);
         RegistryImage existingRegistryImage = RegistryImage.named(existingImage);
         RegistryImage registryImage = RegistryImage.named(createImageName(first.getTag()));
-        Log.warnf("### Using createImageName %s", createImageName(first.getTag()));
         if (credential != null) {
             registryImage = registryImage.addCredentialRetriever(() -> Optional.of(credential));
         }
@@ -231,7 +225,6 @@ public class ContainerRegistryDeployer {
             CacheDirectoryCreationException, ExecutionException {
 
         String imageName = createImageName(buildId);
-        Log.warnf("### Using buildId %s imageName %s", buildId, imageName);
         RegistryImage registryImage = RegistryImage.named(imageName);
         if (credential != null) {
             registryImage = registryImage.addCredentialRetriever(() -> Optional.of(credential));
@@ -255,7 +248,6 @@ public class ContainerRegistryDeployer {
         containerBuilder.addLabel("io.jvmbuildservice.gavs",
                 gavs.stream().map(GAV::stringForm).collect(Collectors.joining(",")));
         List<Path> layers = getLayers(imageData.getArtifactsPath(), sourcePath, logsPath);
-        Log.infof("### Got layers path %s " , layers );
         for (Path layer : layers) {
             containerBuilder = containerBuilder.addLayer(List.of(layer), imageRoot);
         }

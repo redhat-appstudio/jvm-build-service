@@ -3,10 +3,8 @@ package com.redhat.hacbs.container.deploy;
 import static org.apache.commons.lang3.ObjectUtils.isEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
-import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -99,12 +97,6 @@ public class TagDeployCommand implements Runnable {
                     git.create(scmUri);
                 }
                 Log.infof("Pushing changes back to URL %s", git.getName());
-                File original = new File("/original-content/workspace/");
-                Log.infof("### FILES " + Arrays.toString(original.list()));
-                Log.infof("### FILES " + Arrays.toString(sourcePath.toFile().list()));
-                original = new File("/workspace/source/workspace/");
-                Log.infof("### FILES " + Arrays.toString(original.list()));
-                Log.infof("### FILES " + Arrays.toString(sourcePath.toFile().list()));
                 archivedSourceTags = git.add(sourcePath, commit, imageId);
             }
 
