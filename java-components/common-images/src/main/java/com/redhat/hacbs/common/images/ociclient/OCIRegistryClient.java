@@ -264,6 +264,7 @@ public class OCIRegistryClient {
             try (InputStream tarInput = Files.newInputStream(tarFile)) {
                 extractTarArchive(tarInput, outputPath.toString());
             }
+            tarFile.toFile().delete();
         }
 
     }

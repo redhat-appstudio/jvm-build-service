@@ -153,7 +153,10 @@ public class ContainerRegistryTestResourceManager implements QuarkusTestResource
             Files.writeString(shaFile, sha1);
         }
 
-        return List.of(layer1Path, layer2Path, layer3Path);
+        // HACK : OCIRepositoryClient assumes that the artifacts are in a directory and it then places them
+        //        within 'artifacts/...'. This is due to build-trusted-artifact changes as its storage stores
+        //        the contents of a directory not including the directory itself.
+        return List.of(layer1Path, layer2Path, layer3Path.resolve("com"));
     }
 
     private void printTestRegistry(String host, int port) throws IOException {

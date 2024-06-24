@@ -104,6 +104,7 @@ type ImageRegistry struct {
 	Owner      string `json:"owner,omitempty"`
 	Repository string `json:"repository,omitempty"` // Defaults to artifact-deployments in ImageRegistry()
 	Insecure   bool   `json:"insecure,omitempty"`
+	// Used to stop old images from tests being picked up. Its used in the tests to add a timestamp for uniqueness.
 	PrependTag string `json:"prependTag,omitempty"`
 	SecretName string `json:"secretName,omitempty"`
 }

@@ -1369,6 +1369,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 	attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
 	gavs := ""
 	shaCalc := sha256.New()
+	imageRegistry := jbsConfig.ImageRegistry()
 	for i := range attempt.Build.Results.Gavs {
 		if i != 0 {
 			gavs += ","
@@ -1376,7 +1377,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		// Same as DigestUtils.sha256Hex(String.format(GAV_FORMAT, groupId, artifactId, version))
 		shaCalc.Reset()
 		shaCalc.Write([]byte(attempt.Build.Results.Gavs[i]))
-		gavs += hex.EncodeToString(shaCalc.Sum(nil))
+		gavs += prependTagToImage(hex.EncodeToString(shaCalc.Sum(nil)), imageRegistry.PrependTag)
 	}
 
 	fmt.Printf("### handleStateDeploying GAVS %#v and attempt %#v \n", gavs, attempt)
