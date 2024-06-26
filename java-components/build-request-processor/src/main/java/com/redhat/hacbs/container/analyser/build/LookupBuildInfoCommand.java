@@ -120,6 +120,9 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--artifact", description = "Artifact to get manifest from")
     String artifact;
 
+    @CommandLine.Option(names = "--build-recipe-path")
+    String buildRecipePath;
+
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
 
@@ -131,36 +134,42 @@ public class LookupBuildInfoCommand implements Runnable {
 
     @Override
     public void run() {
+        String infoString;
         try {
             ScmInfo scmInfo = new ScmInfo("git", this.scmUrl);
             Log.infof("LookupBuildInfo resolving %s for version %s ", scmInfo.getUri(), version);
 
-            CacheBuildInfoLocator buildInfoLocator = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl))
+            if (buildRecipePath != null) {
+                Log.infof("Using build recipe from %s", buildRecipePath);
+                infoString = Files.readString(Path.of(buildRecipePath));
+                Log.infof("Reading %s", infoString);
+            } else {
+                CacheBuildInfoLocator buildInfoLocator = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl))
                     .build(CacheBuildInfoLocator.class);
-            BuildRecipeInfo buildRecipeInfo = buildInfoLocator.resolveBuildInfo(scmInfo.getUri(), version);
+                BuildRecipeInfo buildRecipeInfo = buildInfoLocator.resolveBuildInfo(scmInfo.getUri(), version);
 
-            if (scmInfo.getBuildNameFragment() != null) {
-                Log.infof("Using alternate name fragment of " + scmInfo.getBuildNameFragment());
-                buildRecipeInfo = buildRecipeInfo.getAdditionalBuilds().get(scmInfo.getBuildNameFragment());
-                if (buildRecipeInfo == null) {
-                    throw new RuntimeException("Unknown build name " + scmInfo.getBuildNameFragment() + " for " + this.scmUrl
+                if (scmInfo.getBuildNameFragment() != null) {
+                    Log.infof("Using alternate name fragment of " + scmInfo.getBuildNameFragment());
+                    buildRecipeInfo = buildRecipeInfo.getAdditionalBuilds().get(scmInfo.getBuildNameFragment());
+                    if (buildRecipeInfo == null) {
+                        throw new RuntimeException("Unknown build name " + scmInfo.getBuildNameFragment() + " for " + this.scmUrl
                             + " please add it to the additionalBuilds section");
+                    }
                 }
-            }
 
-            Log.infof("Cloning commit %s (tag %s)" + (context == null ? "" : " for path " + context), commit, tag);
-            var info = doBuildAnalysis(scmInfo.getUriWithoutFragment(), buildRecipeInfo, buildInfoLocator);
-            var infoString = ResultsUpdater.MAPPER.writeValueAsString(info);
-            Log.infof("Writing %s", infoString);
+                Log.infof("Cloning commit %s (tag %s)" + (context == null ? "" : " for path " + context), commit, tag);
+                var info = doBuildAnalysis(scmInfo.getUriWithoutFragment(), buildRecipeInfo, buildInfoLocator);
+                infoString = ResultsUpdater.MAPPER.writeValueAsString(info);
+                Log.infof("Writing %s", infoString);
+            }
             if (taskRun != null) {
                 resultsUpdater.get().updateResults(taskRun, Map.of("BUILD_INFO",
-                        infoString));
+                    infoString));
             }
-
         } catch (Exception e) {
             Log.errorf(e, "Failed to process build info for " + scmUrl);
             resultsUpdater.get().updateResults(taskRun, Map.of(
-                    "BUILD_INFO", "Failed to analyse build for " + scmUrl + ". Failure reason: " + e.getMessage()));
+                    "BUILD_INFO", "Failed to process build info for " + scmUrl + ". Failure reason: " + e.getMessage()));
             System.exit(1);
         }
     }
