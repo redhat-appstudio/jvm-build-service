@@ -13,6 +13,7 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
+	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -23,14 +24,12 @@ const (
 	WorkspaceSource        = "source"
 	WorkspaceTls           = "tls"
 
-	PreBuildTaskName            = "pre-build"
 	BuildTaskName               = "build"
-	OriginalContentPath         = "/original-content"
-	MavenArtifactsPath          = "/maven-artifacts"
-	PreBuildImageDigest         = "PRE_BUILD_IMAGE_DIGEST"
+	HermeticBuildTaskName       = "hermetic-build"
 	HermeticPreBuildImageDigest = "HERMETIC_PRE_BUILD_IMAGE_DIGEST"
-	DeployedImageDigestParam    = "DEPLOYED_IMAGE_DIGEST"
-	GavsParam                   = "GAVS"
+	PreBuildTaskName            = "pre-build"
+	PreBuildImageDigest         = "PRE_BUILD_IMAGE_DIGEST"
+	TagTaskName                 = "tag"
 )
 
 //go:embed scripts/maven-build.sh
@@ -62,23 +61,49 @@ var buildEntryScript string
 //go:embed scripts/hermetic-entry.sh
 var hermeticBuildEntryScript string
 
-func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
+//go:embed scripts/Dockerfile.build-trusted-artifacts
+var buildTrustedArtifacts string
+
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild, buildRequestProcessorImage string, gavs string) (*tektonpipeline.PipelineSpec, error) {
 	zero := int64(0)
-	tagArgs := tagCommands(jbsConfig)
-	mavenDeployArgs := mavenDeployCommands(jbsConfig)
+	mavenDeployArgs := pipelineDeployCommands(jbsConfig, db)
 
 	limits, err := memoryLimits(jbsConfig, 0)
 	if err != nil {
 		return nil, err
 	}
+	orasOptions := ""
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
+		orasOptions = "--insecure --plain-http"
+	}
 
+	mavenDeployArgs = append(mavenDeployArgs, gitArgs(jbsConfig, db)...)
 	secretVariables := secretVariables(jbsConfig)
-
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
+	regUrl := registryArgsWithDefaults(jbsConfig, "")
+
 	tagTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}},
-		Params:     []tektonpipeline.ParamSpec{{Name: "GAVS", Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigestParam, Type: tektonpipeline.ParamTypeString}},
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}, {Name: WorkspaceSource}},
+		Params:     []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Steps: []tektonpipeline.Step{
+			{
+				Name:            "restore-post-build-artifacts",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: v1.PullIfNotPresent,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				// While the manifest digest is available we need the manifest of the layer within the archive hence
+				// using 'oras manifest fetch' to extract the correct layer.
+				Script: fmt.Sprintf(`echo "Restoring artifacts to workspace"
+[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
+export ORAS_OPTIONS="%s"
+URL=%s
+DIGEST=$(params.%s)
+echo "URL $URL DIGEST $DIGEST"
+SARCHIVE=$(oras manifest fetch $ORAS_OPTIONS --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[0].digest')
+AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[2].digest')
+AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/source oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, regUrl, PipelineResultImageDigest),
+			},
 			{
 				Name:            "maven-deployment",
 				Image:           buildRequestProcessorImage,
@@ -93,37 +118,37 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 			},
 			{
 				Name:            "tag",
-				Image:           buildRequestProcessorImage,
-				ImagePullPolicy: pullPolicy,
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
-				ComputeResources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(tagArgs),
+				// gavs is a comma separated list so split it into spaces
+				Script: fmt.Sprintf(`GAVS=%s
+echo "Tagging for GAVs ($GAVS)"
+[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
+oras tag %s --registry-config ~/config.json --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, orasOptions, regUrl, PipelineResultImageDigest),
 			},
 		},
 	}
 
 	ps := &tektonpipeline.PipelineSpec{
-		Params: []tektonpipeline.ParamSpec{{Name: GavsParam, Type: tektonpipeline.ParamTypeString}, {Name: DeployedImageDigestParam, Type: tektonpipeline.ParamTypeString}},
+		Params: []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
-				Name: artifactbuild.TagTaskName,
+				Name: TagTaskName,
 				TaskSpec: &tektonpipeline.EmbeddedTask{
 					TaskSpec: tagTask,
 				},
 				Params: []tektonpipeline.Param{
-					{Name: DeployedImageDigestParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + DeployedImageDigestParam + ")"}},
-					{Name: GavsParam, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + GavsParam + ")"}},
+					{Name: PipelineResultImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + PipelineResultImageDigest + ")"}},
 				},
 				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 					{Name: WorkspaceTls, Workspace: WorkspaceTls},
+					{Name: WorkspaceSource, Workspace: WorkspaceSource},
 				},
 			},
 		},
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceTls}},
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
 	return ps, nil
 }
@@ -135,12 +160,14 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	zero := int64(0)
 	hermeticBuildRequired := jbsConfig.Spec.HermeticBuilds == v1alpha1.HermeticBuildTypeRequired
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
-	imageRegistry := jbsConfig.ImageRegistry()
-
-	preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := imageRegistryCommands(imageId, db, jbsConfig, buildId)
+	preBuildImageArgs, postBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, createHermeticImageArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
 
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
+	orasOptions := ""
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
+		orasOptions = "--insecure --plain-http"
+	}
 
 	preprocessorArgs := []string{
 		"maven-prepare",
@@ -234,8 +261,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
-	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
-	log.Info(fmt.Sprintf("Generating dockerfile deriving from preBuildImage %#v with recipe build image %#v", preBuildImageFrom, recipe.Image))
+	log.Info(fmt.Sprintf("Generating dockerfile with recipe build image %#v", recipe.Image))
 	preprocessorScript := "#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
 	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
 	envVars := extractEnvVar(toolEnv)
@@ -244,7 +270,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
-		"\nFROM " + preBuildImageFrom + " AS pre-build" +
 		"\nFROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
@@ -258,7 +283,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
 		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
 		"\nCOPY --from=cache /deployments/ /root/software/cache" +
-		"\nCOPY --from=pre-build /original-content/workspace /root/project/workspace" +
+		// Use git script rather than the preBuildImages as they are OCI archives and can't be used with docker/podman.
+		"\nRUN " + doSubstitution(gitScript, paramValues, commitTime, buildRepos) +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
 		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
@@ -308,24 +334,16 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if preBuildImageRequired {
 		preBuildImage = "$(tasks." + PreBuildTaskName + ".results." + PreBuildImageDigest + ")"
 	}
+	hermeticResults := make([]tektonpipeline.TaskResult, 0)
+	if hermeticBuildRequired {
+		hermeticResults = []tektonpipeline.TaskResult{{Name: HermeticPreBuildImageDigest}}
+	}
 
 	var buildTaskScript string
-	hermeticResults := []tektonpipeline.TaskResult{}
-
 	if tool == "ant" {
-		if hermeticBuildRequired {
-			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs, createHermeticImageArgs)
-			hermeticResults = []tektonpipeline.TaskResult{{Name: HermeticPreBuildImageDigest}}
-		} else {
-			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs)
-		}
+		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs)
 	} else {
-		if hermeticBuildRequired {
-			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs, createHermeticImageArgs)
-			hermeticResults = []tektonpipeline.TaskResult{{Name: HermeticPreBuildImageDigest}}
-		} else {
-			buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
-		}
+		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
 	}
 
 	buildTask := tektonpipeline.TaskSpec{
@@ -338,22 +356,26 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			{Name: PipelineResultImageDigest},
 			{Name: PipelineResultPassedVerification},
 			{Name: PipelineResultVerificationResult},
-			{Name: PipelineResultGitArchive},
+			// TODO: ### DeployPreBuildSource and Deploy push to git. Currently the former is used for GitArchive results.
+			//			{Name: PipelineResultGitArchive},
 		}...),
 		Steps: []tektonpipeline.Step{
 			{
-				Name:            "establish-source",
-				Image:           "$(params." + PreBuildImageDigest + ")",
-				ImagePullPolicy: v1.PullAlways,
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
+				Name:            "restore-pre-build-source",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Script:          "echo 'Copying source to workspace'\ncp -r -a " + OriginalContentPath + "/* $(workspaces.source.path)",
+				Env:             secretVariables,
+				Script: fmt.Sprintf(`echo "Restoring source to workspace"
+echo $REGISTRY_TOKEN > ~/config.json
+export ORAS_OPTIONS="%s"
+AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, orasOptions, PreBuildImageDigest),
 			},
 			{
 				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
-				Name:            "build",
+				Name:            BuildTaskName,
 				Image:           recipe.Image,
-				ImagePullPolicy: v1.PullAlways,
+				ImagePullPolicy: pullPolicy,
 				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
@@ -365,7 +387,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
 			},
 			{
-				Name:            "verify-deploy-and-check-for-contaminates",
+				Name:            "verify-and-check-for-contaminates",
 				Image:           buildRequestProcessorImage,
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
@@ -376,7 +398,28 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				},
 				Script: buildTaskScript,
 			},
+			{
+				Name:            "create-post-build-image",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: v1.PullIfNotPresent,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				ComputeResources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: postBuildImageArgs,
+			},
 		},
+	}
+	if hermeticBuildRequired {
+		buildTask.Steps = append(buildTask.Steps, tektonpipeline.Step{
+			Name:            "create-hermetic-pre-build-image",
+			Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+			ImagePullPolicy: v1.PullIfNotPresent,
+			SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+			Env:             secretVariables,
+			Script:          createHermeticImageArgs})
 	}
 
 	hermeticBuildTask := tektonpipeline.TaskSpec{
@@ -389,33 +432,37 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			{Name: PipelineResultImageDigest},
 			{Name: PipelineResultPassedVerification},
 			{Name: PipelineResultVerificationResult},
-			{Name: PipelineResultGitArchive},
 		},
 		Steps: []tektonpipeline.Step{
 			{
-				Name:            "restore-pre-build-source",
-				Image:           "$(params." + HermeticPreBuildImageDigest + ")",
-				ImagePullPolicy: v1.PullAlways,
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
+				Name:            "restore-hermetic-pre-build-source",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Script: fmt.Sprintf(`
-echo 'Copying source to workspace'
-cp -r -a %s/* $(workspaces.source.path)
-echo 'Copying maven artifacts to workspace'
-cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath),
+				Env:             secretVariables,
+				Script: fmt.Sprintf(`echo "Restoring hermetic source to workspace"
+[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
+export ORAS_OPTIONS="%s"
+URL=%s
+DIGEST=$(params.%s)
+SARCHIVE=$(oras manifest fetch $ORAS_OPTIONS --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[0].digest')
+MARCHIVE=$(oras manifest fetch $ORAS_OPTIONS --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[1].digest')
+AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/workspace oci:$URL@$MARCHIVE=$(workspaces.source.path)/maven-artifacts
+# Hack to grab the build scripts but avoiding copying other build artifacts
+mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
+`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), HermeticPreBuildImageDigest),
 			},
 			{
 				Name:            "hermetic-build",
 				Image:           recipe.Image,
 				ImagePullPolicy: pullPolicy,
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)",
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
 				},
-
 				Args:   []string{"$(params.GOALS[*])"},
 				Script: "$(workspaces." + WorkspaceSource + ".path)/hermetic-build.sh \"$@\"",
 			},
@@ -435,7 +482,7 @@ cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath)
 	}
 
 	hermeticBuildPipelineTask := tektonpipeline.PipelineTask{
-		Name:     artifactbuild.HermeticBuildTaskName,
+		Name:     HermeticBuildTaskName,
 		RunAfter: []string{BuildTaskName},
 		TaskSpec: &tektonpipeline.EmbeddedTask{
 			TaskSpec: hermeticBuildTask,
@@ -477,7 +524,10 @@ cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath)
 		buildSetup := tektonpipeline.TaskSpec{
 			Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 			Params:     pipelineParams,
-			Results:    []tektonpipeline.TaskResult{{Name: PreBuildImageDigest, Type: tektonpipeline.ResultsTypeString}},
+			Results: []tektonpipeline.TaskResult{
+				{Name: PreBuildImageDigest, Type: tektonpipeline.ResultsTypeString},
+				{Name: PipelineResultGitArchive, Type: tektonpipeline.ResultsTypeString},
+			},
 			Steps: []tektonpipeline.Step{
 				{
 					Name:            "git-clone-and-settings",
@@ -509,15 +559,15 @@ cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath)
 				},
 				{
 					Name:            "create-pre-build-image",
-					Image:           buildRequestProcessorImage,
-					ImagePullPolicy: pullPolicy,
+					Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+					ImagePullPolicy: v1.PullIfNotPresent,
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Env:             secretVariables,
 					ComputeResources: v1.ResourceRequirements{
 						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
-					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preBuildImageArgs),
+					Script: preBuildImageArgs,
 				},
 				{
 					Name:            "create-pre-build-source",
@@ -545,6 +595,10 @@ cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath)
 			},
 		}}
 		ps.Tasks = append(pipelineTask, ps.Tasks...)
+
+		for _, i := range buildSetup.Results {
+			ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + i.Name + ")"}})
+		}
 	}
 	if hermeticBuildRequired {
 		ps.Tasks = append(ps.Tasks, hermeticBuildPipelineTask)
@@ -578,7 +632,7 @@ cp -r -a %s $(workspaces.source.path)`, OriginalContentPath, MavenArtifactsPath)
 				//bit of a hack, we don't have a remote cache for the hermetic build
 				ps.Tasks[index].Params = append(ps.Tasks[index].Params, tektonpipeline.Param{
 					Name:  i.Name,
-					Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "file://$(workspaces.source.path)" + MavenArtifactsPath + "/"}})
+					Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "file://$(workspaces.source.path)/maven-artifacts/"}})
 			} else {
 				ps.Tasks[index].Params = append(ps.Tasks[index].Params, tektonpipeline.Param{
 					Name:  i.Name,
@@ -738,18 +792,44 @@ func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) strin
 	return gitArgs
 }
 
-func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) ([]string, []string, []string, []string, []string, []string) {
+func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, string, []string, []string, []string, []string, string) {
+
+	orasOptions := ""
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
+		orasOptions = "--insecure --plain-http"
+	}
 
 	preBuildImageTag := imageId + "-pre-build-image"
-	preBuildImageArgs := []string{
-		"deploy-pre-build-image",
-		"--source-path=$(workspaces.source.path)",
-		"--image-source-path=" + OriginalContentPath,
-		"--image-name=" + preBuildImageTag,
-		"--image-hash=$(results." + PreBuildImageDigest + ".path)",
-	}
+	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json so
+	// using AUTHFILE to override. Setting ORAS_OPTIONS to ensure the archive is compatible with jib (for OCIRepositoryClient).
+	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
+echo $REGISTRY_TOKEN > ~/config.json
+export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
+AUTHFILE=~/config.json create-archive --store %s $(results.%s.path)=$(workspaces.source.path)
+`, orasOptions, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PreBuildImageDigest)
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
-	hermeticImageId := imageId + "-hermetic"
+	// Previously hermeticPreBuildImage was based upon preBuildImage. That latter image has a copy of the source code. As this task
+	// will be run after the build stage it still has access to the source in $(workspaces.source.path)/source and for
+	// the hermetic pre-build we also want to store the maven artifacts which are available within $(workspaces.source.path)/build-info/
+	// However we want to match what ContainerRegistryDeployer::deployHermeticPreBuildImage did and exclude the following:
+	// _remote.repositories
+	// <any artifact within artifacts should be excluded from build-info>
+	hermeticPreBuildImageArgs := fmt.Sprintf(`echo "Creating hermetic pre-build-image archive"
+[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
+export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json --no-tty --format=json"
+IMGURL=%s
+ARTIFACTS=$(workspaces.source.path)/artifacts
+find $(workspaces.source.path)/build-info -name _remote.repositories -delete
+for i in $(find $ARTIFACTS -type f -printf '%%P\n')
+do
+	rm -f $(workspaces.source.path)/build-info/$i
+done
+# Hack to grab the build scripts but avoiding copying other build artifacts
+cp $(workspaces.source.path)/*.sh $(workspaces.source.path)/source
+AUTHFILE=~/config.json create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/build-info=$(workspaces.source.path)/build-info | tee /tmp/oras-create.json
+IMDIGEST=$(cat /tmp/oras-create.json | grep -Ev '(Prepared artifact|Artifacts created)' | jq -r '.digest')
+echo -n "$IMGDIGEST" >> $(results.%s.path)
+echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, orasOptions, registryArgsWithDefaults(jbsConfig, hermeticPreBuildImageTag), HermeticPreBuildImageDigest)
 
 	copyArtifactsArgs := []string{
 		"copy-artifacts",
@@ -757,27 +837,29 @@ func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 	}
 	deployArgs := []string{
-		"deploy",
+		"verify",
 		"--path=$(workspaces.source.path)/artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--build-info-path=$(workspaces.source.path)/build-info",
-		"--source-path=$(workspaces.source.path)/source",
 		"--task-run-name=$(context.taskRun.name)",
 		"--build-id=" + buildId,
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
+
+	regUrl := registryArgsWithDefaults(jbsConfig, buildId)
+	// Note as per RebuiltDownloadCommand and OCIRepositoryClient the layers are in a predefined order (namely source, logs, artifacts).
+	postBuildImageArgs := fmt.Sprintf(`echo "Creating post-build-image archive"
+[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
+export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json --no-tty --format=json"
+IMGURL=%s
+AUTHFILE=~/config.json create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/logs=$(workspaces.source.path)/logs /tmp/artifacts=$(workspaces.source.path)/artifacts | tee /tmp/oras-create.json
+IMGDIGEST=$(cat /tmp/oras-create.json | grep -Ev '(Prepared artifact|Artifacts created)' | jq -r '.digest')
+echo -n "$IMGURL" >> $(results.%s.path)
+echo -n "$IMGDIGEST" >> $(results.%s.path)
+echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, orasOptions, regUrl, PipelineResultImage, PipelineResultImageDigest)
+
 	hermeticDeployArgs := append([]string{}, deployArgs...)
-	hermeticDeployArgs = append(hermeticDeployArgs, "--image-id="+hermeticImageId)
-	deployArgs = append(deployArgs, "--image-id="+imageId)
-
-	registryArgs := registryArgs(jbsConfig)
-	deployArgs = append(deployArgs, registryArgs...)
-	hermeticDeployArgs = append(hermeticDeployArgs, registryArgs...)
-	preBuildImageArgs = append(preBuildImageArgs, registryArgs...)
-
-	gitArgs := gitArgs(jbsConfig, db)
-	deployArgs = append(deployArgs, gitArgs...)
 
 	konfluxArgs := []string{
 		"deploy-pre-build-source",
@@ -786,87 +868,62 @@ func imageRegistryCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
-	konfluxArgs = append(konfluxArgs, gitArgs...)
+	konfluxArgs = append(konfluxArgs, gitArgs(jbsConfig, db)...)
 	konfluxArgs = append(konfluxArgs, "--image-id="+imageId)
 
-	hermeticPreBuildImageArgs := []string{
-		"deploy-hermetic-pre-build-image",
-		"--source-image=$(params." + PreBuildImageDigest + ")",
-		"--image-name=" + hermeticPreBuildImageTag,
-		"--build-artifact-path=$(workspaces.source.path)/artifacts",
-		"--image-source-path=" + MavenArtifactsPath,
-		"--repository-path=$(workspaces.source.path)/build-info/",
-		"--image-hash=$(results." + HermeticPreBuildImageDigest + ".path)",
-	}
-	hermeticPreBuildImageArgs = append(hermeticPreBuildImageArgs, registryArgs...)
-
-	return preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
+	return preBuildImageArgs, postBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs, hermeticDeployArgs, hermeticPreBuildImageArgs
 }
 
-func tagCommands(jbsConfig *v1alpha1.JBSConfig) []string {
-
-	tagArgs := []string{
-		"tag-container",
-		"--image-digest=$(params." + DeployedImageDigestParam + ")",
-	}
-	registryArgs := registryArgs(jbsConfig)
-	tagArgs = append(tagArgs, registryArgs...)
-	tagArgs = append(tagArgs, "$(params.GAVS)")
-
-	return tagArgs
-}
-
-func registryArgs(jbsConfig *v1alpha1.JBSConfig) []string {
+// This effectively duplicates the defaults from DeployPreBuildImageCommand.java
+func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag string) string {
 
 	imageRegistry := jbsConfig.ImageRegistry()
-	registryArgs := make([]string, 0)
+	var registryArgs strings.Builder
 	if imageRegistry.Host != "" {
-		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
+		registryArgs.WriteString(imageRegistry.Host)
+	} else {
+		registryArgs.WriteString("quay.io")
 	}
 	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
-		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
+		registryArgs.WriteString(":")
+		registryArgs.WriteString(imageRegistry.Port)
 	}
+	// 'else' :
+	// No need to pass a default port (of 443) and its not supported by select-oci-auth.sh according
+	// to the tests in https://github.com/konflux-ci/build-trusted-artifacts/pull/103
+	registryArgs.WriteString("/")
 	if imageRegistry.Owner != "" {
-		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
+		registryArgs.WriteString(imageRegistry.Owner)
+		registryArgs.WriteString("/")
 	}
 	if imageRegistry.Repository != "" {
-		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
+		registryArgs.WriteString(imageRegistry.Repository)
+	} else {
+		registryArgs.WriteString("artifact-deployments")
 	}
-	if imageRegistry.Insecure {
-		registryArgs = append(registryArgs, "--registry-insecure")
+	// If no tag (or digest) is passed in that allows just the host:owner:repo to be reconstructed.
+	if preBuildImageTag != "" {
+		registryArgs.WriteString(":")
+		registryArgs.WriteString(prependTagToImage(preBuildImageTag, imageRegistry.PrependTag))
 	}
-	if imageRegistry.PrependTag != "" {
-		registryArgs = append(registryArgs, "--registry-prepend-tag="+imageRegistry.PrependTag)
-	}
-	return registryArgs
+	return registryArgs.String()
 }
 
-func mavenDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
+func pipelineDeployCommands(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []string {
+
+	imageId := db.Name
+	if jbsConfig.Spec.HermeticBuilds == v1alpha1.HermeticBuildTypeRequired {
+		imageId = imageId + "-hermetic"
+	}
 
 	deployArgs := []string{
-		"maven-repository-deploy",
-		"--image-digest=$(params." + DeployedImageDigestParam + ")",
+		"deploy",
+		"--directory=$(workspaces.source.path)/artifacts",
+		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
+		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
+		"--source-path=$(workspaces.source.path)/source",
+		"--image-id=" + imageId,
 	}
-
-	imageRegistry := jbsConfig.ImageRegistry()
-	registryArgs := make([]string, 0)
-	if imageRegistry.Host != "" {
-		registryArgs = append(registryArgs, "--registry-host="+imageRegistry.Host)
-	}
-	if imageRegistry.Port != "" && imageRegistry.Port != "443" {
-		registryArgs = append(registryArgs, "--registry-port="+imageRegistry.Port)
-	}
-	if imageRegistry.Owner != "" {
-		registryArgs = append(registryArgs, "--registry-owner="+imageRegistry.Owner)
-	}
-	if imageRegistry.Repository != "" {
-		registryArgs = append(registryArgs, "--registry-repository="+imageRegistry.Repository)
-	}
-
-	if imageRegistry.Insecure {
-		registryArgs = append(registryArgs, "--registry-insecure")
-	}
-	deployArgs = append(deployArgs, registryArgs...)
 
 	mavenArgs := make([]string, 0)
 	if jbsConfig.Spec.MavenDeployment.Repository != "" {
@@ -897,15 +954,26 @@ func gitArgs(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []stri
 	return gitArgs
 }
 
-// This is equivalent to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
+// This is similar to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
 func prependTagToImage(imageId string, prependTag string) string {
+
 	i := strings.LastIndex(imageId, ":")
-	slice := imageId[0:i]
-	tag := prependTag + "_" + imageId[i+1:]
+	var slice, tag string
+	if i != -1 {
+		slice = imageId[0:i] + ":"
+		tag = prependTag + "_" + imageId[i+1:]
+	} else {
+		slice = ""
+		if prependTag != "" {
+			tag = prependTag + "_" + imageId
+		} else {
+			tag = imageId
+		}
+	}
 	if len(tag) > 128 {
 		tag = tag[0:128]
 	}
-	imageId = slice + ":" + tag
+	imageId = slice + tag
 	return imageId
 }
 

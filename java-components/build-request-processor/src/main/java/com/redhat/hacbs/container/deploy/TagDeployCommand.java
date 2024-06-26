@@ -3,18 +3,14 @@ package com.redhat.hacbs.container.deploy;
 import static org.apache.commons.lang3.ObjectUtils.isEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
-import java.io.File;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
@@ -23,8 +19,7 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.codeartifact.AWSCodeArtifactClientBuilder;
 import com.amazonaws.services.codeartifact.model.GetAuthorizationTokenRequest;
 import com.amazonaws.util.AwsHostNameUtils;
-import com.redhat.hacbs.common.images.ociclient.OCIRegistryClient;
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.container.deploy.git.Git;
 import com.redhat.hacbs.container.deploy.mavenrepository.CodeArtifactRepository;
 import com.redhat.hacbs.container.deploy.mavenrepository.MavenRepositoryDeployer;
 
@@ -32,32 +27,13 @@ import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-@CommandLine.Command(name = "maven-repository-deploy")
-public class MavenDeployCommand implements Runnable {
+@CommandLine.Command(name = "deploy")
+public class TagDeployCommand implements Runnable {
 
-    static final Pattern CODE_ARTIFACT_PATTERN = Pattern.compile("https://([^.]*)-\\d+\\..*\\.amazonaws\\.com/maven/(.*)/");
-    private static final String DOT_JAR = ".jar";
-    private static final String DOT_POM = ".pom";
-    private static final String DOT = ".";
-    public static final String ARTIFACTS = "artifacts";
+    private static final Pattern CODE_ARTIFACT_PATTERN = Pattern.compile("https://([^.]*)-\\d+\\..*\\.amazonaws\\.com/maven/(.*)/");
 
-    @CommandLine.Option(names = "--registry-host", defaultValue = "quay.io")
-    String host;
-    @CommandLine.Option(names = "--registry-port", defaultValue = "443")
-    int port;
-    @CommandLine.Option(names = "--registry-owner", defaultValue = "hacbs")
-    String owner;
-    @ConfigProperty(name = "registry.token")
-    Optional<String> token;
-    @CommandLine.Option(names = "--registry-repository", defaultValue = "artifact-deployments")
-    String repository;
-    @CommandLine.Option(names = "--registry-insecure", defaultValue = "false")
-    boolean insecure;
-
-    @CommandLine.Option(names = "--image-digest")
-    String imageDigest;
-
+    @CommandLine.Option(names = "--directory")
+    String artifactDirectory;
 
     // Maven Repo Deployment specification
     @CommandLine.Option(names = "--mvn-username")
@@ -72,21 +48,58 @@ public class MavenDeployCommand implements Runnable {
     @CommandLine.Option(names = "--mvn-repo")
     String mvnRepo;
 
+    @ConfigProperty(name = "git.deploy.token")
+    Optional<String> gitToken;
+
+    // If endpoint is null then default GitHub API endpoint is used. Otherwise:
+    // for GitHub, endpoint like https://api.github.com
+    // for GitLib, endpoint like https://gitlab.com
+    @CommandLine.Option(names = "--git-url")
+    String gitURL;
+
+    @CommandLine.Option(names = "--git-identity")
+    String gitIdentity;
+
+    @CommandLine.Option(names = "--git-disable-ssl-verification")
+    boolean gitDisableSSLVerification;
+
+    @CommandLine.Option(names = "--git-reuse-repository")
+    boolean reuseRepository;
+
+    @CommandLine.Option(names = "--image-id")
+    String imageId;
+
+    @CommandLine.Option(required = true, names = "--scm-uri")
+    String scmUri;
+
+    @CommandLine.Option(required = true, names = "--scm-commit")
+    String commit;
+
+    @CommandLine.Option(required = true, names = "--source-path")
+    Path sourcePath;
+
     @Inject
     BootstrapMavenContext mvnCtx;
 
     public void run() {
         try {
-            OCIRegistryClient client = getRegistryClient();
-            var image = client.pullImage(imageDigest);
 
-            if (!image.isPresent()) {
-                throw new RuntimeException("Could not find image");
+            var deploymentPath = Path.of(artifactDirectory);
+
+            // TODO: Should we write out to a 'DependencyPipelineResults' a GitArchive?
+            Git.GitStatus archivedSourceTags = new Git.GitStatus();
+            // Save the source first regardless of deployment checks
+            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
+                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
+                if (reuseRepository) {
+                    git.initialise(scmUri);
+                } else {
+                    git.create(scmUri);
+                }
+                Log.infof("Pushing changes back to URL %s", git.getName());
+                archivedSourceTags = git.add(sourcePath, commit, imageId);
             }
-            Path directory = Files.createTempDirectory("pull");
-            image.get().pullLayer(image.get().getLayerCount() - 1, directory);
 
-            var deploymentPath = directory.resolve(ARTIFACTS);
             if (!deploymentPath.toFile().exists()) {
                 Log.warnf("No deployed artifacts found. Has the build been correctly configured to deploy?");
                 throw new RuntimeException("Deploy failed");
@@ -140,29 +153,4 @@ public class MavenDeployCommand implements Runnable {
             throw new RuntimeException(e);
         }
     }
-
-     OCIRegistryClient getRegistryClient() {
-         String fullName = host + (port == 443 ? "" : ":" + port);
-        return new OCIRegistryClient(fullName, owner, repository, token,
-                insecure);
-    }
-
-    private Optional<GAV> getGav(String entryName) {
-        if (entryName.startsWith("." + File.separator)) {
-            entryName = entryName.substring(2);
-        }
-        if (entryName.endsWith(DOT_JAR) || entryName.endsWith(DOT_POM)) {
-            List<String> pathParts = List.of(StringUtils.split(entryName, File.separatorChar));
-            int numberOfParts = pathParts.size();
-
-            String version = pathParts.get(numberOfParts - 2);
-            String artifactId = pathParts.get(numberOfParts - 3);
-            List<String> groupIdList = pathParts.subList(0, numberOfParts - 3);
-            String groupId = String.join(DOT, groupIdList);
-
-            return Optional.of(GAV.create(groupId, artifactId, version));
-        }
-        return Optional.empty();
-    }
-
 }

@@ -80,7 +80,6 @@ public class OCIRepositoryClient implements RepositoryClient {
             Optional<Path> repoRoot = getLocalCachePath(image.get());
             if (repoRoot.isPresent()) {
                 Path fileWeAreAfter = repoRoot.get().resolve(groupPath).resolve(artifact).resolve(version).resolve(target);
-
                 boolean exists = Files.exists(fileWeAreAfter);
                 if (exists) {
                     return Optional.of(
@@ -110,6 +109,7 @@ public class OCIRepositoryClient implements RepositoryClient {
         String digestHash = image.getDigestHash();
         Path digestHashPath = storageManager.accessDirectory(digestHash);
         Path artifactsPath = Paths.get(digestHashPath.toString(), ARTIFACTS);
+
         if (existInLocalCache(digestHashPath)) {
             return Optional.of(artifactsPath);
         } else {
@@ -142,10 +142,11 @@ public class OCIRepositoryClient implements RepositoryClient {
         //layer 2 is artifacts, should be a 3 layer image
         //we don't actually check as we might want to allow more,
         //and just require the artifacts to be in the last layer
-        Path outputPath = Files.createDirectories(digestHashPath);
+        //Oras doesn't store with the artifacts directory so create it as well.
+        Path outputPath = Files.createDirectories(Paths.get(digestHashPath.toString(), ARTIFACTS));
 
         image.pullLayer(image.getLayerCount() - 1, outputPath);
-        return Optional.of(Paths.get(outputPath.toString(), ARTIFACTS));
+        return Optional.of(outputPath);
     }
 
     private boolean existInLocalCache(Path digestHashPath) {
