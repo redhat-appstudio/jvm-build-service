@@ -1201,7 +1201,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	}
 	if build.BuildRecipeConfigMap != "" {
 		mountPath := "/build-recipe"
-		args = append(args, "--build-recipe-path", mountPath+"/build-recipe.json")
+		args = append(args, "--build-recipe-path", mountPath+"/build.yaml")
 		buildInfoTask.Steps[0].VolumeMounts = []v1.VolumeMount{{
 			Name:      "build-recipe-config-map",
 			MountPath: mountPath,
