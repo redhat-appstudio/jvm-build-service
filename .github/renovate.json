@@ -10,6 +10,11 @@
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
+    },
+    {
+      "matchPackagePatterns": ["^io.github.redhat-appstudio.jvmbuild:"],
+      "matchCurrentValue": "/-SNAPSHOT$/",
+      "enabled": false
     }
   ]
 }
