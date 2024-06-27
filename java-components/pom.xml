@@ -57,7 +57,7 @@
         <!-- Dependencies -->
         <asm.version>9.7</asm.version>
         <assertj.version>3.26.0</assertj.version>
-        <aws-java-sdk.version>1.12.750</aws-java-sdk.version>
+        <aws-java-sdk.version>1.12.751</aws-java-sdk.version>
         <cyclonedx-core-java.version>9.0.4</cyclonedx-core-java.version>
         <gradle-tooling-api.version>8.8</gradle-tooling-api.version>
         <maven-indexer.version>7.1.3</maven-indexer.version>
