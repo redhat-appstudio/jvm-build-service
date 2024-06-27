@@ -126,6 +126,8 @@ spec:
                   port:
                     type: string
                   prependTag:
+                    description: Used to stop old images from tests being picked up.
+                      Its used in the tests to add a timestamp for uniqueness.
                     type: string
                   private:
                     description: if this is true and we are automatically creating
@@ -182,6 +184,8 @@ spec:
                     port:
                       type: string
                     prependTag:
+                      description: Used to stop old images from tests being picked
+                        up. Its used in the tests to add a timestamp for uniqueness.
                       type: string
                     repository:
                       type: string
@@ -203,6 +207,8 @@ spec:
                   port:
                     type: string
                   prependTag:
+                    description: Used to stop old images from tests being picked up.
+                      Its used in the tests to add a timestamp for uniqueness.
                     type: string
                   repository:
                     type: string

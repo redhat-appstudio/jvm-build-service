@@ -1,7 +1,6 @@
 package com.redhat.hacbs.container.deploy;
 
 import static com.redhat.hacbs.classfile.tracker.TrackingData.extractClassifier;
-import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -28,14 +26,11 @@ import jakarta.enterprise.inject.spi.BeanManager;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.Version;
 import org.cyclonedx.generators.BomGeneratorFactory;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.common.sbom.GAV;
 import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
-import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDeployer;
-import com.redhat.hacbs.container.deploy.git.Git;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
@@ -44,16 +39,14 @@ import com.redhat.hacbs.resources.util.HashUtil;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-@CommandLine.Command(name = "deploy")
-public class DeployCommand implements Runnable {
+@CommandLine.Command(name = "verify")
+public class BuildVerifyCommand implements Runnable {
 
     static final Pattern CODE_ARTIFACT_PATTERN = Pattern.compile("https://([^.]*)-\\d+\\..*\\.amazonaws\\.com/maven/(.*)/");
     private static final String DOT_JAR = ".jar";
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";
     private static final Set<String> ALLOWED_CONTAMINANTS = Set.of("-tests.jar");
-    public static final String IMAGE_DIGEST_OUTPUT = "Image Digest: ";
     public static final String BUILD_ID = "build-id";
     final BeanManager beanManager;
     final ResultsUpdater resultsUpdater;
@@ -67,9 +60,6 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--task-run-name")
     String taskRun;
 
-    @CommandLine.Option(required = true, names = "--source-path")
-    Path sourcePath;
-
     @CommandLine.Option(names = "--logs-path")
     Path logsPath;
 
@@ -82,55 +72,13 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(required = true, names = "--scm-commit")
     String commit;
 
-    @CommandLine.Option(names = "--registry-host", defaultValue = "quay.io")
-    String host;
-    @CommandLine.Option(names = "--registry-port", defaultValue = "443")
-    int port;
-    @CommandLine.Option(names = "--registry-owner", defaultValue = "hacbs")
-    String owner;
-    @ConfigProperty(name = "registry.token")
-    Optional<String> token;
-    @CommandLine.Option(names = "--registry-repository", defaultValue = "artifact-deployments")
-    String repository;
-    @CommandLine.Option(names = "--registry-insecure", defaultValue = "false")
-    boolean insecure;
-
-    @CommandLine.Option(names = "--image-id")
-    String imageId;
-
     @CommandLine.Option(names = "--hermetic")
     boolean hermetic;
 
-    @CommandLine.Option(names = "--registry-prepend-tag", defaultValue = "")
-    String prependTag;
-
-    @ConfigProperty(name = "git.deploy.token")
-    Optional<String> gitToken;
-
-    // If endpoint is null then default GitHub API endpoint is used. Otherwise:
-    // for GitHub, endpoint like https://api.github.com
-    // for GitLib, endpoint like https://gitlab.com
-    @CommandLine.Option(names = "--git-url")
-    String gitURL;
-
-    @CommandLine.Option(names = "--git-identity")
-    String gitIdentity;
-
-    @CommandLine.Option(names = "--git-disable-ssl-verification")
-    boolean gitDisableSSLVerification;
-
-    @CommandLine.Option(names = "--git-reuse-repository")
-    boolean reuseRepository;
-
     @CommandLine.Option(names = "--build-id")
     String buildId;
-    // Testing only ; used to disable image deployment
-    protected boolean imageDeployment = true;
 
-    protected String imageName;
-    protected String imageDigest;
-
-    public DeployCommand(BeanManager beanManager,
+    public BuildVerifyCommand(BeanManager beanManager,
             ResultsUpdater resultsUpdater) {
         this.beanManager = beanManager;
         this.resultsUpdater = resultsUpdater;
@@ -141,19 +89,6 @@ public class DeployCommand implements Runnable {
             Set<String> gavs = new HashSet<>();
             Map<String, Set<String>> contaminatedPaths = new HashMap<>();
             Map<String, Contaminates> contaminatedGavs = new HashMap<>();
-            Git.GitStatus archivedSourceTags = new Git.GitStatus();
-
-            // Save the source first regardless of deployment checks
-            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
-                if (reuseRepository) {
-                    git.initialise(scmUri);
-                } else {
-                    git.create(scmUri);
-                }
-                Log.infof("Pushing changes back to URL %s", git.getName());
-                archivedSourceTags = git.add(sourcePath, commit, imageId);
-            }
 
             // Represents directories that should not be deployed i.e. if a single artifact (barring test jars) is
             // contaminated then none of the artifacts will be deployed.
@@ -285,6 +220,7 @@ public class DeployCommand implements Runnable {
             for (var i : contaminatedGavs.entrySet()) {
                 if (!i.getValue().getAllowed()) {
                     gavs.removeAll(i.getValue().getContaminatedArtifacts());
+//                    i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
                 }
             }
             generateBuildSbom();
@@ -292,36 +228,17 @@ public class DeployCommand implements Runnable {
             //we still deploy, but without the contaminates
             // This means the build failed to produce any deployable output.
             // If everything is contaminated we still need the task to succeed so we can resolve the contamination.
-            if (!gavs.isEmpty()) {
-                try {
-                    cleanBrokenSymlinks(sourcePath);
-                    doDeployment(sourcePath, logsPath, gavs);
-                } catch (Throwable t) {
-                    Log.error("Deployment failed", t);
-                    flushLogs();
-                    throw t;
-                }
-            } else {
-                Log.errorf("Skipped deploying from task run %s as all artifacts were contaminated", taskRun);
-            }
-            if (imageDigest != null) {
-                System.out.println(IMAGE_DIGEST_OUTPUT + "sha256:" + imageDigest);
-            }
             if (taskRun != null) {
                 List<Contaminates> newContaminates = new ArrayList<>();
                 for (var i : contaminatedGavs.entrySet()) {
                     newContaminates.add(i.getValue());
                 }
                 String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
-                String serialisedGitArchive = ResultsUpdater.MAPPER.writeValueAsString(archivedSourceTags);
-                Log.infof("Updating results %s for deployed resources %s with contaminants %s and gitArchiveTags %s",
-                        taskRun, gavs, serialisedContaminants, serialisedGitArchive);
+                Log.infof("Updating results %s for deployed resources %s with contaminants %s",
+                        taskRun, gavs, serialisedContaminants);
                 resultsUpdater.updateResults(taskRun, Map.of(
                         "CONTAMINANTS", serialisedContaminants,
-                        "DEPLOYED_RESOURCES", String.join(",", gavs),
-                        "IMAGE_URL", imageName == null ? "" : imageName,
-                        "IMAGE_DIGEST", imageDigest == null ? "" : "sha256:" + imageDigest,
-                        "GIT_ARCHIVE", serialisedGitArchive));
+                        "DEPLOYED_RESOURCES", String.join(",", gavs)));
             }
         } catch (Exception e) {
             Log.error("Deployment failed", e);
@@ -361,46 +278,6 @@ public class DeployCommand implements Runnable {
         }
     }
 
-    static void cleanBrokenSymlinks(Path sourcePath) throws IOException {
-        Files.walkFileTree(sourcePath, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                try (var s = Files.list(dir)) {
-                    List<Path> paths = s.toList();
-                    for (var i : paths) {
-                        //broken symlinks will fail this check
-                        if (!Files.exists(i)) {
-                            Files.delete(i);
-                        }
-                    }
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-
-    }
-
-    protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs)
-            throws Exception {
-        if (imageDeployment) {
-            ContainerRegistryDeployer deployer = new ContainerRegistryDeployer(host, port, owner, token.orElse(""), repository,
-                    insecure, prependTag);
-            deployer.deployArchive(deploymentPath, sourcePath, logsPath, gavs, imageId, buildId,
-                    new BiConsumer<String, String>() {
-                        @Override
-                        public void accept(String s, String hash) {
-                            imageName = s;
-                            imageDigest = hash;
-                        }
-                    });
-        }
-    }
-
-    private void flushLogs() {
-        System.err.flush();
-        System.out.flush();
-    }
-
     private Optional<GAV> getGav(String entryName) {
         if (entryName.startsWith("." + File.separator)) {
             entryName = entryName.substring(2);
@@ -418,5 +295,4 @@ public class DeployCommand implements Runnable {
         }
         return Optional.empty();
     }
-
 }

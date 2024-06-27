@@ -12,6 +12,7 @@ import com.redhat.hacbs.container.deploy.containerregistry.ContainerRegistryDepl
 
 import picocli.CommandLine;
 
+@Deprecated
 @CommandLine.Command(name = "deploy-hermetic-pre-build-image", description = "This adds an additional layer onto an existing pre-build-image that"
         +
         "contains a list of all dependencies needed by the build. This can be used to generate a hermetic build.")

@@ -14,22 +14,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.logging.LogRecord;
 
 import jakarta.inject.Inject;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.google.cloud.tools.jib.api.DescriptorDigest;
-import com.google.cloud.tools.jib.image.json.OciManifestTemplate;
-import com.redhat.hacbs.common.images.ociclient.LocalImage;
-import com.redhat.hacbs.common.images.ociclient.OCIRegistryClient;
-import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.resources.util.HashUtil;
 
 import io.quarkus.bootstrap.resolver.maven.BootstrapMavenContext;
@@ -47,16 +40,11 @@ public class MavenDeployTest {
     public static final String FOO_BAZ = "foo-baz";
     private static final String DOT = ".";
     private static final String SHA_1 = "sha1";
-    public static final String COMMIT = "3cf2d99b47f0a05466d1d0a2e09d8740faeda149";
-    public static final String REPO = "https://github.com/foo/bar";
 
     // ArtifactName -> [ collection of Artifacts ]
     private final Map<String, Set<String>> ARTIFACT_FILE_MAP = Map.of(
             FOO_BAR, Set.of("foo-bar-" + VERSION + ".jar", "foo-bar-" + VERSION + "-tests.jar"),
             FOO_BAZ, Set.of("foo-baz-" + VERSION + ".pom"));
-
-    @Inject
-    ResultsUpdater resultsUpdater;
 
     @Inject
     BootstrapMavenContext mvnContext;
@@ -73,52 +61,11 @@ public class MavenDeployTest {
         Path deployment = Files.createTempDirectory("deployment");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        MavenDeployCommand deployCommand = new MavenDeployCommand() {
-            @Override
-            OCIRegistryClient getRegistryClient() {
-                return new OCIRegistryClient("", "", "", Optional.empty(), false) {
-                    @Override
-                    public Optional<LocalImage> pullImage(String tagOrDigest) {
-                        return Optional.of(new LocalImage() {
-
-                            @Override
-                            public int getLayerCount() {
-                                return 1;
-                            }
-
-                            @Override
-                            public OciManifestTemplate getManifest() {
-                                return null;
-                            }
-
-                            @Override
-                            public DescriptorDigest getDescriptorDigest() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getDigestHash() {
-                                return null;
-                            }
-
-                            @Override
-                            public void pullLayer(int layer, Path target) throws IOException {
-                                FileUtils.copyDirectory(onDiskRepo.toFile(), target.resolve("artifacts").toFile());
-                            }
-
-                            @Override
-                            public void pullLayer(int layer, Path outputPath, Consumer<Long> blobSizeListener, Consumer<Long> writtenByteCountListener) throws IOException {
-                                FileUtils.copyDirectory(onDiskRepo.toFile(), outputPath.resolve("artifacts").toFile());
-                            }
-                        });
-
-                    }
-                };
-            }
-        };
+        TagDeployCommand deployCommand = new TagDeployCommand();
         deployCommand.mvnCtx = mvnContext;
         deployCommand.mvnPassword = Optional.empty();
         deployCommand.mvnRepo = deployment.toAbsolutePath().toUri().toString();
+        deployCommand.artifactDirectory = onDiskRepo.toString();
 
         deployCommand.run();
         List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();

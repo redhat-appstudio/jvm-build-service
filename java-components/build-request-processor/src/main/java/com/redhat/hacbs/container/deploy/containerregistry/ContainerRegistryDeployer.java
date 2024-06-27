@@ -37,6 +37,7 @@ import com.redhat.hacbs.container.deploy.DeployData;
 
 import io.quarkus.logging.Log;
 
+@Deprecated
 public class ContainerRegistryDeployer {
 
     static {
@@ -83,6 +84,7 @@ public class ContainerRegistryDeployer {
         Log.infof("Prepend tag is %s", prependTag);
     }
 
+    @Deprecated
     public void deployArchive(Path deployDir, Path sourcePath, Path logsPath, Set<String> gavs, String imageId, String buildId,
             BiConsumer<String, String> imageNameHashCallback) throws Exception {
         // Read the tar to get the gavs and files
@@ -92,6 +94,7 @@ public class ContainerRegistryDeployer {
         createImages(imageData, sourcePath, logsPath, imageId, buildId, imageNameHashCallback);
     }
 
+    @Deprecated
     public void tagArchive(String imageDigest, List<String> gavNames) throws Exception {
         if (gavNames.isEmpty()) {
             throw new RuntimeException("Empty GAV list");
@@ -125,6 +128,7 @@ public class ContainerRegistryDeployer {
         containerBuilder.containerize(containerizer);
     }
 
+    @Deprecated
     public void deployPreBuildImage(Path sourcePath, String imageSourcePath, String tag, BiConsumer<String, String> imageNameHashCallback)
             throws Exception {
         String imageName = createImageName(tag);
@@ -171,6 +175,7 @@ public class ContainerRegistryDeployer {
         }
     }
 
+    @Deprecated
     public void deployHermeticPreBuildImage(String baseImage, Path buildArtifactsPath, Path repositoryPath,
             String imageSourcePath, String tag,
             BiConsumer<String, String> imageNameHashCallback) throws Exception {

@@ -34,21 +34,10 @@ import (
 )
 
 const (
-	TlsServiceName                      = v1alpha1.CacheDeploymentName + "-tls"
-	TestRegistry                        = "jvmbuildservice.io/test-registry"
-	RetryTimeAnnotations                = "jvmbuildservice.io/retry-time"
-	RetryTimestampAnnotations           = "jvmbuildservice.io/retry-timestamp"
-	DeleteImageRepositoryAnnotationName = "image.redhat.com/delete-image-repo"
-	UploadSecretName                    = "jvm-build-service-temp-upload-secret" //#nosec
-)
-
-const (
-	Action              = "action"
-	Audit               = "audit"
-	ActionView   string = "VIEW"
-	ActionAdd    string = "ADD"
-	ActionUpdate string = "UPDATE"
-	ActionDelete string = "DELETE"
+	TlsServiceName            = v1alpha1.CacheDeploymentName + "-tls"
+	TestRegistry              = "jvmbuildservice.io/test-registry"
+	RetryTimeAnnotations      = "jvmbuildservice.io/retry-time"
+	RetryTimestampAnnotations = "jvmbuildservice.io/retry-timestamp"
 )
 
 type ReconcilerJBSConfig struct {

@@ -526,11 +526,11 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 							continue
 						}
 						println(cur.Name)
-						if cur.Name == "logs/maven.log" || cur.Name == "logs/gradle.log" {
+						if cur.Name == "./maven.log" || cur.Name == "./gradle.log" {
 							logsFound = true
-						} else if cur.Name == "source/.git/HEAD" {
+						} else if cur.Name == "./.git/HEAD" {
 							sourceFound = true
-						} else if cur.Name == "logs/build-sbom.json" {
+						} else if cur.Name == "./build-sbom.json" {
 							sbomFound = true
 							bom := &cdx.BOM{}
 							decoder := cdx.NewBOMDecoder(innerTar, cdx.BOMFileFormatJSON)

@@ -2,6 +2,8 @@ package dependencybuild
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -669,7 +671,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 		run.Complete = true
 		run.Succeeded = pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 
-		//try and save the build build image name
+		//try and save the build image name
 		//this is a big perfomance optimisation, as it can be re-used on subsequent attempts
 		alreadyExists := false
 		for _, i := range db.Status.PreBuildImages {
@@ -1376,16 +1378,20 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 	}
 	attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
 	gavs := ""
+	shaCalc := sha256.New()
+	imageRegistry := jbsConfig.ImageRegistry()
 	for i := range attempt.Build.Results.Gavs {
 		if i != 0 {
 			gavs += ","
 		}
-		gavs += attempt.Build.Results.Gavs[i]
+		// Same as DigestUtils.sha256Hex(String.format(GAV_FORMAT, groupId, artifactId, version))
+		shaCalc.Reset()
+		shaCalc.Write([]byte(attempt.Build.Results.Gavs[i]))
+		gavs += prependTagToImage(hex.EncodeToString(shaCalc.Sum(nil)), imageRegistry.PrependTag)
 	}
 
 	paramValues := []tektonpipeline.Param{
-		{Name: DeployedImageDigestParam, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.ImageDigest}},
-		{Name: GavsParam, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: gavs}},
+		{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.ImageDigest}},
 	}
 
 	systemConfig := v1alpha1.SystemConfig{}
@@ -1398,13 +1404,15 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage)
+	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, db, buildRequestProcessorImage, gavs)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	pr.Spec.Params = paramValues
-	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{}
+	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
+		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
+	}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})

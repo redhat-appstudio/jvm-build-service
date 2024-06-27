@@ -1,0 +1,3 @@
+#This file is used to enable renovate to update the digests. It is updated by renovate then substituted into the golang code.
+
+FROM quay.io/redhat-user-workloads/rhtap-build-tenant/trusted-artifacts/trusted-artifacts@sha256:c08153dcd753e49998763a67a8cdfb62880d7e14d39497ada3799cf3b7e435be

@@ -18,7 +18,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.logging.LogRecord;
 
-import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Assertions;
@@ -64,12 +63,10 @@ public class DeployContaminateTest {
         Path source = Files.createTempDirectory("hacbs");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        TestDeployment testDeployment = new TestDeployment(null, resultsUpdater);
+        BuildVerifyCommand testDeployment = new BuildVerifyCommand(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
-        testDeployment.imageId = "test-image";
         testDeployment.scmUri = REPO;
         testDeployment.commit = COMMIT;
-        testDeployment.sourcePath = source.toAbsolutePath();
         testDeployment.allowedSources = Set.of("redhat", "rebuilt"); // Default value
 
         try {
@@ -91,13 +88,11 @@ public class DeployContaminateTest {
         Path source = Files.createTempDirectory("hacbs");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        TestDeployment testDeployment = new TestDeployment(null, resultsUpdater);
+        BuildVerifyCommand testDeployment = new BuildVerifyCommand(null, resultsUpdater);
         testDeployment.deploymentPath = onDiskRepo.toAbsolutePath();
         testDeployment.buildId = "some-id";
-        testDeployment.imageId = "test-image";
         testDeployment.scmUri = REPO;
         testDeployment.commit = COMMIT;
-        testDeployment.sourcePath = source.toAbsolutePath();
         testDeployment.allowedSources = Set.of("redhat", "rebuilt"); // Default value
 
         testDeployment.run();
@@ -110,7 +105,7 @@ public class DeployContaminateTest {
 
     @Test
     public void testCodeArtifactRegex() {
-        var m = DeployCommand.CODE_ARTIFACT_PATTERN
+        var m = BuildVerifyCommand.CODE_ARTIFACT_PATTERN
                 .matcher("https://demo-151537584421.d.codeartifact.us-east-1.amazonaws.com/maven/jbs-demo/");
         Assertions.assertTrue(m.matches());
         Assertions.assertEquals("demo", m.group(1));
@@ -153,17 +148,5 @@ public class DeployContaminateTest {
         }
 
         return artifacts;
-    }
-
-    public static class TestDeployment extends DeployCommand {
-        public TestDeployment(BeanManager beanManager, ResultsUpdater resultsUpdater) {
-            super(beanManager, resultsUpdater);
-        }
-
-        @Override
-        protected void doDeployment(Path sourcePath, Path logsPath, Set<String> gavs)
-                throws Exception {
-            System.out.println("Skipping doDeployment for " + deploymentPath + " from " + sourcePath);
-        }
     }
 }
