@@ -12,9 +12,18 @@
       "automerge": true
     },
     {
+      "description": "Ignore internal dependencies",
       "matchPackagePatterns": ["^io.github.redhat-appstudio.jvmbuild:"],
       "matchCurrentValue": "/-SNAPSHOT$/",
       "enabled": false
+    },
+    {
+        "description": "Set noisy package updates to only get PRs once a month",
+        "matchPackageNames": [
+            "github.com/aws/aws-sdk-go",
+            "com.amazonaws:aws-java-sdk-codeartifact"
+        ],
+      "schedule": ["before 4am on the first day of the month"]
     }
   ]
 }
