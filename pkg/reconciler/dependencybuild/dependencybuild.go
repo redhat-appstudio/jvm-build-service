@@ -1181,6 +1181,8 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
 	}
 	if jbsConfig.ImageRegistry().SecretName != "" {
+		// Builds or tooling mostly use the .docker/config.json directly which is updated via Tekton/Kubernetes secrets. But the
+		// Java code may require the token as well.
 		envVars = append(envVars, v1.EnvVar{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}}})
 	}
 	return &tektonpipeline.PipelineSpec{

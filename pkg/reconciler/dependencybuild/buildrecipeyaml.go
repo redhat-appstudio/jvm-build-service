@@ -95,14 +95,13 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.Depend
 				// While the manifest digest is available we need the manifest of the layer within the archive hence
 				// using 'oras manifest fetch' to extract the correct layer.
 				Script: fmt.Sprintf(`echo "Restoring artifacts to workspace"
-[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
 export ORAS_OPTIONS="%s"
 URL=%s
 DIGEST=$(params.%s)
 echo "URL $URL DIGEST $DIGEST"
-SARCHIVE=$(oras manifest fetch $ORAS_OPTIONS --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[0].digest')
-AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[2].digest')
-AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/source oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, regUrl, PipelineResultImageDigest),
+SARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
+AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[2].digest')
+use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/source oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, regUrl, PipelineResultImageDigest),
 			},
 			{
 				Name:            "maven-deployment",
@@ -125,8 +124,7 @@ AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/
 				// gavs is a comma separated list so split it into spaces
 				Script: fmt.Sprintf(`GAVS=%s
 echo "Tagging for GAVs ($GAVS)"
-[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
-oras tag %s --registry-config ~/config.json --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, orasOptions, regUrl, PipelineResultImageDigest),
+oras tag %s --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, orasOptions, regUrl, PipelineResultImageDigest),
 			},
 		},
 	}
@@ -367,9 +365,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				Script: fmt.Sprintf(`echo "Restoring source to workspace"
-echo $REGISTRY_TOKEN > ~/config.json
 export ORAS_OPTIONS="%s"
-AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, orasOptions, PreBuildImageDigest),
+use-archive $(params.%s)=$(workspaces.source.path)`, orasOptions, PreBuildImageDigest),
 			},
 			{
 				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
@@ -441,13 +438,12 @@ AUTHFILE=~/config.json use-archive $(params.%s)=$(workspaces.source.path)`, oras
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				Script: fmt.Sprintf(`echo "Restoring hermetic source to workspace"
-[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
 export ORAS_OPTIONS="%s"
 URL=%s
 DIGEST=$(params.%s)
-SARCHIVE=$(oras manifest fetch $ORAS_OPTIONS --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[0].digest')
-MARCHIVE=$(oras manifest fetch $ORAS_OPTIONS --registry-config ~/config.json $URL@$DIGEST | jq --raw-output '.layers[1].digest')
-AUTHFILE=~/config.json use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/workspace oci:$URL@$MARCHIVE=$(workspaces.source.path)/maven-artifacts
+SARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
+MARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[1].digest')
+use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/workspace oci:$URL@$MARCHIVE=$(workspaces.source.path)/maven-artifacts
 # Hack to grab the build scripts but avoiding copying other build artifacts
 mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
 `, orasOptions, registryArgsWithDefaults(jbsConfig, ""), HermeticPreBuildImageDigest),
@@ -648,6 +644,8 @@ func secretVariables(jbsConfig *v1alpha1.JBSConfig) []v1.EnvVar {
 	trueBool := true
 	secretVariables := make([]v1.EnvVar, 0)
 	if jbsConfig.ImageRegistry().SecretName != "" {
+		// Builds or tooling mostly use the .docker/config.json directly which is updated via Tekton/Kubernetes secrets. But the
+		// Java code may require the token as well.
 		secretVariables = []v1.EnvVar{
 			{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &trueBool}}},
 		}
@@ -800,12 +798,12 @@ func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 	}
 
 	preBuildImageTag := imageId + "-pre-build-image"
-	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json so
-	// using AUTHFILE to override. Setting ORAS_OPTIONS to ensure the archive is compatible with jib (for OCIRepositoryClient).
+	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json. Was using
+	// AUTHFILE to override but now switched to adding the image secret to the pipeline.
+	// Setting ORAS_OPTIONS to ensure the archive is compatible with jib (for OCIRepositoryClient).
 	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
-echo $REGISTRY_TOKEN > ~/config.json
 export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
-AUTHFILE=~/config.json create-archive --store %s $(results.%s.path)=$(workspaces.source.path)
+create-archive --store %s $(results.%s.path)=$(workspaces.source.path)
 `, orasOptions, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PreBuildImageDigest)
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
 	// Previously hermeticPreBuildImage was based upon preBuildImage. That latter image has a copy of the source code. As this task
@@ -815,7 +813,6 @@ AUTHFILE=~/config.json create-archive --store %s $(results.%s.path)=$(workspaces
 	// _remote.repositories
 	// <any artifact within artifacts should be excluded from build-info>
 	hermeticPreBuildImageArgs := fmt.Sprintf(`echo "Creating hermetic pre-build-image archive"
-[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
 export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json --no-tty --format=json"
 IMGURL=%s
 ARTIFACTS=$(workspaces.source.path)/artifacts
@@ -826,7 +823,7 @@ do
 done
 # Hack to grab the build scripts but avoiding copying other build artifacts
 cp $(workspaces.source.path)/*.sh $(workspaces.source.path)/source
-AUTHFILE=~/config.json create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/build-info=$(workspaces.source.path)/build-info | tee /tmp/oras-create.json
+create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/build-info=$(workspaces.source.path)/build-info | tee /tmp/oras-create.json
 IMDIGEST=$(cat /tmp/oras-create.json | grep -Ev '(Prepared artifact|Artifacts created)' | jq -r '.digest')
 echo -n "$IMGDIGEST" >> $(results.%s.path)
 echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, orasOptions, registryArgsWithDefaults(jbsConfig, hermeticPreBuildImageTag), HermeticPreBuildImageDigest)
@@ -850,10 +847,9 @@ echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, orasOptions
 	regUrl := registryArgsWithDefaults(jbsConfig, buildId)
 	// Note as per RebuiltDownloadCommand and OCIRepositoryClient the layers are in a predefined order (namely source, logs, artifacts).
 	postBuildImageArgs := fmt.Sprintf(`echo "Creating post-build-image archive"
-[[ -n "$REGISTRY_TOKEN" ]] && echo $REGISTRY_TOKEN > ~/config.json
 export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json --no-tty --format=json"
 IMGURL=%s
-AUTHFILE=~/config.json create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/logs=$(workspaces.source.path)/logs /tmp/artifacts=$(workspaces.source.path)/artifacts | tee /tmp/oras-create.json
+create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/logs=$(workspaces.source.path)/logs /tmp/artifacts=$(workspaces.source.path)/artifacts | tee /tmp/oras-create.json
 IMGDIGEST=$(cat /tmp/oras-create.json | grep -Ev '(Prepared artifact|Artifacts created)' | jq -r '.digest')
 echo -n "$IMGURL" >> $(results.%s.path)
 echo -n "$IMGDIGEST" >> $(results.%s.path)

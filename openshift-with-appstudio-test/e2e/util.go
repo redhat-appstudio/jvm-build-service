@@ -267,8 +267,21 @@ func setupConfig(t *testing.T, namespace string, hermetic bool) *testArgs {
 		debugAndFailTest(ta, err.Error())
 	}
 	secret := corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jvm-build-image-secrets", Namespace: ta.ns},
-		Data: map[string][]byte{".dockerconfigjson": decoded}}
+		Data: map[string][]byte{corev1.DockerConfigJsonKey: decoded},
+		Type: corev1.SecretTypeDockerConfigJson}
 	_, err = kubeClient.CoreV1().Secrets(ta.ns).Create(context.TODO(), &secret, metav1.CreateOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+	serviceAccount, err := kubeClient.CoreV1().ServiceAccounts(ta.ns).Get(context.TODO(), "pipeline", metav1.GetOptions{})
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
+	serviceAccount.Secrets = append(serviceAccount.Secrets, corev1.ObjectReference{
+		Name:      secret.Name,
+		Namespace: secret.Namespace,
+	})
+	_, err = kubeClient.CoreV1().ServiceAccounts(serviceAccount.Namespace).Update(context.TODO(), serviceAccount, metav1.UpdateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
