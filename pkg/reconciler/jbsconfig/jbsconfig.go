@@ -523,20 +523,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			Name:      "GIT_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}},
 		}, cache)
-		for _, relocationPatternElement := range jbsConfig.Spec.RelocationPatterns {
-			buildPolicy := relocationPatternElement.RelocationPattern.BuildPolicy
-			if buildPolicy == "" {
-				buildPolicy = "default"
-			}
-			envName := "BUILD_POLICY_" + strings.ToUpper(buildPolicy) + "_RELOCATION_PATTERN"
 
-			var envValues []string
-			for _, patternElement := range relocationPatternElement.RelocationPattern.Patterns {
-				envValues = append(envValues, patternElement.Pattern.From+"="+patternElement.Pattern.To)
-			}
-			envValue := strings.Join(envValues, ",")
-			cache = setEnvVarValue(envValue, envName, cache)
-		}
 		if jbsConfig.Spec.MavenDeployment.Repository != "" {
 			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Repository, "MAVEN_REPOSITORY_URL", cache)
 			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Username, "MAVEN_REPOSITORY_USERNAME", cache)

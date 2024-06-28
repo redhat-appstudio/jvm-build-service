@@ -13,8 +13,6 @@ import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.artifactcache.relocation.RelocationRepositoryClient;
-
 import io.quarkus.logging.Log;
 
 /**
@@ -40,23 +38,6 @@ class BuildPolicyManager {
             Config config) {
 
         Map<String, BuildPolicy> ret = new HashMap<>();
-        Map<String, Map<String, String>> relocations = new HashMap<>();
-
-        for (String buildPolicy : buildPolicies) {
-
-            // Get any relocation for a certain Build Policy
-            String key = "build-policy." + buildPolicy + ".relocation.pattern";
-            Optional<List<String>> maybeRelocations = config.getOptionalValues(key, String.class);
-            if (maybeRelocations.isPresent()) {
-                Map<String, String> relocationsForBuildPolicy = new HashMap<>();
-                List<String> relocationsValues = maybeRelocations.get();
-                for (String relocation : relocationsValues) {
-                    String[] fromTo = relocation.split("=");
-                    relocationsForBuildPolicy.put(fromTo[0], fromTo[1]);
-                }
-                relocations.put(buildPolicy, relocationsForBuildPolicy);
-            }
-        }
 
         for (String policy : buildPolicies) {
             Optional<String> stores = config.getOptionalValue(BUILD_POLICY + policy + STORE_LIST, String.class);
@@ -65,14 +46,6 @@ class BuildPolicyManager {
                 continue;
             }
             List<RepositoryCache> repositories = new ArrayList<>();
-            var policyRelocations = relocations.get(policy);
-            if (policyRelocations != null) {
-                String name = "hacbs-artifact-relocations-" + policy;
-                repositories.add(new RepositoryCache(storageManager.resolve(name),
-                        new Repository(name, "hacbs-internal://relocations",
-                                RepositoryType.RELOCATIONS, new RelocationRepositoryClient(policyRelocations)),
-                        true));
-            }
             for (var store : stores.get().split(",")) {
                 var cache = remoteRepositoryManager.getRemoteRepositories(store);
                 repositories.addAll(cache);
