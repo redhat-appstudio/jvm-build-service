@@ -51,13 +51,13 @@
         <jar-plugin.version>3.4.2</jar-plugin.version>
         <surefire-plugin.version>3.3.0</surefire-plugin.version>
         <formatter-maven-plugin.version>2.24.1</formatter-maven-plugin.version>
-        <impsort-maven-plugin.version>1.10.0</impsort-maven-plugin.version>
-        <kubernetes-client.version>6.13.0</kubernetes-client.version>
+        <impsort-maven-plugin.version>1.11.0</impsort-maven-plugin.version>
+        <kubernetes-client.version>6.13.1</kubernetes-client.version>
 
         <!-- Dependencies -->
         <asm.version>9.7</asm.version>
         <assertj.version>3.26.0</assertj.version>
-        <aws-java-sdk.version>1.12.750</aws-java-sdk.version>
+        <aws-java-sdk.version>1.12.751</aws-java-sdk.version>
         <cyclonedx-core-java.version>9.0.4</cyclonedx-core-java.version>
         <gradle-tooling-api.version>8.8</gradle-tooling-api.version>
         <maven-indexer.version>7.1.3</maven-indexer.version>
@@ -68,7 +68,7 @@
         <github-api.version>1.321</github-api.version>
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
         <quarkus-github-app.version>2.6.0</quarkus-github-app.version>
-        <quarkus-quinoa.version>2.3.8</quarkus-quinoa.version>
+        <quarkus-quinoa.version>2.4.0</quarkus-quinoa.version>
 
         <format.skip>false</format.skip>
     </properties>
@@ -336,7 +336,7 @@
             <dependency>
                 <groupId>org.wiremock</groupId>
                 <artifactId>wiremock</artifactId>
-                <version>3.7.0</version>
+                <version>3.8.0</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
