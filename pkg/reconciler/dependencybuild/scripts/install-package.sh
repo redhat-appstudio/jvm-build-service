@@ -10,7 +10,7 @@ if [ "rpm" = "{TYPE}" ]; then
 else
     export PATH="$(workspaces.source.path)/packages:${PATH}"
 
-    wget --no-verbose --output-document=$(workspaces.source.path)/packages/{FILENAME} {URL} \
+    wget --no-verbose --output-document=$(workspaces.source.path)/packages/{FILENAME} {URI} \
     && echo "${SHA256} $(workspaces.source.path)/packages/{FILENAME}" | sha256sum --check -
 
     if [ "executable" = "{TYPE}" ]; then
