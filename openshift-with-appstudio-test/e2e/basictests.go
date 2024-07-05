@@ -96,59 +96,34 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		db.Spec.ScmInfo.SCMURL = "https://github.com/jakartaee/jsonp-api.git"
 		db.Spec.ScmInfo.Tag = "2.1.1-RELEASE"
 		db.Name = util.HashString(db.Spec.ScmInfo.SCMURL + db.Spec.ScmInfo.Tag + db.Spec.ScmInfo.Path)
-		//db.Spec.BuildRecipeConfigMap = db.Name + "configmap"
+		db.Spec.BuildRecipeConfigMap = db.Name + "configmap"
 		db.Spec.Version = "2.1.1"
-		//		cfgMap := corev1.ConfigMap{}
-		//		cfgMap.Name = db.Spec.BuildRecipeConfigMap
-		//		cfgMap.Namespace = ta.ns
-		//		cfgMap.Data = map[string]string{}
-		//		cfgMap.Data["build.yaml"] = `---
-		//repositories:
-		//  - caucho
-		//additionalArgs:
-		//  - "-DskipDocs"
-		//additionalDownloads:
-		//  - uri: https://github.com/mikefarah/yq/releases/download/v4.30.4/yq_linux_amd64
-		//    sha256: 30459aa144a26125a1b22c62760f9b3872123233a5658934f7bd9fe714d7864d
-		//    type: executable
-		//    fileName: yq
-		//    binaryPath: only_for_tar/bin
-		//  - type: rpm
-		//    packageName: glibc-devel
-		//additionalMemory: 4096
-		//additionalBuilds:
-		//  pureJava:
-		//    preBuildScript: |
-		//      ./autogen.sh
-		//      /bin/sh -c "$(rpm --eval %configure); $(rpm --eval %__make) $(rpm --eval %_smp_mflags)"
-		//    additionalArgs:
-		//      - "-Dlz4-pure-java=true"
-		//allowedDifferences:
-		//  - \Q-:jbossws-common-4.0.0.Final.jar:class:org/jboss/ws/common/CalendarTest\E
-		//alternativeArgs:
-		//  - "'set Global / baseVersionSuffix:=\"\"'"
-		//  - "enableOptimizer"
-		//enforceVersion: true`
-		//		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
-		//		if err != nil {
-		//			debugAndFailTest(ta, fmt.Sprintf("unable to create configmap %s: %s", cfgMap.Name, err.Error()))
-		//			return
-		//		}
-		//		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
-		//			retrievedCfgMap, err := kubeClient.CoreV1().ConfigMaps(ta.ns).Get(context.TODO(), cfgMap.Name, metav1.GetOptions{})
-		//			if retrievedCfgMap != nil {
-		//				ta.Logf(fmt.Sprintf("successfully retrieved configmap %s", cfgMap.Name))
-		//				return true, nil
-		//			}
-		//			if err != nil {
-		//				ta.Logf(fmt.Sprintf("error retrieving configmap %s: %s", cfgMap.Name, err.Error()))
-		//			}
-		//			return false, nil
-		//		})
-		//		if err != nil {
-		//			debugAndFailTest(ta, fmt.Sprintf("timed out waiting for creation of configmap %s", cfgMap.Name))
-		//			return
-		//		}
+		cfgMap := corev1.ConfigMap{}
+		cfgMap.Name = db.Spec.BuildRecipeConfigMap
+		cfgMap.Namespace = ta.ns
+		cfgMap.Data = map[string]string{}
+		cfgMap.Data["build.yaml"] = `---
+enforceVersion: true`
+		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
+		if err != nil {
+			debugAndFailTest(ta, fmt.Sprintf("unable to create configmap %s: %s", cfgMap.Name, err.Error()))
+			return
+		}
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
+			retrievedCfgMap, err := kubeClient.CoreV1().ConfigMaps(ta.ns).Get(context.TODO(), cfgMap.Name, metav1.GetOptions{})
+			if retrievedCfgMap != nil {
+				ta.Logf(fmt.Sprintf("successfully retrieved configmap %s", cfgMap.Name))
+				return true, nil
+			}
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error retrieving configmap %s: %s", cfgMap.Name, err.Error()))
+			}
+			return false, nil
+		})
+		if err != nil {
+			debugAndFailTest(ta, fmt.Sprintf("timed out waiting for creation of configmap %s", cfgMap.Name))
+			return
+		}
 		_, err = jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Create(context.TODO(), &db, metav1.CreateOptions{})
 		if err != nil {
 			debugAndFailTest(ta, fmt.Sprintf("unable to create dependencybuild %s: %s", db.Name, err.Error()))
