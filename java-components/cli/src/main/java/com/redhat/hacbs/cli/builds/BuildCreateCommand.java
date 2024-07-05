@@ -33,6 +33,9 @@ public class BuildCreateCommand implements Runnable {
     @CommandLine.Option(names = "-r", description = "Reuse existing SCM repository for pushing changes")
     boolean reuse;
 
+    @CommandLine.Option(names = "-build-recipe-config-map", description = "Config map containing a build recipe")
+    String buildRecipeConfigMap;
+
     @Override
     public void run() {
         try (InstanceHandle<KubernetesClient> instanceHandle = Arc.container().instance(KubernetesClient.class)) {
@@ -47,6 +50,7 @@ public class BuildCreateCommand implements Runnable {
             scm.setPath(contextPath);
             scm.setCommitHash(scmHash);
             dependencyBuild.getSpec().setScm(scm);
+            dependencyBuild.getSpec().setBuildRecipeConfigMap(buildRecipeConfigMap);
 
             if (reuse) {
                 dependencyBuild.getMetadata().getAnnotations().put(ModelConstants.REUSE_SCM, "true");
