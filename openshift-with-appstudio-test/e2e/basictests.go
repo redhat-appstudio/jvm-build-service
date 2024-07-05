@@ -102,7 +102,33 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		cfgMap.Name = db.Spec.BuildRecipeConfigMap
 		cfgMap.Namespace = ta.ns
 		cfgMap.Data = map[string]string{}
-		cfgMap.Data["build.yaml"] = "---\nrepositories:\n  - caucho\nadditionalArgs:\n  - \"-DskipDocs\"\nadditionalDownloads:\n  - uri: https://github.com/mikefarah/yq/releases/download/v4.30.4/yq_linux_amd64\n    sha256: 30459aa144a26125a1b22c62760f9b3872123233a5658934f7bd9fe714d7864d\n    type: executable\n    fileName: yq\n    binaryPath: only_for_tar/bin\n  - type: rpm\n    packageName: glibc-devel\nadditionalMemory: 4096\nadditionalBuilds:\n  pureJava:\n    preBuildScript: |\n      ./autogen.sh\n      /bin/sh -c \"$(rpm --eval %configure); $(rpm --eval %__make) $(rpm --eval %_smp_mflags)\"\n    additionalArgs:\n      - \"-Dlz4-pure-java=true\"\nallowedDifferences:\n  - \\Q-:jbossws-common-4.0.0.Final.jar:class:org/jboss/ws/common/CalendarTest\\E\nalternativeArgs:\n  - \"'set Global / baseVersionSuffix:=\\\"\\\"'\"\n  - \"enableOptimizer\"\nenforceVersion: true\n"
+		cfgMap.Data["build.yaml"] = `---
+repositories:
+  - caucho
+additionalArgs:
+  - "-DskipDocs"
+additionalDownloads:
+  - uri: https://github.com/mikefarah/yq/releases/download/v4.30.4/yq_linux_amd64
+    sha256: 30459aa144a26125a1b22c62760f9b3872123233a5658934f7bd9fe714d7864d
+    type: executable
+    fileName: yq
+    binaryPath: only_for_tar/bin
+  - type: rpm
+    packageName: glibc-devel
+additionalMemory: 4096
+additionalBuilds:
+  pureJava:
+    preBuildScript: |
+      ./autogen.sh
+      /bin/sh -c "$(rpm --eval %configure); $(rpm --eval %__make) $(rpm --eval %_smp_mflags)"
+    additionalArgs:
+      - "-Dlz4-pure-java=true"
+allowedDifferences:
+  - \Q-:jbossws-common-4.0.0.Final.jar:class:org/jboss/ws/common/CalendarTest\E
+alternativeArgs:
+  - "'set Global / baseVersionSuffix:=\"\"'"
+  - "enableOptimizer"
+enforceVersion: true`
 		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
 		if err != nil {
 			debugAndFailTest(ta, fmt.Sprintf("unable to create configmap %s: %s", cfgMap.Name, err.Error()))
