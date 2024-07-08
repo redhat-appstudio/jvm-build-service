@@ -106,45 +106,94 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 javaVersion: 11`
 		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
 		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("unable to create configmap %s: %s", cfgMap.Name, err.Error()))
+			debugAndFailTest(ta, fmt.Sprintf("unable to create configmap %s for dependencybuild repo %s: %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
 			return
 		}
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			retrievedCfgMap, err := kubeClient.CoreV1().ConfigMaps(ta.ns).Get(context.TODO(), cfgMap.Name, metav1.GetOptions{})
 			if retrievedCfgMap != nil {
-				ta.Logf(fmt.Sprintf("successfully retrieved configmap %s", cfgMap.Name))
+				ta.Logf(fmt.Sprintf("successfully retrieved configmap %s for dependencybuild repo %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL))
 				return true, nil
 			}
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error retrieving configmap %s: %s", cfgMap.Name, err.Error()))
+				ta.Logf(fmt.Sprintf("error retrieving configmap %s for dependencybuild repo %s: %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
 			}
 			return false, nil
 		})
 		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("timed out waiting for creation of configmap %s", cfgMap.Name))
+			debugAndFailTest(ta, fmt.Sprintf("timed out waiting for creation of configmap %s for dependencybuild repo %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL))
 			return
 		}
 		_, err = jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Create(context.TODO(), &db, metav1.CreateOptions{})
 		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("unable to create dependencybuild %s: %s", db.Name, err.Error()))
+			debugAndFailTest(ta, fmt.Sprintf("unable to create dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
 			return
 		}
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
 			if retrievedDb != nil {
-				ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s", retrievedDb.Name))
+				ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
 				return true, nil
 			}
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s: %s", db.Name, err.Error()))
+				ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
 			}
 			return false, nil
 		})
 		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("timed out waiting for creation of dependencybuild %s", db.Name))
+			debugAndFailTest(ta, fmt.Sprintf("timed out waiting for creation of dependencybuild %s for repo %s", db.Name, db.Spec.ScmInfo.SCMURL))
 			return
 		}
-		// TODO Verify that dependency build has successfully completed and had config map applied
+
+		ta.t.Run("configmap dependencybuild complete", func(t *testing.T) {
+			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
+			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
+				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
+				if retrievedDb != nil {
+					ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+				}
+				if err != nil {
+					ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					return false, err
+				}
+				dbComplete := true
+				if retrievedDb.Status.State == v1alpha1.DependencyBuildStateFailed {
+					ta.Logf(fmt.Sprintf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL))
+					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
+				} else if retrievedDb.Status.State != v1alpha1.DependencyBuildStateComplete {
+					ta.Logf(fmt.Sprintf("depedencybuild %s for repo %s not complete", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					dbComplete = false
+				}
+				return dbComplete, nil
+			})
+			if err != nil {
+				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for configmap dependencybuild %s for repo %s to complete", db.Name, db.Spec.ScmInfo.SCMURL))
+			}
+		})
+
+		ta.t.Run("configmap dependencybuild contains buildrecipe", func(t *testing.T) {
+			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
+			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
+				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
+				if retrievedDb != nil {
+					ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+				}
+				if err != nil {
+					ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					return false, err
+				}
+				containsRecipe := len(retrievedDb.Status.BuildAttempts) > 0
+				for _, ba := range retrievedDb.Status.BuildAttempts {
+					if ba.Recipe.JavaVersion == "11" {
+						containsRecipe = true
+					}
+				}
+				return containsRecipe, nil
+			})
+			if err != nil {
+				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for configmap dependencybuild %s for repo %s to be retrieved", db.Name, db.Spec.ScmInfo.SCMURL))
+			}
+		})
 	} else {
 
 		ta.run, err = tektonClient.TektonV1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
