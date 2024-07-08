@@ -182,7 +182,7 @@ javaVersion: 11`
 					ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
 					return false, err
 				}
-				containsRecipe := len(retrievedDb.Status.BuildAttempts) > 0
+				containsRecipe := false
 				for _, ba := range retrievedDb.Status.BuildAttempts {
 					if ba.Recipe.JavaVersion == "11" {
 						containsRecipe = true
