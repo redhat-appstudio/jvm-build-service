@@ -103,7 +103,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		cfgMap.Namespace = ta.ns
 		cfgMap.Data = map[string]string{}
 		cfgMap.Data["build.yaml"] = `---
-enforceVersion: true`
+javaVersion: 11`
 		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
 		if err != nil {
 			debugAndFailTest(ta, fmt.Sprintf("unable to create configmap %s: %s", cfgMap.Name, err.Error()))
