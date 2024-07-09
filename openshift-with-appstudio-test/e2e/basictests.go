@@ -105,7 +105,6 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		cfgMap.Data = map[string]string{}
 		cfgMap.Data["build.yaml"] = `---
 javaVersion: 11
-enforceVersion: true
 disabledPlugins:
   - "foo:bar"`
 		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
@@ -189,7 +188,7 @@ disabledPlugins:
 				containsRecipe := false
 				for _, ba := range retrievedDb.Status.BuildAttempts {
 					ta.Logf(fmt.Sprintf("%+v", ba.Recipe))
-					if ba.Recipe.JavaVersion == "11" && ba.Recipe.EnforceVersion == "true" && slices.Contains(ba.Recipe.DisabledPlugins, "foo:bar") {
+					if ba.Recipe.JavaVersion == "11" && slices.Contains(ba.Recipe.DisabledPlugins, "foo:bar") {
 						containsRecipe = true
 					}
 				}
