@@ -188,6 +188,7 @@ disabledPlugins:
 				}
 				containsRecipe := false
 				for _, ba := range retrievedDb.Status.BuildAttempts {
+					ta.Logf(fmt.Sprintf("%+v", ba.Recipe))
 					if ba.Recipe.JavaVersion == "11" && ba.Recipe.EnforceVersion == "true" && slices.Contains(ba.Recipe.DisabledPlugins, "foo:bar") {
 						containsRecipe = true
 					}
