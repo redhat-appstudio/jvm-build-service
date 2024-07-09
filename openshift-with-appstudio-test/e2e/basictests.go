@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sigs.k8s.io/yaml"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -103,7 +104,10 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 		cfgMap.Namespace = ta.ns
 		cfgMap.Data = map[string]string{}
 		cfgMap.Data["build.yaml"] = `---
-javaVersion: 11`
+javaVersion: 11
+enforceVersion: true
+disabledPlugins:
+  - "foo:bar"`
 		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
 		if err != nil {
 			debugAndFailTest(ta, fmt.Sprintf("unable to create configmap %s for dependencybuild repo %s: %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
@@ -184,7 +188,7 @@ javaVersion: 11`
 				}
 				containsRecipe := false
 				for _, ba := range retrievedDb.Status.BuildAttempts {
-					if ba.Recipe.JavaVersion == "11" {
+					if ba.Recipe.JavaVersion == "11" && ba.Recipe.EnforceVersion == "true" && slices.Contains(ba.Recipe.DisabledPlugins, "foo:bar") {
 						containsRecipe = true
 					}
 				}
@@ -194,6 +198,7 @@ javaVersion: 11`
 				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for configmap dependencybuild %s for repo %s to be retrieved", db.Name, db.Spec.ScmInfo.SCMURL))
 			}
 		})
+		// TODO serialise build.yaml into build recipe + compare recipes using SafeEqual
 	} else {
 
 		ta.run, err = tektonClient.TektonV1().PipelineRuns(ta.ns).Create(context.TODO(), ta.run, metav1.CreateOptions{})
