@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	"io"
+	"knative.dev/pkg/kmp"
 	"os"
 	"path/filepath"
 	"sigs.k8s.io/yaml"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -107,6 +107,12 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 javaVersion: 11
 disabledPlugins:
   - "foo:bar"`
+		var buildRecipe v1alpha1.BuildRecipe
+		err = yaml.Unmarshal([]byte(cfgMap.Data["build.yaml"]), &buildRecipe)
+		if err != nil {
+			debugAndFailTest(ta, fmt.Sprintf("unable to read unmarshal build recipe for dependencybuild repo %s: %s", db.Spec.ScmInfo.SCMURL, err.Error()))
+			return
+		}
 		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
 		if err != nil {
 			debugAndFailTest(ta, fmt.Sprintf("unable to create configmap %s for dependencybuild repo %s: %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
@@ -188,7 +194,8 @@ disabledPlugins:
 				containsRecipe := false
 				for _, ba := range retrievedDb.Status.BuildAttempts {
 					ta.Logf(fmt.Sprintf("%+v", ba.Recipe))
-					if ba.Recipe.JavaVersion == "11" && slices.Contains(ba.Recipe.DisabledPlugins, "foo:bar") {
+					samePluginsDisabled, _ := kmp.SafeEqual(ba.Recipe.DisabledPlugins, buildRecipe.DisabledPlugins)
+					if ba.Recipe.JavaVersion == buildRecipe.JavaVersion && samePluginsDisabled {
 						containsRecipe = true
 					}
 				}
