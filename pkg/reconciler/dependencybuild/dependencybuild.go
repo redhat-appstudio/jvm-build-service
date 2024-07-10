@@ -105,7 +105,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	defer cancel()
 	log := ctrl.Log.WithName("dependencybuild").WithValues("namespace", request.NamespacedName.Namespace, "resource", request.Name)
 	ctx = logr.NewContext(ctx, log)
-
 	db := v1alpha1.DependencyBuild{}
 	dberr := r.client.Get(ctx, request.NamespacedName, &db)
 	if dberr != nil {
@@ -607,10 +606,34 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 
 	attempt.Build.DiagnosticDockerFile = diagnosticContainerfile
 
+	//// TODO: ### Handle existing pvc / recreation. See jbsconfig::deploymentSupportObjects for example
+	//pvc := v1.PersistentVolumeClaim{}
+	//pvc.Name = db.Name + "-pvc"
+	//pvc.Namespace = pr.Namespace
+	//pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
+	//qty, err := resource.ParseQuantity("1Gi")
+	//if err != nil {
+	//	return reconcile.Result{}, err
+	//}
+	//pvc.Spec.Resources.Requests = map[v1.ResourceName]resource.Quantity{"storage": qty}
+	//
+	//// TODO: ### Who should own this? Tried setting it to the pipelinerun but got 'metadata.ownerReferences.uid: Invalid value: \"\": uid must not be empty'
+	//if err := controllerutil.SetOwnerReference(db, &pvc, r.scheme); err != nil {
+	//	return reconcile.Result{}, err
+	//}
+	//if err := r.client.Create(ctx, &pvc); err != nil {
+	//	return reconcile.Result{}, err
+	//}
+	//fmt.Printf("### Attempting to create pvc %#v\n", pvc)
+
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
 		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
+		//{Name: WorkspaceSource, PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+		//	ClaimName: db.Name + "-pvc",
+		//	ReadOnly:  false,
+		//}},
 	}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {

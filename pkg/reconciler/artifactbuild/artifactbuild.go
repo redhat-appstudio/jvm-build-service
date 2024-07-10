@@ -39,8 +39,9 @@ const (
 	PipelineResultJavaCommunityDependencies = "JAVA_COMMUNITY_DEPENDENCIES"
 
 	DependencyCreatedAnnotation = "jvmbuildservice.io/dependency-created"
-	DependencyScmAnnotation     = "jvmbuildservice.io/deploy-source-reuse-scm"
-	RebuildAnnotation           = "jvmbuildservice.io/rebuild"
+	// DependencyScmAnnotation annotation is only written by BuildCreateCommand currently.
+	DependencyScmAnnotation = "jvmbuildservice.io/deploy-source-reuse-scm"
+	RebuildAnnotation       = "jvmbuildservice.io/rebuild"
 	// RebuiltAnnotation annotation that is applied after a rebuild, it will affect the dependencybuild behaviour
 	RebuiltAnnotation = "jvmbuildservice.io/rebuilt"
 	// HoursToLive if this annotation is present it will be deleted after a set time to live

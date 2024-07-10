@@ -33,6 +33,9 @@ const (
 	ConfigArtifactCacheStorageDefault       = "10Gi"
 
 	HermeticBuildTypeRequired HermeticBuildType = "Required"
+
+	KonfluxBuildDefinitions = "https://github.com/konflux-ci/build-definitions.git"
+	KonfluxBuildahPath      = "task/buildah-oci-ta/0.1/buildah-oci-ta.yaml"
 )
 
 type JBSConfigSpec struct {
@@ -56,6 +59,9 @@ type JBSConfigSpec struct {
 	BuildSettings    BuildSettings     `json:"buildSettings,omitempty"`
 	// Deprecated
 	RelocationPatterns []RelocationPatternElement `json:"relocationPatterns,omitempty"`
+
+	// Whether to use a standard build pipeline or build in a Docker container via buildah.
+	ContainerBuilds bool `json:"containerBuilds,omitempty"`
 }
 
 type ImageRegistrySpec struct {

@@ -174,6 +174,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	}
 
 	ta.gitClone = &tektonpipeline.Task{}
+	// TODO: ### Refactor to use StreamRemoteYamlToTektonObj from main repo.
 	obj := streamRemoteYamlToTektonObj(gitCloneUrl, ta.gitClone, ta)
 	var ok bool
 	ta.gitClone, ok = obj.(*tektonpipeline.Task)
