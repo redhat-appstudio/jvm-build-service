@@ -92,6 +92,10 @@ spec:
                   workerThreads:
                     type: string
                 type: object
+              containerBuilds:
+                description: Whether to use a standard build pipeline or build in
+                  a Docker container via buildah.
+                type: boolean
               enableRebuilds:
                 type: boolean
               gitSourceArchive:

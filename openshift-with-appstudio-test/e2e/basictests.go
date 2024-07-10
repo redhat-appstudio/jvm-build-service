@@ -46,7 +46,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-	ta.Logf(fmt.Sprintf("current working dir: %s", path))
+	ta.Logf(fmt.Sprintf("current working dir: %s with pipeline %s", path, pipeline))
 
 	testSet := os.Getenv("DBTESTSET")
 	// run dependency build tests instead if env var is set
