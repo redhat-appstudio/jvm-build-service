@@ -38,8 +38,8 @@ fi
 
 
 
-if [ ! -d $(workspaces.source.path)/source ]; then
-    cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+if [ ! -d $(workspaces.source.path)/source-archive ]; then
+    cp -r $(workspaces.source.path)/source $(workspaces.source.path)/source-archive
 fi
 echo "Running SBT command with arguments: $@"
 

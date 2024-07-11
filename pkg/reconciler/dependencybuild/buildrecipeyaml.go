@@ -22,6 +22,7 @@ import (
 const (
 	WorkspaceBuildSettings = "build-settings"
 	WorkspaceSource        = "source"
+	WorkspaceMount         = "/var/workdir"
 	WorkspaceTls           = "tls"
 
 	BuildTaskName               = "build"
@@ -83,7 +84,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.Depend
 	regUrl := registryArgsWithDefaults(jbsConfig, "")
 
 	tagTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}, {Name: WorkspaceSource}},
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}, {Name: WorkspaceSource, MountPath: WorkspaceMount}},
 		Params:     []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Steps: []tektonpipeline.Step{
 			{
@@ -101,7 +102,7 @@ DIGEST=$(params.%s)
 echo "URL $URL DIGEST $DIGEST"
 SARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
 AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[2].digest')
-use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/source oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, regUrl, PipelineResultImageDigest),
+use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/source-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, regUrl, PipelineResultImageDigest),
 			},
 			{
 				Name:            "maven-deployment",
@@ -169,7 +170,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	preprocessorArgs := []string{
 		"maven-prepare",
-		"$(workspaces." + WorkspaceSource + ".path)/workspace",
+		"$(workspaces." + WorkspaceSource + ".path)/source",
 	}
 	if len(recipe.DisabledPlugins) > 0 {
 		for _, i := range recipe.DisabledPlugins {
@@ -215,7 +216,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		buildToolSection = mavenSettings + "\n" + gradleBuild
 		preprocessorArgs = []string{
 			"gradle-prepare",
-			"$(workspaces." + WorkspaceSource + ".path)/workspace",
+			"$(workspaces." + WorkspaceSource + ".path)/source",
 		}
 		if len(recipe.DisabledPlugins) > 0 {
 			for _, i := range recipe.DisabledPlugins {
@@ -298,7 +299,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl" +
 		"\nENV JBS_DISABLE_CACHE=true" +
 		"\nCOPY .jbs/run-build.sh /root" +
-		"\nCOPY . /root/project/workspace/" +
+		"\nCOPY . /root/project/source/" +
 		"\nRUN /root/run-build.sh" +
 		"\nFROM scratch" +
 		"\nCOPY --from=0 /root/project/artifacts /root/artifacts"
@@ -345,7 +346,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 
 	buildTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
 		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
 		Results: append(hermeticResults, []tektonpipeline.TaskResult{
 			{Name: PipelineResultContaminants},
@@ -364,16 +365,17 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
-				Script: fmt.Sprintf(`echo "Restoring source to workspace"
+				Script: fmt.Sprintf(`echo "Restoring source to workspace : $(workspaces.source.path)"
 export ORAS_OPTIONS="%s"
-use-archive $(params.%s)=$(workspaces.source.path)`, orasOptions, PreBuildImageDigest),
+use-archive $(params.%s)=$(workspaces.source.path)/source
+mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/source/.jbs/hermetic-build.sh $(workspaces.source.path)`, orasOptions, PreBuildImageDigest),
 			},
 			{
 				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 				Name:            BuildTaskName,
 				Image:           recipe.Image,
 				ImagePullPolicy: pullPolicy,
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/source",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
@@ -420,7 +422,7 @@ use-archive $(params.%s)=$(workspaces.source.path)`, orasOptions, PreBuildImageD
 	}
 
 	hermeticBuildTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
 		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: HermeticPreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
 		Results: []tektonpipeline.TaskResult{
 			{Name: PipelineResultContaminants},
@@ -443,16 +445,14 @@ URL=%s
 DIGEST=$(params.%s)
 SARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
 MARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[1].digest')
-use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/workspace oci:$URL@$MARCHIVE=$(workspaces.source.path)/maven-artifacts
-# Hack to grab the build scripts but avoiding copying other build artifacts
-mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
-`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), HermeticPreBuildImageDigest),
+use-archive oci:$URL@$SARCHIVE=$(workspaces.source.path)/source oci:$URL@$MARCHIVE=$(workspaces.source.path)/maven-artifacts
+mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/source/.jbs/hermetic-build.sh $(workspaces.source.path)`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), HermeticPreBuildImageDigest),
 			},
 			{
 				Name:            "hermetic-build",
 				Image:           recipe.Image,
 				ImagePullPolicy: pullPolicy,
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/workspace",
+				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/source",
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero, Capabilities: &v1.Capabilities{Add: []v1.Capability{"SETFCAP"}}},
 				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
 				ComputeResources: v1.ResourceRequirements{
@@ -518,7 +518,7 @@ mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
 
 	if preBuildImageRequired {
 		buildSetup := tektonpipeline.TaskSpec{
-			Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
+			Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
 			Params:     pipelineParams,
 			Results: []tektonpipeline.TaskResult{
 				{Name: PreBuildImageDigest, Type: tektonpipeline.ResultsTypeString},
@@ -676,14 +676,14 @@ func createBuildScript(build string, hermeticBuildEntryScript string) string {
 }
 
 func createKonfluxScripts(containerfile string, konfluxScript string) string {
-	ret := "mkdir -p $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs\n"
-	ret += "tee $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/Containerfile <<'RHTAPEOF'\n"
+	ret := "mkdir -p $(workspaces." + WorkspaceSource + ".path)/source/.jbs\n"
+	ret += "tee $(workspaces." + WorkspaceSource + ".path)/source/.jbs/Containerfile <<'RHTAPEOF'\n"
 	ret += containerfile
 	ret += "\nRHTAPEOF\n"
-	ret += "tee $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/run-build.sh <<'RHTAPEOF'\n"
+	ret += "tee $(workspaces." + WorkspaceSource + ".path)/source/.jbs/run-build.sh <<'RHTAPEOF'\n"
 	ret += konfluxScript
 	ret += "\nRHTAPEOF\n"
-	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/workspace/.jbs/run-build.sh\n"
+	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/source/.jbs/run-build.sh\n"
 	return ret
 }
 
@@ -782,7 +782,7 @@ func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) strin
 		gitArgs = gitArgs + "echo \"$GIT_TOKEN\" > $HOME/.git-credentials && chmod 400 $HOME/.git-credentials && "
 		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig && "
 	}
-	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/workspace && cd $(workspaces." + WorkspaceSource + ".path)/workspace && git reset --hard $(params." + PipelineParamScmHash + ")"
+	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/source && cd $(workspaces." + WorkspaceSource + ".path)/source && git reset --hard $(params." + PipelineParamScmHash + ")"
 
 	if !recipe.DisableSubmodules {
 		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
@@ -803,11 +803,12 @@ func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 	// Setting ORAS_OPTIONS to ensure the archive is compatible with jib (for OCIRepositoryClient).
 	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
 export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
-create-archive --store %s $(results.%s.path)=$(workspaces.source.path)
+cp $(workspaces.source.path)/build.sh $(workspaces.source.path)/hermetic-build.sh $(workspaces.source.path)/source/.jbs
+create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
 `, orasOptions, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PreBuildImageDigest)
 	hermeticPreBuildImageTag := imageId + "-hermetic-pre-build-image"
 	// Previously hermeticPreBuildImage was based upon preBuildImage. That latter image has a copy of the source code. As this task
-	// will be run after the build stage it still has access to the source in $(workspaces.source.path)/source and for
+	// will be run after the build stage it still has access to the source in $(workspaces.source.path)/source-archive and for
 	// the hermetic pre-build we also want to store the maven artifacts which are available within $(workspaces.source.path)/build-info/
 	// However we want to match what ContainerRegistryDeployer::deployHermeticPreBuildImage did and exclude the following:
 	// _remote.repositories
@@ -821,16 +822,15 @@ for i in $(find $ARTIFACTS -type f -printf '%%P\n')
 do
 	rm -f $(workspaces.source.path)/build-info/$i
 done
-# Hack to grab the build scripts but avoiding copying other build artifacts
-cp $(workspaces.source.path)/*.sh $(workspaces.source.path)/source
-create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/build-info=$(workspaces.source.path)/build-info | tee /tmp/oras-create.json
-IMDIGEST=$(cat /tmp/oras-create.json | grep -Ev '(Prepared artifact|Artifacts created)' | jq -r '.digest')
+cp $(workspaces.source.path)/build.sh $(workspaces.source.path)/hermetic-build.sh $(workspaces.source.path)/source-archive/.jbs
+create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source-archive /tmp/build-info=$(workspaces.source.path)/build-info | tee /tmp/oras-create.json
+IMGDIGEST=$(cat /tmp/oras-create.json | grep -Ev '(Prepared artifact|Artifacts created)' | jq -r '.digest')
 echo -n "$IMGDIGEST" >> $(results.%s.path)
 echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, orasOptions, registryArgsWithDefaults(jbsConfig, hermeticPreBuildImageTag), HermeticPreBuildImageDigest)
 
 	copyArtifactsArgs := []string{
 		"copy-artifacts",
-		"--source-path=$(workspaces.source.path)/workspace",
+		"--source-path=$(workspaces.source.path)/source",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 	}
 	deployArgs := []string{
@@ -849,7 +849,7 @@ echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, orasOptions
 	postBuildImageArgs := fmt.Sprintf(`echo "Creating post-build-image archive"
 export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json --no-tty --format=json"
 IMGURL=%s
-create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source /tmp/logs=$(workspaces.source.path)/logs /tmp/artifacts=$(workspaces.source.path)/artifacts | tee /tmp/oras-create.json
+create-archive --store $IMGURL /tmp/source=$(workspaces.source.path)/source-archive /tmp/logs=$(workspaces.source.path)/logs /tmp/artifacts=$(workspaces.source.path)/artifacts | tee /tmp/oras-create.json
 IMGDIGEST=$(cat /tmp/oras-create.json | grep -Ev '(Prepared artifact|Artifacts created)' | jq -r '.digest')
 echo -n "$IMGURL" >> $(results.%s.path)
 echo -n "$IMGDIGEST" >> $(results.%s.path)
@@ -859,7 +859,7 @@ echo "IMAGE_URL set to $IMGURL and IMAGE_DIGEST set to $IMGDIGEST"`, orasOptions
 
 	konfluxArgs := []string{
 		"deploy-pre-build-source",
-		"--source-path=$(workspaces.source.path)/workspace",
+		"--source-path=$(workspaces.source.path)/source",
 		"--task-run-name=$(context.taskRun.name)",
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
@@ -917,7 +917,7 @@ func pipelineDeployCommands(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.Dependen
 		"--directory=$(workspaces.source.path)/artifacts",
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
-		"--source-path=$(workspaces.source.path)/source",
+		"--source-path=$(workspaces.source.path)/source-archive",
 		"--image-id=" + imageId,
 	}
 

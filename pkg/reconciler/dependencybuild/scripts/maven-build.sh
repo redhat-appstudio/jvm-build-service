@@ -2,7 +2,7 @@
 
 mkdir -p "${HOME}/.m2/repository"
 #copy back the maven folder for hermetic
-cp -r $(workspaces.source.path)/source/maven-artifacts/* "$HOME/.m2/repository/" || true
+cp -r $(workspaces.source.path)/maven-artifacts/* "$HOME/.m2/repository/" || true
 
 echo "MAVEN_HOME=${MAVEN_HOME}"
 
@@ -54,8 +54,8 @@ export MAVEN_OPTS="-XX:+CrashOnOutOfMemoryError"
 
 echo "Running Maven command with arguments: $@"
 
-if [ ! -d $(workspaces.source.path)/source ]; then
-  cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+if [ ! -d $(workspaces.source.path)/source-archive ]; then
+    cp -r $(workspaces.source.path)/source $(workspaces.source.path)/source-archive
 fi
 #we can't use array parameters directly here
 #we pass them in as goals
