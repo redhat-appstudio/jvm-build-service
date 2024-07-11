@@ -35,6 +35,8 @@ jobs:
           - "test-repos"
           - "build-systems"
           - "commons"
+        cfgmaptestsets:
+          - "jakartaee"
     needs: [wait-for-images]
     runs-on: ubuntu-latest
     name: Minikube GAV Matrix
@@ -77,6 +79,7 @@ jobs:
           docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
 
           export TESTSET=${{ matrix.testsets }}
+          export CFGMAPTESTSET=${{ matrix.cfgmaptestsets }}
 
           ./deploy/minikube-ci.sh
           make minikube-test
@@ -84,5 +87,5 @@ jobs:
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         if: always()
         with:
-          name: matrix-report-${{ matrix.testsets }}
+          name: matrix-report-${{ matrix.testsets }}-${{ matrix.cfgmaptestsets }}
           path: /tmp/jvm-build-service-report

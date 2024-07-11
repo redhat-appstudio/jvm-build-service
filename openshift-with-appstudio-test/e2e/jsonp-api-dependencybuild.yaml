@@ -1,0 +1,10 @@
+apiVersion: jvmbuildservice.io/v1alpha1
+kind: DependencyBuild
+spec:
+  scm:
+    commitHash: a359856b15dd8d045a15fca5f217d6a18a88533d
+    path: api
+    scmType: git
+    scmURL: https://github.com/jakartaee/jsonp-api.git
+    tag: 2.1.1-RELEASE
+  version: 2.1.1
