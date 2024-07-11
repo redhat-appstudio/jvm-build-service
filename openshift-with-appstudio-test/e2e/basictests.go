@@ -53,11 +53,11 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	if len(testSet) > 0 {
 		runCfgMapTests(path, testSet, ta)
 	} else {
-		runTests(path, os.Getenv("TESTSET"), pipeline, ta)
+		runGavTests(path, os.Getenv("TESTSET"), pipeline, ta)
 	}
 }
 
-func runTests(path string, testSet string, pipeline string, ta *testArgs) {
+func runGavTests(path string, testSet string, pipeline string, ta *testArgs) {
 	var err error
 
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", pipeline)
