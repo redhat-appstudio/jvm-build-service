@@ -48,16 +48,17 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	}
 	ta.Logf(fmt.Sprintf("current working dir: %s", path))
 
-	testSet := os.Getenv("CFGMAPTESTSET")
-	// run config map dependency build tests instead if env var is set
+	testSet := os.Getenv("DBTESTSET")
+	// run dependency build tests instead if env var is set
+	// otherwise run artifact build tests instead
 	if len(testSet) > 0 {
-		runCfgMapTests(path, testSet, ta)
+		runDbTests(path, testSet, ta)
 	} else {
-		runGavTests(path, os.Getenv("TESTSET"), pipeline, ta)
+		runAbTests(path, os.Getenv("ABTESTSET"), pipeline, ta)
 	}
 }
 
-func runGavTests(path string, testSet string, pipeline string, ta *testArgs) {
+func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 	var err error
 
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", pipeline)
@@ -556,29 +557,29 @@ func runGavTests(path string, testSet string, pipeline string, ta *testArgs) {
 	})
 }
 
-func runCfgMapTests(path string, testSet string, ta *testArgs) {
+func runDbTests(path string, testSet string, ta *testArgs) {
 	parts := readTestData(path, testSet, "minikube-cfgmap.yaml", ta)
 	for _, s := range parts {
 		depBuildBytes, err := os.ReadFile(filepath.Clean(filepath.Join(path, s+"-dependencybuild.yaml")))
 		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("unable to read dependencybuild for %s configmap test: %s", s, err.Error()))
+			debugAndFailTest(ta, fmt.Sprintf("unable to read dependencybuild for %s test: %s", s, err.Error()))
 			return
 		}
 		db := v1alpha1.DependencyBuild{}
 		err = yaml.Unmarshal(depBuildBytes, &db)
 		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("unable to unmarshal dependencybuild for %s configmap test: %s", s, err.Error()))
+			debugAndFailTest(ta, fmt.Sprintf("unable to unmarshal dependencybuild for %s test: %s", s, err.Error()))
 			return
 		}
 		buildRecipeBytes, err := os.ReadFile(filepath.Clean(filepath.Join(path, s+"-buildrecipe.yaml")))
 		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("unable to read buildrecipe for %s configmap test: %s", s, err.Error()))
+			debugAndFailTest(ta, fmt.Sprintf("unable to read buildrecipe for %s test: %s", s, err.Error()))
 			return
 		}
 		buildRecipe := v1alpha1.BuildRecipe{}
 		err = yaml.Unmarshal(buildRecipeBytes, &buildRecipe)
 		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("unable to unmarshal buildrecipe for %s configmap test: %s", s, err.Error()))
+			debugAndFailTest(ta, fmt.Sprintf("unable to unmarshal buildrecipe for %s test: %s", s, err.Error()))
 			return
 		}
 		db.Namespace = ta.ns
@@ -629,7 +630,7 @@ func runCfgMapTests(path string, testSet string, ta *testArgs) {
 			return
 		}
 
-		ta.t.Run(fmt.Sprintf("configmap dependencybuild complete for repo %s", db.Spec.ScmInfo.SCMURL), func(t *testing.T) {
+		ta.t.Run(fmt.Sprintf("dependencybuild complete for %s", s), func(t *testing.T) {
 			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
@@ -651,11 +652,11 @@ func runCfgMapTests(path string, testSet string, ta *testArgs) {
 				return dbComplete, nil
 			})
 			if err != nil {
-				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for configmap dependencybuild %s for repo %s to complete", db.Name, db.Spec.ScmInfo.SCMURL))
+				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for dependencybuild %s for repo %s to complete", db.Name, db.Spec.ScmInfo.SCMURL))
 			}
 		})
 
-		ta.t.Run(fmt.Sprintf("configmap dependencybuild for repo %s contains buildrecipe", db.Spec.ScmInfo.SCMURL), func(t *testing.T) {
+		ta.t.Run(fmt.Sprintf("dependencybuild for %s contains buildrecipe", s), func(t *testing.T) {
 			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
@@ -677,7 +678,7 @@ func runCfgMapTests(path string, testSet string, ta *testArgs) {
 				return containsRecipe, nil
 			})
 			if err != nil {
-				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for configmap dependencybuild %s for repo %s to be retrieved", db.Name, db.Spec.ScmInfo.SCMURL))
+				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for dependencybuild %s for repo %s to be retrieved", db.Name, db.Spec.ScmInfo.SCMURL))
 			}
 		})
 	}
