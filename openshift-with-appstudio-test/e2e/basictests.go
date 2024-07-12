@@ -9,9 +9,9 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	"io"
 	"knative.dev/pkg/apis"
-	"knative.dev/pkg/kmp"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sigs.k8s.io/yaml"
 	"strings"
 	"testing"
@@ -668,11 +668,27 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 					return false, err
 				}
 				containsRecipe := false
+				buildRecipeValue := reflect.ValueOf(buildRecipe)
+				fieldsWithValues := map[string]bool{}
+				for i := 0; i < buildRecipeValue.NumField(); i++ {
+					field := buildRecipeValue.Field(i)
+					fieldName := buildRecipeValue.Type().Field(i).Name
+					if (field.Kind() == reflect.Slice || field.Kind() == reflect.Map) && field.Len() == 0 {
+						fieldsWithValues[fieldName] = false
+					} else if reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface()) {
+						fieldsWithValues[fieldName] = false
+					} else {
+						fieldsWithValues[fieldName] = true
+					}
+				}
 				for _, ba := range retrievedDb.Status.BuildAttempts {
-					ta.Logf(fmt.Sprintf("%+v", ba.Recipe))
-					samePluginsDisabled, _ := kmp.SafeEqual(ba.Recipe.DisabledPlugins, buildRecipe.DisabledPlugins)
-					if ba.Recipe.JavaVersion == buildRecipe.JavaVersion && samePluginsDisabled {
-						containsRecipe = true
+					baBuildRecipeValue := reflect.ValueOf(ba.Recipe)
+					for fieldName, hasValue := range fieldsWithValues {
+						buildRecipeField := buildRecipeValue.FieldByName(fieldName)
+						baBuildRecipeField := baBuildRecipeValue.FieldByName(fieldName)
+						if hasValue && reflect.DeepEqual(buildRecipeField.Interface(), baBuildRecipeField.Interface()) {
+							containsRecipe = true
+						}
 					}
 				}
 				return containsRecipe, nil
@@ -682,7 +698,6 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 			}
 		})
 	}
-	// TODO improve recipe comparison
 }
 
 func watchEvents(eventClient v1.EventInterface, ta *testArgs) {
