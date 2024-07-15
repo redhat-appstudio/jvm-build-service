@@ -554,18 +554,6 @@ mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
 					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preprocessorArgs),
 				},
 				{
-					Name:            "create-pre-build-image",
-					Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-					ImagePullPolicy: v1.PullIfNotPresent,
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					Env:             secretVariables,
-					ComputeResources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-					},
-					Script: preBuildImageArgs,
-				},
-				{
 					Name:            "create-pre-build-source",
 					Image:           buildRequestProcessorImage,
 					ImagePullPolicy: pullPolicy,
@@ -576,6 +564,18 @@ mv $(workspaces.source.path)/workspace/*.sh $(workspaces.source.path)
 						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 					},
 					Script: createKonfluxScripts(kf, konfluxScript) + "\n" + artifactbuild.InstallKeystoreIntoBuildRequestProcessor(konfluxArgs),
+				},
+				{
+					Name:            "create-pre-build-image",
+					Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+					ImagePullPolicy: v1.PullIfNotPresent,
+					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+					Env:             secretVariables,
+					ComputeResources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+					},
+					Script: preBuildImageArgs,
 				},
 			},
 		}
