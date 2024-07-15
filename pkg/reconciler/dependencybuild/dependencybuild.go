@@ -1183,6 +1183,36 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	if jbsConfig.ImageRegistry().SecretName != "" {
 		envVars = append(envVars, v1.EnvVar{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}}})
 	}
+	buildInfoTask := tektonpipeline.TaskSpec{
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: "tls"}},
+		Results:    []tektonpipeline.TaskResult{{Name: BuildInfoPipelineResultBuildInfo}},
+		Steps: []tektonpipeline.Step{
+			{
+				Name:            "process-build-requests",
+				Image:           image,
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				ComputeResources: v1.ResourceRequirements{
+					//TODO: make configurable
+					Requests: v1.ResourceList{"memory": resource.MustParse(memory), "cpu": resource.MustParse("10m")},
+					Limits:   v1.ResourceList{"memory": resource.MustParse(memory)},
+				},
+				Env: envVars,
+			},
+		},
+	}
+	if build.BuildRecipeConfigMap != "" {
+		mountPath := "/build-recipe"
+		args = append(args, "--build-recipe-path", mountPath+"/build.yaml")
+		buildInfoTask.Steps[0].VolumeMounts = []v1.VolumeMount{{
+			Name:      "build-recipe-config-map",
+			MountPath: mountPath,
+		}}
+		buildInfoTask.Volumes = []v1.Volume{
+			{Name: "build-recipe-config-map", VolumeSource: v1.VolumeSource{ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: build.BuildRecipeConfigMap}}}},
+		}
+	}
+	buildInfoTask.Steps[0].Script = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(args)
 	return &tektonpipeline.PipelineSpec{
 		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: "tls"}},
 		Results:    []tektonpipeline.PipelineResult{{Name: BuildInfoPipelineResultBuildInfo, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultBuildInfo + ")"}}},
@@ -1191,25 +1221,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 				Name:       "task",
 				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{{Name: "tls", Workspace: "tls"}},
 				TaskSpec: &tektonpipeline.EmbeddedTask{
-					TaskSpec: tektonpipeline.TaskSpec{
-						Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: "tls"}},
-						Results:    []tektonpipeline.TaskResult{{Name: BuildInfoPipelineResultBuildInfo}},
-						Steps: []tektonpipeline.Step{
-							{
-								Name:            "process-build-requests",
-								Image:           image,
-								ImagePullPolicy: pullPolicy,
-								SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-								Script:          artifactbuild.InstallKeystoreIntoBuildRequestProcessor(args),
-								ComputeResources: v1.ResourceRequirements{
-									//TODO: make configurable
-									Requests: v1.ResourceList{"memory": resource.MustParse(memory), "cpu": resource.MustParse("10m")},
-									Limits:   v1.ResourceList{"memory": resource.MustParse(memory)},
-								},
-								Env: envVars,
-							},
-						},
-					},
+					TaskSpec: buildInfoTask,
 				},
 			},
 		},

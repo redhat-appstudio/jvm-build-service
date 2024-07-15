@@ -18,8 +18,9 @@ const (
 )
 
 type DependencyBuildSpec struct {
-	ScmInfo SCMInfo `json:"scm,omitempty"`
-	Version string  `json:"version,omitempty"`
+	ScmInfo              SCMInfo `json:"scm,omitempty"`
+	Version              string  `json:"version,omitempty"`
+	BuildRecipeConfigMap string  `json:"buildRecipeConfigMap,omitempty"`
 }
 
 type DependencyBuildStatus struct {

@@ -68,6 +68,7 @@ import com.redhat.hacbs.container.analyser.build.maven.MavenJavaVersionDiscovery
 import com.redhat.hacbs.container.deploy.containerregistry.ContainerUtil;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.build.BuildRecipeInfo;
+import com.redhat.hacbs.recipes.build.BuildRecipeInfoManager;
 import com.redhat.hacbs.recipes.scm.ScmInfo;
 import com.redhat.hacbs.recipes.util.GitCredentials;
 import com.redhat.hacbs.resources.model.v1alpha1.Util;
@@ -120,6 +121,9 @@ public class LookupBuildInfoCommand implements Runnable {
     @CommandLine.Option(names = "--artifact", description = "Artifact to get manifest from")
     String artifact;
 
+    @CommandLine.Option(names = "--build-recipe-path")
+    String buildRecipePath;
+
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
 
@@ -137,14 +141,22 @@ public class LookupBuildInfoCommand implements Runnable {
 
             CacheBuildInfoLocator buildInfoLocator = RestClientBuilder.newBuilder().baseUri(new URI(cacheUrl))
                     .build(CacheBuildInfoLocator.class);
-            BuildRecipeInfo buildRecipeInfo = buildInfoLocator.resolveBuildInfo(scmInfo.getUri(), version);
+            BuildRecipeInfo buildRecipeInfo;
 
-            if (scmInfo.getBuildNameFragment() != null) {
-                Log.infof("Using alternate name fragment of " + scmInfo.getBuildNameFragment());
-                buildRecipeInfo = buildRecipeInfo.getAdditionalBuilds().get(scmInfo.getBuildNameFragment());
-                if (buildRecipeInfo == null) {
-                    throw new RuntimeException("Unknown build name " + scmInfo.getBuildNameFragment() + " for " + this.scmUrl
+            if (buildRecipePath != null) {
+                Log.infof("Using build recipe from %s", buildRecipePath);
+                BuildRecipeInfoManager buildRecipeInfoManager = new BuildRecipeInfoManager();
+                buildRecipeInfo = buildRecipeInfoManager.parse(Path.of(buildRecipePath));
+            } else {
+                buildRecipeInfo = buildInfoLocator.resolveBuildInfo(scmInfo.getUri(), version);
+
+                if (scmInfo.getBuildNameFragment() != null) {
+                    Log.infof("Using alternate name fragment of " + scmInfo.getBuildNameFragment());
+                    buildRecipeInfo = buildRecipeInfo.getAdditionalBuilds().get(scmInfo.getBuildNameFragment());
+                    if (buildRecipeInfo == null) {
+                        throw new RuntimeException("Unknown build name " + scmInfo.getBuildNameFragment() + " for " + this.scmUrl
                             + " please add it to the additionalBuilds section");
+                    }
                 }
             }
 
