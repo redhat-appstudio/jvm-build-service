@@ -8,7 +8,7 @@ require (
 	github.com/CycloneDX/cyclonedx-go v0.9.0
 	github.com/aws/aws-sdk-go v1.54.9
 	github.com/go-logr/logr v1.4.2
-	github.com/google/go-containerregistry v0.19.1
+	github.com/google/go-containerregistry v0.20.0
 	github.com/google/uuid v1.6.0
 	github.com/konflux-ci/image-controller v0.0.0-20240618145642-2d0165fccbad
 	github.com/onsi/gomega v1.33.1
