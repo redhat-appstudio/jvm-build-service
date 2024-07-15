@@ -684,6 +684,7 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 				for _, ba := range retrievedDb.Status.BuildAttempts {
 					baBuildRecipeValue := reflect.ValueOf(ba.Recipe)
 					for fieldName, hasValue := range fieldsWithValues {
+						ta.Logf(fieldName)
 						buildRecipeField := buildRecipeValue.FieldByName(fieldName)
 						baBuildRecipeField := baBuildRecipeValue.FieldByName(fieldName)
 						if hasValue && reflect.DeepEqual(buildRecipeField.Interface(), baBuildRecipeField.Interface()) {
