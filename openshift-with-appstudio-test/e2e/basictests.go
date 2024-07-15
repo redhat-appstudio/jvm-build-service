@@ -667,27 +667,26 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 					ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
 					return false, err
 				}
-				containsRecipe := false
 				buildRecipeValue := reflect.ValueOf(buildRecipe)
-				fieldsWithValues := map[string]bool{}
+				fieldsWithValues := []string{}
 				for i := 0; i < buildRecipeValue.NumField(); i++ {
 					field := buildRecipeValue.Field(i)
 					fieldName := buildRecipeValue.Type().Field(i).Name
-					if (field.Kind() == reflect.Slice || field.Kind() == reflect.Map) && field.Len() == 0 {
-						fieldsWithValues[fieldName] = false
-					} else if reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface()) {
-						fieldsWithValues[fieldName] = false
-					} else {
-						fieldsWithValues[fieldName] = true
+					// append field if it has a value in the build recipe
+					if ((field.Kind() == reflect.Slice || field.Kind() == reflect.Map) && field.Len() > 0) || !reflect.DeepEqual(field.Interface(), reflect.Zero(field.Type()).Interface()) {
+						fieldsWithValues = append(fieldsWithValues, fieldName)
 					}
 				}
+				containsRecipe := len(fieldsWithValues) > 1
 				for _, ba := range retrievedDb.Status.BuildAttempts {
 					baBuildRecipeValue := reflect.ValueOf(*ba.Recipe)
-					for fieldName, hasValue := range fieldsWithValues {
+					for _, fieldName := range fieldsWithValues {
 						buildRecipeField := buildRecipeValue.FieldByName(fieldName)
 						baBuildRecipeField := baBuildRecipeValue.FieldByName(fieldName)
-						if hasValue && reflect.DeepEqual(buildRecipeField.Interface(), baBuildRecipeField.Interface()) {
-							containsRecipe = true
+						// all field values in build recipe must be present and identical in the corresponding build attempt recipe
+						if !reflect.DeepEqual(buildRecipeField.Interface(), baBuildRecipeField.Interface()) {
+							containsRecipe = false
+							break
 						}
 					}
 				}
