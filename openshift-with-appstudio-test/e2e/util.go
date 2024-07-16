@@ -314,27 +314,6 @@ func setupConfig(t *testing.T, namespace string, hermetic bool) *testArgs {
 					PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
 				},
 			},
-			RelocationPatterns: []v1alpha1.RelocationPatternElement{
-				{
-					RelocationPattern: v1alpha1.RelocationPattern{
-						BuildPolicy: "default",
-						Patterns: []v1alpha1.PatternElement{
-							{
-								Pattern: v1alpha1.Pattern{
-									From: "(io.github.stuartwdouglas.hacbs-test.simple):(simple-jdk17):(99-does-not-exist)",
-									To:   "io.github.stuartwdouglas.hacbs-test.simple:simple-jdk17:0.1.2",
-								},
-							},
-							{
-								Pattern: v1alpha1.Pattern{
-									From: "org.graalvm.sdk:graal-sdk:21.3.2",
-									To:   "org.graalvm.sdk:graal-sdk:21.3.2.0-1-redhat-00001",
-								},
-							},
-						},
-					},
-				},
-			},
 		},
 		Status: v1alpha1.JBSConfigStatus{},
 	}

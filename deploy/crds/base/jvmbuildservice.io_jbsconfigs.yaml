@@ -139,6 +139,7 @@ spec:
                     type: string
                 type: object
               relocationPatterns:
+                description: Deprecated
                 items:
                   properties:
                     relocationPattern:
