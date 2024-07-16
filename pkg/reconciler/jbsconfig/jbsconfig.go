@@ -512,6 +512,8 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		cache = setEnvVarValue(strconv.FormatBool(imageRegistry.Insecure), "REGISTRY_INSECURE", cache)
 		cache = setEnvVarValue(imageRegistry.PrependTag, "REGISTRY_PREPEND_TAG", cache)
 		if jbsConfig.ImageRegistry().SecretName != "" {
+			// Builds or tooling mostly use the .docker/config.json directly which is updated via Tekton/Kubernetes secrets. But the
+			// Java code may require the token as well.
 			cache = setEnvVar(corev1.EnvVar{
 				Name:      "REGISTRY_TOKEN",
 				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}},

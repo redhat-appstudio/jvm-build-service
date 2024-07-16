@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pipeline
+  namespace: ${JBS_WORKER_NAMESPACE}
+secrets:
+  - name: jvm-build-image-secrets

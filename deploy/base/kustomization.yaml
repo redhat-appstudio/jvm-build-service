@@ -6,3 +6,4 @@ resources:
   - namespace
   - secrets
   - config.yaml
+  - sa.yaml
