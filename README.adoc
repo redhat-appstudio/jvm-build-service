@@ -20,7 +20,7 @@ directory.
 * link:https://kubernetes.io/docs/tasks/tools/#kubectl[kubectl] CLI tool
 * link:https://kubectl.docs.kubernetes.io/installation/kustomize/binaries[kustomize] CLI tool
 
-This is currently using link:https://docs.openshift.com/pipelines/1.13/about/op-release-notes.html[OpenShift Pipelines 1.13]
+This is currently using link:https://docs.openshift.com/pipelines/1.14/about/op-release-notes.html[OpenShift Pipelines 1.14]
 
 == Installation
 
