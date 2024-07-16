@@ -64,6 +64,10 @@ type ImageCredentials struct {
 	// Refreshes both, push and pull tokens.
 	// The field gets cleared after the refresh.
 	RegenerateToken *bool `json:"regenerate-token,omitempty"`
+	// VerifyLinking defines a request to verify and fix
+	// secret linking in pipeline service account.
+	// The field gets cleared after fixing.
+	VerifyLinking *bool `json:"verify-linking,omitempty"`
 }
 
 type Notifications struct {
