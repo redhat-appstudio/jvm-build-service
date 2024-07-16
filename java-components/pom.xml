@@ -49,7 +49,7 @@
         <!-- Plugin Versions-->
         <compiler-plugin.version>3.13.0</compiler-plugin.version>
         <jar-plugin.version>3.4.2</jar-plugin.version>
-        <surefire-plugin.version>3.3.0</surefire-plugin.version>
+        <surefire-plugin.version>3.3.1</surefire-plugin.version>
         <formatter-maven-plugin.version>2.24.1</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.11.0</impsort-maven-plugin.version>
         <kubernetes-client.version>6.13.1</kubernetes-client.version>
