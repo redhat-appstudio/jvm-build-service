@@ -9,7 +9,7 @@ endif
 
 # options for generating crds with controller-gen
 CONTROLLER_GEN=${GOBIN}/controller-gen
-CRD_OPTIONS ?= crd:trivialVersions=true,preserveUnknownFields=false
+CRD_OPTIONS ?= crd
 
 .EXPORT_ALL_VARIABLES:
 
