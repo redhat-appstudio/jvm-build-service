@@ -94,6 +94,7 @@ public class TagDeployCommand implements Runnable {
                 if (reuseRepository) {
                     git.initialise(scmUri);
                 } else {
+                    Log.warnf("Not reusing repository; creating under %s", scmUri);
                     git.create(scmUri);
                 }
                 Log.infof("Pushing changes back to URL %s", git.getName());

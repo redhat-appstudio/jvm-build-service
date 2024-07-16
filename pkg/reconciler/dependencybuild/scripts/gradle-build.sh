@@ -4,8 +4,8 @@ mkdir -p "${GRADLE_USER_HOME}"
 mkdir -p "${HOME}/.m2/repository"
 
 #copy back the gradle folder for hermetic
-cp -r $(workspaces.source.path)/source/maven-artifacts/.gradle/* "$GRADLE_USER_HOME/" || true
-cp -r $(workspaces.source.path)/source/maven-artifacts/* "$HOME/.m2/repository/" || true
+cp -r $(workspaces.source.path)/maven-artifacts/.gradle/* "$GRADLE_USER_HOME/" || true
+cp -r $(workspaces.source.path)/maven-artifacts/* "$HOME/.m2/repository/" || true
 
 cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF
 org.gradle.console=plain
@@ -63,8 +63,8 @@ export LC_ALL="en_US.UTF-8"
 rm -f gradle/verification-metadata.xml
 
 echo "Running Gradle command with arguments: $@"
-if [ ! -d $(workspaces.source.path)/source ]; then
-  cp -r $(workspaces.source.path)/workspace $(workspaces.source.path)/source
+if [ ! -d $(workspaces.source.path)/source-archive ]; then
+    cp -r $(workspaces.source.path)/source $(workspaces.source.path)/source-archive
 fi
 gradle -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@" | tee $(workspaces.source.path)/logs/gradle.log
 

@@ -139,7 +139,9 @@ public abstract class Git {
                 // No tag found - might be using a branch; default to commit.
                 tagName = commit;
             }
-            var ref = jGit.checkout().setStartPoint(tagName).setName(tagName + "-jbs-branch").setCreateBranch(true).call();
+            var branchName = tagName + "-jbs-branch";
+            var createBranch = jGit.branchList().call().stream().map(Ref::getName).noneMatch(("refs/heads/" + branchName)::equals);
+            var ref = jGit.checkout().setStartPoint(tagName).setName(branchName).setCreateBranch(createBranch).call();
             StoredConfig jConfig = jRepo.getConfig();
             Log.infof("Updating current origin of %s to %s", jConfig.getString("remote", "origin", "url"),
                     httpTransportUrl);
