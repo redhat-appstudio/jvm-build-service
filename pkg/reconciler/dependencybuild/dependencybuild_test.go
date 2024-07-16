@@ -217,19 +217,19 @@ func TestStateDetect(t *testing.T) {
 		g.Expect(client.List(ctx, trList))
 
 		g.Expect(len(trList.Items)).Should(Equal(1))
-		for _, pr := range trList.Items {
-			if pr.Labels[PipelineTypeLabel] != PipelineTypeBuild {
+		for _, tr := range trList.Items {
+			if tr.Labels[PipelineTypeLabel] != PipelineTypeBuild {
 				continue
 			}
-			g.Expect(pr.Labels[artifactbuild.DependencyBuildIdLabel]).Should(Equal(db.Name))
-			for _, or := range pr.OwnerReferences {
+			g.Expect(tr.Labels[artifactbuild.DependencyBuildIdLabel]).Should(Equal(db.Name))
+			for _, or := range tr.OwnerReferences {
 				if or.Kind != db.Kind || or.Name != db.Name {
-					g.Expect(or.Kind).Should(Equal(db.Kind))
+					g.Expect(or.Kind).Should(Equal("DependencyBuild"))
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(pr.Spec.Params)).Should(Equal(12))
-			for _, param := range pr.Spec.Params {
+			g.Expect(len(tr.Spec.Params)).Should(Equal(12))
+			for _, param := range tr.Spec.Params {
 				switch param.Name {
 				case PipelineParamScmHash:
 				case PipelineParamChainsGitCommit:
