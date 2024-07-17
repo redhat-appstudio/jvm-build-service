@@ -7,7 +7,7 @@
 set -eu
 
 # controller-gen version
-CONTROLLER_GEN_VERSION="${CONTROLLER_GEN_VERSION:-v0.6.2}"
+CONTROLLER_GEN_VERSION="${CONTROLLER_GEN_VERSION:-v0.15.0}"
 
 if ! command -v controller-gen &> /dev/null
 then
