@@ -61,7 +61,7 @@
         <cyclonedx-core-java.version>9.0.4</cyclonedx-core-java.version>
         <gradle-tooling-api.version>8.8</gradle-tooling-api.version>
         <maven-indexer.version>7.1.4</maven-indexer.version>
-        <maven-resolver.version>1.9.20</maven-resolver.version>
+        <maven-resolver.version>1.9.21</maven-resolver.version>
         <maven-release.version>3.1.1</maven-release.version>
         <quarkus-jgit.version>3.1.2</quarkus-jgit.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
