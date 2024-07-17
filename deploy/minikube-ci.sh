@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DIR=`dirname $0`
-kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.56.5/release.yaml
+kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.59.2/release.yaml
 timeout=600 #10 minutes in seconds
 endTime=$(( $(date +%s) + timeout ))
 
