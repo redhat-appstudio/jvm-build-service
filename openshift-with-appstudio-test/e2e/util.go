@@ -240,9 +240,9 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	return ta
 }
 func setup(t *testing.T, namespace string) *testArgs {
-	return setupConfig(t, namespace, false)
+	return setupConfig(t, namespace)
 }
-func setupConfig(t *testing.T, namespace string, hermetic bool) *testArgs {
+func setupConfig(t *testing.T, namespace string) *testArgs {
 
 	ta := commonSetup(t, gitCloneTaskUrl, namespace)
 	err := wait.PollUntilContextTimeout(context.TODO(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
@@ -316,9 +316,6 @@ func setupConfig(t *testing.T, namespace string, hermetic bool) *testArgs {
 			},
 		},
 		Status: v1alpha1.JBSConfigStatus{},
-	}
-	if hermetic {
-		jbsConfig.Spec.HermeticBuilds = v1alpha1.HermeticBuildTypeRequired
 	}
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {

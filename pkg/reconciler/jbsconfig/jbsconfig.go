@@ -77,6 +77,10 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		jbsConfig.Spec.RelocationPatterns = nil
 		return reconcile.Result{}, r.client.Update(ctx, &jbsConfig)
 	}
+	if jbsConfig.Spec.HermeticBuilds != "" {
+		jbsConfig.Spec.HermeticBuilds = ""
+		return reconcile.Result{}, r.client.Update(ctx, &jbsConfig)
+	}
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
