@@ -7,8 +7,8 @@ spec:
   builders:
     #note that when updating the ref here you must also update kustomization.yaml
     ubi8:
-      image: quay.io/redhat-user-workloads/rhtap-build-tenant/jvm-build-service-builder-images/ubi8:295418988fc1d5df7d6f888fa6a972ba10ae7258
+      image: quay.io/redhat-user-workloads/rhtap-build-tenant/jvm-build-service-builder-images/ubi8:4185e29d687baf1d626be712410cb6e96a45d2c1
       priority: 2000
     ubi7:
-      image: quay.io/redhat-user-workloads/rhtap-build-tenant/jvm-build-service-builder-images/ubi7:295418988fc1d5df7d6f888fa6a972ba10ae7258
+      image: quay.io/redhat-user-workloads/rhtap-build-tenant/jvm-build-service-builder-images/ubi7:4185e29d687baf1d626be712410cb6e96a45d2c1
       priority: 1000
