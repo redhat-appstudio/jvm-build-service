@@ -25,6 +25,7 @@ const (
 	WorkspaceMount         = "/var/workdir"
 	WorkspaceTls           = "tls"
 
+	BuildahTaskName     = "container-build"
 	BuildTaskName       = "build"
 	PreBuildTaskName    = "pre-build"
 	PreBuildImageDigest = "PRE_BUILD_IMAGE_DIGEST"
@@ -267,7 +268,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl procps-ng" +
+		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install procps-ng" +
 		// TODO: Debug only
 		"\nRUN rpm -ivh https://vault.centos.org/8.5.2111/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
 		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
@@ -290,13 +291,14 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	kf := "FROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install vim curl" +
+		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker" +
 		"\nENV JBS_DISABLE_CACHE=true" +
 		"\nCOPY .jbs/run-build.sh /root" +
 		"\nCOPY . /root/project/source/" +
 		"\nRUN /root/run-build.sh" +
 		"\nFROM scratch" +
-		"\nCOPY --from=0 /root/project/artifacts /root/artifacts"
+		// TODO: ### What layout should the archive be. This stores them at root akin to post-build-image.
+		"\nCOPY --from=0 /root/project/artifacts /"
 
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	limits, err := memoryLimits(jbsConfig, additionalMemory)
@@ -327,7 +329,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if preBuildImageRequired {
 		preBuildImage = "$(tasks." + PreBuildTaskName + ".results." + PreBuildImageDigest + ")"
 	}
-	fmt.Printf("### preBuildImageRequired %#v \n", preBuildImageRequired)
+	fmt.Printf("### preBuildImageRequired %#v and preBuildImage is %#v \n", preBuildImageRequired, preBuildImage)
 
 	var buildTaskScript string
 	if tool == "ant" {
@@ -410,17 +412,20 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/sour
 			}}, buildTask.Steps...)
 	}
 
-	runAfter1 := make([]string, 0)
-	runAfter2 := make([]string, 0)
+	runAfter := make([]string, 0)
+	runAfterContainer := make([]string, 0)
 	if preBuildImageRequired {
-		runAfter1 = []string{PreBuildTaskName}
-		runAfter2 = []string{PreBuildTaskName}
+		runAfter = []string{PreBuildTaskName}
+		runAfterContainer = []string{PreBuildTaskName}
+	}
+	if jbsConfig.Spec.ContainerBuilds {
+		runAfterContainer = append(runAfter, BuildahTaskName)
 	}
 	ps := &tektonpipeline.PipelineSpec{
 		Tasks: []tektonpipeline.PipelineTask{
 			{
 				Name:     BuildTaskName,
-				RunAfter: runAfter2,
+				RunAfter: runAfterContainer,
 				TaskSpec: &tektonpipeline.EmbeddedTask{
 					TaskSpec: buildTask,
 				},
@@ -433,12 +438,11 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/sour
 				},
 			},
 		},
+
 		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
 	if jbsConfig.Spec.ContainerBuilds {
 		fmt.Printf("### Creating remote task\n")
-		// TODO: ### use constant for container-build
-		runAfter2 = append(runAfter2, "container-build")
 
 		// TODO: ### Note - its also possible to refer to a remote pipeline ref as well as a task.
 		resolver := tektonpipeline.ResolverRef{
@@ -471,8 +475,8 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/sour
 
 		ps.Tasks = append([]tektonpipeline.PipelineTask{
 			{
-				Name:     "container-build",
-				RunAfter: runAfter1,
+				Name:     BuildahTaskName,
+				RunAfter: runAfter,
 				TaskRef: &tektonpipeline.TaskRef{
 					// Can't specify name and resolver as they clash.
 					ResolverRef: resolver,
@@ -483,13 +487,7 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/sour
 						Name: "DOCKERFILE",
 						Value: tektonpipeline.ParamValue{
 							Type:      tektonpipeline.ParamTypeString,
-							StringVal: "./.jbs/Containerfile"},
-					},
-					{
-						Name: "CONTEXT",
-						Value: tektonpipeline.ParamValue{
-							Type:      tektonpipeline.ParamTypeString,
-							StringVal: "workspace"},
+							StringVal: ".jbs/Containerfile"},
 					},
 					{
 						Name: "IMAGE",
@@ -501,16 +499,18 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/sour
 						Name: "SOURCE_ARTIFACT",
 						Value: tektonpipeline.ParamValue{
 							Type:      tektonpipeline.ParamTypeString,
-							StringVal: PreBuildImageDigest,
+							StringVal: preBuildImage,
 						},
 					},
 				},
+
 				// TODO: ### How to pass build-settings/tls information to buildah task?
-				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-					//{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
-					{Name: WorkspaceSource, Workspace: WorkspaceSource},
-					//{Name: WorkspaceTls, Workspace: WorkspaceTls},
-				},
+				//       Note - buildah-oci-ta task has no defined workspace
+				//Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+				//	//{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+				//	{Name: WorkspaceSource, Workspace: WorkspaceSource},
+				//	//{Name: WorkspaceTls, Workspace: WorkspaceTls},
+				//},
 			}}, ps.Tasks...)
 	}
 
@@ -593,6 +593,7 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/sour
 		for _, i := range buildSetup.Results {
 			ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + i.Name + ")"}})
 		}
+		fmt.Printf("### pipeline ps results : %#v\n", ps.Results)
 	}
 
 	for _, i := range ps.Tasks {
