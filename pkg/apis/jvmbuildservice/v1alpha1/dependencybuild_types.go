@@ -32,17 +32,18 @@ type DependencyBuildStatus struct {
 	Message      string             `json:"message,omitempty"`
 	Contaminants []*Contaminant     `json:"contaminates,omitempty"`
 	// PotentialBuildRecipes additional recipes to try if the current recipe fails
-	PotentialBuildRecipes      []*BuildRecipe   `json:"potentialBuildRecipes,omitempty"`
-	PotentialBuildRecipesIndex int              `json:"potentialBuildRecipesIndex,omitempty"`
-	CommitTime                 int64            `json:"commitTime,omitempty"`
-	DeployedArtifacts          []string         `json:"deployedArtifacts,omitempty"`
-	FailedVerification         bool             `json:"failedVerification,omitempty"`
-	Hermetic                   bool             `json:"hermetic,omitempty"`
-	PipelineRetries            int              `json:"pipelineRetries,omitempty"`
-	BuildAttempts              []*BuildAttempt  `json:"buildAttempts,omitempty"`
-	DiscoveryPipelineResults   *PipelineResults `json:"discoveryPipelineResults,omitempty"`
-	DeployPipelineResults      *PipelineResults `json:"deployPipelineResults,omitempty"`
-	PreBuildImages             []PreBuildImage  `json:"builderImages,omitempty"`
+	PotentialBuildRecipes      []*BuildRecipe `json:"potentialBuildRecipes,omitempty"`
+	PotentialBuildRecipesIndex int            `json:"potentialBuildRecipesIndex,omitempty"`
+	CommitTime                 int64          `json:"commitTime,omitempty"`
+	DeployedArtifacts          []string       `json:"deployedArtifacts,omitempty"`
+	FailedVerification         bool           `json:"failedVerification,omitempty"`
+	// Deprecated
+	Hermetic                 bool             `json:"hermetic,omitempty"`
+	PipelineRetries          int              `json:"pipelineRetries,omitempty"`
+	BuildAttempts            []*BuildAttempt  `json:"buildAttempts,omitempty"`
+	DiscoveryPipelineResults *PipelineResults `json:"discoveryPipelineResults,omitempty"`
+	DeployPipelineResults    *PipelineResults `json:"deployPipelineResults,omitempty"`
+	PreBuildImages           []PreBuildImage  `json:"builderImages,omitempty"`
 }
 
 // +genclient
@@ -102,6 +103,7 @@ type BuildPipelineRunResults struct {
 	VerificationResults string `json:"verificationFailures,omitempty"`
 	// The produced GAVs
 	Gavs []string `json:"gavs,omitempty"`
+	// Deprecated
 	// The hermetic build image produced by the build
 	HermeticBuildImage string `json:"hermeticBuildImage,omitempty"`
 	// The git archive source information

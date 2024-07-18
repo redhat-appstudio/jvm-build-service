@@ -17,10 +17,6 @@ class RepositoryPlugin implements Plugin<Gradle> {
         if (JBS_DISABLE_CACHE) {
             return
         }
-        if (ENTERPRISE_REPOSITORY_URL.startsWith("file:/")) {
-            //hermetic build, do nothing
-            return
-        }
         def fixRepositories = {
             if (!JBS_DISABLE_GRADLE_REPOSITORIES) {
                 all { ArtifactRepository repo ->

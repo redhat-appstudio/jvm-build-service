@@ -72,9 +72,6 @@ public class BuildVerifyCommand implements Runnable {
     @CommandLine.Option(required = true, names = "--scm-commit")
     String commit;
 
-    @CommandLine.Option(names = "--hermetic")
-    boolean hermetic;
-
     @CommandLine.Option(names = "--build-id")
     String buildId;
 
@@ -163,11 +160,9 @@ public class BuildVerifyCommand implements Runnable {
                     String classifier = extractClassifier(gav.getArtifactId(), gav.getVersion(), fileName);
                     Map<String, String> attributes;
                     if (StringUtils.isNotBlank(classifier)) {
-                        attributes = Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
-                            Boolean.toString(hermetic), BUILD_ID, buildId, "classifier", classifier);
+                        attributes = Map.of("scm-uri", scmUri, "scm-commit", commit, BUILD_ID, buildId, "classifier", classifier);
                     } else {
-                        attributes = Map.of("scm-uri", scmUri, "scm-commit", commit, "hermetic",
-                            Boolean.toString(hermetic), BUILD_ID, buildId);
+                        attributes = Map.of("scm-uri", scmUri, "scm-commit", commit, BUILD_ID, buildId);
                     }
                     ClassFileTracker.addTrackingDataToJar(Files.newInputStream(file),
                             new TrackingData(

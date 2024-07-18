@@ -8,34 +8,6 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class DefaultService {
     /**
-     * @param xGitHubDelivery
-     * @param xGitHubEvent
-     * @param xHubSignature256
-     * @param xQuarkiverseGitHubAppReplayed
-     * @param xRequestId
-     * @returns any Created
-     * @throws ApiError
-     */
-    public static postApi(
-        xGitHubDelivery?: string,
-        xGitHubEvent?: string,
-        xHubSignature256?: string,
-        xQuarkiverseGitHubAppReplayed?: string,
-        xRequestId?: string,
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api',
-            headers: {
-                'X-GitHub-Delivery': xGitHubDelivery,
-                'X-GitHub-Event': xGitHubEvent,
-                'X-Hub-Signature-256': xHubSignature256,
-                'X-Quarkiverse-GitHub-App-Replayed': xQuarkiverseGitHubAppReplayed,
-                'X-Request-ID': xRequestId,
-            },
-        });
-    }
-    /**
      * @returns ReplayEvent OK
      * @throws ApiError
      */

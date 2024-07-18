@@ -37,8 +37,6 @@ public class BuildAttempt extends PanacheEntity {
     @Column(length = -1)
     public String preBuildImage;
     @Column(length = -1)
-    public String hermeticBuilderImage;
-    @Column(length = -1)
     public String outputImage;
     @Column
     public String outputImageDigest;

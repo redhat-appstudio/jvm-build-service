@@ -10,7 +10,6 @@ import com.redhat.hacbs.container.build.preprocessor.sbt.SBTPrepareCommand;
 import com.redhat.hacbs.container.deploy.BuildVerifyCommand;
 import com.redhat.hacbs.container.deploy.ContainerTagCommand;
 import com.redhat.hacbs.container.deploy.CopyArtifactsCommand;
-import com.redhat.hacbs.container.deploy.DeployHermeticPreBuildImageCommand;
 import com.redhat.hacbs.container.deploy.DeployPreBuildImageCommand;
 import com.redhat.hacbs.container.deploy.DeployPreBuildSourceCommand;
 import com.redhat.hacbs.container.deploy.TagDeployCommand;
@@ -26,7 +25,6 @@ import picocli.CommandLine;
         ContainerTagCommand.class,
         CopyArtifactsCommand.class,
         BuildVerifyCommand.class,
-        DeployHermeticPreBuildImageCommand.class,
         DeployPreBuildImageCommand.class,
         GradlePrepareCommand.class,
         DeployPreBuildSourceCommand.class,

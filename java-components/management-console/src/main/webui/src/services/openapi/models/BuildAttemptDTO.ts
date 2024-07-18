@@ -16,7 +16,6 @@ export type BuildAttemptDTO = {
     tool?: string;
     builderImage?: string;
     preBuildImage?: string;
-    hermeticBuilderImage?: string;
     outputImage?: string;
     outputImageDigest?: string;
     commandLine?: string;

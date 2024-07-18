@@ -126,8 +126,9 @@ spec:
                                   type: string
                               type: object
                             hermeticBuildImage:
-                              description: The hermetic build image produced by the
-                                build
+                              description: |-
+                                Deprecated
+                                The hermetic build image produced by the build
                               type: string
                             image:
                               description: the image resulting from the run
@@ -366,6 +367,7 @@ spec:
               failedVerification:
                 type: boolean
               hermetic:
+                description: Deprecated
                 type: boolean
               message:
                 type: string

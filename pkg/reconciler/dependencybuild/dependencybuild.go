@@ -61,7 +61,6 @@ const (
 	PipelineResultDeployedResources  = "DEPLOYED_RESOURCES"
 	PipelineResultVerificationResult = "VERIFICATION_RESULTS"
 	PipelineResultPassedVerification = "PASSED_VERIFICATION" //#nosec
-	PipelineResultHermeticBuildImage = "HERMETIC_BUILD_IMAGE"
 	PipelineResultGitArchive         = "GIT_ARCHIVE"
 	PipelineResultGavs               = "GAVS"
 
@@ -762,7 +761,6 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			var digest string
 			var passedVerification bool
 			var verificationResults string
-			var hermeticBuildImage string
 			var deployed []string
 			var gitArchive v1alpha1.GitArchive
 
@@ -794,8 +792,6 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				} else if i.Name == PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed = strings.Split(i.Value.StringVal, ",")
-				} else if i.Name == PipelineResultHermeticBuildImage {
-					hermeticBuildImage = i.Value.StringVal
 				} else if i.Name == PipelineResultGitArchive {
 					err := json.Unmarshal([]byte(i.Value.StringVal), &gitArchive)
 					if err != nil {
@@ -821,7 +817,6 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				VerificationResults: verificationResults,
 				Gavs:                deployed,
 				GitArchive:          gitArchive,
-				HermeticBuildImage:  hermeticBuildImage,
 				Contaminants:        db.Status.Contaminants,
 			}
 
