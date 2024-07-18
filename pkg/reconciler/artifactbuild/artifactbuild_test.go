@@ -78,7 +78,7 @@ func TestStateDiscovering(t *testing.T) {
 		g.Expect(dbList.Items).Should(Not(BeEmpty()))
 		for _, db := range dbList.Items {
 			for _, or := range db.OwnerReferences {
-				g.Expect(or.Kind).Should(Equal(abr.Kind))
+				g.Expect(or.Kind).Should(Equal("ArtifactBuild"))
 				g.Expect(or.Name).Should(Equal(abr.Name))
 			}
 			g.Expect(db.Spec.ScmInfo.Tag).Should(Equal("foo"))
