@@ -25,8 +25,9 @@ const (
 	WorkspaceMount         = "/var/workdir"
 	WorkspaceTls           = "tls"
 
-	BuildahTaskName     = "container-build"
+	//	BuildahTaskName     = "container-build"
 	BuildTaskName       = "build"
+	PostBuildTaskName   = "post-build"
 	PreBuildTaskName    = "pre-build"
 	PreBuildImageDigest = "PRE_BUILD_IMAGE_DIGEST"
 	TagTaskName         = "tag"
@@ -338,181 +339,20 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
 	}
 
-	buildTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
-		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
-		Results: []tektonpipeline.TaskResult{
-			{Name: PipelineResultContaminants},
-			{Name: PipelineResultDeployedResources},
-			{Name: PipelineResultImage},
-			{Name: PipelineResultImageDigest},
-			{Name: PipelineResultPassedVerification},
-			{Name: PipelineResultVerificationResult},
-			// TODO: ### DeployPreBuildSource and Deploy push to git. Currently the former is used for GitArchive results.
-			//			{Name: PipelineResultGitArchive},
-		},
-		Steps: []tektonpipeline.Step{
-			{
-				Name:            "verify-and-check-for-contaminates",
-				Image:           buildRequestProcessorImage,
-				ImagePullPolicy: pullPolicy,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             secretVariables,
-				ComputeResources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-				},
-				Script: buildTaskScript,
-			},
-			{
-				Name:            "create-post-build-image",
-				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-				ImagePullPolicy: v1.PullIfNotPresent,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             secretVariables,
-				ComputeResources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-				},
-				Script: postBuildImageArgs,
-			},
-		},
-	}
-
-	if jbsConfig.Spec.ContainerBuilds {
-		fmt.Printf("### Running container builds \n")
-	} else {
-		fmt.Printf("### Not running container builds, prepending \n")
-		buildTask.Steps = append([]tektonpipeline.Step{
-			{
-				Name:            "restore-pre-build-source",
-				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-				ImagePullPolicy: v1.PullIfNotPresent,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             secretVariables,
-				Script: fmt.Sprintf(`echo "Restoring source to workspace : $(workspaces.source.path)"
-export ORAS_OPTIONS="%s"
-use-archive $(params.%s)=$(workspaces.source.path)/source
-mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/source/.jbs/hermetic-build.sh $(workspaces.source.path)`, orasOptions, PreBuildImageDigest),
-			},
-			{
-				Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
-				Name:            BuildTaskName,
-				Image:           recipe.Image,
-				ImagePullPolicy: pullPolicy,
-				WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/source",
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
-				ComputeResources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
-				},
-				Args:   []string{"$(params.GOALS[*])"},
-				Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
-			}}, buildTask.Steps...)
+	ps := &tektonpipeline.PipelineSpec{
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
 
 	runAfter := make([]string, 0)
-	runAfterContainer := make([]string, 0)
+	runAfterBuild := make([]string, 0)
 	if preBuildImageRequired {
 		runAfter = []string{PreBuildTaskName}
-		runAfterContainer = []string{PreBuildTaskName}
+		//runAfterContainer = []string{PreBuildTaskName}
 	}
-	if jbsConfig.Spec.ContainerBuilds {
-		runAfterContainer = append(runAfter, BuildahTaskName)
-	}
-	ps := &tektonpipeline.PipelineSpec{
-		Tasks: []tektonpipeline.PipelineTask{
-			{
-				Name:     BuildTaskName,
-				RunAfter: runAfterContainer,
-				TaskSpec: &tektonpipeline.EmbeddedTask{
-					TaskSpec: buildTask,
-				},
-				Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
-				Params:  []tektonpipeline.Param{{Name: PreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
-				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-					{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
-					{Name: WorkspaceSource, Workspace: WorkspaceSource},
-					{Name: WorkspaceTls, Workspace: WorkspaceTls},
-				},
-			},
-		},
-
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
-	}
-	if jbsConfig.Spec.ContainerBuilds {
-		fmt.Printf("### Creating remote task\n")
-
-		// TODO: ### Note - its also possible to refer to a remote pipeline ref as well as a task.
-		resolver := tektonpipeline.ResolverRef{
-			Resolver: "git",
-			Params: []tektonpipeline.Param{
-				{
-					Name: "url",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: v1alpha1.KonfluxBuildDefinitions,
-					},
-				},
-				{
-					// TODO: ### Currently always using 'head' of branch.
-					Name: "revision",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "main",
-					},
-				},
-				{
-					Name: "pathInRepo",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: v1alpha1.KonfluxBuildahPath,
-					},
-				},
-			},
-		}
-
-		ps.Tasks = append([]tektonpipeline.PipelineTask{
-			{
-				Name:     BuildahTaskName,
-				RunAfter: runAfter,
-				TaskRef: &tektonpipeline.TaskRef{
-					// Can't specify name and resolver as they clash.
-					ResolverRef: resolver,
-				},
-				Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
-				Params: []tektonpipeline.Param{
-					{
-						Name: "DOCKERFILE",
-						Value: tektonpipeline.ParamValue{
-							Type:      tektonpipeline.ParamTypeString,
-							StringVal: ".jbs/Containerfile"},
-					},
-					{
-						Name: "IMAGE",
-						Value: tektonpipeline.ParamValue{
-							Type:      tektonpipeline.ParamTypeString,
-							StringVal: registryArgsWithDefaults(jbsConfig, buildId)},
-					},
-					{
-						Name: "SOURCE_ARTIFACT",
-						Value: tektonpipeline.ParamValue{
-							Type:      tektonpipeline.ParamTypeString,
-							StringVal: preBuildImage,
-						},
-					},
-				},
-
-				// TODO: ### How to pass build-settings/tls information to buildah task?
-				//       Note - buildah-oci-ta task has no defined workspace
-				//Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-				//	//{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
-				//	{Name: WorkspaceSource, Workspace: WorkspaceSource},
-				//	//{Name: WorkspaceTls, Workspace: WorkspaceTls},
-				//},
-			}}, ps.Tasks...)
-	}
+	//if jbsConfig.Spec.ContainerBuilds {
+	//	runAfterContainer = append(runAfter, BuildahTaskName)
+	//}
+	runAfterBuild = append(runAfter, BuildTaskName)
 
 	if preBuildImageRequired {
 		buildSetup := tektonpipeline.TaskSpec{
@@ -596,12 +436,219 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/sour
 		fmt.Printf("### pipeline ps results : %#v\n", ps.Results)
 	}
 
+	if jbsConfig.Spec.ContainerBuilds {
+		fmt.Printf("### Running container builds \n")
+		fmt.Printf("### Creating remote task\n")
+
+		// TODO: ### Note - its also possible to refer to a remote pipeline ref as well as a task.
+		resolver := tektonpipeline.ResolverRef{
+			Resolver: "git",
+			Params: []tektonpipeline.Param{
+				{
+					Name: "url",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: v1alpha1.KonfluxBuildDefinitions,
+					},
+				},
+				{
+					// TODO: ### Currently always using 'head' of branch.
+					Name: "revision",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "main",
+					},
+				},
+				{
+					Name: "pathInRepo",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: v1alpha1.KonfluxBuildahPath,
+					},
+				},
+			},
+		}
+
+		ps.Tasks = append([]tektonpipeline.PipelineTask{
+			{
+				Name:     BuildTaskName,
+				RunAfter: runAfter,
+				TaskRef: &tektonpipeline.TaskRef{
+					// Can't specify name and resolver as they clash.
+					ResolverRef: resolver,
+				},
+				Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
+				Params: []tektonpipeline.Param{
+					{
+						Name: "DOCKERFILE",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: ".jbs/Containerfile"},
+					},
+					{
+						Name: "IMAGE",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: registryArgsWithDefaults(jbsConfig, buildId)},
+					},
+					{
+						Name: "SOURCE_ARTIFACT",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: preBuildImage,
+						},
+					},
+				},
+
+				// TODO: ### How to pass build-settings/tls information to buildah task?
+				//       Note - buildah-oci-ta task has no defined workspace
+				//Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+				//	//{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+				//	{Name: WorkspaceSource, Workspace: WorkspaceSource},
+				//	//{Name: WorkspaceTls, Workspace: WorkspaceTls},
+				//},
+			}}, ps.Tasks...)
+	} else {
+		fmt.Printf("### Not running container builds, prepending \n")
+
+		buildTask := tektonpipeline.TaskSpec{
+			Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
+			Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
+			Results: []tektonpipeline.TaskResult{
+				{Name: PipelineResultContaminants},
+				{Name: PipelineResultDeployedResources},
+				{Name: PipelineResultImage},
+				{Name: PipelineResultImageDigest},
+				{Name: PipelineResultPassedVerification},
+				{Name: PipelineResultVerificationResult},
+				// TODO: ### DeployPreBuildSource and Deploy push to git. Currently the former is used for GitArchive results.
+				//			{Name: PipelineResultGitArchive},
+			},
+			Steps: []tektonpipeline.Step{
+				{
+					Name:            "restore-pre-build-source",
+					Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+					ImagePullPolicy: v1.PullIfNotPresent,
+					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+					Env:             secretVariables,
+					Script: fmt.Sprintf(`echo "Restoring source to workspace : $(workspaces.source.path)"
+export ORAS_OPTIONS="%s"
+use-archive $(params.%s)=$(workspaces.source.path)/source
+mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)/source/.jbs/hermetic-build.sh $(workspaces.source.path)`, orasOptions, PreBuildImageDigest),
+				},
+				{
+					Timeout:         &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
+					Name:            "build",
+					Image:           recipe.Image,
+					ImagePullPolicy: pullPolicy,
+					WorkingDir:      "$(workspaces." + WorkspaceSource + ".path)/source",
+					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+					Env:             append(toolEnv, v1.EnvVar{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"}),
+					ComputeResources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildRequestCPU},
+						Limits:   v1.ResourceList{"memory": limits.buildRequestMemory, "cpu": limits.buildLimitCPU},
+					},
+					Args:   []string{"$(params.GOALS[*])"},
+					Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
+				},
+				// TODO: ### Store post-build artifacts here using oras to match container build
+			}}
+
+		pipelineTask := []tektonpipeline.PipelineTask{{
+			Name:     BuildTaskName,
+			RunAfter: runAfter,
+			TaskSpec: &tektonpipeline.EmbeddedTask{
+				TaskSpec: buildTask,
+			},
+			Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
+			Params:  []tektonpipeline.Param{{Name: PreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
+			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+				{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+				{Name: WorkspaceSource, Workspace: WorkspaceSource},
+				{Name: WorkspaceTls, Workspace: WorkspaceTls},
+			},
+		}}
+		ps.Tasks = append(pipelineTask, ps.Tasks...)
+
+		for _, i := range buildTask.Results {
+			ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + i.Name + ")"}})
+		}
+	}
+
+	postBuildTask := tektonpipeline.TaskSpec{
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
+		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
+		Results: []tektonpipeline.TaskResult{
+			{Name: PipelineResultContaminants},
+			{Name: PipelineResultDeployedResources},
+			{Name: PipelineResultImage},
+			{Name: PipelineResultImageDigest},
+			{Name: PipelineResultPassedVerification},
+			{Name: PipelineResultVerificationResult},
+			// TODO: ### DeployPreBuildSource and Deploy push to git. Currently the former is used for GitArchive results.
+			//			{Name: PipelineResultGitArchive},
+		},
+		Steps: []tektonpipeline.Step{
+			{
+				Name:            "restore-post-build-artifacts",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: v1.PullIfNotPresent,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				Script: fmt.Sprintf(`echo "Restoring artifacts to workspace : $(workspaces.source.path)"
+export ORAS_OPTIONS="%s"
+DIGEST=$(params.%s)
+echo "Digest is $DIGEST"
+use-archive $DIGEST=$(workspaces.source.path)/artifacts`, orasOptions, PreBuildImageDigest),
+			},
+			{
+				Name:            "verify-and-check-for-contaminates",
+				Image:           buildRequestProcessorImage,
+				ImagePullPolicy: pullPolicy,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				ComputeResources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: buildTaskScript,
+			},
+			{
+				Name:            "create-post-build-image",
+				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
+				ImagePullPolicy: v1.PullIfNotPresent,
+				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+				Env:             secretVariables,
+				ComputeResources: v1.ResourceRequirements{
+					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				},
+				Script: postBuildImageArgs,
+			},
+		},
+	}
+	pipelineTask := []tektonpipeline.PipelineTask{{
+		Name:     "post-build",
+		RunAfter: runAfterBuild,
+		TaskSpec: &tektonpipeline.EmbeddedTask{
+			TaskSpec: postBuildTask,
+		},
+		Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
+		Params:  []tektonpipeline.Param{{Name: PreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
+		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+			{Name: WorkspaceSource, Workspace: WorkspaceSource},
+			{Name: WorkspaceTls, Workspace: WorkspaceTls},
+		},
+	}}
+	ps.Tasks = append(pipelineTask, ps.Tasks...)
+
 	for _, i := range ps.Tasks {
 		fmt.Printf("### ps.Tasks Pipeline Task Name: %#v \n", i.Name)
 	}
-	for _, i := range buildTask.Results {
-		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + i.Name + ")"}})
-	}
+	//for _, i := range buildTask.Results {
+	//	ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + i.Name + ")"}})
+	//}
 	for _, i := range pipelineParams {
 		ps.Params = append(ps.Params, tektonpipeline.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default, Type: i.Type})
 		fmt.Printf("### ps.Task param i name %#v \n", i.Name)

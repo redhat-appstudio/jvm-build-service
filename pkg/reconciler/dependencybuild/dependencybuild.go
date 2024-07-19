@@ -842,6 +842,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			//in this case we still get the result on the task run
 			//so we look for it to add to the build
 			for _, ref := range pr.Status.ChildReferences {
+				// TODO: ### Handle containerbuild here as well
 				if strings.HasSuffix(ref.Name, BuildTaskName) {
 					tr := tektonpipeline.TaskRun{}
 					err := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &tr)
