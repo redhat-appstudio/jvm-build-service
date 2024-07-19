@@ -40,8 +40,9 @@ type JBSConfigSpec struct {
 
 	// If this is true then the build will fail if artifact verification fails
 	// otherwise deploy will happen as normal, but a field will be set on the DependencyBuild
-	RequireArtifactVerification bool              `json:"requireArtifactVerification,omitempty"`
-	HermeticBuilds              HermeticBuildType `json:"hermeticBuilds,omitempty"`
+	RequireArtifactVerification bool `json:"requireArtifactVerification,omitempty"`
+	// Deprecated
+	HermeticBuilds HermeticBuildType `json:"hermeticBuilds,omitempty"`
 
 	AdditionalRecipes []string `json:"additionalRecipes,omitempty"`
 

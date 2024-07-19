@@ -104,6 +104,7 @@ spec:
                     type: string
                 type: object
               hermeticBuilds:
+                description: Deprecated
                 type: string
               mavenBaseLocations:
                 additionalProperties:

@@ -3,10 +3,6 @@ export GRADLE_USER_HOME="$(workspaces.build-settings.path)/.gradle"
 mkdir -p "${GRADLE_USER_HOME}"
 mkdir -p "${HOME}/.m2/repository"
 
-#copy back the gradle folder for hermetic
-cp -r $(workspaces.source.path)/maven-artifacts/.gradle/* "$GRADLE_USER_HOME/" || true
-cp -r $(workspaces.source.path)/maven-artifacts/* "$HOME/.m2/repository/" || true
-
 cat > "${GRADLE_USER_HOME}"/gradle.properties << EOF
 org.gradle.console=plain
 
