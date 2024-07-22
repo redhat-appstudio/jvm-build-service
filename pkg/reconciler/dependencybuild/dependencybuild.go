@@ -41,28 +41,29 @@ import (
 
 const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
-	contextTimeout                   = 300 * time.Second
-	PipelineBuildId                  = "DEPENDENCY_BUILD"
-	PipelineParamScmUrl              = "URL"
-	PipelineParamScmTag              = "TAG"
-	PipelineParamScmHash             = "HASH"
-	PipelineParamPath                = "CONTEXT_DIR"
-	PipelineParamChainsGitUrl        = "CHAINS-GIT_URL"
-	PipelineParamChainsGitCommit     = "CHAINS-GIT_COMMIT"
-	PipelineParamGoals               = "GOALS"
-	PipelineParamJavaVersion         = "JAVA_VERSION"
-	PipelineParamToolVersion         = "TOOL_VERSION"
-	PipelineParamEnforceVersion      = "ENFORCE_VERSION"
-	PipelineParamProjectVersion      = "PROJECT_VERSION"
-	PipelineParamCacheUrl            = "CACHE_URL"
-	PipelineResultImage              = "IMAGE_URL"
-	PipelineResultImageDigest        = "IMAGE_DIGEST"
-	PipelineResultContaminants       = "CONTAMINANTS"
-	PipelineResultDeployedResources  = "DEPLOYED_RESOURCES"
-	PipelineResultVerificationResult = "VERIFICATION_RESULTS"
-	PipelineResultPassedVerification = "PASSED_VERIFICATION" //#nosec
-	PipelineResultGitArchive         = "GIT_ARCHIVE"
-	PipelineResultGavs               = "GAVS"
+	contextTimeout                    = 300 * time.Second
+	PipelineBuildId                   = "DEPENDENCY_BUILD"
+	PipelineParamScmUrl               = "URL"
+	PipelineParamScmTag               = "TAG"
+	PipelineParamScmHash              = "HASH"
+	PipelineParamPath                 = "CONTEXT_DIR"
+	PipelineParamChainsGitUrl         = "CHAINS-GIT_URL"
+	PipelineParamChainsGitCommit      = "CHAINS-GIT_COMMIT"
+	PipelineParamGoals                = "GOALS"
+	PipelineParamJavaVersion          = "JAVA_VERSION"
+	PipelineParamToolVersion          = "TOOL_VERSION"
+	PipelineParamEnforceVersion       = "ENFORCE_VERSION"
+	PipelineParamProjectVersion       = "PROJECT_VERSION"
+	PipelineParamCacheUrl             = "CACHE_URL"
+	PipelineResultImage               = "IMAGE_URL"
+	PipelineResultImageDigest         = "IMAGE_DIGEST"
+	PipelineResultPreBuildImageDigest = "PRE_BUILD_IMAGE_DIGEST"
+	PipelineResultContaminants        = "CONTAMINANTS"
+	PipelineResultDeployedResources   = "DEPLOYED_RESOURCES"
+	PipelineResultVerificationResult  = "VERIFICATION_RESULTS"
+	PipelineResultPassedVerification  = "PASSED_VERIFICATION" //#nosec
+	PipelineResultGitArchive          = "GIT_ARCHIVE"
+	PipelineResultGavs                = "GAVS"
 
 	BuildInfoPipelineResultBuildInfo = "BUILD_INFO"
 
@@ -688,7 +689,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 						preBuildSuccess := tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 						if preBuildSuccess {
 							for _, res := range tr.Status.Results {
-								if res.Name == PreBuildImageDigest && res.Value.StringVal != "" {
+								if res.Name == PipelineResultPreBuildImageDigest && res.Value.StringVal != "" {
 									db.Status.PreBuildImages = append(db.Status.PreBuildImages, v1alpha1.PreBuildImage{BaseBuilderImage: attempt.Recipe.Image, BuiltImageDigest: res.Value.StringVal, Tool: attempt.Recipe.Tool})
 								}
 							}
@@ -786,9 +787,12 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					verificationResults = i.Value.StringVal
 				} else if i.Name == PipelineResultGavs {
 					// TODO: What is the difference between this and PipelineResultDeployedResources?
+					//       [ Jul 2024 : [ncross] : I think this should be removed
+					fmt.Printf("### i.Name %#v = %#v \n", i.Name, i.Value)
 					deployed := strings.Split(i.Value.StringVal, ",")
 					db.Status.DeployedArtifacts = deployed
 				} else if i.Name == PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
+					fmt.Printf("### i.Name %#v = %#v \n", i.Name, i.Value)
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed = strings.Split(i.Value.StringVal, ",")
 				} else if i.Name == PipelineResultGitArchive {
@@ -808,6 +812,8 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					return reconcile.Result{}, err
 				}
 			}
+
+			fmt.Printf("### Creating run.results with deployed %#v \n", deployed)
 
 			run.Results = &v1alpha1.BuildPipelineRunResults{
 				Image:               image,
@@ -1388,7 +1394,9 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 	}
 
 	paramValues := []tektonpipeline.Param{
+		{Name: PipelineResultImage, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.Image}},
 		{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.ImageDigest}},
+		{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Status.PreBuildImages[len(db.Status.PreBuildImages)-1].BuiltImageDigest}},
 	}
 
 	systemConfig := v1alpha1.SystemConfig{}
