@@ -19,7 +19,6 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.codeartifact.AWSCodeArtifactClientBuilder;
 import com.amazonaws.services.codeartifact.model.GetAuthorizationTokenRequest;
 import com.amazonaws.util.AwsHostNameUtils;
-import com.redhat.hacbs.container.deploy.git.Git;
 import com.redhat.hacbs.container.deploy.mavenrepository.CodeArtifactRepository;
 import com.redhat.hacbs.container.deploy.mavenrepository.MavenRepositoryDeployer;
 
@@ -86,20 +85,25 @@ public class TagDeployCommand implements Runnable {
 
             var deploymentPath = Path.of(artifactDirectory);
 
+            // TODO: ### To discuss: I don't think we need this. It was a *secondary* write of
+            //       source - writing after preprocess, but including any pre-build changes. There
+            //       is also the difficulty that we don't pass the hash we wrote through. Although
+            //       I think we can grab is from the GitArchive
+            //
             // TODO: Should we write out to a 'DependencyPipelineResults' a GitArchive?
-            Git.GitStatus archivedSourceTags = new Git.GitStatus();
-            // Save the source first regardless of deployment checks
-            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
-                if (reuseRepository) {
-                    git.initialise(scmUri);
-                } else {
-                    Log.warnf("Not reusing repository; creating under %s", scmUri);
-                    git.create(scmUri);
-                }
-                Log.infof("Pushing changes back to URL %s", git.getName());
-                archivedSourceTags = git.add(sourcePath, commit, imageId);
-            }
+//            Git.GitStatus archivedSourceTags = new Git.GitStatus();
+//            // Save the source first regardless of deployment checks
+//            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
+//                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
+//                if (reuseRepository) {
+//                    git.initialise(scmUri);
+//                } else {
+//                    Log.warnf("Not reusing repository; creating under %s", scmUri);
+//                    git.create(scmUri);
+//                }
+//                Log.infof("Pushing changes back to URL %s", git.getName());
+//                archivedSourceTags = git.add(sourcePath, commit, imageId);
+//            }
 
             if (!deploymentPath.toFile().exists()) {
                 Log.warnf("No deployed artifacts found. Has the build been correctly configured to deploy?");

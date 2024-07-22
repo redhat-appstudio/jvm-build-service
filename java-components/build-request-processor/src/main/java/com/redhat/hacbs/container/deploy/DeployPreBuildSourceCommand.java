@@ -60,7 +60,6 @@ public class DeployPreBuildSourceCommand implements Runnable {
         try {
             Git.GitStatus archivedSourceTags = new Git.GitStatus();
 
-            Log.warnf("### gitidentity %s and token %s",gitIdentity, gitToken);
             // Save the source first regardless of deployment checks
             if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
                 var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);

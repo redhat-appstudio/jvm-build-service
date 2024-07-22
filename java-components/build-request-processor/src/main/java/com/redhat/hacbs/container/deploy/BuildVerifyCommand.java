@@ -241,6 +241,7 @@ public class BuildVerifyCommand implements Runnable {
         }
     }
 
+    // TODO: ### For container-builds, should sbom generation be delegated to the task within that? If it supports it?
     private void generateBuildSbom() {
         if (buildInfoPath == null) {
             Log.infof("Not generating build sbom, path not set");

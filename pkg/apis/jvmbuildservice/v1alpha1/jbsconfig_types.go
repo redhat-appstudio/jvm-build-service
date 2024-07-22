@@ -35,7 +35,7 @@ const (
 	HermeticBuildTypeRequired HermeticBuildType = "Required"
 
 	KonfluxBuildDefinitions = "https://github.com/konflux-ci/build-definitions.git"
-	KonfluxBuildahPath      = "task/buildah-oci-ta/0.1/buildah-oci-ta.yaml"
+	KonfluxBuildahPath      = "task/buildah-oci-ta/0.2/buildah-oci-ta.yaml"
 )
 
 type JBSConfigSpec struct {
