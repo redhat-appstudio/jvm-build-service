@@ -52,9 +52,6 @@ export MAVEN_OPTS="-XX:+CrashOnOutOfMemoryError"
 
 echo "Running Maven command with arguments: $@"
 
-if [ ! -d $(workspaces.source.path)/source-archive ]; then
-    cp -r $(workspaces.source.path)/source $(workspaces.source.path)/source-archive
-fi
 #we can't use array parameters directly here
 #we pass them in as goals
 mvn -V -B -e -s "$(workspaces.build-settings.path)/settings.xml" -t "$(workspaces.build-settings.path)/toolchains.xml" "$@" "-DaltDeploymentRepository=local::file:$(workspaces.source.path)/artifacts" | tee $(workspaces.source.path)/logs/maven.log

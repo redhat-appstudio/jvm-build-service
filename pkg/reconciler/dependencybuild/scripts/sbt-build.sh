@@ -36,11 +36,6 @@ EOF
     fi
 fi
 
-
-
-if [ ! -d $(workspaces.source.path)/source-archive ]; then
-    cp -r $(workspaces.source.path)/source $(workspaces.source.path)/source-archive
-fi
 echo "Running SBT command with arguments: $@"
 
 eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
