@@ -63,7 +63,6 @@ const (
 	PipelineResultVerificationResult  = "VERIFICATION_RESULTS"
 	PipelineResultPassedVerification  = "PASSED_VERIFICATION" //#nosec
 	PipelineResultGitArchive          = "GIT_ARCHIVE"
-	PipelineResultGavs                = "GAVS"
 
 	BuildInfoPipelineResultBuildInfo = "BUILD_INFO"
 
@@ -785,14 +784,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 					// 	But this is now stored as
 					// 		"verificationFailures": "{\"commons-lang:commons-lang:jar:2.5\":[]}"
 					verificationResults = i.Value.StringVal
-				} else if i.Name == PipelineResultGavs {
-					// TODO: What is the difference between this and PipelineResultDeployedResources?
-					//       [ Jul 2024 : [ncross] : I think this should be removed
-					fmt.Printf("### i.Name %#v = %#v \n", i.Name, i.Value)
-					deployed := strings.Split(i.Value.StringVal, ",")
-					db.Status.DeployedArtifacts = deployed
 				} else if i.Name == PipelineResultDeployedResources && len(i.Value.StringVal) > 0 {
-					fmt.Printf("### i.Name %#v = %#v \n", i.Name, i.Value)
 					//we need to create 'DeployedArtifact' resources for the objects that were deployed
 					deployed = strings.Split(i.Value.StringVal, ",")
 				} else if i.Name == PipelineResultGitArchive {
@@ -814,7 +806,6 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			}
 
 			fmt.Printf("### Creating run.results with deployed %#v \n", deployed)
-
 			run.Results = &v1alpha1.BuildPipelineRunResults{
 				Image:               image,
 				ImageDigest:         digest,
@@ -848,7 +839,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 			//in this case we still get the result on the task run
 			//so we look for it to add to the build
 			for _, ref := range pr.Status.ChildReferences {
-				// TODO: ### Handle containerbuild here as well
+				// Assumes container build is always called build here as well
 				if strings.HasSuffix(ref.Name, BuildTaskName) {
 					tr := tektonpipeline.TaskRun{}
 					err := r.client.Get(ctx, types.NamespacedName{Namespace: pr.Namespace, Name: ref.Name}, &tr)

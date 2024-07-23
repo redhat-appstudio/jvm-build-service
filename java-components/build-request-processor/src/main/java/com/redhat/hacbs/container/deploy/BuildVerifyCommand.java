@@ -214,8 +214,7 @@ public class BuildVerifyCommand implements Runnable {
             }
             for (var i : contaminatedGavs.entrySet()) {
                 if (!i.getValue().getAllowed()) {
-                    gavs.removeAll(i.getValue().getContaminatedArtifacts());
-//                    i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
+                    i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
                 }
             }
             generateBuildSbom();

@@ -330,7 +330,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	secretVariables := secretVariables(jbsConfig)
 
 	runAfter := make([]string, 0)
-	runAfterBuild := make([]string, 0)
+	var runAfterBuild []string
 
 	preBuildImage := existingImages[recipe.Image+"-"+recipe.Tool]
 	preBuildImageRequired := preBuildImage == ""
@@ -546,8 +546,7 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)`, or
 					Args:   []string{"$(params.GOALS[*])"},
 					Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
 				},
-				// TODO: ### Store post-build artifacts here using oras to match container build
-				//        How to add label to make this temporary?
+				// Store post-build artifacts here using oras to match container build
 				{
 					Name:            "store-post-build-artifacts",
 					Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
@@ -555,9 +554,7 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)`, or
 					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 					Env:             secretVariables,
 					Script: fmt.Sprintf(`echo "Creating post-build-image archive"
-export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
-set -x
-ls -lR $(workspaces.source.path)/artifacts
+export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json --no-tty --format=json"
 IMGURL=%s
 create-archive --store $IMGURL /tmp/artifacts=$(workspaces.source.path)/artifacts | tee /tmp/oras-create.json
 IMGDIGEST=$(cat /tmp/oras-create.json | grep -Ev '(Prepared artifact|Artifacts created)' | jq -r '.digest')
@@ -932,7 +929,7 @@ func pipelineDeployCommands(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.Dependen
 		"--directory=$(workspaces.source.path)/artifacts",
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
-		"--source-path=$(workspaces.source.path)/source-archive",
+		"--source-path=$(workspaces.source.path)/source",
 		"--image-id=" + imageId,
 	}
 

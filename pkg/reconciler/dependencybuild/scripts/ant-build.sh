@@ -26,9 +26,6 @@ cat > ivysettings.xml << EOF
 </ivysettings>
 EOF
 
-if [ ! -d $(workspaces.source.path)/source-archive ]; then
-    cp -r $(workspaces.source.path)/source $(workspaces.source.path)/source-archive
-fi
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 
