@@ -60,9 +60,9 @@ var buildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
-func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild, buildRequestProcessorImage string, gavs string) (*tektonpipeline.PipelineSpec, error) {
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string, gavs string) (*tektonpipeline.PipelineSpec, error) {
 	zero := int64(0)
-	mavenDeployArgs := pipelineDeployCommands(jbsConfig, db)
+	mavenDeployArgs := pipelineDeployCommands(jbsConfig)
 
 	limits, err := memoryLimits(jbsConfig, 0)
 	if err != nil {
@@ -73,7 +73,6 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.Depend
 		orasOptions = "--insecure --plain-http"
 	}
 
-	mavenDeployArgs = append(mavenDeployArgs, gitArgs(jbsConfig, db)...)
 	secretVariables := secretVariables(jbsConfig)
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	regUrl := registryArgsWithDefaults(jbsConfig, "")
@@ -267,6 +266,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
 	konfluxScript := "#!/bin/sh\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
 
+	// Diagnostic Containerfile
+	// TODO: While it doesn't functionally matter, ideally we should match Konflux layout (i.e. /var/workdir etc).
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
 		"\nFROM " + recipe.Image +
@@ -293,17 +294,36 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nRUN chmod +x /root/*.sh" +
 		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
 
+	// Konflux Containerfile
+	// TODO: While it doesn't functionally matter, ideally we should match Konflux layout (i.e. /var/workdir etc).
 	kf := "FROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /root" +
 		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker" +
+		// TODO ### HACK : How to use SSL to avoid certificate problem with buildah task?
+		// "\nENV CACHE_URL=" + "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild" + buildRepos + "/" + strconv.FormatInt(commitTime, 10) +
 		"\nENV JBS_DISABLE_CACHE=true" +
 		"\nCOPY .jbs/run-build.sh /root" +
 		"\nCOPY . /root/project/source/" +
-		"\nRUN /root/run-build.sh" +
-		"\nFROM scratch" +
-		// TODO: ### What layout should the archive be. This stores them at root akin to post-build-image.
-		"\nCOPY --from=0 /root/project/artifacts /"
+		"\nRUN /root/run-build.sh"
+	// TODO: This is a bit of a hack but as Ant doesn't deploy and the previous implementation relied upon using the
+	//     BuildRequestProcessorImage we need to modify the Containerfile. In future the ant-build.sh should probably
+	//     encapsulate this.
+	if tool == "ant" {
+		kf = kf +
+			"\nFROM " + buildRequestProcessorImage + " AS build-request-processor" +
+			"\nUSER 0" +
+			"\nWORKDIR /root" +
+			"\nCOPY --from=0 /root/project/ /root/project/" +
+			// Don't think we need to mess with keystore as copy-artifacts is simply calling copy commands.
+			"\nRUN /opt/jboss/container/java/run/run-java.sh " + doSubstitution(strings.Join(copyArtifactsArgs, " "), []tektonpipeline.Param{}, commitTime, buildRepos) +
+			"\nFROM scratch" +
+			"\nCOPY --from=1 /root/project/artifacts /"
+	} else {
+		kf = kf +
+			"\nFROM scratch" +
+			"\nCOPY --from=0 /root/project/artifacts /"
+	}
 
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	limits, err := memoryLimits(jbsConfig, additionalMemory)
@@ -339,13 +359,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		runAfter = []string{PreBuildTaskName}
 	}
 	runAfterBuild = append(runAfter, BuildTaskName)
-
-	var buildTaskScript string
-	if tool == "ant" {
-		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, copyArtifactsArgs, deployArgs)
-	} else {
-		buildTaskScript = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs)
-	}
 
 	ps := &tektonpipeline.PipelineSpec{
 		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
@@ -433,8 +446,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 
 	if jbsConfig.Spec.ContainerBuilds {
-		fmt.Printf("### Running container builds \n")
-
 		// TODO: ### Note - its also possible to refer to a remote pipeline ref as well as a task.
 		resolver := tektonpipeline.ResolverRef{
 			Resolver: "git",
@@ -510,8 +521,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: PipelineResultImage, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImage + ")"}})
 		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImageDigest + ")"}})
 	} else {
-		fmt.Printf("### Not running container builds \n")
-
 		buildTask := tektonpipeline.TaskSpec{
 			Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
 			Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PipelineResultPreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
@@ -545,6 +554,18 @@ mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)`, or
 					},
 					Args:   []string{"$(params.GOALS[*])"},
 					Script: "$(workspaces." + WorkspaceSource + ".path)/build.sh \"$@\"",
+				},
+				{
+					Name:            "deploy-ant-artifacts",
+					Image:           buildRequestProcessorImage,
+					ImagePullPolicy: pullPolicy,
+					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
+					Env:             secretVariables,
+					ComputeResources: v1.ResourceRequirements{
+						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
+						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+					},
+					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(copyArtifactsArgs),
 				},
 				// Store post-build artifacts here using oras to match container build
 				{
@@ -594,8 +615,6 @@ echo -n "$IMGDIGEST" >> $(results.%s.path)
 			{Name: PipelineResultDeployedResources},
 			{Name: PipelineResultPassedVerification},
 			{Name: PipelineResultVerificationResult},
-			// TODO: ### DeployPreBuildSource and Deploy push to git. Currently the former is used for GitArchive results.
-			//			{Name: PipelineResultGitArchive},
 		},
 		Steps: []tektonpipeline.Step{
 			{
@@ -624,24 +643,8 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
 				},
-				Script: buildTaskScript,
+				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(verifyBuiltArtifactsArgs, deployArgs),
 			},
-			// TODO: ### Do we really need this now. Previously it stored:
-			// 		artifacts (which is now handled above)
-			//		source - useful to store pre-post-build script changes?
-			//		logs - irrelevant if build is done in container?
-			//{
-			//	Name:            "create-post-build-image",
-			//	Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-			//	ImagePullPolicy: v1.PullIfNotPresent,
-			//	SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-			//	Env:             secretVariables,
-			//	ComputeResources: v1.ResourceRequirements{
-			//		Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-			//		Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-			//	},
-			//	Script: postBuildImageArgs,
-			//},
 		},
 	}
 	pipelineTask := []tektonpipeline.PipelineTask{{
@@ -862,6 +865,7 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
 		"--source-path=$(workspaces.source.path)/source",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 	}
+
 	deployArgs := []string{
 		"verify",
 		"--path=$(workspaces.source.path)/artifacts",
@@ -870,6 +874,9 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
 		"--build-id=" + buildId,
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
+	}
+	if !jbsConfig.Spec.ContainerBuilds {
+		deployArgs = append(deployArgs, "--build-info-path=$(workspaces.source.path)/build-info")
 	}
 
 	konfluxArgs := []string{
@@ -920,17 +927,11 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 	return registryArgs.String()
 }
 
-func pipelineDeployCommands(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []string {
-
-	imageId := db.Name
+func pipelineDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
 
 	deployArgs := []string{
 		"deploy",
 		"--directory=$(workspaces.source.path)/artifacts",
-		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
-		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
-		"--source-path=$(workspaces.source.path)/source",
-		"--image-id=" + imageId,
 	}
 
 	mavenArgs := make([]string, 0)

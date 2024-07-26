@@ -40,4 +40,5 @@ echo "Running SBT command with arguments: $@"
 
 eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
 
+# TODO: Remove for container builds
 cp -r "${HOME}"/.sbt/* $(workspaces.source.path)/build-info

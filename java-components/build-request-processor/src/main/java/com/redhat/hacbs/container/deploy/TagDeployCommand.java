@@ -15,7 +15,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.regions.Regions;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.RegionUtils;
 import com.amazonaws.services.codeartifact.AWSCodeArtifactClientBuilder;
 import com.amazonaws.services.codeartifact.model.GetAuthorizationTokenRequest;
 import com.amazonaws.util.AwsHostNameUtils;
@@ -47,36 +48,6 @@ public class TagDeployCommand implements Runnable {
     @CommandLine.Option(names = "--mvn-repo")
     String mvnRepo;
 
-    @ConfigProperty(name = "git.deploy.token")
-    Optional<String> gitToken;
-
-    // If endpoint is null then default GitHub API endpoint is used. Otherwise:
-    // for GitHub, endpoint like https://api.github.com
-    // for GitLib, endpoint like https://gitlab.com
-    @CommandLine.Option(names = "--git-url")
-    String gitURL;
-
-    @CommandLine.Option(names = "--git-identity")
-    String gitIdentity;
-
-    @CommandLine.Option(names = "--git-disable-ssl-verification")
-    boolean gitDisableSSLVerification;
-
-    @CommandLine.Option(names = "--git-reuse-repository")
-    boolean reuseRepository;
-
-    @CommandLine.Option(names = "--image-id")
-    String imageId;
-
-    @CommandLine.Option(required = true, names = "--scm-uri")
-    String scmUri;
-
-    @CommandLine.Option(required = true, names = "--scm-commit")
-    String commit;
-
-    @CommandLine.Option(required = true, names = "--source-path")
-    Path sourcePath;
-
     @Inject
     BootstrapMavenContext mvnCtx;
 
@@ -84,26 +55,6 @@ public class TagDeployCommand implements Runnable {
         try {
 
             var deploymentPath = Path.of(artifactDirectory);
-
-            // TODO: ### To discuss: I don't think we need this. It was a *secondary* write of
-            //       source - writing after preprocess, but including any pre-build changes. There
-            //       is also the difficulty that we don't pass the hash we wrote through. Although
-            //       I think we can grab is from the GitArchive
-            //
-            // TODO: Should we write out to a 'DependencyPipelineResults' a GitArchive?
-//            Git.GitStatus archivedSourceTags = new Git.GitStatus();
-//            // Save the source first regardless of deployment checks
-//            if (isNotEmpty(gitIdentity) && gitToken.isPresent()) {
-//                var git = Git.builder(gitURL, gitIdentity, gitToken.get(), gitDisableSSLVerification);
-//                if (reuseRepository) {
-//                    git.initialise(scmUri);
-//                } else {
-//                    Log.warnf("Not reusing repository; creating under %s", scmUri);
-//                    git.create(scmUri);
-//                }
-//                Log.infof("Pushing changes back to URL %s", git.getName());
-//                archivedSourceTags = git.add(sourcePath, commit, imageId);
-//            }
 
             if (!deploymentPath.toFile().exists()) {
                 Log.warnf("No deployed artifacts found. Has the build been correctly configured to deploy?");
@@ -131,11 +82,11 @@ public class TagDeployCommand implements Runnable {
                         String domainOwner = repo.substring(firstDash + 1, repo.indexOf("."));
                         Log.infof("Generating AWS token for domain %s, owner %s, region %s", domain, domainOwner, parsedRegion);
 
-                        Regions region = Regions.fromName(parsedRegion);
+                        Region region = RegionUtils.getRegion(parsedRegion);
                         var awsClient = AWSCodeArtifactClientBuilder.standard()
                                 .withCredentials(awsProfile.isEmpty() ? DefaultAWSCredentialsProviderChain.getInstance()
                                         : new ProfileCredentialsProvider(awsProfile.get()))
-                                .withRegion(region).build();
+                                .withRegion(region.getName()).build();
                         mvnPassword = Optional.of(awsClient.getAuthorizationToken(
                                 new GetAuthorizationTokenRequest().withDomain(domain).withDomainOwner(domainOwner))
                                 .getAuthorizationToken());

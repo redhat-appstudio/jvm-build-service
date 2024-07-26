@@ -62,5 +62,6 @@ echo "Running Gradle command with arguments: $@"
 
 gradle -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@" | tee $(workspaces.source.path)/logs/gradle.log
 
+# TODO: Remove for container builds
 cp -r "${GRADLE_USER_HOME}" $(workspaces.source.path)/build-info/.gradle
 cp -r "${HOME}"/.m2/repository/* $(workspaces.source.path)/build-info
