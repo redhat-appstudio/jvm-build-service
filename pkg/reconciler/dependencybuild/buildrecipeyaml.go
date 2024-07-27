@@ -256,56 +256,56 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if jbsConfig.Spec.CacheSettings.DisableTLS {
 		cacheUrl = "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild"
 	}
+	cacheUrl = cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)
 
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
 	log.Info(fmt.Sprintf("Generating dockerfile with recipe build image %#v", recipe.Image))
-	preprocessorScript := "#!/bin/sh\n/root/software/system-java/bin/java -jar /root/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
+	preprocessorScript := "#!/bin/sh\n/var/workdir/software/system-java/bin/java -jar /var/workdir/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
 	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
 	envVars := extractEnvVar(toolEnv)
 	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
 	konfluxScript := "#!/bin/sh\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
 
 	// Diagnostic Containerfile
-	// TODO: While it doesn't functionally matter, ideally we should match Konflux layout (i.e. /var/workdir etc).
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
 		"\nFROM " + recipe.Image +
 		"\nUSER 0" +
-		"\nWORKDIR /root" +
+		"\nWORKDIR /var/workdir" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker && microdnf install procps-ng" +
+		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker" +
 		// TODO: Debug only
 		"\nRUN rpm -ivh https://vault.centos.org/8.5.2111/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
-		"\nCOPY --from=build-request-processor /deployments/ /root/software/build-request-processor" +
+		"\nCOPY --from=build-request-processor /deployments/ /var/workdir/software/build-request-processor" +
 		// Copying JDK17 for the cache.
 		// TODO: Could we determine if we are using UBI8 and avoid this?
-		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /root/software/system-java" +
+		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /var/workdir/software/system-java" +
 		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
-		"\nCOPY --from=cache /deployments/ /root/software/cache" +
+		"\nCOPY --from=cache /deployments/ /var/workdir/software/cache" +
 		// Use git script rather than the preBuildImages as they are OCI archives and can't be used with docker/podman.
+		// TODO: ### Is this gitscript using the correct SHA? The Konflux one is but this is using pre preprocessor changes.
 		"\nRUN " + doSubstitution(gitScript, paramValues, commitTime, buildRepos) +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /root/software/cache/quarkus-run.jar >/root/cache.log &"+
-		"\nwhile ! cat /root/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/root/start-cache.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/root/preprocessor.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(buildScript)) + " | base64 -d >/root/build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/root/preprocessor.sh\n"+envVars+"\n/root/build.sh "+cmdArgs+"\n")) + " | base64 -d >/root/run-full-build.sh" +
-		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/root/entry-script.sh" +
-		"\nRUN chmod +x /root/*.sh" +
-		"\nCMD [ \"/bin/bash\", \"/root/entry-script.sh\" ]"
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/var/workdir/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /var/workdir/software/cache/quarkus-run.jar >/var/workdir/cache.log &"+
+		"\nwhile ! cat /var/workdir/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/var/workdir/start-cache.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/var/workdir/preprocessor.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(buildScript)) + " | base64 -d >/var/workdir/build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/var/workdir/preprocessor.sh\n"+envVars+"\n/var/workdir/build.sh "+cmdArgs+"\n")) + " | base64 -d >/var/workdir/run-full-build.sh" +
+		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(dockerfileEntryScript)) + " | base64 -d >/var/workdir/entry-script.sh" +
+		"\nRUN chmod +x /var/workdir/*.sh" +
+		"\nCMD [ \"/bin/bash\", \"/var/workdir/entry-script.sh\" ]"
 
 	// Konflux Containerfile
-	// TODO: While it doesn't functionally matter, ideally we should match Konflux layout (i.e. /var/workdir etc).
 	kf := "FROM " + recipe.Image +
 		"\nUSER 0" +
-		"\nWORKDIR /root" +
-		"\nRUN mkdir -p /root/project /root/software/settings /original-content/marker" +
+		"\nWORKDIR /var/workdir" +
+		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker" +
 		// TODO ### HACK : How to use SSL to avoid certificate problem with buildah task?
 		// "\nENV CACHE_URL=" + "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild" + buildRepos + "/" + strconv.FormatInt(commitTime, 10) +
 		"\nENV JBS_DISABLE_CACHE=true" +
-		"\nCOPY .jbs/run-build.sh /root" +
-		"\nCOPY . /root/project/source/" +
-		"\nRUN /root/run-build.sh"
+		"\nCOPY .jbs/run-build.sh /var/workdir" +
+		"\nCOPY . /var/workdir/workspace/source/" +
+		"\nRUN /var/workdir/run-build.sh"
 	// TODO: This is a bit of a hack but as Ant doesn't deploy and the previous implementation relied upon using the
 	//     BuildRequestProcessorImage we need to modify the Containerfile. In future the ant-build.sh should probably
 	//     encapsulate this.
@@ -313,16 +313,16 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		kf = kf +
 			"\nFROM " + buildRequestProcessorImage + " AS build-request-processor" +
 			"\nUSER 0" +
-			"\nWORKDIR /root" +
-			"\nCOPY --from=0 /root/project/ /root/project/" +
+			"\nWORKDIR /var/workdir" +
+			"\nCOPY --from=0 /var/workdir/ /var/workdir/" +
 			// Don't think we need to mess with keystore as copy-artifacts is simply calling copy commands.
 			"\nRUN /opt/jboss/container/java/run/run-java.sh " + doSubstitution(strings.Join(copyArtifactsArgs, " "), []tektonpipeline.Param{}, commitTime, buildRepos) +
 			"\nFROM scratch" +
-			"\nCOPY --from=1 /root/project/artifacts /"
+			"\nCOPY --from=1 /var/workdir/workspace/artifacts /"
 	} else {
 		kf = kf +
 			"\nFROM scratch" +
-			"\nCOPY --from=0 /root/project/artifacts /"
+			"\nCOPY --from=0 /var/workdir/workspace/artifacts /"
 	}
 
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
@@ -345,7 +345,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		{Name: PipelineParamPath, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamEnforceVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamProjectVersion, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl + buildRepos + "/" + strconv.FormatInt(commitTime, 10)}},
+		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl}},
 	}
 	secretVariables := secretVariables(jbsConfig)
 
@@ -446,7 +446,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 
 	if jbsConfig.Spec.ContainerBuilds {
-		// TODO: ### Note - its also possible to refer to a remote pipeline ref as well as a task.
+		// Note - its also possible to refer to a remote pipeline ref as well as a task.
 		resolver := tektonpipeline.ResolverRef{
 			Resolver: "git",
 			Params: []tektonpipeline.Param{
@@ -458,7 +458,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					// TODO: ### Currently always using 'head' of branch.
+					// Currently always using 'head' of branch.
 					Name: "revision",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
@@ -1037,9 +1037,9 @@ func doSubstitution(script string, paramValues []tektonpipeline.Param, commitTim
 		}
 	}
 	script = strings.ReplaceAll(script, "$(params.CACHE_URL)", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
-	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/root/software/settings")
-	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/root/project")
-	script = strings.ReplaceAll(script, "$(workspaces.tls.path)", "/root/project/tls/service-ca.crt")
+	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/var/workdir/software/settings")
+	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/var/workdir/workspace")
+	script = strings.ReplaceAll(script, "$(workspaces.tls.path)", "/var/workdir/software/tls/service-ca.crt")
 	return script
 }
 
