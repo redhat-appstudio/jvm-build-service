@@ -6,12 +6,13 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
+	errors2 "errors"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/dependencybuild"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"html/template"
 	"io"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ import (
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -318,6 +320,11 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 		},
 		Status: v1alpha1.JBSConfigStatus{},
 	}
+	createRepo(ta, &jbsConfig)
+	err = deployMavenSecret(ta) // openshift-ci.sh does not create secret during e2e testing
+	if err != nil {
+		debugAndFailTest(ta, err.Error())
+	}
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
@@ -342,7 +349,7 @@ func waitForCache(ta *testArgs) error {
 		}
 		for _, cond := range cache.Status.Conditions {
 			if cond.Type == v13.DeploymentProgressing && cond.Status == "False" {
-				return false, errors.New("cache deployment failed")
+				return false, errors2.New("cache deployment failed")
 			}
 
 		}
@@ -351,6 +358,147 @@ func waitForCache(ta *testArgs) error {
 	})
 	if err != nil {
 		debugAndFailTest(ta, "cache not present in timely fashion")
+	}
+	return err
+}
+
+func createRepo(ta *testArgs, jbsConfig *v1alpha1.JBSConfig) {
+	mavenUsername := os.Getenv("MAVEN_USERNAME")
+	mavenRepository := os.Getenv("MAVEN_REPOSITORY")
+	mavenPassword := os.Getenv("MAVEN_PASSWORD")
+	if len(mavenUsername) > 0 && len(mavenRepository) > 0 && len(mavenPassword) > 0 {
+		jbsConfig.Spec.MavenDeployment = v1alpha1.MavenDeployment{
+			Username:   mavenUsername,
+			Repository: mavenRepository,
+			OnlyDeploy: true, // we don't want cache attempting to download from empty repo
+		}
+		err := deployRepoService(ta)
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+		}
+		err = deployRepo(ta, mavenUsername, mavenPassword)
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+		}
+		err = waitForRepo(ta)
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+		}
+	}
+}
+
+func deployMavenSecret(ta *testArgs) error {
+	mavenPassword := os.Getenv("MAVEN_PASSWORD")
+	var err error
+	if len(mavenPassword) > 0 {
+		_, err = kubeClient.CoreV1().Secrets(ta.ns).Get(context.TODO(), v1alpha1.MavenSecretName, metav1.GetOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			ta.Logf(fmt.Sprintf("Creating maven secret in namespace %s", ta.ns))
+			mavenSecret := &corev1.Secret{}
+			mavenSecret.Name = v1alpha1.MavenSecretName
+			mavenSecret.Namespace = ta.ns
+			mavenSecret.StringData = map[string]string{"mavenpassword": os.Getenv("MAVEN_PASSWORD")}
+			mavenSecret.Type = "Opaque"
+			_, err = kubeClient.CoreV1().Secrets(ta.ns).Create(context.TODO(), mavenSecret, metav1.CreateOptions{})
+		}
+	}
+	return err
+}
+
+func deployRepoService(ta *testArgs) error {
+	_, err := kubeClient.CoreV1().Services(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		ta.Logf(fmt.Sprintf("Creating repository service in namespace %s", ta.ns))
+		repoService := &corev1.Service{}
+		repoService.Name = v1alpha1.RepoDeploymentName
+		repoService.Namespace = ta.ns
+		repoService.Spec = corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Port:       80,
+					TargetPort: intstr.IntOrString{IntVal: 8080},
+				},
+			},
+			Type:     corev1.ServiceTypeClusterIP,
+			Selector: map[string]string{"app": v1alpha1.RepoDeploymentName},
+		}
+		_, err = kubeClient.CoreV1().Services(ta.ns).Create(context.TODO(), repoService, metav1.CreateOptions{})
+	}
+	return err
+}
+
+//go:embed Dockerfile.reposilite
+var trustedReposiliteImage string
+
+func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error {
+	_, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		ta.Logf(fmt.Sprintf("Creating repository in namespace %s", ta.ns))
+		repo := &v13.Deployment{}
+		repo.Name = v1alpha1.RepoDeploymentName
+		repo.Namespace = ta.ns
+		repo.Spec.RevisionHistoryLimit = new(int32)
+		repo.Spec.Strategy = v13.DeploymentStrategy{Type: v13.RecreateDeploymentStrategyType}
+		repo.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"app": v1alpha1.RepoDeploymentName}}
+		repo.Spec.Template.Labels = map[string]string{"app": v1alpha1.RepoDeploymentName}
+		memory := resource.MustParse("256Mi")
+		cpu := resource.MustParse("100m")
+		port := int32(8080)
+		repo.Spec.Template.Spec.ServiceAccountName = "pipeline"
+		repo.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{RunAsUser: new(int64)}
+		repo.Spec.Template.Spec.Containers = []corev1.Container{{
+			Name:            v1alpha1.RepoDeploymentName,
+			Image:           strings.TrimSpace(strings.Split(trustedReposiliteImage, "FROM")[1]),
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Ports: []corev1.ContainerPort{
+				{
+					Name:          "http",
+					ContainerPort: port,
+					Protocol:      "TCP",
+				},
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					"memory": memory,
+					"cpu":    cpu},
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					"memory": memory,
+					"cpu":    cpu},
+			},
+			StartupProbe:  &corev1.Probe{FailureThreshold: 120, PeriodSeconds: 1, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
+			LivenessProbe: &corev1.Probe{FailureThreshold: 3, PeriodSeconds: 5, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
+		}}
+		repo.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
+			{Name: "REPOSILITE_OPTS", Value: "--token " + mavenUsername + ":" + mavenPassword},
+		}
+		_, err = kubeClient.AppsV1().Deployments(ta.ns).Create(context.TODO(), repo, metav1.CreateOptions{})
+	}
+	return err
+}
+
+func waitForRepo(ta *testArgs) error {
+	err := wait.PollUntilContextTimeout(context.TODO(), 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+		repo, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
+		if err != nil {
+			ta.Logf(fmt.Sprintf("get of repository: %s", err.Error()))
+			return false, nil
+		}
+		if repo.Status.AvailableReplicas > 0 {
+			ta.Logf("Repository is available")
+			return true, nil
+		}
+		for _, cond := range repo.Status.Conditions {
+			if cond.Type == v13.DeploymentProgressing && cond.Status == "False" {
+				return false, errors2.New("repository deployment failed")
+			}
+
+		}
+		ta.Logf("Repository is progressing")
+		return false, nil
+	})
+	if err != nil {
+		debugAndFailTest(ta, "repository not present in timely fashion")
 	}
 	return err
 }
@@ -673,6 +821,9 @@ func GenerateStatusReport(namespace string, jvmClient *jvmclientset.Clientset, k
 		if strings.HasPrefix(pod.Name, "jvm-build-workspace-artifact-cache") {
 			logFile := dumpPod(pod, directory, "logs", podClient, true)
 			data.CacheLogs = append(data.CacheLogs, logFile...)
+		} else if strings.HasPrefix(pod.Name, v1alpha1.RepoDeploymentName) {
+			logFile := dumpPod(pod, directory, "logs", podClient, true)
+			data.RepoLogs = append(data.RepoLogs, logFile...)
 		}
 	}
 	operatorPodClient := kubeClient.CoreV1().Pods("jvm-build-service")
@@ -719,7 +870,7 @@ func innerDumpPod(req *rest.Request, baseDirectory, localDirectory, podName, con
 	b, err = io.ReadAll(readCloser)
 	if skipSkipped && len(b) < 1000 {
 		if strings.Contains(string(b), "Skipping step because a previous step failed") {
-			return errors.New("the step failed")
+			return errors2.New("the step failed")
 		}
 	}
 	if err != nil {
@@ -785,6 +936,7 @@ type ReportData struct {
 	Dependency   DependencyReportData
 	CacheLogs    []string
 	OperatorLogs []string
+	RepoLogs     []string
 }
 
 type ReportInstanceData struct {
@@ -800,6 +952,12 @@ type SortableArtifact []*ReportInstanceData
 func (a SortableArtifact) Len() int           { return len(a) }
 func (a SortableArtifact) Less(i, j int) bool { return strings.Compare(a[i].Name, a[j].Name) < 0 }
 func (a SortableArtifact) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+type MavenRepoDetails struct {
+	Username string
+	Url      string
+	Password string
+}
 
 func setupMinikube(t *testing.T, namespace string) *testArgs {
 
@@ -910,6 +1068,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		},
 		Status: v1alpha1.JBSConfigStatus{},
 	}
+	createRepo(ta, &jbsConfig)
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {
 		fmt.Printf("Problem creating JBSConfig %#v \n", err)

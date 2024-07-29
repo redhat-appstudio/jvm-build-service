@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jvm-build-maven-repo
+  namespace: test-jvm-namespace
+spec:
+  revisionHistoryLimit: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: jvm-build-maven-repo
+  template:
+    metadata:
+      labels:
+        app: jvm-build-maven-repo
+    spec:
+      serviceAccountName: pipeline
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: jvm-build-maven-repo
+          image: ${REPOSILITE_IMAGE}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 256Mi
+              cpu: 100m
+          startupProbe:
+            failureThreshold: 120
+            periodSeconds: 1
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+          livenessProbe:
+            failureThreshold: 3
+            periodSeconds: 5
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+          env:
+            - name: REPOSILITE_OPTS
+              value: "--token ${MAVEN_USERNAME}:${MAVEN_PASSWORD}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jvm-build-maven-repo
+  namespace: test-jvm-namespace
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+  selector:
+    app: jvm-build-maven-repo
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: maven-repo
+  namespace: test-jvm-namespace
+  labels:
+    app: jvm-build-maven-repo
+  annotations:
+    openshift.io/host.generated: 'true'
+spec:
+  to:
+    kind: Service
+    name: jvm-build-maven-repo
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+

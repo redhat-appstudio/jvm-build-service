@@ -537,7 +537,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}},
 		}, cache)
 
-		if jbsConfig.Spec.MavenDeployment.Repository != "" {
+		if jbsConfig.Spec.MavenDeployment.Repository != "" && !jbsConfig.Spec.MavenDeployment.OnlyDeploy {
 			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Repository, "MAVEN_REPOSITORY_URL", cache)
 			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Username, "MAVEN_REPOSITORY_USERNAME", cache)
 			cache = setEnvVar(corev1.EnvVar{
