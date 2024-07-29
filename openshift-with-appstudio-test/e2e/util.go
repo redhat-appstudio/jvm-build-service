@@ -317,6 +317,14 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 		},
 		Status: v1alpha1.JBSConfigStatus{},
 	}
+	mavenUsername := os.Getenv("MAVEN_USERNAME")
+	mavenRepository := os.Getenv("MAVEN_REPOSITORY")
+	if len(mavenUsername) > 0 && len(mavenRepository) > 0 {
+		jbsConfig.Spec.MavenDeployment = v1alpha1.MavenDeployment{
+			Username:   mavenUsername,
+			Repository: mavenRepository,
+		}
+	}
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
@@ -898,6 +906,14 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 			},
 		},
 		Status: v1alpha1.JBSConfigStatus{},
+	}
+	mavenUsername := os.Getenv("MAVEN_USERNAME")
+	mavenRepository := os.Getenv("MAVEN_REPOSITORY")
+	if len(mavenUsername) > 0 && len(mavenRepository) > 0 {
+		jbsConfig.Spec.MavenDeployment = v1alpha1.MavenDeployment{
+			Username:   mavenUsername,
+			Repository: mavenRepository,
+		}
 	}
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {

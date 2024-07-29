@@ -66,6 +66,9 @@ jobs:
           export SHELL=/bin/bash
           export QUAY_USERNAME=minikube
           export DEV_IP=172.16.1.1
+          export MAVEN_USERNAME=admin
+          export MAVEN_PASSWORD=secret
+          export MAVEN_REPOSITORY=http://localhost:8080
 
           eval $(minikube -p minikube docker-env)
 
@@ -123,6 +126,9 @@ jobs:
           export SHELL=/bin/bash
           export QUAY_USERNAME=minikube
           export DEV_IP=172.16.1.1
+          export MAVEN_USERNAME=admin
+          export MAVEN_PASSWORD=secret
+          export MAVEN_REPOSITORY=http://localhost:8080
 
           eval $(minikube -p minikube docker-env)
 
