@@ -339,7 +339,7 @@ github.com/klauspost/compress/internal/cpuinfo
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
-# github.com/konflux-ci/image-controller v0.0.0-20240717033211-91ac5a1bc402
+# github.com/konflux-ci/image-controller v0.0.0-20240731091702-2db388b33665
 ## explicit; go 1.21
 github.com/konflux-ci/image-controller/api/v1alpha1
 # github.com/ktr0731/go-ansisgr v0.1.0
