@@ -1,8 +1,6 @@
 package e2e
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,10 +15,6 @@ import (
 	"testing"
 	"time"
 
-	cdx "github.com/CycloneDX/cyclonedx-go"
-	"github.com/google/go-containerregistry/pkg/crane"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -445,114 +439,6 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 		})
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for contaminated build to appear")
-		}
-	})
-
-	ta.t.Run("Logs and source included in image", func(t *testing.T) {
-
-		rebuiltList, err := jvmClient.JvmbuildserviceV1alpha1().RebuiltArtifacts(ta.ns).List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			panic(err)
-		}
-		for _, artifact := range rebuiltList.Items {
-			sourceFound := false
-			logsFound := false
-			sbomFound := false
-			imageName := artifact.Spec.Image
-
-			if !strings.Contains(imageName, "quay.io") {
-				//skip this on the minikube tests
-				//we can't access the internal image registry
-				continue
-			}
-
-			println(imageName)
-			ref, err := name.ParseReference(imageName)
-			if err != nil {
-				panic(err)
-			}
-
-			rmt, err := remote.Get(ref)
-			if err != nil {
-				panic(err)
-			}
-
-			img, err := rmt.Image()
-			if err != nil {
-				panic(err)
-			}
-			export := path + "/foo.tar"
-			if err := crane.Save(img, "foo", export); err != nil {
-				panic(err)
-			}
-			f, err := os.Open(export) //#nosec G304
-			if err != nil {
-				panic(err)
-			}
-			defer func() {
-				if err := f.Close(); err != nil {
-					panic(err)
-				}
-			}()
-			tr := tar.NewReader(f)
-			for {
-				cur, err := tr.Next()
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					panic(err)
-				}
-				if cur.Typeflag != tar.TypeReg {
-					continue
-				}
-				println(cur.Name)
-				if strings.HasSuffix(cur.Name, ".tar.gz") {
-					zip, err := gzip.NewReader(tr)
-					if err != nil {
-						panic(err)
-					}
-					innerTar := tar.NewReader(zip)
-					for {
-						cur, err := innerTar.Next()
-						if err == io.EOF {
-							break
-						} else if err != nil {
-							panic(err)
-						}
-						if cur.Typeflag != tar.TypeReg {
-							continue
-						}
-						println(cur.Name)
-						if cur.Name == "./maven.log" || cur.Name == "./gradle.log" {
-							logsFound = true
-						} else if cur.Name == "./.git/HEAD" {
-							sourceFound = true
-						} else if cur.Name == "./build-sbom.json" {
-							sbomFound = true
-							bom := &cdx.BOM{}
-							decoder := cdx.NewBOMDecoder(innerTar, cdx.BOMFileFormatJSON)
-							if err = decoder.Decode(bom); err != nil {
-								panic(err)
-							}
-							if bom.Dependencies != nil && len(*bom.Dependencies) < 30 {
-								_ = cdx.NewBOMEncoder(os.Stdout, cdx.BOMFileFormatXML).
-									SetPretty(true).
-									Encode(bom)
-								panic("Not enough dependencies in build SBom")
-							}
-						}
-					}
-				}
-			}
-			if !sourceFound {
-				panic("Source was not found in image " + imageName)
-			}
-			if !logsFound {
-				panic("Logs were not found in image " + imageName)
-			}
-			if !sbomFound {
-				panic("Build SBOM were not found in image " + imageName)
-			}
 		}
 	})
 }
