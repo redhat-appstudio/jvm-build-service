@@ -44,7 +44,7 @@
 
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.12.3</quarkus.platform.version>
+        <quarkus.platform.version>3.13.0</quarkus.platform.version>
 
         <!-- Plugin Versions-->
         <compiler-plugin.version>3.13.0</compiler-plugin.version>
@@ -68,7 +68,7 @@
         <github-api.version>1.322</github-api.version>
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
         <quarkus-github-app.version>2.6.0</quarkus-github-app.version>
-        <quarkus-quinoa.version>2.4.4</quarkus-quinoa.version>
+        <quarkus-quinoa.version>2.4.5</quarkus-quinoa.version>
 
         <format.skip>false</format.skip>
     </properties>

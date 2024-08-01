@@ -15,7 +15,7 @@ jobs:
         with:
           go-version-file: './go.mod'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@a4f60bb28d35aeee14e6880718e0c85ff1882e64 # v6
+        uses: golangci/golangci-lint-action@aaa42aa0628b4ae2578232a66b541047968fac86 # v6
         with:
           args: "--timeout=10m --build-tags='normal periodic minikube'"
   go:
@@ -91,7 +91,7 @@ jobs:
           # we let the report trigger content trigger a failure using the GitHub Security features.
           args: '-tags normal,periodic -no-fail -fmt sarif -out results.sarif ./...'
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@5cf07d8b700b67e235fbb65cbc84f69c0cf10464 # v3
+        uses: github/codeql-action/upload-sarif@afb54ba388a7dca6ecae48f608c4ff05ff4cc77a # v3
         with:
           # Path to SARIF file relative to the root of the repository
           sarif_file: results.sarif
