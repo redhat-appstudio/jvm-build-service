@@ -207,3 +207,8 @@ spec:
       env:
         - name: REPOSILITE_OPTS
           value: --token admin:secret
+      ports:
+      - name: http
+        port: 8082
+        protocol: TCP
+        targetPort: 8080
