@@ -60,7 +60,7 @@ var buildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
-func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild, buildRequestProcessorImage string, gavs string) (*tektonpipeline.PipelineSpec, error) {
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild, buildRequestProcessorImage string, gavs string, log logr.Logger) (*tektonpipeline.PipelineSpec, error) {
 	zero := int64(0)
 	mavenDeployArgs := pipelineDeployCommands(jbsConfig, db)
 
@@ -74,6 +74,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.Depend
 	}
 
 	mavenDeployArgs = append(mavenDeployArgs, gitArgs(jbsConfig, db)...)
+	log.Info("args:" + strings.Join(mavenDeployArgs, ", "))
 	secretVariables := secretVariables(jbsConfig)
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	regUrl := registryArgsWithDefaults(jbsConfig, "")

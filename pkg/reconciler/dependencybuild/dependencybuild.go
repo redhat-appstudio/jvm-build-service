@@ -1401,7 +1401,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, db, buildRequestProcessorImage, gavs)
+	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, db, buildRequestProcessorImage, gavs, log)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
