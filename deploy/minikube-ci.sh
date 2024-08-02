@@ -23,7 +23,6 @@ echo "Tekton controller is running"
 
 #CRDS are sometimes racey
 kubectl apply -k $DIR/crds/base
-kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
 sleep 2
 
 kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
@@ -36,6 +35,7 @@ export JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller
 # Represents an empty dockerconfig.json
 export JBS_BUILD_IMAGE_SECRET="ewogICAgImF1dGhzIjogewogICAgfQp9Cg==" # notsecret
 export JBS_S3_SYNC_ENABLED="\"false\""
+export JBS_CONTAINER_BUILDS=false
 export JBS_MAX_MEMORY=4096
 
 cat $DIR/base/namespace/namespace.yaml | envsubst '${JBS_WORKER_NAMESPACE}' | kubectl apply -f -
@@ -53,6 +53,7 @@ ${GIT_DEPLOY_TOKEN}
 ${GIT_DEPLOY_URL}
 ${GIT_DISABLE_SSL_VERIFICATION}
 ${JBS_BUILD_IMAGE_SECRET}
+${JBS_CONTAINER_BUILDS}
 ${JBS_GIT_CREDENTIALS}
 ${JBS_QUAY_IMAGE}
 ${JBS_MAX_MEMORY}

@@ -5,8 +5,9 @@ if [ ! -d "${ANT_HOME}" ]; then
     exit 1
 fi
 
-# XXX: It's possible that build.xml is not in the root directory
-cat > ivysettings.xml << EOF
+if [ -z ${JBS_DISABLE_CACHE+x} ]; then
+    # XXX: It's possible that build.xml is not in the root directory
+    cat > ivysettings.xml << EOF
 <ivysettings>
     <property name="cache-url" value="$(params.CACHE_URL)"/>
     <property name="default-pattern" value="[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
@@ -25,10 +26,8 @@ cat > ivysettings.xml << EOF
     </resolvers>
 </ivysettings>
 EOF
-
-if [ ! -d $(workspaces.source.path)/source-archive ]; then
-    cp -r $(workspaces.source.path)/source $(workspaces.source.path)/source-archive
 fi
+
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
 

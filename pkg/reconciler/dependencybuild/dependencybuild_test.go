@@ -336,6 +336,9 @@ func TestStateBuilding(t *testing.T) {
 				},
 			},
 		}
+		db.Status.PreBuildImages = []v1alpha1.PreBuildImage{{
+			BuiltImageDigest: "1234",
+		}}
 		db.Status.PotentialBuildRecipes = []*v1alpha1.BuildRecipe{db.Status.BuildAttempts[0].Recipe}
 		db.Status.PotentialBuildRecipesIndex = 1
 		db.Spec.ScmInfo.SCMURL = "some-url"
