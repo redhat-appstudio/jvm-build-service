@@ -10,17 +10,17 @@ jobs:
         run: |
           while true
           do
-            if ! docker pull quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }} ; then
+            if ! docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:on-pr-${{ github.event.pull_request.head.sha }} ; then
               echo "Failed to pull image 1"
               sleep 10
               continue
             fi
-            if ! docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }} ; then
+            if ! docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/cache:on-pr-${{ github.event.pull_request.head.sha }} ; then
               echo "Failed to pull image 2"
               sleep 10
               continue
             fi
-            if ! docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} ; then
+            if ! docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/controller:on-pr-${{ github.event.pull_request.head.sha }} ; then
               echo "Failed to pull image 3"
               sleep 10
               continue
@@ -69,12 +69,12 @@ jobs:
 
           eval $(minikube -p minikube docker-env)
 
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }}
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }}
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }}
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-build-request-processor:dev
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-cache:dev
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
+          docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:on-pr-${{ github.event.pull_request.head.sha }}
+          docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/cache:on-pr-${{ github.event.pull_request.head.sha }}
+          docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/controller:on-pr-${{ github.event.pull_request.head.sha }}
+          docker tag quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:on-pr-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-build-request-processor:dev
+          docker tag quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/cache:on-pr-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-cache:dev
+          docker tag quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/controller:on-pr-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
 
           export ABTESTSET=${{ matrix.abtestsets }}
 
@@ -126,12 +126,12 @@ jobs:
 
           eval $(minikube -p minikube docker-env)
 
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }}
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }}
-          docker pull quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }}
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmbuildrequestp-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-build-request-processor:dev
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcache-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-cache:dev
-          docker tag quay.io/redhat-appstudio/pull-request-builds:jvmcontroller-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
+          docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:on-pr-${{ github.event.pull_request.head.sha }}
+          docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/cache:on-pr-${{ github.event.pull_request.head.sha }}
+          docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/controller:on-pr-${{ github.event.pull_request.head.sha }}
+          docker tag quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:on-pr-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-build-request-processor:dev
+          docker tag quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/cache:on-pr-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-cache:dev
+          docker tag quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/controller:on-pr-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
 
           export DBTESTSET=${{ matrix.dbtestsets }}
 
