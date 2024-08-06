@@ -26,7 +26,9 @@ echo -e "\033[0;32mTekton controller is running\033[0m"
 kubectl apply -k $DIR/crds/base
 #Load missing CRD
 kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.69.1/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
-kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
+## Up to commit https://github.com/openshift/api/commit/60b796dbf3a2d90b6960bb04585a9f9289b0ca1f the flie has been changed, renamed and finally moved
+## kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
+kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/zz_generated.crd-manifests/0000_03_config-operator_01_clusterresourcequotas.crd.yaml
 sleep 2
 
 $DIR/base-development.sh  $1

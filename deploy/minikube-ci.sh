@@ -23,7 +23,9 @@ echo "Tekton controller is running"
 
 #CRDS are sometimes racey
 kubectl apply -k $DIR/crds/base
-kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
+## Up to commit https://github.com/openshift/api/commit/60b796dbf3a2d90b6960bb04585a9f9289b0ca1f the flie has been changed, renamed and finally moved
+## kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/0000_03_quota-openshift_01_clusterresourcequota.crd.yaml
+kubectl apply -f https://raw.githubusercontent.com/openshift/api/master/quota/v1/zz_generated.crd-manifests/0000_03_config-operator_01_clusterresourcequotas.crd.yaml
 sleep 2
 
 kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
