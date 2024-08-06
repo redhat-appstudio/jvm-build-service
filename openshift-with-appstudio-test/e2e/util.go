@@ -398,7 +398,7 @@ func deployRepoService(ta *testArgs) error {
 			Type:     corev1.ServiceTypeClusterIP,
 			Selector: map[string]string{"app": v1alpha1.RepoDeploymentName},
 		}
-		repoService, err = kubeClient.CoreV1().Services(ta.ns).Create(context.TODO(), repoService, metav1.CreateOptions{})
+		_, err = kubeClient.CoreV1().Services(ta.ns).Create(context.TODO(), repoService, metav1.CreateOptions{})
 	}
 	return err
 }
@@ -443,7 +443,7 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 		repo.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
 			{Name: "REPOSILITE_OPTS", Value: "--token " + mavenUsername + ":" + mavenPassword},
 		}
-		repo, err = kubeClient.AppsV1().Deployments(ta.ns).Create(context.TODO(), repo, metav1.CreateOptions{})
+		_, err = kubeClient.AppsV1().Deployments(ta.ns).Create(context.TODO(), repo, metav1.CreateOptions{})
 	}
 	return err
 }
