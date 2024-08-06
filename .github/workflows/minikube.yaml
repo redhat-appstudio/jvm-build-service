@@ -68,7 +68,7 @@ jobs:
           export DEV_IP=172.16.1.1
           export MAVEN_USERNAME=admin
           export MAVEN_PASSWORD=secret
-          export MAVEN_REPOSITORY=http://localhost:8082
+          export MAVEN_REPOSITORY=http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local
 
           eval $(minikube -p minikube docker-env)
 
@@ -128,7 +128,7 @@ jobs:
           export DEV_IP=172.16.1.1
           export MAVEN_USERNAME=admin
           export MAVEN_PASSWORD=secret
-          export MAVEN_REPOSITORY=http://localhost:8082
+          export MAVEN_REPOSITORY=http://jvm-build-workspace-artifact-cache.$(context.taskRun.namespace).svc.cluster.local
 
           eval $(minikube -p minikube docker-env)
 
