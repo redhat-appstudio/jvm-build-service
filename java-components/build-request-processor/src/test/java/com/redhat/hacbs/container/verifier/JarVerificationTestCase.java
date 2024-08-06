@@ -125,7 +125,7 @@ public class JarVerificationTestCase {
                 super.visit(version, access, name, "Ljava/lang/Object;", superName, interfaces);
             }
 
-        }, List.of(new ExpectedChange(ChangeType.MODIFY, "signature:null>Ljava/lang/Object;")));
+        }, List.of(new ExpectedChange(ChangeType.MODIFY, "signature:null>java.lang.Object")));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.redhat.hacbs.container.verifier.asm;
 
 import static com.redhat.hacbs.container.verifier.asm.AsmUtils.isPublic;
 import static com.redhat.hacbs.container.verifier.asm.AsmUtils.isSyntheticBridge;
+import static com.redhat.hacbs.container.verifier.asm.AsmUtils.signatureToJavaCode;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -20,7 +21,8 @@ public record ClassInfo(ClassVersion version, AccessSet<ClassAccess> access, Str
         List<String> permittedSubclasses, Map<String, RecordComponentInfo> recordComponents, Map<String, FieldInfo> fields,
         Map<String, MethodInfo> methods) implements AsmDiffable<ClassInfo> {
     public ClassInfo(ClassNode node) {
-        this(new ClassVersion(node.version), new AccessSet<>(node.access, ClassAccess.class), node.name, node.signature,
+        this(new ClassVersion(node.version), new AccessSet<>(node.access, ClassAccess.class), node.name,
+                signatureToJavaCode(node.name, null, node.signature, null),
                 node.superName,
                 List.copyOf(node.interfaces), node.sourceFile, node.sourceDebug,
                 node.module != null ? Collections.singletonMap(node.module.name, new ModuleInfo(node.module))

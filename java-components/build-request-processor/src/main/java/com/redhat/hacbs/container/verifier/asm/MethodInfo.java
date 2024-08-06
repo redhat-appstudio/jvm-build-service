@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.verifier.asm;
 
+import static com.redhat.hacbs.container.verifier.asm.AsmUtils.signatureToJavaCode;
 import static org.objectweb.asm.Opcodes.ACC_FINAL;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 
@@ -33,8 +34,8 @@ public record MethodInfo(AccessSet<MethodAccess> access, String name, String des
  */) implements AsmDiffable<MethodInfo> {
     public MethodInfo(MethodNode node) {
         this(new AccessSet<>((node.access & ACC_STATIC) != 0 ? (node.access & ~ACC_FINAL) : node.access, MethodAccess.class),
-                node.name, node.desc, node.signature,
-                List.copyOf(node.exceptions),
+                node.name, node.desc, signatureToJavaCode(node.name, node.desc, node.signature,
+                List.copyOf(node.exceptions)), List.copyOf(node.exceptions),
                 node.parameters != null
                         ? node.parameters.stream()
                                 .collect(Collectors.toMap(n -> n.name, ParameterInfo::new, (x, y) -> x, LinkedHashMap::new))
