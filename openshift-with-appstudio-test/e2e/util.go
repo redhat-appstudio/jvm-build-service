@@ -384,6 +384,7 @@ func createRepo(ta *testArgs, jbsConfig v1alpha1.JBSConfig) {
 func deployRepoService(ta *testArgs) error {
 	_, err := kubeClient.CoreV1().Services(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
+		ta.Logf(fmt.Sprintf("Creating repository service in namespace %s", ta.ns))
 		repoService := &corev1.Service{}
 		repoService.Name = v1alpha1.RepoDeploymentName
 		repoService.Namespace = ta.ns
@@ -437,8 +438,8 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 					"memory": memory,
 					"cpu":    cpu},
 			},
-			StartupProbe:  &corev1.Probe{FailureThreshold: 10, PeriodSeconds: 1, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
-			LivenessProbe: &corev1.Probe{FailureThreshold: 3, PeriodSeconds: 1, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
+			StartupProbe:  &corev1.Probe{FailureThreshold: 120, PeriodSeconds: 1, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
+			LivenessProbe: &corev1.Probe{FailureThreshold: 3, PeriodSeconds: 5, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
 		}}
 		repo.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
 			{Name: "REPOSILITE_OPTS", Value: "--token " + mavenUsername + ":" + mavenPassword},
@@ -449,7 +450,7 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 }
 
 func waitForRepo(ta *testArgs) error {
-	err := wait.PollUntilContextTimeout(context.TODO(), 1*time.Second, 10*time.Second, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		repo, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
 		if err != nil {
 			ta.Logf(fmt.Sprintf("get of repository: %s", err.Error()))
