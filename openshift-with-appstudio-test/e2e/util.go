@@ -393,7 +393,7 @@ func deployRepoService(ta *testArgs) error {
 				{
 					Name:       "http",
 					Port:       80,
-					TargetPort: intstr.IntOrString{IntVal: 80},
+					TargetPort: intstr.IntOrString{IntVal: 8080},
 				},
 			},
 			Type:     corev1.ServiceTypeClusterIP,
@@ -418,7 +418,7 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 		repo.Spec.Template.Labels = map[string]string{"app": v1alpha1.RepoDeploymentName}
 		memory := resource.MustParse("32Mi")
 		cpu := resource.MustParse("10m")
-		var port int32 = 80
+		var port int32 = 8080
 		repo.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:            v1alpha1.RepoDeploymentName,
 			Image:           "dzikoysk/reposilite:3.5.14",
