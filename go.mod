@@ -2,7 +2,7 @@ module github.com/redhat-appstudio/jvm-build-service
 
 go 1.22.0
 
-toolchain go1.22.4
+toolchain go1.22.6
 
 require (
 	github.com/CycloneDX/cyclonedx-go v0.9.0
