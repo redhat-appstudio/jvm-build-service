@@ -411,14 +411,15 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 		repo := &v13.Deployment{}
 		repo.Name = v1alpha1.RepoDeploymentName
 		repo.Namespace = ta.ns
-		var zero int32 = 0
-		repo.Spec.RevisionHistoryLimit = &zero
+		repo.Spec.RevisionHistoryLimit = new(int32)
 		repo.Spec.Strategy = v13.DeploymentStrategy{Type: v13.RecreateDeploymentStrategyType}
 		repo.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"app": v1alpha1.RepoDeploymentName}}
 		repo.Spec.Template.Labels = map[string]string{"app": v1alpha1.RepoDeploymentName}
-		memory := resource.MustParse("32Mi")
-		cpu := resource.MustParse("10m")
-		var port int32 = 8080
+		memory := resource.MustParse("256Mi")
+		cpu := resource.MustParse("100m")
+		port := int32(8080)
+		repo.Spec.Template.Spec.ServiceAccountName = "pipeline"
+		repo.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{RunAsUser: new(int64)}
 		repo.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:            v1alpha1.RepoDeploymentName,
 			Image:           "dzikoysk/reposilite:3.5.14",
