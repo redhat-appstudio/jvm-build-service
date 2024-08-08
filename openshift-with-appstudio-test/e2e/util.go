@@ -1025,6 +1025,9 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		Status: v1alpha1.JBSConfigStatus{},
 	}
 	createRepo(ta, jbsConfig)
+	ta.Logf("maven repository " + jbsConfig.Spec.MavenDeployment.Repository)
+	ta.Logf("maven username " + jbsConfig.Spec.MavenDeployment.Username)
+	ta.Logf("maven password " + os.Getenv("MAVEN_PASSWORD"))
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
