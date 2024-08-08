@@ -319,7 +319,7 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 		},
 		Status: v1alpha1.JBSConfigStatus{},
 	}
-	createRepo(ta, jbsConfig)
+	createRepo(ta, &jbsConfig)
 	ta.Logf("maven repository " + jbsConfig.Spec.MavenDeployment.Repository)
 	ta.Logf("maven username " + jbsConfig.Spec.MavenDeployment.Username)
 	ta.Logf("maven password " + os.Getenv("MAVEN_PASSWORD"))
@@ -360,7 +360,7 @@ func waitForCache(ta *testArgs) error {
 	return err
 }
 
-func createRepo(ta *testArgs, jbsConfig v1alpha1.JBSConfig) {
+func createRepo(ta *testArgs, jbsConfig *v1alpha1.JBSConfig) {
 	mavenUsername := os.Getenv("MAVEN_USERNAME")
 	mavenRepository := os.Getenv("MAVEN_REPOSITORY")
 	mavenPassword := os.Getenv("MAVEN_PASSWORD")
@@ -1024,7 +1024,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		},
 		Status: v1alpha1.JBSConfigStatus{},
 	}
-	createRepo(ta, jbsConfig)
+	createRepo(ta, &jbsConfig)
 	ta.Logf("maven repository " + jbsConfig.Spec.MavenDeployment.Repository)
 	ta.Logf("maven username " + jbsConfig.Spec.MavenDeployment.Username)
 	ta.Logf("maven password " + os.Getenv("MAVEN_PASSWORD"))
