@@ -415,7 +415,7 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 		repo.Spec.Strategy = v13.DeploymentStrategy{Type: v13.RecreateDeploymentStrategyType}
 		repo.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"app": v1alpha1.RepoDeploymentName}}
 		repo.Spec.Template.Labels = map[string]string{"app": v1alpha1.RepoDeploymentName}
-		memory := resource.MustParse("512Mi")
+		memory := resource.MustParse("256Mi")
 		cpu := resource.MustParse("100m")
 		port := int32(8080)
 		repo.Spec.Template.Spec.ServiceAccountName = "pipeline"
