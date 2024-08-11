@@ -10,7 +10,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-containerregistry v0.20.1
 	github.com/google/uuid v1.6.0
-	github.com/konflux-ci/image-controller v0.0.0-20240731091702-2db388b33665
+	github.com/konflux-ci/image-controller v0.0.0-20240809150447-338fc0d1a859
 	github.com/onsi/gomega v1.34.1
 	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5 // indirect
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
