@@ -267,9 +267,9 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			}
 			ta.Logf(fmt.Sprintf("shaded-jdk11 State: %s", db.Status.State))
 			if db.Status.State == v1alpha1.DependencyBuildStateFailed {
-				msg := fmt.Sprintf("contaminated db %s failed, exitting wait", contaminated)
+				msg := fmt.Sprintf("contaminated db %s failed, exiting wait", contaminated)
 				ta.Logf(msg)
-				return false, fmt.Errorf(msg)
+				return false, fmt.Errorf("%s", msg)
 			}
 			return db.Status.State == v1alpha1.DependencyBuildStateComplete, err
 		})
