@@ -125,7 +125,7 @@ func debugAndFailTest(ta *testArgs, failMsg string) {
 	GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 	dumpPodDetails(ta)
 	dumpBadEvents(ta)
-	ta.t.Fatalf(failMsg)
+	ta.t.Fatalf("%s", failMsg)
 
 }
 

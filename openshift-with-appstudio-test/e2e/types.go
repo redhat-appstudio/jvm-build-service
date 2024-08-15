@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"fmt"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"testing"
 	"time"
@@ -21,5 +20,5 @@ type testArgs struct {
 }
 
 func (ta *testArgs) Logf(msg string) {
-	ta.t.Logf(fmt.Sprintf("time: %s: %s", time.Now().String(), msg))
+	ta.t.Logf("time: %s: %s", time.Now().String(), msg)
 }

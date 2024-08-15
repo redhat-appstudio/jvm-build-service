@@ -58,7 +58,7 @@ func (r *ReconcilerSystemConfig) Reconcile(ctx context.Context, request reconcil
 			}
 		}
 		if len(logMsg) > 1 {
-			return reconcile.Result{}, fmt.Errorf(logMsg)
+			return reconcile.Result{}, fmt.Errorf("%s", logMsg)
 		}
 
 		log.Info("system config available and valid")
