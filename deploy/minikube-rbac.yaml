@@ -31,7 +31,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: appstudio-pipeline
-    namespace: test-jvm-namespace
+    namespace: ${JBS_WORKER_NAMESPACE}
 ---
 apiVersion: v1
 data:

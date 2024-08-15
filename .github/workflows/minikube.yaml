@@ -66,6 +66,7 @@ jobs:
           export SHELL=/bin/bash
           export QUAY_USERNAME=minikube
           export DEV_IP=172.16.1.1
+          export JBS_WORKER_NAMESPACE=jvm-build-service-test-namespace-$(shuf -er -n5 {a..z} {0..9} | tr -d '\n')
 
           eval $(minikube -p minikube docker-env)
 
@@ -123,6 +124,7 @@ jobs:
           export SHELL=/bin/bash
           export QUAY_USERNAME=minikube
           export DEV_IP=172.16.1.1
+          export JBS_WORKER_NAMESPACE=jvm-build-service-test-namespace-$(shuf -er -n5 {a..z} {0..9} | tr -d '\n')
 
           eval $(minikube -p minikube docker-env)
 

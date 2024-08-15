@@ -35,7 +35,10 @@ $DIR/base-development.sh  $1
 
 # base-development.sh switches to the test-jvm-namespace namespace
 kubectl create --dry-run=client -o=yaml sa pipeline | kubectl apply -f -
-kubectl apply -f $DIR/minikube-rbac.yaml
+if [ -z "$JBS_WORKER_NAMESPACE" ]; then
+    export JBS_WORKER_NAMESPACE=test-jvm-namespace
+fi
+cat $DIR/minikube-rbac.yaml | envsubst '${JBS_WORKER_NAMESPACE}' | kubectl apply -f -
 
 #minikube cannot access registry.redhat.io by default
 #you need to have these credentials in your docker config

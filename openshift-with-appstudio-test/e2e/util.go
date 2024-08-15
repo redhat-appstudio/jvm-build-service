@@ -139,17 +139,18 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	setupClients(ta.t)
 
 	if len(ta.ns) == 0 {
-		ta.ns = generateName(namespace)
-		namespace := &corev1.Namespace{}
-		namespace.Name = ta.ns
-		_, err := kubeClient.CoreV1().Namespaces().Create(context.Background(), namespace, metav1.CreateOptions{})
+		ns, _ := os.LookupEnv("JBS_WORKER_NAMESPACE")
+		if len(ns) > 0 {
+			ta.ns = ns
+		} else {
+			ta.ns = generateName(namespace)
+			namespace := &corev1.Namespace{}
+			namespace.Name = ta.ns
+			_, err := kubeClient.CoreV1().Namespaces().Create(context.Background(), namespace, metav1.CreateOptions{})
 
-		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("%#v", err))
-		}
-
-		if err != nil {
-			debugAndFailTest(ta, fmt.Sprintf("%#v", err))
+			if err != nil {
+				debugAndFailTest(ta, fmt.Sprintf("%#v", err))
+			}
 		}
 	}
 
@@ -835,14 +836,8 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		}
 	}
 
-	//create the ServiceAccount
-	sa := corev1.ServiceAccount{}
-	sa.Name = "pipeline"
-	sa.Namespace = ta.ns
-	_, err = kubeClient.CoreV1().ServiceAccounts(ta.ns).Create(context.Background(), &sa, metav1.CreateOptions{})
-	if err != nil {
-		debugAndFailTest(ta, "pipeline SA not created in timely fashion")
-	}
+	// Don't need to create a ServiceAccount as its created in deploy/base/sa.yaml
+
 	//now create the binding
 	crb := v1.ClusterRoleBinding{}
 	crb.Name = "pipeline-" + ta.ns
@@ -852,7 +847,8 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 	crb.Subjects = []v1.Subject{{Name: "pipeline", Kind: "ServiceAccount", Namespace: ta.ns}}
 	_, err = kubeClient.RbacV1().ClusterRoleBindings().Create(context.Background(), &crb, metav1.CreateOptions{})
 	if err != nil {
-		debugAndFailTest(ta, "pipeline SA not created in timely fashion")
+		fmt.Printf("Problem creating cluster role %#v \n", err)
+		debugAndFailTest(ta, "pipeline ClusterRole not created in timely fashion")
 	}
 
 	devIp := os.Getenv("DEV_IP")
@@ -901,6 +897,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 	}
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {
+		fmt.Printf("Problem creating JBSConfig %#v \n", err)
 		debugAndFailTest(ta, err.Error())
 	}
 
@@ -910,6 +907,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 
 	err = waitForCache(ta)
 	if err != nil {
+		fmt.Printf("Problem waiting for cache %#v \n", err)
 		debugAndFailTest(ta, err.Error())
 	}
 	return ta
