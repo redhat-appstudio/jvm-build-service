@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [ "github>konflux-ci/mintmaker//config/renovate/renovate.json" ],
   "pinDigests": true,
   "postUpdateOptions": ["gomodTidy"],
   "addLabels": ["ok-to-test"],
@@ -25,5 +25,7 @@
         ],
       "schedule": ["before 4am on the first day of the month"]
     }
+  ],
+  "enabledManagers": [
   ]
 }
