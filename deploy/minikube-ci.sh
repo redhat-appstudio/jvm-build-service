@@ -32,7 +32,7 @@ kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-bui
 kubectl delete --ignore-not-found deployments.apps jvm-build-workspace-artifact-cache
 
 echo "Using QUAY_USERNAME: $QUAY_USERNAME"
-export JBS_WORKER_NAMESPACE=test-jvm-namespace
+echo "Using JBS_WORKER_NAMESPACE: $JBS_WORKER_NAMESPACE"
 export JBS_QUAY_IMAGE=$QUAY_USERNAME
 export JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller
 # Represents an empty dockerconfig.json
@@ -41,7 +41,7 @@ export JBS_S3_SYNC_ENABLED="\"false\""
 export JBS_MAX_MEMORY=4096
 
 cat $DIR/base/namespace/namespace.yaml | envsubst '${JBS_WORKER_NAMESPACE}' | kubectl apply -f -
-kubectl config set-context --current --namespace=test-jvm-namespace
+kubectl config set-context --current --namespace=${JBS_WORKER_NAMESPACE}
 
 #huge hack to deal with minikube local images, make sure they are never pulled
 find $DIR -path \*dev-template\*.yaml -exec sed -i s/Always/Never/ {} \;
@@ -71,10 +71,10 @@ echo "Completed overlays"
 #this tells JBS we are in test mode and won't have a secure registry
 kubectl annotate --overwrite jbsconfigs.jvmbuildservice.io --all jvmbuildservice.io/test-registry=true
 
-kubectl create sa pipeline
-kubectl apply -f $DIR/minikube-rbac.yaml
+# Deleting the jvm-build-config as its created with different settings in util.go::setupMinikube
+kubectl delete jbsconfigs.jvmbuildservice.io jvm-build-config
 
-kubectl delete namespace test-jvm-namespace
+cat $DIR/minikube-rbac.yaml | envsubst '${JBS_WORKER_NAMESPACE}' | kubectl apply -f -
 
 #revert hack above to avoid edits in place
 find $DIR -path \*dev-template\*.yaml -exec sed -i s/Never/Always/ {} \;
