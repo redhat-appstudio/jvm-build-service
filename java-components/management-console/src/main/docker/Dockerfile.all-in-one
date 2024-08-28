@@ -7,7 +7,7 @@ RUN mkdir -p /work/cache/target/classes
 
 RUN mvn -V -B package -pl cache -am -Dmaven.test.skip
 
-FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:1f15011cccf53f31591b2675c9967f50cec1434c212888a55916cbfdf3ccaf9d
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:aa92e16bbe5fe1fafc8621de5a1a7a88fb96f5b3db73e5a3218c48f98a49552f
 USER 0
 WORKDIR /work/
 
