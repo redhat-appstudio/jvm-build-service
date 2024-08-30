@@ -214,8 +214,7 @@ public class BuildVerifyCommand implements Runnable {
             }
             for (var i : contaminatedGavs.entrySet()) {
                 if (!i.getValue().getAllowed()) {
-                    gavs.removeAll(i.getValue().getContaminatedArtifacts());
-//                    i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
+                    i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
                 }
             }
             generateBuildSbom();
@@ -241,6 +240,7 @@ public class BuildVerifyCommand implements Runnable {
         }
     }
 
+    // TODO: ### For container-builds, should sbom generation be delegated to the task within that? If it supports it?
     private void generateBuildSbom() {
         if (buildInfoPath == null) {
             Log.infof("Not generating build sbom, path not set");
