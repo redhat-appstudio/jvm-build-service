@@ -27,7 +27,7 @@ if [ -z "$JBS_S3_SYNC_ENABLED" ]; then
     export JBS_S3_SYNC_ENABLED=false
 fi
 if [ -z "$JBS_CONTAINER_BUILDS" ]; then
-    export JBS_CONTAINER_BUILDS=false
+    export JBS_CONTAINER_BUILDS=true
 fi
 if [ -z "$JBS_MAX_MEMORY" ]; then
     export JBS_MAX_MEMORY=4096

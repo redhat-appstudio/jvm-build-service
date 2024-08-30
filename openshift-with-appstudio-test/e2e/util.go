@@ -295,7 +295,8 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 			Name:      v1alpha1.JBSConfigName,
 		},
 		Spec: v1alpha1.JBSConfigSpec{
-			EnableRebuilds: true,
+			EnableRebuilds:  true,
+			ContainerBuilds: true,
 			MavenBaseLocations: map[string]string{
 				"maven-repository-300-jboss":     "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-confluent": "https://packages.confluent.io/maven",
@@ -1034,6 +1035,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		},
 		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds:    true,
+			ContainerBuilds:   true,
 			AdditionalRecipes: []string{"https://github.com/jvm-build-service-test-data/recipe-repo"},
 			BuildSettings: v1alpha1.BuildSettings{
 				BuildRequestMemory: "512Mi",
