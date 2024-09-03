@@ -851,13 +851,28 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		debugAndFailTest(ta, "pipeline ClusterRole not created in timely fashion")
 	}
 
+	var port string
+	var insecure bool
+	// DEV_IP is set in GH Action minikube.yaml
 	devIp := os.Getenv("DEV_IP")
-	owner := "testuser"
+	if devIp == "" {
+		devIp = "quay.io"
+		port = ""
+		insecure = false
+	} else {
+		port = "5000"
+		insecure = true
+	}
+	owner := os.Getenv("QUAY_USERNAME")
+	if owner == "" {
+		owner = "testuser"
+	}
+	fmt.Printf("### Using DEV_IP %s and owner %s\n", devIp, owner)
 	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ta.ns,
 			Name:        v1alpha1.JBSConfigName,
-			Annotations: map[string]string{jbsconfig.TestRegistry: "true"},
+			Annotations: map[string]string{jbsconfig.TestRegistry: strconv.FormatBool(insecure)},
 		},
 		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds:    true,
@@ -887,8 +902,8 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 					Host:       devIp,
 					Owner:      owner,
 					Repository: "test-images",
-					Port:       "5000",
-					Insecure:   true,
+					Port:       port,
+					Insecure:   insecure,
 					PrependTag: strconv.FormatInt(time.Now().UnixMilli(), 10),
 				},
 			},
