@@ -36,7 +36,9 @@ echo "Using JBS_WORKER_NAMESPACE: $JBS_WORKER_NAMESPACE"
 export JBS_QUAY_IMAGE=$QUAY_USERNAME
 export JVM_BUILD_SERVICE_IMAGE=quay.io/$QUAY_USERNAME/hacbs-jvm-controller
 # Represents an empty dockerconfig.json
-export JBS_BUILD_IMAGE_SECRET="ewogICAgImF1dGhzIjogewogICAgfQp9Cg==" # notsecret
+if [ -z "$JBS_BUILD_IMAGE_SECRET" ]; then
+    export JBS_BUILD_IMAGE_SECRET="ewogICAgImF1dGhzIjogewogICAgfQp9Cg==" # notsecret
+fi
 export JBS_S3_SYNC_ENABLED="\"false\""
 export JBS_CONTAINER_BUILDS=false
 export JBS_MAX_MEMORY=4096
@@ -74,7 +76,12 @@ echo "Completed overlays"
 kubectl annotate --overwrite jbsconfigs.jvmbuildservice.io --all jvmbuildservice.io/test-registry=true
 
 # Deleting the jvm-build-config as its created with different settings in util.go::setupMinikube
-kubectl delete jbsconfigs.jvmbuildservice.io jvm-build-config
+kubectl delete --ignore-not-found=true jbsconfigs.jvmbuildservice.io jvm-build-config
+# Following are created in code
+kubectl delete --ignore-not-found=true tasks.tekton.dev git-clone
+kubectl delete --ignore-not-found=true tasks.tekton.dev maven
+kubectl delete --ignore-not-found=true pipelines.tekton.dev sample-component-build
+kubectl delete --ignore-not-found=true clusterrolebindings.rbac.authorization.k8s.io pipeline-test-jvm-namespace
 
 cat $DIR/minikube-rbac.yaml | envsubst '${JBS_WORKER_NAMESPACE}' | kubectl apply -f -
 
