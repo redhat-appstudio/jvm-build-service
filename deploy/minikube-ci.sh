@@ -82,6 +82,7 @@ kubectl delete --ignore-not-found=true tasks.tekton.dev git-clone
 kubectl delete --ignore-not-found=true tasks.tekton.dev maven
 kubectl delete --ignore-not-found=true pipelines.tekton.dev sample-component-build
 kubectl delete --ignore-not-found=true clusterrolebindings.rbac.authorization.k8s.io pipeline-test-jvm-namespace
+kubectl delete --ignore-not-found=true artifactbuilds.jvmbuildservice.io --all
 
 cat $DIR/minikube-rbac.yaml | envsubst '${JBS_WORKER_NAMESPACE}' | kubectl apply -f -
 
