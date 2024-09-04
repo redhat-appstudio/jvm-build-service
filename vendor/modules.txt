@@ -282,7 +282,7 @@ github.com/json-iterator/go
 # github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 ## explicit
 github.com/kballard/go-shellquote
-# github.com/konflux-ci/image-controller v0.0.0-20240809150447-338fc0d1a859
+# github.com/konflux-ci/image-controller v0.0.0-20240902210233-a0445b4a12b7
 ## explicit; go 1.21
 github.com/konflux-ci/image-controller/api/v1alpha1
 # github.com/ktr0731/go-ansisgr v0.1.0
