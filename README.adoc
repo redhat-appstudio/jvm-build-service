@@ -34,6 +34,7 @@ The following environment variables are configurable and may be set by the user 
 | GIT_DEPLOY_TOKEN | Authentication token
 | GIT_DEPLOY_URL | The URL for the Git service (GitHub/GitLab are supported) to archive the sources
 | GIT_DISABLE_SSL_VERIFICATION | Whether to disable SSL verification for Git archival service communication
+| JBS_CONTAINER_BUILD | Use Konflux tasks to build using containers (default: `false`)
 | JBS_QUAY_IMAGE | JBS images are pulled by default from the `QUAY_USERNAME` organization. This may be overridden by changing this
 | JBS_BUILD_IMAGE_SECRET | Secret for accessing Quay.io (See below)
 | JBS_GIT_CREDENTIALS | Support for private repositories (See below)

@@ -104,7 +104,7 @@ kubectl rollout restart deployment hacbs-jvm-cache
 Config changes can be made in the deploy directly and applied by running:
 
 ----
-./deployment/development.sh
+./deployment/base-development.sh
 ----
 
 
