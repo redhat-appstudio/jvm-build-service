@@ -22,7 +22,7 @@ import io.quarkus.logging.Log;
 public final class AntUtils {
     public static final String ANT_VERSION_JAVA5 = "1.9.16";
 
-    public static final String ANT_VERSION_JAVA8 = "1.10.13";
+    public static final String ANT_VERSION_JAVA8 = "1.10.15";
 
     public static final String BUILD_XML = DEFAULT_BUILD_FILENAME;
 
