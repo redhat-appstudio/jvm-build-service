@@ -136,12 +136,14 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			}
 			//we want to make sure there is more than one ab, and that they are all complete
 			abComplete := len(abList.Items) > 0
-			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
+			ta.Logf(fmt.Sprintf("[all-artifact-builds] number of artifactbuilds: %d", len(abList.Items)))
 			for _, ab := range abList.Items {
 				if ab.Status.State != v1alpha1.ArtifactBuildStateComplete {
 					ta.Logf(fmt.Sprintf("artifactbuild %s not complete", ab.Spec.GAV))
 					abComplete = false
 					break
+				} else {
+					fmt.Printf("### [all-artifact-builds] artifactbuild %#v complete \n", ab.Spec.GAV)
 				}
 			}
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
@@ -253,7 +255,7 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 				return false, err
 			}
 			found := false
-			ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
+			ta.Logf(fmt.Sprintf("[contaminated-build] number of artifactbuilds: %d", len(abList.Items)))
 			for _, ab := range abList.Items {
 				if strings.Contains(ab.Spec.GAV, "simple-jdk8") {
 					simpleJDK8 = ab.Name
