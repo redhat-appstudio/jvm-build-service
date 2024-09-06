@@ -116,6 +116,8 @@ spec:
                 type: object
               mavenDeployment:
                 properties:
+                  onlyDeploy:
+                    type: boolean
                   repository:
                     type: string
                   username:

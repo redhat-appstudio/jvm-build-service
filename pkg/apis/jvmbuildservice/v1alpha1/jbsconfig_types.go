@@ -24,6 +24,7 @@ const (
 	AWSRegion                               = "awsregion"                        //#nosec
 	AWSSecretName                           = "jvm-build-maven-repo-aws-secrets" //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
+	RepoDeploymentName                      = "jvm-build-maven-repo" // only used for testing
 	ConfigArtifactCacheRequestMemoryDefault = "512Mi"
 	ConfigArtifactCacheRequestCPUDefault    = "1"
 	ConfigArtifactCacheLimitMemoryDefault   = "512Mi"
@@ -120,6 +121,7 @@ type ImageRegistry struct {
 type MavenDeployment struct {
 	Username   string `json:"username,omitempty"`
 	Repository string `json:"repository,omitempty"`
+	OnlyDeploy bool   `json:"onlyDeploy,omitempty"` // we don't want cache attempting to download from empty repo
 }
 
 type GitSourceArchive struct {

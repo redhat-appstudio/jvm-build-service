@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
+	portforward "github.com/swist/go-k8s-portforward"
 	"io"
 	"knative.dev/pkg/apis"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -125,7 +127,6 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 	})
 
 	ta.t.Run("all artfactbuilds and dependencybuilds complete", func(t *testing.T) {
-		defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
@@ -174,6 +175,29 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			debugAndFailTest(ta, "timed out waiting for some artifactbuilds and dependencybuilds to complete")
 		}
 	})
+
+	mavenRepoDetails, pf := getMavenRepoDetails(ta)
+
+	ta.t.Run("Maven repo contains artifacts for dependency builds", func(t *testing.T) {
+		defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
+		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
+			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
+			if len(dbList.Items) == 0 {
+				ta.Logf("unable to list dependencybuilds")
+				return false, nil
+			}
+			if err != nil {
+				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				return false, err
+			}
+			return verifyMavenRepoContainsArtifacts(mavenRepoDetails, ta, dbList.Items...)
+		})
+		if err != nil {
+			debugAndFailTest(ta, "timed out waiting for maven repo to contain artifacts for dependencybuilds")
+		}
+	})
+
+	pf.Stop()
 
 	if len(testSet) > 0 {
 		//no futher checks required here
@@ -517,7 +541,6 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 		}
 
 		ta.t.Run(fmt.Sprintf("dependencybuild complete for %s", s), func(t *testing.T) {
-			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
 				if retrievedDb != nil {
@@ -529,7 +552,7 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 				}
 				dbComplete := true
 				if retrievedDb.Status.State == v1alpha1.DependencyBuildStateFailed {
-					ta.Logf(fmt.Sprintf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL))
+					ta.Logf(fmt.Sprintf("depedencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
 					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				} else if retrievedDb.Status.State != v1alpha1.DependencyBuildStateComplete {
 					ta.Logf(fmt.Sprintf("depedencybuild %s for repo %s not complete", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
@@ -543,7 +566,6 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 		})
 
 		ta.t.Run(fmt.Sprintf("dependencybuild for %s contains buildrecipe", s), func(t *testing.T) {
-			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
 				if retrievedDb != nil {
@@ -582,7 +604,108 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for dependencybuild %s for repo %s to be retrieved", db.Name, db.Spec.ScmInfo.SCMURL))
 			}
 		})
+
+		mavenRepoDetails, pf := getMavenRepoDetails(ta)
+
+		ta.t.Run(fmt.Sprintf("maven repo contains artifacts for %s", s), func(t *testing.T) {
+			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
+			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
+				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
+				if retrievedDb != nil {
+					ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+				}
+				if err != nil {
+					ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					return false, err
+				}
+				return verifyMavenRepoContainsArtifacts(mavenRepoDetails, ta, *retrievedDb)
+			})
+			if err != nil {
+				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for maven repo to contain artifacts for dependencybuild %s for repo %s", db.Name, db.Spec.ScmInfo.SCMURL))
+			}
+		})
+
+		pf.Stop()
 	}
+}
+
+func verifyMavenRepoContainsArtifacts(mavenRepoDetails *MavenRepoDetails, ta *testArgs, dbs ...v1alpha1.DependencyBuild) (bool, error) {
+	for _, db := range dbs {
+		gavs := []string{}
+		for _, ba := range db.Status.BuildAttempts {
+			if ba.Build.Results != nil {
+				gavs = append(gavs, ba.Build.Results.Gavs...)
+			}
+		}
+		if len(gavs) == 0 {
+			ta.Logf(fmt.Sprintf("gavs do not exist for dependencybuild %s for repo %s", db.Name, db.Spec.ScmInfo.SCMURL))
+			return false, nil
+		} else {
+			for _, gav := range gavs {
+				body, err := downloadArtifact(mavenRepoDetails, gav, "pom")
+				if err != nil {
+					ta.Logf(fmt.Sprintf("error downloading artifact pom %s for dependencybuild %s for repo %s: %s", gav, db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					return false, err
+				}
+				if len(body) > 0 {
+					ta.Logf(fmt.Sprintf("successfully downloaded artifact pom %s for dependencybuild %s for repo %s", gav, db.Name, db.Spec.ScmInfo.SCMURL))
+				} else {
+					ta.Logf(fmt.Sprintf("failed to download artifact pom %s for dependencybuild %s for repo %s", gav, db.Name, db.Spec.ScmInfo.SCMURL))
+					return false, nil
+				}
+			}
+		}
+	}
+	return true, nil
+}
+
+func downloadArtifact(mavenRepoDetails *MavenRepoDetails, gav string, ext string) ([]byte, error) {
+	split := strings.Split(gav, ":")
+	group := split[0]
+	artifact := split[1]
+	version := split[2]
+	req, err := http.NewRequest(http.MethodGet, mavenRepoDetails.Url+"/"+strings.ReplaceAll(group, ".", "/")+"/"+artifact+"/"+version+"/"+artifact+"-"+version+"."+ext, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.SetBasicAuth(mavenRepoDetails.Username, mavenRepoDetails.Password)
+	req.Header.Add("Content-Type", "application/json")
+	req.Close = true
+	httpClient := http.Client{}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unable to download artifact %s: %s", gav, resp.Status)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+func getMavenRepoDetails(ta *testArgs) (*MavenRepoDetails, *portforward.PortForward) {
+	localPort := 8081
+	pf := portforward.PortForward{
+		Config:          kubeConfig,
+		Clientset:       kubeClient,
+		Labels:          metav1.LabelSelector{MatchLabels: map[string]string{"app": v1alpha1.RepoDeploymentName}},
+		DestinationPort: 8080,
+		ListenPort:      localPort,
+		Namespace:       ta.ns,
+	}
+	_, err := pf.Start(context.TODO())
+	if err != nil {
+		debugAndFailTest(ta, fmt.Sprintf("unable to port forward maven repo %s", err.Error()))
+		return nil, nil
+	}
+	mavenUsername := os.Getenv("MAVEN_USERNAME")
+	mavenRepository := strings.ReplaceAll(os.Getenv("MAVEN_REPOSITORY"), "http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local", fmt.Sprintf("http://127.0.0.1:%d", localPort))
+	mavenPassword := os.Getenv("MAVEN_PASSWORD")
+	return &MavenRepoDetails{Username: mavenUsername, Url: mavenRepository, Password: mavenPassword}, &pf
 }
 
 func watchEvents(eventClient v1.EventInterface, ta *testArgs) {

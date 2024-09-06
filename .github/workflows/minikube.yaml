@@ -67,6 +67,9 @@ jobs:
           export QUAY_USERNAME=minikube
           export DEV_IP=172.16.1.1
           export JBS_WORKER_NAMESPACE=jvm-build-service-test-namespace-$(shuf -er -n5 {a..z} {0..9} | tr -d '\n')
+          export MAVEN_USERNAME=admin
+          export MAVEN_PASSWORD=secret
+          export MAVEN_REPOSITORY='http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases'
 
           eval $(minikube -p minikube docker-env)
 
@@ -125,6 +128,9 @@ jobs:
           export QUAY_USERNAME=minikube
           export DEV_IP=172.16.1.1
           export JBS_WORKER_NAMESPACE=jvm-build-service-test-namespace-$(shuf -er -n5 {a..z} {0..9} | tr -d '\n')
+          export MAVEN_USERNAME=admin
+          export MAVEN_PASSWORD=secret
+          export MAVEN_REPOSITORY='http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases'
 
           eval $(minikube -p minikube docker-env)
 

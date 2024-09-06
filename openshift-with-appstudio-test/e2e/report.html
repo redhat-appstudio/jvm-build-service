@@ -56,6 +56,9 @@
                 {{ range $.OperatorLogs }}
                 <li class="list-group-item"><a href="{{ . }}" target="_blank">Operator</a></li>
                 {{ end }}
+                {{ range $.RepoLogs }}
+                <li class="list-group-item"><a href="{{ . }}" target="_blank">Repo</a></li>
+                {{ end }}
             </div>
         </div>
 
