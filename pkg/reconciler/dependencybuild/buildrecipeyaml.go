@@ -448,31 +448,41 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if jbsConfig.Spec.ContainerBuilds {
 		// Note - its also possible to refer to a remote pipeline ref as well as a task.
 		resolver := tektonpipeline.ResolverRef{
-			Resolver: "git",
+			Resolver: "http",
 			Params: []tektonpipeline.Param{
 				{
 					Name: "url",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: v1alpha1.KonfluxBuildDefinitions,
-					},
-				},
-				{
-					// Currently always using 'head' of branch.
-					Name: "revision",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "main",
-					},
-				},
-				{
-					Name: "pathInRepo",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: v1alpha1.KonfluxBuildahPath,
+						StringVal: "https://raw.githubusercontent.com/konflux-ci/build-definitions/main/task/buildah-oci-ta/0.2/buildah-oci-ta.yaml",
 					},
 				},
 			},
+			//Resolver: "git",
+			//Params: []tektonpipeline.Param{
+			//	{
+			//		Name: "url",
+			//		Value: tektonpipeline.ParamValue{
+			//			Type:      tektonpipeline.ParamTypeString,
+			//			StringVal: v1alpha1.KonfluxBuildDefinitions,
+			//		},
+			//	},
+			//	{
+			//		// Currently always using 'head' of branch.
+			//		Name: "revision",
+			//		Value: tektonpipeline.ParamValue{
+			//			Type:      tektonpipeline.ParamTypeString,
+			//			StringVal: "main",
+			//		},
+			//	},
+			//	{
+			//		Name: "pathInRepo",
+			//		Value: tektonpipeline.ParamValue{
+			//			Type:      tektonpipeline.ParamTypeString,
+			//			StringVal: v1alpha1.KonfluxBuildahPath,
+			//		},
+			//	},
+			//},
 		}
 
 		ps.Tasks = append([]tektonpipeline.PipelineTask{
