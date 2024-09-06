@@ -40,8 +40,8 @@ The following environment variables are configurable and may be set by the user 
 | JBS_GIT_CREDENTIALS | Support for private repositories (See below)
 | JBS_MAX_MEMORY | Maximum additional memory allowed
 | JBS_RECIPE_DATABASE | Recipe database to use (defaults to `https://github.com/redhat-appstudio/jvm-build-data`)
-| JBS_S3_SYNC_ENABLED | Whether to enable Amazon S3 sync for storage
-| JBS_WORKER_NAMESPACE | Default 'worker' namespace (`test-jvm-namespace`) may be customised by setting this
+| JBS_S3_SYNC_ENABLED | Whether to enable Amazon S3 sync for storage (default: `false`)
+| JBS_WORKER_NAMESPACE | Worker namespace (default: `test-jvm-namespace`) may be customised by setting this
 | MAVEN_PASSWORD | Password for the Maven repository
 | MAVEN_REPOSITORY | The URL for the external Maven repository to deploy to
 | MAVEN_USERNAME | Username for the Maven repository

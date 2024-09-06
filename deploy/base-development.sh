@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if ! command -v kubectl &> /dev/null; then
     echo "Install kubectl from https://kubernetes.io/docs/tasks/tools/install-kubectl-linux"
@@ -24,7 +24,7 @@ if [ -z "$JBS_BUILD_IMAGE_SECRET" ]; then
     export JBS_BUILD_IMAGE_SECRET="ewogICAgImF1dGhzIjogewogICAgfQp9Cg==" # notsecret
 fi
 if [ -z "$JBS_S3_SYNC_ENABLED" ]; then
-    export JBS_S3_SYNC_ENABLED=true
+    export JBS_S3_SYNC_ENABLED=false
 fi
 if [ -z "$JBS_CONTAINER_BUILDS" ]; then
     export JBS_CONTAINER_BUILDS=false
@@ -39,22 +39,28 @@ fi
 export JBS_S3_SYNC_ENABLED="\"$JBS_S3_SYNC_ENABLED\""
 
 kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
-# we don't restart the cache and local storage by default
-# for most cases in development this is not necessary, and just slows things
-# down by needing things to be re-cached/rebuilt
+kubectl delete --ignore-not-found deployments.apps jvm-build-workspace-artifact-cache
 
 function cleanAllArtifacts() {
-     kubectl delete --ignore-not-found namespaces $JBS_WORKER_NAMESPACE
-}
+    # Following are created in CI code
+    kubectl delete --ignore-not-found=true tasks.tekton.dev git-clone
+    kubectl delete --ignore-not-found=true tasks.tekton.dev maven
+    kubectl delete --ignore-not-found=true pipelines.tekton.dev sample-component-build
+    kubectl delete --ignore-not-found=true clusterrolebindings.rbac.authorization.k8s.io pipeline-test-jvm-namespace
 
-kubectl delete --ignore-not-found deployments.apps jvm-build-workspace-artifact-cache
-if [ "$1" = "--clean" ]; then
-    cleanAllArtifacts
-fi
+    kubectl delete --ignore-not-found=true artifactbuilds.jvmbuildservice.io --all
+
+    kubectl delete --ignore-not-found=true pipelineruns.tekton.dev --all --wait=false
+    kubectl delete --ignore-not-found=true taskruns.tekton.dev --all --wait=false
+}
 
 echo -e "\033[0;32mSetting context to $JBS_WORKER_NAMESPACE with quay image $JBS_QUAY_IMAGE\033[0m"
 # Its possible to set context before namespaces have been created.
 kubectl config set-context --current --namespace=$JBS_WORKER_NAMESPACE
+
+if [ "$1" = "--clean" ]; then
+    cleanAllArtifacts
+fi
 
 DIR=`dirname $0`
 
@@ -80,3 +86,5 @@ ${MAVEN_REPOSITORY}
 ${MAVEN_USERNAME}
 ${QUAY_USERNAME}' \
     | kubectl apply -f -
+
+echo "Completed overlays"

@@ -71,6 +71,8 @@ jobs:
           export MAVEN_PASSWORD=secret
           export MAVEN_REPOSITORY='http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases'
 
+          echo "Using worker namespace $JBS_WORKER_NAMESPACE and DEV_IP $DEV_IP"
+
           eval $(minikube -p minikube docker-env)
 
           docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:on-pr-${{ github.event.pull_request.head.sha }}
@@ -81,6 +83,7 @@ jobs:
           docker tag quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/controller:on-pr-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
 
           export ABTESTSET=${{ matrix.abtestsets }}
+          echo "Using ABTESTSET $ABTESTSET"
 
           ./deploy/minikube-ci.sh
           make minikube-test
@@ -132,6 +135,8 @@ jobs:
           export MAVEN_PASSWORD=secret
           export MAVEN_REPOSITORY='http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases'
 
+          echo "Using worker namespace $JBS_WORKER_NAMESPACE and DEV_IP $DEV_IP"
+
           eval $(minikube -p minikube docker-env)
 
           docker pull quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:on-pr-${{ github.event.pull_request.head.sha }}
@@ -142,6 +147,7 @@ jobs:
           docker tag quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/controller:on-pr-${{ github.event.pull_request.head.sha }} quay.io/minikube/hacbs-jvm-controller:dev
 
           export DBTESTSET=${{ matrix.dbtestsets }}
+          echo "Using DBTESTSET $DBTESTSET"
 
           ./deploy/minikube-ci.sh
           make minikube-test

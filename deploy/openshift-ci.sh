@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This is referenced by:
 # https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/jvm-build-service/redhat-appstudio-jvm-build-service-main.yaml
