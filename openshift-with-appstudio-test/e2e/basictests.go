@@ -156,12 +156,12 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			dbCompleteCount := 0
 			for _, db := range dbList.Items {
 				if db.Status.State == v1alpha1.DependencyBuildStateFailed {
-					ta.Logf(fmt.Sprintf("depedencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
-					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
+					ta.Logf(fmt.Sprintf("dependencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
+					return false, fmt.Errorf("dependencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
 				} else if db.Status.State != v1alpha1.DependencyBuildStateComplete {
 					if dbComplete {
 						//only print the first one
-						ta.Logf(fmt.Sprintf("depedencybuild %s not complete", db.Spec.ScmInfo.SCMURL))
+						ta.Logf(fmt.Sprintf("dependencybuild %s not complete", db.Spec.ScmInfo.SCMURL))
 					}
 					dbComplete = false
 				} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
@@ -557,10 +557,10 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 				}
 				dbComplete := true
 				if retrievedDb.Status.State == v1alpha1.DependencyBuildStateFailed {
-					ta.Logf(fmt.Sprintf("depedencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
-					return false, fmt.Errorf("depedencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
+					ta.Logf(fmt.Sprintf("dependencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					return false, fmt.Errorf("dependencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				} else if retrievedDb.Status.State != v1alpha1.DependencyBuildStateComplete {
-					ta.Logf(fmt.Sprintf("depedencybuild %s for repo %s not complete", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					ta.Logf(fmt.Sprintf("dependencybuild %s for repo %s not complete", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
 					dbComplete = false
 				}
 				return dbComplete, nil

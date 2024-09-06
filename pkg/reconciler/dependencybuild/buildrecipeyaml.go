@@ -163,8 +163,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 	orasOptions := ""
+	tlsVerify := "true"
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
 		orasOptions = "--insecure --plain-http"
+		tlsVerify = "false"
 	}
 
 	preprocessorArgs := []string{
@@ -515,6 +517,20 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 							StringVal: preBuildImage,
 						},
 					},
+					{
+						Name: "ORAS_OPTIONS",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: orasOptions,
+						},
+					},
+					{
+						Name: "TLSVERIFY",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: tlsVerify,
+						},
+					},
 				},
 
 				// TODO: ### How to pass build-settings/tls information to buildah task?
@@ -604,7 +620,12 @@ echo -n "$IMGDIGEST" >> $(results.%s.path)
 				TaskSpec: buildTask,
 			},
 			Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
-			Params:  []tektonpipeline.Param{{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
+			Params: []tektonpipeline.Param{
+				{
+					Name:  PipelineResultPreBuildImageDigest,
+					Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage},
+				},
+			},
 			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 				{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 				{Name: WorkspaceSource, Workspace: WorkspaceSource},
@@ -865,7 +886,7 @@ func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json. Was using
 	// AUTHFILE to override but now switched to adding the image secret to the pipeline.
 	// Setting ORAS_OPTIONS to ensure the archive is compatible with jib (for OCIRepositoryClient).
-	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
+	preBuildImageArgs := fmt.Sprintf(`set -x ; echo "Creating pre-build-image archive"
 export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
 cp $(workspaces.source.path)/build.sh $(workspaces.source.path)/source/.jbs
 create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
