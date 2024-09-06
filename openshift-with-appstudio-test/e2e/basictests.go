@@ -150,7 +150,7 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 				return false, err
 			}
 			dbComplete := len(dbList.Items) > 0
-			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
+			ta.Logf(fmt.Sprintf("[all-artifactbuild-and-dependencybuilds] number of dependencybuilds: %d", len(dbList.Items)))
 			dbCompleteCount := 0
 			for _, db := range dbList.Items {
 				if db.Status.State == v1alpha1.DependencyBuildStateFailed {
@@ -222,6 +222,7 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			}
 			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
 			for _, db := range dbList.Items {
+				fmt.Printf("### [contaminatedbuild] DB status %#v spec %#v \n", db.Status, db.Spec)
 				if db.Status.State == v1alpha1.DependencyBuildStateContaminated {
 					dbContaminated = true
 					contaminated = db.Name
@@ -239,10 +240,11 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			}
 			return false, nil
 		})
+		ta.Logf(fmt.Sprintf("contaminated dependencybuild: %s", contaminated))
 		if err != nil {
+			fmt.Printf("### error %#v\n", err)
 			debugAndFailTest(ta, "timed out waiting for contaminated build to appear")
 		}
-		ta.Logf(fmt.Sprintf("contaminated dependencybuild: %s", contaminated))
 		//make sure simple-jdk8 was requested as a result
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
@@ -420,7 +422,7 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
 				return false, err
 			}
-			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
+			ta.Logf(fmt.Sprintf("[correct-jdk-identified] number of dependencybuilds: %d", len(dbList.Items)))
 			for _, db := range dbList.Items {
 				if !strings.Contains(db.Spec.ScmInfo.SCMURL, "shaded-jdk11") ||
 					db.Status.State == "" ||

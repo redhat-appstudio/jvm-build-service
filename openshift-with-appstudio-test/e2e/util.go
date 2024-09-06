@@ -12,6 +12,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"html/template"
 	"io"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"net/http"
 	"os"
@@ -22,15 +23,13 @@ import (
 	"testing"
 	"time"
 
-	v13 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	v13 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/rbac/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -977,20 +976,22 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		}
 		for depIdx := range deploymentList.Items {
 			dep := deploymentList.Items[depIdx]
-			fmt.Printf("Adjusting memory limit for pod %s.%s\n", dep.Namespace, dep.Name)
-			for i := range dep.Spec.Template.Spec.Containers {
-				if dep.Spec.Template.Spec.Containers[i].Resources.Limits == nil {
-					dep.Spec.Template.Spec.Containers[i].Resources.Limits = corev1.ResourceList{}
+			if dep.Namespace != "jvm-build-service" {
+				fmt.Printf("Adjusting memory limit for pod %s.%s\n", dep.Namespace, dep.Name)
+				for i := range dep.Spec.Template.Spec.Containers {
+					if dep.Spec.Template.Spec.Containers[i].Resources.Limits == nil {
+						dep.Spec.Template.Spec.Containers[i].Resources.Limits = corev1.ResourceList{}
+					}
+					if dep.Spec.Template.Spec.Containers[i].Resources.Requests == nil {
+						dep.Spec.Template.Spec.Containers[i].Resources.Requests = corev1.ResourceList{}
+					}
+					dep.Spec.Template.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("110Mi")
+					dep.Spec.Template.Spec.Containers[i].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("100Mi")
 				}
-				if dep.Spec.Template.Spec.Containers[i].Resources.Requests == nil {
-					dep.Spec.Template.Spec.Containers[i].Resources.Requests = corev1.ResourceList{}
+				_, err := kubeClient.AppsV1().Deployments(ns.Name).Update(context.TODO(), &dep, metav1.UpdateOptions{})
+				if err != nil {
+					panic(err)
 				}
-				dep.Spec.Template.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("110Mi")
-				dep.Spec.Template.Spec.Containers[i].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("100Mi")
-			}
-			_, err := kubeClient.AppsV1().Deployments(ns.Name).Update(context.TODO(), &dep, metav1.UpdateOptions{})
-			if err != nil {
-				panic(err)
 			}
 		}
 	}
