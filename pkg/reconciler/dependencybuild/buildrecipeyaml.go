@@ -456,7 +456,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "url",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB33/hack/examples/buildah-oci-ta.yaml",
+						StringVal: "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB33/deploy/tasks/buildah-oci-ta.yaml",
 						//StringVal: "https://raw.githubusercontent.com/konflux-ci/build-definitions/main/task/buildah-oci-ta/0.2/buildah-oci-ta.yaml",
 					},
 				},
