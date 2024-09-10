@@ -688,16 +688,14 @@ func downloadArtifact(mavenRepoDetails *MavenRepoDetails, gav string, ext string
 }
 
 func getMavenRepoDetails(ta *testArgs) (*MavenRepoDetails, *portforward.PortForward) {
-	localPort := 8081
 	pf := portforward.PortForward{
 		Config:          kubeConfig,
 		Clientset:       kubeClient,
 		Labels:          metav1.LabelSelector{MatchLabels: map[string]string{"app": v1alpha1.RepoDeploymentName}},
 		DestinationPort: 8080,
-		ListenPort:      localPort,
 		Namespace:       ta.ns,
 	}
-	_, err := pf.Start(context.TODO())
+	localPort, err := pf.Start(context.TODO())
 	if err != nil {
 		debugAndFailTest(ta, fmt.Sprintf("unable to port forward maven repo %s", err.Error()))
 		return nil, nil
