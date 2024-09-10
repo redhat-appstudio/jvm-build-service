@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-mkdir -p "${HOME}/.sbt"
+mkdir -p "${HOME}/.sbt/1.0"
 cp -r /maven-artifacts/* "$HOME/.sbt/*" || true
 
 if [ ! -d "${SBT_DIST}" ]; then
@@ -8,14 +8,13 @@ if [ ! -d "${SBT_DIST}" ]; then
     exit 1
 fi
 
-
-mkdir -p "$HOME/.sbt/1.0/"
-cat > "$HOME/.sbt/repositories" <<EOF
-[repositories]
-  local
-  my-maven-proxy-releases: $(params.CACHE_URL)
+if [ -z ${JBS_DISABLE_CACHE+x} ]; then
+    cat > "$HOME/.sbt/repositories" <<EOF
+    [repositories]
+      local
+      my-maven-proxy-releases: ${CACHE_URL}
 EOF
-
+fi
 # TODO: we may need .allowInsecureProtocols here for minikube based tests that don't have access to SSL
 cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
 publishTo := Some(("MavenRepo" at s"file:$(workspaces.source.path)/artifacts")),
