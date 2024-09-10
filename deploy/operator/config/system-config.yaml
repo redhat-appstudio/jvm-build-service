@@ -7,9 +7,9 @@ spec:
   builders:
     #note that when updating the ref here you must also update kustomization.yaml
     ubi8:
-      image: quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service-builder-images/ubi8:026b26ba92b1d56ffcd172e7785e679437fcff70
+      image: quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service-builder-images/ubi8:67236e7041a57cd8e31a6f890b0155bc0a1c1700
       priority: 2000
     ubi7:
-      image: quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service-builder-images/ubi7:026b26ba92b1d56ffcd172e7785e679437fcff70
+      image: quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service-builder-images/ubi7:67236e7041a57cd8e31a6f890b0155bc0a1c1700
       priority: 1000
 
