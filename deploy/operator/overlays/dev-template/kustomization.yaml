@@ -9,8 +9,8 @@ resources:
 
 images:
 - name: hacbs-jvm-operator
-  newName: quay.io/${JBS_QUAY_IMAGE}/hacbs-jvm-controller
-  newTag: dev
+  newName: quay.io/${JBS_QUAY_ORG}/${JBS_QUAY_IMAGE_CONTROLLER}
+  newTag: ${JBS_QUAY_IMAGE_TAG}
 
 patches:
 # Note - see base-development for quoting requirements for

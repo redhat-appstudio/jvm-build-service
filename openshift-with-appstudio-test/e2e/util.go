@@ -211,6 +211,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 			ta.maven.Spec.Steps[i].Image = analyserImage
 		}
 	} else if len(quayUsername) > 0 {
+		// TODO: delete this block ....
 		image := "quay.io/" + quayUsername + "/hacbs-jvm-build-request-processor:dev"
 		for i, step := range ta.maven.Spec.Steps {
 			if step.Name != "analyse-dependencies" {

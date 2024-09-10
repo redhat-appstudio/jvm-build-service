@@ -9,12 +9,19 @@ if ! command -v kustomize &> /dev/null; then
     exit 1
 fi
 
-if [ -z "$QUAY_USERNAME" ]; then
-    echo "Set QUAY_USERNAME"
-    exit 1
+if [ -z "$JBS_QUAY_ORG" ]; then
+    # Only if JBS_QUAY_ORG is not set is QUAY_USERNAME then required.
+    if [ -z "$QUAY_USERNAME" ]; then
+        echo "Set QUAY_USERNAME"
+        exit 1
+    fi
+    export JBS_QUAY_ORG="$QUAY_USERNAME"
 fi
-if [ -z "$JBS_QUAY_IMAGE" ]; then
-    export JBS_QUAY_IMAGE="$QUAY_USERNAME"
+if [ -z "$JBS_QUAY_IMAGE_CONTROLLER" ]; then
+    export JBS_QUAY_IMAGE_CONTROLLER=hacbs-jvm-controller
+fi
+if [ -z "$JBS_QUAY_IMAGE_TAG" ]; then
+    export JBS_QUAY_IMAGE_TAG=dev
 fi
 if [ -z "$JBS_WORKER_NAMESPACE" ]; then
     export JBS_WORKER_NAMESPACE=test-jvm-namespace
@@ -54,7 +61,7 @@ function cleanAllArtifacts() {
     kubectl delete --ignore-not-found=true taskruns.tekton.dev --all --wait=false
 }
 
-echo -e "\033[0;32mSetting context to $JBS_WORKER_NAMESPACE with quay image $JBS_QUAY_IMAGE\033[0m"
+echo -e "\033[0;32mSetting context to $JBS_WORKER_NAMESPACE with quay image $JBS_QUAY_ORG\033[0m"
 # Its possible to set context before namespaces have been created.
 kubectl config set-context --current --namespace=$JBS_WORKER_NAMESPACE
 
@@ -76,7 +83,9 @@ ${GIT_DISABLE_SSL_VERIFICATION}
 ${JBS_BUILD_IMAGE_SECRET}
 ${JBS_CONTAINER_BUILDS}
 ${JBS_GIT_CREDENTIALS}
-${JBS_QUAY_IMAGE}
+${JBS_QUAY_IMAGE_CONTROLLER}
+${JBS_QUAY_IMAGE_TAG}
+${JBS_QUAY_ORG}
 ${JBS_MAX_MEMORY}
 ${JBS_RECIPE_DATABASE}
 ${JBS_S3_SYNC_ENABLED}
