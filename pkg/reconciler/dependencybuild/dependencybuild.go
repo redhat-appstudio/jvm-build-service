@@ -215,8 +215,22 @@ func (r *ReconcileDependencyBuild) handleRedeployAnnotation(ctx context.Context,
 func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 
 	log, _ := logr.FromContext(ctx)
+	var err error
+	if len(db.Spec.BuildRecipeConfigMap) > 0 {
+		configMap := v1.ConfigMap{}
+		err = r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: db.Spec.BuildRecipeConfigMap}, &configMap)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := controllerutil.SetOwnerReference(db, &configMap, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+		if err := r.client.Update(ctx, &configMap); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
 	jbsConfig := &v1alpha1.JBSConfig{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: db.Namespace, Name: v1alpha1.JBSConfigName}, jbsConfig)
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
