@@ -7,6 +7,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	portforward "github.com/swist/go-k8s-portforward"
 	"io"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
 	"net/http"
 	"os"
@@ -626,6 +627,44 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 		})
 
 		pf.Stop()
+
+		ta.t.Run(fmt.Sprintf("buildrecipe is deleted with dependencybuild for %s", s), func(t *testing.T) {
+			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
+			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
+				err = jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Delete(context.TODO(), db.Name, metav1.DeleteOptions{})
+				if err != nil {
+					ta.Logf(fmt.Sprintf("error deleting dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					return false, err
+				}
+				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
+				if err != nil {
+					if errors.IsNotFound(err) {
+						ta.Logf(fmt.Sprintf("successfully deleted dependencybuild %s for repo %s", db.Name, db.Spec.ScmInfo.SCMURL))
+					} else {
+						ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+						return false, err
+					}
+				} else if retrievedDb != nil {
+					ta.Logf(fmt.Sprintf("failed to delete dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+				}
+				retrievedCfgMap, err := kubeClient.CoreV1().ConfigMaps(ta.ns).Get(context.TODO(), cfgMap.Name, metav1.GetOptions{})
+				if err != nil {
+					if errors.IsNotFound(err) {
+						ta.Logf(fmt.Sprintf("successfully deleted configmap %s for dependencybuild repo %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL))
+						return true, nil
+					} else {
+						ta.Logf(fmt.Sprintf("error retrieving configmap %s for dependencybuild repo %s: %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+						return false, err
+					}
+				} else if retrievedCfgMap != nil {
+					ta.Logf(fmt.Sprintf("failed to delete configmap %s for dependencybuild repo %s", retrievedCfgMap.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+				}
+				return false, nil
+			})
+			if err != nil {
+				debugAndFailTest(ta, fmt.Sprintf("timed out waiting for deletion of configmap %s for dependencybuild repo %s", db.Name, db.Spec.ScmInfo.SCMURL))
+			}
+		})
 	}
 }
 
