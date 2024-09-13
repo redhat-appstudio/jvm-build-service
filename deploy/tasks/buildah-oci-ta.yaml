@@ -76,6 +76,10 @@ spec:
       type: string
       description: Optional environment variable string for build-trusted-artifacts
       default: ""
+    - name: CACHE_URL
+      type: string
+      description: For JBS, URL of the cache.
+      default: ""
     - name: PREFETCH_INPUT
       description: In case it is not empty, the prefetched content should
         be made available to the build.
@@ -250,6 +254,8 @@ spec:
       env:
         - name: COMMIT_SHA
           value: $(params.COMMIT_SHA)
+        - name: CACHE_URL
+          value: $(params.CACHE_URL)
       script: |
         #!/bin/bash
         set -e
@@ -399,6 +405,12 @@ spec:
             echo "Adding the secret ${ADDITIONAL_SECRET}/${filename} to the build, available at /run/secrets/${ADDITIONAL_SECRET}/${filename}"
             BUILDAH_ARGS+=("--secret=id=${ADDITIONAL_SECRET}/${filename},src=$ADDITIONAL_SECRET_TMP/${filename}")
           done < <(find $ADDITIONAL_SECRET_TMP -maxdepth 1 -type f -exec basename {} \;)
+        fi
+
+        # TODO: Rename to JBS_CACHE_URL?
+        if [ -n "$CACHE_URL" ]; then
+          echo "### CACHE_URL is $CACHE_URL"
+          BUILDAH_ARGS+=("--build-arg=CACHE_URL=$CACHE_URL")
         fi
 
         unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- buildah build \
