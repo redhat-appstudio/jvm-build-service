@@ -309,6 +309,7 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 				LimitMemory:   "1024Mi",
 				WorkerThreads: "100",
 				RequestCPU:    "10m",
+				DisableTLS:    true,
 			},
 			Registry: v1alpha1.ImageRegistrySpec{
 				ImageRegistry: v1alpha1.ImageRegistry{

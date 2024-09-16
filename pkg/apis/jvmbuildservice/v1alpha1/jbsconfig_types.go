@@ -31,8 +31,8 @@ const (
 	ConfigArtifactCacheWorkerThreadsDefault = "50"
 	ConfigArtifactCacheStorageDefault       = "10Gi"
 
-	KonfluxBuildDefinitions = "https://github.com/konflux-ci/build-definitions.git"
-	KonfluxBuildahPath      = "task/buildah-oci-ta/0.2/buildah-oci-ta.yaml"
+	// KonfluxBuildDefinitions TODO: Change this to the main repository after PR merge.
+	KonfluxBuildDefinitions = "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB33/deploy/tasks/buildah-oci-ta.yaml"
 )
 
 type JBSConfigSpec struct {

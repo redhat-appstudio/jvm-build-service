@@ -312,7 +312,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nARG CACHE_URL=\"\"" +
 		"\nENV CACHE_URL=$CACHE_URL" +
 		// TODO ### HACK : How to use SSL to avoid certificate problem with buildah task?
-		//"\nENV CACHE_URL=" + "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild" + buildRepos + "/" + strconv.FormatInt(commitTime, 10) +
 		//"\nENV JBS_DISABLE_CACHE=true" +
 		"\nCOPY .jbs/run-build.sh /var/workdir" +
 		"\nCOPY . /var/workdir/workspace/source/" +
@@ -459,42 +458,17 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if jbsConfig.Spec.ContainerBuilds {
 		// Note - its also possible to refer to a remote pipeline ref as well as a task.
 		resolver := tektonpipeline.ResolverRef{
+			// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
 			Resolver: "http",
 			Params: []tektonpipeline.Param{
 				{
 					Name: "url",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB33/deploy/tasks/buildah-oci-ta.yaml",
-						//StringVal: "https://raw.githubusercontent.com/konflux-ci/build-definitions/main/task/buildah-oci-ta/0.2/buildah-oci-ta.yaml",
+						StringVal: v1alpha1.KonfluxBuildDefinitions,
 					},
 				},
 			},
-			//Resolver: "git",
-			//Params: []tektonpipeline.Param{
-			//	{
-			//		Name: "url",
-			//		Value: tektonpipeline.ParamValue{
-			//			Type:      tektonpipeline.ParamTypeString,
-			//			StringVal: v1alpha1.KonfluxBuildDefinitions,
-			//		},
-			//	},
-			//	{
-			//		// Currently always using 'head' of branch.
-			//		Name: "revision",
-			//		Value: tektonpipeline.ParamValue{
-			//			Type:      tektonpipeline.ParamTypeString,
-			//			StringVal: "main",
-			//		},
-			//	},
-			//	{
-			//		Name: "pathInRepo",
-			//		Value: tektonpipeline.ParamValue{
-			//			Type:      tektonpipeline.ParamTypeString,
-			//			StringVal: v1alpha1.KonfluxBuildahPath,
-			//		},
-			//	},
-			//},
 		}
 
 		ps.Tasks = append([]tektonpipeline.PipelineTask{
@@ -783,6 +757,7 @@ func createKonfluxScripts(containerfile string, konfluxScript string) string {
 
 func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
 	pullPolicy := v1.PullIfNotPresent
+	// TODO: Delete this block?
 	if strings.HasPrefix(buildRequestProcessorImage, "quay.io/minikube") {
 		pullPolicy = v1.PullNever
 	} else if strings.HasSuffix(buildRequestProcessorImage, ":dev") {
