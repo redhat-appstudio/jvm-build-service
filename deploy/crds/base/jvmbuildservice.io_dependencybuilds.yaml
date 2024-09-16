@@ -125,11 +125,6 @@ spec:
                                 url:
                                   type: string
                               type: object
-                            hermeticBuildImage:
-                              description: |-
-                                Deprecated
-                                The hermetic build image produced by the build
-                              type: string
                             image:
                               description: the image resulting from the run
                               type: string
@@ -209,9 +204,6 @@ spec:
                           description: The base builder image (ubi7 / ubi8)
                           type: string
                         javaVersion:
-                          type: string
-                        pipeline:
-                          description: Deprecated
                           type: string
                         postBuildScript:
                           type: string
@@ -366,9 +358,6 @@ spec:
                 type: object
               failedVerification:
                 type: boolean
-              hermetic:
-                description: Deprecated
-                type: boolean
               message:
                 type: string
               pipelineRetries:
@@ -421,9 +410,6 @@ spec:
                       description: The base builder image (ubi7 / ubi8)
                       type: string
                     javaVersion:
-                      type: string
-                    pipeline:
-                      description: Deprecated
                       type: string
                     postBuildScript:
                       type: string

@@ -4,8 +4,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type HermeticBuildType string
-
 const (
 	JBSConfigName                           = "jvm-build-config"
 	DefaultImageSecretName                  = "jvm-build-image-secrets"          //#nosec
@@ -33,8 +31,6 @@ const (
 	ConfigArtifactCacheWorkerThreadsDefault = "50"
 	ConfigArtifactCacheStorageDefault       = "10Gi"
 
-	HermeticBuildTypeRequired HermeticBuildType = "Required"
-
 	KonfluxBuildDefinitions = "https://github.com/konflux-ci/build-definitions.git"
 	KonfluxBuildahPath      = "task/buildah-oci-ta/0.2/buildah-oci-ta.yaml"
 )
@@ -45,8 +41,6 @@ type JBSConfigSpec struct {
 	// If this is true then the build will fail if artifact verification fails
 	// otherwise deploy will happen as normal, but a field will be set on the DependencyBuild
 	RequireArtifactVerification bool `json:"requireArtifactVerification,omitempty"`
-	// Deprecated
-	HermeticBuilds HermeticBuildType `json:"hermeticBuilds,omitempty"`
 
 	AdditionalRecipes []string `json:"additionalRecipes,omitempty"`
 
@@ -58,8 +52,6 @@ type JBSConfigSpec struct {
 	GitSourceArchive GitSourceArchive  `json:"gitSourceArchive,omitempty"`
 	CacheSettings    CacheSettings     `json:"cacheSettings,omitempty"`
 	BuildSettings    BuildSettings     `json:"buildSettings,omitempty"`
-	// Deprecated
-	RelocationPatterns []RelocationPatternElement `json:"relocationPatterns,omitempty"`
 
 	// Whether to use a standard build pipeline or build in a Docker container via buildah.
 	ContainerBuilds bool `json:"containerBuilds,omitempty"`
@@ -128,24 +120,6 @@ type GitSourceArchive struct {
 	Identity               string `json:"identity,omitempty"`
 	URL                    string `json:"url,omitempty"`
 	DisableSSLVerification bool   `json:"disableSSLVerification,omitempty"`
-}
-
-type RelocationPatternElement struct {
-	RelocationPattern RelocationPattern `json:"relocationPattern"`
-}
-
-type RelocationPattern struct {
-	BuildPolicy string           `json:"buildPolicy,omitempty" default:"default"`
-	Patterns    []PatternElement `json:"patterns,omitempty"`
-}
-
-type PatternElement struct {
-	Pattern Pattern `json:"pattern"`
-}
-
-type Pattern struct {
-	From string `json:"from"`
-	To   string `json:"to"`
 }
 
 // +genclient
