@@ -76,7 +76,6 @@
     <modules>
         <module>cache</module>
         <module>build-recipes-database</module>
-        <module>adhoc-analyser-tool</module>
         <module>classfile-tracker</module>
         <module>resource-model</module>
         <module>build-request-processor</module>
