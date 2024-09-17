@@ -107,9 +107,6 @@ spec:
                   url:
                     type: string
                 type: object
-              hermeticBuilds:
-                description: Deprecated
-                type: string
               mavenBaseLocations:
                 additionalProperties:
                   type: string
@@ -148,36 +145,6 @@ spec:
                   secretName:
                     type: string
                 type: object
-              relocationPatterns:
-                description: Deprecated
-                items:
-                  properties:
-                    relocationPattern:
-                      properties:
-                        buildPolicy:
-                          type: string
-                        patterns:
-                          items:
-                            properties:
-                              pattern:
-                                properties:
-                                  from:
-                                    type: string
-                                  to:
-                                    type: string
-                                required:
-                                - from
-                                - to
-                                type: object
-                            required:
-                            - pattern
-                            type: object
-                          type: array
-                      type: object
-                  required:
-                  - relocationPattern
-                  type: object
-                type: array
               requireArtifactVerification:
                 description: |-
                   If this is true then the build will fail if artifact verification fails

@@ -73,14 +73,6 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, err
 	}
 	log.Info("reconciling JBSConfig")
-	if jbsConfig.Spec.RelocationPatterns != nil {
-		jbsConfig.Spec.RelocationPatterns = nil
-		return reconcile.Result{}, r.client.Update(ctx, &jbsConfig)
-	}
-	if jbsConfig.Spec.HermeticBuilds != "" {
-		jbsConfig.Spec.HermeticBuilds = ""
-		return reconcile.Result{}, r.client.Update(ctx, &jbsConfig)
-	}
 
 	// TODO: ### Should we add some sanity checking i.e. if ContainerBuilds are enabled, we need GIT_DEPLOY_TOKEN
 	//      i.e. source archiving in DeployPreBuildSourceCommand
