@@ -744,7 +744,6 @@ func getMavenRepoDetails(ta *testArgs) (*MavenRepoDetails, *portforward.PortForw
 		return nil, nil
 	}
 	mavenUsername := os.Getenv("MAVEN_USERNAME")
-	//  "http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases"
 	mavenRepository := os.Getenv("MAVEN_REPOSITORY")
 	if strings.Contains(mavenRepository, "context.taskRun.namespace") {
 		mavenRepository = strings.ReplaceAll(mavenRepository, "http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local", fmt.Sprintf("http://127.0.0.1:%d", localPort))

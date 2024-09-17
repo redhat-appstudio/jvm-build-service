@@ -11,7 +11,10 @@ if [ -z "$MAVEN_PASSWORD" ]; then
     deploy_maven_repo=true
 fi
 if [ -z "$MAVEN_REPOSITORY" ]; then
-    export MAVEN_REPOSITORY='http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases'
+    if [ -z "$JBS_WORKER_NAMESPACE" ]; then
+        export JBS_WORKER_NAMESPACE=test-jvm-namespace
+    fi
+    export MAVEN_REPOSITORY="http://jvm-build-maven-repo.${JBS_WORKER_NAMESPACE}.svc.cluster.local/releases"
     deploy_maven_repo=true
 fi
 

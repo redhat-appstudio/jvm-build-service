@@ -68,7 +68,7 @@ jobs:
           export JBS_WORKER_NAMESPACE=jvm-build-service-test-namespace-$(shuf -er -n5 {a..z} {0..9} | tr -d '\n')
           export MAVEN_USERNAME=admin
           export MAVEN_PASSWORD=secret
-          export MAVEN_REPOSITORY='http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases'
+          export MAVEN_REPOSITORY="http://jvm-build-maven-repo.${JBS_WORKER_NAMESPACE}.svc.cluster.local/releases"
 
           export JBS_QUAY_ORG=redhat-user-workloads
           export JBS_QUAY_IMAGE_TAG=on-pr-${{ github.event.pull_request.head.sha }}
@@ -131,7 +131,7 @@ jobs:
           export JBS_WORKER_NAMESPACE=jvm-build-service-test-namespace-$(shuf -er -n5 {a..z} {0..9} | tr -d '\n')
           export MAVEN_USERNAME=admin
           export MAVEN_PASSWORD=secret
-          export MAVEN_REPOSITORY='http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases'
+          export MAVEN_REPOSITORY="http://jvm-build-maven-repo.${JBS_WORKER_NAMESPACE}.svc.cluster.local/releases"
 
           export JBS_QUAY_ORG=redhat-user-workloads
           export JBS_QUAY_IMAGE_TAG=on-pr-${{ github.event.pull_request.head.sha }}

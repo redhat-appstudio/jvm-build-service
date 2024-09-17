@@ -1029,7 +1029,6 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 	if owner == "" {
 		owner = "testuser"
 	}
-	fmt.Printf("### Using DEV_IP %s and owner %s\n", devIp, owner)
 	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ta.ns,
