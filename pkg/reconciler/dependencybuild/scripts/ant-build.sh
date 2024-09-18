@@ -9,7 +9,7 @@ if [ -z ${JBS_DISABLE_CACHE+x} ]; then
     # XXX: It's possible that build.xml is not in the root directory
     cat > ivysettings.xml << EOF
 <ivysettings>
-    <property name="cache-url" value="$(params.CACHE_URL)"/>
+    <property name="cache-url" value="${CACHE_URL}"/>
     <property name="default-pattern" value="[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
     <property name="local-pattern" value="\${user.home}/.m2/repository/[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
     <settings defaultResolver="defaultChain"/>
@@ -28,6 +28,6 @@ if [ -z ${JBS_DISABLE_CACHE+x} ]; then
 EOF
 fi
 
+echo "### CACHE_URL $CACHE_URL and params $(params.CACHE_URL)"
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
-

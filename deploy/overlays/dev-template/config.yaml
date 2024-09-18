@@ -10,6 +10,7 @@ spec:
     owner: ${QUAY_USERNAME}
     dontReuseExisting: true
   cacheSettings:
+    disableTLS: true
     storage:  "60Gi"
   mavenDeployment:
     username: ${MAVEN_USERNAME}

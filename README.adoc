@@ -34,9 +34,12 @@ The following environment variables are configurable and may be set by the user 
 | GIT_DEPLOY_TOKEN | Authentication token
 | GIT_DEPLOY_URL | The URL for the Git service (GitHub/GitLab are supported) to archive the sources
 | GIT_DISABLE_SSL_VERIFICATION | Whether to disable SSL verification for Git archival service communication
-| JBS_CONTAINER_BUILD | Use Konflux tasks to build using containers (default: `false`)
-| JBS_QUAY_IMAGE | JBS images are pulled by default from the `QUAY_USERNAME` organization. This may be overridden by changing this
+| JBS_CONTAINER_BUILD | Use Konflux tasks to build using containers (default: `true`)
+| JBS_QUAY_IMAGE_CONTROLLER | The name for the operator image repository. Defaults to `hacbs-jvm-controller`.
+| JBS_QUAY_IMAGE_TAG | The tag for the images (defaults to `dev`)
+| JBS_QUAY_ORG | JBS images are pulled by default from the `QUAY_USERNAME` organization. This may be overridden by changing this
 | JBS_BUILD_IMAGE_SECRET | Secret for accessing Quay.io (See below)
+| JBS_DISABLE_CACHE | Internal variable for disabling the cache
 | JBS_GIT_CREDENTIALS | Support for private repositories (See below)
 | JBS_MAX_MEMORY | Maximum additional memory allowed
 | JBS_RECIPE_DATABASE | Recipe database to use (defaults to `https://github.com/redhat-appstudio/jvm-build-data`)

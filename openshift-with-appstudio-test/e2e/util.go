@@ -12,6 +12,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"html/template"
 	"io"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"net/http"
 	"os"
@@ -22,15 +23,13 @@ import (
 	"testing"
 	"time"
 
-	v13 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	v13 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/rbac/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -212,6 +211,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 			ta.maven.Spec.Steps[i].Image = analyserImage
 		}
 	} else if len(quayUsername) > 0 {
+		// TODO: delete this block ....
 		image := "quay.io/" + quayUsername + "/hacbs-jvm-build-request-processor:dev"
 		for i, step := range ta.maven.Spec.Steps {
 			if step.Name != "analyse-dependencies" {
@@ -295,7 +295,8 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 			Name:      v1alpha1.JBSConfigName,
 		},
 		Spec: v1alpha1.JBSConfigSpec{
-			EnableRebuilds: true,
+			EnableRebuilds:  true,
+			ContainerBuilds: true,
 			MavenBaseLocations: map[string]string{
 				"maven-repository-300-jboss":     "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-confluent": "https://packages.confluent.io/maven",
@@ -308,6 +309,7 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 				LimitMemory:   "1024Mi",
 				WorkerThreads: "100",
 				RequestCPU:    "10m",
+				DisableTLS:    true,
 			},
 			Registry: v1alpha1.ImageRegistrySpec{
 				ImageRegistry: v1alpha1.ImageRegistry{
@@ -976,20 +978,22 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		}
 		for depIdx := range deploymentList.Items {
 			dep := deploymentList.Items[depIdx]
-			fmt.Printf("Adjusting memory limit for pod %s.%s\n", dep.Namespace, dep.Name)
-			for i := range dep.Spec.Template.Spec.Containers {
-				if dep.Spec.Template.Spec.Containers[i].Resources.Limits == nil {
-					dep.Spec.Template.Spec.Containers[i].Resources.Limits = corev1.ResourceList{}
+			if dep.Namespace != "jvm-build-service" {
+				fmt.Printf("Adjusting memory limit for pod %s.%s\n", dep.Namespace, dep.Name)
+				for i := range dep.Spec.Template.Spec.Containers {
+					if dep.Spec.Template.Spec.Containers[i].Resources.Limits == nil {
+						dep.Spec.Template.Spec.Containers[i].Resources.Limits = corev1.ResourceList{}
+					}
+					if dep.Spec.Template.Spec.Containers[i].Resources.Requests == nil {
+						dep.Spec.Template.Spec.Containers[i].Resources.Requests = corev1.ResourceList{}
+					}
+					dep.Spec.Template.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("110Mi")
+					dep.Spec.Template.Spec.Containers[i].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("100Mi")
 				}
-				if dep.Spec.Template.Spec.Containers[i].Resources.Requests == nil {
-					dep.Spec.Template.Spec.Containers[i].Resources.Requests = corev1.ResourceList{}
+				_, err := kubeClient.AppsV1().Deployments(ns.Name).Update(context.TODO(), &dep, metav1.UpdateOptions{})
+				if err != nil {
+					panic(err)
 				}
-				dep.Spec.Template.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("110Mi")
-				dep.Spec.Template.Spec.Containers[i].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("100Mi")
-			}
-			_, err := kubeClient.AppsV1().Deployments(ns.Name).Update(context.TODO(), &dep, metav1.UpdateOptions{})
-			if err != nil {
-				panic(err)
 			}
 		}
 	}
@@ -1025,7 +1029,6 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 	if owner == "" {
 		owner = "testuser"
 	}
-	fmt.Printf("### Using DEV_IP %s and owner %s\n", devIp, owner)
 	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ta.ns,
@@ -1034,6 +1037,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		},
 		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds:    true,
+			ContainerBuilds:   true,
 			AdditionalRecipes: []string{"https://github.com/jvm-build-service-test-data/recipe-repo"},
 			BuildSettings: v1alpha1.BuildSettings{
 				BuildRequestMemory: "512Mi",
