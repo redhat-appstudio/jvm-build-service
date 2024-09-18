@@ -376,6 +376,10 @@ func createRepo(ta *testArgs, jbsConfig *v1alpha1.JBSConfig) {
 		if err != nil {
 			debugAndFailTest(ta, err.Error())
 		}
+		err = deployRepoConfigMap(ta)
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+		}
 		err = deployRepo(ta, mavenUsername, mavenPassword)
 		if err != nil {
 			debugAndFailTest(ta, err.Error())
@@ -431,6 +435,28 @@ func deployRepoService(ta *testArgs) error {
 //go:embed Dockerfile.reposilite
 var trustedReposiliteImage string
 
+func deployRepoConfigMap(ta *testArgs) error {
+	_, err := kubeClient.CoreV1().ConfigMaps(ta.ns).Get(context.TODO(), v1alpha1.RepoConfigMapName, metav1.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		var path string
+		path, err = os.Getwd()
+		if err != nil {
+			return err
+		}
+		var configBytes []byte
+		configBytes, err = os.ReadFile(filepath.Clean(filepath.Join(path, "reposilite-config.json")))
+		if err != nil {
+			return err
+		}
+		cfgMap := corev1.ConfigMap{}
+		cfgMap.Name = v1alpha1.RepoConfigMapName
+		cfgMap.Namespace = ta.ns
+		cfgMap.Data = map[string]string{v1alpha1.RepoConfigFileName: string(configBytes)}
+		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
+	}
+	return err
+}
+
 func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error {
 	_, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
@@ -447,6 +473,7 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 		port := int32(8080)
 		repo.Spec.Template.Spec.ServiceAccountName = "pipeline"
 		repo.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{RunAsUser: new(int64)}
+		configMountPath := "/config"
 		repo.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:            v1alpha1.RepoDeploymentName,
 			Image:           strings.TrimSpace(strings.Split(trustedReposiliteImage, "FROM")[1]),
@@ -468,9 +495,16 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 			},
 			StartupProbe:  &corev1.Probe{FailureThreshold: 120, PeriodSeconds: 1, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
 			LivenessProbe: &corev1.Probe{FailureThreshold: 3, PeriodSeconds: 5, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "config",
+				MountPath: configMountPath,
+			}},
 		}}
+		repo.Spec.Template.Spec.Volumes = []corev1.Volume{
+			{Name: "config", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.RepoConfigMapName}}}},
+		}
 		repo.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
-			{Name: "REPOSILITE_OPTS", Value: "--token " + mavenUsername + ":" + mavenPassword},
+			{Name: "REPOSILITE_OPTS", Value: "--shared-configuration " + configMountPath + "/" + v1alpha1.RepoConfigFileName + " --token " + mavenUsername + ":" + mavenPassword},
 		}
 		_, err = kubeClient.AppsV1().Deployments(ta.ns).Create(context.TODO(), repo, metav1.CreateOptions{})
 	}
