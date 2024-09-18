@@ -22,7 +22,9 @@ const (
 	AWSRegion                               = "awsregion"                        //#nosec
 	AWSSecretName                           = "jvm-build-maven-repo-aws-secrets" //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
-	RepoDeploymentName                      = "jvm-build-maven-repo" // only used for testing
+	RepoDeploymentName                      = "jvm-build-maven-repo"            // only used for testing
+	RepoConfigMapName                       = "jvm-build-maven-repo-config-map" // only used for testing
+	RepoConfigFileName                      = "shared.configuration.json"
 	ConfigArtifactCacheRequestMemoryDefault = "512Mi"
 	ConfigArtifactCacheRequestCPUDefault    = "1"
 	ConfigArtifactCacheLimitMemoryDefault   = "512Mi"
