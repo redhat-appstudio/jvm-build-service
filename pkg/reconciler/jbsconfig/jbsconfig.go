@@ -505,7 +505,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	//central is at the hard coded 200 position
 	//redhat is configured at 250
 	repos := []Repo{{name: "central", position: 200}, {name: "redhat", position: 250}}
-	fmt.Printf("### cacheDeployment jbsConfig.Spec.EnableRebuilds %#v maven repo %#v, maven deploy %#v \n", jbsConfig.Spec.EnableRebuilds, jbsConfig.Spec.MavenDeployment.Repository, jbsConfig.Spec.MavenDeployment.OnlyDeploy)
+	fmt.Printf("### cacheDeployment jbsConfig.Spec.EnableRebuilds %#v maven repo %#v \n", jbsConfig.Spec.EnableRebuilds, jbsConfig.Spec.MavenDeployment.Repository)
 
 	if jbsConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})

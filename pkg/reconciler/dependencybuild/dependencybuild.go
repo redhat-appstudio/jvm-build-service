@@ -819,7 +819,6 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 				}
 			}
 
-			fmt.Printf("### Creating run.results with deployed %#v \n", deployed)
 			run.Results = &v1alpha1.BuildPipelineRunResults{
 				Image:               image,
 				ImageDigest:         digest,

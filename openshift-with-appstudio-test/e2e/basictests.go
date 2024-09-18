@@ -142,8 +142,6 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 					ta.Logf(fmt.Sprintf("artifactbuild %s not complete", ab.Spec.GAV))
 					abComplete = false
 					break
-				} else {
-					fmt.Printf("### [all-artifact-builds] artifactbuild %#v complete \n", ab.Spec.GAV)
 				}
 			}
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
@@ -224,7 +222,6 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			}
 			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
 			for _, db := range dbList.Items {
-				fmt.Printf("### [contaminatedbuild] DB status %#v spec %#v \n", db.Status, db.Spec)
 				if db.Status.State == v1alpha1.DependencyBuildStateContaminated {
 					dbContaminated = true
 					contaminated = db.Name
@@ -244,7 +241,6 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 		})
 		ta.Logf(fmt.Sprintf("contaminated dependencybuild: %s", contaminated))
 		if err != nil {
-			fmt.Printf("### error %#v\n", err)
 			debugAndFailTest(ta, "timed out waiting for contaminated build to appear")
 		}
 		//make sure simple-jdk8 was requested as a result
