@@ -255,9 +255,7 @@ func (r *ReconcileImageScan) createLookupPipeline(ctx context.Context, image str
 	}
 
 	pullPolicy := corev1.PullIfNotPresent
-	if strings.HasPrefix(image, "quay.io/minikube") {
-		pullPolicy = corev1.PullNever
-	} else if strings.HasSuffix(image, "dev") {
+	if strings.HasSuffix(image, "dev") {
 		pullPolicy = corev1.PullAlways
 	}
 	envVars := []corev1.EnvVar{
