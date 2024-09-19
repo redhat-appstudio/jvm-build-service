@@ -20,7 +20,7 @@ if [ -z "$MAVEN_PASSWORD" ]; then
     export MAVEN_PASSWORD=secret
 fi
 if [ -z "$MAVEN_REPOSITORY" ]; then
-    export MAVEN_REPOSITORY='http://jvm-build-maven-repo.$(context.taskRun.namespace).svc.cluster.local/releases'
+    export MAVEN_REPOSITORY="http://jvm-build-maven-repo.${JBS_WORKER_NAMESPACE}.svc.cluster.local/releases"
 fi
 
 if [ -n "$DBTESTSET" ]; then
