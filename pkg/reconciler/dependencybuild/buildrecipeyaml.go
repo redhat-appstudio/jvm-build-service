@@ -751,10 +751,7 @@ func createKonfluxScripts(containerfile string, konfluxScript string) string {
 
 func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
 	pullPolicy := v1.PullIfNotPresent
-	// TODO: Delete this block?
-	if strings.HasPrefix(buildRequestProcessorImage, "quay.io/minikube") {
-		pullPolicy = v1.PullNever
-	} else if strings.HasSuffix(buildRequestProcessorImage, ":dev") {
+	if strings.HasSuffix(buildRequestProcessorImage, ":dev") {
 		pullPolicy = v1.PullAlways
 	}
 	return pullPolicy

@@ -1168,10 +1168,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		args = append(args, "--private-repo")
 	}
 	pullPolicy := v1.PullIfNotPresent
-	// TODO: Delete this block?
-	if strings.HasPrefix(image, "quay.io/minikube") {
-		pullPolicy = v1.PullNever
-	} else if strings.HasSuffix(image, "dev") {
+	if strings.HasSuffix(image, "dev") {
 		pullPolicy = v1.PullAlways
 	}
 	secretOptional := false

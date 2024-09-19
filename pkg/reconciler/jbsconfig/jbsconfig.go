@@ -590,10 +590,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		}
 	}
 	cache.Spec.Template.Spec.Containers[0].Image = r.configuredCacheImage
-	// TODO: Delete this block?
-	if strings.HasPrefix(r.configuredCacheImage, "quay.io/minikube") {
-		cache.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
-	} else if !strings.HasPrefix(r.configuredCacheImage, "quay.io/redhat-appstudio") {
+	if !strings.HasPrefix(r.configuredCacheImage, "quay.io/redhat-appstudio") {
 		// work around for developer mode while we are hard coding the spec in the controller
 		cache.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
 	}
