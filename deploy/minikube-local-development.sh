@@ -60,7 +60,7 @@ start_minikube() {
 
 deploy_minikube() {
     echo "Deploy Minikube:"
-    ./minikube-ci.sh
+    $DIR/minikube-ci.sh
 }
 
 clean_minikube() {
