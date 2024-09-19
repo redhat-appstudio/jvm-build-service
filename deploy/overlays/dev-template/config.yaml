@@ -15,7 +15,6 @@ spec:
   mavenDeployment:
     username: ${MAVEN_USERNAME}
     repository: ${MAVEN_REPOSITORY}
-    onlyDeploy: true
   gitSourceArchive:
     identity: ${GIT_DEPLOY_IDENTITY}
     url: ${GIT_DEPLOY_URL}

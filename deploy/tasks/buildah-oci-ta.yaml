@@ -407,7 +407,6 @@ spec:
 
         # TODO: Rename to JBS_CACHE_URL?
         if [ -n "$CACHE_URL" ]; then
-          echo "### CACHE_URL is $CACHE_URL"
           BUILDAH_ARGS+=("--build-arg=CACHE_URL=$CACHE_URL")
         fi
 

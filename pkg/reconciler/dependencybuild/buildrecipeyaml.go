@@ -281,8 +281,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nWORKDIR /var/workdir" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
 		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker" +
-		// TODO: Debug only
-		"\nRUN rpm -ivh https://vault.centos.org/8.5.2111/BaseOS/x86_64/os/Packages/tree-1.7.0-15.el8.x86_64.rpm" +
 		"\nCOPY --from=build-request-processor /deployments/ /var/workdir/software/build-request-processor" +
 		// Copying JDK17 for the cache.
 		// TODO: Could we determine if we are using UBI8 and avoid this?
@@ -302,7 +300,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nCMD [ \"/bin/bash\", \"/var/workdir/entry-script.sh\" ]"
 
 	fmt.Printf("### Using recipe %#v with tool %#v and buildRequestImage %#v \n", recipe.Image, tool, buildRequestProcessorImage)
-	fmt.Printf("#### substitution %#v \n", doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos))
 
 	// Konflux Containerfile
 	kf := "FROM " + recipe.Image +
@@ -682,9 +679,6 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions
 		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PostBuildTaskName + ".results." + i.Name + ")"}})
 	}
 
-	for _, i := range ps.Tasks {
-		fmt.Printf("### ps.Tasks Pipeline Task Name: %#v \n", i.Name)
-	}
 	for _, i := range pipelineParams {
 		ps.Params = append(ps.Params, tektonpipeline.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default, Type: i.Type})
 		var value tektonpipeline.ResultValue

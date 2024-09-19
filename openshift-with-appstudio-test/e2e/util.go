@@ -372,7 +372,6 @@ func createRepo(ta *testArgs, jbsConfig *v1alpha1.JBSConfig) {
 		jbsConfig.Spec.MavenDeployment = v1alpha1.MavenDeployment{
 			Username:   mavenUsername,
 			Repository: mavenRepository,
-			OnlyDeploy: true, // we don't want cache attempting to download from empty repo
 		}
 		err := deployRepoService(ta)
 		if err != nil {

@@ -28,6 +28,5 @@ if [ -z ${JBS_DISABLE_CACHE+x} ]; then
 EOF
 fi
 
-echo "### CACHE_URL $CACHE_URL and params $(params.CACHE_URL)"
 echo "Running $(which ant) with arguments: $@"
 eval "ant $@" | tee $(workspaces.source.path)/logs/ant.log
