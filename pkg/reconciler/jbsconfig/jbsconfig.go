@@ -73,18 +73,9 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, err
 	}
 	log.Info("reconciling JBSConfig")
-	if jbsConfig.Spec.RelocationPatterns != nil {
-		jbsConfig.Spec.RelocationPatterns = nil
-		return reconcile.Result{}, r.client.Update(ctx, &jbsConfig)
-	}
-	if jbsConfig.Spec.HermeticBuilds != "" {
-		jbsConfig.Spec.HermeticBuilds = ""
-		return reconcile.Result{}, r.client.Update(ctx, &jbsConfig)
-	}
 
 	// TODO: ### Should we add some sanity checking i.e. if ContainerBuilds are enabled, we need GIT_DEPLOY_TOKEN
 	//      i.e. source archiving in DeployPreBuildSourceCommand
-	fmt.Printf("### JBSConfig containerBuilds %#v \n", jbsConfig.Spec.ContainerBuilds)
 	log.Info(fmt.Sprintf("### JBSConfig containerBuilds %#v \n", jbsConfig.Spec.ContainerBuilds))
 
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
@@ -514,6 +505,8 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	//central is at the hard coded 200 position
 	//redhat is configured at 250
 	repos := []Repo{{name: "central", position: 200}, {name: "redhat", position: 250}}
+	fmt.Printf("### cacheDeployment jbsConfig.Spec.EnableRebuilds %#v maven repo %#v, maven deploy %#v \n", jbsConfig.Spec.EnableRebuilds, jbsConfig.Spec.MavenDeployment.Repository, jbsConfig.Spec.MavenDeployment.OnlyDeploy)
+
 	if jbsConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})
 
@@ -537,7 +530,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}},
 		}, cache)
 
-		if jbsConfig.Spec.MavenDeployment.Repository != "" && !jbsConfig.Spec.MavenDeployment.OnlyDeploy {
+		if jbsConfig.Spec.MavenDeployment.Repository != "" {
 			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Repository, "MAVEN_REPOSITORY_URL", cache)
 			cache = setEnvVarValue(jbsConfig.Spec.MavenDeployment.Username, "MAVEN_REPOSITORY_USERNAME", cache)
 			cache = setEnvVar(corev1.EnvVar{
@@ -597,6 +590,7 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 		}
 	}
 	cache.Spec.Template.Spec.Containers[0].Image = r.configuredCacheImage
+	// TODO: Delete this block?
 	if strings.HasPrefix(r.configuredCacheImage, "quay.io/minikube") {
 		cache.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
 	} else if !strings.HasPrefix(r.configuredCacheImage, "quay.io/redhat-appstudio") {

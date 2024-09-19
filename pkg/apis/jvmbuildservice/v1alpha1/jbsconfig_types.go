@@ -4,8 +4,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type HermeticBuildType string
-
 const (
 	JBSConfigName                           = "jvm-build-config"
 	DefaultImageSecretName                  = "jvm-build-image-secrets"          //#nosec
@@ -24,7 +22,9 @@ const (
 	AWSRegion                               = "awsregion"                        //#nosec
 	AWSSecretName                           = "jvm-build-maven-repo-aws-secrets" //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
-	RepoDeploymentName                      = "jvm-build-maven-repo" // only used for testing
+	RepoDeploymentName                      = "jvm-build-maven-repo"            // only used for testing
+	RepoConfigMapName                       = "jvm-build-maven-repo-config-map" // only used for testing
+	RepoConfigFileName                      = "shared.configuration.json"
 	ConfigArtifactCacheRequestMemoryDefault = "512Mi"
 	ConfigArtifactCacheRequestCPUDefault    = "1"
 	ConfigArtifactCacheLimitMemoryDefault   = "512Mi"
@@ -33,10 +33,8 @@ const (
 	ConfigArtifactCacheWorkerThreadsDefault = "50"
 	ConfigArtifactCacheStorageDefault       = "10Gi"
 
-	HermeticBuildTypeRequired HermeticBuildType = "Required"
-
-	KonfluxBuildDefinitions = "https://github.com/konflux-ci/build-definitions.git"
-	KonfluxBuildahPath      = "task/buildah-oci-ta/0.2/buildah-oci-ta.yaml"
+	// KonfluxBuildDefinitions TODO: Change this to the main repository after PR merge.
+	KonfluxBuildDefinitions = "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB33/deploy/tasks/buildah-oci-ta.yaml"
 )
 
 type JBSConfigSpec struct {
@@ -45,8 +43,6 @@ type JBSConfigSpec struct {
 	// If this is true then the build will fail if artifact verification fails
 	// otherwise deploy will happen as normal, but a field will be set on the DependencyBuild
 	RequireArtifactVerification bool `json:"requireArtifactVerification,omitempty"`
-	// Deprecated
-	HermeticBuilds HermeticBuildType `json:"hermeticBuilds,omitempty"`
 
 	AdditionalRecipes []string `json:"additionalRecipes,omitempty"`
 
@@ -58,8 +54,6 @@ type JBSConfigSpec struct {
 	GitSourceArchive GitSourceArchive  `json:"gitSourceArchive,omitempty"`
 	CacheSettings    CacheSettings     `json:"cacheSettings,omitempty"`
 	BuildSettings    BuildSettings     `json:"buildSettings,omitempty"`
-	// Deprecated
-	RelocationPatterns []RelocationPatternElement `json:"relocationPatterns,omitempty"`
 
 	// Whether to use a standard build pipeline or build in a Docker container via buildah.
 	ContainerBuilds bool `json:"containerBuilds,omitempty"`
@@ -128,24 +122,6 @@ type GitSourceArchive struct {
 	Identity               string `json:"identity,omitempty"`
 	URL                    string `json:"url,omitempty"`
 	DisableSSLVerification bool   `json:"disableSSLVerification,omitempty"`
-}
-
-type RelocationPatternElement struct {
-	RelocationPattern RelocationPattern `json:"relocationPattern"`
-}
-
-type RelocationPattern struct {
-	BuildPolicy string           `json:"buildPolicy,omitempty" default:"default"`
-	Patterns    []PatternElement `json:"patterns,omitempty"`
-}
-
-type PatternElement struct {
-	Pattern Pattern `json:"pattern"`
-}
-
-type Pattern struct {
-	From string `json:"from"`
-	To   string `json:"to"`
 }
 
 // +genclient

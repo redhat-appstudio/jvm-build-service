@@ -5,6 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -42,6 +44,17 @@ public class ClassFileTracker {
             Logger.getLogger(ClassFileTracker.class.getName()).log(Level.SEVERE,
                     "Failed to add tracking data to class: " + name, e);
             return classData;
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length != 1) {
+            System.err.println("Usage: ClassFileTracker <class-file>");
+            System.exit(1);
+        }
+        var info = ClassFileTracker.readTrackingDataFromFile(Files.newInputStream(Path.of(args[0])), args[0]);
+        for (var i : info) {
+            System.out.println(i);
         }
     }
 

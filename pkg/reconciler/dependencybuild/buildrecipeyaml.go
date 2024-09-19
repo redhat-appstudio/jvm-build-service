@@ -163,8 +163,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 	orasOptions := ""
+	tlsVerify := "true"
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
 		orasOptions = "--insecure --plain-http"
+		tlsVerify = "false"
 	}
 
 	preprocessorArgs := []string{
@@ -267,7 +269,11 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
 	konfluxScript := "#!/bin/sh\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
 
+	fmt.Printf("### Using cacheUrl %#v paramValues %#v, commitTime %#v, buildRepos %#v\n", cacheUrl, paramValues, commitTime, buildRepos)
+
 	// Diagnostic Containerfile
+	// TODO: Looks like diagnostic files won't work with UBI7 anymore. This needs to be followed up on; potentially
+	//		 we could just disable the cache for this scenario?
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
 		"\nFROM " + recipe.Image +
@@ -295,14 +301,18 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nRUN chmod +x /var/workdir/*.sh" +
 		"\nCMD [ \"/bin/bash\", \"/var/workdir/entry-script.sh\" ]"
 
+	fmt.Printf("### Using recipe %#v with tool %#v and buildRequestImage %#v \n", recipe.Image, tool, buildRequestProcessorImage)
+	fmt.Printf("#### substitution %#v \n", doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos))
+
 	// Konflux Containerfile
 	kf := "FROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /var/workdir" +
 		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker" +
+		"\nARG CACHE_URL=\"\"" +
+		"\nENV CACHE_URL=$CACHE_URL" +
 		// TODO ### HACK : How to use SSL to avoid certificate problem with buildah task?
-		// "\nENV CACHE_URL=" + "http://jvm-build-workspace-artifact-cache." + jbsConfig.Namespace + ".svc.cluster.local/v2/cache/rebuild" + buildRepos + "/" + strconv.FormatInt(commitTime, 10) +
-		"\nENV JBS_DISABLE_CACHE=true" +
+		//"\nENV JBS_DISABLE_CACHE=true" +
 		"\nCOPY .jbs/run-build.sh /var/workdir" +
 		"\nCOPY . /var/workdir/workspace/source/" +
 		"\nRUN /var/workdir/run-build.sh"
@@ -448,28 +458,14 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if jbsConfig.Spec.ContainerBuilds {
 		// Note - its also possible to refer to a remote pipeline ref as well as a task.
 		resolver := tektonpipeline.ResolverRef{
-			Resolver: "git",
+			// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
+			Resolver: "http",
 			Params: []tektonpipeline.Param{
 				{
 					Name: "url",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: v1alpha1.KonfluxBuildDefinitions,
-					},
-				},
-				{
-					// Currently always using 'head' of branch.
-					Name: "revision",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "main",
-					},
-				},
-				{
-					Name: "pathInRepo",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: v1alpha1.KonfluxBuildahPath,
 					},
 				},
 			},
@@ -502,6 +498,20 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						Value: tektonpipeline.ParamValue{
 							Type:      tektonpipeline.ParamTypeString,
 							StringVal: preBuildImage,
+						},
+					},
+					{
+						Name: "ORAS_OPTIONS",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: orasOptions,
+						},
+					},
+					{
+						Name: "TLSVERIFY",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: tlsVerify,
 						},
 					},
 				},
@@ -593,7 +603,12 @@ echo -n "$IMGDIGEST" >> $(results.%s.path)
 				TaskSpec: buildTask,
 			},
 			Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
-			Params:  []tektonpipeline.Param{{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
+			Params: []tektonpipeline.Param{
+				{
+					Name:  PipelineResultPreBuildImageDigest,
+					Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage},
+				},
+			},
 			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 				{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 				{Name: WorkspaceSource, Workspace: WorkspaceSource},
@@ -742,6 +757,7 @@ func createKonfluxScripts(containerfile string, konfluxScript string) string {
 
 func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
 	pullPolicy := v1.PullIfNotPresent
+	// TODO: Delete this block?
 	if strings.HasPrefix(buildRequestProcessorImage, "quay.io/minikube") {
 		pullPolicy = v1.PullNever
 	} else if strings.HasSuffix(buildRequestProcessorImage, ":dev") {

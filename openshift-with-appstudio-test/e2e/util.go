@@ -12,6 +12,7 @@ import (
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"html/template"
 	"io"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"net/http"
 	"os"
@@ -22,15 +23,13 @@ import (
 	"testing"
 	"time"
 
-	v13 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	jvmclientset "github.com/redhat-appstudio/jvm-build-service/pkg/client/clientset/versioned"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	v13 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/rbac/v1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -212,6 +211,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 			ta.maven.Spec.Steps[i].Image = analyserImage
 		}
 	} else if len(quayUsername) > 0 {
+		// TODO: delete this block ....
 		image := "quay.io/" + quayUsername + "/hacbs-jvm-build-request-processor:dev"
 		for i, step := range ta.maven.Spec.Steps {
 			if step.Name != "analyse-dependencies" {
@@ -295,7 +295,8 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 			Name:      v1alpha1.JBSConfigName,
 		},
 		Spec: v1alpha1.JBSConfigSpec{
-			EnableRebuilds: true,
+			EnableRebuilds:  true,
+			ContainerBuilds: true,
 			MavenBaseLocations: map[string]string{
 				"maven-repository-300-jboss":     "https://repository.jboss.org/nexus/content/groups/public/",
 				"maven-repository-301-confluent": "https://packages.confluent.io/maven",
@@ -308,6 +309,7 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 				LimitMemory:   "1024Mi",
 				WorkerThreads: "100",
 				RequestCPU:    "10m",
+				DisableTLS:    true,
 			},
 			Registry: v1alpha1.ImageRegistrySpec{
 				ImageRegistry: v1alpha1.ImageRegistry{
@@ -376,6 +378,10 @@ func createRepo(ta *testArgs, jbsConfig *v1alpha1.JBSConfig) {
 		if err != nil {
 			debugAndFailTest(ta, err.Error())
 		}
+		err = deployRepoConfigMap(ta)
+		if err != nil {
+			debugAndFailTest(ta, err.Error())
+		}
 		err = deployRepo(ta, mavenUsername, mavenPassword)
 		if err != nil {
 			debugAndFailTest(ta, err.Error())
@@ -431,6 +437,28 @@ func deployRepoService(ta *testArgs) error {
 //go:embed Dockerfile.reposilite
 var trustedReposiliteImage string
 
+func deployRepoConfigMap(ta *testArgs) error {
+	_, err := kubeClient.CoreV1().ConfigMaps(ta.ns).Get(context.TODO(), v1alpha1.RepoConfigMapName, metav1.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		var path string
+		path, err = os.Getwd()
+		if err != nil {
+			return err
+		}
+		var configBytes []byte
+		configBytes, err = os.ReadFile(filepath.Clean(filepath.Join(path, "reposilite-config.json")))
+		if err != nil {
+			return err
+		}
+		cfgMap := corev1.ConfigMap{}
+		cfgMap.Name = v1alpha1.RepoConfigMapName
+		cfgMap.Namespace = ta.ns
+		cfgMap.Data = map[string]string{v1alpha1.RepoConfigFileName: string(configBytes)}
+		_, err = kubeClient.CoreV1().ConfigMaps(ta.ns).Create(context.TODO(), &cfgMap, metav1.CreateOptions{})
+	}
+	return err
+}
+
 func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error {
 	_, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
@@ -447,6 +475,7 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 		port := int32(8080)
 		repo.Spec.Template.Spec.ServiceAccountName = "pipeline"
 		repo.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{RunAsUser: new(int64)}
+		configMountPath := "/config"
 		repo.Spec.Template.Spec.Containers = []corev1.Container{{
 			Name:            v1alpha1.RepoDeploymentName,
 			Image:           strings.TrimSpace(strings.Split(trustedReposiliteImage, "FROM")[1]),
@@ -468,9 +497,16 @@ func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error 
 			},
 			StartupProbe:  &corev1.Probe{FailureThreshold: 120, PeriodSeconds: 1, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
 			LivenessProbe: &corev1.Probe{FailureThreshold: 3, PeriodSeconds: 5, ProbeHandler: corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/", Port: intstr.FromInt32(port)}}},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "config",
+				MountPath: configMountPath,
+			}},
 		}}
+		repo.Spec.Template.Spec.Volumes = []corev1.Volume{
+			{Name: "config", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: v1alpha1.RepoConfigMapName}}}},
+		}
 		repo.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
-			{Name: "REPOSILITE_OPTS", Value: "--token " + mavenUsername + ":" + mavenPassword},
+			{Name: "REPOSILITE_OPTS", Value: "--shared-configuration " + configMountPath + "/" + v1alpha1.RepoConfigFileName + " --token " + mavenUsername + ":" + mavenPassword},
 		}
 		_, err = kubeClient.AppsV1().Deployments(ta.ns).Create(context.TODO(), repo, metav1.CreateOptions{})
 	}
@@ -976,20 +1012,22 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		}
 		for depIdx := range deploymentList.Items {
 			dep := deploymentList.Items[depIdx]
-			fmt.Printf("Adjusting memory limit for pod %s.%s\n", dep.Namespace, dep.Name)
-			for i := range dep.Spec.Template.Spec.Containers {
-				if dep.Spec.Template.Spec.Containers[i].Resources.Limits == nil {
-					dep.Spec.Template.Spec.Containers[i].Resources.Limits = corev1.ResourceList{}
+			if dep.Namespace != "jvm-build-service" {
+				fmt.Printf("Adjusting memory limit for pod %s.%s\n", dep.Namespace, dep.Name)
+				for i := range dep.Spec.Template.Spec.Containers {
+					if dep.Spec.Template.Spec.Containers[i].Resources.Limits == nil {
+						dep.Spec.Template.Spec.Containers[i].Resources.Limits = corev1.ResourceList{}
+					}
+					if dep.Spec.Template.Spec.Containers[i].Resources.Requests == nil {
+						dep.Spec.Template.Spec.Containers[i].Resources.Requests = corev1.ResourceList{}
+					}
+					dep.Spec.Template.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("110Mi")
+					dep.Spec.Template.Spec.Containers[i].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("100Mi")
 				}
-				if dep.Spec.Template.Spec.Containers[i].Resources.Requests == nil {
-					dep.Spec.Template.Spec.Containers[i].Resources.Requests = corev1.ResourceList{}
+				_, err := kubeClient.AppsV1().Deployments(ns.Name).Update(context.TODO(), &dep, metav1.UpdateOptions{})
+				if err != nil {
+					panic(err)
 				}
-				dep.Spec.Template.Spec.Containers[i].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("110Mi")
-				dep.Spec.Template.Spec.Containers[i].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("100Mi")
-			}
-			_, err := kubeClient.AppsV1().Deployments(ns.Name).Update(context.TODO(), &dep, metav1.UpdateOptions{})
-			if err != nil {
-				panic(err)
 			}
 		}
 	}
@@ -1025,7 +1063,6 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 	if owner == "" {
 		owner = "testuser"
 	}
-	fmt.Printf("### Using DEV_IP %s and owner %s\n", devIp, owner)
 	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ta.ns,
@@ -1034,6 +1071,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		},
 		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds:    true,
+			ContainerBuilds:   true,
 			AdditionalRecipes: []string{"https://github.com/jvm-build-service-test-data/recipe-repo"},
 			BuildSettings: v1alpha1.BuildSettings{
 				BuildRequestMemory: "512Mi",
