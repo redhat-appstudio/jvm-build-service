@@ -1,3 +1,3 @@
 #This file is used to enable renovate to update the digests. It is updated by renovate then substituted into the golang code.
 
-FROM quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:c3d440309b1a24cdfa8a2c89b668ca56952185f5c50e7abfa14b2aaafd5e2846
+FROM quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:11d90835f4cc882715c37f16513db19876f346096ccba0f26d548b13bfd4a270
