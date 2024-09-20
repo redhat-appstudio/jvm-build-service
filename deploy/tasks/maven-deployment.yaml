@@ -57,7 +57,6 @@ spec:
         AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
         echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
         use-archive oci:$URL@$AARCHIVE=/var/workdir/artifacts
-        ls -lR /var/workdir
       env:
         - name: ORAS_OPTIONS
           value: $(params.ORAS_OPTIONS)
@@ -77,8 +76,6 @@ spec:
           cpu: 50m
           memory: 512Mi
       env:
-#        - name: MAVEN_OPTS
-#          value: "-Dmaven.wagon.http.ssl.insecure=true"
         - name: MVN_REPO
           value: $(params.MVN_REPO)
         - name: MVN_USERNAME
@@ -88,8 +85,6 @@ spec:
             secretKeyRef:
               name: $(params.MVN_PASSWORD)
               key: mavenpassword
-#        - name: SSL_CERT_DIR
-#          value: /tekton-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs
       args:
         - deploy
         - --directory=/var/workdir/artifacts

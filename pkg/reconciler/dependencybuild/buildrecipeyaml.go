@@ -60,12 +60,14 @@ var buildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
-func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string, gavs string) (*tektonpipeline.PipelineSpec, error) {
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
 	orasOptions := ""
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
 		orasOptions = "--insecure --plain-http"
 	}
 
+	// Original deploy pipeline used to run maven deployment and also tag the images using 'oras tag'
+	// with the SHA256 encoded sum of the GAVs.
 	resolver := tektonpipeline.ResolverRef{
 		// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
 		Resolver: "http",
@@ -121,7 +123,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 						Name: "MVN_PASSWORD",
 						Value: tektonpipeline.ParamValue{
 							Type:      tektonpipeline.ParamTypeString,
-							StringVal: v1alpha1.MavenSecretKey,
+							StringVal: v1alpha1.MavenSecretName,
 						},
 					},
 					{
@@ -139,12 +141,8 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 						},
 					},
 				},
-				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-					{Name: WorkspaceSource, Workspace: WorkspaceSource},
-				},
 			},
 		},
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
 	return ps, nil
 }
