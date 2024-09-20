@@ -54,9 +54,6 @@ type JBSConfigSpec struct {
 	GitSourceArchive GitSourceArchive  `json:"gitSourceArchive,omitempty"`
 	CacheSettings    CacheSettings     `json:"cacheSettings,omitempty"`
 	BuildSettings    BuildSettings     `json:"buildSettings,omitempty"`
-
-	// Whether to use a standard build pipeline or build in a Docker container via buildah.
-	ContainerBuilds bool `json:"containerBuilds,omitempty"`
 }
 
 type ImageRegistrySpec struct {
