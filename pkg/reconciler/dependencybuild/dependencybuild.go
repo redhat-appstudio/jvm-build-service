@@ -1367,6 +1367,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	fmt.Printf("### buildRequestProcessorImage %#v \n", buildRequestProcessorImage)
 	pr.Namespace = db.Namespace
 	pr.Name = prName
 	pr.Labels = map[string]string{artifactbuild.DependencyBuildIdLabel: db.Name, artifactbuild.PipelineRunLabel: "", PipelineTypeLabel: PipelineTypeDeploy}
