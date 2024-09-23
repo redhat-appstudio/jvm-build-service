@@ -1,7 +1,5 @@
 package com.redhat.hacbs.domainproxy;
 
-import static com.redhat.hacbs.domainproxy.ExternalProxyEndpoint.dependencies;
-
 import java.io.IOException;
 import java.net.Socket;
 import java.net.StandardProtocolFamily;
@@ -9,7 +7,6 @@ import java.net.UnixDomainSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -17,17 +14,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
-import org.cyclonedx.CycloneDxSchema;
-import org.cyclonedx.generators.BomGeneratorFactory;
-import org.cyclonedx.generators.json.BomJsonGenerator;
-import org.cyclonedx.model.Bom;
-import org.cyclonedx.model.Component;
-import org.cyclonedx.model.Property;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.common.sbom.GAV;
-
-import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.Startup;
 
@@ -39,9 +27,6 @@ public class DomainProxyHack {
     @ConfigProperty(name = "server-domain-socket")
     String domainSocket;
 
-    @ConfigProperty(name = "sbom-output-directory")
-    Path sbomOutputDir;
-
     @PostConstruct
     public void start() {
         new Thread(new Runnable() {
@@ -52,7 +37,6 @@ public class DomainProxyHack {
                     public void run() {
                         try {
                             Files.delete(Path.of(domainSocket));
-                            createBom();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -125,44 +109,5 @@ public class DomainProxyHack {
                 Quarkus.asyncExit();
             }
         }).start();
-    }
-
-    void createBom() throws IOException {
-        Bom bom = new Bom();
-        for (Dependency dependency : dependencies) {
-            GAV gav = dependency.GAV();
-            Component component = new Component();
-            component.setType(Component.Type.LIBRARY);
-            String groupId = gav.getGroupId();
-            String artifactId = gav.getArtifactId();
-            String version = gav.getVersion();
-            component.setGroup(groupId);
-            component.setName(artifactId);
-            component.setVersion(version);
-            String purl = String.format("pkg:maven/%s/%s@%s", groupId, artifactId, version);
-            if (dependency.classifier() != null) {
-                purl += String.format("?classifier=%s", dependency.classifier());
-            }
-            component.setPurl(purl);
-            bom.addComponent(component);
-
-            Property typeProperty = new Property();
-            typeProperty.setName("package:type");
-            typeProperty.setValue("maven");
-            component.addProperty(typeProperty);
-
-            Property languageProperty = new Property();
-            languageProperty.setName("package:language");
-            languageProperty.setValue("java");
-            component.addProperty(languageProperty);
-        }
-
-        if (!dependencies.isEmpty()) {
-            Files.createDirectories(sbomOutputDir);
-            Path sbom = sbomOutputDir.resolve("sbom.json");
-            Log.infof("Writing SBOM to %s", sbom.toAbsolutePath());
-            BomJsonGenerator bomJsonGenerator = BomGeneratorFactory.createJson(CycloneDxSchema.VERSION_LATEST, bom);
-            Files.writeString(sbom, bomJsonGenerator.toJsonString(), StandardCharsets.UTF_8);
-        }
     }
 }

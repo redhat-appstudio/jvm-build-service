@@ -4,8 +4,6 @@ import static com.redhat.hacbs.classfile.tracker.TrackingData.extractClassifier;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,13 +22,10 @@ import java.util.stream.Stream;
 import jakarta.enterprise.inject.spi.BeanManager;
 
 import org.apache.commons.lang3.StringUtils;
-import org.cyclonedx.Version;
-import org.cyclonedx.generators.BomGeneratorFactory;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
 import com.redhat.hacbs.common.sbom.GAV;
-import com.redhat.hacbs.container.analyser.dependencies.SBomGenerator;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;
@@ -62,9 +57,6 @@ public class BuildVerifyCommand implements Runnable {
 
     @CommandLine.Option(names = "--logs-path")
     Path logsPath;
-
-    @CommandLine.Option(names = "--build-info-path")
-    Path buildInfoPath;
 
     @CommandLine.Option(required = true, names = "--scm-uri")
     String scmUri;
@@ -217,7 +209,6 @@ public class BuildVerifyCommand implements Runnable {
                     i.getValue().getContaminatedArtifacts().forEach(gavs::remove);
                 }
             }
-            generateBuildSbom();
 
             //we still deploy, but without the contaminates
             // This means the build failed to produce any deployable output.
@@ -237,39 +228,6 @@ public class BuildVerifyCommand implements Runnable {
         } catch (Exception e) {
             Log.error("Deployment failed", e);
             throw new RuntimeException(e);
-        }
-    }
-
-    // TODO: ### For container-builds, should sbom generation be delegated to the task within that? If it supports it?
-    private void generateBuildSbom() {
-        if (buildInfoPath == null) {
-            Log.infof("Not generating build sbom, path not set");
-            return;
-        }
-        Log.infof("Generating build sbom from %s", buildInfoPath);
-        Set<TrackingData> data = new HashSet<>();
-        try {
-            Files.walkFileTree(buildInfoPath, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    try (InputStream inputStream = Files.newInputStream(file)) {
-                        Set<TrackingData> ret = ClassFileTracker.readTrackingDataFromFile(inputStream,
-                                file.getFileName().toString());
-                        if (!ret.isEmpty()) {
-                            Log.infof("Found file at %s", file);
-                            data.addAll(ret);
-                        }
-                        return FileVisitResult.CONTINUE;
-                    }
-                }
-            });
-            var sbom = SBomGenerator.generateSBom(data, null);
-            var json = BomGeneratorFactory.createJson(Version.VERSION_12, sbom);
-            String sbomStr = json.toJsonString();
-            Log.debugf("Build Sbom \n%s", sbomStr);
-            Files.writeString(logsPath.resolve("build-sbom.json"), sbomStr, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            Log.errorf(e, "Failed to generate build sbom");
         }
     }
 

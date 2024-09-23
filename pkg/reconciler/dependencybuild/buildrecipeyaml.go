@@ -882,9 +882,6 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
 		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
 	}
-	if !jbsConfig.Spec.ContainerBuilds {
-		deployArgs = append(deployArgs, "--build-info-path=$(workspaces.source.path)/build-info")
-	}
 
 	konfluxArgs := []string{
 		"deploy-pre-build-source",
