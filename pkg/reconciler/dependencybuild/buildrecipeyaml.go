@@ -60,94 +60,89 @@ var buildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
-func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string, gavs string) (*tektonpipeline.PipelineSpec, error) {
-	zero := int64(0)
-	mavenDeployArgs := pipelineDeployCommands(jbsConfig)
-
-	limits, err := memoryLimits(jbsConfig, 0)
-	if err != nil {
-		return nil, err
-	}
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
 	orasOptions := ""
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
 		orasOptions = "--insecure --plain-http"
 	}
 
-	secretVariables := secretVariables(jbsConfig)
-	pullPolicy := pullPolicy(buildRequestProcessorImage)
-	regUrl := registryArgsWithDefaults(jbsConfig, "")
-
-	tagTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}, {Name: WorkspaceSource, MountPath: WorkspaceMount}},
-		Params: []tektonpipeline.ParamSpec{
-			{Name: PipelineResultPreBuildImageDigest, Type: tektonpipeline.ParamTypeString},
-			{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString},
-			{Name: PipelineResultImage, Type: tektonpipeline.ParamTypeString}},
-		Steps: []tektonpipeline.Step{
+	// Original deploy pipeline used to run maven deployment and also tag the images using 'oras tag'
+	// with the SHA256 encoded sum of the GAVs.
+	resolver := tektonpipeline.ResolverRef{
+		// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
+		Resolver: "http",
+		Params: []tektonpipeline.Param{
 			{
-				Name:            "restore-post-build-artifacts",
-				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-				ImagePullPolicy: v1.PullIfNotPresent,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             secretVariables,
-				// While the manifest digest is available we need the manifest of the layer within
-				// the archive hence using 'oras manifest fetch' to extract the correct layer.
-				Script: fmt.Sprintf(`echo "Restoring artifacts and source to workspace"
-export ORAS_OPTIONS="%s"
-use-archive $(params.%s)=$(workspaces.source.path)/source
-mv $(workspaces.source.path)/source/.jbs/build.sh $(workspaces.source.path)
-URL=$(params.%s)
-DIGEST=$(params.%s)
-AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
-echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
-use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, PipelineResultPreBuildImageDigest, PipelineResultImage, PipelineResultImageDigest),
-			},
-			{
-				Name:            "maven-deployment",
-				Image:           buildRequestProcessorImage,
-				ImagePullPolicy: pullPolicy,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             secretVariables,
-				ComputeResources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
+				Name: "url",
+				Value: tektonpipeline.ParamValue{
+					Type:      tektonpipeline.ParamTypeString,
+					StringVal: v1alpha1.KonfluxMavenDeployDefinitions,
 				},
-				Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(mavenDeployArgs),
-			},
-			{
-				Name:            "oras-tag",
-				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-				ImagePullPolicy: v1.PullIfNotPresent,
-				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-				Env:             secretVariables,
-				// gavs is a comma separated list so split it into spaces
-				Script: fmt.Sprintf(`GAVS=%s
-echo "Tagging for GAVs ($GAVS)"
-oras tag %s --verbose %s@$(params.%s) ${GAVS//,/ }`, gavs, orasOptions, regUrl, PipelineResultImageDigest),
 			},
 		},
 	}
-
 	ps := &tektonpipeline.PipelineSpec{
 		Params: []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
 				Name: TagTaskName,
-				TaskSpec: &tektonpipeline.EmbeddedTask{
-					TaskSpec: tagTask,
+				TaskRef: &tektonpipeline.TaskRef{
+					// Can't specify name and resolver as they clash.
+					ResolverRef: resolver,
 				},
 				Params: []tektonpipeline.Param{
-					{Name: PipelineResultImage, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + PipelineResultImage + ")"}},
-					{Name: PipelineResultImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + PipelineResultImageDigest + ")"}},
-					{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(params." + PipelineResultPreBuildImageDigest + ")"}},
-				},
-				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-					{Name: WorkspaceTls, Workspace: WorkspaceTls},
-					{Name: WorkspaceSource, Workspace: WorkspaceSource},
+					{
+						Name: PipelineResultImage,
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: "$(params." + PipelineResultImage + ")",
+						},
+					},
+					{
+						Name: PipelineResultImageDigest,
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: "$(params." + PipelineResultImageDigest + ")",
+						},
+					},
+					{
+						Name: "MVN_REPO",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: jbsConfig.Spec.MavenDeployment.Repository,
+						},
+					},
+					{
+						Name: "MVN_USERNAME",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: jbsConfig.Spec.MavenDeployment.Username,
+						},
+					},
+					{
+						Name: "MVN_PASSWORD",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: v1alpha1.MavenSecretName,
+						},
+					},
+					{
+						Name: "ORAS_OPTIONS",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: orasOptions,
+						},
+					},
+					{
+						Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
+						Value: tektonpipeline.ParamValue{
+							Type:      tektonpipeline.ParamTypeString,
+							StringVal: buildRequestProcessorImage,
+						},
+					},
 				},
 			},
 		},
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
 	return ps, nil
 }
@@ -932,25 +927,6 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 		registryArgs.WriteString(prependTagToImage(preBuildImageTag, imageRegistry.PrependTag))
 	}
 	return registryArgs.String()
-}
-
-func pipelineDeployCommands(jbsConfig *v1alpha1.JBSConfig) []string {
-
-	deployArgs := []string{
-		"deploy",
-		"--directory=$(workspaces.source.path)/artifacts",
-	}
-
-	mavenArgs := make([]string, 0)
-	if jbsConfig.Spec.MavenDeployment.Repository != "" {
-		mavenArgs = append(mavenArgs, "--mvn-repo="+jbsConfig.Spec.MavenDeployment.Repository)
-	}
-	if jbsConfig.Spec.MavenDeployment.Username != "" {
-		mavenArgs = append(mavenArgs, "--mvn-username="+jbsConfig.Spec.MavenDeployment.Username)
-	}
-	deployArgs = append(deployArgs, mavenArgs...)
-
-	return deployArgs
 }
 
 func gitArgs(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []string {

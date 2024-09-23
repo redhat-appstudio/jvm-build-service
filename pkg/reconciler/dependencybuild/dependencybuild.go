@@ -2,8 +2,6 @@ package dependencybuild
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -1382,18 +1380,6 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		return reconcile.Result{}, err
 	}
 	attempt := db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1]
-	gavs := ""
-	shaCalc := sha256.New()
-	imageRegistry := jbsConfig.ImageRegistry()
-	for i := range attempt.Build.Results.Gavs {
-		if i != 0 {
-			gavs += ","
-		}
-		// Same as DigestUtils.sha256Hex(String.format(GAV_FORMAT, groupId, artifactId, version))
-		shaCalc.Reset()
-		shaCalc.Write([]byte(attempt.Build.Results.Gavs[i]))
-		gavs += prependTagToImage(hex.EncodeToString(shaCalc.Sum(nil)), imageRegistry.PrependTag)
-	}
 
 	paramValues := []tektonpipeline.Param{
 		{Name: PipelineResultImage, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Build.Results.Image}},
@@ -1411,7 +1397,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage, gavs)
+	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
