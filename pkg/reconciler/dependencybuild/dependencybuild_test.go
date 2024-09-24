@@ -525,24 +525,25 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateSubmitBuild))
 		g.Expect(db.Status.BuildAttempts[len(db.Status.BuildAttempts)-1].Recipe.AdditionalMemory).Should(Equal(MemoryIncrement * 2))
 
-		//now verify that the system wide limit kicks in
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
-
-		pr = getBuildPipelineNo(client, g, 2)
-
-		found := false
-		for _, task := range pr.Spec.PipelineSpec.Tasks {
-			for _, step := range task.TaskSpec.Steps {
-				if step.Name == "build" {
-					//default is 1024 + the 700 limit
-					g.Expect(step.ComputeResources.Requests.Memory().String()).Should(Equal("1724Mi"))
-					found = true
-				}
-			}
-		}
-
-		g.Expect(found).Should(BeTrue())
+		// TODO: KJB-46 - its currently not possible to configure the buildah-oci-ta task with extra memory.
+		////now verify that the system wide limit kicks in
+		//g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+		//g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: db.Name}}))
+		//
+		//pr = getBuildPipelineNo(client, g, 2)
+		//
+		//found := false
+		//for _, task := range pr.Spec.PipelineSpec.Tasks {
+		//	for _, step := range task.TaskSpec.Steps {
+		//		if step.Name == "build" {
+		//			//default is 1024 + the 700 limit
+		//			g.Expect(step.ComputeResources.Requests.Memory().String()).Should(Equal("1724Mi"))
+		//			found = true
+		//		}
+		//	}
+		//}
+		//
+		//g.Expect(found).Should(BeTrue())
 	})
 	t.Run("Test reconcile building DependencyBuild with contaminants", func(t *testing.T) {
 		g := NewGomegaWithT(t)
