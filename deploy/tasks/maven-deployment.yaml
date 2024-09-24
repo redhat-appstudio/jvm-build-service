@@ -37,14 +37,10 @@ spec:
       type: string
       default: "quay.io/redhat-appstudio/hacbs-jvm-build-request-processor:dev"
   volumes:
-    - name: shared
-      emptyDir: {}
     - name: workdir
       emptyDir: {}
   stepTemplate:
     volumeMounts:
-      - mountPath: /shared
-        name: shared
       - mountPath: /var/workdir
         name: workdir
   steps:
@@ -70,10 +66,10 @@ spec:
         runAsUser: 0
       computeResources:
         limits:
-          cpu: "1"
-          memory: 2Gi
+          cpu: 300m
+          memory: 512Mi
         requests:
-          cpu: 50m
+          cpu: 10m
           memory: 512Mi
       env:
         - name: MVN_REPO
