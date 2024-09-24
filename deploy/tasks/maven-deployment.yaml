@@ -49,7 +49,7 @@ spec:
         name: workdir
   steps:
     - name: restore-trusted-artifact
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:d6f57d97d19008437680190908fe5444cda380f9c77d0e9efde7153720412e05
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:e0e457b6af10e44ff6b90208a9e69adc863a865e1c062c4cb84bf3846037d74d
       script: |
         echo "Restoring artifacts to workspace"
         URL=$IMAGE_URL
