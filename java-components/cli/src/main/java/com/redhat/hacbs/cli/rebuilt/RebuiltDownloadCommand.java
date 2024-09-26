@@ -10,10 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.cyclonedx.exception.ParseException;
-import org.cyclonedx.parsers.JsonParser;
-import org.cyclonedx.parsers.Parser;
-
 import com.google.cloud.tools.jib.api.Credential;
 import com.google.cloud.tools.jib.api.ImageReference;
 import com.google.cloud.tools.jib.api.InvalidImageReferenceException;
@@ -52,9 +48,6 @@ public class RebuiltDownloadCommand
     @CommandLine.Option(names = "-a", description = "The build to view, specified by RebuiltArtifact name", completionCandidates = RebuildCompleter.class)
     String artifact;
 
-    @CommandLine.Option(names = "-s", description = "Path to an sbom to download all referenced artifacts", completionCandidates = RebuildCompleter.class)
-    File sBom;
-
     @CommandLine.Option(names = "-d", description = "Download directory to use. Defaults to current directory")
     File targetDirectory = new File(System.getProperty("user.dir"));
 
@@ -85,30 +78,6 @@ public class RebuiltDownloadCommand
                     downloadImage(rebuilt.get().getSpec());
                 } else {
                     System.out.println("Unable to find " + artifact + " in list of artifacts");
-                }
-            } else if (sBom != null) {
-                if (!sBom.exists()) {
-                    System.out.println("Unable to find sbom " + sBom);
-                } else {
-                    try {
-                        Parser parser = new JsonParser();
-                        parser.parse(sBom).getComponents().forEach(c -> {
-                            String gav = c.getGroup() + ":" + c.getName() + ":" + c.getVersion();
-                            Optional<RebuiltArtifact> rebuilt = builds.values().stream()
-                                    .filter(b -> b.getSpec().getGav().equals(gav)).findFirst();
-                            if (rebuilt.isPresent()) {
-                                try {
-                                    downloadImage(rebuilt.get().getSpec());
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            } else {
-                                System.out.println("Unable to find " + gav + " in list of artifacts");
-                            }
-                        });
-                    } catch (ParseException e) {
-                        throw new RuntimeException(e);
-                    }
                 }
             }
         } catch (IOException e) {
