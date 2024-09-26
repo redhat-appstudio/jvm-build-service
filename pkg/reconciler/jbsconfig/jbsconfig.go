@@ -74,10 +74,6 @@ func (r *ReconcilerJBSConfig) Reconcile(ctx context.Context, request reconcile.R
 	}
 	log.Info("reconciling JBSConfig")
 
-	// TODO: ### Should we add some sanity checking i.e. if ContainerBuilds are enabled, we need GIT_DEPLOY_TOKEN
-	//      i.e. source archiving in DeployPreBuildSourceCommand
-	log.Info(fmt.Sprintf("### JBSConfig containerBuilds %#v \n", jbsConfig.Spec.ContainerBuilds))
-
 	//TODO do we eventually want to allow more than one JBSConfig per namespace?
 	if jbsConfig.Name == v1alpha1.JBSConfigName {
 		systemConfig := v1alpha1.SystemConfig{}

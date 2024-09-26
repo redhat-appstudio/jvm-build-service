@@ -39,7 +39,7 @@ echo "PATH:$PATH"
 #fix this when we no longer need to run as root
 export HOME=/root
 
-mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages $(workspaces.source.path)/build-info
+mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages
 
 {{INSTALL_PACKAGE_SCRIPT}}
 

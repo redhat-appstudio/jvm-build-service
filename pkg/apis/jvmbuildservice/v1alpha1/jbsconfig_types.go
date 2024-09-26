@@ -33,7 +33,8 @@ const (
 	ConfigArtifactCacheWorkerThreadsDefault = "50"
 	ConfigArtifactCacheStorageDefault       = "10Gi"
 
-	KonfluxBuildDefinitions = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/buildah-oci-ta.yaml"
+	KonfluxBuildDefinitions       = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/buildah-oci-ta.yaml"
+	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/maven-deployment.yaml"
 )
 
 type JBSConfigSpec struct {
@@ -53,9 +54,6 @@ type JBSConfigSpec struct {
 	GitSourceArchive GitSourceArchive  `json:"gitSourceArchive,omitempty"`
 	CacheSettings    CacheSettings     `json:"cacheSettings,omitempty"`
 	BuildSettings    BuildSettings     `json:"buildSettings,omitempty"`
-
-	// Whether to use a standard build pipeline or build in a Docker container via buildah.
-	ContainerBuilds bool `json:"containerBuilds,omitempty"`
 }
 
 type ImageRegistrySpec struct {
