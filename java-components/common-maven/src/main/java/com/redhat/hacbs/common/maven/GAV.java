@@ -1,4 +1,4 @@
-package com.redhat.hacbs.common.sbom;
+package com.redhat.hacbs.common.maven;
 
 import java.util.Comparator;
 import java.util.Objects;

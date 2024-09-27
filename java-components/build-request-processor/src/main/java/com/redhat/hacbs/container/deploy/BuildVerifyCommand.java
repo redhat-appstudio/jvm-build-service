@@ -25,7 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.common.maven.GAV;
 import com.redhat.hacbs.container.results.ResultsUpdater;
 import com.redhat.hacbs.recipes.util.FileUtil;
 import com.redhat.hacbs.resources.model.v1alpha1.dependencybuildstatus.Contaminates;

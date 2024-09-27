@@ -9,7 +9,7 @@ import java.util.Map;
 
 import org.jboss.logging.Logger;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.common.maven.GAV;
 import com.redhat.hacbs.recipes.BuildRecipe;
 
 /**

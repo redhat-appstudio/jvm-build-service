@@ -2,7 +2,7 @@ package com.redhat.hacbs.domainproxy;
 
 import java.util.Comparator;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.common.maven.GAV;
 
 public record Dependency(GAV GAV, String classifier) implements Comparable<Dependency> {
     @Override

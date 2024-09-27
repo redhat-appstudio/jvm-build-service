@@ -12,7 +12,7 @@ import java.util.Optional;
 
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.common.maven.GAV;
 import com.redhat.hacbs.recipes.scm.ScmInfo;
 import com.redhat.hacbs.recipes.scm.ScmInfoManager;
 
