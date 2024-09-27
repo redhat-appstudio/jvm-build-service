@@ -52,14 +52,6 @@ public abstract class AnalyserBase implements Runnable {
     @CommandLine.Option(names = "--publishers")
     Path publishers;
 
-    /**
-     * special mode for dealing with JvmImageScan pipelines
-     * in this mode we want to merge the SBom with the tracking data
-     * and stick it all in a result
-     */
-    @CommandLine.Option(names = "--output-all-dependencies")
-    boolean outputAllDependencies;
-
     @Inject
     Instance<ResultsUpdater> resultsUpdater;
 
@@ -71,59 +63,12 @@ public abstract class AnalyserBase implements Runnable {
             Set<String> gavs = new HashSet<>();
             Set<TrackingData> trackingData = new HashSet<>();
             doAnalysis(gavs, trackingData);
-            if (!outputAllDependencies) {
-                rebuild.rebuild(taskRunName, gavs);
-                writeResults(gavs, trackingData);
-                writeSbom(trackingData);
-            } else {
-                handleAllDependencies(trackingData);
-            }
+            rebuild.rebuild(taskRunName, gavs);
+            writeResults(gavs, trackingData);
+            writeSbom(trackingData);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private void handleAllDependencies(Set<TrackingData> trackingData) throws Exception {
-        //TODO: this is a bit of a hack at the moment
-        //its mostly just here to support a demo for now
-        Bom bom;
-        InputStream existing = null;
-        try {
-            if (sbom != null && Files.exists(sbom)) {
-                existing = Files.newInputStream(sbom);
-            }
-            bom = SBomGenerator.generateSBom(trackingData, existing);
-        } finally {
-            if (existing != null) {
-                existing.close();
-            }
-        }
-        StringBuilder result = new StringBuilder();
-
-        for (var it = bom.getComponents().iterator(); it.hasNext();) {
-            var i = it.next();
-            if (i.getPurl() != null && i.getPurl().startsWith("pkg:maven")) {
-                //TODO: syft is pretty bad, it misses gradle dependencies group name
-                if (i.getGroup() == null) {
-                    continue;
-                }
-                if (!result.isEmpty()) {
-                    result.append(",");
-                }
-                result.append(i.getGroup()).append(":").append(i.getName()).append(":").append(i.getVersion()).append(";")
-                        .append(i.getPublisher());
-                if (i.getProperties() != null) {
-                    for (var attr : i.getProperties()) {
-                        if (attr.getName().startsWith("java:")) {
-                            result.append(";");
-                            result.append(attr.getName().substring(5)).append("=").append(attr.getValue());
-                        }
-                    }
-                }
-            }
-        }
-        resultsUpdater.get().updateResults(taskRunName,
-                Map.of("JVM_DEPENDENCIES", result.toString(), "IMAGE_DIGEST", imageDigest));
     }
 
     abstract void doAnalysis(Set<String> gavs, Set<TrackingData> trackingData) throws Exception;
