@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jvmimagescan"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
 	"github.com/tektoncd/cli/pkg/cli"
 	"os"
@@ -136,7 +135,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 			&tektonpipeline.PipelineRun{}: {},
 			&v1alpha1.DependencyBuild{}:   {},
 			&v1alpha1.ArtifactBuild{}:     {},
-			&v1alpha1.JvmImageScan{}:      {},
 			&v1alpha1.RebuiltArtifact{}:   {},
 			&v1.Pod{}:                     {Label: cachePods},
 		},
@@ -164,9 +162,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
-	if err := jvmimagescan.SetupNewReconcilerWithManager(mgr); err != nil {
-		return nil, err
-	}
 	metrics.InitPrometheus(mgr.GetClient())
 	return mgr, nil
 }

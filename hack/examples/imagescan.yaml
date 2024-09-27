@@ -1,6 +1,0 @@
-apiVersion: jvmbuildservice.io/v1alpha1
-kind: JvmImageScan
-metadata:
-  generateName: test-image-scan-
-spec:
-  image: "quay.io/redhat-user-workloads-stage/sdouglas1-tenant/my-app/devfile-sample-java-springboot-basic@sha256:7de8c2783814686c8a29dbecff3462b64622f71148b970742fb0dc2eba58602b"
