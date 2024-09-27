@@ -63,7 +63,7 @@ func runTests(t *testing.T, namespace string, runYaml string) {
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-	ta.Logf(fmt.Sprintf("current working dir: %s", path))
+	ta.t.Logf("[%s] current working dir: %s", time.Now().Format(time.StampMilli), path)
 
 	runYamlPath := filepath.Join(path, "..", "..", "hack", "examples", runYaml)
 	ta.run = &tektonpipeline.PipelineRun{}
@@ -82,22 +82,22 @@ func runTests(t *testing.T, namespace string, runYaml string) {
 		err = wait.PollUntilContextTimeout(context.TODO(), 3*ta.interval, 3*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			pr, err := tektonClient.TektonV1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
+				ta.t.Logf("[%s] get pr %s produced err: %s", time.Now().Format(time.StampMilli), ta.run.Name, err.Error())
 				return false, nil
 			}
 			if !pr.IsDone() {
 				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
-					ta.Logf(fmt.Sprintf("problem marshalling in progress pipelinerun to bytes: %s", err.Error()))
+					ta.t.Logf("[%s] problem marshalling in progress pipelinerun to bytes: %s", time.Now().Format(time.StampMilli), err.Error())
 					return false, nil
 				}
-				ta.Logf(fmt.Sprintf("in flight pipeline run: %s", string(prBytes)))
+				ta.t.Logf("[%s] in flight pipeline run: %s", time.Now().Format(time.StampMilli), string(prBytes))
 				return false, nil
 			}
 			if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
 				prBytes, err := json.MarshalIndent(pr, "", "  ")
 				if err != nil {
-					ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
+					ta.t.Logf("[%s] problem marshalling failed pipelinerun to bytes: %s", time.Now().Format(time.StampMilli), err.Error())
 					return false, nil
 				}
 				debugAndFailTest(ta, fmt.Sprintf("unsuccessful pipeline run: %s", string(prBytes)))
@@ -139,15 +139,15 @@ func runTests(t *testing.T, namespace string, runYaml string) {
 func artifactBuildsStable(ta *testArgs) (bool, error) {
 	abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
+		ta.t.Logf("[%s] error list artifactbuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 		return false, err
 	}
 	//we want to make sure there is more than 3 ab, and that they are all complete
 	abComplete := len(abList.Items) > 3
-	ta.Logf(fmt.Sprintf("number of artifactbuilds: %d", len(abList.Items)))
+	ta.t.Logf("[%s] number of artifactbuilds: %d", time.Now().Format(time.StampMilli), len(abList.Items))
 	for _, ab := range abList.Items {
 		if ab.Status.State != v1alpha1.ArtifactBuildStateComplete && ab.Status.State != v1alpha1.ArtifactBuildStateFailed && ab.Status.State != v1alpha1.ArtifactBuildStateMissing {
-			ta.Logf(fmt.Sprintf("artifactbuild %s not complete", ab.Spec.GAV))
+			ta.t.Logf("[%s] artifactbuild %s not complete", time.Now().Format(time.StampMilli), ab.Spec.GAV)
 			abComplete = false
 			break
 		}
