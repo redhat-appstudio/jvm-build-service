@@ -42,15 +42,13 @@ fi
 # and if 'true' or 'false' is seen that is coerced to a bool which causes an issue
 export JBS_S3_SYNC_ENABLED="\"$JBS_S3_SYNC_ENABLED\""
 
-kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
-kubectl delete --ignore-not-found deployments.apps jvm-build-workspace-artifact-cache
-
 function cleanAllArtifacts() {
     # Following are created in CI code
     kubectl delete --ignore-not-found=true tasks.tekton.dev git-clone
     kubectl delete --ignore-not-found=true tasks.tekton.dev maven
     kubectl delete --ignore-not-found=true pipelines.tekton.dev sample-component-build
-    kubectl delete --ignore-not-found=true clusterrolebindings.rbac.authorization.k8s.io pipeline-test-jvm-namespace
+    kubectl delete --ignore-not-found=true clusterrolebindings.rbac.authorization.k8s.io pipeline-${JBS_WORKER_NAMESPACE}
+    kubectl delete --ignore-not-found=true deployments.apps jvm-build-maven-repo -n ${JBS_WORKER_NAMESPACE}
 
     kubectl delete --ignore-not-found=true artifactbuilds.jvmbuildservice.io --all
 
@@ -61,6 +59,9 @@ function cleanAllArtifacts() {
 echo -e "\033[0;32mSetting context to $JBS_WORKER_NAMESPACE with quay image $JBS_QUAY_ORG\033[0m"
 # Its possible to set context before namespaces have been created.
 kubectl config set-context --current --namespace=$JBS_WORKER_NAMESPACE
+kubectl delete --ignore-not-found deployments.apps hacbs-jvm-operator -n jvm-build-service
+kubectl delete --ignore-not-found deployments.apps jvm-build-workspace-artifact-cache
+
 
 if [ "$1" = "--clean" ]; then
     cleanAllArtifacts
