@@ -85,6 +85,7 @@ spec:
         - name: GIT_TOKEN
           valueFrom:
             secretKeyRef:
+              optional: true
               name: jvm-build-git-secrets
               key: .git-credentials
       script: |
@@ -118,6 +119,7 @@ spec:
         - name: GIT_DEPLOY_TOKEN
           valueFrom:
             secretKeyRef:
+              optional: true
               name: $(params.GIT_DEPLOY_TOKEN)
               key: gitdeploytoken
       args:
