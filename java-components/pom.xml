@@ -71,6 +71,8 @@
         <quarkus-quinoa.version>2.4.7</quarkus-quinoa.version>
 
         <format.skip>false</format.skip>
+
+        <imageTag>dev</imageTag>
     </properties>
 
     <modules>
@@ -452,7 +454,7 @@
                             <configuration>
                                 <systemProperties>
                                     <quarkus.container-image.group>${env.QUAY_USERNAME}</quarkus.container-image.group>
-                                    <quarkus.container-image.tag>dev</quarkus.container-image.tag>
+                                    <quarkus.container-image.tag>${imageTag}</quarkus.container-image.tag>
                                     <quarkus.container-image.build>true</quarkus.container-image.build>
                                     <quarkus.container-image.push>true</quarkus.container-image.push>
                                     <quarkus.package.type>mutable-jar</quarkus.package.type>
@@ -611,5 +613,16 @@
                 <module>management-console</module>
             </modules>
         </profile>
-    </profiles>
+        <profile>
+          <activation>
+            <activeByDefault>true</activeByDefault>
+            <property>
+              <name>env.JBS_QUAY_IMAGE_TAG</name>
+            </property>
+          </activation>
+          <properties>
+            <imageTag>${env.JBS_QUAY_IMAGE_TAG}</imageTag>
+          </properties>
+        </profile>
+      </profiles>
 </project>

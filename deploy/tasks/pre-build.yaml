@@ -46,10 +46,13 @@ spec:
       type: string
     - name: RECIPE_IMAGE
       description: The image from the build recipe to use
+    - name: BUILD_TOOL
+      description: The build tool to use.
+    - name: BUILD_PLUGINS
+      description: Comma separated list of build plugins that should be disabled.
+      default: ""
     - name: BUILD_SCRIPT
       description: The build script to embed with the Containerfile
-    - name: PREPROCESSOR_ARGS
-      description: The arguments for the build preprocessor
     - name: ORAS_OPTIONS
       type: string
       description: Optional environment variable string for build-trusted-artifacts
@@ -103,7 +106,7 @@ spec:
           memory: 512Mi
       script: |
         $(params.BUILD_SCRIPT)
-        /opt/jboss/container/java/run/run-java.sh $(params.PREPROCESSOR_ARGS)
+        /opt/jboss/container/java/run/run-java.sh $(params.BUILD_TOOL)-prepare $(workspaces.source.path)/source --recipe-image=$(params.RECIPE_IMAGE) --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE) --disabled-plugins=$(params.BUILD_PLUGINS)
     - name: create-pre-build-source
       image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
       securityContext:

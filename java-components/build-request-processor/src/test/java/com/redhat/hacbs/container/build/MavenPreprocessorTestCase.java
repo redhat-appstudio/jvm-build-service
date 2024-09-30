@@ -22,6 +22,8 @@ public class MavenPreprocessorTestCase extends AbstractPreprocessorTestCase {
         var args = buildInfoLocator.lookupDisabledPlugins(MAVEN);
         var command = new ArrayList<String>(1 + 2 * args.size());
         command.add("maven-prepare");
+        command.add("--recipe-image=foobar");
+        command.add("--request-processor-image=barfoo");
         args.forEach(arg -> {
             command.add("-dp");
             command.add(arg);

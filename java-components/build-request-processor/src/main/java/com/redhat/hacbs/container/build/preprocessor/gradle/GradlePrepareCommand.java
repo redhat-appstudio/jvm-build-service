@@ -40,9 +40,14 @@ public class GradlePrepareCommand extends AbstractPreprocessor {
             "version.gradle"
     };
 
+    public GradlePrepareCommand() {
+        type = ToolType.GRADLE;
+    }
+
     @Override
     public void run() {
         try {
+            super.run();
             setupInitScripts();
             Files.walkFileTree(buildRoot, new SimpleFileVisitor<>() {
 

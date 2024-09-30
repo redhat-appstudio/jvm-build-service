@@ -22,6 +22,8 @@ public class GradlePreprocessorTestCase extends AbstractPreprocessorTestCase {
         var args = buildInfoLocator.lookupDisabledPlugins(GRADLE);
         var command = new ArrayList<String>(1 + 2 * args.size());
         command.add("gradle-prepare");
+        command.add("--recipe-image=foobar");
+        command.add("--request-processor-image=barfoo");
         args.forEach(arg -> {
             command.add("-dp");
             command.add(arg);

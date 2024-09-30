@@ -65,8 +65,8 @@ dev-image:
             echo "ERROR: QUAY_USERNAME is not set"; \
             exit 1; \
     fi
-	docker build . -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
-	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:dev
+	docker build . -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 
 dev: dev-image
 	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev
