@@ -43,7 +43,7 @@ func runPipelineTests(t *testing.T, doSetup func(t *testing.T, namespace string)
 	if err != nil {
 		debugAndFailTest(ta, err.Error())
 	}
-	ta.Logf(fmt.Sprintf("current working dir: %s with pipeline %s", path, pipeline))
+	ta.t.Logf("%s current working dir: %s with pipeline %s", time.Now().Format(time.StampMilli), path, pipeline)
 
 	testSet := os.Getenv("DBTESTSET")
 	// run dependency build tests instead if env var is set
@@ -72,7 +72,7 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 	if len(testSet) > 0 {
 		parts := readTestData(path, testSet, "minikube.yaml", ta)
 		for _, s := range parts {
-			ta.Logf(fmt.Sprintf("Creating ArtifactBuild for GAV: %s", s))
+			ta.t.Logf("[%s] Creating ArtifactBuild for GAV: %s", time.Now().Format(time.StampMilli), s)
 			ab := v1alpha1.ArtifactBuild{}
 			ab.Name = artifactbuild.CreateABRName(s)
 			ab.Namespace = ta.ns
@@ -91,21 +91,21 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 				pr, err := tektonClient.TektonV1().PipelineRuns(ta.ns).Get(context.TODO(), ta.run.Name, metav1.GetOptions{})
 				if err != nil {
-					ta.Logf(fmt.Sprintf("get pr %s produced err: %s", ta.run.Name, err.Error()))
+					ta.t.Logf("[%s] get pr %s produced err: %s", time.Now().Format(time.StampMilli), ta.run.Name, err.Error())
 					return false, nil
 				}
 				if !pr.IsDone() {
 					if err != nil {
-						ta.Logf(fmt.Sprintf("problem marshalling in progress pipelinerun to bytes: %s", err.Error()))
+						ta.t.Logf("[%s] problem marshalling in progress pipelinerun to bytes: %s", time.Now().Format(time.StampMilli), err.Error())
 						return false, nil
 					}
-					ta.Logf(fmt.Sprintf("in flight pipeline run: %s", pr.Name))
+					ta.t.Logf("[%s] in flight pipeline run: %s", time.Now().Format(time.StampMilli), pr.Name)
 					return false, nil
 				}
 				if !pr.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsTrue() {
 					prBytes, err := json.MarshalIndent(pr, "", "  ")
 					if err != nil {
-						ta.Logf(fmt.Sprintf("problem marshalling failed pipelinerun to bytes: %s", err.Error()))
+						ta.t.Logf("[%s] problem marshalling failed pipelinerun to bytes: %s", time.Now().Format(time.StampMilli), err.Error())
 						return false, nil
 					}
 					debugAndFailTest(ta, fmt.Sprintf("unsuccessful pipeline run: %s", string(prBytes)))
@@ -131,35 +131,35 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
+				ta.t.Logf("[%s] error list artifactbuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 				return false, err
 			}
 			//we want to make sure there is more than one ab, and that they are all complete
 			abComplete := len(abList.Items) > 0
-			ta.Logf(fmt.Sprintf("[all-artifact-builds] number of artifactbuilds: %d", len(abList.Items)))
+			ta.t.Logf("[%s] [all-artifact-builds] number of artifactbuilds: %d", time.Now().Format(time.StampMilli), len(abList.Items))
 			for _, ab := range abList.Items {
 				if ab.Status.State != v1alpha1.ArtifactBuildStateComplete {
-					ta.Logf(fmt.Sprintf("artifactbuild %s not complete", ab.Spec.GAV))
+					ta.t.Logf("[%s] artifactbuild %s not complete", time.Now().Format(time.StampMilli), ab.Spec.GAV)
 					abComplete = false
 					break
 				}
 			}
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				ta.t.Logf("[%s] error list dependencybuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 				return false, err
 			}
 			dbComplete := len(dbList.Items) > 0
-			ta.Logf(fmt.Sprintf("[all-artifactbuild-and-dependencybuilds] number of dependencybuilds: %d", len(dbList.Items)))
+			ta.t.Logf("[%s] [all-artifactbuild-and-dependencybuilds] number of dependencybuilds: %d", time.Now().Format(time.StampMilli), len(dbList.Items))
 			dbCompleteCount := 0
 			for _, db := range dbList.Items {
 				if db.Status.State == v1alpha1.DependencyBuildStateFailed {
-					ta.Logf(fmt.Sprintf("dependencybuild %s FAILED", db.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] dependencybuild %s FAILED", time.Now().Format(time.StampMilli), db.Spec.ScmInfo.SCMURL)
 					return false, fmt.Errorf("dependencybuild %s for repo %s FAILED", db.Name, db.Spec.ScmInfo.SCMURL)
 				} else if db.Status.State != v1alpha1.DependencyBuildStateComplete {
 					if dbComplete {
 						//only print the first one
-						ta.Logf(fmt.Sprintf("dependencybuild %s not complete", db.Spec.ScmInfo.SCMURL))
+						ta.t.Logf("[%s] dependencybuild %s not complete", time.Now().Format(time.StampMilli), db.Spec.ScmInfo.SCMURL)
 					}
 					dbComplete = false
 				} else if db.Status.State == v1alpha1.DependencyBuildStateComplete {
@@ -169,7 +169,7 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			if abComplete && dbComplete {
 				return true, nil
 			}
-			ta.Logf(fmt.Sprintf("completed %d/%d DependencyBuilds", dbCompleteCount, len(dbList.Items)))
+			ta.t.Logf("[%s] completed %d/%d DependencyBuilds", time.Now().Format(time.StampMilli), dbCompleteCount, len(dbList.Items))
 			return false, nil
 		})
 		if err != nil {
@@ -184,11 +184,11 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if len(dbList.Items) == 0 {
-				ta.Logf("unable to list dependencybuilds")
+				ta.t.Logf("[%s] unable to list dependencybuilds", time.Now().Format(time.StampMilli))
 				return false, nil
 			}
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				ta.t.Logf("[%s] error list dependencybuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 				return false, err
 			}
 			return verifyMavenRepoContainsArtifacts(mavenRepoDetails, ta, dbList.Items...)
@@ -217,10 +217,10 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			contaminantBuild := false
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				ta.t.Logf("[%s] error list dependencybuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 				return false, err
 			}
-			ta.Logf(fmt.Sprintf("number of dependencybuilds: %d", len(dbList.Items)))
+			ta.t.Logf("[%s] number of dependencybuilds: %d", time.Now().Format(time.StampMilli), len(dbList.Items))
 			for _, db := range dbList.Items {
 				if db.Status.State == v1alpha1.DependencyBuildStateContaminated {
 					dbContaminated = true
@@ -239,7 +239,7 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			}
 			return false, nil
 		})
-		ta.Logf(fmt.Sprintf("contaminated dependencybuild: %s", contaminated))
+		ta.t.Logf("[%s] contaminated dependencybuild: %s", time.Now().Format(time.StampMilli), contaminated)
 		if err != nil {
 			debugAndFailTest(ta, "timed out waiting for contaminated build to appear")
 		}
@@ -247,11 +247,11 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error list artifactbuilds: %s", err.Error()))
+				ta.t.Logf("[%s] error list artifactbuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 				return false, err
 			}
 			found := false
-			ta.Logf(fmt.Sprintf("[contaminated-build] number of artifactbuilds: %d", len(abList.Items)))
+			ta.t.Logf("[%s] [contaminated-build] number of artifactbuilds: %d", time.Now().Format(time.StampMilli), len(abList.Items))
 			for _, ab := range abList.Items {
 				if strings.Contains(ab.Spec.GAV, "simple-jdk8") {
 					simpleJDK8 = ab.Name
@@ -268,10 +268,10 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			ab, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).Get(context.TODO(), simpleJDK8, metav1.GetOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error getting simple-jdk8 ArtifactBuild: %s", err.Error()))
+				ta.t.Logf("[%s] error getting simple-jdk8 ArtifactBuild: %s", time.Now().Format(time.StampMilli), err.Error())
 				return false, err
 			}
-			ta.Logf(fmt.Sprintf("simple-jdk8 State: %s", ab.Status.State))
+			ta.t.Logf("[%s] simple-jdk8 State: %s", time.Now().Format(time.StampMilli), ab.Status.State)
 			return ab.Status.State == v1alpha1.ArtifactBuildStateComplete, nil
 		})
 		if err != nil {
@@ -281,13 +281,13 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, 2*ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			db, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), contaminated, metav1.GetOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error getting shaded-jdk11 DependencyBuild: %s", err.Error()))
+				ta.t.Logf("[%s] error getting shaded-jdk11 DependencyBuild: %s", time.Now().Format(time.StampMilli), err.Error())
 				return false, err
 			}
-			ta.Logf(fmt.Sprintf("shaded-jdk11 State: %s", db.Status.State))
+			ta.t.Logf("[%s] shaded-jdk11 State: %s", time.Now().Format(time.StampMilli), db.Status.State)
 			if db.Status.State == v1alpha1.DependencyBuildStateFailed {
-				msg := fmt.Sprintf("contaminated db %s failed, exiting wait", contaminated)
-				ta.Logf(msg)
+				msg := fmt.Sprintf("[%s] contaminated db %s failed, exiting wait", time.Now().Format(time.StampMilli), contaminated)
+				ta.t.Log(msg)
 				return false, fmt.Errorf("%s", msg)
 			}
 			return db.Status.State == v1alpha1.DependencyBuildStateComplete, err
@@ -337,12 +337,12 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 			// technically this is not needed, since we just created the context above; but if go testing changes
 			// such that it carries a context, we'll want to use that here
 			case <-ctx.Done():
-				ta.Logf("context done")
+				ta.t.Logf("context done")
 				exitForLoop = true
 				break
 			case <-time.After(15 * time.Minute):
-				msg := "timed out waiting for second build to complete"
-				ta.Logf(msg)
+				msg := fmt.Sprintf("[%s] timed out waiting for second build to complete", time.Now().Format(time.StampMilli))
+				ta.t.Log(msg)
 				// call stop here in case the defer is bypass by a call to t.Fatal
 				watch.Stop()
 				debugAndFailTest(ta, msg)
@@ -356,12 +356,12 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 				}
 				if pr.Name != ta.run.Name {
 					if pr.IsDone() {
-						ta.Logf(fmt.Sprintf("got event for pipelinerun %s in a terminal state", pr.Name))
+						ta.t.Logf("[%s] got event for pipelinerun %s in a terminal state", time.Now().Format(time.StampMilli), pr.Name)
 						continue
 					}
 					debugAndFailTest(ta, fmt.Sprintf("another non-completed pipeline run %s was generated when it should not", pr.Name))
 				}
-				ta.Logf(fmt.Sprintf("done processing event for pr %s", pr.Name))
+				ta.t.Logf("[%s] done processing event for pr %s", time.Now().Format(time.StampMilli), pr.Name)
 				if pr.IsDone() {
 					pods := prPods(ta, pr.Name)
 					if len(pods) == 0 {
@@ -377,12 +377,12 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 						req := podClient.GetLogs(pods[0].Name, &corev1.PodLogOptions{Container: container.Name})
 						readCloser, err := req.Stream(context.TODO())
 						if err != nil {
-							ta.Logf(fmt.Sprintf("error getting pod logs for container %s: %s", container.Name, err.Error()))
+							ta.t.Logf("[%s] error getting pod logs for container %s: %s", time.Now().Format(time.StampMilli), container.Name, err.Error())
 							continue
 						}
 						b, err := io.ReadAll(readCloser)
 						if err != nil {
-							ta.Logf(fmt.Sprintf("error reading pod stream %s", err.Error()))
+							ta.t.Logf("[%s] error reading pod stream %s", time.Now().Format(time.StampMilli), err.Error())
 							continue
 						}
 						cLog := string(b)
@@ -400,7 +400,7 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 						}
 						break
 					}
-					ta.Logf(fmt.Sprintf("pr %s is done and has correct analyse-dependencies output, exiting", pr.Name))
+					ta.t.Logf("[%s] pr %s is done and has correct analyse-dependencies output, exiting", time.Now().Format(time.StampMilli), pr.Name)
 					exitForLoop = true
 					break
 				}
@@ -417,10 +417,10 @@ func runAbTests(path string, testSet string, pipeline string, ta *testArgs) {
 
 			dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error list dependencybuilds: %s", err.Error()))
+				ta.t.Logf("[%s] error list dependencybuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 				return false, err
 			}
-			ta.Logf(fmt.Sprintf("[correct-jdk-identified] number of dependencybuilds: %d", len(dbList.Items)))
+			ta.t.Logf("[%s] [correct-jdk-identified] number of dependencybuilds: %d", time.Now().Format(time.StampMilli), len(dbList.Items))
 			for _, db := range dbList.Items {
 				if !strings.Contains(db.Spec.ScmInfo.SCMURL, "shaded-jdk11") ||
 					db.Status.State == "" ||
@@ -508,11 +508,11 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			retrievedCfgMap, err := kubeClient.CoreV1().ConfigMaps(ta.ns).Get(context.TODO(), cfgMap.Name, metav1.GetOptions{})
 			if retrievedCfgMap != nil {
-				ta.Logf(fmt.Sprintf("successfully retrieved configmap %s for dependencybuild repo %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL))
+				ta.t.Logf("[%s] successfully retrieved configmap %s for dependencybuild repo %s", time.Now().Format(time.StampMilli), cfgMap.Name, db.Spec.ScmInfo.SCMURL)
 				return true, nil
 			}
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error retrieving configmap %s for dependencybuild repo %s: %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+				ta.t.Logf("[%s] error retrieving configmap %s for dependencybuild repo %s: %s", time.Now().Format(time.StampMilli), cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 			}
 			return false, nil
 		})
@@ -528,11 +528,11 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 		err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, ta.timeout, true, func(ctx context.Context) (done bool, err error) {
 			retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
 			if retrievedDb != nil {
-				ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+				ta.t.Logf("[%s] successfully retrieved dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				return true, nil
 			}
 			if err != nil {
-				ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+				ta.t.Logf("[%s] error retrieving dependencybuild %s for repo %s: %s", time.Now().Format(time.StampMilli), db.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 			}
 			return false, nil
 		})
@@ -545,18 +545,18 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
 				if retrievedDb != nil {
-					ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] successfully retrieved dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				}
 				if err != nil {
-					ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					ta.t.Logf("[%s] error retrieving dependencybuild %s for repo %s: %s", time.Now().Format(time.StampMilli), db.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 					return false, err
 				}
 				dbComplete := true
 				if retrievedDb.Status.State == v1alpha1.DependencyBuildStateFailed {
-					ta.Logf(fmt.Sprintf("dependencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] dependencybuild %s for repo %s FAILED", time.Now().Format(time.StampMilli), retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 					return false, fmt.Errorf("dependencybuild %s for repo %s FAILED", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				} else if retrievedDb.Status.State != v1alpha1.DependencyBuildStateComplete {
-					ta.Logf(fmt.Sprintf("dependencybuild %s for repo %s not complete", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] dependencybuild %s for repo %s not complete", time.Now().Format(time.StampMilli), retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 					dbComplete = false
 				}
 				return dbComplete, nil
@@ -570,10 +570,10 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
 				if retrievedDb != nil {
-					ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] successfully retrieved dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				}
 				if err != nil {
-					ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					ta.t.Logf("[%s] error retrieving dependencybuild %s for repo %s: %s", time.Now().Format(time.StampMilli), db.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 					return false, err
 				}
 				buildRecipeValue := reflect.ValueOf(buildRecipe)
@@ -613,10 +613,10 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
 				if retrievedDb != nil {
-					ta.Logf(fmt.Sprintf("successfully retrieved dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] successfully retrieved dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				}
 				if err != nil {
-					ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					ta.t.Logf("[%s] error retrieving dependencybuild %s for repo %s: %s", time.Now().Format(time.StampMilli), db.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 					return false, err
 				}
 				return verifyMavenRepoContainsArtifacts(mavenRepoDetails, ta, *retrievedDb)
@@ -633,31 +633,31 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				err = jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Delete(context.TODO(), db.Name, metav1.DeleteOptions{})
 				if err != nil {
-					ta.Logf(fmt.Sprintf("error deleting dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					ta.t.Logf("[%s] error deleting dependencybuild %s for repo %s: %s", time.Now().Format(time.StampMilli), db.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 					return false, err
 				}
 				retrievedDb, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Get(context.TODO(), db.Name, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						ta.Logf(fmt.Sprintf("successfully deleted dependencybuild %s for repo %s", db.Name, db.Spec.ScmInfo.SCMURL))
+						ta.t.Logf("[%s] successfully deleted dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), db.Name, db.Spec.ScmInfo.SCMURL)
 					} else {
-						ta.Logf(fmt.Sprintf("error retrieving dependencybuild %s for repo %s: %s", db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+						ta.t.Logf("[%s] error retrieving dependencybuild %s for repo %s: %s", time.Now().Format(time.StampMilli), db.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 						return false, err
 					}
 				} else if retrievedDb != nil {
-					ta.Logf(fmt.Sprintf("failed to delete dependencybuild %s for repo %s", retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] failed to delete dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), retrievedDb.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				}
 				retrievedCfgMap, err := kubeClient.CoreV1().ConfigMaps(ta.ns).Get(context.TODO(), cfgMap.Name, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						ta.Logf(fmt.Sprintf("successfully deleted configmap %s for dependencybuild repo %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL))
+						ta.t.Logf("[%s] successfully deleted configmap %s for dependencybuild repo %s", time.Now().Format(time.StampMilli), cfgMap.Name, db.Spec.ScmInfo.SCMURL)
 						return true, nil
 					} else {
-						ta.Logf(fmt.Sprintf("error retrieving configmap %s for dependencybuild repo %s: %s", cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+						ta.t.Logf("[%s] error retrieving configmap %s for dependencybuild repo %s: %s", time.Now().Format(time.StampMilli), cfgMap.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 						return false, err
 					}
 				} else if retrievedCfgMap != nil {
-					ta.Logf(fmt.Sprintf("failed to delete configmap %s for dependencybuild repo %s", retrievedCfgMap.Name, retrievedDb.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] failed to delete configmap %s for dependencybuild repo %s", time.Now().Format(time.StampMilli), retrievedCfgMap.Name, retrievedDb.Spec.ScmInfo.SCMURL)
 				}
 				return false, nil
 			})
@@ -677,19 +677,19 @@ func verifyMavenRepoContainsArtifacts(mavenRepoDetails *MavenRepoDetails, ta *te
 			}
 		}
 		if len(gavs) == 0 {
-			ta.Logf(fmt.Sprintf("gavs do not exist for dependencybuild %s for repo %s", db.Name, db.Spec.ScmInfo.SCMURL))
+			ta.t.Logf("[%s] gavs do not exist for dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), db.Name, db.Spec.ScmInfo.SCMURL)
 			return false, nil
 		} else {
 			for _, gav := range gavs {
 				body, err := downloadArtifact(mavenRepoDetails, gav, "pom")
 				if err != nil {
-					ta.Logf(fmt.Sprintf("error downloading artifact pom %s for dependencybuild %s for repo %s: %s", gav, db.Name, db.Spec.ScmInfo.SCMURL, err.Error()))
+					ta.t.Logf("[%s] error downloading artifact pom %s for dependencybuild %s for repo %s: %s", time.Now().Format(time.StampMilli), gav, db.Name, db.Spec.ScmInfo.SCMURL, err.Error())
 					return false, err
 				}
 				if len(body) > 0 {
-					ta.Logf(fmt.Sprintf("successfully downloaded artifact pom %s for dependencybuild %s for repo %s", gav, db.Name, db.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] successfully downloaded artifact pom %s for dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), gav, db.Name, db.Spec.ScmInfo.SCMURL)
 				} else {
-					ta.Logf(fmt.Sprintf("failed to download artifact pom %s for dependencybuild %s for repo %s", gav, db.Name, db.Spec.ScmInfo.SCMURL))
+					ta.t.Logf("[%s] failed to download artifact pom %s for dependencybuild %s for repo %s", time.Now().Format(time.StampMilli), gav, db.Name, db.Spec.ScmInfo.SCMURL)
 					return false, nil
 				}
 			}
@@ -765,7 +765,7 @@ func watchEvents(eventClient v1.EventInterface, ta *testArgs) {
 		if event.Type == corev1.EventTypeNormal {
 			continue
 		}
-		ta.Logf(fmt.Sprintf("non-normal event reason %s about obj %s:%s message %s", event.Reason, event.Regarding.Kind, event.Regarding.Name, event.Note))
+		ta.t.Logf("[%s] non-normal event reason %s about obj %s:%s message %s", time.Now().Format(time.StampMilli), event.Reason, event.Regarding.Kind, event.Regarding.Name, event.Note)
 	}
 }
 

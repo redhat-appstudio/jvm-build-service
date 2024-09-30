@@ -56,15 +56,15 @@ func dumpBadEvents(ta *testArgs) {
 	eventClient := kubeClient.EventsV1().Events(ta.ns)
 	eventList, err := eventClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		ta.Logf(fmt.Sprintf("error listing events: %s", err.Error()))
+		ta.t.Logf("[%s] error listing events: %s", time.Now().Format(time.StampMilli), err.Error())
 		return
 	}
-	ta.Logf(fmt.Sprintf("dumpBadEvents have %d items in total list", len(eventList.Items)))
+	ta.t.Logf("[%s] dumpBadEvents have %d items in total list", time.Now().Format(time.StampMilli), len(eventList.Items))
 	for _, event := range eventList.Items {
 		if event.Type == corev1.EventTypeNormal {
 			continue
 		}
-		ta.Logf(fmt.Sprintf("non-normal event reason %s about obj %s:%s message %s", event.Reason, event.Regarding.Kind, event.Regarding.Name, event.Note))
+		ta.t.Logf("[%s] non-normal event reason %s about obj %s:%s message %s", time.Now().Format(time.StampMilli), event.Reason, event.Regarding.Kind, event.Regarding.Name, event.Note)
 	}
 }
 
@@ -72,37 +72,37 @@ func dumpNodes(ta *testArgs) {
 	nodeClient := kubeClient.CoreV1().Nodes()
 	nodeList, err := nodeClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		ta.Logf(fmt.Sprintf("error listin nodes: %s", err.Error()))
+		ta.t.Logf("[%s] error listin nodes: %s", time.Now().Format(time.StampMilli), err.Error())
 		return
 	}
-	ta.Logf(fmt.Sprintf("dumpNodes found %d nodes in list", len(nodeList.Items)))
+	ta.t.Logf("[%s] dumpNodes found %d nodes in list", time.Now().Format(time.StampMilli), len(nodeList.Items))
 	for _, node := range nodeList.Items {
 		_, master := node.Labels["node-role.kubernetes.io/master"]
 		if master {
-			ta.Logf(fmt.Sprintf("Node %s is master node", node.Name))
+			ta.t.Logf("[%s] Node %s is master node", time.Now().Format(time.StampMilli), node.Name)
 		}
 		if node.Status.Allocatable.Cpu() == nil {
-			ta.Logf(fmt.Sprintf("Node %s does not have allocatable cpu", node.Name))
+			ta.t.Logf("[%s] Node %s does not have allocatable cpu", time.Now().Format(time.StampMilli), node.Name)
 			continue
 		}
 		if node.Status.Allocatable.Memory() == nil {
-			ta.Logf(fmt.Sprintf("Node %s does not have allocatable mem", node.Name))
+			ta.t.Logf("[%s] Node %s does not have allocatable mem", time.Now().Format(time.StampMilli), node.Name)
 			continue
 		}
 		if node.Status.Allocatable.Storage() == nil {
-			ta.Logf(fmt.Sprintf("Node %s does not have allocatable storage", node.Name))
+			ta.t.Logf("[%s] Node %s does not have allocatable storage", time.Now().Format(time.StampMilli), node.Name)
 			continue
 		}
 		if node.Status.Capacity.Cpu() == nil {
-			ta.Logf(fmt.Sprintf("Node %s does not have capacity cpu", node.Name))
+			ta.t.Logf("[%s] Node %s does not have capacity cpu", time.Now().Format(time.StampMilli), node.Name)
 			continue
 		}
 		if node.Status.Capacity.Memory() == nil {
-			ta.Logf(fmt.Sprintf("Node %s does not have capacity mem", node.Name))
+			ta.t.Logf("[%s] Node %s does not have capacity mem", time.Now().Format(time.StampMilli), node.Name)
 			continue
 		}
 		if node.Status.Capacity.Storage() == nil {
-			ta.Logf(fmt.Sprintf("Node %s does not have capacity storage", node.Name))
+			ta.t.Logf("[%s] Node %s does not have capacity storage", time.Now().Format(time.StampMilli), node.Name)
 			continue
 		}
 		alloccpu := node.Status.Allocatable.Cpu()
@@ -111,14 +111,15 @@ func dumpNodes(ta *testArgs) {
 		capaccpu := node.Status.Capacity.Cpu()
 		capacmem := node.Status.Capacity.Memory()
 		capstorage := node.Status.Capacity.Storage()
-		ta.Logf(fmt.Sprintf("Node %s allocatable CPU %s allocatable mem %s allocatable storage %s capacity CPU %s capacitymem %s capacity storage %s",
+		ta.t.Logf("[%s] Node %s allocatable CPU %s allocatable mem %s allocatable storage %s capacity CPU %s capacitymem %s capacity storage %s",
+			time.Now().Format(time.StampMilli),
 			node.Name,
 			alloccpu.String(),
 			allocmem.String(),
 			allocstorage.String(),
 			capaccpu.String(),
 			capacmem.String(),
-			capstorage.String()))
+			capstorage.String())
 	}
 }
 
@@ -165,7 +166,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	err = wait.PollUntilContextTimeout(context.TODO(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		_, err = apiextensionClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "tasks.tekton.dev", metav1.GetOptions{})
 		if err != nil {
-			ta.Logf(fmt.Sprintf("get of task CRD: %s", err.Error()))
+			ta.t.Logf("[%s] get of task CRD: %s", time.Now().Format(time.StampMilli), err.Error())
 			return false, nil
 		}
 		return true, nil
@@ -202,12 +203,12 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	quayUsername, _ := os.LookupEnv("QUAY_USERNAME")
 	analyserImage := os.Getenv("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
 	if len(analyserImage) > 0 {
-		ta.Logf(fmt.Sprintf("PR analyzer image: %s", analyserImage))
+		ta.t.Logf("[%s] PR analyzer image: %s", time.Now().Format(time.StampMilli), analyserImage)
 		for i, step := range ta.maven.Spec.Steps {
 			if step.Name != "analyse-dependencies" {
 				continue
 			}
-			ta.Logf(fmt.Sprintf("Updating analyse-dependencies step with image %s", analyserImage))
+			ta.t.Logf("[%s] Updating analyse-dependencies step with image %s", time.Now().Format(time.StampMilli), analyserImage)
 			ta.maven.Spec.Steps[i].Image = analyserImage
 		}
 	} else if len(quayUsername) > 0 {
@@ -217,11 +218,11 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 			if step.Name != "analyse-dependencies" {
 				continue
 			}
-			ta.Logf(fmt.Sprintf("Updating analyse-dependencies step with image %s", image))
+			ta.t.Logf("[%s] Updating analyse-dependencies step with image %s", time.Now().Format(time.StampMilli), image)
 			ta.maven.Spec.Steps[i].Image = image
 			if strings.Contains(image, "minikube") {
 				ta.maven.Spec.Steps[i].ImagePullPolicy = corev1.PullNever
-				ta.Logf("Setting pull policy to never for minikube tests")
+				ta.t.Logf("Setting pull policy to never for minikube tests")
 			}
 		}
 	}
@@ -251,7 +252,7 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 	err := wait.PollUntilContextTimeout(context.TODO(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		_, err = kubeClient.CoreV1().ServiceAccounts(ta.ns).Get(context.TODO(), "pipeline", metav1.GetOptions{})
 		if err != nil {
-			ta.Logf(fmt.Sprintf("get of pipeline SA err: %s", err.Error()))
+			ta.t.Logf("[%s] get of pipeline SA err: %s", time.Now().Format(time.StampMilli), err.Error())
 			return false, nil
 		}
 		return true, nil
@@ -341,11 +342,11 @@ func waitForCache(ta *testArgs) error {
 	err := wait.PollUntilContextTimeout(context.TODO(), 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		cache, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.CacheDeploymentName, metav1.GetOptions{})
 		if err != nil {
-			ta.Logf(fmt.Sprintf("get of cache: %s", err.Error()))
+			ta.t.Logf("[%s] get of cache: %s", time.Now().Format(time.StampMilli), err.Error())
 			return false, nil
 		}
 		if cache.Status.AvailableReplicas > 0 {
-			ta.Logf("Cache is available")
+			ta.t.Logf("Cache is available")
 			return true, nil
 		}
 		for _, cond := range cache.Status.Conditions {
@@ -354,7 +355,7 @@ func waitForCache(ta *testArgs) error {
 			}
 
 		}
-		ta.Logf("Cache is progressing")
+		ta.t.Logf("Cache is progressing")
 		return false, nil
 	})
 	if err != nil {
@@ -397,7 +398,7 @@ func deployMavenSecret(ta *testArgs) error {
 	if len(mavenPassword) > 0 {
 		_, err = kubeClient.CoreV1().Secrets(ta.ns).Get(context.TODO(), v1alpha1.MavenSecretName, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
-			ta.Logf(fmt.Sprintf("Creating maven secret in namespace %s", ta.ns))
+			ta.t.Logf("[%s] Creating maven secret in namespace %s", time.Now().Format(time.StampMilli), ta.ns)
 			mavenSecret := &corev1.Secret{}
 			mavenSecret.Name = v1alpha1.MavenSecretName
 			mavenSecret.Namespace = ta.ns
@@ -412,7 +413,7 @@ func deployMavenSecret(ta *testArgs) error {
 func deployRepoService(ta *testArgs) error {
 	_, err := kubeClient.CoreV1().Services(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
-		ta.Logf(fmt.Sprintf("Creating repository service in namespace %s", ta.ns))
+		ta.t.Logf("[%s] Creating repository service in namespace %s", time.Now().Format(time.StampMilli), ta.ns)
 		repoService := &corev1.Service{}
 		repoService.Name = v1alpha1.RepoDeploymentName
 		repoService.Namespace = ta.ns
@@ -460,7 +461,7 @@ func deployRepoConfigMap(ta *testArgs) error {
 func deployRepo(ta *testArgs, mavenUsername string, mavenPassword string) error {
 	_, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
-		ta.Logf(fmt.Sprintf("Creating repository in namespace %s", ta.ns))
+		ta.t.Logf("[%s] Creating repository in namespace %s", time.Now().Format(time.StampMilli), ta.ns)
 		repo := &v13.Deployment{}
 		repo.Name = v1alpha1.RepoDeploymentName
 		repo.Namespace = ta.ns
@@ -515,11 +516,11 @@ func waitForRepo(ta *testArgs) error {
 	err := wait.PollUntilContextTimeout(context.TODO(), 10*time.Second, 5*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		repo, err := kubeClient.AppsV1().Deployments(ta.ns).Get(context.TODO(), v1alpha1.RepoDeploymentName, metav1.GetOptions{})
 		if err != nil {
-			ta.Logf(fmt.Sprintf("get of repository: %s", err.Error()))
+			ta.t.Logf("[%s] get of repository: %s", time.Now().Format(time.StampMilli), err.Error())
 			return false, nil
 		}
 		if repo.Status.AvailableReplicas > 0 {
-			ta.Logf("Repository is available")
+			ta.t.Logf("Repository is available")
 			return true, nil
 		}
 		for _, cond := range repo.Status.Conditions {
@@ -528,7 +529,7 @@ func waitForRepo(ta *testArgs) error {
 			}
 
 		}
-		ta.Logf("Repository is progressing")
+		ta.t.Logf("Repository is progressing")
 		return false, nil
 	})
 	if err != nil {
@@ -540,7 +541,7 @@ func waitForRepo(ta *testArgs) error {
 func bothABsAndDBsGenerated(ta *testArgs) (bool, error) {
 	abList, err := jvmClient.JvmbuildserviceV1alpha1().ArtifactBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		ta.Logf(fmt.Sprintf("error listing artifactbuilds: %s", err.Error()))
+		ta.t.Logf("[%s] error listing artifactbuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 		return false, nil
 	}
 	gotABs := false
@@ -549,7 +550,7 @@ func bothABsAndDBsGenerated(ta *testArgs) (bool, error) {
 	}
 	dbList, err := jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		ta.Logf(fmt.Sprintf("error listing dependencybuilds: %s", err.Error()))
+		ta.t.Logf("[%s] error listing dependencybuilds: %s", time.Now().Format(time.StampMilli), err.Error())
 		return false, nil
 	}
 	gotDBs := false
@@ -614,7 +615,7 @@ func prPods(ta *testArgs, name string) []corev1.Pod {
 	}
 	podList, err := podClient.List(context.TODO(), listOptions)
 	if err != nil {
-		ta.Logf(fmt.Sprintf("error listing pr pods %s", err.Error()))
+		ta.t.Logf("[%s] error listing pr pods %s", time.Now().Format(time.StampMilli), err.Error())
 		return []corev1.Pod{}
 	}
 	return podList.Items

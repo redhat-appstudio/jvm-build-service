@@ -155,6 +155,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
 
+	fmt.Printf("### Was using preBuildImageArgs %#v and konfluxArgs %#v ", preBuildImageArgs, konfluxArgs)
 	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 	orasOptions := ""
@@ -204,7 +205,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		additionalMemory = systemConfig.Spec.MaxAdditionalMemory
 	}
 	var buildToolSection string
-	trueBool := true
 	if tool == "maven" {
 		buildToolSection = mavenSettings + "\n" + mavenBuild
 	} else if tool == "gradle" {
@@ -335,9 +335,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	pipelineParams := []tektonpipeline.ParamSpec{
 		{Name: PipelineBuildId, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamScmUrl, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamScmTag, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamScmHash, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamChainsGitUrl, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamChainsGitCommit, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamGoals, Type: tektonpipeline.ParamTypeArray},
@@ -362,87 +359,145 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	runAfterBuild = append(runAfter, BuildTaskName)
 
 	ps := &tektonpipeline.PipelineSpec{
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource}, {Name: WorkspaceTls}},
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}, {Name: WorkspaceTls}},
 	}
 
 	if preBuildImageRequired {
-		buildSetup := tektonpipeline.TaskSpec{
-			Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
-			Params:     pipelineParams,
-			Results: []tektonpipeline.TaskResult{
-				{Name: PipelineResultPreBuildImageDigest, Type: tektonpipeline.ResultsTypeString},
-				{Name: PipelineResultGitArchive, Type: tektonpipeline.ResultsTypeString},
-			},
-			Steps: []tektonpipeline.Step{
+		resolver := tektonpipeline.ResolverRef{
+			// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
+			Resolver: "http",
+			Params: []tektonpipeline.Param{
 				{
-					Name:            "git-clone-and-settings",
-					Image:           recipe.Image,
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					ComputeResources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
-						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
+					Name: "url",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB11/deploy/tasks/pre-build.yaml",
 					},
-					Script: gitScript,
-					Env: []v1.EnvVar{
-						{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
-						{Name: "GIT_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitSecretName}, Key: v1alpha1.GitSecretTokenKey, Optional: &trueBool}}},
-					},
-				},
-				{
-					Name:            "preprocessor",
-					Image:           buildRequestProcessorImage,
-					ImagePullPolicy: pullPolicy,
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					Env: []v1.EnvVar{
-						{Name: PipelineParamCacheUrl, Value: "$(params." + PipelineParamCacheUrl + ")"},
-					},
-					ComputeResources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultRequestCPU},
-						Limits:   v1.ResourceList{"memory": limits.defaultRequestMemory, "cpu": limits.defaultLimitCPU},
-					},
-					Script: artifactbuild.InstallKeystoreIntoBuildRequestProcessor(preprocessorArgs),
-				},
-				{
-					Name:            "create-pre-build-source",
-					Image:           buildRequestProcessorImage,
-					ImagePullPolicy: pullPolicy,
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					Env:             secretVariables,
-					ComputeResources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-					},
-					Script: createKonfluxScripts(kf, konfluxScript) + "\n" + artifactbuild.InstallKeystoreIntoBuildRequestProcessor(konfluxArgs),
-				},
-				{
-					Name:            "create-pre-build-image",
-					Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
-					ImagePullPolicy: v1.PullIfNotPresent,
-					SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
-					Env:             secretVariables,
-					ComputeResources: v1.ResourceRequirements{
-						Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
-						Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
-					},
-					Script: preBuildImageArgs,
 				},
 			},
 		}
 		pipelineTask := []tektonpipeline.PipelineTask{{
 			Name: PreBuildTaskName,
-			TaskSpec: &tektonpipeline.EmbeddedTask{
-				TaskSpec: buildSetup,
+			TaskRef: &tektonpipeline.TaskRef{
+				// Can't specify name and resolver as they clash.
+				ResolverRef: resolver,
 			},
-			Params: []tektonpipeline.Param{}, Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-				{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
+			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 				{Name: WorkspaceSource, Workspace: WorkspaceSource},
 				{Name: WorkspaceTls, Workspace: WorkspaceTls},
 			},
+			Params: []tektonpipeline.Param{
+				{
+					Name: "IMAGE_URL",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: registryArgsWithDefaults(jbsConfig, imageId+"-pre-build-image"),
+					},
+				},
+				{
+					Name: "NAME",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: imageId,
+					},
+				},
+				{
+					Name: "GIT_SCRIPT",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: gitScript,
+					},
+				},
+				{
+					Name: "GIT_IDENTITY",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: jbsConfig.Spec.GitSourceArchive.Identity,
+					},
+				},
+				{
+					Name: "GIT_URL",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: jbsConfig.Spec.GitSourceArchive.URL,
+					},
+				},
+				{
+					Name: "GIT_DEPLOY_TOKEN",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: v1alpha1.GitRepoSecretName,
+					},
+				},
+				{
+					Name: "GIT_SSL_VERIFICATION",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: strconv.FormatBool(jbsConfig.Spec.GitSourceArchive.DisableSSLVerification),
+					},
+				},
+				{
+					Name: "GIT_REUSE_REPOSITORY",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: strconv.FormatBool(db.Annotations[artifactbuild.DependencyScmAnnotation] == "true"),
+					},
+				},
+				{
+					Name: "SCM_URL",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: db.Spec.ScmInfo.SCMURL,
+					},
+				},
+				{
+					Name: "SCM_HASH",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: db.Spec.ScmInfo.CommitHash,
+					},
+				},
+				{
+					Name: "RECIPE_IMAGE",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: recipe.Image,
+					},
+				},
+				{
+					Name: "BUILD_SCRIPT",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: createKonfluxScripts(kf, konfluxScript),
+					},
+				},
+				{
+					Name: "PREPROCESSOR_ARGS",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: strings.Join(preprocessorArgs, " "),
+					},
+				},
+				{
+					Name: "ORAS_OPTIONS",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: orasOptions,
+					},
+				},
+				{
+					Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: buildRequestProcessorImage,
+					},
+				},
+			},
 		}}
 		ps.Tasks = append(pipelineTask, ps.Tasks...)
-
-		for _, i := range buildSetup.Results {
-			ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + i.Name + ")"}})
+		ps.Results = []tektonpipeline.PipelineResult{
+			{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultPreBuildImageDigest + ")"}},
+			{Name: PipelineResultGitArchive, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultGitArchive + ")"}},
 		}
 	}
 
@@ -522,7 +577,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImageDigest + ")"}})
 
 	postBuildTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceBuildSettings}, {Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
 		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PipelineResultPreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
 		Results: []tektonpipeline.TaskResult{
 			{Name: PipelineResultContaminants},
@@ -570,7 +625,6 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions
 		Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Params:  []tektonpipeline.Param{{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
 		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-			{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
 			{Name: WorkspaceSource, Workspace: WorkspaceSource},
 			{Name: WorkspaceTls, Workspace: WorkspaceTls},
 		},
