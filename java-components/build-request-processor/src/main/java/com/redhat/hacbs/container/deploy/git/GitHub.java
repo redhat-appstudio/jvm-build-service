@@ -32,11 +32,11 @@ public class GitHub extends Git {
     public GitHub(String endpoint, String identity, String token, boolean ssl)
             throws IOException {
         if (isNotEmpty(token)) {
-            github = new GitHubBuilder().withEndpoint(endpoint == null ? GITHUB_URL : endpoint)
+            github = new GitHubBuilder().withEndpoint(isNotEmpty(endpoint) ? endpoint : GITHUB_URL)
                     .withOAuthToken(token)
                     .build();
         } else {
-            github = new GitHubBuilder().withEndpoint(endpoint == null ? GITHUB_URL : endpoint)
+            github = new GitHubBuilder().withEndpoint(isNotEmpty(endpoint) ? endpoint : GITHUB_URL)
                     .build();
         }
         owner = identity;

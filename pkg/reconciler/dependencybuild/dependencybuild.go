@@ -41,9 +41,9 @@ const (
 	//TODO eventually we'll need to decide if we want to make this tuneable
 	contextTimeout                    = 300 * time.Second
 	PipelineBuildId                   = "DEPENDENCY_BUILD"
-	PipelineParamScmUrl               = "URL"
+	PipelineParamScmUrl               = "SCM_URL"
 	PipelineParamScmTag               = "TAG"
-	PipelineParamScmHash              = "HASH"
+	PipelineParamScmHash              = "SCM_HASH"
 	PipelineParamPath                 = "CONTEXT_DIR"
 	PipelineParamChainsGitUrl         = "CHAINS-GIT_URL"
 	PipelineParamChainsGitCommit      = "CHAINS-GIT_COMMIT"
@@ -1403,9 +1403,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 	}
 
 	pr.Spec.Params = paramValues
-	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
-		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
-	}
+	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})

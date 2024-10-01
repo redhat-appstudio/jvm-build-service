@@ -18,7 +18,3 @@ type testArgs struct {
 	pipeline *tektonpipeline.Pipeline
 	run      *tektonpipeline.PipelineRun
 }
-
-func (ta *testArgs) Logf(msg string) {
-	ta.t.Logf("time: %s: %s", time.Now().String(), msg)
-}
