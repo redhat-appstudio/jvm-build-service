@@ -40,8 +40,13 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "maven-prepare")
 public class MavenPrepareCommand extends AbstractPreprocessor {
 
+    public MavenPrepareCommand() {
+        type = ToolType.MAVEN;
+    }
+
     @Override
     public void run() {
+        super.run();
         try {
             Files.walkFileTree(buildRoot, new SimpleFileVisitor<>() {
 

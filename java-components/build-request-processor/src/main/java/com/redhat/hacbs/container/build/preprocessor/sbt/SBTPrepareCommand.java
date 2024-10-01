@@ -10,7 +10,12 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "sbt-prepare")
 public class SBTPrepareCommand extends AbstractPreprocessor {
 
+    public SBTPrepareCommand() {
+        type = ToolType.SBT;
+    }
+
     @Override
     public void run() {
+        super.run();
     }
 }

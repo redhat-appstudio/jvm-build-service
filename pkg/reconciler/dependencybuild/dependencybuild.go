@@ -611,7 +611,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, diagnosticContainerfile, _, _, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
+	pr.Spec.PipelineSpec, diagnosticContainerfile, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

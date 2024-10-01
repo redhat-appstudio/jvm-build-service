@@ -11,8 +11,13 @@ import picocli.CommandLine;
  */
 @CommandLine.Command(name = "ant-prepare")
 public class AntPrepareCommand extends AbstractPreprocessor {
+
+    public AntPrepareCommand() {
+        type = ToolType.ANT;
+    }
+
     @Override
     public void run() {
-
+        super.run();
     }
 }

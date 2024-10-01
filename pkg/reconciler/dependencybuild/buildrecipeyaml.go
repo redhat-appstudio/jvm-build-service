@@ -146,14 +146,14 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	}
 	return ps, nil
 }
-func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, string, string, error) {
+func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
 	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
 	imageId := db.Name
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
-	preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
+	preBuildImageArgs, deployArgs, konfluxArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
 
 	fmt.Printf("### Was using preBuildImageArgs %#v and konfluxArgs %#v ", preBuildImageArgs, konfluxArgs)
 	gitScript := gitScript(db, recipe)
@@ -165,15 +165,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		tlsVerify = "false"
 	}
 
-	preprocessorArgs := []string{
-		"maven-prepare",
-		"$(workspaces." + WorkspaceSource + ".path)/source",
-	}
-	if len(recipe.DisabledPlugins) > 0 {
-		for _, i := range recipe.DisabledPlugins {
-			preprocessorArgs = append(preprocessorArgs, "-dp "+i)
-		}
-	}
 	var javaHome string
 	if recipe.JavaVersion == "7" || recipe.JavaVersion == "8" {
 		javaHome = "/lib/jvm/java-1." + recipe.JavaVersion + ".0"
@@ -210,22 +201,11 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	} else if tool == "gradle" {
 		// We always add Maven information (in InvocationBuilder) so add the relevant settings.xml
 		buildToolSection = mavenSettings + "\n" + gradleBuild
-		preprocessorArgs = []string{
-			"gradle-prepare",
-			"$(workspaces." + WorkspaceSource + ".path)/source",
-		}
-		if len(recipe.DisabledPlugins) > 0 {
-			for _, i := range recipe.DisabledPlugins {
-				preprocessorArgs = append(preprocessorArgs, "-dp "+i)
-			}
-		}
 	} else if tool == "sbt" {
 		buildToolSection = sbtBuild
-		preprocessorArgs[0] = "sbt-prepare"
 	} else if tool == "ant" {
 		// We always add Maven information (in InvocationBuilder) so add the relevant settings.xml
 		buildToolSection = mavenSettings + "\n" + antBuild
-		preprocessorArgs[0] = "ant-prepare"
 	} else {
 		buildToolSection = "echo unknown build tool " + tool + " && exit 1"
 	}
@@ -258,7 +238,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
 	log.Info(fmt.Sprintf("Generating dockerfile with recipe build image %#v", recipe.Image))
-	preprocessorScript := "#!/bin/sh\n/var/workdir/software/system-java/bin/java -jar /var/workdir/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
+	//preprocessorScript := "#!/bin/sh\n/var/workdir/software/system-java/bin/java -jar /var/workdir/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
+	preprocessorScript := "#!/bin/sh\n/var/workdir/software/system-java/bin/java -jar /var/workdir/software/build-request-processor/quarkus-run.jar " + recipe.Tool + "-prepare /var/workdir/workspace --recipe-image=" + recipe.Image + " --request-processor-image=" + buildRequestProcessorImage + " --disabled-plugins=" + strings.Join(recipe.DisabledPlugins, ",")
 	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
 	envVars := extractEnvVar(toolEnv)
 	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
@@ -296,41 +277,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	fmt.Printf("### Using recipe %#v with tool %#v and buildRequestImage %#v \n", recipe.Image, tool, buildRequestProcessorImage)
 
-	// Konflux Containerfile
-	kf := "FROM " + recipe.Image +
-		"\nUSER 0" +
-		"\nWORKDIR /var/workdir" +
-		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker" +
-		"\nARG CACHE_URL=\"\"" +
-		"\nENV CACHE_URL=$CACHE_URL" +
-		// TODO ### HACK : How to use SSL to avoid certificate problem with buildah task?
-		//"\nENV JBS_DISABLE_CACHE=true" +
-		"\nCOPY .jbs/run-build.sh /var/workdir" +
-		"\nCOPY . /var/workdir/workspace/source/" +
-		"\nRUN /var/workdir/run-build.sh"
-	// TODO: This is a bit of a hack but as Ant doesn't deploy and the previous implementation relied upon using the
-	//     BuildRequestProcessorImage we need to modify the Containerfile. In future the ant-build.sh should probably
-	//     encapsulate this.
-	if tool == "ant" {
-		kf = kf +
-			"\nFROM " + buildRequestProcessorImage + " AS build-request-processor" +
-			"\nUSER 0" +
-			"\nWORKDIR /var/workdir" +
-			"\nCOPY --from=0 /var/workdir/ /var/workdir/" +
-			// Don't think we need to mess with keystore as copy-artifacts is simply calling copy commands.
-			"\nRUN /opt/jboss/container/java/run/run-java.sh " + doSubstitution(strings.Join(copyArtifactsArgs, " "), []tektonpipeline.Param{}, commitTime, buildRepos) +
-			"\nFROM scratch" +
-			"\nCOPY --from=1 /var/workdir/workspace/artifacts /"
-	} else {
-		kf = kf +
-			"\nFROM scratch" +
-			"\nCOPY --from=0 /var/workdir/workspace/artifacts /"
-	}
-
 	pullPolicy := pullPolicy(buildRequestProcessorImage)
 	limits, err := memoryLimits(jbsConfig, additionalMemory)
 	if err != nil {
-		return nil, "", "", "", err
+		return nil, "", err
 	}
 
 	pipelineParams := []tektonpipeline.ParamSpec{
@@ -371,7 +321,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "url",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB11/deploy/tasks/pre-build.yaml",
+						StringVal: "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB11-2/deploy/tasks/pre-build.yaml",
 					},
 				},
 			},
@@ -465,17 +415,24 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "BUILD_SCRIPT",
+					Name: "BUILD_TOOL",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: createKonfluxScripts(kf, konfluxScript),
+						StringVal: tool,
 					},
 				},
 				{
-					Name: "PREPROCESSOR_ARGS",
+					Name: "BUILD_SCRIPT",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: strings.Join(preprocessorArgs, " "),
+						StringVal: createKonfluxScripts(konfluxScript),
+					},
+				},
+				{
+					Name: "BUILD_PLUGINS",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: strings.Join(recipe.DisabledPlugins, ","),
 					},
 				},
 				{
@@ -659,7 +616,7 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions
 			Value: value})
 	}
 
-	return ps, df, kf, konfluxScript, nil
+	return ps, df, nil
 }
 
 func secretVariables(jbsConfig *v1alpha1.JBSConfig) []v1.EnvVar {
@@ -685,11 +642,8 @@ func secretVariables(jbsConfig *v1alpha1.JBSConfig) []v1.EnvVar {
 	return secretVariables
 }
 
-func createKonfluxScripts(containerfile string, konfluxScript string) string {
+func createKonfluxScripts(konfluxScript string) string {
 	ret := "mkdir -p $(workspaces." + WorkspaceSource + ".path)/source/.jbs\n"
-	ret += "tee $(workspaces." + WorkspaceSource + ".path)/source/.jbs/Containerfile <<'RHTAPEOF'\n"
-	ret += containerfile
-	ret += "\nRHTAPEOF\n"
 	ret += "tee $(workspaces." + WorkspaceSource + ".path)/source/.jbs/run-build.sh <<'RHTAPEOF'\n"
 	ret += konfluxScript
 	ret += "\nRHTAPEOF\n"
@@ -699,7 +653,7 @@ func createKonfluxScripts(containerfile string, konfluxScript string) string {
 
 func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
 	pullPolicy := v1.PullIfNotPresent
-	if strings.HasSuffix(buildRequestProcessorImage, ":dev") {
+	if strings.HasSuffix(buildRequestProcessorImage, ":dev") || strings.HasSuffix(buildRequestProcessorImage, ":latest") {
 		pullPolicy = v1.PullAlways
 	}
 	return pullPolicy
@@ -798,7 +752,7 @@ func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) strin
 	return gitArgs
 }
 
-func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, []string, []string, []string) {
+func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, []string, []string) {
 
 	orasOptions := ""
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
@@ -813,12 +767,6 @@ func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConf
 export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
 create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
 `, orasOptions, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PipelineResultPreBuildImageDigest)
-
-	copyArtifactsArgs := []string{
-		"copy-artifacts",
-		"--source-path=$(workspaces.source.path)/source",
-		"--deploy-path=$(workspaces.source.path)/artifacts",
-	}
 
 	deployArgs := []string{
 		"verify",
@@ -840,7 +788,7 @@ create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
 	konfluxArgs = append(konfluxArgs, gitArgs(jbsConfig, db)...)
 	konfluxArgs = append(konfluxArgs, "--image-id="+imageId)
 
-	return preBuildImageArgs, copyArtifactsArgs, deployArgs, konfluxArgs
+	return preBuildImageArgs, deployArgs, konfluxArgs
 }
 
 // This effectively duplicates the defaults from DeployPreBuildImageCommand.java
