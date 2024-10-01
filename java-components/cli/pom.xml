@@ -61,10 +61,6 @@
             <artifactId>hacbs-build-recipes-database</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.cyclonedx</groupId>
-            <artifactId>cyclonedx-core-java</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.google.cloud.tools</groupId>
             <artifactId>jib-core</artifactId>
         </dependency>

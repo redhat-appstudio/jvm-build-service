@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.common.maven.GAV;
 
 @Deprecated
 public final class DeployData {

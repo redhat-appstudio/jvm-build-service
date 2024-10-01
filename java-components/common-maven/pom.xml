@@ -8,7 +8,7 @@
         <artifactId>jvm-build-service-parent</artifactId>
         <version>999-SNAPSHOT</version>
     </parent>
-    <artifactId>common-sbom</artifactId>
+    <artifactId>common-maven</artifactId>
     <description>Shared code for SBOM generation</description>
     <dependencies>
         <dependency>

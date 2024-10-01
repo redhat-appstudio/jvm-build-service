@@ -7,7 +7,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import com.redhat.hacbs.common.sbom.GAV;
+import com.redhat.hacbs.common.maven.GAV;
 
 class GitScmLocatorTest {
 
