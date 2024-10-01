@@ -52,7 +52,7 @@
         <surefire-plugin.version>3.3.1</surefire-plugin.version>
         <formatter-maven-plugin.version>2.24.1</formatter-maven-plugin.version>
         <impsort-maven-plugin.version>1.12.0</impsort-maven-plugin.version>
-        <kubernetes-client.version>6.13.3</kubernetes-client.version>
+        <kubernetes-client.version>6.13.4</kubernetes-client.version>
 
         <!-- Dependencies -->
         <asm.version>9.7</asm.version>
