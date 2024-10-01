@@ -7,4 +7,3 @@ resources:
   - jvmbuildservice.io_rebuiltartifacts.yaml
   - jvmbuildservice.io_systemconfigs.yaml
   - jvmbuildservice.io_jbsconfigs.yaml
-  - jvmbuildservice.io_jvmimagescans.yaml

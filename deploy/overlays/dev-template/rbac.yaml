@@ -10,8 +10,6 @@ rules:
     resources:
       - artifactbuilds
       - artifactbuilds/status
-      - jvmimagescans
-      - jvmimagescans/status
       - dependencybuilds
       - dependencybuilds/status
     verbs:

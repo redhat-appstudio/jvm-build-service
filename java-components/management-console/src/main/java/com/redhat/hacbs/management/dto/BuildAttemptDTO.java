@@ -53,8 +53,7 @@ public record BuildAttemptDTO(
         Instant startTime,
 
         List<ShadingDetails> shadingDetails,
-        List<String> artifacts,
-        @Schema(required = true) long buildSbomDependencySetId) {
+        List<String> artifacts) {
 
     public static BuildAttemptDTO of(BuildAttempt i) {
         var label = "JDK " + i.jdk;
@@ -108,10 +107,7 @@ public record BuildAttemptDTO(
                 i.diagnosticDockerFile,
                 i.startTime,
                 i.shadingDetails,
-                i.producedArtifacts.stream().map(MavenArtifact::gav).toList(),
-                i.buildSbom != null && i.buildSbom.dependencySet != null
-                        ? i.buildSbom.dependencySet.id
-                        : -1);
+                i.producedArtifacts.stream().map(MavenArtifact::gav).toList());
     }
 
     private static Map<String, List<String>> mapDifferences(String upstreamDifferences) {

@@ -8,7 +8,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
@@ -16,10 +15,7 @@ import jakarta.ws.rs.QueryParam;
 import com.redhat.hacbs.management.dto.ImageDTO;
 import com.redhat.hacbs.management.dto.PageParameters;
 import com.redhat.hacbs.management.model.ContainerImage;
-import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
-import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScanSpec;
 
-import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
@@ -44,16 +40,6 @@ public class ImageResource {
                 all.stream().map(ImageDTO::of)
                         .toList(),
                 ContainerImage.count(), page, perPage);
-    }
-
-    @PUT
-    public void image(String image) {
-        JvmImageScan scan = new JvmImageScan();
-        scan.setSpec(new JvmImageScanSpec());
-        scan.getSpec().setImage(image);
-        scan.setMetadata(new ObjectMeta());
-        scan.getMetadata().setGenerateName("user-scan-");
-        kubernetesClient.get().resource(scan).create();
     }
 
     @GET

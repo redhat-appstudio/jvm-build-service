@@ -12,13 +12,8 @@ import java.util.TreeMap;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import com.redhat.hacbs.management.model.ContainerImage;
-import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
-import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScanSpec;
 
 import io.fabric8.kubernetes.api.model.ListOptions;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -91,7 +86,6 @@ public class DeploymentWatcher {
                                     return;
                                 }
                                 images.add(i.getImageID());
-                                handleImage(i.getImageID(), app, Instant.parse(resource.getMetadata().getCreationTimestamp()));
                             }
                             images.sort(Comparator.naturalOrder());
                             deployments.put(key, new DeploymentInfo(Collections.unmodifiableList(images), creationTime));
@@ -139,29 +133,6 @@ public class DeploymentWatcher {
             }
         });
 
-    }
-
-    @Transactional
-    void handleImage(String image, String app, Instant timestamp) {
-        if (!image.contains("@")) {
-            Log.errorf("image %s has no digest, not scanning", image);
-            return;
-        }
-        ContainerImage containerImage = ContainerImage.getOrCreate(image, timestamp);
-        if (containerImage.analysisComplete) {
-            return;
-        }
-        for (var scans : client.resources(JvmImageScan.class).list().getItems()) {
-            if (scans.getSpec().getImage().equals(image)) {
-                //in progress
-                return;
-            }
-        }
-        JvmImageScan scan = new JvmImageScan();
-        scan.setSpec(new JvmImageScanSpec());
-        scan.getSpec().setImage(image);
-        scan.getMetadata().setGenerateName(app);
-        client.resource(scan).create();
     }
 
     public record NamespacedName(String namespace, String name) implements Comparable<NamespacedName> {

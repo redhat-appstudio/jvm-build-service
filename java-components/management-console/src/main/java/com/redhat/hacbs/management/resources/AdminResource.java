@@ -12,7 +12,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
 import com.redhat.hacbs.management.importer.S3Importer;
-import com.redhat.hacbs.management.internal.model.BuildSBOMDiscoveryInfo;
 import com.redhat.hacbs.management.model.AdditionalDownload;
 import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildQueue;
@@ -27,7 +26,6 @@ import com.redhat.hacbs.management.model.StoredArtifactBuild;
 import com.redhat.hacbs.management.model.StoredDependencyBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.ArtifactBuild;
 import com.redhat.hacbs.resources.model.v1alpha1.JBSConfig;
-import com.redhat.hacbs.resources.model.v1alpha1.JvmImageScan;
 import com.redhat.hacbs.resources.model.v1alpha1.ModelConstants;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -88,10 +86,6 @@ public class AdminResource {
     @POST
     @Path("clean-out-database")
     public void cleanOutDatabase() {
-        var scans = kubernetesClient.resources(JvmImageScan.class).list();
-        for (var i : scans.getItems()) {
-            kubernetesClient.resource(i).delete();
-        }
         TransactionRunnerOptions runner = QuarkusTransaction.runner(TransactionSemantics.REQUIRE_NEW).timeout(60 * 60);
         runner.run(() -> {
             BuildQueue.deleteAll();
@@ -107,9 +101,6 @@ public class AdminResource {
         });
         runner.run(() -> {
             IdentifiedDependency.deleteAll();
-        });
-        runner.run(() -> {
-            BuildSBOMDiscoveryInfo.deleteAll();
         });
         runner.run(() -> {
             AdditionalDownload.deleteAll();

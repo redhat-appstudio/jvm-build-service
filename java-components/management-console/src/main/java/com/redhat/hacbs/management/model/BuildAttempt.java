@@ -10,13 +10,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.redhat.hacbs.management.internal.model.BuildSBOMDiscoveryInfo;
 
 import io.quarkus.arc.Arc;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
@@ -85,9 +83,6 @@ public class BuildAttempt extends PanacheEntity {
     @Column
     @Temporal(TemporalType.TIMESTAMP)
     public Instant startTime;
-
-    @OneToOne(optional = true, mappedBy = "build")
-    public BuildSBOMDiscoveryInfo buildSbom;
 
     public boolean contaminated;
 

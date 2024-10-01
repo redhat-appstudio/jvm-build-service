@@ -23,8 +23,6 @@ type DependencyBuildExpansion interface{}
 
 type JBSConfigExpansion interface{}
 
-type JvmImageScanExpansion interface{}
-
 type RebuiltArtifactExpansion interface{}
 
 type SystemConfigExpansion interface{}
