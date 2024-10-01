@@ -15,7 +15,6 @@ import com.redhat.hacbs.management.importer.S3Importer;
 import com.redhat.hacbs.management.model.AdditionalDownload;
 import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildQueue;
-import com.redhat.hacbs.management.model.ContainerImage;
 import com.redhat.hacbs.management.model.DependencySet;
 import com.redhat.hacbs.management.model.GithubActionsBuild;
 import com.redhat.hacbs.management.model.IdentifiedDependency;
@@ -115,7 +114,6 @@ public class AdminResource {
             StoredArtifactBuild.deleteAll();
         });
         runner.run(() -> {
-            ContainerImage.deleteAll();
             GithubActionsBuild.deleteAll();
             DependencySet.deleteAll();
             MavenArtifactLabel.deleteAll();
