@@ -134,7 +134,7 @@ spec:
         - --git-disable-ssl-verification=$(params.GIT_SSL_VERIFICATION)
         - --git-reuse-repository=$(params.GIT_REUSE_REPOSITORY)
     - name: create-pre-build-image
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:d6f57d97d19008437680190908fe5444cda380f9c77d0e9efde7153720412e05
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:e0e457b6af10e44ff6b90208a9e69adc863a865e1c062c4cb84bf3846037d74d
       script: |
         echo "Creating pre-build-image archive"
         export ORAS_OPTIONS="$ORAS_OPTIONS --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
