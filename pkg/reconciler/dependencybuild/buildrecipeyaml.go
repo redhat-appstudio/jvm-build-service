@@ -321,7 +321,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "url",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "https://raw.githubusercontent.com/rnc/jvm-build-service/KJB11-2/deploy/tasks/pre-build.yaml",
+						StringVal: v1alpha1.KonfluxPreBuildDefinitions,
 					},
 				},
 			},
