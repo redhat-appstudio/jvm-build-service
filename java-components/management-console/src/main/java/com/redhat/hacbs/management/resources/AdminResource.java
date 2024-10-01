@@ -12,7 +12,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
 import com.redhat.hacbs.management.importer.S3Importer;
-import com.redhat.hacbs.management.internal.model.BuildSBOMDiscoveryInfo;
 import com.redhat.hacbs.management.model.AdditionalDownload;
 import com.redhat.hacbs.management.model.BuildAttempt;
 import com.redhat.hacbs.management.model.BuildQueue;
@@ -102,9 +101,6 @@ public class AdminResource {
         });
         runner.run(() -> {
             IdentifiedDependency.deleteAll();
-        });
-        runner.run(() -> {
-            BuildSBOMDiscoveryInfo.deleteAll();
         });
         runner.run(() -> {
             AdditionalDownload.deleteAll();

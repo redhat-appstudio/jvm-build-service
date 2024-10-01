@@ -424,15 +424,6 @@ const BuildAttempt: React.FunctionComponent<BuildAttemptType> = (data: BuildAtte
         </CardBody>
       </Card>
     </Tab>
-    <Tab eventKey={6} disabled={selectBuildAttempt.buildSbomDependencySetId == -1}
-         title={<TabTitleText>Build SBom</TabTitleText>}>
-      <Card>
-        <CardHeader>Build SBom</CardHeader>
-        <CardBody>
-          <DependencySet dependencySetId={selectBuildAttempt.buildSbomDependencySetId}></DependencySet>
-        </CardBody>
-      </Card>
-    </Tab>
   </Tabs>);
 };
 

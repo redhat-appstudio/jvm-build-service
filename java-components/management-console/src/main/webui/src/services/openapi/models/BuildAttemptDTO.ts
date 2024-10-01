@@ -40,6 +40,5 @@ export type BuildAttemptDTO = {
     startTime?: Instant;
     shadingDetails?: Array<ShadingDetails>;
     artifacts?: Array<string>;
-    buildSbomDependencySetId: number;
 };
 
