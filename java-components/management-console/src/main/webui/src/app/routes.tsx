@@ -11,10 +11,6 @@ import {ControlPanel} from "@app/ControlPanel/ControlPanel";
 import {ArtifactList} from "@app/ArtifactList/ArtifactList";
 import {ArtifactView} from "@app/ArtifactView/ArtifactView";
 import {AddArtifact} from "@app/AddArtifact/AddArtifact";
-import {ImageRepositoryList} from "@app/ImageRepositoryList/ImageRepositoryList";
-import {ImageList} from "@app/ImageList/ImageList";
-import {AddImage} from "@app/AddImage/AddImage";
-import {DeploymentList} from "@app/DeploymentList/DeploymentList";
 import {GithubBuildList} from "@app/GithubBuildList/GithubBuildList";
 import {GithubBuildView} from "@app/GithubBuildView/GithubBuildView";
 
@@ -99,42 +95,6 @@ const routes: AppRouteConfig[] = [
         label: 'Add Artifact',
         path: '/artifacts/create',
         title: 'JVM Build Service | Add Artifact',
-      },
-    ],
-  },
-  {
-    label: 'Images',
-    routes: [
-      {
-        component: ImageRepositoryList,
-        exact: true,
-        label: 'Images',
-        path: '/image-repositories/all',
-        title: 'JVM Build Service | Image Repository List',
-      },
-      {
-        component: ImageList,
-        path: '/images/repository/:repo',
-        title: 'JVM Build Service | Image Details',
-      },
-      {
-        component: AddImage,
-        exact: true,
-        label: 'Add Image',
-        path: '/images/create',
-        title: 'JVM Build Service | Add Image',
-      },
-    ],
-  },
-  {
-    label: 'Deployments',
-    routes: [
-      {
-        component: DeploymentList,
-        exact: true,
-        label: 'All Deployments',
-        path: '/deployments/all',
-        title: 'JVM Build Service | Deployment List',
       },
     ],
   },
