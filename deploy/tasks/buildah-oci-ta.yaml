@@ -233,7 +233,7 @@ spec:
         - name: ORAS_OPTIONS
           value: $(params.ORAS_OPTIONS)
     - name: build
-      image: quay.io/konflux-ci/buildah-task:latest@sha256:218d526bbaf0ceee4d6b4ee78af5e22de786cf2ed7c13f8a915263a43ac50f7a
+      image: quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
       args:
         - $(params.BUILD_ARGS[*])
       workingDir: /var/workdir
@@ -521,7 +521,7 @@ spec:
       securityContext:
         runAsUser: 0
     - name: inject-sbom-and-push
-      image: quay.io/konflux-ci/buildah-task:latest@sha256:218d526bbaf0ceee4d6b4ee78af5e22de786cf2ed7c13f8a915263a43ac50f7a
+      image: quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /var/lib/containers
