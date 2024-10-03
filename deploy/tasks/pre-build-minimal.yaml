@@ -1,0 +1,72 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: pre-build-minimal
+  annotations:
+    tekton.dev/pipelines.minVersion: 0.12.1
+    tekton.dev/tags: image-build, konflux
+  labels:
+    app.kubernetes.io/version: "0.1"
+    build.appstudio.redhat.com/build_type: docker
+spec:
+  description: |-
+    Sets up pre-build running the preprocessor, pushing the source and creating the OCI image.
+  params:
+    - name: IMAGE_URL
+      description: URL of the OCI image to create.
+      type: string
+    - name: NAME
+      description: Name of the pipeline run (i.e. unique dependency build name)
+      type: string
+    - name: BUILD_SCRIPT
+      description: The build script to embed with the Containerfile
+    - name: PREPROCESSOR_ARGS
+      description: The arguments for the build preprocessor
+    - name: ORAS_OPTIONS
+      type: string
+      description: Optional environment variable string for build-trusted-artifacts
+      default: ""
+  results:
+    - name: PRE_BUILD_IMAGE_DIGEST
+      description: Digest of the image just built
+    # - name: GIT_ARCHIVE
+    #   description: Git archive information
+  # stepTemplate:
+  #   computeResources: {}
+  #   volumeMounts:
+  #     - mountPath: /var/workdir/source
+  #       name: source
+  workspaces:
+    - name: source
+      description: The git repo will be cloned onto the volume backing this Workspace.
+      # mountPath: /var/workdir
+    # - name: tls
+  steps:
+    - name: preprocessor
+      # image: quay.io/redhat-appstudio/hacbs-jvm-build-request-processor:dev
+      image: quay.io/ncross/hacbs-jvm-build-request-processor:dev
+      securityContext:
+        runAsUser: 0
+      computeResources:
+        limits:
+          cpu: 300m
+          memory: 512Mi
+        requests:
+          cpu: 10m
+          memory: 512Mi
+      script: |
+        cd $(workspaces.source.path)
+        /opt/jboss/container/java/run/run-java.sh $(params.PREPROCESSOR_ARGS)
+    - name: create-pre-build-image
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:d6f57d97d19008437680190908fe5444cda380f9c77d0e9efde7153720412e05
+      script: |
+        echo "Creating pre-build-image archive"
+        export ORAS_OPTIONS="$ORAS_OPTIONS --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
+        create-archive --store $(params.IMAGE_URL) $(results.PRE_BUILD_IMAGE_DIGEST.path)=$(workspaces.source.path)/source
+      env:
+        - name: ORAS_OPTIONS
+          value: $(params.ORAS_OPTIONS)
+        - name: IMAGE_URL
+          value: $(params.IMAGE_URL)
+

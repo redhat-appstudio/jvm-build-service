@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ssh-directory
+data:
+  config: |
+    Host github.com
+      HostName github.com
+      User git
+      IdentityFile /root/.ssh/github-bot-pk
+      StrictHostKeyChecking no
+  github-bot-pk: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    private-key-goes-here
+    -----END OPENSSH PRIVATE KEY-----
