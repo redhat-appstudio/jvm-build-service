@@ -375,13 +375,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						StringVal: strconv.FormatBool(!recipe.DisableSubmodules),
 					},
 				},
-				{
-					Name: "fetchTags",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "true",
-					},
-				},
 			},
 		}}
 		pipelinePreBuildTask := []tektonpipeline.PipelineTask{{
