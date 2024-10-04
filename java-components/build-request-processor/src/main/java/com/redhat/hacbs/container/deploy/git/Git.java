@@ -1,5 +1,6 @@
 package com.redhat.hacbs.container.deploy.git;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -126,6 +127,10 @@ public abstract class Git {
             //var tagNameFromDescribe = jGit.describe().setTags(true).setTarget(commit).call();
             var objectId = ObjectId.fromString(commit);
             var jRepo = jGit.getRepository();
+            if (new File(jGit.getRepository().getDirectory(), "shallow").exists()) {
+                Log.warnf("Git repository is shallow repository - converting.");
+                jGit.fetch().setUnshallow(true).call();
+            }
             @SuppressWarnings("deprecation")
             var tagName = jRepo.getRefDatabase().getRefsByPrefix(Constants.R_TAGS).stream().
                 filter(ref -> objectId.equals(jRepo.peel(ref).getPeeledObjectId()) || objectId.equals(ref.getObjectId())).
