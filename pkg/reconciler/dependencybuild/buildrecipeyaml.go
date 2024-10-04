@@ -25,6 +25,7 @@ const (
 	WorkspaceMount         = "/var/workdir"
 	WorkspaceTls           = "tls"
 
+	GitTaskName       = "git-clone"
 	PreBuildTaskName  = "pre-build"
 	BuildTaskName     = "build"
 	PostBuildTaskName = "post-build"
@@ -156,7 +157,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	preBuildImageArgs, deployArgs, konfluxArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
 
 	fmt.Printf("### Was using preBuildImageArgs %#v and konfluxArgs %#v ", preBuildImageArgs, konfluxArgs)
-	gitScript := gitScript(db, recipe)
+	// TODO: Portion of this is used in diagnostic dockerfile. Likely not needed now.
+	// gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 	orasOptions := ""
 	tlsVerify := "true"
@@ -265,7 +267,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nCOPY --from=cache /deployments/ /var/workdir/software/cache" +
 		// Use git script rather than the preBuildImages as they are OCI archives and can't be used with docker/podman.
 		// TODO: ### Is this gitscript using the correct SHA? The Konflux one is but this is using pre preprocessor changes.
-		"\nRUN " + doSubstitution(gitScript, paramValues, commitTime, buildRepos) +
+		"\nRUN " + doSubstitution("git clone $(params."+PipelineParamScmUrl+") $(workspaces."+WorkspaceSource+".path)/source && cd $(workspaces."+WorkspaceSource+".path)/source && git reset --hard $(params."+PipelineParamScmHash+") && git submodule init && git submodule update --recursive", paramValues, commitTime, buildRepos) +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/var/workdir/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /var/workdir/software/cache/quarkus-run.jar >/var/workdir/cache.log &"+
 		"\nwhile ! cat /var/workdir/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/var/workdir/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/var/workdir/preprocessor.sh" +
@@ -313,7 +315,20 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 
 	if preBuildImageRequired {
-		resolver := tektonpipeline.ResolverRef{
+		gitResolver := tektonpipeline.ResolverRef{
+			// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
+			Resolver: "http",
+			Params: []tektonpipeline.Param{
+				{
+					Name: "url",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: v1alpha1.KonfluxGitDefinition,
+					},
+				},
+			},
+		}
+		preBuildResolver := tektonpipeline.ResolverRef{
 			// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
 			Resolver: "http",
 			Params: []tektonpipeline.Param{
@@ -326,11 +341,45 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				},
 			},
 		}
-		pipelineTask := []tektonpipeline.PipelineTask{{
-			Name: PreBuildTaskName,
+		pipelineGitTask := []tektonpipeline.PipelineTask{{
+			Name: GitTaskName,
 			TaskRef: &tektonpipeline.TaskRef{
 				// Can't specify name and resolver as they clash.
-				ResolverRef: resolver,
+				ResolverRef: gitResolver,
+			},
+			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+				{Name: "output", Workspace: WorkspaceSource},
+			},
+			Params: []tektonpipeline.Param{
+				{
+					Name: "url",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: db.Spec.ScmInfo.SCMURL,
+					},
+				},
+				{
+					Name: "revision",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: db.Spec.ScmInfo.CommitHash,
+					},
+				},
+				{
+					Name: "submodules",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: strconv.FormatBool(!recipe.DisableSubmodules),
+					},
+				},
+			},
+		}}
+		pipelinePreBuildTask := []tektonpipeline.PipelineTask{{
+			Name:     PreBuildTaskName,
+			RunAfter: []string{GitTaskName},
+			TaskRef: &tektonpipeline.TaskRef{
+				// Can't specify name and resolver as they clash.
+				ResolverRef: preBuildResolver,
 			},
 			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 				{Name: WorkspaceSource, Workspace: WorkspaceSource},
@@ -352,13 +401,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "GIT_SCRIPT",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: gitScript,
-					},
-				},
-				{
 					Name: "GIT_IDENTITY",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
@@ -370,13 +412,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: jbsConfig.Spec.GitSourceArchive.URL,
-					},
-				},
-				{
-					Name: "GIT_DEPLOY_TOKEN",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: v1alpha1.GitRepoSecretName,
 					},
 				},
 				{
@@ -451,7 +486,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				},
 			},
 		}}
-		ps.Tasks = append(pipelineTask, ps.Tasks...)
+		ps.Tasks = append(pipelineGitTask, ps.Tasks...)
+		ps.Tasks = append(pipelinePreBuildTask, ps.Tasks...)
 		ps.Results = []tektonpipeline.PipelineResult{
 			{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultPreBuildImageDigest + ")"}},
 			{Name: PipelineResultGitArchive, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultGitArchive + ")"}},

@@ -19,17 +19,11 @@ spec:
     - name: NAME
       description: Name of the pipeline run (i.e. unique dependency build name)
       type: string
-    - name: GIT_SCRIPT
-      description: Git clone commands
-      type: string
     - name: GIT_IDENTITY
       description: Git username
       type: string
     - name: GIT_URL
       description: URL to determine whether we're using gitlab or github
-      type: string
-    - name: GIT_DEPLOY_TOKEN
-      description: Name of jvm-build-git-repo-secrets secret containing git password/token to use.
       type: string
     - name: GIT_SSL_VERIFICATION
       description: Whether to disable ssl verification
@@ -72,27 +66,6 @@ spec:
       mountPath: /var/workdir
     - name: tls
   steps:
-    # Should we use our own git clone task? Or embed (somehow) Konflux's version?
-    - name: git-clone
-      image: $(params.RECIPE_IMAGE)
-      computeResources:
-        limits:
-          cpu: 300m
-          memory: 512Mi
-        requests:
-          cpu: 10m
-          memory: 512Mi
-      securityContext:
-        runAsUser: 0
-      env:
-        - name: GIT_TOKEN
-          valueFrom:
-            secretKeyRef:
-              optional: true
-              name: jvm-build-git-secrets
-              key: .git-credentials
-      script: |
-        $(params.GIT_SCRIPT)
     - name: preprocessor
       image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
       securityContext:
@@ -123,7 +96,7 @@ spec:
           valueFrom:
             secretKeyRef:
               optional: true
-              name: $(params.GIT_DEPLOY_TOKEN)
+              name: jvm-build-git-repo-secrets
               key: gitdeploytoken
       args:
         - deploy-pre-build-source
