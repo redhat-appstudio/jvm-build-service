@@ -20,11 +20,13 @@ spec:
       description: Name of the pipeline run (i.e. unique dependency build name)
       type: string
     - name: GIT_IDENTITY
-      description: Git username
+      description: Git username. If empty, deploy-pre-build-source step will be skipped.
       type: string
+      default: ""
     - name: GIT_URL
-      description: URL to determine whether we're using gitlab or github
+      description: String to determine whether we're using gitlab or github
       type: string
+      default: "github"
     - name: GIT_SSL_VERIFICATION
       description: Whether to disable ssl verification
       type: string
@@ -32,6 +34,7 @@ spec:
     - name: GIT_REUSE_REPOSITORY
       description: Whether to reuse existing git repository or create new one
       type: string
+      default: "false"
     - name: SCM_URL
       description: Reference to the git repository
       type: string
@@ -80,6 +83,7 @@ spec:
       script: |
         $(params.BUILD_SCRIPT)
         /opt/jboss/container/java/run/run-java.sh $(params.BUILD_TOOL)-prepare $(workspaces.source.path)/source --recipe-image=$(params.RECIPE_IMAGE) --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE) --disabled-plugins=$(params.BUILD_PLUGINS)
+    # TODO: Look at making this optional until we know whether we need to store source
     - name: create-pre-build-source
       image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
       securityContext:
