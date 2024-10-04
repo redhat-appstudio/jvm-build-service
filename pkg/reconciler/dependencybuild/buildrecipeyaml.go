@@ -157,8 +157,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	preBuildImageArgs, deployArgs, konfluxArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
 
 	fmt.Printf("### Was using preBuildImageArgs %#v and konfluxArgs %#v ", preBuildImageArgs, konfluxArgs)
-	// TODO: Portion of this is used in diagnostic dockerfile. Likely not needed now.
-	// gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 	orasOptions := ""
 	tlsVerify := "true"
@@ -252,22 +250,27 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	// Diagnostic Containerfile
 	// TODO: Looks like diagnostic files won't work with UBI7 anymore. This needs to be followed up on; potentially
 	//		 we could just disable the cache for this scenario?
+	imageRegistry := jbsConfig.ImageRegistry()
+	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
+		"\nFROM " + strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]) +
 		"\nFROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /var/workdir" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker" +
+		"\nRUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y jq" +
+		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker /var/workdir/workspace/source" +
 		"\nCOPY --from=build-request-processor /deployments/ /var/workdir/software/build-request-processor" +
 		// Copying JDK17 for the cache.
 		// TODO: Could we determine if we are using UBI8 and avoid this?
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /var/workdir/software/system-java" +
+		"\nCOPY --from=oras /usr/local/bin/ /usr/bin" +
 		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
 		"\nCOPY --from=cache /deployments/ /var/workdir/software/cache" +
-		// Use git script rather than the preBuildImages as they are OCI archives and can't be used with docker/podman.
-		// TODO: ### Is this gitscript using the correct SHA? The Konflux one is but this is using pre preprocessor changes.
-		"\nRUN " + doSubstitution("git clone $(params."+PipelineParamScmUrl+") $(workspaces."+WorkspaceSource+".path)/source && cd $(workspaces."+WorkspaceSource+".path)/source && git reset --hard $(params."+PipelineParamScmHash+") && git submodule init && git submodule update --recursive", paramValues, commitTime, buildRepos) +
+		"\nCOPY --from=oras /usr/local/bin /usr/bin" +
+		"\nRUN TAR_OPTIONS=--no-same-owner use-archive \"oci:" + imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository +
+		"@$(oras manifest fetch " + preBuildImageFrom + " | jq --raw-output '.layers[0].digest')=/var/workdir/workspace/source\"" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/var/workdir/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /var/workdir/software/cache/quarkus-run.jar >/var/workdir/cache.log &"+
 		"\nwhile ! cat /var/workdir/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/var/workdir/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/var/workdir/preprocessor.sh" +
@@ -772,20 +775,6 @@ func additionalPackages(recipe *v1alpha1.BuildRecipe) string {
 		install = install + template
 	}
 	return install
-}
-
-func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string {
-	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ") and resetting to $(params." + PipelineParamScmHash + ")\" && "
-	if db.Spec.ScmInfo.Private {
-		gitArgs = gitArgs + "echo \"$GIT_TOKEN\" > $HOME/.git-credentials && chmod 400 $HOME/.git-credentials && "
-		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig && "
-	}
-	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/source && cd $(workspaces." + WorkspaceSource + ".path)/source && git reset --hard $(params." + PipelineParamScmHash + ")"
-
-	if !recipe.DisableSubmodules {
-		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
-	}
-	return gitArgs
 }
 
 func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, []string, []string) {
