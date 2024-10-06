@@ -358,7 +358,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "url",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: db.Spec.ScmInfo.SCMURL,
+						StringVal: modifyURLFragment(log, db.Spec.ScmInfo.SCMURL),
 					},
 				},
 				{
