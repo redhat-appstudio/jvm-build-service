@@ -27,6 +27,9 @@ DIR=`dirname $0`
 echo "Running out of ${DIR}"
 
 oc apply -f ${DIR}/base/pipelines/openshift-pipelines-subscription.yaml
+sleep 5
+oc get subscriptions.operators.coreos.com -A
+oc get namespaces -A
 waitFor "oc get ns openshift-pipelines"
 waitFor "oc get pods -n openshift-pipelines | grep tekton-pipelines-controller | grep Running"
 waitFor "oc get mutatingwebhookconfigurations.admissionregistration.k8s.io webhook.pipeline.tekton.dev -o yaml | grep rules"
