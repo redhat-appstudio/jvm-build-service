@@ -618,10 +618,18 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 
 	attempt.Build.DiagnosticDockerFile = diagnosticContainerfile
 
+	qty, _ := resource.ParseQuantity("1Gi")
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
 		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
-		{Name: WorkspaceSource, EmptyDir: &v1.EmptyDirVolumeSource{}},
+		{Name: WorkspaceSource, VolumeClaimTemplate: &v1.PersistentVolumeClaim{
+			Spec: v1.PersistentVolumeClaimSpec{
+				AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
+				Resources: v1.VolumeResourceRequirements{
+					Requests: v1.ResourceList{"storage": qty},
+				},
+			},
+		}},
 	}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {

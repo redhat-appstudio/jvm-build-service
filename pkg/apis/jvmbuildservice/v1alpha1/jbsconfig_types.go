@@ -33,7 +33,8 @@ const (
 	ConfigArtifactCacheWorkerThreadsDefault = "50"
 	ConfigArtifactCacheStorageDefault       = "10Gi"
 
-	KonfluxPreBuildDefinitions    = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/pre-build.yaml"
+	KonfluxGitDefinition          = "https://raw.githubusercontent.com/konflux-ci/build-definitions/refs/heads/main/task/git-clone/0.1/git-clone.yaml"
+	KonfluxPreBuildDefinitions    = "https://raw.githubusercontent.com/rnc/jvm-build-service/GIT/deploy/tasks/pre-build.yaml"
 	KonfluxBuildDefinitions       = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/buildah-oci-ta.yaml"
 	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/maven-deployment.yaml"
 )

@@ -19,18 +19,14 @@ spec:
     - name: NAME
       description: Name of the pipeline run (i.e. unique dependency build name)
       type: string
-    - name: GIT_SCRIPT
-      description: Git clone commands
-      type: string
     - name: GIT_IDENTITY
-      description: Git username
+      description: Git username. If empty, deploy-pre-build-source step will be skipped.
       type: string
+      default: ""
     - name: GIT_URL
-      description: URL to determine whether we're using gitlab or github
+      description: String to determine whether we're using gitlab or github
       type: string
-    - name: GIT_DEPLOY_TOKEN
-      description: Name of jvm-build-git-repo-secrets secret containing git password/token to use.
-      type: string
+      default: "github"
     - name: GIT_SSL_VERIFICATION
       description: Whether to disable ssl verification
       type: string
@@ -38,6 +34,7 @@ spec:
     - name: GIT_REUSE_REPOSITORY
       description: Whether to reuse existing git repository or create new one
       type: string
+      default: "false"
     - name: SCM_URL
       description: Reference to the git repository
       type: string
@@ -72,27 +69,6 @@ spec:
       mountPath: /var/workdir
     - name: tls
   steps:
-    # Should we use our own git clone task? Or embed (somehow) Konflux's version?
-    - name: git-clone
-      image: $(params.RECIPE_IMAGE)
-      computeResources:
-        limits:
-          cpu: 300m
-          memory: 512Mi
-        requests:
-          cpu: 10m
-          memory: 512Mi
-      securityContext:
-        runAsUser: 0
-      env:
-        - name: GIT_TOKEN
-          valueFrom:
-            secretKeyRef:
-              optional: true
-              name: jvm-build-git-secrets
-              key: .git-credentials
-      script: |
-        $(params.GIT_SCRIPT)
     - name: preprocessor
       image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
       securityContext:
@@ -107,6 +83,7 @@ spec:
       script: |
         $(params.BUILD_SCRIPT)
         /opt/jboss/container/java/run/run-java.sh $(params.BUILD_TOOL)-prepare $(workspaces.source.path)/source --recipe-image=$(params.RECIPE_IMAGE) --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE) --disabled-plugins=$(params.BUILD_PLUGINS)
+    # TODO: Look at making this optional until we know whether we need to store source
     - name: create-pre-build-source
       image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
       securityContext:
@@ -123,7 +100,7 @@ spec:
           valueFrom:
             secretKeyRef:
               optional: true
-              name: $(params.GIT_DEPLOY_TOKEN)
+              name: jvm-build-git-repo-secrets
               key: gitdeploytoken
       args:
         - deploy-pre-build-source

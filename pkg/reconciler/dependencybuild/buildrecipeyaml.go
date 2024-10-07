@@ -25,6 +25,7 @@ const (
 	WorkspaceMount         = "/var/workdir"
 	WorkspaceTls           = "tls"
 
+	GitTaskName       = "git-clone"
 	PreBuildTaskName  = "pre-build"
 	BuildTaskName     = "build"
 	PostBuildTaskName = "post-build"
@@ -156,7 +157,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	preBuildImageArgs, deployArgs, konfluxArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
 
 	fmt.Printf("### Was using preBuildImageArgs %#v and konfluxArgs %#v ", preBuildImageArgs, konfluxArgs)
-	gitScript := gitScript(db, recipe)
 	install := additionalPackages(recipe)
 	orasOptions := ""
 	tlsVerify := "true"
@@ -250,22 +250,27 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	// Diagnostic Containerfile
 	// TODO: Looks like diagnostic files won't work with UBI7 anymore. This needs to be followed up on; potentially
 	//		 we could just disable the cache for this scenario?
+	imageRegistry := jbsConfig.ImageRegistry()
+	preBuildImageFrom := imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository + ":" + imageId + "-pre-build-image"
 	df := "FROM " + buildRequestProcessorImage + " AS build-request-processor" +
 		"\nFROM " + strings.ReplaceAll(buildRequestProcessorImage, "hacbs-jvm-build-request-processor", "hacbs-jvm-cache") + " AS cache" +
+		"\nFROM " + strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]) +
 		"\nFROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /var/workdir" +
 		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
-		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker" +
+		"\nRUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y jq" +
+		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker /var/workdir/workspace/source" +
 		"\nCOPY --from=build-request-processor /deployments/ /var/workdir/software/build-request-processor" +
 		// Copying JDK17 for the cache.
 		// TODO: Could we determine if we are using UBI8 and avoid this?
 		"\nCOPY --from=build-request-processor /lib/jvm/jre-17 /var/workdir/software/system-java" +
+		"\nCOPY --from=oras /usr/local/bin/ /usr/bin" +
 		"\nCOPY --from=build-request-processor /etc/java/java-17-openjdk /etc/java/java-17-openjdk" +
 		"\nCOPY --from=cache /deployments/ /var/workdir/software/cache" +
-		// Use git script rather than the preBuildImages as they are OCI archives and can't be used with docker/podman.
-		// TODO: ### Is this gitscript using the correct SHA? The Konflux one is but this is using pre preprocessor changes.
-		"\nRUN " + doSubstitution(gitScript, paramValues, commitTime, buildRepos) +
+		"\nCOPY --from=oras /usr/local/bin /usr/bin" +
+		"\nRUN TAR_OPTIONS=--no-same-owner use-archive \"oci:" + imageRegistry.Host + "/" + imageRegistry.Owner + "/" + imageRegistry.Repository +
+		"@$(oras manifest fetch " + preBuildImageFrom + " | jq --raw-output '.layers[0].digest')=/var/workdir/workspace/source\"" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte("#!/bin/sh\n/var/workdir/software/system-java/bin/java -Dbuild-policy.default.store-list=rebuilt,central,jboss,redhat -Dkube.disabled=true -Dquarkus.kubernetes-client.trust-certs=true -jar /var/workdir/software/cache/quarkus-run.jar >/var/workdir/cache.log &"+
 		"\nwhile ! cat /var/workdir/cache.log | grep 'Listening on:'; do\n        echo \"Waiting for Cache to start\"\n        sleep 1\ndone \n")) + " | base64 -d >/var/workdir/start-cache.sh" +
 		"\nRUN echo " + base64.StdEncoding.EncodeToString([]byte(preprocessorScript)) + " | base64 -d >/var/workdir/preprocessor.sh" +
@@ -313,7 +318,20 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 
 	if preBuildImageRequired {
-		resolver := tektonpipeline.ResolverRef{
+		gitResolver := tektonpipeline.ResolverRef{
+			// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
+			Resolver: "http",
+			Params: []tektonpipeline.Param{
+				{
+					Name: "url",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: v1alpha1.KonfluxGitDefinition,
+					},
+				},
+			},
+		}
+		preBuildResolver := tektonpipeline.ResolverRef{
 			// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
 			Resolver: "http",
 			Params: []tektonpipeline.Param{
@@ -326,11 +344,45 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				},
 			},
 		}
-		pipelineTask := []tektonpipeline.PipelineTask{{
-			Name: PreBuildTaskName,
+		pipelineGitTask := []tektonpipeline.PipelineTask{{
+			Name: GitTaskName,
 			TaskRef: &tektonpipeline.TaskRef{
 				// Can't specify name and resolver as they clash.
-				ResolverRef: resolver,
+				ResolverRef: gitResolver,
+			},
+			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+				{Name: "output", Workspace: WorkspaceSource},
+			},
+			Params: []tektonpipeline.Param{
+				{
+					Name: "url",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: modifyURLFragment(log, db.Spec.ScmInfo.SCMURL),
+					},
+				},
+				{
+					Name: "revision",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: db.Spec.ScmInfo.CommitHash,
+					},
+				},
+				{
+					Name: "submodules",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: strconv.FormatBool(!recipe.DisableSubmodules),
+					},
+				},
+			},
+		}}
+		pipelinePreBuildTask := []tektonpipeline.PipelineTask{{
+			Name:     PreBuildTaskName,
+			RunAfter: []string{GitTaskName},
+			TaskRef: &tektonpipeline.TaskRef{
+				// Can't specify name and resolver as they clash.
+				ResolverRef: preBuildResolver,
 			},
 			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 				{Name: WorkspaceSource, Workspace: WorkspaceSource},
@@ -352,13 +404,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "GIT_SCRIPT",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: gitScript,
-					},
-				},
-				{
 					Name: "GIT_IDENTITY",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
@@ -370,13 +415,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: jbsConfig.Spec.GitSourceArchive.URL,
-					},
-				},
-				{
-					Name: "GIT_DEPLOY_TOKEN",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: v1alpha1.GitRepoSecretName,
 					},
 				},
 				{
@@ -451,7 +489,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				},
 			},
 		}}
-		ps.Tasks = append(pipelineTask, ps.Tasks...)
+		ps.Tasks = append(pipelineGitTask, ps.Tasks...)
+		ps.Tasks = append(pipelinePreBuildTask, ps.Tasks...)
 		ps.Results = []tektonpipeline.PipelineResult{
 			{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultPreBuildImageDigest + ")"}},
 			{Name: PipelineResultGitArchive, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultGitArchive + ")"}},
@@ -736,20 +775,6 @@ func additionalPackages(recipe *v1alpha1.BuildRecipe) string {
 		install = install + template
 	}
 	return install
-}
-
-func gitScript(db *v1alpha1.DependencyBuild, recipe *v1alpha1.BuildRecipe) string {
-	gitArgs := "echo \"Cloning $(params." + PipelineParamScmUrl + ") and resetting to $(params." + PipelineParamScmHash + ")\" && "
-	if db.Spec.ScmInfo.Private {
-		gitArgs = gitArgs + "echo \"$GIT_TOKEN\" > $HOME/.git-credentials && chmod 400 $HOME/.git-credentials && "
-		gitArgs = gitArgs + "echo '[credential]\n        helper=store\n' > $HOME/.gitconfig && "
-	}
-	gitArgs = gitArgs + "git clone $(params." + PipelineParamScmUrl + ") $(workspaces." + WorkspaceSource + ".path)/source && cd $(workspaces." + WorkspaceSource + ".path)/source && git reset --hard $(params." + PipelineParamScmHash + ")"
-
-	if !recipe.DisableSubmodules {
-		gitArgs = gitArgs + " && git submodule init && git submodule update --recursive"
-	}
-	return gitArgs
 }
 
 func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, []string, []string) {
