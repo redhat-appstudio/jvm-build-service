@@ -61,7 +61,7 @@ var buildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
-func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string, orasOptions string) (*tektonpipeline.PipelineSpec, error) {
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
 	// Original deploy pipeline used to run maven deployment and also tag the images using 'oras tag'
 	// with the SHA256 encoded sum of the GAVs.
 	resolver := tektonpipeline.ResolverRef{
