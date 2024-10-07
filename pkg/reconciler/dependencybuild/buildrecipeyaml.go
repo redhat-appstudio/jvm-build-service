@@ -61,12 +61,7 @@ var buildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
-func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
-	orasOptions := ""
-	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
-		orasOptions = "--insecure --plain-http"
-	}
-
+func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string, orasOptions string) (*tektonpipeline.PipelineSpec, error) {
 	// Original deploy pipeline used to run maven deployment and also tag the images using 'oras tag'
 	// with the SHA256 encoded sum of the GAVs.
 	resolver := tektonpipeline.ResolverRef{
@@ -127,13 +122,13 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 							StringVal: v1alpha1.MavenSecretName,
 						},
 					},
-					{
-						Name: "ORAS_OPTIONS",
-						Value: tektonpipeline.ParamValue{
-							Type:      tektonpipeline.ParamTypeString,
-							StringVal: orasOptions,
-						},
-					},
+					//{
+					//	Name: "ORAS_OPTIONS",
+					//	Value: tektonpipeline.ParamValue{
+					//		Type:      tektonpipeline.ParamTypeString,
+					//		StringVal: orasOptions,
+					//	},
+					//},
 					{
 						Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
 						Value: tektonpipeline.ParamValue{
@@ -147,7 +142,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	}
 	return ps, nil
 }
-func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
+func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string, orasOptions string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
 	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
@@ -158,10 +153,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 
 	fmt.Printf("### Was using preBuildImageArgs %#v and konfluxArgs %#v ", preBuildImageArgs, konfluxArgs)
 	install := additionalPackages(recipe)
-	orasOptions := ""
 	tlsVerify := "true"
-	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
-		orasOptions = "--insecure --plain-http"
+	if orasOptions != "" {
 		tlsVerify = "false"
 	}
 
@@ -473,13 +466,13 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						StringVal: strings.Join(recipe.DisabledPlugins, ","),
 					},
 				},
-				{
-					Name: "ORAS_OPTIONS",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: orasOptions,
-					},
-				},
+				//{
+				//	Name: "ORAS_OPTIONS",
+				//	Value: tektonpipeline.ParamValue{
+				//		Type:      tektonpipeline.ParamTypeString,
+				//		StringVal: orasOptions,
+				//	},
+				//},
 				{
 					Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
 					Value: tektonpipeline.ParamValue{
@@ -541,18 +534,25 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						StringVal: preBuildImage,
 					},
 				},
-				{
-					Name: "ORAS_OPTIONS",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: orasOptions,
-					},
-				},
+				//{
+				//	Name: "ORAS_OPTIONS",
+				//	Value: tektonpipeline.ParamValue{
+				//		Type:      tektonpipeline.ParamTypeString,
+				//		StringVal: orasOptions,
+				//	},
+				//},
 				{
 					Name: "TLSVERIFY",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: tlsVerify,
+					},
+				},
+				{
+					Name: "BUILD_ARGS",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "CACHE_URL=" + cacheUrl,
 					},
 				},
 			},

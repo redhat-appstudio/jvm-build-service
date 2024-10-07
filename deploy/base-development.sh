@@ -93,4 +93,6 @@ ${MAVEN_USERNAME}
 ${QUAY_USERNAME}' \
     | kubectl apply -f -
 
+kubectl patch tektonconfigs.operator.tekton.dev config --type=merge -p '{"spec":{"pipeline":{"enable-api-fields":"alpha"}}}'
+
 echo "Completed overlays"
