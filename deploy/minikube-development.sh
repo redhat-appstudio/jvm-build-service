@@ -20,6 +20,7 @@ while ! oc get pods -n tekton-pipelines | grep tekton-pipelines-webhook | grep "
 done
 #we need to make sure the tekton webhook has its rules installed
 kubectl wait --for=jsonpath='{.webhooks[0].rules}' --timeout=300s mutatingwebhookconfigurations.admissionregistration.k8s.io webhook.pipeline.tekton.dev
+kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"enable-api-fields":"alpha"}}'
 echo -e "\033[0;32mTekton controller is running\033[0m"
 
 #CRDS are sometimes racey
