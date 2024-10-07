@@ -551,8 +551,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				{
 					Name: "BUILD_ARGS",
 					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "CACHE_URL=" + cacheUrl,
+						Type:     tektonpipeline.ParamTypeArray,
+						ArrayVal: []string{"CACHE_URL=" + cacheUrl},
 					},
 				},
 			},
