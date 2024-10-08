@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
 	"sort"
@@ -596,6 +597,10 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: PipelineParamJavaVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
 	}
 
+	orasOptions := ""
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
+		orasOptions = "--insecure --plain-http"
+	}
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
@@ -611,7 +616,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, diagnosticContainerfile, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
+	pr.Spec.PipelineSpec, diagnosticContainerfile, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages, orasOptions)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -630,6 +635,16 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 				},
 			},
 		}},
+	}
+	pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
+		PodTemplate: &pod.Template{
+			Env: []v1.EnvVar{
+				{
+					Name:  "ORAS_OPTIONS",
+					Value: orasOptions,
+				},
+			},
+		},
 	}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
@@ -1395,6 +1410,10 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Status.PreBuildImages[len(db.Status.PreBuildImages)-1].BuiltImageDigest}},
 	}
 
+	orasOptions := ""
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
+		orasOptions = "--insecure --plain-http"
+	}
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
@@ -1405,7 +1424,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage)
+	pr.Spec.PipelineSpec, err = createDeployPipelineSpec(jbsConfig, buildRequestProcessorImage, orasOptions)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -1419,6 +1438,17 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
 	}
 	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout}}
+	pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
+		PodTemplate: &pod.Template{
+			Env: []v1.EnvVar{
+				{
+					Name:  "ORAS_OPTIONS",
+					Value: orasOptions,
+				},
+			},
+		},
+	}
+
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}

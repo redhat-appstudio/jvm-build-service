@@ -50,10 +50,6 @@ spec:
       default: ""
     - name: BUILD_SCRIPT
       description: The build script to embed with the Containerfile
-    - name: ORAS_OPTIONS
-      type: string
-      description: Optional environment variable string for build-trusted-artifacts
-      default: ""
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       description: Name of the processor image. Useful to override for development.
       type: string
@@ -116,12 +112,10 @@ spec:
     - name: create-pre-build-image
       image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:62bb85585c0ebb8b333ef716b87b70838fb27723657c95ffb62d446b0d28ab68
       script: |
-        echo "Creating pre-build-image archive"
+        echo "Creating pre-build-image archive with ORAS_OPTIONS $ORAS_OPTIONS"
         export ORAS_OPTIONS="$ORAS_OPTIONS --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
         create-archive --store $(params.IMAGE_URL) $(results.PRE_BUILD_IMAGE_DIGEST.path)=$(workspaces.source.path)/source
       env:
-        - name: ORAS_OPTIONS
-          value: $(params.ORAS_OPTIONS)
         - name: IMAGE_URL
           value: $(params.IMAGE_URL)
 

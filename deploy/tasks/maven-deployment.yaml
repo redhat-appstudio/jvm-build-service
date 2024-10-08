@@ -28,10 +28,6 @@ spec:
     - name: MVN_PASSWORD
       description: Name of the secret holding the Maven repository password
       type: string
-    - name: ORAS_OPTIONS
-      type: string
-      description: Optional environment variable string for build-trusted-artifacts
-      default: ""
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       description: Name of the processor image. Useful to override for development.
       type: string
@@ -54,8 +50,6 @@ spec:
         echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
         use-archive oci:$URL@$AARCHIVE=/var/workdir/artifacts
       env:
-        - name: ORAS_OPTIONS
-          value: $(params.ORAS_OPTIONS)
         - name: IMAGE_DIGEST
           value: $(params.IMAGE_DIGEST)
         - name: IMAGE_URL
