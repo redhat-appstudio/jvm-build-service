@@ -233,7 +233,7 @@ spec:
         - name: ORAS_OPTIONS
           value: $(params.ORAS_OPTIONS)
     - name: build
-      image: quay.io/konflux-ci/buildah-task:latest@sha256:218d526bbaf0ceee4d6b4ee78af5e22de786cf2ed7c13f8a915263a43ac50f7a
+      image: $(params.JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE)
       args:
         - $(params.BUILD_ARGS[*])
       workingDir: /var/workdir
@@ -368,6 +368,9 @@ spec:
           VOLUME_MOUNTS="${VOLUME_MOUNTS} --volume ${mount_point}:${YUM_REPOS_D_TARGET}"
         fi
 
+        /app/domain-proxy-server-runner &
+        server_pid=$!
+
         LABELS=(
           "--label" "build-date=$(date -u +'%Y-%m-%dT%H:%M:%S')"
           "--label" "architecture=$(uname -m)"
@@ -410,13 +413,36 @@ spec:
           BUILDAH_ARGS+=("--build-arg=CACHE_URL=$CACHE_URL")
         fi
 
-        unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- buildah build \
-          $VOLUME_MOUNTS \
-          "${BUILDAH_ARGS[@]}" \
-          "${LABELS[@]}" \
-          --tls-verify=$TLSVERIFY --no-cache \
-          --ulimit nofile=4096:4096 \
-          -f "$dockerfile_path" -t $IMAGE .
+        # Without expansion
+        cat > /app/build-script.sh << 'EOF'
+        #!/bin/sh
+        ip link set lo up
+        /app/domain-proxy-client-runner &
+        client_pid=$!
+        EOF
+
+        # With expansion
+        cat >> /app/build-script.sh << EOF
+        buildah build $VOLUME_MOUNTS ${BUILDAH_ARGS[@]} ${LABELS[@]} --tls-verify=$TLSVERIFY --no-cache --ulimit nofile=4096:4096 -f "$dockerfile_path" -t $IMAGE .
+        EOF
+
+        # Without expansion
+        cat >> /app/build-script.sh << 'EOF'
+        set +e
+        kill $client_pid
+        wait $client_pid
+        set -e
+        EOF
+
+        cat /app/build-script.sh
+        chmod +x /app/build-script.sh
+
+        unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- /app/build-script.sh
+
+        set +e
+        kill $server_pid
+        wait $server_pid
+        set -e
 
         container=$(buildah from --pull-never $IMAGE)
         buildah mount $container | tee /shared/container_path

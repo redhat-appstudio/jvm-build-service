@@ -4,10 +4,10 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-        <artifactId>domainproxy-parent</artifactId>
+        <artifactId>domain-proxy-parent</artifactId>
         <version>999-SNAPSHOT</version>
     </parent>
-    <artifactId>domainproxy-server</artifactId>
+    <artifactId>domain-proxy-server</artifactId>
 
     <dependencies>
         <dependency>
