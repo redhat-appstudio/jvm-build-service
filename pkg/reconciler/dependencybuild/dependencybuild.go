@@ -636,6 +636,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 			},
 		}},
 	}
+	// TODO: ### Enclose this within an annotation to denote test CI system in use?
 	pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
 		PodTemplate: &pod.Template{
 			Env: []v1.EnvVar{
@@ -646,6 +647,17 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 			},
 		},
 	}
+	// TODO: ### Enclose this within an annotation to denote test CI system in use?
+	podMemR, _ := resource.ParseQuantity("1792Mi")
+	podMemL, _ := resource.ParseQuantity("3584Mi")
+	podCPU, _ := resource.ParseQuantity("500m")
+	pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{
+		PipelineTaskName: BuildTaskName,
+		ComputeResources: &v1.ResourceRequirements{
+			Requests: v1.ResourceList{"memory": podMemR, "cpu": podCPU},
+			Limits:   v1.ResourceList{"memory": podMemL, "cpu": podCPU},
+		},
+	}}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
@@ -1438,6 +1450,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
 	}
 	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout}}
+	// TODO: ### Enclose this within an annotation to denote test CI system in use? Could inline orasOptions then as well?
 	pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
 		PodTemplate: &pod.Template{
 			Env: []v1.EnvVar{
@@ -1448,6 +1461,16 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 			},
 		},
 	}
+	// TODO: ### Enclose this within an annotation to denote test CI system in use?
+	podMem, _ := resource.ParseQuantity("1024Mi")
+	podCPU, _ := resource.ParseQuantity("250m")
+	pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{
+		PipelineTaskName: DeployTaskName,
+		ComputeResources: &v1.ResourceRequirements{
+			Requests: v1.ResourceList{"memory": podMem, "cpu": podCPU},
+			Limits:   v1.ResourceList{"memory": podMem, "cpu": podCPU},
+		},
+	}}
 
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err

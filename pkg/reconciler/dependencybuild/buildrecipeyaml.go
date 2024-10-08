@@ -29,7 +29,7 @@ const (
 	PreBuildTaskName  = "pre-build"
 	BuildTaskName     = "build"
 	PostBuildTaskName = "post-build"
-	TagTaskName       = "tag"
+	DeployTaskName    = "deploy"
 )
 
 //go:embed scripts/maven-build.sh
@@ -81,7 +81,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 		Params: []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
-				Name: TagTaskName,
+				Name: DeployTaskName,
 				TaskRef: &tektonpipeline.TaskRef{
 					// Can't specify name and resolver as they clash.
 					ResolverRef: resolver,
@@ -527,13 +527,13 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						StringVal: tlsVerify,
 					},
 				},
-				//{
-				//	Name: "BUILD_ARGS",
-				//	Value: tektonpipeline.ParamValue{
-				//		Type:     tektonpipeline.ParamTypeArray,
-				//		ArrayVal: []string{"CACHE_URL=" + cacheUrl},
-				//	},
-				//},
+				{
+					Name: "BUILD_ARGS",
+					Value: tektonpipeline.ParamValue{
+						Type:     tektonpipeline.ParamTypeArray,
+						ArrayVal: []string{"CACHE_URL=" + cacheUrl},
+					},
+				},
 			},
 
 			// TODO: ### How to pass build-settings/tls information to buildah task?
