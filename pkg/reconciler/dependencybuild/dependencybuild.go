@@ -649,6 +649,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		}
 	}
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.CITests] == "true" {
+		log.Info(fmt.Sprintf("Configuring resources for %#v", BuildTaskName))
 		podMemR, _ := resource.ParseQuantity("1792Mi")
 		podMemL, _ := resource.ParseQuantity("3584Mi")
 		podCPU, _ := resource.ParseQuantity("500m")
@@ -1460,6 +1461,7 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		}
 	}
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.CITests] == "true" {
+		log.Info(fmt.Sprintf("Configuring resources for %#v", DeployTaskName))
 		podMem, _ := resource.ParseQuantity("1024Mi")
 		podCPU, _ := resource.ParseQuantity("250m")
 		pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{

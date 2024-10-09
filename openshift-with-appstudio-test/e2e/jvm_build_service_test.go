@@ -8,5 +8,5 @@ import (
 )
 
 func TestExampleRun(t *testing.T) {
-	runBasicTests(t, setup, testNamespace)
+	runBasicTests(t, setupE2E, testNamespace)
 }

@@ -243,11 +243,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	}
 	return ta
 }
-func setup(t *testing.T, namespace string) *testArgs {
-	return setupConfig(t, namespace)
-}
-func setupConfig(t *testing.T, namespace string) *testArgs {
-
+func setupE2E(t *testing.T, namespace string) *testArgs {
 	ta := commonSetup(t, gitCloneTaskUrl, namespace)
 	err := wait.PollUntilContextTimeout(context.TODO(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		_, err = kubeClient.CoreV1().ServiceAccounts(ta.ns).Get(context.TODO(), "pipeline", metav1.GetOptions{})
@@ -292,8 +288,9 @@ func setupConfig(t *testing.T, namespace string) *testArgs {
 
 	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ta.ns,
-			Name:      v1alpha1.JBSConfigName,
+			Namespace:   ta.ns,
+			Name:        v1alpha1.JBSConfigName,
+			Annotations: map[string]string{jbsconfig.CITests: "true"},
 		},
 		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds: true,
@@ -1066,8 +1063,9 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ta.ns,
 			Name:      v1alpha1.JBSConfigName,
-			Annotations: map[string]string{jbsconfig.TestRegistry: strconv.FormatBool(insecure),
-				jbsconfig.CITests: "true"},
+			Annotations: map[string]string{
+				jbsconfig.TestRegistry: strconv.FormatBool(insecure),
+				jbsconfig.CITests:      "true"},
 		},
 		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds:    true,
