@@ -6,13 +6,13 @@ timeout=600 #10 minutes in seconds
 endTime=$(( $(date +%s) + timeout ))
 
 echo -e "\033[0;32mWaiting for Tekton Pipeines to start...\033[0m"
-while ! oc get pods -n tekton-pipelines | grep tekton-pipelines-controller | grep "1/1"; do
+while ! kubectl get pods -n tekton-pipelines | grep tekton-pipelines-controller | grep "1/1"; do
     sleep 1
     if [ $(date +%s) -gt $endTime ]; then
         exit 1
     fi
 done
-while ! oc get pods -n tekton-pipelines | grep tekton-pipelines-webhook | grep "1/1"; do
+while ! kubectl get pods -n tekton-pipelines | grep tekton-pipelines-webhook | grep "1/1"; do
     sleep 1
     if [ $(date +%s) -gt $endTime ]; then
         exit 1
