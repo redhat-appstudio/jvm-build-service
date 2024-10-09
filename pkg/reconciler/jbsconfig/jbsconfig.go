@@ -35,6 +35,7 @@ import (
 
 const (
 	TlsServiceName            = v1alpha1.CacheDeploymentName + "-tls"
+	CITests                   = "jvmbuildservice.io/ci-tests"      // Denote running CI Tests
 	TestRegistry              = "jvmbuildservice.io/test-registry" // Denote using an insecure registry in GitHub Actions
 	RetryTimeAnnotations      = "jvmbuildservice.io/retry-time"
 	RetryTimestampAnnotations = "jvmbuildservice.io/retry-timestamp"

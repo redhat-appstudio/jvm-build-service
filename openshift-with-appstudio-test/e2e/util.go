@@ -1064,9 +1064,10 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 	}
 	jbsConfig := v1alpha1.JBSConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   ta.ns,
-			Name:        v1alpha1.JBSConfigName,
-			Annotations: map[string]string{jbsconfig.TestRegistry: strconv.FormatBool(insecure)},
+			Namespace: ta.ns,
+			Name:      v1alpha1.JBSConfigName,
+			Annotations: map[string]string{jbsconfig.TestRegistry: strconv.FormatBool(insecure),
+				jbsconfig.CITests: "true"},
 		},
 		Spec: v1alpha1.JBSConfigSpec{
 			EnableRebuilds:    true,
