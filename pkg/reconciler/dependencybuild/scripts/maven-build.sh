@@ -42,9 +42,9 @@ cat >>"$TOOLCHAINS_XML" <<EOF
 </toolchains>
 EOF
 
-if [ -n "$(params.ENFORCE_VERSION)" ]; then
-  echo "Setting version to $(params.PROJECT_VERSION) to match enforced version"
-  mvn -B -e -s "$(workspaces.build-settings.path)/settings.xml" -t "$(workspaces.build-settings.path)/toolchains.xml" org.codehaus.mojo:versions-maven-plugin:2.8.1:set -DnewVersion="$(params.PROJECT_VERSION)" | tee $(workspaces.source.path)/logs/enforce-version.log
+if [ ! -z ${ENFORCE_VERSION+x} ]; then
+  echo "Setting version to ${PROJECT_VERSION} to match enforced version"
+  mvn -B -e -s "$(workspaces.build-settings.path)/settings.xml" -t "$(workspaces.build-settings.path)/toolchains.xml" org.codehaus.mojo:versions-maven-plugin:2.8.1:set -DnewVersion="${PROJECT_VERSION}" | tee $(workspaces.source.path)/logs/enforce-version.log
 fi
 
 #if we run out of memory we want the JVM to die with error code 134

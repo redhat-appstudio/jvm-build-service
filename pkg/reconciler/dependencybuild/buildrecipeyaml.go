@@ -158,28 +158,23 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		javaHome = "/lib/jvm/java-" + recipe.JavaVersion
 	}
 
-	var toolVersion string
 	toolEnv := []v1.EnvVar{}
 	if recipe.ToolVersions["maven"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "MAVEN_HOME", Value: "/opt/maven/" + recipe.ToolVersions["maven"]})
-		toolVersion = recipe.ToolVersions["maven"]
 	}
 	if recipe.ToolVersions["gradle"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "GRADLE_HOME", Value: "/opt/gradle/" + recipe.ToolVersions["gradle"]})
-		toolVersion = recipe.ToolVersions["gradle"]
 	}
 	if recipe.ToolVersions["ant"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "ANT_HOME", Value: "/opt/ant/" + recipe.ToolVersions["ant"]})
-		toolVersion = recipe.ToolVersions["ant"]
 	}
 	if recipe.ToolVersions["sbt"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "SBT_DIST", Value: "/opt/sbt/" + recipe.ToolVersions["sbt"]})
-		toolVersion = recipe.ToolVersions["sbt"]
 	}
-	//toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamToolVersion, Value: recipe.ToolVersion})
-	//toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
 	toolEnv = append(toolEnv, v1.EnvVar{Name: JavaHome, Value: javaHome})
+	// Used by JBS to override the version
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamEnforceVersion, Value: recipe.EnforceVersion})
+	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
 
 	additionalMemory := recipe.AdditionalMemory
 	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
@@ -288,8 +283,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		{Name: PipelineParamJavaVersion, Type: tektonpipeline.ParamTypeString},
 		//		{Name: PipelineParamToolVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamPath, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamEnforceVersion, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamProjectVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl}},
 	}
 	secretVariables := secretVariables(jbsConfig)
@@ -455,7 +448,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "BUILD_TOOL_VERSION",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: toolVersion,
+						StringVal: recipe.ToolVersion,
 					},
 				},
 				{
@@ -550,8 +543,11 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				{
 					Name: "BUILD_ARGS",
 					Value: tektonpipeline.ParamValue{
-						Type:     tektonpipeline.ParamTypeArray,
-						ArrayVal: []string{"CACHE_URL=" + cacheUrl},
+						Type: tektonpipeline.ParamTypeArray,
+						ArrayVal: []string{
+							// This allows us to set environment variables that can be picked up by our Containerfile/build script.
+							"CACHE_URL=" + cacheUrl,
+						},
 					},
 				},
 			},

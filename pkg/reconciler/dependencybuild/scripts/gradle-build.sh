@@ -41,9 +41,9 @@ export PATH="${JAVA_HOME}/bin:${PATH}"
 #so just create one to fool the plugin
 git config user.email "HACBS@redhat.com"
 git config user.name "HACBS"
-if [ -n "$(params.ENFORCE_VERSION)" ]; then
-  echo "Creating tag $(params.PROJECT_VERSION) to match enforced version"
-  git tag -m $(params.PROJECT_VERSION) -a $(params.PROJECT_VERSION) || true
+if [ ! -z ${ENFORCE_VERSION+x} ]; then
+  echo "Creating tag ${PROJECT_VERSION} to match enforced version"
+  git tag -m ${PROJECT_VERSION} -a ${PROJECT_VERSION} || true
 fi
 
 if [ ! -d "${GRADLE_HOME}" ]; then
