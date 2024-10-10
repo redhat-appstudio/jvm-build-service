@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+## BUILD-ENTRY.SH
 set -o verbose
 set -eu
 set -o pipefail
@@ -44,8 +45,11 @@ mkdir -p $(workspaces.source.path)/logs $(workspaces.source.path)/packages
 {{INSTALL_PACKAGE_SCRIPT}}
 
 #This is replaced when the task is created by the golang code
+echo "### PRE_BUILD_SCRIPT "
 {{PRE_BUILD_SCRIPT}}
 
+echo "### BUILD "
 {{BUILD}}
 
+echo "### POST_BUILD_SCRIPT "
 {{POST_BUILD_SCRIPT}}

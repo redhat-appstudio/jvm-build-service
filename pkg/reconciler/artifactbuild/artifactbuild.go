@@ -597,7 +597,9 @@ func (r *ReconcileArtifactBuild) copyAnnotations(abr *v1alpha1.ArtifactBuild, db
 }
 
 func InstallKeystoreIntoBuildRequestProcessor(args ...[]string) string {
-	ret := keystore
+	// TODO: How to handle/remove the TLS support from STONEBLD-847
+	// ret := keystore
+	ret := ""
 	for _, cmd := range args {
 		ret = ret + "\n/opt/jboss/container/java/run/run-java.sh"
 		for _, i := range cmd {

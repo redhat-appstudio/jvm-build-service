@@ -158,21 +158,26 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		javaHome = "/lib/jvm/java-" + recipe.JavaVersion
 	}
 
+	var toolVersion string
 	toolEnv := []v1.EnvVar{}
 	if recipe.ToolVersions["maven"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "MAVEN_HOME", Value: "/opt/maven/" + recipe.ToolVersions["maven"]})
+		toolVersion = recipe.ToolVersions["maven"]
 	}
 	if recipe.ToolVersions["gradle"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "GRADLE_HOME", Value: "/opt/gradle/" + recipe.ToolVersions["gradle"]})
+		toolVersion = recipe.ToolVersions["gradle"]
 	}
 	if recipe.ToolVersions["ant"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "ANT_HOME", Value: "/opt/ant/" + recipe.ToolVersions["ant"]})
+		toolVersion = recipe.ToolVersions["ant"]
 	}
 	if recipe.ToolVersions["sbt"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "SBT_DIST", Value: "/opt/sbt/" + recipe.ToolVersions["sbt"]})
+		toolVersion = recipe.ToolVersions["sbt"]
 	}
-	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamToolVersion, Value: recipe.ToolVersion})
-	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
+	//toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamToolVersion, Value: recipe.ToolVersion})
+	//toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
 	toolEnv = append(toolEnv, v1.EnvVar{Name: JavaHome, Value: javaHome})
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamEnforceVersion, Value: recipe.EnforceVersion})
 
@@ -196,10 +201,11 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		buildToolSection = "echo unknown build tool " + tool + " && exit 1"
 	}
 	build := buildEntryScript
-	//horrible hack
-	//we need to get our TLS CA's into our trust store
-	//we just add it at the start of the build
-	build = artifactbuild.InstallKeystoreScript() + "\n" + build
+	// TODO: How to handle/remove the TLS support from STONEBLD-847
+	////horrible hack
+	////we need to get our TLS CA's into our trust store
+	////we just add it at the start of the build
+	//build = artifactbuild.InstallKeystoreScript() + "\n" + build
 
 	buildRepos := ""
 	if len(recipe.Repositories) > 0 {
@@ -224,7 +230,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
 	log.Info(fmt.Sprintf("Generating dockerfile with recipe build image %#v", recipe.Image))
-	//preprocessorScript := "#!/bin/sh\n/var/workdir/software/system-java/bin/java -jar /var/workdir/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
 	preprocessorScript := "#!/bin/sh\n/var/workdir/software/system-java/bin/java -jar /var/workdir/software/build-request-processor/quarkus-run.jar " + recipe.Tool + "-prepare /var/workdir/workspace --recipe-image=" + recipe.Image + " --request-processor-image=" + buildRequestProcessorImage + " --disabled-plugins=" + strings.Join(recipe.DisabledPlugins, ",")
 	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
 	envVars := extractEnvVar(toolEnv)
@@ -232,6 +237,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	konfluxScript := "#!/bin/sh\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
 
 	fmt.Printf("### Using cacheUrl %#v paramValues %#v, commitTime %#v, buildRepos %#v\n", cacheUrl, paramValues, commitTime, buildRepos)
+	fmt.Printf("### Using envVars %#v cmdArgs %#v, buildScript %#v\n", envVars, cmdArgs, buildScript)
 
 	// Diagnostic Containerfile
 	// TODO: Looks like diagnostic files won't work with UBI7 anymore. This needs to be followed up on; potentially
@@ -280,7 +286,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		{Name: PipelineParamChainsGitCommit, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamGoals, Type: tektonpipeline.ParamTypeArray},
 		{Name: PipelineParamJavaVersion, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamToolVersion, Type: tektonpipeline.ParamTypeString},
+		//		{Name: PipelineParamToolVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamPath, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamEnforceVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamProjectVersion, Type: tektonpipeline.ParamTypeString},
@@ -443,6 +449,20 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: tool,
+					},
+				},
+				{
+					Name: "BUILD_TOOL_VERSION",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: toolVersion,
+					},
+				},
+				{
+					Name: "JAVA_HOME",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: javaHome,
 					},
 				},
 				{

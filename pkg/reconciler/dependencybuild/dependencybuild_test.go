@@ -246,8 +246,6 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
 				case PipelineParamEnforceVersion:
 					g.Expect(param.Value.StringVal).Should(BeEmpty())
-				case PipelineParamToolVersion:
-					g.Expect(param.Value.StringVal).Should(Equal("3.8"))
 				}
 			}
 		}

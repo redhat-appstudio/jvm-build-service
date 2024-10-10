@@ -27,6 +27,12 @@ public abstract class AbstractPreprocessor implements Runnable {
     @CommandLine.Option(names = "--request-processor-image", required = true)
     String buildRequestProcessorImage;
 
+    @CommandLine.Option(names = "--java-home", required = true)
+    String javaHome;
+
+    @CommandLine.Option(names = "--build-tool-version", required = true)
+    String buildToolVersion;
+
     protected enum ToolType {
         ANT,
         GRADLE,
@@ -38,6 +44,9 @@ public abstract class AbstractPreprocessor implements Runnable {
 
     @Override
     public void run() {
+
+        Log.warnf("### Using tool {} with version {} and javaHome {}", type, buildToolVersion, javaHome);
+
         Path jbsDirectory = Path.of(buildRoot.toString(), ".jbs");
         //noinspection ResultOfMethodCallIgnored
         jbsDirectory.toFile().mkdirs();
@@ -47,6 +56,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             USER 0
             WORKDIR /var/workdir
             RUN mkdir -p /var/workdir/software/settings /original-content/marker
+            # CACHE_URL is deprecated.
             ARG CACHE_URL=""
             ENV CACHE_URL=$CACHE_URL
             COPY .jbs/run-build.sh /var/workdir
