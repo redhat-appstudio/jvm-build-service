@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: run-mw-pipeline-
+spec:
+  pipelineRef:
+    name: mw-pipeline
+  workspaces:
+    - name: source
+      # emptyDir: {} - does not share the data between tasks
+      # When the volume is created from a template in a PipelineRun or TaskRun it will be deleted when the PipelineRun or TaskRun is deleted.
+      volumeClaimTemplate:
+        metadata:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+        status: {}
+    - name: ssh-directory
+      configMap:
+        name: ssh-directory
+  params:
+    - name: URL
+      # value: 'https://github.com/matejonnet/test'
+      value: 'git@github.com:matejonnet/test-product.git'
+    - name: REVISION
+      # value: master
+      value: main
+    - name: BUILD_SCRIPT
+      value: 'cat README.md '
+    - name: MVN_REPO_DEPLOY_URL
+      value: 'http://indyhost/'
+    - name: MVN_TOKEN
+      value: here-is-indy-access-token-string

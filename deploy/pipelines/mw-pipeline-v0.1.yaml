@@ -1,0 +1,116 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  annotations:
+  name: mw-pipeline
+  namespace: test-jvm-namespace
+spec:
+  params:
+    - name: URL
+      description: Repository URL to clone from
+      type: string
+      default: git@github.com:matejonnet/test-product.git
+    - name: REVISION
+      description: 'Revision to checkout. (branch, tag, sha, ref, etc...)'
+      type: string
+      default: main
+    - name: BUILD_SCRIPT
+      description: 'The build script to embed with the Containerfile'
+      type: string
+      default: | 
+        date
+
+    # - name: BUILD_TOOLS
+    #   description: 'CSV list of tools and versions to install. eg. java:21,maven:3.6.3'
+    #   type: string
+
+    # - name: MVN_REPO_DEPENDENCIES_URL
+    #   description: Maven repository to get dependencies from
+    #   type: string
+    - name: MVN_REPO_DEPLOY_URL
+      description: Maven repository to deploy to
+      type: string
+      default: http://indyhost/ #TODO remove default
+    - name: MVN_TOKEN
+      type: string
+      default: here-is-indy-access-token-string #TODO remove default
+  workspaces:
+    - name: source
+      description: Workspace containing the source code
+
+    - name: ssh-directory
+      # configMap:
+      #   name: ssh-directory
+  tasks:
+    - name: git-clone
+      params:
+        - name: url
+          value: $(params.URL)
+        - name: revision
+          value: $(params.REVISION)
+        - name: verbose
+          value: true
+        - name: subdirectory
+          value: ''
+      taskRef:
+        kind: Task
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: source
+        - name: ssh-directory
+          workspace: ssh-directory
+
+    - name: pre-build-minimal
+      runAfter:
+        - git-clone
+      params:
+        - name: IMAGE_URL
+          value: 'quay.io/mlazar_konflux/trusted-source-$(context.pipelineRun.name):dev'
+        - name: NAME
+          value: $(context.pipelineRun.name)
+        - name: BUILD_SCRIPT
+          value: $(params.BUILD_SCRIPT)
+
+        - name: PREPROCESSOR_ARGS
+          value: ''
+        - name: ORAS_OPTIONS
+          value: ''
+      taskRef:
+        kind: Task
+        name: pre-build-minimal
+      workspaces:
+        - name: source
+          workspace: source
+    
+    - name: buildah-oci-ta
+      runAfter:
+        - pre-build-minimal
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.pre-build-minimal.results.PRE_BUILD_IMAGE_DIGEST)
+        - name: HERMETIC
+          value: false
+        - name: IMAGE # output image
+          value: quay.io/mlazar_konflux/build-$(context.pipelineRun.name):dev
+        - name: DOCKERFILE # local path to the containerfile
+          value: .jbs/Containerfile
+      taskRef:
+        kind: Task
+        name: buildah-oci-ta
+
+    - name: maven-deployment
+      runAfter:
+        - buildah-oci-ta
+      params:
+        - name: IMAGE_URL
+          value: $(tasks.buildah-oci-ta.results.IMAGE_URL)
+        - name: IMAGE_DIGEST
+          value: $(tasks.buildah-oci-ta.results.IMAGE_DIGEST)
+        - name: MVN_REPO
+          value: $(params.MVN_REPO_DEPLOY_URL)
+        - name: MVN_TOKEN
+          value: $(params.MVN_TOKEN)
+      taskRef:
+        kind: Task
+        name: maven-deployment
