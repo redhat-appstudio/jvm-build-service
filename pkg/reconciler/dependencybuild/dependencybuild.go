@@ -590,7 +590,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: PipelineParamChainsGitCommit, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: contextDir}},
 		{Name: PipelineParamGoals, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
-		{Name: PipelineParamJavaVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
+		//{Name: PipelineParamJavaVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
 	}
 
 	orasOptions := ""

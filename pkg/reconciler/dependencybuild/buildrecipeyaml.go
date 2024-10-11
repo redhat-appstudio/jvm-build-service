@@ -151,6 +151,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		tlsVerify = "false"
 	}
 
+	// TODO: ### Remove javaHome?
 	var javaHome string
 	if recipe.JavaVersion == "7" || recipe.JavaVersion == "8" {
 		javaHome = "/lib/jvm/java-1." + recipe.JavaVersion + ".0"
@@ -280,7 +281,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		{Name: PipelineParamChainsGitUrl, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamChainsGitCommit, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamGoals, Type: tektonpipeline.ParamTypeArray},
-		{Name: PipelineParamJavaVersion, Type: tektonpipeline.ParamTypeString},
+		//{Name: PipelineParamJavaVersion, Type: tektonpipeline.ParamTypeString},
 		//		{Name: PipelineParamToolVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamPath, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl}},
@@ -452,17 +453,17 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "JAVA_HOME",
+					Name: "JAVA_VERSION",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: javaHome,
+						StringVal: recipe.JavaVersion,
 					},
 				},
 				{
 					Name: "BUILD_SCRIPT",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: createKonfluxScripts(konfluxScript),
+						StringVal: konfluxScript,
 					},
 				},
 				{

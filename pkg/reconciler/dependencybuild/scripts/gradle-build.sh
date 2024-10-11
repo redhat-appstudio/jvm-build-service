@@ -31,10 +31,10 @@ if [ -d .hacbs-init ]; then
     cp -r .hacbs-init "${GRADLE_USER_HOME}"/init.d
 fi
 
-#if we run out of memory we want the JVM to die with error code 134
-export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
+##if we run out of memory we want the JVM to die with error code 134
+#export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
 
-export PATH="${JAVA_HOME}/bin:${PATH}"
+#export PATH="${JAVA_HOME}/bin:${PATH}"
 
 #some gradle builds get the version from the tag
 #the git init task does not fetch tags
@@ -50,9 +50,8 @@ fi
 #    echo "Gradle home directory not found at ${GRADLE_HOME}" >&2
 #    exit 1
 #fi
-
-export LANG="en_US.UTF-8"
-export LC_ALL="en_US.UTF-8"
+#export LANG="en_US.UTF-8"
+#export LC_ALL="en_US.UTF-8"
 
 #our dependency tracing breaks verification-metadata.xml
 #TODO: should we disable tracing for these builds? It means we can't track dependencies directly, so we can't detect contaminants

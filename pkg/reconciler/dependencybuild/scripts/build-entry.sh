@@ -4,6 +4,8 @@ set -o verbose
 set -eu
 set -o pipefail
 
+# TODO: TMP:
+mkdir -p /var/workdir/workspace/logs /var/workdir/workspace/packages /var/workdir/software/settings ${HOME}/.sbt/1.0
 cd $(workspaces.source.path)/source
 
 if [ -n "$(params.CONTEXT_DIR)" ]

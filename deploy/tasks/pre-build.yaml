@@ -47,8 +47,8 @@ spec:
       description: The build tool to use.
     - name: BUILD_TOOL_VERSION
       description: The build tool version to use.
-    - name: JAVA_HOME
-      description: Java home directory to use.
+    - name: JAVA_VERSION
+      description: Java version to use (7, 8, 9, 11, 17, 21, 22)
     - name: BUILD_PLUGINS
       description: Comma separated list of build plugins that should be disabled.
       default: ""
@@ -81,8 +81,7 @@ spec:
           cpu: 10m
           memory: 512Mi
       script: |
-        $(params.BUILD_SCRIPT)
-        /opt/jboss/container/java/run/run-java.sh $(params.BUILD_TOOL)-prepare --java-home=$(params.JAVA_HOME) --build-tool-version=$(params.BUILD_TOOL_VERSION) --recipe-image=$(params.RECIPE_IMAGE) --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE) --disabled-plugins=$(params.BUILD_PLUGINS) $(workspaces.source.path)/source
+        /opt/jboss/container/java/run/run-java.sh $(params.BUILD_TOOL)-prepare --java-version=$(params.JAVA_VERSION) --build-tool-version=$(params.BUILD_TOOL_VERSION) --recipe-image=$(params.RECIPE_IMAGE) --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE) --disabled-plugins=$(params.BUILD_PLUGINS) $(workspaces.source.path)/source
       env:
         - name: BUILD_SCRIPT
           value: $(params.BUILD_SCRIPT)
