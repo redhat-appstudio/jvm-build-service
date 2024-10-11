@@ -228,7 +228,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(tr.Spec.Params)).Should(Equal(9))
+			g.Expect(len(tr.Spec.Params)).Should(Equal(8))
 			for _, param := range tr.Spec.Params {
 				switch param.Name {
 				case PipelineParamScmHash:

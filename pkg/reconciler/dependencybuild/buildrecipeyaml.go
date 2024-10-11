@@ -35,11 +35,6 @@ const (
 //go:embed scripts/maven-build.sh
 var mavenBuild string
 
-// used for both ant and maven
-//
-//go:embed scripts/maven-settings.sh
-var mavenSettings string
-
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
 
@@ -151,14 +146,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		tlsVerify = "false"
 	}
 
-	// TODO: ### Remove javaHome?
-	var javaHome string
-	if recipe.JavaVersion == "7" || recipe.JavaVersion == "8" {
-		javaHome = "/lib/jvm/java-1." + recipe.JavaVersion + ".0"
-	} else {
-		javaHome = "/lib/jvm/java-" + recipe.JavaVersion
-	}
-
 	toolEnv := []v1.EnvVar{}
 	if recipe.ToolVersions["maven"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "MAVEN_HOME", Value: "/opt/maven/" + recipe.ToolVersions["maven"]})
@@ -172,7 +159,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	if recipe.ToolVersions["sbt"] != "" {
 		toolEnv = append(toolEnv, v1.EnvVar{Name: "SBT_DIST", Value: "/opt/sbt/" + recipe.ToolVersions["sbt"]})
 	}
-	toolEnv = append(toolEnv, v1.EnvVar{Name: JavaHome, Value: javaHome})
 	// Used by JBS to override the version
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamEnforceVersion, Value: recipe.EnforceVersion})
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
@@ -184,15 +170,13 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 	var buildToolSection string
 	if tool == "maven" {
-		buildToolSection = mavenSettings + "\n" + mavenBuild
+		buildToolSection = mavenBuild
 	} else if tool == "gradle" {
-		// We always add Maven information (in InvocationBuilder) so add the relevant settings.xml
-		buildToolSection = mavenSettings + "\n" + gradleBuild
+		buildToolSection = gradleBuild
 	} else if tool == "sbt" {
 		buildToolSection = sbtBuild
 	} else if tool == "ant" {
-		// We always add Maven information (in InvocationBuilder) so add the relevant settings.xml
-		buildToolSection = mavenSettings + "\n" + antBuild
+		buildToolSection = antBuild
 	} else {
 		buildToolSection = "echo unknown build tool " + tool + " && exit 1"
 	}
@@ -230,10 +214,9 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
 	envVars := extractEnvVar(toolEnv)
 	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
-	konfluxScript := "#!/bin/sh\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
+	konfluxScript := "\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
 
 	fmt.Printf("### Using cacheUrl %#v paramValues %#v, commitTime %#v, buildRepos %#v\n", cacheUrl, paramValues, commitTime, buildRepos)
-	fmt.Printf("### Using envVars %#v cmdArgs %#v, buildScript %#v\n", envVars, cmdArgs, buildScript)
 
 	// Diagnostic Containerfile
 	// TODO: Looks like diagnostic files won't work with UBI7 anymore. This needs to be followed up on; potentially
@@ -281,8 +264,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		{Name: PipelineParamChainsGitUrl, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamChainsGitCommit, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamGoals, Type: tektonpipeline.ParamTypeArray},
-		//{Name: PipelineParamJavaVersion, Type: tektonpipeline.ParamTypeString},
-		//		{Name: PipelineParamToolVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamPath, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl}},
 	}
@@ -675,15 +656,6 @@ func secretVariables(jbsConfig *v1alpha1.JBSConfig) []v1.EnvVar {
 		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitRepoSecretName}, Key: v1alpha1.GitRepoSecretKey, Optional: &trueBool}}})
 	}
 	return secretVariables
-}
-
-func createKonfluxScripts(konfluxScript string) string {
-	ret := "mkdir -p $(workspaces." + WorkspaceSource + ".path)/source/.jbs\n"
-	ret += "tee $(workspaces." + WorkspaceSource + ".path)/source/.jbs/run-build.sh <<'RHTAPEOF'\n"
-	ret += konfluxScript
-	ret += "\nRHTAPEOF\n"
-	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/source/.jbs/run-build.sh\n"
-	return ret
 }
 
 func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {

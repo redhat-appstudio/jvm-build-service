@@ -74,10 +74,10 @@ public class DeployContaminateTest {
             fail("No exception thrown");
         } catch (Exception e) {
             List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
-            assertTrue(e.getMessage().contains("Deploy failed"));
+            assertTrue(e.getMessage().contains("Verify failed"));
             assertTrue(logRecords.stream()
                     .anyMatch(r -> LogCollectingTestResource.format(r)
-                            .contains("No content to deploy found in deploy directory")));
+                            .contains("No content to verify found in directory")));
         }
     }
 
