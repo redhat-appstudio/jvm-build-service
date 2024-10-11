@@ -46,10 +46,10 @@ if [ ! -z ${ENFORCE_VERSION+x} ]; then
   git tag -m ${PROJECT_VERSION} -a ${PROJECT_VERSION} || true
 fi
 
-if [ ! -d "${GRADLE_HOME}" ]; then
-    echo "Gradle home directory not found at ${GRADLE_HOME}" >&2
-    exit 1
-fi
+#if [ ! -d "${GRADLE_HOME}" ]; then
+#    echo "Gradle home directory not found at ${GRADLE_HOME}" >&2
+#    exit 1
+#fi
 
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"

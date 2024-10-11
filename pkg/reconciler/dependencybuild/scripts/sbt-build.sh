@@ -3,10 +3,10 @@
 mkdir -p "${HOME}/.sbt/1.0"
 cp -r /maven-artifacts/* "$HOME/.sbt/*" || true
 
-if [ ! -d "${SBT_DIST}" ]; then
-    echo "SBT home directory not found at ${SBT_DIST}" >&2
-    exit 1
-fi
+#if [ ! -d "${SBT_DIST}" ]; then
+#    echo "SBT home directory not found at ${SBT_DIST}" >&2
+#    exit 1
+#fi
 
 if [ -z ${JBS_DISABLE_CACHE+x} ]; then
     cat > "$HOME/.sbt/repositories" <<EOF

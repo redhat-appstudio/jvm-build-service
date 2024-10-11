@@ -1,5 +1,7 @@
 package com.redhat.hacbs.container.build.preprocessor;
 
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -8,8 +10,6 @@ import java.util.List;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
-
-import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 /**
  * We keep all the options the same between maven, gradle, sbt and ant for now to keep the pipeline setup simpler.
@@ -55,13 +55,84 @@ public abstract class AbstractPreprocessor implements Runnable {
     @Override
     public void run() {
 
-        Log.warnf("### Using tool {} with version {} and javaHome {}", type, buildToolVersion, javaHome);
+        Log.warnf("### Using tool %s with version %s and javaHome %s", type, buildToolVersion, javaHome);
+        Log.warnf("### ENV %s", System.getenv("jvm-build-service"));
+        Log.warnf("### BUILD_SCRIPT %s", System.getenv("BUILD_SCRIPT"));
 
         Path jbsDirectory = Path.of(buildRoot.toString(), ".jbs");
         //noinspection ResultOfMethodCallIgnored
         jbsDirectory.toFile().mkdirs();
 
-        Log.warnf("### ENV %s", System.getenv("jvm-build-service"));
+        String runBuild = """
+            #!/usr/bin/env bash
+            set -o verbose
+            set -eu
+            set -o pipefail
+
+            export LANG="en_US.UTF-8"
+            export LC_ALL="en_US.UTF-8"
+            export JAVA_HOME=%s
+            # This might get overridden by the tool home configuration below. This is
+            # useful if Gradle/Ant also requires Maven configured.
+            export MAVEN_HOME=/opt/maven/3.8.8
+            export %s_HOME=/opt/%s/%s
+
+            cd %s
+            mkdir -p ../logs ../packages
+
+            if [ ! -z ${JAVA_HOME+x} ]; then
+                echo "JAVA_HOME:$JAVA_HOME"
+                PATH="${JAVA_HOME}/bin:$PATH"
+            fi
+
+            if [ ! -z ${MAVEN_HOME+x} ]; then
+                echo "MAVEN_HOME:$MAVEN_HOME"
+                PATH="${MAVEN_HOME}/bin:$PATH"
+
+                if [ ! -d "${MAVEN_HOME}" ]; then
+                    echo "Maven home directory not found at ${MAVEN_HOME}" >&2
+                    exit 1
+                fi
+            fi
+
+            if [ ! -z ${GRADLE_HOME+x} ]; then
+                echo "GRADLE_HOME:$GRADLE_HOME"
+                PATH="${GRADLE_HOME}/bin:$PATH"
+
+                if [ ! -d "${GRADLE_HOME}" ]; then
+                    echo "Gradle home directory not found at ${GRADLE_HOME}" >&2
+                    exit 1
+                fi
+            fi
+
+            if [ ! -z ${ANT_HOME+x} ]; then
+                echo "ANT_HOME:$ANT_HOME"
+                PATH="${ANT_HOME}/bin:$PATH"
+
+                if [ ! -d "${ANT_HOME}" ]; then
+                    echo "Ant home directory not found at ${ANT_HOME}" >&2
+                    exit 1
+                fi
+            fi
+
+            if [ ! -z ${SBT_DIST+x} ]; then
+                echo "SBT_DIST:$SBT_DIST"
+                PATH="${SBT_DIST}/bin:$PATH"
+
+                if [ ! -d "${SBT_DIST}" ]; then
+                    echo "SBT home directory not found at ${SBT_DIST}" >&2
+                    exit 1
+                fi
+            fi
+            echo "PATH:$PATH"
+
+            #fix this when we no longer need to run as root
+            export HOME=/root
+
+
+            """.formatted(javaHome, type.name(), type, buildToolVersion, buildRoot);
+
+        Log.warnf("### runBuild is %s", runBuild);
 
         String containerFile = """
             FROM %s
@@ -71,8 +142,8 @@ public abstract class AbstractPreprocessor implements Runnable {
 
         // This block is only needed for running inside JBS
         if (isNotEmpty(System.getenv("jvm-build-service"))) {
+            //RUN mkdir -p /var/workdir/software/settings /original-content/marker
             containerFile += """
-            RUN mkdir -p /var/workdir/software/settings /original-content/marker
 
             ARG CACHE_URL=""
             ENV CACHE_URL=$CACHE_URL

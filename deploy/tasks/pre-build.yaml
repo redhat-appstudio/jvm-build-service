@@ -83,6 +83,9 @@ spec:
       script: |
         $(params.BUILD_SCRIPT)
         /opt/jboss/container/java/run/run-java.sh $(params.BUILD_TOOL)-prepare --java-home=$(params.JAVA_HOME) --build-tool-version=$(params.BUILD_TOOL_VERSION) --recipe-image=$(params.RECIPE_IMAGE) --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE) --disabled-plugins=$(params.BUILD_PLUGINS) $(workspaces.source.path)/source
+      env:
+        - name: BUILD_SCRIPT
+          value: $(params.BUILD_SCRIPT)
     # TODO: Look at making this optional until we know whether we need to store source
     - name: create-pre-build-source
       image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)

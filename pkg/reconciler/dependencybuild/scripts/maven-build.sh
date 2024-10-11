@@ -2,12 +2,11 @@
 
 mkdir -p "${HOME}/.m2/repository"
 
-echo "MAVEN_HOME=${MAVEN_HOME}"
-
-if [ ! -d "${MAVEN_HOME}" ]; then
-    echo "Maven home directory not found at ${MAVEN_HOME}" >&2
-    exit 1
-fi
+#echo "MAVEN_HOME=${MAVEN_HOME}"
+#if [ ! -d "${MAVEN_HOME}" ]; then
+#    echo "Maven home directory not found at ${MAVEN_HOME}" >&2
+#    exit 1
+#fi
 
 TOOLCHAINS_XML="$(workspaces.build-settings.path)"/toolchains.xml
 

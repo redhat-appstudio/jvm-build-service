@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-if [ ! -d "${ANT_HOME}" ]; then
-    echo "Ant home directory not found at ${ANT_HOME}" >&2
-    exit 1
-fi
+#if [ ! -d "${ANT_HOME}" ]; then
+#    echo "Ant home directory not found at ${ANT_HOME}" >&2
+#    exit 1
+#fi
 
 if [ -z ${JBS_DISABLE_CACHE+x} ]; then
     # XXX: It's possible that build.xml is not in the root directory
