@@ -241,7 +241,9 @@ public abstract class AbstractPreprocessor implements Runnable {
 
 
         try {
-            Files.writeString(Paths.get(jbsDirectory.toString(), "run-build.sh"), runBuild);
+            Path runBuildSh = Paths.get(jbsDirectory.toString(), "run-build.sh");
+            Files.writeString(runBuildSh, runBuild);
+            runBuildSh.toFile().setExecutable(true);
             Files.writeString(Paths.get(jbsDirectory.toString(), "Containerfile"), containerFile);
         } catch (IOException e) {
             Log.errorf("Unable to write Containerfile", e);
