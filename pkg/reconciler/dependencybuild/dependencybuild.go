@@ -632,6 +632,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 			},
 		}},
 	}
+	// Setting a default environment variable to represent being run inside the operator
 	pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
 		PodTemplate: &pod.Template{
 			Env: []v1.EnvVar{

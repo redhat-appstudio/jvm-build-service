@@ -9,6 +9,8 @@ import java.util.List;
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+
 /**
  * We keep all the options the same between maven, gradle, sbt and ant for now to keep the pipeline setup simpler.
  * Some of these may be ignored by different processors
@@ -59,20 +61,28 @@ public abstract class AbstractPreprocessor implements Runnable {
         //noinspection ResultOfMethodCallIgnored
         jbsDirectory.toFile().mkdirs();
 
-        Log.warnf("### ENV {}", System.getenv("jvm-build-service"));
+        Log.warnf("### ENV %s", System.getenv("jvm-build-service"));
 
         String containerFile = """
             FROM %s
             USER 0
             WORKDIR /var/workdir
+            """.formatted(recipeImage);
+
+        // This block is only needed for running inside JBS
+        if (isNotEmpty(System.getenv("jvm-build-service"))) {
+            containerFile += """
             RUN mkdir -p /var/workdir/software/settings /original-content/marker
 
             ARG CACHE_URL=""
             ENV CACHE_URL=$CACHE_URL
+            """;
+        }
+        containerFile += """
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
             RUN /var/workdir/run-build.sh
-            """.formatted(recipeImage);
+            """;
 
         // TODO: This is a bit of a hack but as Ant doesn't deploy and the previous implementation relied upon using the
         //     BuildRequestProcessorImage we need to modify the Containerfile. In future the ant-build.sh should probably
