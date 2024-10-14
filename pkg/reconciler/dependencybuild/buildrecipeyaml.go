@@ -145,19 +145,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		tlsVerify = "false"
 	}
 
-	toolEnv := []v1.EnvVar{}
-	if recipe.ToolVersions["maven"] != "" {
-		toolEnv = append(toolEnv, v1.EnvVar{Name: "MAVEN_HOME", Value: "/opt/maven/" + recipe.ToolVersions["maven"]})
-	}
-	if recipe.ToolVersions["gradle"] != "" {
-		toolEnv = append(toolEnv, v1.EnvVar{Name: "GRADLE_HOME", Value: "/opt/gradle/" + recipe.ToolVersions["gradle"]})
-	}
-	if recipe.ToolVersions["ant"] != "" {
-		toolEnv = append(toolEnv, v1.EnvVar{Name: "ANT_HOME", Value: "/opt/ant/" + recipe.ToolVersions["ant"]})
-	}
-	if recipe.ToolVersions["sbt"] != "" {
-		toolEnv = append(toolEnv, v1.EnvVar{Name: "SBT_DIST", Value: "/opt/sbt/" + recipe.ToolVersions["sbt"]})
-	}
+	toolEnv := make([]v1.EnvVar, 0)
 	// Used by JBS to override the version
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamEnforceVersion, Value: recipe.EnforceVersion})
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
@@ -901,7 +889,6 @@ func doSubstitution(script string, paramValues []tektonpipeline.Param, commitTim
 		}
 	}
 	script = strings.ReplaceAll(script, "$(params."+PipelineParamProxyUrl+")", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
-	//	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/var/workdir/software/settings")
 	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/var/workdir/workspace")
 	script = strings.ReplaceAll(script, "$(workspaces.tls.path)", "/var/workdir/software/tls/service-ca.crt")
 	return script

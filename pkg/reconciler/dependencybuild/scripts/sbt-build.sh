@@ -15,4 +15,4 @@ fi
 
 echo "Running SBT command with arguments: $@"
 
-eval "sbt $@" | tee $(workspaces.source.path)/logs/sbt.log
+eval "sbt $@" | tee ${JBS_WORKDIR}/logs/sbt.log

@@ -87,26 +87,26 @@ public abstract class AbstractPreprocessor implements Runnable {
             set -eu
             set -o pipefail
 
-            echo "Using PROXY_URL : $PROXY_URL"
-
             #fix this when we no longer need to run as root
             export HOME=${HOME:=/root}
+            # Custom base working directory.
+            export JBS_WORKDIR=${JBS_WORKDIR:=/var/workdir/workspace}
 
             export LANG="en_US.UTF-8"
             export LC_ALL="en_US.UTF-8"
-            export JAVA_HOME=%s
-            export GRADLE_USER_HOME="/var/workdir/software/settings/.gradle"
+            export JAVA_HOME=${JAVA_HOME:=%s}
             # This might get overridden by the tool home configuration below. This is
             # useful if Gradle/Ant also requires Maven configured.
-            export MAVEN_HOME=/opt/maven/3.8.8
+            export MAVEN_HOME=${MAVEN_HOME:=/opt/maven/3.8.8}
             # If we run out of memory we want the JVM to die with error code 134
             export MAVEN_OPTS="-XX:+CrashOnOutOfMemoryError"
             # If we run out of memory we want the JVM to die with error code 134
             export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
-            export %s_HOME=/opt/%s/%s
+            export %s_HOME=${%s_HOME:=/opt/%s/%s}
+            export GRADLE_USER_HOME="${JBS_WORKDIR}/software/settings/.gradle"
 
-            mkdir -p /var/workdir/workspace/logs /var/workdir/workspace/packages ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
-            cd /var/workdir/workspace/source
+            mkdir -p ${JBS_WORKDIR}/logs ${JBS_WORKDIR}/packages ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
+            cd ${JBS_WORKDIR}/source
 
             if [ ! -z ${JAVA_HOME+x} ]; then
                 echo "JAVA_HOME:$JAVA_HOME"
@@ -114,7 +114,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             fi
 
             if [ ! -z ${MAVEN_HOME+x} ]; then
-            """.formatted(javaHome, type.name(), type, buildToolVersion);
+            """.formatted(javaHome, type.name(), type.name(), type, buildToolVersion);
 
         runBuild += getMavenSetup();
 
@@ -137,7 +137,7 @@ public abstract class AbstractPreprocessor implements Runnable {
         runBuild += """
             fi
 
-            if [ ! -z ${SBT_DIST+x} ]; then
+            if [ ! -z ${SBT_HOME+x} ]; then
             """;
 
         runBuild += getSbtSetup();
@@ -178,7 +178,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
             RUN /var/workdir/run-build.sh
-            """.formatted(recipeImage);;
+            """.formatted(recipeImage);
 
         if (type == ToolType.ANT) {
             // Don't think we need to mess with keystore as copy-artifacts is simply calling copy commands.
@@ -208,7 +208,7 @@ public abstract class AbstractPreprocessor implements Runnable {
      * altDeploymentDirectory to be used by default.
      */
     private String getMavenSetup() {
-        return """
+        String result = """
             echo "MAVEN_HOME:$MAVEN_HOME"
             PATH="${MAVEN_HOME}/bin:$PATH"
 
@@ -244,7 +244,7 @@ public abstract class AbstractPreprocessor implements Runnable {
               <repositories>
                 <repository>
                   <id>artifacts</id>
-                  <url>file:///var/workdir/workspace/artifacts</url>
+                  <url>file://${JBS_WORKDIR}/artifacts</url>
                   <releases>
                     <enabled>true</enabled>
                     <checksumPolicy>ignore</checksumPolicy>
@@ -254,7 +254,7 @@ public abstract class AbstractPreprocessor implements Runnable {
               <pluginRepositories>
                 <pluginRepository>
                   <id>artifacts</id>
-                  <url>file:///var/workdir/workspace/artifacts</url>
+                  <url>file://${JBS_WORKDIR}/artifacts</url>
                   <releases>
                     <enabled>true</enabled>
                     <checksumPolicy>ignore</checksumPolicy>
@@ -269,13 +269,45 @@ public abstract class AbstractPreprocessor implements Runnable {
               </activation>
               <properties>
                 <altDeploymentRepository>
-                  local::file:///var/workdir/workspace/artifacts
+                  local::file://${JBS_WORKDIR}/artifacts
                 </altDeploymentRepository>
               </properties>
             </profile>
           </profiles>
 
            <interactiveMode>false</interactiveMode>
+        """;
+
+        // This block is only needed when running outside of JBS
+        if (isEmpty(System.getenv("jvm-build-service"))) {
+            result += """
+          <proxies>
+            <proxy>
+              <id>indy-http</id>
+              <active>true</active>
+              <protocol>http</protocol>
+              <host>indy-generic-proxy</host>
+              <port>80</port>
+              <!-- <username>build-ADDTW3JAGHYAA+tracking</username> -->
+              <username>${BUILD_ID}+tracking</username>
+              <password>${MVN_TOKEN}</password>
+              <nonProxyHosts>indy|localhost</nonProxyHosts>
+            </proxy>
+            <proxy>
+              <id>indy-https</id>
+              <active>true</active>
+              <protocol>https</protocol>
+              <host>indy-generic-proxy</host>
+              <port>80</port>
+              <username>${BUILD_ID}+tracking</username>
+              <password>${MVN_TOKEN}</password>
+              <nonProxyHosts>indy|localhost</nonProxyHosts>
+            </proxy>
+          </proxies>
+        """;
+        }
+
+        result += """
         </settings>
         EOF
 
@@ -312,6 +344,8 @@ public abstract class AbstractPreprocessor implements Runnable {
         </toolchains>
         EOF
         """.formatted(javaVersion);
+
+        return result;
     }
 
 
@@ -335,7 +369,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             systemProp.http.connectionTimeout=600000
 
             # Settings for <https://github.com/vanniktech/gradle-maven-publish-plugin>
-            RELEASE_REPOSITORY_URL=file:///var/workdir/workspace/artifacts
+            RELEASE_REPOSITORY_URL=file://${JBS_WORKDIR}/artifacts
             RELEASE_SIGNING_ENABLED=false
             mavenCentralUsername=
             mavenCentralPassword=
@@ -346,7 +380,7 @@ public abstract class AbstractPreprocessor implements Runnable {
 
             # Default deployment target
             # https://docs.gradle.org/current/userguide/build_environment.html#sec:gradle_system_properties
-            systemProp.maven.repo.local=/var/workdir/workspace/artifacts
+            systemProp.maven.repo.local=${JBS_WORKDIR}/artifacts
             EOF
             """;
     }
@@ -388,11 +422,11 @@ public abstract class AbstractPreprocessor implements Runnable {
 
     private String getSbtSetup() {
         return """
-        echo "SBT_DIST:$SBT_DIST"
-        PATH="${SBT_DIST}/bin:$PATH"
+        echo "SBT_HOME:$SBT_HOME"
+        PATH="${SBT_HOME}/bin:$PATH"
 
-        if [ ! -d "${SBT_DIST}" ]; then
-        echo "SBT home directory not found at ${SBT_DIST}" >&2
+        if [ ! -d "${SBT_HOME}" ]; then
+        echo "SBT home directory not found at ${SBT_HOME}" >&2
         exit 1
         fi
 
@@ -405,7 +439,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             fi
                 # TODO: we may need .allowInsecureProtocols here for minikube based tests that don't have access to SSL
         cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
-        publishTo := Some(("MavenRepo" at s"file:/var/workdir/workspace/artifacts")),
+        publishTo := Some(("MavenRepo" at s"file:${JBS_WORKDIR}/artifacts")),
         EOF
         """;
     }

@@ -24,5 +24,4 @@ rm -f gradle/verification-metadata.xml
 
 echo "Running Gradle command with arguments: $@"
 
-gradle --info --stacktrace "$@" | tee $(workspaces.source.path)/logs/gradle.log
-#gradle -Dmaven.repo.local=$(workspaces.source.path)/artifacts --info --stacktrace "$@" | tee $(workspaces.source.path)/logs/gradle.log
+gradle --info --stacktrace "$@" | tee ${JBS_WORKDIR}/logs/gradle.log
