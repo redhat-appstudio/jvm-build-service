@@ -13,7 +13,6 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -136,9 +135,16 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	imageId := db.Name
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
-	preBuildImageArgs, deployArgs, konfluxArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
+	deployArgs := []string{
+		"verify",
+		"--path=$(workspaces.source.path)/artifacts",
+		"--logs-path=$(workspaces.source.path)/logs",
+		"--task-run-name=$(context.taskRun.name)",
+		"--build-id=" + buildId,
+		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
+		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
+	}
 
-	fmt.Printf("### Was using preBuildImageArgs %#v and konfluxArgs %#v ", preBuildImageArgs, konfluxArgs)
 	install := additionalPackages(recipe)
 	tlsVerify := "true"
 	if orasOptions != "" {
@@ -202,8 +208,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	envVars := extractEnvVar(toolEnv)
 	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
 	konfluxScript := "\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
-
-	fmt.Printf("### Using cacheUrl %#v paramValues %#v, commitTime %#v, buildRepos %#v\n", cacheUrl, paramValues, commitTime, buildRepos)
 
 	// Diagnostic Containerfile
 	// TODO: Looks like diagnostic files won't work with UBI7 anymore. This needs to be followed up on; potentially
@@ -724,45 +728,6 @@ func additionalPackages(recipe *v1alpha1.BuildRecipe) string {
 	return install
 }
 
-func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, []string, []string) {
-
-	orasOptions := ""
-	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
-		orasOptions = "--insecure --plain-http"
-	}
-
-	preBuildImageTag := imageId + "-pre-build-image"
-	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json. Was using
-	// AUTHFILE to override but now switched to adding the image secret to the pipeline.
-	// Setting ORAS_OPTIONS to ensure the archive is compatible with jib (for OCIRepositoryClient).
-	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
-export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
-create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
-`, orasOptions, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PipelineResultPreBuildImageDigest)
-
-	deployArgs := []string{
-		"verify",
-		"--path=$(workspaces.source.path)/artifacts",
-		"--logs-path=$(workspaces.source.path)/logs",
-		"--task-run-name=$(context.taskRun.name)",
-		"--build-id=" + buildId,
-		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
-		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
-	}
-
-	konfluxArgs := []string{
-		"deploy-pre-build-source",
-		"--source-path=$(workspaces.source.path)/source",
-		"--task-run-name=$(context.taskRun.name)",
-		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
-		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
-	}
-	konfluxArgs = append(konfluxArgs, gitArgs(jbsConfig, db)...)
-	konfluxArgs = append(konfluxArgs, "--image-id="+imageId)
-
-	return preBuildImageArgs, deployArgs, konfluxArgs
-}
-
 // This effectively duplicates the defaults from DeployPreBuildImageCommand.java
 func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag string) string {
 
@@ -796,23 +761,6 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 		registryArgs.WriteString(prependTagToImage(preBuildImageTag, imageRegistry.PrependTag))
 	}
 	return registryArgs.String()
-}
-
-func gitArgs(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []string {
-	gitArgs := make([]string, 0)
-	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
-		gitArgs = append(gitArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
-	}
-	if jbsConfig.Spec.GitSourceArchive.URL != "" {
-		gitArgs = append(gitArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
-	}
-	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
-		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
-	}
-	if db.Annotations[artifactbuild.DependencyScmAnnotation] == "true" {
-		gitArgs = append(gitArgs, "--git-reuse-repository")
-	}
-	return gitArgs
 }
 
 // This is similar to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.

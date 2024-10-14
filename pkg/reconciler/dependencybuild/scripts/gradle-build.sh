@@ -13,7 +13,7 @@ fi
 #so just create one to fool the plugin
 git config user.email "HACBS@redhat.com"
 git config user.name "HACBS"
-if [ ! -z ${ENFORCE_VERSION+x} ]; then
+if [ -n "${ENFORCE_VERSION}" ]; then
   echo "Creating tag ${PROJECT_VERSION} to match enforced version"
   git tag -m ${PROJECT_VERSION} -a ${PROJECT_VERSION} || true
 fi
@@ -23,5 +23,4 @@ fi
 rm -f gradle/verification-metadata.xml
 
 echo "Running Gradle command with arguments: $@"
-
 gradle --info --stacktrace "$@" | tee ${JBS_WORKDIR}/logs/gradle.log

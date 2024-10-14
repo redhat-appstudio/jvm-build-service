@@ -14,5 +14,4 @@ EOF
 fi
 
 echo "Running SBT command with arguments: $@"
-
 eval "sbt $@" | tee ${JBS_WORKDIR}/logs/sbt.log

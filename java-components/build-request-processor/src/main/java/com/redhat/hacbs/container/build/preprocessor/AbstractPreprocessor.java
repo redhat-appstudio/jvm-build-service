@@ -84,8 +84,8 @@ public abstract class AbstractPreprocessor implements Runnable {
         String runBuild = """
             #!/usr/bin/env bash
             set -o verbose
-            set -eu
             set -o pipefail
+            set -e
 
             #fix this when we no longer need to run as root
             export HOME=${HOME:=/root}
@@ -95,25 +95,25 @@ public abstract class AbstractPreprocessor implements Runnable {
             export LANG="en_US.UTF-8"
             export LC_ALL="en_US.UTF-8"
             export JAVA_HOME=${JAVA_HOME:=%s}
-            # This might get overridden by the tool home configuration below. This is
-            # useful if Gradle/Ant also requires Maven configured.
-            export MAVEN_HOME=${MAVEN_HOME:=/opt/maven/3.8.8}
             # If we run out of memory we want the JVM to die with error code 134
             export MAVEN_OPTS="-XX:+CrashOnOutOfMemoryError"
             # If we run out of memory we want the JVM to die with error code 134
             export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
             export %s_HOME=${%s_HOME:=/opt/%s/%s}
+            # This might get overridden by the tool home configuration above. This is
+            # useful if Gradle/Ant also requires Maven configured.
+            export MAVEN_HOME=${MAVEN_HOME:=/opt/maven/3.8.8}
             export GRADLE_USER_HOME="${JBS_WORKDIR}/software/settings/.gradle"
 
             mkdir -p ${JBS_WORKDIR}/logs ${JBS_WORKDIR}/packages ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
             cd ${JBS_WORKDIR}/source
 
-            if [ ! -z ${JAVA_HOME+x} ]; then
+            if [ -n "${JAVA_HOME}" ]; then
                 echo "JAVA_HOME:$JAVA_HOME"
                 PATH="${JAVA_HOME}/bin:$PATH"
             fi
 
-            if [ ! -z ${MAVEN_HOME+x} ]; then
+            if [ -n "${MAVEN_HOME}" ]; then
             """.formatted(javaHome, type.name(), type.name(), type, buildToolVersion);
 
         runBuild += getMavenSetup();
@@ -121,7 +121,7 @@ public abstract class AbstractPreprocessor implements Runnable {
         runBuild += """
             fi
 
-            if [ ! -z ${GRADLE_HOME+x} ]; then
+            if [ -n "${GRADLE_HOME}" ]; then
             """;
 
         runBuild += getGradleSetup();
@@ -129,7 +129,7 @@ public abstract class AbstractPreprocessor implements Runnable {
         runBuild += """
             fi
 
-            if [ ! -z ${ANT_HOME+x} ]; then
+            if [ -n "${ANT_HOME}" ]; then
             """;
 
         runBuild += getAntSetup();
@@ -137,7 +137,7 @@ public abstract class AbstractPreprocessor implements Runnable {
         runBuild += """
             fi
 
-            if [ ! -z ${SBT_HOME+x} ]; then
+            if [ -n "${SBT_HOME}" ]; then
             """;
 
         runBuild += getSbtSetup();
@@ -217,7 +217,7 @@ public abstract class AbstractPreprocessor implements Runnable {
                 exit 1
             fi
 
-            if [ ! -z ${PROXY_URL+x} ]; then
+            if [ -n "${PROXY_URL}" ]; then
             cat >${HOME}/.m2/settings.xml <<EOF
         <settings>
           <mirrors>
@@ -396,7 +396,7 @@ public abstract class AbstractPreprocessor implements Runnable {
                     exit 1
                 fi
 
-                if [ ! -z ${PROXY_URL+x} ]; then
+                if [ -n "${PROXY_URL}" ]; then
                     cat > ivysettings.xml << EOF
             <ivysettings>
                 <property name="cache-url" value="${PROXY_URL}"/>
@@ -430,7 +430,7 @@ public abstract class AbstractPreprocessor implements Runnable {
         exit 1
         fi
 
-        if [ ! -z ${PROXY_URL+x} ]; then
+        if [ -n "${PROXY_URL}" ]; then
         cat > "${HOME}/.sbt/repositories" <<EOF
             [repositories]
         local
