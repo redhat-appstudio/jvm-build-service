@@ -20,10 +20,9 @@ import (
 )
 
 const (
-	WorkspaceBuildSettings = "build-settings" // TODO: Remove?
-	WorkspaceSource        = "source"
-	WorkspaceMount         = "/var/workdir"
-	WorkspaceTls           = "tls"
+	WorkspaceSource = "source"
+	WorkspaceMount  = "/var/workdir"
+	WorkspaceTls    = "tls"
 
 	GitTaskName       = "git-clone"
 	PreBuildTaskName  = "pre-build"
@@ -533,14 +532,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 			},
-
-			// TODO: ### How to pass build-settings/tls information to buildah task?
-			//       Note - buildah-oci-ta task has no defined workspace
-			//Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-			//	//{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
-			//	{Name: WorkspaceSource, Workspace: WorkspaceSource},
-			//	//{Name: WorkspaceTls, Workspace: WorkspaceTls},
-			//},
 		}}, ps.Tasks...)
 
 	// Results for https://github.com/konflux-ci/build-definitions/tree/main/task/buildah-oci-ta/0.2
@@ -910,7 +901,7 @@ func doSubstitution(script string, paramValues []tektonpipeline.Param, commitTim
 		}
 	}
 	script = strings.ReplaceAll(script, "$(params."+PipelineParamProxyUrl+")", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
-	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/var/workdir/software/settings")
+	//	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/var/workdir/software/settings")
 	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/var/workdir/workspace")
 	script = strings.ReplaceAll(script, "$(workspaces.tls.path)", "/var/workdir/software/tls/service-ca.crt")
 	return script

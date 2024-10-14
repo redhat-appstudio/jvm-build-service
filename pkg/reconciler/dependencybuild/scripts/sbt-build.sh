@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 # Only add the Ivy Typesafe repo for SBT versions less than 1.0 which aren't found in Central. This
 # is only for SBT build infrastructure.
 if [ -f project/build.properties ]; then

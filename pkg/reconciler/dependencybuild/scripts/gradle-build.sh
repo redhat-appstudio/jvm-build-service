@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 cat >> "${GRADLE_USER_HOME}"/gradle.properties << EOF
 # For https://github.com/Kotlin/kotlinx.team.infra
 versionSuffix=

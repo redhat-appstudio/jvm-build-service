@@ -81,7 +81,6 @@ public abstract class AbstractPreprocessor implements Runnable {
             javaHome = "/lib/jvm/java-" + javaVersion;
         }
 
-        // TODO: Rename PROXY_URL to PROXY_URL to cover both Indy and JBS use-cases?
         String runBuild = """
             #!/usr/bin/env bash
             set -o verbose
@@ -139,27 +138,11 @@ public abstract class AbstractPreprocessor implements Runnable {
             fi
 
             if [ ! -z ${SBT_DIST+x} ]; then
-                echo "SBT_DIST:$SBT_DIST"
-                PATH="${SBT_DIST}/bin:$PATH"
+            """;
 
-                if [ ! -d "${SBT_DIST}" ]; then
-                    echo "SBT home directory not found at ${SBT_DIST}" >&2
-                    exit 1
-                fi
+        runBuild += getSbtSetup();
 
-                if [ ! -z ${PROXY_URL+x} ]; then
-                    cat > "${HOME}/.sbt/repositories" <<EOF
-                    [repositories]
-                      local
-                      my-maven-proxy-releases: ${PROXY_URL}
-            EOF
-                fi
-                # TODO: we may need .allowInsecureProtocols here for minikube based tests that don't have access to SSL
-                cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
-                publishTo := Some(("MavenRepo" at s"file:/var/workdir/workspace/artifacts")),
-            EOF
-
-
+        runBuild += """
             fi
             echo "PATH:$PATH"
 
@@ -190,20 +173,12 @@ public abstract class AbstractPreprocessor implements Runnable {
             FROM %s
             USER 0
             WORKDIR /var/workdir
-            """.formatted(recipeImage);
-
-        // This block is only needed for running inside JBS
-        if (isNotEmpty(System.getenv("jvm-build-service"))) {
-            containerFile += """
             ARG PROXY_URL=""
             ENV PROXY_URL=$PROXY_URL
-            """;
-        }
-        containerFile += """
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
             RUN /var/workdir/run-build.sh
-            """;
+            """.formatted(recipeImage);;
 
         if (type == ToolType.ANT) {
             // Don't think we need to mess with keystore as copy-artifacts is simply calling copy commands.
@@ -409,5 +384,29 @@ public abstract class AbstractPreprocessor implements Runnable {
             EOF
                 fi
             """;
+    }
+
+    private String getSbtSetup() {
+        return """
+        echo "SBT_DIST:$SBT_DIST"
+        PATH="${SBT_DIST}/bin:$PATH"
+
+        if [ ! -d "${SBT_DIST}" ]; then
+        echo "SBT home directory not found at ${SBT_DIST}" >&2
+        exit 1
+        fi
+
+        if [ ! -z ${PROXY_URL+x} ]; then
+        cat > "${HOME}/.sbt/repositories" <<EOF
+            [repositories]
+        local
+        my-maven-proxy-releases: ${PROXY_URL}
+        EOF
+            fi
+                # TODO: we may need .allowInsecureProtocols here for minikube based tests that don't have access to SSL
+        cat >"$HOME/.sbt/1.0/global.sbt" <<EOF
+        publishTo := Some(("MavenRepo" at s"file:/var/workdir/workspace/artifacts")),
+        EOF
+        """;
     }
 }

@@ -620,7 +620,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	qty, _ := resource.ParseQuantity("1Gi")
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
-		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: WorkspaceSource, VolumeClaimTemplate: &v1.PersistentVolumeClaim{
 			Spec: v1.PersistentVolumeClaimSpec{
 				AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},

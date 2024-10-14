@@ -8,9 +8,6 @@ then
 fi
 
 {{INSTALL_PACKAGE_SCRIPT}}
-
 {{PRE_BUILD_SCRIPT}}
-
 {{BUILD}}
-
 {{POST_BUILD_SCRIPT}}
