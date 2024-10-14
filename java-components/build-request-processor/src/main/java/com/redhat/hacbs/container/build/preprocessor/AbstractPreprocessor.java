@@ -321,7 +321,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             if [ "%s" = "7" ]; then
                 JAVA_VERSIONS="7:1.7.0 8:1.8.0 11:11"
             else
-                JAVA_VERSIONS="8:1.8.0 9:11 11:11 17:17 21:21 22:22"
+                JAVA_VERSIONS="8:1.8.0 9:11 11:11 17:17 21:21 22:23 23:23"
             fi
 
             for i in $JAVA_VERSIONS; do
