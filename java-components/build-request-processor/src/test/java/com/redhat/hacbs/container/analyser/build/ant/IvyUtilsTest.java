@@ -15,9 +15,9 @@ import io.quarkus.test.junit.QuarkusTest;
 class IvyUtilsTest {
     private static final String IVYSETTINGS_XML = "ivysettings.xml";
 
-    private static final String CACHE_URL = "cache-url";
+    private static final String PROXY_URL = "cache-url";
 
-    private static final String CACHE_URL_VALUE = "$(params.CACHE_URL)";
+    private static final String PROXY_URL_VALUE = "$(params.PROXY_URL)";
 
     private static final String DEFAULT_PATTERN = "default-pattern";
 
@@ -49,8 +49,8 @@ class IvyUtilsTest {
     void testIvySettings() {
         var settings = ivy.getSettings();
         settings.validate();
-        var cacheUrl = settings.getVariable(CACHE_URL);
-        assertThat(cacheUrl).isEqualTo(CACHE_URL_VALUE);
+        var cacheUrl = settings.getVariable(PROXY_URL);
+        assertThat(cacheUrl).isEqualTo(PROXY_URL_VALUE);
         var defaultPattern = settings.getVariable(DEFAULT_PATTERN);
         assertThat(defaultPattern).isEqualTo(DEFAULT_PATTERN_VALUE);
         var localPattern = settings.getVariable(LOCAL_PATTERN);

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	WorkspaceBuildSettings = "build-settings"
+	WorkspaceBuildSettings = "build-settings" // TODO: Remove?
 	WorkspaceSource        = "source"
 	WorkspaceMount         = "/var/workdir"
 	WorkspaceTls           = "tls"
@@ -229,7 +229,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nFROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /var/workdir" +
-		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
+		"\nENV PROXY_URL=" + doSubstitution("$(params."+PipelineParamProxyUrl+")", paramValues, commitTime, buildRepos) +
 		"\nRUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y jq" +
 		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker /var/workdir/workspace/source" +
 		"\nCOPY --from=build-request-processor /deployments/ /var/workdir/software/build-request-processor" +
@@ -265,7 +265,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		{Name: PipelineParamChainsGitCommit, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamGoals, Type: tektonpipeline.ParamTypeArray},
 		{Name: PipelineParamPath, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl}},
+		{Name: PipelineParamProxyUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl}},
 	}
 	secretVariables := secretVariables(jbsConfig)
 
@@ -528,7 +528,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						Type: tektonpipeline.ParamTypeArray,
 						ArrayVal: []string{
 							// This allows us to set environment variables that can be picked up by our Containerfile/build script.
-							"CACHE_URL=" + cacheUrl,
+							PipelineParamProxyUrl + "=" + cacheUrl,
 						},
 					},
 				},
@@ -862,7 +862,7 @@ func prependTagToImage(imageId string, prependTag string) string {
 func verifyParameters(jbsConfig *v1alpha1.JBSConfig, recipe *v1alpha1.BuildRecipe) []string {
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
-		"--repository-url=$(params.CACHE_URL)",
+		"--repository-url=$(params." + PipelineParamProxyUrl + ")",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 		"--task-run-name=$(context.taskRun.name)",
 		"--results-file=$(results." + PipelineResultPassedVerification + ".path)",
@@ -909,7 +909,7 @@ func doSubstitution(script string, paramValues []tektonpipeline.Param, commitTim
 			script = strings.ReplaceAll(script, "$(params."+i.Name+")", i.Value.StringVal)
 		}
 	}
-	script = strings.ReplaceAll(script, "$(params.CACHE_URL)", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
+	script = strings.ReplaceAll(script, "$(params."+PipelineParamProxyUrl+")", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
 	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/var/workdir/software/settings")
 	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/var/workdir/workspace")
 	script = strings.ReplaceAll(script, "$(workspaces.tls.path)", "/var/workdir/software/tls/service-ca.crt")

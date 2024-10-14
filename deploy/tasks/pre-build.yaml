@@ -44,13 +44,13 @@ spec:
     - name: RECIPE_IMAGE
       description: The image from the build recipe to use
     - name: BUILD_TOOL
-      description: The build tool to use.
+      description: The build tool to use (ant, gradle, maven, sbt).
     - name: BUILD_TOOL_VERSION
-      description: The build tool version to use.
+      description: The build tool version to use (e.g. 3.9.5)
     - name: JAVA_VERSION
       description: Java version to use (7, 8, 9, 11, 17, 21, 22)
     - name: BUILD_PLUGINS
-      description: Comma separated list of build plugins that should be disabled.
+      description: Optional comma separated list of build plugins that should be disabled.
       default: ""
     - name: BUILD_SCRIPT
       description: The build script to embed with the Containerfile

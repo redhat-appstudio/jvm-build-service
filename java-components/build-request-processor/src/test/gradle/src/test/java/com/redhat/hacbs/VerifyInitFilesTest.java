@@ -58,7 +58,7 @@ public class VerifyInitFilesTest {
             arguments.add("--init-script");
             arguments.add(initScript.getAbsolutePath());
         }
-        Map<String, String> env = Collections.singletonMap("CACHE_URL", "https://repo.maven.apache.org/maven2/");
+        Map<String, String> env = Collections.singletonMap("PROXY_URL", "https://repo.maven.apache.org/maven2/");
 
         for (String version : new String[] { "4.10.3", "5.6.4", "6.1.1", "6.4.1", "6.6.1",
                 "6.8.3", "7.0.2", "7.2", "7.4.2", "8.0.2", "8.2.1", "8.4" }) {

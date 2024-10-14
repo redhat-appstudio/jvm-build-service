@@ -81,17 +81,17 @@ public abstract class AbstractPreprocessor implements Runnable {
             javaHome = "/lib/jvm/java-" + javaVersion;
         }
 
-        // TODO: Rename CACHE_URL to PROXY_URL to cover both Indy and JBS use-cases?
+        // TODO: Rename PROXY_URL to PROXY_URL to cover both Indy and JBS use-cases?
         String runBuild = """
             #!/usr/bin/env bash
             set -o verbose
             set -eu
             set -o pipefail
 
-            echo "Using CACHE_URL : $CACHE_URL"
+            echo "Using PROXY_URL : $PROXY_URL"
 
             #fix this when we no longer need to run as root
-            export HOME=/root
+            export HOME=${HOME:=/root}
 
             export LANG="en_US.UTF-8"
             export LC_ALL="en_US.UTF-8"
@@ -147,11 +147,11 @@ public abstract class AbstractPreprocessor implements Runnable {
                     exit 1
                 fi
 
-                if [ ! -z ${CACHE_URL+x} ]; then
+                if [ ! -z ${PROXY_URL+x} ]; then
                     cat > "${HOME}/.sbt/repositories" <<EOF
                     [repositories]
                       local
-                      my-maven-proxy-releases: ${CACHE_URL}
+                      my-maven-proxy-releases: ${PROXY_URL}
             EOF
                 fi
                 # TODO: we may need .allowInsecureProtocols here for minikube based tests that don't have access to SSL
@@ -195,8 +195,8 @@ public abstract class AbstractPreprocessor implements Runnable {
         // This block is only needed for running inside JBS
         if (isNotEmpty(System.getenv("jvm-build-service"))) {
             containerFile += """
-            ARG CACHE_URL=""
-            ENV CACHE_URL=$CACHE_URL
+            ARG PROXY_URL=""
+            ENV PROXY_URL=$PROXY_URL
             """;
         }
         containerFile += """
@@ -242,13 +242,13 @@ public abstract class AbstractPreprocessor implements Runnable {
                 exit 1
             fi
 
-            if [ ! -z ${CACHE_URL+x} ]; then
+            if [ ! -z ${PROXY_URL+x} ]; then
             cat >${HOME}/.m2/settings.xml <<EOF
         <settings>
           <mirrors>
             <mirror>
               <id>mirror.default</id>
-              <url>${CACHE_URL}</url>
+              <url>${PROXY_URL}</url>
               <mirrorOf>*</mirrorOf>
             </mirror>
           </mirrors>
@@ -299,6 +299,8 @@ public abstract class AbstractPreprocessor implements Runnable {
               </properties>
             </profile>
           </profiles>
+
+           <interactiveMode>false</interactiveMode>
         </settings>
         EOF
 
@@ -385,10 +387,10 @@ public abstract class AbstractPreprocessor implements Runnable {
                     exit 1
                 fi
 
-                if [ ! -z ${CACHE_URL+x} ]; then
+                if [ ! -z ${PROXY_URL+x} ]; then
                     cat > ivysettings.xml << EOF
             <ivysettings>
-                <property name="cache-url" value="${CACHE_URL}"/>
+                <property name="cache-url" value="${PROXY_URL}"/>
                 <property name="default-pattern" value="[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
                 <property name="local-pattern" value="\\${user.home}/.m2/repository/[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
                 <settings defaultResolver="defaultChain"/>
