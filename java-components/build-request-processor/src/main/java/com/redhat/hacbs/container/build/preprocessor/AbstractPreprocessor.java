@@ -222,7 +222,7 @@ public abstract class AbstractPreprocessor implements Runnable {
         <settings>
           <mirrors>
             <mirror>
-              <id>mirror.default</id>
+              <id>indy-mvn</id>
               <url>${PROXY_URL}</url>
               <mirrorOf>*</mirrorOf>
             </mirror>
@@ -237,7 +237,7 @@ public abstract class AbstractPreprocessor implements Runnable {
           <!-- Allows a secondary Maven build to use results of prior (e.g. Gradle) deployment -->
           <profiles>
             <profile>
-              <id>alternate</id>
+              <id>secondary</id>
               <activation>
                 <activeByDefault>true</activeByDefault>
               </activation>
@@ -263,7 +263,7 @@ public abstract class AbstractPreprocessor implements Runnable {
               </pluginRepositories>
             </profile>
             <profile>
-              <id>deployment</id>
+              <id>local-deployment</id>
               <activation>
                 <activeByDefault>true</activeByDefault>
               </activation>
@@ -281,6 +281,25 @@ public abstract class AbstractPreprocessor implements Runnable {
         // This block is only needed when running outside of JBS
         if (isEmpty(System.getenv("jvm-build-service"))) {
             result += """
+          <!--
+            Needed for Maven 3.9+. Switched to native resolver
+            https://maven.apache.org/guides/mini/guide-resolver-transport.html
+          -->
+          <servers>
+            <server>
+              <id>indy-mvn</id>
+              <configuration>
+                <connectionTimeout>60000</connectionTimeout>
+                <httpHeaders>
+                  <property>
+                    <name>Authorization</name>
+                    <value>Bearer ${accessToken}</value>
+                  </property>
+                </httpHeaders>
+              </configuration>
+            </server>
+          </servers>
+
           <proxies>
             <proxy>
               <id>indy-http</id>
@@ -291,7 +310,7 @@ public abstract class AbstractPreprocessor implements Runnable {
               <!-- <username>build-ADDTW3JAGHYAA+tracking</username> -->
               <username>${BUILD_ID}+tracking</username>
               <password>${MVN_TOKEN}</password>
-              <nonProxyHosts>indy|localhost</nonProxyHosts>
+              <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
             </proxy>
             <proxy>
               <id>indy-https</id>
@@ -301,7 +320,7 @@ public abstract class AbstractPreprocessor implements Runnable {
               <port>80</port>
               <username>${BUILD_ID}+tracking</username>
               <password>${MVN_TOKEN}</password>
-              <nonProxyHosts>indy|localhost</nonProxyHosts>
+              <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
             </proxy>
           </proxies>
         """;
