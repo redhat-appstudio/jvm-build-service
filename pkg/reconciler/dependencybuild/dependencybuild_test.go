@@ -228,7 +228,7 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(or.Name).Should(Equal(db.Name))
 				}
 			}
-			g.Expect(len(tr.Spec.Params)).Should(Equal(12))
+			g.Expect(len(tr.Spec.Params)).Should(Equal(8))
 			for _, param := range tr.Spec.Params {
 				switch param.Name {
 				case PipelineParamScmHash:
@@ -244,10 +244,6 @@ func TestStateDetect(t *testing.T) {
 					g.Expect(param.Value.StringVal).Should(Equal("some-url"))
 				case PipelineParamGoals:
 					g.Expect(param.Value.ArrayVal).Should(ContainElement("testgoal"))
-				case PipelineParamEnforceVersion:
-					g.Expect(param.Value.StringVal).Should(BeEmpty())
-				case PipelineParamToolVersion:
-					g.Expect(param.Value.StringVal).Should(Equal("3.8"))
 				}
 			}
 		}

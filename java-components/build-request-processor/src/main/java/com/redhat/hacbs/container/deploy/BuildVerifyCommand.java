@@ -193,7 +193,7 @@ public class BuildVerifyCommand implements Runnable {
             Log.infof("Contaminants: %s", contaminatedPaths);
             Log.infof("GAVs to deploy: %s", gavs);
             if (gavs.isEmpty()) {
-                Log.errorf("No content to deploy found in deploy directory");
+                Log.errorf("No content to verify found in directory");
 
                 Files.walkFileTree(deploymentPath, new SimpleFileVisitor<>() {
                     @Override
@@ -202,7 +202,7 @@ public class BuildVerifyCommand implements Runnable {
                         return FileVisitResult.CONTINUE;
                     }
                 });
-                throw new RuntimeException("Deploy failed");
+                throw new RuntimeException("Verify failed");
             }
             for (var i : contaminatedGavs.entrySet()) {
                 if (!i.getValue().getAllowed()) {
@@ -219,14 +219,14 @@ public class BuildVerifyCommand implements Runnable {
                     newContaminates.add(i.getValue());
                 }
                 String serialisedContaminants = ResultsUpdater.MAPPER.writeValueAsString(newContaminates);
-                Log.infof("Updating results %s for deployed resources %s with contaminants %s",
+                Log.infof("Updating results %s for verified resources %s with contaminants %s",
                         taskRun, gavs, serialisedContaminants);
                 resultsUpdater.updateResults(taskRun, Map.of(
                         "CONTAMINANTS", serialisedContaminants,
                         "DEPLOYED_RESOURCES", String.join(",", gavs)));
             }
         } catch (Exception e) {
-            Log.error("Deployment failed", e);
+            Log.error("Verification failed", e);
             throw new RuntimeException(e);
         }
     }

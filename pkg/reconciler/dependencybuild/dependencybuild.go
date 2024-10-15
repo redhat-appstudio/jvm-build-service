@@ -49,11 +49,9 @@ const (
 	PipelineParamChainsGitUrl         = "CHAINS-GIT_URL"
 	PipelineParamChainsGitCommit      = "CHAINS-GIT_COMMIT"
 	PipelineParamGoals                = "GOALS"
-	PipelineParamJavaVersion          = "JAVA_VERSION"
-	PipelineParamToolVersion          = "TOOL_VERSION"
 	PipelineParamEnforceVersion       = "ENFORCE_VERSION"
 	PipelineParamProjectVersion       = "PROJECT_VERSION"
-	PipelineParamCacheUrl             = "CACHE_URL"
+	PipelineParamProxyUrl             = "PROXY_URL"
 	PipelineResultImage               = "IMAGE_URL"
 	PipelineResultImageDigest         = "IMAGE_DIGEST"
 	PipelineResultPreBuildImageDigest = "PRE_BUILD_IMAGE_DIGEST"
@@ -591,10 +589,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: PipelineParamChainsGitCommit, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: contextDir}},
 		{Name: PipelineParamGoals, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
-		{Name: PipelineParamEnforceVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.EnforceVersion}},
-		{Name: PipelineParamProjectVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.Version}},
-		{Name: PipelineParamToolVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.ToolVersion}},
-		{Name: PipelineParamJavaVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
 	}
 
 	orasOptions := ""
@@ -626,7 +620,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	qty, _ := resource.ParseQuantity("1Gi")
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
-		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: WorkspaceSource, VolumeClaimTemplate: &v1.PersistentVolumeClaim{
 			Spec: v1.PersistentVolumeClaimSpec{
 				AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
@@ -636,18 +629,26 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 			},
 		}},
 	}
-	if orasOptions != "" {
-		pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
-			PodTemplate: &pod.Template{
-				Env: []v1.EnvVar{
-					{
-						Name:  "ORAS_OPTIONS",
-						Value: orasOptions,
-					},
+	// Setting a default environment variable to represent being run inside the operator
+	pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
+		PodTemplate: &pod.Template{
+			Env: []v1.EnvVar{
+				{
+					Name:  util.ControllerNamespace,
+					Value: util.ControllerDeploymentName,
 				},
 			},
-		}
+		},
 	}
+	if orasOptions != "" {
+		pr.Spec.TaskRunTemplate.PodTemplate.Env = append([]v1.EnvVar{
+			{
+				Name:  "ORAS_OPTIONS",
+				Value: orasOptions,
+			},
+		}, pr.Spec.TaskRunTemplate.PodTemplate.Env...)
+	}
+
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.CITests] == "true" {
 		log.Info(fmt.Sprintf("Configuring resources for %#v", BuildTaskName))
 		podMemR, _ := resource.ParseQuantity("1792Mi")

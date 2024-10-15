@@ -38,7 +38,6 @@ The following environment variables are configurable and may be set by the user 
 | JBS_QUAY_IMAGE_TAG | The tag for the images (defaults to `dev`)
 | JBS_QUAY_ORG | JBS images are pulled by default from the `QUAY_USERNAME` organization. This may be overridden by changing this
 | JBS_BUILD_IMAGE_SECRET | Secret for accessing Quay.io (See below)
-| JBS_DISABLE_CACHE | Internal variable for disabling the cache
 | JBS_GIT_CREDENTIALS | Support for private repositories (See below)
 | JBS_MAX_MEMORY | Maximum additional memory allowed
 | JBS_RECIPE_DATABASE | Recipe database to use (defaults to `https://github.com/redhat-appstudio/jvm-build-data`)
