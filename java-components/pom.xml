@@ -317,7 +317,7 @@
             <dependency>
                 <groupId>org.commonjava.maven.ext</groupId>
                 <artifactId>pom-manipulation-common</artifactId>
-                <version>4.16</version>
+                <version>4.19</version>
                 <!-- As we only want the immediate dependency and some of the transitives cause -->
                 <!-- clashes then exclude everything for simplicity -->
                 <exclusions>
