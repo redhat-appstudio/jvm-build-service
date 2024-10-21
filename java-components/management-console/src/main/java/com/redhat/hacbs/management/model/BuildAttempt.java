@@ -65,9 +65,6 @@ public class BuildAttempt extends PanacheEntity {
     @JoinColumn(nullable = false)
     public StoredDependencyBuild dependencyBuild;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "build")
-    public List<BuildFile> storedBuildResults;
-
     @Column(length = -1)
     public String upstreamDifferences;
 

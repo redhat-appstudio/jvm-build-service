@@ -18,7 +18,7 @@ type RebuiltArtifactStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:path=rebuiltartifacts,scope=Namespaced
 // +kubebuilder:printcolumn:name="GAV",type=string,JSONPath=`.spec.gav`
-// RebuiltArtifact An artifact that has been rebuilt and deployed to S3 or a Container registry
+// RebuiltArtifact An artifact that has been rebuilt and deployed to a Container registry
 type RebuiltArtifact struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

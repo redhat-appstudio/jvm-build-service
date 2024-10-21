@@ -34,7 +34,6 @@ var (
 
 	ImageTag  string
 	ImageRepo string
-	S3Enabled bool
 )
 
 func GetImageName(ctx context.Context, client client.Client, substr, envvar string) (string, error) {
