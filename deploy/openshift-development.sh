@@ -21,6 +21,8 @@ fi
 DIR=`dirname $0`
 $DIR/base-development.sh $1
 
+kubectl patch tektonconfigs.operator.tekton.dev config --type=merge -p '{"spec":{"pipeline":{"enable-api-fields":"alpha"}}}'
+
 if [ "$deploy_maven_repo" = true ]; then
     export REPOSILITE_IMAGE=$(sed -n 's/^FROM //p' $DIR/../openshift-with-appstudio-test/e2e/Dockerfile.reposilite)
     kubectl delete -f $DIR/maven-repo.yaml --ignore-not-found

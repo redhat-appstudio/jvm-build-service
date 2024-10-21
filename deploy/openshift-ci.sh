@@ -30,6 +30,7 @@ oc apply -f ${DIR}/base/pipelines/openshift-pipelines-subscription.yaml
 waitFor "oc get ns openshift-pipelines"
 waitFor "oc get pods -n openshift-pipelines | grep tekton-pipelines-controller | grep Running"
 waitFor "oc get mutatingwebhookconfigurations.admissionregistration.k8s.io webhook.pipeline.tekton.dev -o yaml | grep rules"
+oc patch tektonconfigs.operator.tekton.dev config --type=merge -p '{"spec":{"pipeline":{"enable-api-fields":"alpha"}}}'
 echo "Tekton controller is running"
 
 oc create ns jvm-build-service || true

@@ -35,7 +35,8 @@ import (
 
 const (
 	TlsServiceName            = v1alpha1.CacheDeploymentName + "-tls"
-	TestRegistry              = "jvmbuildservice.io/test-registry"
+	CITests                   = "jvmbuildservice.io/ci-tests"      // Denote running CI Tests
+	TestRegistry              = "jvmbuildservice.io/test-registry" // Denote using an insecure registry in GitHub Actions
 	RetryTimeAnnotations      = "jvmbuildservice.io/retry-time"
 	RetryTimestampAnnotations = "jvmbuildservice.io/retry-timestamp"
 )
@@ -501,7 +502,6 @@ func (r *ReconcilerJBSConfig) cacheDeployment(ctx context.Context, log logr.Logg
 	//central is at the hard coded 200 position
 	//redhat is configured at 250
 	repos := []Repo{{name: "central", position: 200}, {name: "redhat", position: 250}}
-	fmt.Printf("### cacheDeployment jbsConfig.Spec.EnableRebuilds %#v maven repo %#v \n", jbsConfig.Spec.EnableRebuilds, jbsConfig.Spec.MavenDeployment.Repository)
 
 	if jbsConfig.Spec.EnableRebuilds {
 		repos = append(repos, Repo{name: "rebuilt", position: 100})

@@ -36,7 +36,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class LookupBuildInfoCommandTest {
     private static final String TOOL_VERSIONS = "sbt:1.8.0,jdk:7;8;11;17;21,maven:3.8.8;3.9.5,ant:1.9.16;1.10.15,gradle:8.4;8.3;8.0.2;7.4.2;7.6.3;7.5.1;6.9.2;5.6.4;4.10.3";
 
-    private static final String CACHE_URL = "https://repo1.maven.org/maven2";
+    private static final String PROXY_URL = "https://repo1.maven.org/maven2";
 
     private static final String CACHE_PATH = "";
 
@@ -105,7 +105,7 @@ class LookupBuildInfoCommandTest {
     }
 
     private BuildInfo getBuildInfo(String scmUrl, String commit, String tag, String artifact) throws Exception {
-        return getBuildInfo(scmUrl, commit, tag, artifact, CACHE_URL, CACHE_PATH, null);
+        return getBuildInfo(scmUrl, commit, tag, artifact, PROXY_URL, CACHE_PATH, null);
     }
 
     private BuildInfo getBuildInfo(String scmUrl, String commit, String tag, String artifact, String cacheUrl, String cachePath, String context) throws Exception {
