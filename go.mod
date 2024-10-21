@@ -5,7 +5,6 @@ go 1.22.0
 toolchain go1.22.6
 
 require (
-	github.com/aws/aws-sdk-go v1.54.19
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-containerregistry v0.20.1 // indirect
 	github.com/google/uuid v1.6.0

@@ -1,8 +1,6 @@
 apiVersion: jvmbuildservice.io/v1alpha1
 kind: DependencyBuild
 metadata:
-  annotations:
-    jvmbuildservice.io/s3-sync-state: complete
   creationTimestamp: "2023-10-24T22:25:31Z"
   generation: 1
   name: f5db2774dbb0a7a82ebfb7e02370b26b

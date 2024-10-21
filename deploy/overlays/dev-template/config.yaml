@@ -3,8 +3,6 @@ apiVersion: jvmbuildservice.io/v1alpha1
 kind: JBSConfig
 metadata:
   name: jvm-build-config
-  annotations:
-    jvmbuildservice.io/s3-bucket-name: "jvm-build-service-data"
 spec:
   registry:
     owner: ${QUAY_USERNAME}
