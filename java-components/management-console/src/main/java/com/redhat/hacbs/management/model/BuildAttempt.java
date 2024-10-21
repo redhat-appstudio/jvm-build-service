@@ -51,7 +51,6 @@ public class BuildAttempt extends PanacheEntity {
     @Column(length = -1)
     public String allowedDifferences;
 
-    public String buildLogsUrl;
     public String buildPipelineUrl;
 
     public String mavenRepository;

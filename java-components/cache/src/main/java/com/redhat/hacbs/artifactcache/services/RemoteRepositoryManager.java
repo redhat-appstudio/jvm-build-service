@@ -30,10 +30,8 @@ public class RemoteRepositoryManager {
     private static final String STORE = "store.";
     private static final String URL = ".url";
     private static final String TYPE = ".type";
-    private static final String BUCKET = ".bucket";
     private static final String REGISTRY = ".registry";
     private static final String OWNER = ".owner";
-    private static final String PREFIXES = ".prefixes";
 
     private static final String TOKEN = ".token";
     private static final String PREPEND_TAG = ".prepend-tag";
