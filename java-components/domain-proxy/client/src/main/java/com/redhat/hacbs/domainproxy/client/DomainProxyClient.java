@@ -1,5 +1,8 @@
 package com.redhat.hacbs.domainproxy.client;
 
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.createChannelToSocketWriter;
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.createSocketToChannelWriter;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -11,8 +14,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import com.redhat.hacbs.domainproxy.common.CommonIOUtil;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
@@ -43,10 +44,10 @@ public class DomainProxyClient {
                     final Socket socket = serverSocket.accept();
                     final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(domainSocket);
                     final SocketChannel channel = SocketChannel.open(address);
-                    // write from socket to channel
-                    CommonIOUtil.createSocketToChannelWriter(byteBufferSize, socket, channel).start();
-                    // write from channel to socket
-                    CommonIOUtil.createChannelToSocketWriter(byteBufferSize, channel, socket).start();
+                    // Write from socket to channel
+                    Thread.startVirtualThread(createSocketToChannelWriter(byteBufferSize, socket, channel));
+                    // Write from channel to socket
+                    Thread.startVirtualThread(createChannelToSocketWriter(byteBufferSize, channel, socket));
                 }
             } catch (final IOException e) {
                 Log.errorf(e, "Error initialising domain proxy client");

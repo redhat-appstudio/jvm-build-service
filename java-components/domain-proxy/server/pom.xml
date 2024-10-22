@@ -29,6 +29,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
             <artifactId>domain-proxy-common</artifactId>
         </dependency>

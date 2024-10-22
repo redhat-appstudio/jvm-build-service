@@ -1,5 +1,8 @@
 package com.redhat.hacbs.domainproxy;
 
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.createChannelToSocketWriter;
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.createSocketToChannelWriter;
+
 import java.io.IOException;
 import java.net.Socket;
 import java.net.StandardProtocolFamily;
@@ -15,8 +18,6 @@ import jakarta.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.domainproxy.common.CommonIOUtil;
-
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.Startup;
@@ -25,7 +26,7 @@ import io.quarkus.runtime.Startup;
 @Singleton
 public class DomainProxyServer {
 
-    static final String HOST = "localhost";
+    static final String LOCALHOST = "localhost";
 
     @Inject
     @ConfigProperty(name = "server-domain-socket")
@@ -33,7 +34,7 @@ public class DomainProxyServer {
 
     @Inject
     @ConfigProperty(name = "server-http-port")
-    int serverHttpPort;
+    int httpServerPort;
 
     @Inject
     @ConfigProperty(name = "byte-buffer-size")
@@ -41,7 +42,6 @@ public class DomainProxyServer {
 
     @PostConstruct
     public void start() {
-        Log.info("Starting domain proxy server...");
         new Thread(() -> {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
@@ -55,11 +55,11 @@ public class DomainProxyServer {
                 serverChannel.bind(address);
                 while (true) {
                     final SocketChannel channel = serverChannel.accept();
-                    final Socket socket = new Socket(HOST, serverHttpPort);
-                    // write from socket to channel
-                    CommonIOUtil.createSocketToChannelWriter(byteBufferSize, socket, channel).start();
-                    // write from channel to socket
-                    CommonIOUtil.createChannelToSocketWriter(byteBufferSize, channel, socket).start();
+                    final Socket socket = new Socket(LOCALHOST, httpServerPort);
+                    // Write from socket to channel
+                    Thread.startVirtualThread(createSocketToChannelWriter(byteBufferSize, socket, channel));
+                    // Write from channel to socket
+                    Thread.startVirtualThread(createChannelToSocketWriter(byteBufferSize, channel, socket));
                 }
             } catch (final IOException e) {
                 Log.errorf(e, "Error initialising domain proxy server");

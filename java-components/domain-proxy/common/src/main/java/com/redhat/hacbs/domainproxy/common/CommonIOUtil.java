@@ -13,10 +13,10 @@ public final class CommonIOUtil {
 
     private static final Logger LOG = Logger.getLogger(CommonIOUtil.class);
 
-    public static Thread createSocketToChannelWriter(final int byteBufferSize, final Socket socket,
+    public static Runnable createSocketToChannelWriter(final int byteBufferSize, final Socket socket,
             final SocketChannel channel) {
-        // write from socket to channel
-        return new Thread(() -> {
+        // Write from socket to channel
+        return () -> {
             int r;
             final byte[] buf = new byte[byteBufferSize];
             int bytesWritten = 0;
@@ -43,13 +43,13 @@ public final class CommonIOUtil {
                 }
             }
             LOG.infof("Wrote %d bytes from socket to channel", bytesWritten);
-        });
+        };
     }
 
-    public static Thread createChannelToSocketWriter(final int byteBufferSize, final SocketChannel channel,
+    public static Runnable createChannelToSocketWriter(final int byteBufferSize, final SocketChannel channel,
             final Socket socket) {
-        // write from channel to socket
-        return new Thread(() -> {
+        // Write from channel to socket
+        return () -> {
             int r;
             final ByteBuffer buf = ByteBuffer.allocate(byteBufferSize);
             buf.clear();
@@ -79,6 +79,6 @@ public final class CommonIOUtil {
                 }
             }
             LOG.infof("Wrote %d bytes from channel to socket", bytesWritten);
-        });
+        };
     }
 }

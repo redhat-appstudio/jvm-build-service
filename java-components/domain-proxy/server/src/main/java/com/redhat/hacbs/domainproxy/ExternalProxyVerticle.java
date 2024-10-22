@@ -29,7 +29,7 @@ public class ExternalProxyVerticle extends AbstractVerticle {
 
     @Inject
     @ConfigProperty(name = "server-http-port")
-    int serverHttpPort;
+    int httpServerPort;
 
     @Inject
     @ConfigProperty(name = "proxy-target-whitelist")
@@ -37,25 +37,27 @@ public class ExternalProxyVerticle extends AbstractVerticle {
 
     private final WebClient webClient;
     private final NetClient netClient;
+    private final HttpServer httpServer;
 
     public ExternalProxyVerticle(final Vertx vertx) {
         webClient = WebClient.create(vertx, new WebClientOptions());
         netClient = vertx.createNetClient(new NetClientOptions());
+        httpServer = vertx.createHttpServer();
     }
 
     @Override
     public void start() {
-        final HttpServer server = vertx.createHttpServer();
-        server.requestHandler(request -> {
+        Log.info("Starting domain proxy server...");
+        httpServer.requestHandler(request -> {
             if (request.method() == HttpMethod.GET) {
                 handleGetRequest(request);
             } else if (request.method() == HttpMethod.CONNECT) {
                 handleConnectRequest(request);
             }
         });
-        server.listen(serverHttpPort, result -> {
+        httpServer.listen(httpServerPort, result -> {
             if (result.succeeded()) {
-                Log.infof("Server is now listening on port %d", serverHttpPort);
+                Log.infof("Server is now listening on port %d", httpServerPort);
             } else {
                 Log.errorf(result.cause(), "Failed to bind server");
             }
