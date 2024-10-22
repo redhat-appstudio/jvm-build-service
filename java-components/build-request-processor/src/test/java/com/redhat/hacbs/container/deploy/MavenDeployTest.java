@@ -61,7 +61,7 @@ public class MavenDeployTest {
         Path deployment = Files.createTempDirectory("deployment");
         Files.writeString(source.resolve("pom.xml"), "");
 
-        TagDeployCommand deployCommand = new TagDeployCommand();
+        DeployCommand deployCommand = new DeployCommand();
         deployCommand.mvnCtx = mvnContext;
         deployCommand.mvnPassword = Optional.empty();
         deployCommand.mvnRepo = deployment.toAbsolutePath().toUri().toString();

@@ -16,7 +16,7 @@ import io.quarkus.logging.Log;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "deploy")
-public class TagDeployCommand implements Runnable {
+public class DeployCommand implements Runnable {
 
     @CommandLine.Option(names = "--directory")
     String artifactDirectory;
