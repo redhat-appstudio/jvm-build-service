@@ -22,7 +22,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: RebuiltArtifact An artifact that has been rebuilt and deployed
-          to S3 or a Container registry
+          to a Container registry
         properties:
           apiVersion:
             description: |-

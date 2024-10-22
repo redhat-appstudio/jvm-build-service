@@ -122,10 +122,6 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	case abrerr == nil:
 		log = log.WithValues("kind", "ArtifactBuild", "ab-gav", abr.Spec.GAV, "ab-initial-state", abr.Status.State)
 		ctx = logr.NewContext(ctx, log)
-		done, err := r.handleS3SyncArtifactBuild(ctx, &abr)
-		if done || err != nil {
-			return reconcile.Result{}, err
-		}
 		result, err := r.handleArtifactBuildReceived(ctx, abr, jbsConfig)
 		if err != nil {
 			log.Error(err, "failure reconciling ArtifactBuild")

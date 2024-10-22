@@ -30,17 +30,9 @@ if [ -z "$JBS_BUILD_IMAGE_SECRET" ]; then
     # Represents an empty dockerconfig.json
     export JBS_BUILD_IMAGE_SECRET="ewogICAgImF1dGhzIjogewogICAgfQp9Cg==" # notsecret
 fi
-if [ -z "$JBS_S3_SYNC_ENABLED" ]; then
-    export JBS_S3_SYNC_ENABLED=false
-fi
 if [ -z "$JBS_MAX_MEMORY" ]; then
     export JBS_MAX_MEMORY=4096
 fi
-# Horrendous hack to work around
-# https://github.com/kubernetes-sigs/kustomize/issues/5124
-# given an env var is a string (https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/)
-# and if 'true' or 'false' is seen that is coerced to a bool which causes an issue
-export JBS_S3_SYNC_ENABLED="\"$JBS_S3_SYNC_ENABLED\""
 
 function cleanAllArtifacts() {
     # Following are created in CI code
@@ -71,9 +63,6 @@ DIR=`dirname $0`
 
 echo -e "\033[0;32mRunning kustomize/kubectl...\033[0m"
 kustomize build $DIR/overlays/dev-template | envsubst '
-${AWS_ACCESS_KEY_ID}
-${AWS_PROFILE}
-${AWS_SECRET_ACCESS_KEY}
 ${GIT_DEPLOY_IDENTITY}
 ${GIT_DEPLOY_TOKEN}
 ${GIT_DEPLOY_URL}
@@ -85,7 +74,6 @@ ${JBS_QUAY_IMAGE_TAG}
 ${JBS_QUAY_ORG}
 ${JBS_MAX_MEMORY}
 ${JBS_RECIPE_DATABASE}
-${JBS_S3_SYNC_ENABLED}
 ${JBS_WORKER_NAMESPACE}
 ${MAVEN_PASSWORD}
 ${MAVEN_REPOSITORY}

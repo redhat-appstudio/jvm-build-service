@@ -34,15 +34,9 @@ public class StoredDependencyBuild extends PanacheEntity {
 
     public String version;
 
-    public String buildYamlUrl;
-
     public boolean succeeded;
 
     public boolean contaminated;
-
-    public String buildDiscoveryUrl;
-
-    public String deployLogsUrl;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "dependencyBuild")
     @OrderBy("startTime desc")

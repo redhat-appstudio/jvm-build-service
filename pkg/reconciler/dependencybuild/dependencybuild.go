@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
-	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
@@ -77,20 +76,18 @@ const (
 )
 
 type ReconcileDependencyBuild struct {
-	client          client.Client
-	scheme          *runtime.Scheme
-	eventRecorder   record.EventRecorder
-	clientSet       *kubernetes.Clientset
-	logReaderParams *cli.TektonParams
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
+	clientSet     *kubernetes.Clientset
 }
 
-func newReconciler(mgr ctrl.Manager, clientset *kubernetes.Clientset, logReaderParams *cli.TektonParams) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, clientset *kubernetes.Clientset) reconcile.Reconciler {
 	return &ReconcileDependencyBuild{
-		clientSet:       clientset,
-		client:          mgr.GetClient(),
-		scheme:          mgr.GetScheme(),
-		eventRecorder:   mgr.GetEventRecorderFor("DependencyBuild"),
-		logReaderParams: logReaderParams,
+		clientSet:     clientset,
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
 	}
 }
 
@@ -128,12 +125,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	case dberr == nil:
 		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
 		ctx = logr.NewContext(ctx, log)
-		done, err := r.handleS3SyncDependencyBuild(ctx, &db)
-		if done || err != nil {
-			return reconcile.Result{}, err
-		}
 		if db.Annotations != nil && db.Annotations[RedeployAnnotation] != "" {
-
 			return r.handleRedeployAnnotation(ctx, &db)
 		}
 
@@ -157,13 +149,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-		result, err := r.handleS3SyncPipelineRun(ctx, &pr)
-		if result != nil || err != nil {
-			if result != nil {
-				return *result, nil
-			}
-			return reconcile.Result{}, err
-		}
 		if pr.DeletionTimestamp != nil {
 			//always remove the finalizer if it is deleted
 			//but continue with the method

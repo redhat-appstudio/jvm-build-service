@@ -57,7 +57,6 @@
         <!-- Dependencies -->
         <asm.version>9.7.1</asm.version>
         <assertj.version>3.26.3</assertj.version>
-        <aws-java-sdk.version>1.12.767</aws-java-sdk.version>
         <cyclonedx-core-java.version>9.0.4</cyclonedx-core-java.version>
         <gradle-tooling-api.version>8.10.2</gradle-tooling-api.version>
         <maven-indexer.version>7.1.5</maven-indexer.version>
@@ -93,13 +92,6 @@
             <dependency>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>${quarkus.platform.artifact-id}</artifactId>
-                <version>${quarkus.platform.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>${quarkus.platform.group-id}</groupId>
-                <artifactId>quarkus-amazon-services-bom</artifactId>
                 <version>${quarkus.platform.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -165,11 +157,6 @@
                 <groupId>io.quarkiverse.githubapp</groupId>
                 <artifactId>quarkus-github-app</artifactId>
                 <version>${quarkus-github-app.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.amazonaws</groupId>
-                <artifactId>aws-java-sdk-codeartifact</artifactId>
-                <version>${aws-java-sdk.version}</version>
             </dependency>
 
             <dependency>
@@ -614,6 +601,7 @@
             </modules>
         </profile>
         <profile>
+          <id>imageTag</id>
           <activation>
             <activeByDefault>true</activeByDefault>
             <property>

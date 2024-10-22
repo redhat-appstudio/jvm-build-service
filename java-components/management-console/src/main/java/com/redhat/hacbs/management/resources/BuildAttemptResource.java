@@ -23,6 +23,6 @@ public class BuildAttemptResource extends BuildLogs {
         if (attempt == null) {
             throw new NotFoundException();
         }
-        return extractLog(Type.BUILD, attempt.buildLogsUrl, attempt.dependencyBuild.buildIdentifier.dependencyBuildName);
+        return extractLog(Type.BUILD, attempt.dependencyBuild.buildIdentifier.dependencyBuildName);
     }
 }

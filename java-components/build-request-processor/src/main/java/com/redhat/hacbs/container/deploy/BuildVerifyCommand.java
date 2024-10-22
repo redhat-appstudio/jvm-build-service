@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import jakarta.enterprise.inject.spi.BeanManager;
@@ -37,7 +36,6 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "verify")
 public class BuildVerifyCommand implements Runnable {
 
-    static final Pattern CODE_ARTIFACT_PATTERN = Pattern.compile("https://([^.]*)-\\d+\\..*\\.amazonaws\\.com/maven/(.*)/");
     private static final String DOT_JAR = ".jar";
     private static final String DOT_POM = ".pom";
     private static final String DOT = ".";

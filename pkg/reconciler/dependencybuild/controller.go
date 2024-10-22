@@ -2,7 +2,6 @@ package dependencybuild
 
 import (
 	"context"
-	"github.com/tektoncd/cli/pkg/cli"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
@@ -18,13 +17,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func SetupNewReconcilerWithManager(mgr ctrl.Manager, params *cli.TektonParams) error {
+func SetupNewReconcilerWithManager(mgr ctrl.Manager) error {
 
 	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return err
 	}
-	r := newReconciler(mgr, clientset, params)
+	r := newReconciler(mgr, clientset)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.DependencyBuild{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
