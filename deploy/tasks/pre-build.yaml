@@ -117,11 +117,8 @@ spec:
         - --git-reuse-repository=$(params.GIT_REUSE_REPOSITORY)
     - name: create-pre-build-image
       image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac
-      # The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json.
-      # Setting ORAS_OPTIONS to ensure the archive is compatible with jib (for OCIRepositoryClient) (to be removed)
       script: |
-        echo "Creating pre-build-image archive with ORAS_OPTIONS $ORAS_OPTIONS"
-        export ORAS_OPTIONS="$ORAS_OPTIONS --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
+        echo "Creating pre-build-image archive"
         create-archive --store $(params.IMAGE_URL) $(results.PRE_BUILD_IMAGE_DIGEST.path)=$(workspaces.source.path)/source
       env:
         - name: IMAGE_URL
