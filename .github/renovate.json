@@ -16,7 +16,7 @@
       "matchPackagePatterns": ["^io.github.redhat-appstudio.jvmbuild:"],
       "matchCurrentValue": "/-SNAPSHOT$/",
       "enabled": false
-    },
+    }
   ],
   "enabledManagers": [
   ]
