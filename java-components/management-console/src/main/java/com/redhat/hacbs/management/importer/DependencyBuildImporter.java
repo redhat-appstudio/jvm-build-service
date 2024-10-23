@@ -29,9 +29,6 @@ import io.quarkus.panache.common.Parameters;
 @ApplicationScoped
 public class DependencyBuildImporter {
 
-    @ConfigProperty(name = "bucket.name")
-    String s3Bucket;
-
     @ConfigProperty(name = "MAVEN_REPOSITORY")
     Optional<String> mavenRepo;
 
@@ -72,10 +69,6 @@ public class DependencyBuildImporter {
             storedBuild = new StoredDependencyBuild();
             storedBuild.buildIdentifier = identifier;
         }
-        if (s3Bucket != null) {
-            storedBuild.buildYamlUrl = "s3://" + s3Bucket + "/builds/" + dependencyBuild.getMetadata().getName() + "/"
-                    + dependencyBuild.getMetadata().getUid() + ".yaml";
-        }
         storedBuild.succeeded = !failed;
         storedBuild.contaminated = contaminated;
         storedBuild.version = spec.getVersion();
@@ -84,15 +77,6 @@ public class DependencyBuildImporter {
             storedBuild.buildAttempts = new ArrayList<>();
         }
 
-        if (s3Bucket != null) {
-            //todo we just assume the logs are present
-            storedBuild.buildDiscoveryUrl = "s3://" + s3Bucket + "/build-logs/" + dependencyBuild.getMetadata().getName() + "/"
-                    + dependencyBuild.getMetadata().getUid()
-                    + "/build-discovery.log";
-            storedBuild.deployLogsUrl = "s3://" + s3Bucket + "/build-logs/" + dependencyBuild.getMetadata().getName() + "/"
-                    + dependencyBuild.getMetadata().getUid()
-                    + "/deploy.log";
-        }
         if (dependencyBuild.getStatus().getBuildAttempts() != null) {
             for (var i : dependencyBuild.getStatus().getBuildAttempts()) {
                 BuildAttempt attempt = null;
@@ -147,15 +131,6 @@ public class DependencyBuildImporter {
                     Log.infof("Set maven repo to %s", finalAttempt.mavenRepository);
                 }
 
-                if (s3Bucket != null) {
-                    //todo we just assume the logs are present
-                    attempt.buildLogsUrl = "s3://" + s3Bucket + "/build-logs/" + dependencyBuild.getMetadata().getName() + "/"
-                            + dependencyBuild.getMetadata().getUid()
-                            + "/" + i.getBuild().getPipelineName() + ".log";
-                    attempt.buildPipelineUrl = "s3://" + s3Bucket + "/build-pipelines/"
-                            + dependencyBuild.getMetadata().getName()
-                            + "/" + dependencyBuild.getMetadata().getUid() + "/" + i.getBuild().getPipelineName() + ".yaml";
-                }
                 attempt.diagnosticDockerFile = i.getBuild().getDiagnosticDockerFile();
                 if (i.getBuild().getStartTime() != null) {
                     attempt.startTime = Instant.ofEpochSecond(i.getBuild().getStartTime());

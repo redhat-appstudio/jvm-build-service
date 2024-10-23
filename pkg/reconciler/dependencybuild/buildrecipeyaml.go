@@ -13,32 +13,25 @@ import (
 
 	"github.com/redhat-appstudio/jvm-build-service/pkg/apis/jvmbuildservice/v1alpha1"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/artifactbuild"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
 	tektonpipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
-	WorkspaceBuildSettings = "build-settings"
-	WorkspaceSource        = "source"
-	WorkspaceMount         = "/var/workdir"
-	WorkspaceTls           = "tls"
+	WorkspaceSource = "source"
+	WorkspaceMount  = "/var/workdir"
+	WorkspaceTls    = "tls"
 
 	GitTaskName       = "git-clone"
 	PreBuildTaskName  = "pre-build"
 	BuildTaskName     = "build"
 	PostBuildTaskName = "post-build"
-	TagTaskName       = "tag"
+	DeployTaskName    = "deploy"
 )
 
 //go:embed scripts/maven-build.sh
 var mavenBuild string
-
-// used for both ant and maven
-//
-//go:embed scripts/maven-settings.sh
-var mavenSettings string
 
 //go:embed scripts/gradle-build.sh
 var gradleBuild string
@@ -62,11 +55,6 @@ var buildEntryScript string
 var buildTrustedArtifacts string
 
 func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
-	orasOptions := ""
-	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
-		orasOptions = "--insecure --plain-http"
-	}
-
 	// Original deploy pipeline used to run maven deployment and also tag the images using 'oras tag'
 	// with the SHA256 encoded sum of the GAVs.
 	resolver := tektonpipeline.ResolverRef{
@@ -86,7 +74,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 		Params: []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
-				Name: TagTaskName,
+				Name: DeployTaskName,
 				TaskRef: &tektonpipeline.TaskRef{
 					// Can't specify name and resolver as they clash.
 					ResolverRef: resolver,
@@ -128,13 +116,6 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 						},
 					},
 					{
-						Name: "ORAS_OPTIONS",
-						Value: tektonpipeline.ParamValue{
-							Type:      tektonpipeline.ParamTypeString,
-							StringVal: orasOptions,
-						},
-					},
-					{
 						Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
 						Value: tektonpipeline.ParamValue{
 							Type:      tektonpipeline.ParamTypeString,
@@ -147,48 +128,33 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	}
 	return ps, nil
 }
-func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string) (*tektonpipeline.PipelineSpec, string, error) {
+func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string, orasOptions string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
 	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
 	imageId := db.Name
 	zero := int64(0)
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
-	preBuildImageArgs, deployArgs, konfluxArgs := pipelineBuildCommands(imageId, db, jbsConfig, buildId)
+	deployArgs := []string{
+		"verify",
+		"--path=$(workspaces.source.path)/artifacts",
+		"--logs-path=$(workspaces.source.path)/logs",
+		"--task-run-name=$(context.taskRun.name)",
+		"--build-id=" + buildId,
+		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
+		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
+	}
 
-	fmt.Printf("### Was using preBuildImageArgs %#v and konfluxArgs %#v ", preBuildImageArgs, konfluxArgs)
 	install := additionalPackages(recipe)
-	orasOptions := ""
 	tlsVerify := "true"
-	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
-		orasOptions = "--insecure --plain-http"
+	if orasOptions != "" {
 		tlsVerify = "false"
 	}
 
-	var javaHome string
-	if recipe.JavaVersion == "7" || recipe.JavaVersion == "8" {
-		javaHome = "/lib/jvm/java-1." + recipe.JavaVersion + ".0"
-	} else {
-		javaHome = "/lib/jvm/java-" + recipe.JavaVersion
-	}
-
-	toolEnv := []v1.EnvVar{}
-	if recipe.ToolVersions["maven"] != "" {
-		toolEnv = append(toolEnv, v1.EnvVar{Name: "MAVEN_HOME", Value: "/opt/maven/" + recipe.ToolVersions["maven"]})
-	}
-	if recipe.ToolVersions["gradle"] != "" {
-		toolEnv = append(toolEnv, v1.EnvVar{Name: "GRADLE_HOME", Value: "/opt/gradle/" + recipe.ToolVersions["gradle"]})
-	}
-	if recipe.ToolVersions["ant"] != "" {
-		toolEnv = append(toolEnv, v1.EnvVar{Name: "ANT_HOME", Value: "/opt/ant/" + recipe.ToolVersions["ant"]})
-	}
-	if recipe.ToolVersions["sbt"] != "" {
-		toolEnv = append(toolEnv, v1.EnvVar{Name: "SBT_DIST", Value: "/opt/sbt/" + recipe.ToolVersions["sbt"]})
-	}
-	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamToolVersion, Value: recipe.ToolVersion})
-	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
-	toolEnv = append(toolEnv, v1.EnvVar{Name: JavaHome, Value: javaHome})
+	toolEnv := make([]v1.EnvVar, 0)
+	// Used by JBS to override the version
 	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamEnforceVersion, Value: recipe.EnforceVersion})
+	toolEnv = append(toolEnv, v1.EnvVar{Name: PipelineParamProjectVersion, Value: db.Spec.Version})
 
 	additionalMemory := recipe.AdditionalMemory
 	if systemConfig.Spec.MaxAdditionalMemory > 0 && additionalMemory > systemConfig.Spec.MaxAdditionalMemory {
@@ -197,23 +163,22 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 	var buildToolSection string
 	if tool == "maven" {
-		buildToolSection = mavenSettings + "\n" + mavenBuild
+		buildToolSection = mavenBuild
 	} else if tool == "gradle" {
-		// We always add Maven information (in InvocationBuilder) so add the relevant settings.xml
-		buildToolSection = mavenSettings + "\n" + gradleBuild
+		buildToolSection = gradleBuild
 	} else if tool == "sbt" {
 		buildToolSection = sbtBuild
 	} else if tool == "ant" {
-		// We always add Maven information (in InvocationBuilder) so add the relevant settings.xml
-		buildToolSection = mavenSettings + "\n" + antBuild
+		buildToolSection = antBuild
 	} else {
 		buildToolSection = "echo unknown build tool " + tool + " && exit 1"
 	}
 	build := buildEntryScript
-	//horrible hack
-	//we need to get our TLS CA's into our trust store
-	//we just add it at the start of the build
-	build = artifactbuild.InstallKeystoreScript() + "\n" + build
+	// TODO: How to handle/remove the TLS support from STONEBLD-847
+	////horrible hack
+	////we need to get our TLS CA's into our trust store
+	////we just add it at the start of the build
+	//build = artifactbuild.InstallKeystoreScript() + "\n" + build
 
 	buildRepos := ""
 	if len(recipe.Repositories) > 0 {
@@ -238,14 +203,11 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	//we generate a docker file that can be used to reproduce this build
 	//this is for diagnostic purposes, if you have a failing build it can be really hard to figure out how to fix it without this
 	log.Info(fmt.Sprintf("Generating dockerfile with recipe build image %#v", recipe.Image))
-	//preprocessorScript := "#!/bin/sh\n/var/workdir/software/system-java/bin/java -jar /var/workdir/software/build-request-processor/quarkus-run.jar " + doSubstitution(strings.Join(preprocessorArgs, " "), paramValues, commitTime, buildRepos) + "\n"
 	preprocessorScript := "#!/bin/sh\n/var/workdir/software/system-java/bin/java -jar /var/workdir/software/build-request-processor/quarkus-run.jar " + recipe.Tool + "-prepare /var/workdir/workspace --recipe-image=" + recipe.Image + " --request-processor-image=" + buildRequestProcessorImage + " --disabled-plugins=" + strings.Join(recipe.DisabledPlugins, ",")
 	buildScript := doSubstitution(build, paramValues, commitTime, buildRepos)
 	envVars := extractEnvVar(toolEnv)
 	cmdArgs := extractArrayParam(PipelineParamGoals, paramValues)
-	konfluxScript := "#!/bin/sh\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
-
-	fmt.Printf("### Using cacheUrl %#v paramValues %#v, commitTime %#v, buildRepos %#v\n", cacheUrl, paramValues, commitTime, buildRepos)
+	konfluxScript := "\n" + envVars + "\nset -- \"$@\" " + cmdArgs + "\n\n" + buildScript
 
 	// Diagnostic Containerfile
 	// TODO: Looks like diagnostic files won't work with UBI7 anymore. This needs to be followed up on; potentially
@@ -258,7 +220,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		"\nFROM " + recipe.Image +
 		"\nUSER 0" +
 		"\nWORKDIR /var/workdir" +
-		"\nENV CACHE_URL=" + doSubstitution("$(params."+PipelineParamCacheUrl+")", paramValues, commitTime, buildRepos) +
+		"\nENV PROXY_URL=" + doSubstitution("$(params."+PipelineParamProxyUrl+")", paramValues, commitTime, buildRepos) +
 		"\nRUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y jq" +
 		"\nRUN mkdir -p /var/workdir/software/settings /original-content/marker /var/workdir/workspace/source" +
 		"\nCOPY --from=build-request-processor /deployments/ /var/workdir/software/build-request-processor" +
@@ -293,12 +255,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		{Name: PipelineParamChainsGitUrl, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamChainsGitCommit, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamGoals, Type: tektonpipeline.ParamTypeArray},
-		{Name: PipelineParamJavaVersion, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamToolVersion, Type: tektonpipeline.ParamTypeString},
 		{Name: PipelineParamPath, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamEnforceVersion, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamProjectVersion, Type: tektonpipeline.ParamTypeString},
-		{Name: PipelineParamCacheUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl}},
+		{Name: PipelineParamProxyUrl, Type: tektonpipeline.ParamTypeString, Default: &tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: cacheUrl}},
 	}
 	secretVariables := secretVariables(jbsConfig)
 
@@ -460,10 +418,24 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
+					Name: "BUILD_TOOL_VERSION",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: recipe.ToolVersion,
+					},
+				},
+				{
+					Name: "JAVA_VERSION",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: recipe.JavaVersion,
+					},
+				},
+				{
 					Name: "BUILD_SCRIPT",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: createKonfluxScripts(konfluxScript),
+						StringVal: konfluxScript,
 					},
 				},
 				{
@@ -471,13 +443,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: strings.Join(recipe.DisabledPlugins, ","),
-					},
-				},
-				{
-					Name: "ORAS_OPTIONS",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: orasOptions,
 					},
 				},
 				{
@@ -542,28 +507,23 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "ORAS_OPTIONS",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: orasOptions,
-					},
-				},
-				{
 					Name: "TLSVERIFY",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: tlsVerify,
 					},
 				},
+				{
+					Name: "BUILD_ARGS",
+					Value: tektonpipeline.ParamValue{
+						Type: tektonpipeline.ParamTypeArray,
+						ArrayVal: []string{
+							// This allows us to set environment variables that can be picked up by our Containerfile/build script.
+							PipelineParamProxyUrl + "=" + cacheUrl,
+						},
+					},
+				},
 			},
-
-			// TODO: ### How to pass build-settings/tls information to buildah task?
-			//       Note - buildah-oci-ta task has no defined workspace
-			//Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-			//	//{Name: WorkspaceBuildSettings, Workspace: WorkspaceBuildSettings},
-			//	{Name: WorkspaceSource, Workspace: WorkspaceSource},
-			//	//{Name: WorkspaceTls, Workspace: WorkspaceTls},
-			//},
 		}}, ps.Tasks...)
 
 	// Results for https://github.com/konflux-ci/build-definitions/tree/main/task/buildah-oci-ta/0.2
@@ -670,24 +630,11 @@ func secretVariables(jbsConfig *v1alpha1.JBSConfig) []v1.EnvVar {
 	}
 	if jbsConfig.Spec.MavenDeployment.Repository != "" {
 		secretVariables = append(secretVariables, v1.EnvVar{Name: "MAVEN_PASSWORD", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.MavenSecretName}, Key: v1alpha1.MavenSecretKey, Optional: &trueBool}}})
-
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_ACCESS_KEY_ID", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSAccessID, Optional: &trueBool}}})
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSSecretKey, Optional: &trueBool}}})
-		secretVariables = append(secretVariables, v1.EnvVar{Name: "AWS_PROFILE", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.AWSSecretName}, Key: v1alpha1.AWSProfile, Optional: &trueBool}}})
 	}
 	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
 		secretVariables = append(secretVariables, v1.EnvVar{Name: "GIT_DEPLOY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.GitRepoSecretName}, Key: v1alpha1.GitRepoSecretKey, Optional: &trueBool}}})
 	}
 	return secretVariables
-}
-
-func createKonfluxScripts(konfluxScript string) string {
-	ret := "mkdir -p $(workspaces." + WorkspaceSource + ".path)/source/.jbs\n"
-	ret += "tee $(workspaces." + WorkspaceSource + ".path)/source/.jbs/run-build.sh <<'RHTAPEOF'\n"
-	ret += konfluxScript
-	ret += "\nRHTAPEOF\n"
-	ret += "chmod +x $(workspaces." + WorkspaceSource + ".path)/source/.jbs/run-build.sh\n"
-	return ret
 }
 
 func pullPolicy(buildRequestProcessorImage string) v1.PullPolicy {
@@ -777,45 +724,6 @@ func additionalPackages(recipe *v1alpha1.BuildRecipe) string {
 	return install
 }
 
-func pipelineBuildCommands(imageId string, db *v1alpha1.DependencyBuild, jbsConfig *v1alpha1.JBSConfig, buildId string) (string, []string, []string) {
-
-	orasOptions := ""
-	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
-		orasOptions = "--insecure --plain-http"
-	}
-
-	preBuildImageTag := imageId + "-pre-build-image"
-	// The build-trusted-artifacts container doesn't handle REGISTRY_TOKEN but the actual .docker/config.json. Was using
-	// AUTHFILE to override but now switched to adding the image secret to the pipeline.
-	// Setting ORAS_OPTIONS to ensure the archive is compatible with jib (for OCIRepositoryClient).
-	preBuildImageArgs := fmt.Sprintf(`echo "Creating pre-build-image archive"
-export ORAS_OPTIONS="%s --image-spec=v1.0 --artifact-type application/vnd.oci.image.config.v1+json"
-create-archive --store %s $(results.%s.path)=$(workspaces.source.path)/source
-`, orasOptions, registryArgsWithDefaults(jbsConfig, preBuildImageTag), PipelineResultPreBuildImageDigest)
-
-	deployArgs := []string{
-		"verify",
-		"--path=$(workspaces.source.path)/artifacts",
-		"--logs-path=$(workspaces.source.path)/logs",
-		"--task-run-name=$(context.taskRun.name)",
-		"--build-id=" + buildId,
-		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
-		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
-	}
-
-	konfluxArgs := []string{
-		"deploy-pre-build-source",
-		"--source-path=$(workspaces.source.path)/source",
-		"--task-run-name=$(context.taskRun.name)",
-		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
-		"--scm-commit=" + db.Spec.ScmInfo.CommitHash,
-	}
-	konfluxArgs = append(konfluxArgs, gitArgs(jbsConfig, db)...)
-	konfluxArgs = append(konfluxArgs, "--image-id="+imageId)
-
-	return preBuildImageArgs, deployArgs, konfluxArgs
-}
-
 // This effectively duplicates the defaults from DeployPreBuildImageCommand.java
 func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag string) string {
 
@@ -851,23 +759,6 @@ func registryArgsWithDefaults(jbsConfig *v1alpha1.JBSConfig, preBuildImageTag st
 	return registryArgs.String()
 }
 
-func gitArgs(jbsConfig *v1alpha1.JBSConfig, db *v1alpha1.DependencyBuild) []string {
-	gitArgs := make([]string, 0)
-	if jbsConfig.Spec.GitSourceArchive.Identity != "" {
-		gitArgs = append(gitArgs, "--git-identity="+jbsConfig.Spec.GitSourceArchive.Identity)
-	}
-	if jbsConfig.Spec.GitSourceArchive.URL != "" {
-		gitArgs = append(gitArgs, "--git-url="+jbsConfig.Spec.GitSourceArchive.URL)
-	}
-	if jbsConfig.Spec.GitSourceArchive.DisableSSLVerification {
-		gitArgs = append(gitArgs, "--git-disable-ssl-verification")
-	}
-	if db.Annotations[artifactbuild.DependencyScmAnnotation] == "true" {
-		gitArgs = append(gitArgs, "--git-reuse-repository")
-	}
-	return gitArgs
-}
-
 // This is similar to ContainerRegistryDeployer.java::createImageName with the same image tag length restriction.
 func prependTagToImage(imageId string, prependTag string) string {
 
@@ -894,7 +785,7 @@ func prependTagToImage(imageId string, prependTag string) string {
 func verifyParameters(jbsConfig *v1alpha1.JBSConfig, recipe *v1alpha1.BuildRecipe) []string {
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
-		"--repository-url=$(params.CACHE_URL)",
+		"--repository-url=$(params." + PipelineParamProxyUrl + ")",
 		"--deploy-path=$(workspaces.source.path)/artifacts",
 		"--task-run-name=$(context.taskRun.name)",
 		"--results-file=$(results." + PipelineResultPassedVerification + ".path)",
@@ -941,8 +832,7 @@ func doSubstitution(script string, paramValues []tektonpipeline.Param, commitTim
 			script = strings.ReplaceAll(script, "$(params."+i.Name+")", i.Value.StringVal)
 		}
 	}
-	script = strings.ReplaceAll(script, "$(params.CACHE_URL)", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
-	script = strings.ReplaceAll(script, "$(workspaces.build-settings.path)", "/var/workdir/software/settings")
+	script = strings.ReplaceAll(script, "$(params."+PipelineParamProxyUrl+")", "http://localhost:8080/v2/cache/rebuild"+buildRepos+"/"+strconv.FormatInt(commitTime, 10)+"/")
 	script = strings.ReplaceAll(script, "$(workspaces.source.path)", "/var/workdir/workspace")
 	script = strings.ReplaceAll(script, "$(workspaces.tls.path)", "/var/workdir/software/tls/service-ca.crt")
 	return script

@@ -27,9 +27,6 @@ This is currently using link:https://docs.openshift.com/pipelines/1.15/about/op-
 The following environment variables are configurable and may be set by the user prior to deploying this depending upon which features are to be enabled.
 
 |=======================
-| AWS_ACCESS_KEY_ID | AWS Access Key used for S3 and CodeArtfact Access
-| AWS_PROFILE | AWS Region used for CodeArtifact deployment
-| AWS_SECRET_ACCESS_KEY | AWS Secret Access Key used for S3 and CodeArtfact Access
 | GIT_DEPLOY_IDENTITY | Username/organisation name for the Git service
 | GIT_DEPLOY_TOKEN | Authentication token
 | GIT_DEPLOY_URL | The URL for the Git service (GitHub/GitLab are supported) to archive the sources
@@ -38,11 +35,9 @@ The following environment variables are configurable and may be set by the user 
 | JBS_QUAY_IMAGE_TAG | The tag for the images (defaults to `dev`)
 | JBS_QUAY_ORG | JBS images are pulled by default from the `QUAY_USERNAME` organization. This may be overridden by changing this
 | JBS_BUILD_IMAGE_SECRET | Secret for accessing Quay.io (See below)
-| JBS_DISABLE_CACHE | Internal variable for disabling the cache
 | JBS_GIT_CREDENTIALS | Support for private repositories (See below)
 | JBS_MAX_MEMORY | Maximum additional memory allowed
 | JBS_RECIPE_DATABASE | Recipe database to use (defaults to `https://github.com/redhat-appstudio/jvm-build-data`)
-| JBS_S3_SYNC_ENABLED | Whether to enable Amazon S3 sync for storage (default: `false`)
 | JBS_WORKER_NAMESPACE | Worker namespace (default: `test-jvm-namespace`) may be customised by setting this
 | MAVEN_PASSWORD | Password for the Maven repository
 | MAVEN_REPOSITORY | The URL for the external Maven repository to deploy to

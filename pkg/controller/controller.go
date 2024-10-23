@@ -3,8 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/util"
-	"github.com/tektoncd/cli/pkg/cli"
 	"os"
 	"time"
 
@@ -119,16 +117,6 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, lerr
 	}
 	cachePods = cachePods.Add(*cacheRequirement)
-	var logReaderParams *cli.TektonParams
-	if util.S3Enabled {
-		//if we are synching to S3 we need init the log reader
-		//this uses tekton CLI code
-		logReaderParams = &cli.TektonParams{}
-		_, err := logReaderParams.Clients(cfg)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	options.Cache = cache.Options{
 		ByObject: map[client.Object]cache.ByObject{
@@ -150,7 +138,7 @@ func NewManager(cfg *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
-	if err := dependencybuild.SetupNewReconcilerWithManager(mgr, logReaderParams); err != nil {
+	if err := dependencybuild.SetupNewReconcilerWithManager(mgr); err != nil {
 		return nil, err
 	}
 

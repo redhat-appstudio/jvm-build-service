@@ -122,10 +122,6 @@ func (r *ReconcileArtifactBuild) Reconcile(ctx context.Context, request reconcil
 	case abrerr == nil:
 		log = log.WithValues("kind", "ArtifactBuild", "ab-gav", abr.Spec.GAV, "ab-initial-state", abr.Status.State)
 		ctx = logr.NewContext(ctx, log)
-		done, err := r.handleS3SyncArtifactBuild(ctx, &abr)
-		if done || err != nil {
-			return reconcile.Result{}, err
-		}
 		result, err := r.handleArtifactBuildReceived(ctx, abr, jbsConfig)
 		if err != nil {
 			log.Error(err, "failure reconciling ArtifactBuild")
@@ -597,7 +593,9 @@ func (r *ReconcileArtifactBuild) copyAnnotations(abr *v1alpha1.ArtifactBuild, db
 }
 
 func InstallKeystoreIntoBuildRequestProcessor(args ...[]string) string {
-	ret := keystore
+	// TODO: How to handle/remove the TLS support from STONEBLD-847
+	// ret := keystore
+	ret := ""
 	for _, cmd := range args {
 		ret = ret + "\n/opt/jboss/container/java/run/run-java.sh"
 		for _, i := range cmd {

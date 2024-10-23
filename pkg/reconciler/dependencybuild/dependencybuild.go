@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/redhat-appstudio/jvm-build-service/pkg/reconciler/jbsconfig"
-	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
 	"sort"
@@ -48,11 +48,9 @@ const (
 	PipelineParamChainsGitUrl         = "CHAINS-GIT_URL"
 	PipelineParamChainsGitCommit      = "CHAINS-GIT_COMMIT"
 	PipelineParamGoals                = "GOALS"
-	PipelineParamJavaVersion          = "JAVA_VERSION"
-	PipelineParamToolVersion          = "TOOL_VERSION"
 	PipelineParamEnforceVersion       = "ENFORCE_VERSION"
 	PipelineParamProjectVersion       = "PROJECT_VERSION"
-	PipelineParamCacheUrl             = "CACHE_URL"
+	PipelineParamProxyUrl             = "PROXY_URL"
 	PipelineResultImage               = "IMAGE_URL"
 	PipelineResultImageDigest         = "IMAGE_DIGEST"
 	PipelineResultPreBuildImageDigest = "PRE_BUILD_IMAGE_DIGEST"
@@ -74,25 +72,22 @@ const (
 	MemoryIncrement = 2048
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
-	JavaHome             = "JAVA_HOME"
 	DeploySuffix         = "-deploy"
 )
 
 type ReconcileDependencyBuild struct {
-	client          client.Client
-	scheme          *runtime.Scheme
-	eventRecorder   record.EventRecorder
-	clientSet       *kubernetes.Clientset
-	logReaderParams *cli.TektonParams
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
+	clientSet     *kubernetes.Clientset
 }
 
-func newReconciler(mgr ctrl.Manager, clientset *kubernetes.Clientset, logReaderParams *cli.TektonParams) reconcile.Reconciler {
+func newReconciler(mgr ctrl.Manager, clientset *kubernetes.Clientset) reconcile.Reconciler {
 	return &ReconcileDependencyBuild{
-		clientSet:       clientset,
-		client:          mgr.GetClient(),
-		scheme:          mgr.GetScheme(),
-		eventRecorder:   mgr.GetEventRecorderFor("DependencyBuild"),
-		logReaderParams: logReaderParams,
+		clientSet:     clientset,
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetEventRecorderFor("DependencyBuild"),
 	}
 }
 
@@ -130,12 +125,7 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 	case dberr == nil:
 		log = log.WithValues("kind", "DependencyBuild", "db-scm-url", db.Spec.ScmInfo.SCMURL, "db-scm-tag", db.Spec.ScmInfo.Tag)
 		ctx = logr.NewContext(ctx, log)
-		done, err := r.handleS3SyncDependencyBuild(ctx, &db)
-		if done || err != nil {
-			return reconcile.Result{}, err
-		}
 		if db.Annotations != nil && db.Annotations[RedeployAnnotation] != "" {
-
 			return r.handleRedeployAnnotation(ctx, &db)
 		}
 
@@ -159,13 +149,6 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 		}
 
 	case trerr == nil:
-		result, err := r.handleS3SyncPipelineRun(ctx, &pr)
-		if result != nil || err != nil {
-			if result != nil {
-				return *result, nil
-			}
-			return reconcile.Result{}, err
-		}
 		if pr.DeletionTimestamp != nil {
 			//always remove the finalizer if it is deleted
 			//but continue with the method
@@ -469,9 +452,7 @@ func (r *ReconcileDependencyBuild) processBuilderImages(ctx context.Context) ([]
 	if err != nil {
 		return nil, err
 	}
-	//TODO how important is the order here?  do we want 11,8,17 per the old form at https://github.com/redhat-appstudio/jvm-build-service/blob/b91ec6e1888e43962cba16fcaee94e0c9f64557d/deploy/operator/config/system-config.yaml#L8
-	// the unit tests's imaage verification certainly assumes a order
-	result := []BuilderImage{}
+	result := make([]BuilderImage, 0)
 	for _, val := range systemConfig.Spec.Builders {
 		result = append(result, BuilderImage{
 			Image:    val.Image,
@@ -590,12 +571,12 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		{Name: PipelineParamChainsGitCommit, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.ScmInfo.CommitHash}},
 		{Name: PipelineParamPath, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: contextDir}},
 		{Name: PipelineParamGoals, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeArray, ArrayVal: attempt.Recipe.CommandLine}},
-		{Name: PipelineParamEnforceVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.EnforceVersion}},
-		{Name: PipelineParamProjectVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: db.Spec.Version}},
-		{Name: PipelineParamToolVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.ToolVersion}},
-		{Name: PipelineParamJavaVersion, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: attempt.Recipe.JavaVersion}},
 	}
 
+	orasOptions := ""
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
+		orasOptions = "--insecure --plain-http"
+	}
 	systemConfig := v1alpha1.SystemConfig{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: systemconfig.SystemConfigKey}, &systemConfig)
 	if err != nil {
@@ -611,7 +592,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, diagnosticContainerfile, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages)
+	pr.Spec.PipelineSpec, diagnosticContainerfile, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages, orasOptions)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -621,7 +602,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	qty, _ := resource.ParseQuantity("1Gi")
 	pr.Spec.Params = paramValues
 	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{
-		{Name: WorkspaceBuildSettings, EmptyDir: &v1.EmptyDirVolumeSource{}},
 		{Name: WorkspaceSource, VolumeClaimTemplate: &v1.PersistentVolumeClaim{
 			Spec: v1.PersistentVolumeClaimSpec{
 				AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
@@ -631,7 +611,39 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 			},
 		}},
 	}
+	// Setting a default environment variable to represent being run inside the operator
+	pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
+		PodTemplate: &pod.Template{
+			Env: []v1.EnvVar{
+				{
+					Name:  util.ControllerNamespace,
+					Value: util.ControllerDeploymentName,
+				},
+			},
+		},
+	}
+	if orasOptions != "" {
+		pr.Spec.TaskRunTemplate.PodTemplate.Env = append([]v1.EnvVar{
+			{
+				Name:  "ORAS_OPTIONS",
+				Value: orasOptions,
+			},
+		}, pr.Spec.TaskRunTemplate.PodTemplate.Env...)
+	}
 
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.CITests] == "true" {
+		log.Info(fmt.Sprintf("Configuring resources for %#v", BuildTaskName))
+		podMemR, _ := resource.ParseQuantity("1792Mi")
+		podMemL, _ := resource.ParseQuantity("3584Mi")
+		podCPU, _ := resource.ParseQuantity("500m")
+		pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{
+			PipelineTaskName: BuildTaskName,
+			ComputeResources: &v1.ResourceRequirements{
+				Requests: v1.ResourceList{"memory": podMemR, "cpu": podCPU},
+				Limits:   v1.ResourceList{"memory": podMemL, "cpu": podCPU},
+			},
+		}}
+	}
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
 	} else {
@@ -1419,6 +1431,30 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
 	}
 	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout}}
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {
+		pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
+			PodTemplate: &pod.Template{
+				Env: []v1.EnvVar{
+					{
+						Name:  "ORAS_OPTIONS",
+						Value: "--insecure --plain-http",
+					},
+				},
+			},
+		}
+	}
+	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.CITests] == "true" {
+		log.Info(fmt.Sprintf("Configuring resources for %#v", DeployTaskName))
+		podMem, _ := resource.ParseQuantity("1024Mi")
+		podCPU, _ := resource.ParseQuantity("250m")
+		pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{
+			PipelineTaskName: DeployTaskName,
+			ComputeResources: &v1.ResourceRequirements{
+				Requests: v1.ResourceList{"memory": podMem, "cpu": podCPU},
+				Limits:   v1.ResourceList{"memory": podMem, "cpu": podCPU},
+			},
+		}}
+	}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}

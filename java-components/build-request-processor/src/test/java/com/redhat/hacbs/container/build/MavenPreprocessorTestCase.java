@@ -24,6 +24,8 @@ public class MavenPreprocessorTestCase extends AbstractPreprocessorTestCase {
         command.add("maven-prepare");
         command.add("--recipe-image=foobar");
         command.add("--request-processor-image=barfoo");
+        command.add("--java-version=11");
+        command.add("--build-tool-version=1.0");
         args.forEach(arg -> {
             command.add("-dp");
             command.add(arg);

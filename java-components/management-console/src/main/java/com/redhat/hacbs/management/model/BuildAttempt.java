@@ -51,7 +51,6 @@ public class BuildAttempt extends PanacheEntity {
     @Column(length = -1)
     public String allowedDifferences;
 
-    public String buildLogsUrl;
     public String buildPipelineUrl;
 
     public String mavenRepository;
@@ -65,9 +64,6 @@ public class BuildAttempt extends PanacheEntity {
     @ManyToOne(optional = false)
     @JoinColumn(nullable = false)
     public StoredDependencyBuild dependencyBuild;
-
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "build")
-    public List<BuildFile> storedBuildResults;
 
     @Column(length = -1)
     public String upstreamDifferences;

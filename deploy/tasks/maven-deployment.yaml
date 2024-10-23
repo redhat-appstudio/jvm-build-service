@@ -28,10 +28,6 @@ spec:
     - name: MVN_PASSWORD
       description: Name of the secret holding the Maven repository password
       type: string
-    - name: ORAS_OPTIONS
-      type: string
-      description: Optional environment variable string for build-trusted-artifacts
-      default: ""
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       description: Name of the processor image. Useful to override for development.
       type: string
@@ -45,7 +41,7 @@ spec:
         name: workdir
   steps:
     - name: restore-trusted-artifact
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:62bb85585c0ebb8b333ef716b87b70838fb27723657c95ffb62d446b0d28ab68
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac
       script: |
         echo "Restoring artifacts to workspace"
         URL=$IMAGE_URL
@@ -54,8 +50,6 @@ spec:
         echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
         use-archive oci:$URL@$AARCHIVE=/var/workdir/artifacts
       env:
-        - name: ORAS_OPTIONS
-          value: $(params.ORAS_OPTIONS)
         - name: IMAGE_DIGEST
           value: $(params.IMAGE_DIGEST)
         - name: IMAGE_URL

@@ -21,6 +21,7 @@ import static org.objectweb.asm.Opcodes.V1_8;
 import static org.objectweb.asm.Opcodes.V20;
 import static org.objectweb.asm.Opcodes.V21;
 import static org.objectweb.asm.Opcodes.V22;
+import static org.objectweb.asm.Opcodes.V23;
 import static org.objectweb.asm.Opcodes.V9;
 
 import com.redhat.hacbs.container.analyser.build.JavaVersion;
@@ -55,6 +56,7 @@ public record ClassVersion(int version, int majorVersion, int minorVersion,
             case V20 -> "20";
             case V21 -> "21";
             case V22 -> "22";
+            case V23 -> "23";
             default -> throw new IllegalArgumentException("Unknown class version: " + classVersion);
         };
         return new JavaVersion(version);

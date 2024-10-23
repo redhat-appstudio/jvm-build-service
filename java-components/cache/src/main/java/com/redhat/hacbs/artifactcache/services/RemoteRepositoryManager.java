@@ -30,10 +30,8 @@ public class RemoteRepositoryManager {
     private static final String STORE = "store.";
     private static final String URL = ".url";
     private static final String TYPE = ".type";
-    private static final String BUCKET = ".bucket";
     private static final String REGISTRY = ".registry";
     private static final String OWNER = ".owner";
-    private static final String PREFIXES = ".prefixes";
 
     private static final String TOKEN = ".token";
     private static final String PREPEND_TAG = ".prepend-tag";
@@ -67,7 +65,7 @@ public class RemoteRepositoryManager {
         var mavenUsername = config.getOptionalValue("maven.repository.username", String.class);
         var mavenPassword = config.getOptionalValue("maven.repository.password", String.class);
         if (mavenRepo.isPresent()) {
-            Log.infof("Using Maven Repository for rebuilt repository with {}", mavenRepo.get());
+            Log.infof("Using Maven Repository for rebuilt repository with %s", mavenRepo.get());
             //if we are deploying to a maven repo we use this by default
             Repository rebuiltRepo = new Repository("rebuilt",
                     mavenRepo.get(),
@@ -78,7 +76,7 @@ public class RemoteRepositoryManager {
             remoteStores.put("rebuilt", List.of(rebuiltCache));
 
         } else if (registryOwner.isPresent()) {
-            Log.infof("Using OCIRepositoryClient for rebuilt repository with owner {}", registryOwner.get());
+            Log.infof("Using OCIRepositoryClient for rebuilt repository with owner %s", registryOwner.get());
             var host = config.getOptionalValue("registry.host", String.class).orElse("quay.io");
             var port = config.getOptionalValue("registry.port", int.class).orElse(443);
             var token = config.getOptionalValue("registry" + TOKEN, String.class);
@@ -103,7 +101,7 @@ public class RemoteRepositoryManager {
             for (int i = 0; i < registries.length; i++) {
                 ImageRegistry registry = Util.parseRegistry(registries[i]);
                 String name = "shared-rebuilt-" + i;
-                Log.infof("Using shared registries for rebuilt repository with name {}", registries[i]);
+                Log.infof("Using shared registries for rebuilt repository with name %s", registries[i]);
 
                 Repository rebuiltRepo = new Repository(name,
                         "http" + (registry.getInsecure() ? "" : "s") + "://" +

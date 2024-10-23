@@ -34,12 +34,7 @@ const ControlPanel: React.FunctionComponent = () => {
           </Button>
         </ActionListItem>
         <ActionListItem>
-          <Button variant="warning" id="s3-import" onClick={AdminResourceService.postApiAdminImportFroms3}>
-            S3 Import
-          </Button>
-        </ActionListItem>
-        <ActionListItem>
-          <Button variant="warning" id="s3-import" onClick={AdminResourceService.postApiAdminClearBuildQueue}>
+          <Button variant="warning" id="clear-queue" onClick={AdminResourceService.postApiAdminClearBuildQueue}>
             Clear Build Queue
           </Button>
         </ActionListItem>

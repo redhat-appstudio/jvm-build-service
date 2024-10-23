@@ -20,7 +20,7 @@ import (
 )
 
 func runTests(t *testing.T, namespace string, runYaml string) {
-	ta := setup(t, namespace)
+	ta := setupE2E(t, namespace)
 
 	countQuota := &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{

@@ -6,21 +6,16 @@ import (
 
 const (
 	JBSConfigName                           = "jvm-build-config"
-	DefaultImageSecretName                  = "jvm-build-image-secrets"          //#nosec
-	GitSecretName                           = "jvm-build-git-secrets"            //#nosec
-	TlsSecretName                           = "jvm-build-tls-secrets"            //#nosec
-	TlsConfigMapName                        = "jvm-build-tls-ca"                 //#nosec
-	ImageSecretTokenKey                     = ".dockerconfigjson"                //#nosec
-	GitSecretTokenKey                       = ".git-credentials"                 //#nosec
-	MavenSecretKey                          = "mavenpassword"                    //#nosec
-	MavenSecretName                         = "jvm-build-maven-repo-secrets"     //#nosec
-	GitRepoSecretKey                        = "gitdeploytoken"                   //#nosec
-	GitRepoSecretName                       = "jvm-build-git-repo-secrets"       //#nosec
-	AWSAccessID                             = "awsaccesskey"                     //#nosec
-	AWSSecretKey                            = "awssecretkey"                     //#nosec
-	AWSProfile                              = "awsprofile"                       //#nosec
-	AWSRegion                               = "awsregion"                        //#nosec
-	AWSSecretName                           = "jvm-build-maven-repo-aws-secrets" //#nosec
+	DefaultImageSecretName                  = "jvm-build-image-secrets"      //#nosec
+	GitSecretName                           = "jvm-build-git-secrets"        //#nosec
+	TlsSecretName                           = "jvm-build-tls-secrets"        //#nosec
+	TlsConfigMapName                        = "jvm-build-tls-ca"             //#nosec
+	ImageSecretTokenKey                     = ".dockerconfigjson"            //#nosec
+	GitSecretTokenKey                       = ".git-credentials"             //#nosec
+	MavenSecretKey                          = "mavenpassword"                //#nosec
+	MavenSecretName                         = "jvm-build-maven-repo-secrets" //#nosec
+	GitRepoSecretKey                        = "gitdeploytoken"               //#nosec
+	GitRepoSecretName                       = "jvm-build-git-repo-secrets"   //#nosec
 	CacheDeploymentName                     = "jvm-build-workspace-artifact-cache"
 	RepoDeploymentName                      = "jvm-build-maven-repo"            // only used for testing
 	RepoConfigMapName                       = "jvm-build-maven-repo-config-map" // only used for testing
@@ -32,11 +27,6 @@ const (
 	ConfigArtifactCacheIOThreadsDefault     = "4"
 	ConfigArtifactCacheWorkerThreadsDefault = "50"
 	ConfigArtifactCacheStorageDefault       = "10Gi"
-
-	KonfluxGitDefinition          = "https://raw.githubusercontent.com/konflux-ci/build-definitions/refs/heads/main/task/git-clone/0.1/git-clone.yaml"
-	KonfluxPreBuildDefinitions    = "https://raw.githubusercontent.com/rnc/jvm-build-service/GIT/deploy/tasks/pre-build.yaml"
-	KonfluxBuildDefinitions       = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/buildah-oci-ta.yaml"
-	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/maven-deployment.yaml"
 )
 
 type JBSConfigSpec struct {
