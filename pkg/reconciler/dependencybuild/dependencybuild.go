@@ -140,8 +140,8 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			return reconcile.Result{}, nil
 		case v1alpha1.DependencyBuildStateBuilding:
 			return r.handleStateBuilding(ctx, &db)
-		case v1alpha1.DependencyBuildStateDeploying:
-			return r.handleStateDeploying(ctx, &db)
+		//case v1alpha1.DependencyBuildStateDeploying:
+		//	return r.handleStateDeploying(ctx, &db)
 		case v1alpha1.DependencyBuildStateContaminated:
 			return r.handleStateContaminated(ctx, &db)
 		case v1alpha1.DependencyBuildStateComplete:
@@ -168,8 +168,8 @@ func (r *ReconcileDependencyBuild) Reconcile(ctx context.Context, request reconc
 			return r.handleAnalyzeBuildPipelineRunReceived(ctx, &pr)
 		case PipelineTypeBuild:
 			return r.handleBuildPipelineRunReceived(ctx, &pr)
-		case PipelineTypeDeploy:
-			return r.handleDeployPipelineRunReceived(ctx, &pr)
+			//case PipelineTypeDeploy:
+			//	return r.handleDeployPipelineRunReceived(ctx, &pr)
 		}
 	}
 
@@ -849,7 +849,7 @@ func (r *ReconcileDependencyBuild) handleBuildPipelineRunReceived(ctx context.Co
 
 			problemContaminates := db.Status.ProblemContaminates()
 			if len(problemContaminates) == 0 {
-				return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateDeploying, "build was completed")
+				return reconcile.Result{}, r.updateDependencyBuildState(ctx, db, v1alpha1.DependencyBuildStateComplete, "build was completed")
 			} else {
 				msg := "The DependencyBuild %s/%s was contaminated with community dependencies"
 				log.Info(fmt.Sprintf(msg, db.Namespace, db.Name))
@@ -1364,6 +1364,7 @@ func (r *ReconcileDependencyBuild) removePipelineFinalizer(ctx context.Context, 
 func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 
 	log, _ := logr.FromContext(ctx)
+	log.Info(fmt.Sprintf("### handleStateDeploying %#v", db.Name))
 	//first we check to see if the pipeline exists
 
 	pr := tektonpipeline.PipelineRun{}

@@ -137,7 +137,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	deployArgs := []string{
 		"verify",
-		"--path=$(workspaces.source.path)/artifacts",
+		"--path=$(workspaces.source.path)/verify-artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--task-run-name=$(context.taskRun.name)",
 		"--build-id=" + buildId,
@@ -463,7 +463,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 
 	// Note - its also possible to refer to a remote pipeline ref as well as a task.
-	resolver := tektonpipeline.ResolverRef{
+	buildResolver := tektonpipeline.ResolverRef{
 		// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
 		Resolver: "http",
 		Params: []tektonpipeline.Param{
@@ -483,7 +483,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			RunAfter: runAfter,
 			TaskRef: &tektonpipeline.TaskRef{
 				// Can't specify name and resolver as they clash.
-				ResolverRef: resolver,
+				ResolverRef: buildResolver,
 			},
 			Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 			Params: []tektonpipeline.Param{
@@ -556,7 +556,7 @@ URL=%s
 DIGEST=$(tasks.%s.results.IMAGE_DIGEST)
 AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
 echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
-use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName),
+use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/verify-artifacts`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName),
 			},
 			{
 				Name:            "verify-and-check-for-contaminates",
@@ -586,10 +586,79 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions
 		},
 	}}
 	ps.Tasks = append(pipelineTask, ps.Tasks...)
-
 	for _, i := range postBuildTask.Results {
 		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PostBuildTaskName + ".results." + i.Name + ")"}})
 	}
+
+	deployResolver := tektonpipeline.ResolverRef{
+		// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
+		Resolver: "http",
+		Params: []tektonpipeline.Param{
+			{
+				Name: "url",
+				Value: tektonpipeline.ParamValue{
+					Type:      tektonpipeline.ParamTypeString,
+					StringVal: v1alpha1.KonfluxMavenDeployDefinitions,
+				},
+			},
+		},
+	}
+	ps.Tasks = append([]tektonpipeline.PipelineTask{
+		{
+			Name:     DeployTaskName,
+			RunAfter: append(runAfterBuild, PostBuildTaskName),
+			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+				{Name: WorkspaceSource, Workspace: WorkspaceSource},
+			},
+			TaskRef: &tektonpipeline.TaskRef{
+				// Can't specify name and resolver as they clash.
+				ResolverRef: deployResolver,
+			},
+			Params: []tektonpipeline.Param{
+				{
+					Name: PipelineResultImage,
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImage + ")",
+					},
+				},
+				{
+					Name: PipelineResultImageDigest,
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImageDigest + ")",
+					},
+				},
+				{
+					Name: "MVN_REPO",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: jbsConfig.Spec.MavenDeployment.Repository,
+					},
+				},
+				{
+					Name: "MVN_USERNAME",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: jbsConfig.Spec.MavenDeployment.Username,
+					},
+				},
+				{
+					Name: "MVN_PASSWORD",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: v1alpha1.MavenSecretName,
+					},
+				},
+				{
+					Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: buildRequestProcessorImage,
+					},
+				},
+			},
+		}}, ps.Tasks...)
 
 	for _, i := range pipelineParams {
 		ps.Params = append(ps.Params, tektonpipeline.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default, Type: i.Type})
