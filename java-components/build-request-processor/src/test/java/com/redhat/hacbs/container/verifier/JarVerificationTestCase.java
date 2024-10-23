@@ -66,7 +66,7 @@ public class JarVerificationTestCase {
                 super.visit(version - 1, access, name, signature, superName, interfaces);
             }
 
-        }, List.of(new ExpectedChange(ChangeType.MODIFY, "version:61.0>60.0")));
+        }, List.of(new ExpectedChange(ChangeType.MODIFY, "version:65.0>64.0")));
     }
 
     @Test
