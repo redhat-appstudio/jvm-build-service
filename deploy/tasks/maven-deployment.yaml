@@ -36,13 +36,6 @@ spec:
     - description: Workspace.
       name: source
       mountPath: /var/workdir
-#  volumes:
-#    - name: workdir
-#      emptyDir: {}
-#  stepTemplate:
-#    volumeMounts:
-#      - mountPath: /var/workdir
-#        name: workdir
   steps:
     - name: restore-trusted-artifact
       image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac

@@ -191,16 +191,19 @@ public abstract class AbstractPreprocessor implements Runnable {
                     COPY --from=0 /var/workdir/ /var/workdir/
                     RUN /opt/jboss/container/java/run/run-java.sh copy-artifacts --source-path=/var/workdir/workspace/source --deploy-path=/var/workdir/workspace/artifacts
                     FROM scratch
-                    COPY --from=1 /var/workdir/workspace/settings /
+                    COPY --from=1 /var/workdir/workspace/settings /settings/
                     COPY --from=1 /var/workdir/workspace/artifacts /deployment/
                     """.formatted(buildRequestProcessorImage);
         } else {
             containerFile +=
                 """
                     FROM scratch
-                    COPY --from=0 /var/workdir/workspace/artifacts /
+                    COPY --from=0 /var/workdir/workspace/settings /settings/
+                    COPY --from=0 /var/workdir/workspace/artifacts /deployment/
                     """;
         }
+
+        Log.warnf("### containerFile is\n%s", containerFile);
 
         return containerFile;
     }

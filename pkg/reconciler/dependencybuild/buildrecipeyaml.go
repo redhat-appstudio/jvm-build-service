@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	PostBuildVolume = "post-build-volume"
 	WorkspaceSource = "source"
 	WorkspaceMount  = "/var/workdir"
 	WorkspaceTls    = "tls"
@@ -137,7 +138,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	deployArgs := []string{
 		"verify",
-		"--path=$(workspaces.source.path)/verify-artifacts",
+		"--path=$(workspaces.source.path)/artifacts",
 		"--logs-path=$(workspaces.source.path)/logs",
 		"--task-run-name=$(context.taskRun.name)",
 		"--build-id=" + buildId,
@@ -533,8 +534,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImageDigest + ")"}})
 
 	postBuildTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
-		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PipelineResultPreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
+		// Using a default emptyDir volume as this task is unique to JBS and don't want it interfering with
+		// the shared workspace.
+		Volumes: []v1.Volume{{Name: PostBuildVolume, VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}}},
+		Params:  append(pipelineParams, tektonpipeline.ParamSpec{Name: PipelineResultPreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
 		Results: []tektonpipeline.TaskResult{
 			{Name: PipelineResultContaminants},
 			{Name: PipelineResultDeployedResources},
@@ -544,6 +547,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		Steps: []tektonpipeline.Step{
 			{
 				Name:            "restore-post-build-artifacts",
+				VolumeMounts:    []v1.VolumeMount{{Name: PostBuildVolume, MountPath: WorkspaceMount}},
 				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
 				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
@@ -556,7 +560,7 @@ URL=%s
 DIGEST=$(tasks.%s.results.IMAGE_DIGEST)
 AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
 echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
-use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/verify-artifacts`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName),
+use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName),
 			},
 			{
 				Name:            "verify-and-check-for-contaminates",
@@ -564,6 +568,7 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/verify-artifacts`, oras
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
+				VolumeMounts:    []v1.VolumeMount{{Name: PostBuildVolume, MountPath: WorkspaceMount}},
 				ComputeResources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
