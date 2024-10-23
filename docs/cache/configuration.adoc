@@ -32,7 +32,6 @@ Note that these properties are only for end user builds. The config used to rebu
 The following remote stores are supported:
 
 * maven2
-* s3 (not actually implemented yet)
 
 Each remote store must be given a name, and the names are referenced by the build policies as mentioned above. To configure
 a remote artifact store you can use the following two properties:

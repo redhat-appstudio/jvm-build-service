@@ -164,7 +164,7 @@ public class BuildHistoryResource extends BuildLogs {
         if (attempt == null) {
             throw new NotFoundException();
         }
-        return extractLog(Type.DISCOVERY, attempt.buildDiscoveryUrl, attempt.buildIdentifier.dependencyBuildName);
+        return extractLog(Type.DISCOVERY, attempt.buildIdentifier.dependencyBuildName);
     }
 
     @GET
@@ -174,7 +174,7 @@ public class BuildHistoryResource extends BuildLogs {
         if (attempt == null) {
             throw new NotFoundException();
         }
-        return extractLog(Type.DEPLOY, attempt.deployLogsUrl, attempt.buildIdentifier.dependencyBuildName);
+        return extractLog(Type.DEPLOY, attempt.buildIdentifier.dependencyBuildName);
     }
 
     private StoredDependencyBuild getDependencyBuild(String name) {

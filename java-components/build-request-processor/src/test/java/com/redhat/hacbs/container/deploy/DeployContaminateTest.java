@@ -20,7 +20,6 @@ import java.util.logging.LogRecord;
 
 import jakarta.inject.Inject;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -101,15 +100,6 @@ public class DeployContaminateTest {
         assertThat(logRecords).map(LogCollectingTestResource::format).contains("foobar-3.25.8-tests.jar was contaminated by org.jboss.metadata:jboss-metadata-common:9.0.0.Final from central", "GAVs to deploy: [com.company.foo:foobaz:3.25.8, com.company.foo:foobar:3.25.8]");
         assertThat(logRecords).extracting("message").doesNotContain("Removing");
         assertThat(logRecords).map(LogCollectingTestResource::format).contains("Extracted classifier 'tests' for artifact 'foobar' and version '3.25.8'");
-    }
-
-    @Test
-    public void testCodeArtifactRegex() {
-        var m = BuildVerifyCommand.CODE_ARTIFACT_PATTERN
-                .matcher("https://demo-151537584421.d.codeartifact.us-east-1.amazonaws.com/maven/jbs-demo/");
-        Assertions.assertTrue(m.matches());
-        Assertions.assertEquals("demo", m.group(1));
-        Assertions.assertEquals("jbs-demo", m.group(2));
     }
 
     private Path createDeploymentRepo()
