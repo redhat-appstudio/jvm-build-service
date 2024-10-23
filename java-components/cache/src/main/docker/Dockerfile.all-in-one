@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/openjdk-17@sha256:06edd8c82406da7466b73d589a07a10bf121ae5677b0f32e76120213d5303824 AS builder
+FROM registry.access.redhat.com/ubi8/openjdk-21@sha256:a10b277c0f16283bb45b0e6cfca3ae9ecf155178f7f731df4a1f744ebd35af70 AS builder
 USER 0
 WORKDIR /work
 COPY ./ .
@@ -7,7 +7,7 @@ RUN mkdir -p /work/cache/target/classes
 
 RUN mvn -V -B package -pl cache -am -Dmaven.test.skip
 
-FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:8e863153659dba9ee288b97b7cdf7a83274dd78b26da1e5da6798d0bd45166e8
+FROM registry.access.redhat.com/ubi8/openjdk-21-runtime@sha256:c1bf8370627eaed6711ea22915b476d4216517c35c8f8268c0d39ed983bceaff
 USER 0
 WORKDIR /work/
 
