@@ -273,7 +273,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	runAfterBuild = append(runAfter, BuildTaskName)
 
 	ps := &tektonpipeline.PipelineSpec{
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}, {Name: WorkspaceTls}},
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}},
 	}
 
 	if preBuildImageRequired {
@@ -345,7 +345,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			},
 			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 				{Name: WorkspaceSource, Workspace: WorkspaceSource},
-				{Name: WorkspaceTls, Workspace: WorkspaceTls},
 			},
 			Params: []tektonpipeline.Param{
 				{
@@ -585,10 +584,6 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions
 		},
 		Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Params:  []tektonpipeline.Param{{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
-		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-			{Name: WorkspaceSource, Workspace: WorkspaceSource},
-			{Name: WorkspaceTls, Workspace: WorkspaceTls},
-		},
 	}}
 	ps.Tasks = append(pipelineTask, ps.Tasks...)
 	for _, i := range postBuildTask.Results {

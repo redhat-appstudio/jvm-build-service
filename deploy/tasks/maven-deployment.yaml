@@ -33,8 +33,7 @@ spec:
       type: string
       default: "quay.io/redhat-appstudio/hacbs-jvm-build-request-processor:dev"
   workspaces:
-    - description: Workspace.
-      name: source
+    - name: source
       mountPath: /var/workdir
   steps:
     - name: restore-trusted-artifact

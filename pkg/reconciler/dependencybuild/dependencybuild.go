@@ -236,9 +236,9 @@ func (r *ReconcileDependencyBuild) handleStateNew(ctx context.Context, db *v1alp
 		return reconcile.Result{}, err
 	}
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
-		pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}}}
+		pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{{Name: WorkspaceTls, ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}}}
 	} else {
-		pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}}}
+		pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{{Name: WorkspaceTls, EmptyDir: &v1.EmptyDirVolumeSource{}}}
 	}
 	pr.Namespace = db.Namespace
 	pr.Name = fmt.Sprintf("%s-build-discovery-%d", db.Name, db.Status.PipelineRetries)
@@ -644,11 +644,12 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 			},
 		}}
 	}
-	if !jbsConfig.Spec.CacheSettings.DisableTLS {
-		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
-	} else {
-		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
-	}
+	// TODO: DisableTLS defaults to true. Further the tls workspace has been removed from the build pipeline so an alternate method would be needed.
+	//if !jbsConfig.Spec.CacheSettings.DisableTLS {
+	//	pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: WorkspaceTls, ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
+	//} else {
+	//	pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: WorkspaceTls, EmptyDir: &v1.EmptyDirVolumeSource{}})
+	//}
 	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout}}
 	if err := controllerutil.SetOwnerReference(db, &pr, r.scheme); err != nil {
 		return reconcile.Result{}, err
@@ -1207,7 +1208,7 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 		envVars = append(envVars, v1.EnvVar{Name: "REGISTRY_TOKEN", ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: jbsConfig.ImageRegistry().SecretName}, Key: v1alpha1.ImageSecretTokenKey, Optional: &secretOptional}}})
 	}
 	buildInfoTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: "tls"}},
+		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceTls}},
 		Results:    []tektonpipeline.TaskResult{{Name: BuildInfoPipelineResultBuildInfo}},
 		Steps: []tektonpipeline.Step{
 			{
@@ -1237,12 +1238,12 @@ func (r *ReconcileDependencyBuild) createLookupBuildInfoPipeline(ctx context.Con
 	}
 	buildInfoTask.Steps[0].Script = artifactbuild.InstallKeystoreIntoBuildRequestProcessor(args)
 	return &tektonpipeline.PipelineSpec{
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: "tls"}},
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceTls}},
 		Results:    []tektonpipeline.PipelineResult{{Name: BuildInfoPipelineResultBuildInfo, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks.task.results." + BuildInfoPipelineResultBuildInfo + ")"}}},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
 				Name:       "task",
-				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{{Name: "tls", Workspace: "tls"}},
+				Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{{Name: WorkspaceTls, Workspace: WorkspaceTls}},
 				TaskSpec: &tektonpipeline.EmbeddedTask{
 					TaskSpec: buildInfoTask,
 				},
@@ -1427,9 +1428,9 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 	pr.Spec.Workspaces = []tektonpipeline.WorkspaceBinding{}
 
 	if !jbsConfig.Spec.CacheSettings.DisableTLS {
-		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
+		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: WorkspaceTls, ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.TlsConfigMapName}}})
 	} else {
-		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: "tls", EmptyDir: &v1.EmptyDirVolumeSource{}})
+		pr.Spec.Workspaces = append(pr.Spec.Workspaces, tektonpipeline.WorkspaceBinding{Name: WorkspaceTls, EmptyDir: &v1.EmptyDirVolumeSource{}})
 	}
 	pr.Spec.Timeouts = &tektonpipeline.TimeoutFields{Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout}}
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.TestRegistry] == "true" {

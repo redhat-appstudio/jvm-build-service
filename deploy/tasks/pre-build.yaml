@@ -67,7 +67,6 @@ spec:
     - description: The git repo will be cloned onto the volume backing this Workspace.
       name: source
       mountPath: /var/workdir
-    - name: tls
   steps:
     - name: preprocessor
       image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
