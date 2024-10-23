@@ -72,14 +72,11 @@ spec:
         hours, days, and weeks, respectively.
       type: string
       default: ""
-    - name: ORAS_OPTIONS
-      type: string
-      description: Optional environment variable string for build-trusted-artifacts
-      default: ""
-    - name: CACHE_URL
-      type: string
-      description: For JBS, URL of the cache.
-      default: ""
+    - name: LABELS
+      description: Additional key=value labels that should be applied to the
+        image
+      type: array
+      default: []
     - name: PREFETCH_INPUT
       description: In case it is not empty, the prefetched content should
         be made available to the build.
@@ -203,6 +200,8 @@ spec:
         value: $(params.IMAGE_EXPIRES_AFTER)
       - name: SKIP_UNUSED_STAGES
         value: $(params.SKIP_UNUSED_STAGES)
+      - name: SOURCE_CODE_DIR
+        value: source
       - name: SQUASH
         value: $(params.SQUASH)
       - name: STORAGE_DRIVER
@@ -229,13 +228,13 @@ spec:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
         - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
-      env:
-        - name: ORAS_OPTIONS
-          value: $(params.ORAS_OPTIONS)
     - name: build
       image: $(params.JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE)
       args:
+        - --build-args
         - $(params.BUILD_ARGS[*])
+        - --labels
+        - $(params.LABELS[*])
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /var/lib/containers
@@ -252,8 +251,6 @@ spec:
       env:
         - name: COMMIT_SHA
           value: $(params.COMMIT_SHA)
-        - name: CACHE_URL
-          value: $(params.CACHE_URL)
       script: |
         #!/bin/bash
         set -e
@@ -264,7 +261,6 @@ spec:
           update-ca-trust
         fi
 
-        SOURCE_CODE_DIR=source
         if [ -e "$SOURCE_CODE_DIR/$CONTEXT/$DOCKERFILE" ]; then
           dockerfile_path="$(pwd)/$SOURCE_CODE_DIR/$CONTEXT/$DOCKERFILE"
         elif [ -e "$SOURCE_CODE_DIR/$DOCKERFILE" ]; then
@@ -272,12 +268,12 @@ spec:
         elif echo "$DOCKERFILE" | grep -q "^https\?://"; then
           echo "Fetch Dockerfile from $DOCKERFILE"
           dockerfile_path=$(mktemp --suffix=-Dockerfile)
-          http_code=$(curl -s -L -w "%{http_code}" --output "$dockerfile_path" "$DOCKERFILE")
+          http_code=$(curl -s -S -L -w "%{http_code}" --output "$dockerfile_path" "$DOCKERFILE")
           if [ $http_code != 200 ]; then
             echo "No Dockerfile is fetched. Server responds $http_code"
             exit 1
           fi
-          http_code=$(curl -s -L -w "%{http_code}" --output "$dockerfile_path.dockerignore.tmp" "$DOCKERFILE.dockerignore")
+          http_code=$(curl -s -S -L -w "%{http_code}" --output "$dockerfile_path.dockerignore.tmp" "$DOCKERFILE.dockerignore")
           if [ $http_code = 200 ]; then
             echo "Fetched .dockerignore from $DOCKERFILE.dockerignore"
             mv "$dockerfile_path.dockerignore.tmp" $SOURCE_CODE_DIR/$CONTEXT/.dockerignore
@@ -286,8 +282,12 @@ spec:
           echo "Cannot find Dockerfile $DOCKERFILE"
           exit 1
         fi
-        if [ -n "$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR" ] && grep -q '^\s*RUN \(./\)\?mvn' "$dockerfile_path"; then
-          sed -i -e "s|^\s*RUN \(\(./\)\?mvn\)\(.*\)|RUN echo \"<settings><mirrors><mirror><id>mirror.default</id><url>http://$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR/v1/cache/default/0/</url><mirrorOf>*</mirrorOf></mirror></mirrors></settings>\" > /tmp/settings.yaml; \1 -s /tmp/settings.yaml \3|g" "$dockerfile_path"
+
+        dockerfile_copy=$(mktemp --tmpdir "$(basename "$dockerfile_path").XXXXXX")
+        cp "$dockerfile_path" "$dockerfile_copy"
+
+        if [ -n "$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR" ] && grep -q '^\s*RUN \(./\)\?mvn' "$dockerfile_copy"; then
+          sed -i -e "s|^\s*RUN \(\(./\)\?mvn\)\(.*\)|RUN echo \"<settings><mirrors><mirror><id>mirror.default</id><url>http://$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR/v1/cache/default/0/</url><mirrorOf>*</mirrorOf></mirror></mirrors></settings>\" > /tmp/settings.yaml; \1 -s /tmp/settings.yaml \3|g" "$dockerfile_copy"
           touch /var/lib/containers/java
         fi
 
@@ -299,9 +299,58 @@ spec:
         # Setting new namespace to run buildah - 2^32-2
         echo 'root:1:4294967294' | tee -a /etc/subuid >>/etc/subgid
 
+        build_args=()
+        if [ -n "${BUILD_ARGS_FILE}" ]; then
+          # Parse BUILD_ARGS_FILE ourselves because dockerfile-json doesn't support it
+          echo "Parsing ARGs from $BUILD_ARGS_FILE"
+          mapfile -t build_args < <(
+            # https://www.mankier.com/1/buildah-build#--build-arg-file
+            # delete lines that start with #
+            # delete blank lines
+            sed -e '/^#/d' -e '/^\s*$/d' "${SOURCE_CODE_DIR}/${BUILD_ARGS_FILE}"
+          )
+        fi
+
+        LABELS=()
+        # Split `args` into two sets of arguments.
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --build-args)
+                    shift
+                    # Note: this may result in multiple --build-arg=KEY=value flags with the same KEY being
+                    # passed to buildah. In that case, the *last* occurrence takes precedence. This is why
+                    # we append BUILD_ARGS after the content of the BUILD_ARGS_FILE - they take precedence.
+                    while [[ $# -gt 0 && $1 != --* ]]; do
+                                                          build_args+=("$1")
+                                                                              shift
+            done
+                    ;;
+                --labels)
+                    shift
+                    while [[ $# -gt 0 && $1 != --* ]]; do
+                                                          LABELS+=("--label" "$1")
+                                                                                    shift
+            done
+                    ;;
+                *)
+                    echo "unexpected argument: $1" >&2
+                    exit 2
+                    ;;
+          esac
+        done
+
+        BUILD_ARG_FLAGS=()
+        for build_arg in "${build_args[@]}"; do
+          BUILD_ARG_FLAGS+=("--build-arg=$build_arg")
+        done
+
+        BASE_IMAGES=$(
+          dockerfile-json "${BUILD_ARG_FLAGS[@]}" "$dockerfile_copy" |
+            jq -r '.Stages[] | select(.From | .Stage or .Scratch | not) | .BaseName | select(test("^oci-archive:") | not)'
+        )
+
         BUILDAH_ARGS=()
 
-        BASE_IMAGES=$(dockerfile-json "$dockerfile_path" | jq -r '.Stages[] | select(.From | .Stage or .Scratch | not) | .BaseName')
         if [ "${HERMETIC}" == "true" ]; then
           BUILDAH_ARGS+=("--pull=never")
           UNSHARE_ARGS="--net"
@@ -315,13 +364,7 @@ spec:
           BUILDAH_ARGS+=("--target=${TARGET_STAGE}")
         fi
 
-        if [ -n "${BUILD_ARGS_FILE}" ]; then
-          BUILDAH_ARGS+=("--build-arg-file=$(pwd)/$SOURCE_CODE_DIR/${BUILD_ARGS_FILE}")
-        fi
-
-        for build_arg in "$@"; do
-          BUILDAH_ARGS+=("--build-arg=$build_arg")
-        done
+        BUILDAH_ARGS+=("${BUILD_ARG_FLAGS[@]}")
 
         if [ -n "${ADD_CAPABILITIES}" ]; then
           BUILDAH_ARGS+=("--cap-add=${ADD_CAPABILITIES}")
@@ -344,7 +387,7 @@ spec:
           sed -E -i \
               -e 'H;1h;$!d;x' \
               -e 's@^\s*(run((\s|\\\n)+-\S+)*(\s|\\\n)+)@\1. /cachi2/cachi2.env \&\& \\\n    @igM' \
-              "$dockerfile_path"
+              "$dockerfile_copy"
           echo "Prefetched content will be made available"
 
           prefetched_repo_for_my_arch="/tmp/cachi2/output/deps/rpm/$(uname -m)/repos.d/cachi2.repo"
@@ -371,13 +414,16 @@ spec:
         /app/domain-proxy-server-runner &
         server_pid=$!
 
-        LABELS=(
+        DEFAULT_LABELS=(
           "--label" "build-date=$(date -u +'%Y-%m-%dT%H:%M:%S')"
           "--label" "architecture=$(uname -m)"
           "--label" "vcs-type=git"
         )
-        [ -n "$COMMIT_SHA" ] && LABELS+=("--label" "vcs-ref=$COMMIT_SHA")
-        [ -n "$IMAGE_EXPIRES_AFTER" ] && LABELS+=("--label" "quay.expires-after=$IMAGE_EXPIRES_AFTER")
+        [ -n "$COMMIT_SHA" ] && DEFAULT_LABELS+=("--label" "vcs-ref=$COMMIT_SHA")
+        [ -n "$IMAGE_EXPIRES_AFTER" ] && DEFAULT_LABELS+=("--label" "quay.expires-after=$IMAGE_EXPIRES_AFTER")
+
+        # Concatenate defaults and explicit labels. If a label appears twice, the last one wins.
+        LABELS=("${DEFAULT_LABELS[@]}" "${LABELS[@]}")
 
         ACTIVATION_KEY_PATH="/activation-key"
         ENTITLEMENT_PATH="/entitlement"
@@ -408,10 +454,8 @@ spec:
           done < <(find $ADDITIONAL_SECRET_TMP -maxdepth 1 -type f -exec basename {} \;)
         fi
 
-        # TODO: Rename to JBS_CACHE_URL?
-        if [ -n "$CACHE_URL" ]; then
-          BUILDAH_ARGS+=("--build-arg=CACHE_URL=$CACHE_URL")
-        fi
+        # Prevent ShellCheck from giving a warning because 'image' is defined and 'IMAGE' is not.
+        declare IMAGE
 
         # Without expansion
         cat > /app/build-script.sh << 'EOF'
@@ -423,7 +467,7 @@ spec:
 
         # With expansion
         cat >> /app/build-script.sh << EOF
-        buildah build $VOLUME_MOUNTS ${BUILDAH_ARGS[@]} ${LABELS[@]} --tls-verify=$TLSVERIFY --no-cache --ulimit nofile=4096:4096 -f "$dockerfile_path" -t $IMAGE .
+        buildah build $VOLUME_MOUNTS ${BUILDAH_ARGS[@]} ${LABELS[@]} --tls-verify=$TLSVERIFY --no-cache --ulimit nofile=4096:4096 -f "$dockerfile_copy" -t $IMAGE .
         EOF
 
         # Without expansion
@@ -444,7 +488,7 @@ spec:
         wait $server_pid
         set -e
 
-        container=$(buildah from --pull-never $IMAGE)
+        container=$(buildah from --pull-never "$IMAGE")
         buildah mount $container | tee /shared/container_path
         # delete symlinks - they may point outside the container rootfs, messing with SBOM scanners
         find $(cat /shared/container_path) -xtype l -delete
@@ -464,11 +508,11 @@ spec:
         echo "$BASE_IMAGES" >/shared/base_images_from_dockerfile
       computeResources:
         limits:
+          cpu: "4"
+          memory: 8Gi
+        requests:
           cpu: "1"
           memory: 2Gi
-        requests:
-          cpu: "50m"
-          memory: 512Mi
       securityContext:
         capabilities:
           add:
@@ -483,16 +527,16 @@ spec:
           name: shared
       script: |
         echo "Running syft on the source directory"
-        syft dir:/var/workdir/source --output cyclonedx-json=/var/workdir/sbom-source.json
+        syft dir:"/var/workdir/$SOURCE_CODE_DIR/$CONTEXT" --output cyclonedx-json="/var/workdir/sbom-source.json"
         echo "Running syft on the image filesystem"
-        syft dir:$(cat /shared/container_path) --output cyclonedx-json=/var/workdir/sbom-image.json
+        syft dir:"$(cat /shared/container_path)" --output cyclonedx-json="/var/workdir/sbom-image.json"
       computeResources:
         limits:
-          cpu: "1"
-          memory: 2Gi
+          cpu: "2"
+          memory: 4Gi
         requests:
-          cpu: 50m
-          memory: 512Mi
+          cpu: 500m
+          memory: 1Gi
     - name: analyse-dependencies-java-sbom
       image: quay.io/redhat-appstudio/hacbs-jvm-build-request-processor:127ee0c223a2b56a9bd20a6f2eaeed3bd6015f77
       volumeMounts:
@@ -509,11 +553,11 @@ spec:
         fi
       computeResources:
         limits:
+          cpu: 200m
+          memory: 512Mi
+        requests:
           cpu: 100m
           memory: 256Mi
-        requests:
-          cpu: 10m
-          memory: 128Mi
       securityContext:
         runAsUser: 0
     - name: prepare-sboms
@@ -539,15 +583,15 @@ spec:
           --base-images-digests=/shared/base_images_digests
       computeResources:
         limits:
+          cpu: 200m
+          memory: 512Mi
+        requests:
           cpu: 100m
           memory: 256Mi
-        requests:
-          cpu: 10m
-          memory: 128Mi
       securityContext:
         runAsUser: 0
     - name: inject-sbom-and-push
-      image: quay.io/konflux-ci/buildah-task:latest@sha256:218d526bbaf0ceee4d6b4ee78af5e22de786cf2ed7c13f8a915263a43ac50f7a
+      image: quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /var/lib/containers
@@ -610,11 +654,11 @@ spec:
         echo -n "${sbom_repo}@sha256:${sbom_digest}" | tee "$(results.SBOM_BLOB_URL.path)"
       computeResources:
         limits:
-          cpu: "2"
-          memory: 2Gi
+          cpu: "4"
+          memory: 4Gi
         requests:
-          cpu: "100m"
-          memory: 512Mi
+          cpu: "1"
+          memory: 1Gi
       securityContext:
         capabilities:
           add:
@@ -638,8 +682,8 @@ spec:
         cosign attach sbom --sbom sbom-cyclonedx.json --type cyclonedx "$(cat "$(results.IMAGE_REF.path)")"
       computeResources:
         limits:
+          cpu: 200m
+          memory: 512Mi
+        requests:
           cpu: 100m
           memory: 256Mi
-        requests:
-          cpu: 10m
-          memory: 128Mi

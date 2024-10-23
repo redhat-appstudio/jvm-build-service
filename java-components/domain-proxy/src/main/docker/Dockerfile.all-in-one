@@ -1,11 +1,11 @@
-FROM registry.access.redhat.com/quarkus/mandrel-for-jdk-21-rhel8@sha256:9fc9c79d04817bbabe2708ee5151769deb470dc9612279384daf4b773c1c4c63 AS builder
+FROM registry.access.redhat.com/quarkus/mandrel-for-jdk-21-rhel8@sha256:cff22db0a64b21935a489c60898957a6f14a39d49281603aba2bba3c1c55554b AS builder
 USER 0
 WORKDIR /work
 COPY ./ .
 
 RUN domain-proxy/mvnw -V -B package -pl domain-proxy/client,domain-proxy/server -am -Dmaven.test.skip
 
-FROM quay.io/konflux-ci/buildah-task:latest@sha256:218d526bbaf0ceee4d6b4ee78af5e22de786cf2ed7c13f8a915263a43ac50f7a
+FROM quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
 USER 0
 RUN microdnf install -y iproute
 WORKDIR /work/
