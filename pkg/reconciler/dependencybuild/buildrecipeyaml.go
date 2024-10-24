@@ -55,6 +55,8 @@ var buildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
+// TODO: ### Either remove or replace with verification step *but* the contaminants/verification is all tied to the build pipeline in dependencybuild.go
+/*
 func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
 	// Original deploy pipeline used to run maven deployment and also tag the images using 'oras tag'
 	// with the SHA256 encoded sum of the GAVs.
@@ -129,6 +131,8 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	}
 	return ps, nil
 }
+*/
+
 func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string, orasOptions string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
@@ -138,8 +142,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	deployArgs := []string{
 		"verify",
-		fmt.Sprintf("--path=%s/artifacts", PostBuildVolumeMount),
-		fmt.Sprintf("--logs-path=%s/logs", PostBuildVolumeMount),
+		fmt.Sprintf("--path=%s/deployment", PostBuildVolumeMount),
 		"--task-run-name=$(context.taskRun.name)",
 		"--build-id=" + buildId,
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
@@ -561,7 +564,7 @@ URL=%s
 DIGEST=$(tasks.%s.results.IMAGE_DIGEST)
 AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
 echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
-use-archive oci:$URL@$AARCHIVE=%s/artifacts`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName, PostBuildVolumeMount),
+use-archive oci:$URL@$AARCHIVE=%s`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName, PostBuildVolumeMount),
 			},
 			{
 				Name:            "verify-and-check-for-contaminates",
@@ -856,7 +859,7 @@ func verifyParameters(jbsConfig *v1alpha1.JBSConfig, recipe *v1alpha1.BuildRecip
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
 		"--repository-url=$(params." + PipelineParamProxyUrl + ")",
-		fmt.Sprintf("--deploy-path=%s/artifacts", PostBuildVolumeMount),
+		fmt.Sprintf("--deploy-path=%s/deployment", PostBuildVolumeMount),
 		"--task-run-name=$(context.taskRun.name)",
 		"--results-file=$(results." + PipelineResultPassedVerification + ".path)",
 	}

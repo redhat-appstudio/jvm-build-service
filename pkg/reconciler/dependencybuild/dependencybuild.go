@@ -1363,6 +1363,7 @@ func (r *ReconcileDependencyBuild) removePipelineFinalizer(ctx context.Context, 
 }
 
 // TODO: ### Either remove or replace with verification step *but* the contaminants/verification is all tied to the build pipeline in dependencybuild.go
+/*
 func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
 	log, _ := logr.FromContext(ctx)
 	//first we check to see if the pipeline exists
@@ -1498,6 +1499,7 @@ func (r *ReconcileDependencyBuild) handleDeployPipelineRunReceived(ctx context.C
 	}
 	return reconcile.Result{}, nil
 }
+*/
 
 // This is to remove any '#xxx' fragment from a URI so that git clone commands don't need separate adjustment
 func modifyURLFragment(log logr.Logger, scmURL string) string {

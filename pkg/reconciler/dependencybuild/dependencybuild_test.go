@@ -287,12 +287,14 @@ func getBuildPipelineNo(client runtimeclient.Client, g *WithT, no int) *tektonpi
 	return &build
 }
 
+/*
 func getDeployPipeline(client runtimeclient.Client, g *WithT) *tektonpipeline.PipelineRun {
 	ctx := context.TODO()
 	build := tektonpipeline.PipelineRun{}
 	g.Expect(client.Get(ctx, types.NamespacedName{Namespace: metav1.NamespaceDefault, Name: "test-deploy"}, &build)).Should(BeNil())
 	return &build
 }
+*/
 
 func getBuildInfoPipeline(client runtimeclient.Client, g *WithT) *tektonpipeline.PipelineRun {
 	return getBuildInfoPipelineNo(client, g, 0)
@@ -380,19 +382,19 @@ func TestStateBuilding(t *testing.T) {
 		setup(g)
 		runSuccessfulBuild(g, client, ctx, reconciler, taskRunName)
 
-		pr := getDeployPipeline(client, g)
-		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-		pr.Status.SetCondition(&apis.Condition{
-			Type:               apis.ConditionSucceeded,
-			Status:             "True",
-			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
-		})
-		pr.Status.Results = []tektonpipeline.PipelineRunResult{{Name: PipelineResultDeployedResources, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: TestArtifact}}}
-		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
+		//pr := getDeployPipeline(client, g)
+		//pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+		//pr.Status.SetCondition(&apis.Condition{
+		//	Type:               apis.ConditionSucceeded,
+		//	Status:             "True",
+		//	LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+		//})
+		//pr.Status.Results = []tektonpipeline.PipelineRunResult{{Name: PipelineResultDeployedResources, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: TestArtifact}}}
+		//g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
+		//db := getBuild(client, g)
+		//g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}}))
+		//g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}))
 		db := getBuild(client, g)
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}}))
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}))
-		db = getBuild(client, g)
 		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
 
 		g.Expect(db.Status.DeployedArtifacts).Should(ContainElement(TestArtifact))
@@ -400,45 +402,47 @@ func TestStateBuilding(t *testing.T) {
 		g.Expect(client.Get(ctx, types.NamespacedName{Name: artifactbuild.CreateABRName(TestArtifact), Namespace: metav1.NamespaceDefault}, &ra)).Should(Succeed())
 		g.Expect(ra.Spec.GAV).Should(Equal(TestArtifact))
 		g.Expect(ra.Spec.Image).ShouldNot(BeNil())
-		pr = getBuildPipeline(client, g)
+		pr := getBuildPipeline(client, g)
 		g.Expect(len(pr.Finalizers)).Should(Equal(1))
 
 		g.Expect(client.Delete(ctx, pr)).Should(BeNil())
 		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: db.Namespace, Name: pr.Name}}))
 		g.Expect(client.Get(ctx, types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}, pr)).ShouldNot(Succeed())
 	})
+	// TODO: ### Either remove or replace with verification step *but* the contaminants/verification is all tied to the build pipeline in dependencybuild.go
+	/*
+		t.Run("Test reconcile building DependencyBuild with failed deploy pipeline", func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			setup(g)
+			runSuccessfulBuild(g, client, ctx, reconciler, taskRunName)
 
-	t.Run("Test reconcile building DependencyBuild with failed deploy pipeline", func(t *testing.T) {
-		g := NewGomegaWithT(t)
-		setup(g)
-		runSuccessfulBuild(g, client, ctx, reconciler, taskRunName)
+			pr := getDeployPipeline(client, g)
+			pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+			pr.Status.SetCondition(&apis.Condition{
+				Type:               apis.ConditionSucceeded,
+				Status:             "False",
+				LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
+			})
+			g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
+			g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}}))
+			db := getBuild(client, g)
+			g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
 
-		pr := getDeployPipeline(client, g)
-		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-		pr.Status.SetCondition(&apis.Condition{
-			Type:               apis.ConditionSucceeded,
-			Status:             "False",
-			LastTransitionTime: apis.VolatileTime{Inner: metav1.Time{Time: time.Now()}},
 		})
-		g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}}))
-		db := getBuild(client, g)
-		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
 
-	})
+		t.Run("Test reconcile building DependencyBuild with deleted deploy pipeline", func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			setup(g)
+			runSuccessfulBuild(g, client, ctx, reconciler, taskRunName)
 
-	t.Run("Test reconcile building DependencyBuild with deleted deploy pipeline", func(t *testing.T) {
-		g := NewGomegaWithT(t)
-		setup(g)
-		runSuccessfulBuild(g, client, ctx, reconciler, taskRunName)
+			pr := getDeployPipeline(client, g)
+			g.Expect(client.Delete(ctx, pr)).Should(Succeed())
+			g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}}))
+			db := getBuild(client, g)
+			g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
 
-		pr := getDeployPipeline(client, g)
-		g.Expect(client.Delete(ctx, pr)).Should(Succeed())
-		g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: pr.Name, Namespace: pr.Namespace}}))
-		db := getBuild(client, g)
-		g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateFailed))
-
-	})
+		})
+	*/
 	t.Run("Test reconcile building DependencyBuild with failed pipeline", func(t *testing.T) {
 		g := NewGomegaWithT(t)
 		setup(g)
@@ -583,7 +587,7 @@ func runSuccessfulBuild(g *WithT, client runtimeclient.Client, ctx context.Conte
 	g.Expect(client.Status().Update(ctx, pr)).Should(BeNil())
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: taskRunName}))
 	db := getBuild(client, g)
-	g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateDeploying))
+	g.Expect(db.Status.State).Should(Equal(v1alpha1.DependencyBuildStateComplete))
 	g.Expect(reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}))
 }
 
