@@ -40,17 +40,11 @@ spec:
       image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac
       script: |
         echo "Restoring artifacts to workspace"
-        ls -laR /var/workdir
-        echo "Root"
-        ls -laR $HOME
-        echo "Restoring artifacts to workspace"
         URL=$IMAGE_URL
         DIGEST=$IMAGE_DIGEST
         AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
         echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
         use-archive oci:$URL@$AARCHIVE=/var/workdir/
-        ls -laR /var/workdir
-        echo "DONE"
       env:
         - name: IMAGE_DIGEST
           value: $(params.IMAGE_DIGEST)

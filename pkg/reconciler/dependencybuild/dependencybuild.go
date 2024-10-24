@@ -1362,10 +1362,9 @@ func (r *ReconcileDependencyBuild) removePipelineFinalizer(ctx context.Context, 
 	return reconcile.Result{}, nil
 }
 
+// TODO: ### Either remove or replace with verification step *but* the contaminants/verification is all tied to the build pipeline in dependencybuild.go
 func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db *v1alpha1.DependencyBuild) (reconcile.Result, error) {
-
 	log, _ := logr.FromContext(ctx)
-	log.Info(fmt.Sprintf("### handleStateDeploying %#v", db.Name))
 	//first we check to see if the pipeline exists
 
 	pr := tektonpipeline.PipelineRun{}

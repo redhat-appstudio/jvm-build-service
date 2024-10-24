@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	PostBuildVolume = "post-build-volume"
-	WorkspaceSource = "source"
-	WorkspaceMount  = "/var/workdir"
-	WorkspaceTls    = "tls"
+	PostBuildVolume      = "post-build-volume"
+	PostBuildVolumeMount = "/var/workdir"
+	WorkspaceSource      = "source"
+	WorkspaceTls         = "tls"
 
 	GitTaskName       = "git-clone"
 	PreBuildTaskName  = "pre-build"
@@ -138,8 +138,8 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	deployArgs := []string{
 		"verify",
-		"--path=$(workspaces.source.path)/artifacts",
-		"--logs-path=$(workspaces.source.path)/logs",
+		fmt.Sprintf("--path=%s/artifacts", PostBuildVolumeMount),
+		fmt.Sprintf("--logs-path=%s/logs", PostBuildVolumeMount),
 		"--task-run-name=$(context.taskRun.name)",
 		"--build-id=" + buildId,
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
@@ -543,23 +543,25 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			{Name: PipelineResultPassedVerification},
 			{Name: PipelineResultVerificationResult},
 		},
+		StepTemplate: &tektonpipeline.StepTemplate{
+			VolumeMounts: []v1.VolumeMount{{Name: PostBuildVolume, MountPath: PostBuildVolumeMount}},
+		},
 		Steps: []tektonpipeline.Step{
 			{
 				Name:            "restore-post-build-artifacts",
-				VolumeMounts:    []v1.VolumeMount{{Name: PostBuildVolume, MountPath: WorkspaceMount}},
 				Image:           strings.TrimSpace(strings.Split(buildTrustedArtifacts, "FROM")[1]),
 				ImagePullPolicy: v1.PullIfNotPresent,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
 				// While the manifest digest is available we need the manifest of the layer within the archive hence
 				// using 'oras manifest fetch' to extract the correct layer.
-				Script: fmt.Sprintf(`echo "Restoring artifacts to workspace : $(workspaces.source.path)"
+				Script: fmt.Sprintf(`echo "Restoring artifacts"
 export ORAS_OPTIONS="%s"
 URL=%s
 DIGEST=$(tasks.%s.results.IMAGE_DIGEST)
 AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
 echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
-use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName),
+use-archive oci:$URL@$AARCHIVE=%s/artifacts`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName, PostBuildVolumeMount),
 			},
 			{
 				Name:            "verify-and-check-for-contaminates",
@@ -567,7 +569,6 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions
 				ImagePullPolicy: pullPolicy,
 				SecurityContext: &v1.SecurityContext{RunAsUser: &zero},
 				Env:             secretVariables,
-				VolumeMounts:    []v1.VolumeMount{{Name: PostBuildVolume, MountPath: WorkspaceMount}},
 				ComputeResources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultRequestCPU},
 					Limits:   v1.ResourceList{"memory": limits.defaultBuildRequestMemory, "cpu": limits.defaultLimitCPU},
@@ -855,7 +856,7 @@ func verifyParameters(jbsConfig *v1alpha1.JBSConfig, recipe *v1alpha1.BuildRecip
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
 		"--repository-url=$(params." + PipelineParamProxyUrl + ")",
-		"--deploy-path=$(workspaces.source.path)/artifacts",
+		fmt.Sprintf("--deploy-path=%s/artifacts", PostBuildVolumeMount),
 		"--task-run-name=$(context.taskRun.name)",
 		"--results-file=$(results." + PipelineResultPassedVerification + ".path)",
 	}
