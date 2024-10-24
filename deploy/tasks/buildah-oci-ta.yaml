@@ -290,8 +290,14 @@ spec:
         dockerfile_copy=$(mktemp --tmpdir "$(basename "$dockerfile_path").XXXXXX")
         cp "$dockerfile_path" "$dockerfile_copy"
 
-        if [ -n "$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR" ] && grep -q '^\s*RUN \(./\)\?mvn' "$dockerfile_copy"; then
-          sed -i -e "s|^\s*RUN \(\(./\)\?mvn\)\(.*\)|RUN echo \"<settings><proxies><proxy><id>domain-proxy</id><active>true</active><protocol>http</protocol><host>localhost</host><port>8080</port></proxy></proxies><mirrors><mirror><id>mirror.default</id><url>http://$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR/v1/cache/default/0/</url><mirrorOf>*</mirrorOf></mirror></mirrors></settings>\" > /tmp/settings.yaml; \1 -s /tmp/settings.yaml \3|g" "$dockerfile_copy"
+        if grep -q '^\s*RUN \(./\)\?mvn' "$dockerfile_copy"; then
+          if [ -n "$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR" ]; then
+            settings="<settings><proxies><proxy><id>domain-proxy</id><active>true</active><protocol>http</protocol><host>localhost</host><port>8080</port></proxy></proxies><mirrors><mirror><id>mirror.default</id><url>http://$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR/v1/cache/default/0/</url><mirrorOf>*</mirrorOf></mirror></mirrors></settings>"
+          else
+            settings="<settings><proxies><proxy><id>domain-proxy</id><active>true</active><protocol>http</protocol><host>localhost</host><port>8080</port></proxy></proxies></settings>"
+          fi
+
+          sed -i -e "s|^\s*RUN \(\(./\)\?mvn\)\(.*\)|RUN echo \"$settings\" > /tmp/settings.yaml; \1 -s /tmp/settings.yaml \3|g" "$dockerfile_copy"
           touch /var/lib/containers/java
         fi
 
