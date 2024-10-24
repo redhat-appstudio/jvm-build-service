@@ -524,6 +524,7 @@ spec:
         capabilities:
           add:
             - SETFCAP
+            - NET_ADMIN
     - name: sbom-syft-generate
       image: registry.access.redhat.com/rh-syft-tech-preview/syft-rhel9:1.4.1@sha256:34d7065427085a31dc4949bd283c001b91794d427e1e4cdf1b21ea4faf9fee3f
       workingDir: /var/workdir/source
