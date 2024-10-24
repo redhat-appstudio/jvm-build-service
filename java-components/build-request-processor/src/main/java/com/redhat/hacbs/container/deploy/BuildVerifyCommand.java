@@ -53,9 +53,6 @@ public class BuildVerifyCommand implements Runnable {
     @CommandLine.Option(names = "--task-run-name")
     String taskRun;
 
-    @CommandLine.Option(names = "--logs-path")
-    Path logsPath;
-
     @CommandLine.Option(required = true, names = "--scm-uri")
     String scmUri;
 

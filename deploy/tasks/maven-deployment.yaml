@@ -32,13 +32,9 @@ spec:
       description: Name of the processor image. Useful to override for development.
       type: string
       default: "quay.io/redhat-appstudio/hacbs-jvm-build-request-processor:dev"
-  volumes:
-    - name: workdir
-      emptyDir: {}
-  stepTemplate:
-    volumeMounts:
-      - mountPath: /var/workdir
-        name: workdir
+  workspaces:
+    - name: source
+      mountPath: /var/workdir
   steps:
     - name: restore-trusted-artifact
       image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac
@@ -48,7 +44,7 @@ spec:
         DIGEST=$IMAGE_DIGEST
         AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
         echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
-        use-archive oci:$URL@$AARCHIVE=/var/workdir/artifacts
+        use-archive oci:$URL@$AARCHIVE=/var/workdir/
       env:
         - name: IMAGE_DIGEST
           value: $(params.IMAGE_DIGEST)
@@ -77,6 +73,6 @@ spec:
               key: mavenpassword
       args:
         - deploy
-        - --directory=/var/workdir/artifacts
+        - --directory=/var/workdir/deployment
         - --mvn-repo=$(params.MVN_REPO)
         - --mvn-username=$(params.MVN_USERNAME)

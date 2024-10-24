@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	WorkspaceSource = "source"
-	WorkspaceMount  = "/var/workdir"
-	WorkspaceTls    = "tls"
+	PostBuildVolume      = "post-build-volume"
+	PostBuildVolumeMount = "/var/workdir"
+	WorkspaceSource      = "source"
+	WorkspaceTls         = "tls"
 
 	GitTaskName       = "git-clone"
 	PreBuildTaskName  = "pre-build"
@@ -54,6 +55,8 @@ var buildEntryScript string
 //go:embed scripts/Dockerfile.build-trusted-artifacts
 var buildTrustedArtifacts string
 
+// TODO: ### Either remove or replace with verification step *but* the contaminants/verification is all tied to the build pipeline in dependencybuild.go
+/*
 func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcessorImage string) (*tektonpipeline.PipelineSpec, error) {
 	// Original deploy pipeline used to run maven deployment and also tag the images using 'oras tag'
 	// with the SHA256 encoded sum of the GAVs.
@@ -128,6 +131,8 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 	}
 	return ps, nil
 }
+*/
+
 func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string, orasOptions string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
@@ -137,8 +142,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	verifyBuiltArtifactsArgs := verifyParameters(jbsConfig, recipe)
 	deployArgs := []string{
 		"verify",
-		"--path=$(workspaces.source.path)/artifacts",
-		"--logs-path=$(workspaces.source.path)/logs",
+		fmt.Sprintf("--path=%s/deployment", PostBuildVolumeMount),
 		"--task-run-name=$(context.taskRun.name)",
 		"--build-id=" + buildId,
 		"--scm-uri=" + db.Spec.ScmInfo.SCMURL,
@@ -272,7 +276,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	runAfterBuild = append(runAfter, BuildTaskName)
 
 	ps := &tektonpipeline.PipelineSpec{
-		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}, {Name: WorkspaceTls}},
+		Workspaces: []tektonpipeline.PipelineWorkspaceDeclaration{{Name: WorkspaceSource}},
 	}
 
 	if preBuildImageRequired {
@@ -344,7 +348,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			},
 			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
 				{Name: WorkspaceSource, Workspace: WorkspaceSource},
-				{Name: WorkspaceTls, Workspace: WorkspaceTls},
 			},
 			Params: []tektonpipeline.Param{
 				{
@@ -463,7 +466,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	}
 
 	// Note - its also possible to refer to a remote pipeline ref as well as a task.
-	resolver := tektonpipeline.ResolverRef{
+	buildResolver := tektonpipeline.ResolverRef{
 		// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
 		Resolver: "http",
 		Params: []tektonpipeline.Param{
@@ -483,7 +486,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 			RunAfter: runAfter,
 			TaskRef: &tektonpipeline.TaskRef{
 				// Can't specify name and resolver as they clash.
-				ResolverRef: resolver,
+				ResolverRef: buildResolver,
 			},
 			Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 			Params: []tektonpipeline.Param{
@@ -533,13 +536,18 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: PipelineResultImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImageDigest + ")"}})
 
 	postBuildTask := tektonpipeline.TaskSpec{
-		Workspaces: []tektonpipeline.WorkspaceDeclaration{{Name: WorkspaceSource, MountPath: WorkspaceMount}, {Name: WorkspaceTls}},
-		Params:     append(pipelineParams, tektonpipeline.ParamSpec{Name: PipelineResultPreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
+		// Using a default emptyDir volume as this task is unique to JBS and don't want it interfering with
+		// the shared workspace.
+		Volumes: []v1.Volume{{Name: PostBuildVolume, VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}}}},
+		Params:  append(pipelineParams, tektonpipeline.ParamSpec{Name: PipelineResultPreBuildImageDigest, Type: tektonpipeline.ParamTypeString}),
 		Results: []tektonpipeline.TaskResult{
 			{Name: PipelineResultContaminants},
 			{Name: PipelineResultDeployedResources},
 			{Name: PipelineResultPassedVerification},
 			{Name: PipelineResultVerificationResult},
+		},
+		StepTemplate: &tektonpipeline.StepTemplate{
+			VolumeMounts: []v1.VolumeMount{{Name: PostBuildVolume, MountPath: PostBuildVolumeMount}},
 		},
 		Steps: []tektonpipeline.Step{
 			{
@@ -550,13 +558,13 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				Env:             secretVariables,
 				// While the manifest digest is available we need the manifest of the layer within the archive hence
 				// using 'oras manifest fetch' to extract the correct layer.
-				Script: fmt.Sprintf(`echo "Restoring artifacts to workspace : $(workspaces.source.path)"
+				Script: fmt.Sprintf(`echo "Restoring artifacts"
 export ORAS_OPTIONS="%s"
 URL=%s
 DIGEST=$(tasks.%s.results.IMAGE_DIGEST)
 AARCHIVE=$(oras manifest fetch $ORAS_OPTIONS $URL@$DIGEST | jq --raw-output '.layers[0].digest')
 echo "URL $URL DIGEST $DIGEST AARCHIVE $AARCHIVE"
-use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName),
+use-archive oci:$URL@$AARCHIVE=%s`, orasOptions, registryArgsWithDefaults(jbsConfig, ""), BuildTaskName, PostBuildVolumeMount),
 			},
 			{
 				Name:            "verify-and-check-for-contaminates",
@@ -580,16 +588,81 @@ use-archive oci:$URL@$AARCHIVE=$(workspaces.source.path)/artifacts`, orasOptions
 		},
 		Timeout: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Params:  []tektonpipeline.Param{{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ParamValue{Type: tektonpipeline.ParamTypeString, StringVal: preBuildImage}}},
-		Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-			{Name: WorkspaceSource, Workspace: WorkspaceSource},
-			{Name: WorkspaceTls, Workspace: WorkspaceTls},
-		},
 	}}
 	ps.Tasks = append(pipelineTask, ps.Tasks...)
-
 	for _, i := range postBuildTask.Results {
 		ps.Results = append(ps.Results, tektonpipeline.PipelineResult{Name: i.Name, Description: i.Description, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PostBuildTaskName + ".results." + i.Name + ")"}})
 	}
+
+	deployResolver := tektonpipeline.ResolverRef{
+		// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
+		Resolver: "http",
+		Params: []tektonpipeline.Param{
+			{
+				Name: "url",
+				Value: tektonpipeline.ParamValue{
+					Type:      tektonpipeline.ParamTypeString,
+					StringVal: v1alpha1.KonfluxMavenDeployDefinitions,
+				},
+			},
+		},
+	}
+	ps.Tasks = append([]tektonpipeline.PipelineTask{
+		{
+			Name:     DeployTaskName,
+			RunAfter: append(runAfterBuild, PostBuildTaskName),
+			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+				{Name: WorkspaceSource, Workspace: WorkspaceSource},
+			},
+			TaskRef: &tektonpipeline.TaskRef{
+				// Can't specify name and resolver as they clash.
+				ResolverRef: deployResolver,
+			},
+			Params: []tektonpipeline.Param{
+				{
+					Name: PipelineResultImage,
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImage + ")",
+					},
+				},
+				{
+					Name: PipelineResultImageDigest,
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "$(tasks." + BuildTaskName + ".results." + PipelineResultImageDigest + ")",
+					},
+				},
+				{
+					Name: "MVN_REPO",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: jbsConfig.Spec.MavenDeployment.Repository,
+					},
+				},
+				{
+					Name: "MVN_USERNAME",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: jbsConfig.Spec.MavenDeployment.Username,
+					},
+				},
+				{
+					Name: "MVN_PASSWORD",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: v1alpha1.MavenSecretName,
+					},
+				},
+				{
+					Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: buildRequestProcessorImage,
+					},
+				},
+			},
+		}}, ps.Tasks...)
 
 	for _, i := range pipelineParams {
 		ps.Params = append(ps.Params, tektonpipeline.ParamSpec{Name: i.Name, Description: i.Description, Default: i.Default, Type: i.Type})
@@ -786,7 +859,7 @@ func verifyParameters(jbsConfig *v1alpha1.JBSConfig, recipe *v1alpha1.BuildRecip
 	verifyBuiltArtifactsArgs := []string{
 		"verify-built-artifacts",
 		"--repository-url=$(params." + PipelineParamProxyUrl + ")",
-		"--deploy-path=$(workspaces.source.path)/artifacts",
+		fmt.Sprintf("--deploy-path=%s/deployment", PostBuildVolumeMount),
 		"--task-run-name=$(context.taskRun.name)",
 		"--results-file=$(results." + PipelineResultPassedVerification + ".path)",
 	}
