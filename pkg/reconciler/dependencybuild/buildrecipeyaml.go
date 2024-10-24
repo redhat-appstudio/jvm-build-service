@@ -524,7 +524,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE",
+					Name: "BUILD_IMAGE",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: domainProxyImage,

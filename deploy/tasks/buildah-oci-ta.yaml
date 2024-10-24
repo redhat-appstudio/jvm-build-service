@@ -131,6 +131,10 @@ spec:
       description: The name of the ConfigMap to read CA bundle data from.
       type: string
       default: trusted-ca
+    - name: BUILD_IMAGE
+      description: The buildah image to use.
+      type: string
+      default: quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built
@@ -229,7 +233,7 @@ spec:
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
         - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
     - name: build
-      image: $(params.JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE)
+      image: $(params.BUILD_IMAGE)
       args:
         - --build-args
         - $(params.BUILD_ARGS[*])
