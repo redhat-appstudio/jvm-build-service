@@ -530,6 +530,13 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						StringVal: domainProxyImage,
 					},
 				},
+				{
+					Name: "HERMETIC",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "true",
+					},
+				},
 			},
 		}}, ps.Tasks...)
 
