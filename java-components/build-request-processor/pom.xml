@@ -180,6 +180,12 @@
                                 <argument>build</argument>
                                 <argument>--info</argument>
                             </arguments>
+                            <environmentVariables>
+                                <!-- Gradle daemon can crash out if the prompt contains unusual symbols prior to Gradle 5.x -->
+                                <PROMPT>$</PROMPT>
+                                <PROMPT_SYMBOL>$</PROMPT_SYMBOL>
+                                <PROMPT_HAT>.</PROMPT_HAT>
+                            </environmentVariables>
                             <useMavenLogger>true</useMavenLogger>
                             <skip>${skipTests}</skip>
                         </configuration>
