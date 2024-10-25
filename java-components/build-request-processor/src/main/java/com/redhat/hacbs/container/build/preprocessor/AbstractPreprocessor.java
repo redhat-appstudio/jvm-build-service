@@ -227,6 +227,15 @@ public abstract class AbstractPreprocessor implements Runnable {
               <mirrorOf>*</mirrorOf>
             </mirror>
           </mirrors>
+          <proxies>
+            <proxy>
+              <id>domain-proxy</id>
+              <active>true</active>
+              <protocol>http</protocol>
+              <host>localhost</host>
+              <port>8080</port>
+            </proxy>
+          </proxies>
         EOF
             else
                 cat >${HOME}/.m2/settings.xml <<EOF
