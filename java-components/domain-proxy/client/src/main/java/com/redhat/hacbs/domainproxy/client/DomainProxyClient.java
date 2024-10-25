@@ -10,6 +10,7 @@ import java.net.UnixDomainSocketAddress;
 import java.nio.channels.SocketChannel;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -35,12 +36,14 @@ public class DomainProxyClient {
     @ConfigProperty(name = "byte-buffer-size")
     int byteBufferSize;
 
+    private volatile boolean running = true;
+
     @PostConstruct
     public void start() {
         Log.info("Starting domain proxy client...");
         new Thread(() -> {
             try (final ServerSocket serverSocket = new ServerSocket(clientHttpPort)) {
-                while (true) {
+                while (running) {
                     final Socket socket = serverSocket.accept();
                     final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(domainSocket);
                     final SocketChannel channel = SocketChannel.open(address);
@@ -54,5 +57,10 @@ public class DomainProxyClient {
             }
             Quarkus.asyncExit();
         }).start();
+    }
+
+    @PreDestroy
+    public void stop() {
+        running = false;
     }
 }

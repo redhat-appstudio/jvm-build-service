@@ -60,7 +60,7 @@ generate: generate-crds
 verify-generate-deepcopy-client: generate-deepcopy-client
 	hack/verify-codegen.sh
 
-dev-image:
+dev-image-controller:
 	@if [ -z "$$QUAY_USERNAME" ]; then \
             echo "ERROR: QUAY_USERNAME is not set"; \
             exit 1; \
@@ -68,8 +68,10 @@ dev-image:
 	docker build . -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 
-dev: dev-image
+dev: dev-image-controller
 	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev
+	docker build . -f java-components/domain-proxy/src/main/docker/Dockerfile.local -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 
 dev-openshift: dev
 	./deploy/openshift-development.sh

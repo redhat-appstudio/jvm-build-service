@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -40,6 +41,8 @@ public class DomainProxyServer {
     @ConfigProperty(name = "byte-buffer-size")
     int byteBufferSize;
 
+    private volatile boolean running = true;
+
     @PostConstruct
     public void start() {
         new Thread(() -> {
@@ -53,7 +56,7 @@ public class DomainProxyServer {
             try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
                 final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(domainSocket);
                 serverChannel.bind(address);
-                while (true) {
+                while (running) {
                     final SocketChannel channel = serverChannel.accept();
                     final Socket socket = new Socket(LOCALHOST, httpServerPort);
                     // Write from socket to channel
@@ -66,5 +69,10 @@ public class DomainProxyServer {
             }
             Quarkus.asyncExit();
         }).start();
+    }
+
+    @PreDestroy
+    public void stop() {
+        running = false;
     }
 }
