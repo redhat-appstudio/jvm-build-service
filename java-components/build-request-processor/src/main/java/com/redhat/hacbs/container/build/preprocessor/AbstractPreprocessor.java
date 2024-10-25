@@ -113,6 +113,15 @@ public abstract class AbstractPreprocessor implements Runnable {
                 PATH="${JAVA_HOME}/bin:$PATH"
             fi
 
+            # Go through certificates and insert them into the cacerts
+            for cert in /etc/pki/ca-trust/source/anchors/*; do
+              echo "inserting $cert into java cacerts"
+              keytool -import -alias $(basename $cert)-ca \
+                  -file $cert \
+                  -keystore /etc/pki/java/cacerts \
+                  -storepass changeit --noprompt
+            done;
+
             if [ -n "${MAVEN_HOME}" ]; then
             """.formatted(javaHome, type.name(), type.name(), type, buildToolVersion);
 
@@ -177,6 +186,8 @@ public abstract class AbstractPreprocessor implements Runnable {
             ENV PROXY_URL=$PROXY_URL
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
+            COPY /mnt/trusted-ca/ca-bundle.crt /etc/pki/ca-trust/source/anchors
+            RUN update-ca-trust
             RUN /var/workdir/run-build.sh
             """.formatted(recipeImage);
 
