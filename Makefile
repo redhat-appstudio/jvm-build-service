@@ -70,8 +70,8 @@ dev-image-controller:
 
 dev: dev-image-controller
 	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev
-	docker build . -f java-components/domain-proxy/src/main/docker/Dockerfile.local -t quay.io/$(QUAY_USERNAME)/hacbs-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
-	docker push quay.io/$(QUAY_USERNAME)/hacbs-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
+	docker build . -f java-components/domain-proxy/src/main/docker/Dockerfile.local -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 
 dev-openshift: dev
 	./deploy/openshift-development.sh
