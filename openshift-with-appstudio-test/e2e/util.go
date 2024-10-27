@@ -180,7 +180,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	var ok bool
 	ta.gitClone, ok = obj.(*tektonpipeline.Task)
 	if !ok {
-		debugAndFailTest(ta, fmt.Sprintf("%s did not produce a task: %#v", gitCloneTaskUrl, obj))
+		debugAndFailTest(ta, fmt.Sprintf("%s did not produce a task: %#v", v1alpha1.KonfluxGitDefinition, obj))
 	}
 	ta.gitClone, err = tektonClient.TektonV1().Tasks(ta.ns).Create(context.TODO(), ta.gitClone, metav1.CreateOptions{})
 	if err != nil {
@@ -244,7 +244,7 @@ func commonSetup(t *testing.T, gitCloneUrl string, namespace string) *testArgs {
 	return ta
 }
 func setupE2E(t *testing.T, namespace string) *testArgs {
-	ta := commonSetup(t, gitCloneTaskUrl, namespace)
+	ta := commonSetup(t, v1alpha1.KonfluxGitDefinition, namespace)
 	err := wait.PollUntilContextTimeout(context.TODO(), 1*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		_, err = kubeClient.CoreV1().ServiceAccounts(ta.ns).Get(context.TODO(), "pipeline", metav1.GetOptions{})
 		if err != nil {
@@ -993,7 +993,7 @@ type MavenRepoDetails struct {
 
 func setupMinikube(t *testing.T, namespace string) *testArgs {
 
-	ta := commonSetup(t, gitCloneTaskUrl, namespace)
+	ta := commonSetup(t, v1alpha1.KonfluxGitDefinition, namespace)
 	//go through and limit all deployments
 	//we have very little memory, we need some limits to make sure minikube can actually run
 	//limit every deployment to 100mb
