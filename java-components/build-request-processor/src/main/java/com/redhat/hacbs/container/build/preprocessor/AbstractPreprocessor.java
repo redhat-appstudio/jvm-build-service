@@ -175,6 +175,8 @@ public abstract class AbstractPreprocessor implements Runnable {
             WORKDIR /var/workdir
             ARG PROXY_URL=""
             ENV PROXY_URL=$PROXY_URL
+            ENV http_proxy=http://localhost:8080
+            ENV https_proxy=${http_proxy}
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
             RUN /var/workdir/run-build.sh
