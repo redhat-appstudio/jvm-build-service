@@ -550,13 +550,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "BYTE_BUFFER_SIZE", // TODO remove
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "2048",
-					},
-				},
-				{
 					Name: "PROXY_TARGET_WHITELIST",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,

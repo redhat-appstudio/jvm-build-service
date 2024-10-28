@@ -434,7 +434,9 @@ public abstract class AbstractPreprocessor implements Runnable {
                 <property name="local-pattern" value="\\${user.home}/.m2/repository/[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
                 <settings defaultResolver="defaultChain"/>
                 <resolvers>
-                    <ibiblio name="default" root="\\${cache-url}" pattern="\\${default-pattern}" m2compatible="true"/>
+                    <ibiblio name="default" root="\\${cache-url}" pattern="\\${default-pattern}" m2compatible="true">
+                        <proxy host="localhost" port="8080"/>
+                    </ibiblio>
                     <filesystem name="local" m2compatible="true">
                         <artifact pattern="\\${local-pattern}"/>
                         <ivy pattern="\\${local-pattern}"/>
