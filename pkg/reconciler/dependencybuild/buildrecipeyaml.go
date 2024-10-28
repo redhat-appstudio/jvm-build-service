@@ -524,6 +524,13 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
+					Name: "HERMETIC",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "true",
+					},
+				},
+				{
 					Name: "BUILD_IMAGE",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
@@ -531,10 +538,24 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "HERMETIC",
+					Name: "DOMAIN_PROXY",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: "true",
+					},
+				},
+				{
+					Name: "BYTE_BUFFER_SIZE", // TODO remove
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "1024",
+					},
+				},
+				{
+					Name: "PROXY_TARGET_WHITELIST",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: cacheUrl,
 					},
 				},
 			},
