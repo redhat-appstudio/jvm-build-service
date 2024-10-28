@@ -31,6 +31,9 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--mvn-repo")
     String mvnRepo;
 
+    @CommandLine.Option(names = "--server-id")
+    String serverId = "indy-mvn";
+
     @Inject
     BootstrapMavenContext mvnCtx;
 
@@ -44,7 +47,7 @@ public class DeployCommand implements Runnable {
             }
             if (isNotEmpty(mvnRepo)) {
                 // Maven Repo Deployment
-                MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo, deploymentPath);
+                MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo, serverId, deploymentPath);
                 deployer.deploy();
             }
 
