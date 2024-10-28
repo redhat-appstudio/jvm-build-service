@@ -2,7 +2,6 @@ package com.redhat.hacbs.container.analyser.dependencies;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,18 +10,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-
-import org.cyclonedx.CycloneDxSchema;
-import org.cyclonedx.generators.BomGeneratorFactory;
-import org.cyclonedx.generators.json.BomJsonGenerator;
-import org.cyclonedx.model.Bom;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.hacbs.classfile.tracker.ClassFileTracker;
 import com.redhat.hacbs.classfile.tracker.TrackingData;
-import com.redhat.hacbs.container.results.ResultsUpdater;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
@@ -40,9 +32,6 @@ public abstract class AnalyserBase implements Runnable {
     @Inject
     RebuildService rebuild;
 
-    @CommandLine.Option(names = "-s")
-    Path sbom;
-
     @CommandLine.Option(names = "-c")
     Path dependenciesCount;
 
@@ -51,9 +40,6 @@ public abstract class AnalyserBase implements Runnable {
 
     @CommandLine.Option(names = "--publishers")
     Path publishers;
-
-    @Inject
-    Instance<ResultsUpdater> resultsUpdater;
 
     protected String imageDigest = "";
 
@@ -65,35 +51,12 @@ public abstract class AnalyserBase implements Runnable {
             doAnalysis(gavs, trackingData);
             rebuild.rebuild(taskRunName, gavs);
             writeResults(gavs, trackingData);
-            writeSbom(trackingData);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     abstract void doAnalysis(Set<String> gavs, Set<TrackingData> trackingData) throws Exception;
-
-    void writeSbom(Set<TrackingData> trackingData) throws IOException {
-        Bom bom;
-        InputStream existing = null;
-        try {
-            if (Files.exists(sbom)) {
-                existing = Files.newInputStream(sbom);
-            }
-            bom = SBomGenerator.generateSBom(trackingData, existing);
-        } finally {
-            if (existing != null) {
-                existing.close();
-            }
-        }
-
-        BomJsonGenerator generator = BomGeneratorFactory.createJson(CycloneDxSchema.VERSION_LATEST, bom);
-        String sbom = generator.toJsonString();
-        Log.infof("Generated SBOM:\n%s", sbom);
-        if (this.sbom != null) {
-            Files.writeString(this.sbom, sbom, StandardCharsets.UTF_8);
-        }
-    }
 
     void writeResults(Set<String> gavs, Set<TrackingData> trackingData) throws IOException {
         if (dependenciesCount != null) {

@@ -326,10 +326,13 @@ func setupE2E(t *testing.T, namespace string) *testArgs {
 	}
 	_, err = jvmClient.JvmbuildserviceV1alpha1().JBSConfigs(ta.ns).Create(context.TODO(), &jbsConfig, metav1.CreateOptions{})
 	if err != nil {
+		fmt.Printf("Problem creating JBSConfig %#v \n", err)
 		debugAndFailTest(ta, err.Error())
 	}
+	time.Sleep(time.Second * 10)
 	err = waitForCache(ta)
 	if err != nil {
+		fmt.Printf("Problem waiting for cache %#v \n", err)
 		debugAndFailTest(ta, err.Error())
 	}
 	return ta
@@ -1109,11 +1112,7 @@ func setupMinikube(t *testing.T, namespace string) *testArgs {
 		fmt.Printf("Problem creating JBSConfig %#v \n", err)
 		debugAndFailTest(ta, err.Error())
 	}
-
 	time.Sleep(time.Second * 10)
-
-	dumpPodDetails(ta)
-
 	err = waitForCache(ta)
 	if err != nil {
 		fmt.Printf("Problem waiting for cache %#v \n", err)
