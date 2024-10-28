@@ -28,6 +28,9 @@ public class DeployCommand implements Runnable {
     @ConfigProperty(name = "maven.password")
     Optional<String> mvnPassword;
 
+    @CommandLine.Option(names = "--mvn-settings")
+    String mvnSettings;
+
     @CommandLine.Option(names = "--mvn-repo")
     String mvnRepo;
 
@@ -44,6 +47,9 @@ public class DeployCommand implements Runnable {
             if (!deploymentPath.toFile().exists()) {
                 Log.warnf("No deployed artifacts found. Has the build been correctly configured to deploy?");
                 throw new RuntimeException("Deploy failed");
+            }
+            if (isNotEmpty(mvnSettings)) {
+                System.setProperty("maven.settings", mvnSettings);
             }
             if (isNotEmpty(mvnRepo)) {
                 // Maven Repo Deployment

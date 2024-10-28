@@ -69,6 +69,8 @@ public class MavenDeployTest {
 
         deployCommand.run();
         List<LogRecord> logRecords = LogCollectingTestResource.current().getRecords();
+
+        assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r).contains("no pom file found with files")));
         assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r)
                 .contains("Deploying [com.company.foo:foo-baz:pom:3.25.8]")));
         assertTrue(logRecords.stream().anyMatch(r -> LogCollectingTestResource.format(r)
@@ -85,6 +87,8 @@ public class MavenDeployTest {
         Path testData = Files.createTempDirectory("test-data");
         Path artifacts = Paths.get(testData.toString(), "artifacts").toAbsolutePath();
         Files.createDirectories(artifacts);
+
+        Files.createFile(Paths.get(artifacts.toString(), "test-file.txt"));
 
         // Add data to artifacts folder
         for (Map.Entry<String, Set<String>> artifactFiles : ARTIFACT_FILE_MAP.entrySet()) {

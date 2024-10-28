@@ -76,3 +76,4 @@ spec:
         - --directory=/var/workdir/deployment
         - --mvn-repo=$(params.MVN_REPO)
         - --mvn-username=$(params.MVN_USERNAME)
+        - --mvn-settings=/var/workdir/settings.xml
