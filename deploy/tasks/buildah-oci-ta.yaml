@@ -390,7 +390,7 @@ spec:
             fi
             echo "Build will be executed with domain proxy"
             echo ${DOMAIN_PROXY_ARGS[@]} # TODO remove
-            ${DOMAIN_PROXY_ARGS[@]} /app/domain-proxy-server-runner & # TODO remove explicit args if unnecessary
+            /app/domain-proxy-server-runner &
             server_pid=$!
           fi
         fi
@@ -494,11 +494,7 @@ spec:
           cat >> /app/build-script.sh << EOF
         #!/bin/sh
         ip link set lo up
-        ${DOMAIN_PROXY_ARGS[@]} /app/domain-proxy-client-runner &  # TODO remove explicit args if unnecessary
-        EOF
-
-        # Without expansion
-          cat > /app/build-script.sh << 'EOF'
+        /app/domain-proxy-client-runner &
         client_pid=$!
         EOF
 

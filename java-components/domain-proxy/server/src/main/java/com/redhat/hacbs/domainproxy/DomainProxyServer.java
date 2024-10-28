@@ -45,6 +45,7 @@ public class DomainProxyServer {
 
     @PostConstruct
     public void start() {
+        Log.infof("Byte buffer size %d", byteBufferSize); // TODO remove
         new Thread(() -> {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {

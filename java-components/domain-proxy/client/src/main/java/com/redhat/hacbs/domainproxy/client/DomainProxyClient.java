@@ -41,6 +41,7 @@ public class DomainProxyClient {
     @PostConstruct
     public void start() {
         Log.info("Starting domain proxy client...");
+        Log.infof("Byte buffer size %d", byteBufferSize); // TODO remove
         new Thread(() -> {
             try (final ServerSocket serverSocket = new ServerSocket(clientHttpPort)) {
                 while (running) {

@@ -48,6 +48,7 @@ public class ExternalProxyVerticle extends AbstractVerticle {
     @Override
     public void start() {
         Log.info("Starting domain proxy server...");
+        Log.infof("Proxy target whitelist: %s", proxyTargetWhitelist); // TODO remove
         httpServer.requestHandler(request -> {
             if (request.method() == HttpMethod.GET) {
                 handleGetRequest(request);

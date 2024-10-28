@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -477,6 +478,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		},
 	}
 
+	whitelistUrl, err := url.Parse(cacheUrl)
+	if err != nil {
+		return nil, "", err
+	}
 	ps.Tasks = append([]tektonpipeline.PipelineTask{
 		{
 			Name:     BuildTaskName,
@@ -548,14 +553,14 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "BYTE_BUFFER_SIZE", // TODO remove
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "1024",
+						StringVal: "2048",
 					},
 				},
 				{
 					Name: "PROXY_TARGET_WHITELIST",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: cacheUrl,
+						StringVal: whitelistUrl.Host,
 					},
 				},
 			},
