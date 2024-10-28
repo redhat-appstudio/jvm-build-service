@@ -560,7 +560,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "PROXY_TARGET_WHITELIST",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: whitelistUrl.Host,
+						StringVal: whitelistUrl.Host + ",cdn-ubi.redhat.com",
 					},
 				},
 			},
