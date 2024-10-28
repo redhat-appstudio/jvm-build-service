@@ -122,9 +122,9 @@ public class MavenRepositoryDeployer {
                                     throw new RuntimeException(e);
                                 }
                             } else {
-                                if (files.stream().anyMatch(p -> !p.toFile().isDirectory())) {
-                                    Log.warnf("For directory %s, no pom file found with files %s", dir,
-                                            files);
+                                var filtered = files.stream().filter(f -> !f.toFile().isDirectory()).toList();
+                                if (!filtered.isEmpty()) {
+                                    Log.warnf("For directory %s, no pom file found with files %s", dir, filtered);
                                 }
                             }
 
