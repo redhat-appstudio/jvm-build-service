@@ -13,7 +13,6 @@ metadata:
     appstudio.openshift.io/application: jvm-build-service
     appstudio.openshift.io/component: cli
     pipelines.appstudio.openshift.io/type: build
-    konflux.additional-tags: "latest"
   name: cli-on-push
   namespace: konflux-jbs-pnc-tenant
 spec:
@@ -392,6 +391,8 @@ spec:
       params:
       - name: IMAGE
         value: $(tasks.build-container.results.IMAGE_URL)
+      - name: ADDITIONAL_TAGS
+        value: ["latest"]
       runAfter:
       - build-container
       taskRef:
