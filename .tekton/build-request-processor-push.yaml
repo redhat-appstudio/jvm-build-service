@@ -13,6 +13,7 @@ metadata:
     appstudio.openshift.io/application: jvm-build-service
     appstudio.openshift.io/component: build-request-processor
     pipelines.appstudio.openshift.io/type: build
+    konflux.additional-tags: "latest"
   name: build-request-processor-on-push
   namespace: konflux-jbs-pnc-tenant
 spec:
