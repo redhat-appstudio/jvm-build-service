@@ -391,6 +391,8 @@ spec:
       params:
       - name: IMAGE
         value: $(tasks.build-container.results.IMAGE_URL)
+      - name: ADDITIONAL_TAGS
+        value: ["latest"]
       runAfter:
       - build-container
       taskRef:

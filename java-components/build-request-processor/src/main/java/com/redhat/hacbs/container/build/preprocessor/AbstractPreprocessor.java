@@ -105,7 +105,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             export MAVEN_HOME=${MAVEN_HOME:=/opt/maven/3.8.8}
             export GRADLE_USER_HOME="${JBS_WORKDIR}/software/settings/.gradle"
 
-            mkdir -p ${JBS_WORKDIR}/logs ${JBS_WORKDIR}/packages ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
+            mkdir -p ${JBS_WORKDIR}/logs ${JBS_WORKDIR}/packages ${JBS_WORKDIR}/settings ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
             cd ${JBS_WORKDIR}/source
 
             if [ -n "${JAVA_HOME}" ]; then
@@ -119,6 +119,7 @@ public abstract class AbstractPreprocessor implements Runnable {
         runBuild += getMavenSetup();
 
         runBuild += """
+                cp -a ${HOME}/.m2/*.xml ${JBS_WORKDIR}/settings
             fi
 
             if [ -n "${GRADLE_HOME}" ]; then
@@ -192,15 +193,19 @@ public abstract class AbstractPreprocessor implements Runnable {
                     COPY --from=0 /var/workdir/ /var/workdir/
                     RUN /opt/jboss/container/java/run/run-java.sh copy-artifacts --source-path=/var/workdir/workspace/source --deploy-path=/var/workdir/workspace/artifacts
                     FROM scratch
-                    COPY --from=1 /var/workdir/workspace/artifacts /
+                    COPY --from=1 /var/workdir/workspace/settings /settings/
+                    COPY --from=1 /var/workdir/workspace/artifacts /deployment/
                     """.formatted(buildRequestProcessorImage);
         } else {
             containerFile +=
                 """
                     FROM scratch
-                    COPY --from=0 /var/workdir/workspace/artifacts /
+                    COPY --from=0 /var/workdir/workspace/settings /settings/
+                    COPY --from=0 /var/workdir/workspace/artifacts /deployment/
                     """;
         }
+
+        Log.warnf("### containerFile is\n%s", containerFile);
 
         return containerFile;
     }
@@ -210,7 +215,8 @@ public abstract class AbstractPreprocessor implements Runnable {
      * altDeploymentDirectory to be used by default.
      */
     private String getMavenSetup() {
-        String result = """
+
+        return """
             echo "MAVEN_HOME:$MAVEN_HOME"
             PATH="${MAVEN_HOME}/bin:$PATH"
 
@@ -249,9 +255,6 @@ public abstract class AbstractPreprocessor implements Runnable {
           <profiles>
             <profile>
               <id>secondary</id>
-              <activation>
-                <activeByDefault>true</activeByDefault>
-              </activation>
               <repositories>
                 <repository>
                   <id>artifacts</id>
@@ -275,9 +278,6 @@ public abstract class AbstractPreprocessor implements Runnable {
             </profile>
             <profile>
               <id>local-deployment</id>
-              <activation>
-                <activeByDefault>true</activeByDefault>
-              </activation>
               <properties>
                 <altDeploymentRepository>
                   local::file://${JBS_WORKDIR}/artifacts
@@ -286,12 +286,12 @@ public abstract class AbstractPreprocessor implements Runnable {
             </profile>
           </profiles>
 
-           <interactiveMode>false</interactiveMode>
-        """;
+          <activeProfiles>
+            <activeProfile>secondary</activeProfile>
+            <activeProfile>local-deployment</activeProfile>
+          </activeProfiles>
 
-        // This block is only needed when running outside of JBS
-        if (isEmpty(System.getenv("jvm-build-service"))) {
-            result += """
+          <interactiveMode>false</interactiveMode>
           <!--
             Needed for Maven 3.9+. Switched to native resolver
             https://maven.apache.org/guides/mini/guide-resolver-transport.html
@@ -304,40 +304,37 @@ public abstract class AbstractPreprocessor implements Runnable {
                 <httpHeaders>
                   <property>
                     <name>Authorization</name>
-                    <value>Bearer ${accessToken}</value>
+                    <value>Bearer ${ACCESS_TOKEN}</value>
                   </property>
                 </httpHeaders>
               </configuration>
             </server>
           </servers>
-
           <proxies>
             <proxy>
               <id>indy-http</id>
-              <active>true</active>
+              <!-- TODO: Until domain-proxy is implemented disable this - probably needs conditional activation but settings profiles don't support interpolation -->
+              <active>false</active>
               <protocol>http</protocol>
-              <host>indy-generic-proxy</host>
+              <host>domain-proxy</host>
               <port>80</port>
               <!-- <username>build-ADDTW3JAGHYAA+tracking</username> -->
               <username>${BUILD_ID}+tracking</username>
-              <password>${MVN_TOKEN}</password>
+              <password>${ACCESS_TOKEN}</password>
               <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
             </proxy>
             <proxy>
               <id>indy-https</id>
-              <active>true</active>
+              <active>false</active>
               <protocol>https</protocol>
-              <host>indy-generic-proxy</host>
+              <host>domain-proxy</host>
               <port>80</port>
               <username>${BUILD_ID}+tracking</username>
-              <password>${MVN_TOKEN}</password>
+              <password>${ACCESS_TOKEN}</password>
               <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
             </proxy>
           </proxies>
-        """;
-        }
 
-        result += """
         </settings>
         EOF
 
@@ -374,8 +371,6 @@ public abstract class AbstractPreprocessor implements Runnable {
         </toolchains>
         EOF
         """.formatted(javaVersion);
-
-        return result;
     }
 
 

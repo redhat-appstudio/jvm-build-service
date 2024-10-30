@@ -5,5 +5,4 @@ const (
 	maxNameLength          = 63
 	randomLength           = 5
 	maxGeneratedNameLength = maxNameLength - randomLength
-	gitCloneTaskUrl        = "https://raw.githubusercontent.com/konflux-ci/build-definitions/main/task/git-clone/0.1/git-clone.yaml"
 )
