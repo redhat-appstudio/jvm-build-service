@@ -244,9 +244,6 @@ public abstract class AbstractPreprocessor implements Runnable {
           <profiles>
             <profile>
               <id>secondary</id>
-              <activation>
-                <activeByDefault>true</activeByDefault>
-              </activation>
               <repositories>
                 <repository>
                   <id>artifacts</id>
@@ -270,9 +267,6 @@ public abstract class AbstractPreprocessor implements Runnable {
             </profile>
             <profile>
               <id>local-deployment</id>
-              <activation>
-                <activeByDefault>true</activeByDefault>
-              </activation>
               <properties>
                 <altDeploymentRepository>
                   local::file://${JBS_WORKDIR}/artifacts
@@ -280,17 +274,20 @@ public abstract class AbstractPreprocessor implements Runnable {
               </properties>
             </profile>
             <profile>
-              <id>PROXY_ENABLED</id>
-              <activation>
-                <activeByDefault>true</activeByDefault>
-              </activation>
+              <id>proxy-enabled</id>
               <properties>
                 <PROXY_ENABLED>false</PROXY_ENABLED>
               </properties>
             </profile>
           </profiles>
 
-           <interactiveMode>false</interactiveMode>
+          <activeProfiles>
+            <activeProfile>secondary</activeProfile>
+            <activeProfile>local-deployment</activeProfile>
+            <activeProfile>proxy-enabled</activeProfile>
+          </activeProfiles>
+
+          <interactiveMode>false</interactiveMode>
           <!--
             Needed for Maven 3.9+. Switched to native resolver
             https://maven.apache.org/guides/mini/guide-resolver-transport.html
