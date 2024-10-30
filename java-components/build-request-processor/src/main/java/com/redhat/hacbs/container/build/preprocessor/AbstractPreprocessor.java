@@ -298,7 +298,7 @@ public abstract class AbstractPreprocessor implements Runnable {
                 <httpHeaders>
                   <property>
                     <name>Authorization</name>
-                    <value>Bearer ${accessToken}</value>
+                    <value>Bearer ${ACCESS_TOKEN}</value>
                   </property>
                 </httpHeaders>
               </configuration>
@@ -314,7 +314,7 @@ public abstract class AbstractPreprocessor implements Runnable {
               <port>80</port>
               <!-- <username>build-ADDTW3JAGHYAA+tracking</username> -->
               <username>${BUILD_ID}+tracking</username>
-              <password>${MVN_TOKEN}</password>
+              <password>${ACCESS_TOKEN}</password>
               <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
             </proxy>
             <proxy>
@@ -324,7 +324,7 @@ public abstract class AbstractPreprocessor implements Runnable {
               <host>indy-generic-proxy</host>
               <port>80</port>
               <username>${BUILD_ID}+tracking</username>
-              <password>${MVN_TOKEN}</password>
+              <password>${ACCESS_TOKEN}</password>
               <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
             </proxy>
           </proxies>
