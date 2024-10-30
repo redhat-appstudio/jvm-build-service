@@ -13,6 +13,7 @@ metadata:
     appstudio.openshift.io/application: jvm-build-service
     appstudio.openshift.io/component: cache
     pipelines.appstudio.openshift.io/type: build
+    konflux.additional-tags: "latest"
   name: cache-on-push
   namespace: konflux-jbs-pnc-tenant
 spec:

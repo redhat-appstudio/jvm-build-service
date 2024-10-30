@@ -143,7 +143,7 @@ The OpenShift E2E test is programmed to run a test with following steps:
 . Verify that the correct JDK version is identified in dependencybuilds
 . Check that maven/gradle logs/sources are found in rebuilt artifacts
 
-Before running the test, you need to export couple of env vars that reference container images for the operator, cache and reqprocessor. Some existing images can be found at link:https://quay.io/organization/redhat-appstudio[redhat-appstudio quay.io org] (search for keyword "jvm")
+Before running the test, you need to export couple of env vars that reference container images for the operator, cache and build-request-processor.
 
 Also you need to specify your quay.io username that will be used for pushing rebuilt dependencies in a format: `quay.io/$QUAY_USERNAME/test-images`. Make sure the repo "test-images" exists in your account and is publicly available.
 
