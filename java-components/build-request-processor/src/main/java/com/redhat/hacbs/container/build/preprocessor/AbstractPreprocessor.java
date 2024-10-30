@@ -273,18 +273,11 @@ public abstract class AbstractPreprocessor implements Runnable {
                 </altDeploymentRepository>
               </properties>
             </profile>
-            <profile>
-              <id>proxy-enabled</id>
-              <properties>
-                <PROXY_ENABLED>false</PROXY_ENABLED>
-              </properties>
-            </profile>
           </profiles>
 
           <activeProfiles>
             <activeProfile>secondary</activeProfile>
             <activeProfile>local-deployment</activeProfile>
-            <activeProfile>proxy-enabled</activeProfile>
           </activeProfiles>
 
           <interactiveMode>false</interactiveMode>
@@ -309,7 +302,8 @@ public abstract class AbstractPreprocessor implements Runnable {
           <proxies>
             <proxy>
               <id>indy-http</id>
-              <active>${PROXY_ENABLED}</active>
+              <!-- TODO: Until domain-proxy is implemented disable this - probably needs conditional activation but settings profiles don't support interpolation -->
+              <active>false</active>
               <protocol>http</protocol>
               <host>domain-proxy</host>
               <port>80</port>
@@ -320,7 +314,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             </proxy>
             <proxy>
               <id>indy-https</id>
-              <active>${PROXY_ENABLED}</active>
+              <active>false</active>
               <protocol>https</protocol>
               <host>domain-proxy</host>
               <port>80</port>
