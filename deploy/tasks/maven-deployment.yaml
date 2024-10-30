@@ -28,6 +28,10 @@ spec:
     - name: MVN_PASSWORD
       description: Name of the secret holding the Maven repository password
       type: string
+    - name: ACCESS_TOKEN
+      description: Access token for OAuth.
+      type: string
+      default: ""
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       description: Name of the processor image. Useful to override for development.
       type: string
@@ -71,6 +75,8 @@ spec:
             secretKeyRef:
               name: $(params.MVN_PASSWORD)
               key: mavenpassword
+        - name: ACCESS_TOKEN
+          value: $(params.ACCESS_TOKEN)
       args:
         - deploy
         - --directory=/var/workdir/deployment

@@ -611,24 +611,17 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 			},
 		}},
 	}
-	// Setting a default environment variable to represent being run inside the operator
-	pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
-		PodTemplate: &pod.Template{
-			Env: []v1.EnvVar{
-				{
-					Name:  util.ControllerNamespace,
-					Value: util.ControllerDeploymentName,
+	if orasOptions != "" {
+		pr.Spec.TaskRunTemplate = tektonpipeline.PipelineTaskRunTemplate{
+			PodTemplate: &pod.Template{
+				Env: []v1.EnvVar{
+					{
+						Name:  "ORAS_OPTIONS",
+						Value: orasOptions,
+					},
 				},
 			},
-		},
-	}
-	if orasOptions != "" {
-		pr.Spec.TaskRunTemplate.PodTemplate.Env = append([]v1.EnvVar{
-			{
-				Name:  "ORAS_OPTIONS",
-				Value: orasOptions,
-			},
-		}, pr.Spec.TaskRunTemplate.PodTemplate.Env...)
+		}
 	}
 
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.CITests] == "true" {
