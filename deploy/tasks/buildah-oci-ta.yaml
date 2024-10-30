@@ -146,6 +146,9 @@ spec:
     - name: PROXY_TARGET_WHITELIST
       description: Comma separated whitelist of target hosts for the domain proxy.
       type: string
+    - name: PROXY_URL
+      description: Proxy URL.
+      type: string
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built
@@ -237,6 +240,8 @@ spec:
         value: $(params.BYTE_BUFFER_SIZE)
       - name: PROXY_TARGET_WHITELIST
         value: $(params.PROXY_TARGET_WHITELIST)
+      - name: PROXY_URL
+        value: $(params.PROXY_URL)
     volumeMounts:
       - mountPath: /shared
         name: shared
@@ -393,6 +398,7 @@ spec:
             echo ${DOMAIN_PROXY_ARGS[@]} # TODO remove
             /app/domain-proxy-server-runner &
             server_pid=$!
+            ping ${PROXY_URL}
           fi
         fi
 
