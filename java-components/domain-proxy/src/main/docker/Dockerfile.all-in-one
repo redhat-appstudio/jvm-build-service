@@ -7,7 +7,7 @@ RUN domain-proxy/mvnw -V -B package -pl domain-proxy/client,domain-proxy/server 
 
 FROM quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
 USER 0
-RUN microdnf install -y iproute iputils
+RUN microdnf install -y iproute
 WORKDIR /work/
 
 COPY --from=builder /work/domain-proxy/client/target/domain-proxy-client-999-SNAPSHOT-runner /app/domain-proxy-client-runner

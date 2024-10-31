@@ -398,7 +398,7 @@ spec:
             echo ${DOMAIN_PROXY_ARGS[@]} # TODO remove
             /app/domain-proxy-server-runner &
             server_pid=$!
-            ping ${CACHE_URL}
+            curl -I ${CACHE_URL}
           fi
         fi
 
