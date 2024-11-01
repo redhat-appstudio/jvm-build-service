@@ -398,7 +398,7 @@ spec:
             echo ${DOMAIN_PROXY_ARGS[@]} # TODO remove
             /app/domain-proxy-server-runner &
             server_pid=$!
-            curl -I ${CACHE_URL}
+            curl -v "${CACHE_URL}/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar"
           fi
         fi
 
