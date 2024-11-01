@@ -304,7 +304,7 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, requ
 							TargetPort: intstr.IntOrString{IntVal: 8080},
 						},
 					},
-					Type:     corev1.ServiceTypeClusterIP,
+					Type:     corev1.ServiceTypeNodePort,
 					Selector: map[string]string{"app": v1alpha1.CacheDeploymentName},
 				},
 			}
@@ -334,7 +334,7 @@ func (r *ReconcilerJBSConfig) deploymentSupportObjects(ctx context.Context, requ
 							TargetPort: intstr.IntOrString{IntVal: 8443},
 						},
 					},
-					Type:     corev1.ServiceTypeClusterIP,
+					Type:     corev1.ServiceTypeNodePort,
 					Selector: map[string]string{"app": v1alpha1.CacheDeploymentName},
 				},
 			}
