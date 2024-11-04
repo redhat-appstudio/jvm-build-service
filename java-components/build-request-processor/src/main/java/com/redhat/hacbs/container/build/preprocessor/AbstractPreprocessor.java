@@ -311,30 +311,6 @@ public abstract class AbstractPreprocessor implements Runnable {
               </configuration>
             </server>
           </servers>
-          <proxies>
-            <proxy>
-              <id>indy-http</id>
-              <!-- TODO: Until domain-proxy is implemented disable this - probably needs conditional activation but settings profiles don't support interpolation -->
-              <active>false</active>
-              <protocol>http</protocol>
-              <host>domain-proxy</host>
-              <port>80</port>
-              <!-- <username>build-ADDTW3JAGHYAA+tracking</username> -->
-              <username>${BUILD_ID}+tracking</username>
-              <password>${ACCESS_TOKEN}</password>
-              <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
-            </proxy>
-            <proxy>
-              <id>indy-https</id>
-              <active>false</active>
-              <protocol>https</protocol>
-              <host>domain-proxy</host>
-              <port>80</port>
-              <username>${BUILD_ID}+tracking</username>
-              <password>${ACCESS_TOKEN}</password>
-              <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
-            </proxy>
-          </proxies>
 
         </settings>
         EOF
