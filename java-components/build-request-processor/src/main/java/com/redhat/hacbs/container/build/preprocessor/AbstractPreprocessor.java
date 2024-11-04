@@ -104,7 +104,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             # useful if Gradle/Ant also requires Maven configured.
             export MAVEN_HOME=${MAVEN_HOME:=/opt/maven/3.8.8}
             export GRADLE_USER_HOME="${JBS_WORKDIR}/software/settings/.gradle"
-            curl -v "${CACHE_URL}/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar"
+            curl -v "${PROXY_URL}/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar"
 
             mkdir -p ${JBS_WORKDIR}/logs ${JBS_WORKDIR}/packages ${JBS_WORKDIR}/settings ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
             cd ${JBS_WORKDIR}/source
