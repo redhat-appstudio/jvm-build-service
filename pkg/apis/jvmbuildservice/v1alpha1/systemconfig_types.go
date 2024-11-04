@@ -49,5 +49,5 @@ const (
 	KonfluxGitDefinition          = "https://raw.githubusercontent.com/konflux-ci/build-definitions/refs/heads/main/task/git-clone/0.1/git-clone.yaml"
 	KonfluxPreBuildDefinitions    = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/pre-build.yaml"
 	KonfluxBuildDefinitions       = "https://raw.githubusercontent.com/tecarter94/jvm-build-service/domain-proxy/deploy/tasks/buildah-oci-ta.yaml" // TODO Update branch to main
-	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/rnc/jvm-build-service/TOKEN/deploy/tasks/maven-deployment.yaml"
+	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/maven-deployment.yaml"
 )
