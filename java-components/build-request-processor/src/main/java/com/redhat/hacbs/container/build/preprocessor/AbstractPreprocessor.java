@@ -89,6 +89,8 @@ public abstract class AbstractPreprocessor implements Runnable {
 
             export http_proxy=http://localhost:8080
             export https_proxy=${http_proxy}
+            export HTTP_PROXY=${http_proxy}
+            export HTTPS_PROXY=${http_proxy}
             #fix this when we no longer need to run as root
             export HOME=${HOME:=/root}
             # Custom base working directory.
@@ -180,6 +182,8 @@ public abstract class AbstractPreprocessor implements Runnable {
             ENV PROXY_URL=$PROXY_URL
             ENV http_proxy=http://localhost:8080
             ENV https_proxy=${http_proxy}
+            ENV HTTP_PROXY=${http_proxy}
+            ENV HTTPS_PROXY=${http_proxy}
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
             RUN /var/workdir/run-build.sh
