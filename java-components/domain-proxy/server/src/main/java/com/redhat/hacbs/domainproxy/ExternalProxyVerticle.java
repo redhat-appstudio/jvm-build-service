@@ -35,6 +35,10 @@ public class ExternalProxyVerticle extends AbstractVerticle {
     @ConfigProperty(name = "proxy-target-whitelist")
     Set<String> proxyTargetWhitelist;
 
+    @Inject
+    @ConfigProperty(name = "quarkus.rest-client.non-proxy-hosts")
+    Set<String> nonProxyHosts;
+
     private final WebClient webClient;
     private final NetClient netClient;
     private final HttpServer httpServer;
@@ -125,8 +129,8 @@ public class ExternalProxyVerticle extends AbstractVerticle {
 
     private boolean isTargetWhitelisted(final String targetHost, final HttpServerRequest request) {
         Log.infof("Target %s", targetHost);
-        if (!proxyTargetWhitelist.contains(targetHost)) {
-            Log.error("Target is not in whitelist");
+        if (!proxyTargetWhitelist.contains(targetHost) && !nonProxyHosts.contains(targetHost)) {
+            Log.error("Target is not whitelisted or a non-proxy host");
             request.response()
                     .setStatusCode(HttpResponseStatus.NOT_FOUND.code())
                     .setStatusMessage(HttpResponseStatus.NOT_FOUND.reasonPhrase())

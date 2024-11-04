@@ -556,14 +556,35 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "PROXY_TARGET_WHITELIST",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: whitelistUrl.Host + ",cdn-ubi.redhat.com",
+						StringVal: "cdn-ubi.redhat.com",
 					},
 				},
 				{
-					Name: "CACHE_URL",
+					Name: "INTERNAL_PROXY_ADDRESS",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: cacheUrl,
+						StringVal: "indy-generic-proxy:80",
+					},
+				},
+				{
+					Name: "INTERNAL_PROXY_USER",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "${BUILD_ID}+tracking",
+					},
+				},
+				{
+					Name: "INTERNAL_PROXY_PASSWORD",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "${ACCESS_TOKEN}",
+					},
+				},
+				{
+					Name: "INTERNAL_NON_PROXY_HOSTS",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: whitelistUrl.Host + ",localhost",
 					},
 				},
 			},

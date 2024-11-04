@@ -89,8 +89,6 @@ public abstract class AbstractPreprocessor implements Runnable {
 
             export http_proxy=http://localhost:8080
             export https_proxy=${http_proxy}
-            export HTTP_PROXY=${http_proxy}
-            export HTTPS_PROXY=${http_proxy}
             #fix this when we no longer need to run as root
             export HOME=${HOME:=/root}
             # Custom base working directory.
@@ -108,7 +106,6 @@ public abstract class AbstractPreprocessor implements Runnable {
             # useful if Gradle/Ant also requires Maven configured.
             export MAVEN_HOME=${MAVEN_HOME:=/opt/maven/3.8.8}
             export GRADLE_USER_HOME="${JBS_WORKDIR}/software/settings/.gradle"
-            curl -v "${PROXY_URL}/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar"
 
             mkdir -p ${JBS_WORKDIR}/logs ${JBS_WORKDIR}/packages ${JBS_WORKDIR}/settings ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
             cd ${JBS_WORKDIR}/source
@@ -183,8 +180,6 @@ public abstract class AbstractPreprocessor implements Runnable {
             ENV PROXY_URL=$PROXY_URL
             ENV http_proxy=http://localhost:8080
             ENV https_proxy=${http_proxy}
-            ENV HTTP_PROXY=${http_proxy}
-            ENV HTTPS_PROXY=${http_proxy}
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
             RUN /var/workdir/run-build.sh
@@ -412,9 +407,7 @@ public abstract class AbstractPreprocessor implements Runnable {
                 <property name="local-pattern" value="\\${user.home}/.m2/repository/[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
                 <settings defaultResolver="defaultChain"/>
                 <resolvers>
-                    <ibiblio name="default" root="\\${cache-url}" pattern="\\${default-pattern}" m2compatible="true">
-                        <proxy host="localhost" port="8080" />
-                    </ibiblio>
+                    <ibiblio name="default" root="\\${cache-url}" pattern="\\${default-pattern}" m2compatible="true"/>
                     <filesystem name="local" m2compatible="true">
                         <artifact pattern="\\${local-pattern}"/>
                         <ivy pattern="\\${local-pattern}"/>

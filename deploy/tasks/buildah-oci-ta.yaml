@@ -146,8 +146,17 @@ spec:
     - name: PROXY_TARGET_WHITELIST
       description: Comma separated whitelist of target hosts for the domain proxy.
       type: string
-    - name: CACHE_URL
-      description: Cache URL.
+    - name: INTERNAL_PROXY_ADDRESS
+      description: Host and port of proxy used internally by the domain proxy.
+      type: string
+    - name: INTERNAL_PROXY_USER
+      description: User of proxy used internally by the domain proxy.
+      type: string
+    - name: INTERNAL_PROXY_PASSWORD
+      description: Password of proxy used internally by the domain proxy.
+      type: string
+    - name: INTERNAL_NON_PROXY_HOSTS
+      description: Comma separated list of target hosts that bypass the proxy used internally by the domain proxy.
       type: string
   results:
     - name: IMAGE_DIGEST
@@ -240,8 +249,14 @@ spec:
         value: $(params.BYTE_BUFFER_SIZE)
       - name: PROXY_TARGET_WHITELIST
         value: $(params.PROXY_TARGET_WHITELIST)
-      - name: CACHE_URL
-        value: $(params.CACHE_URL)
+      - name: INTERNAL_PROXY_ADDRESS
+        value: $(params.INTERNAL_PROXY_ADDRESS)
+      - name: INTERNAL_PROXY_USER
+        value: $(params.INTERNAL_PROXY_USER)
+      - name: INTERNAL_PROXY_PASSWORD
+        value: $(params.INTERNAL_PROXY_PASSWORD)
+      - name: INTERNAL_NON_PROXY_HOSTS
+        value: $(params.INTERNAL_NON_PROXY_HOSTS)
     volumeMounts:
       - mountPath: /shared
         name: shared
@@ -398,7 +413,6 @@ spec:
             echo ${DOMAIN_PROXY_ARGS[@]} # TODO remove
             /app/domain-proxy-server-runner &
             server_pid=$!
-            curl -v "${CACHE_URL}/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar"
           fi
         fi
 
