@@ -655,6 +655,13 @@ use-archive oci:$URL@$AARCHIVE=%s`, orasOptions, registryArgsWithDefaults(jbsCon
 					},
 				},
 				{
+					Name: "MVN_SERVER_ID",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "jbs-server",
+					},
+				},
+				{
 					Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,

@@ -25,9 +25,14 @@ spec:
     - name: MVN_USERNAME
       description: Maven repository username
       type: string
+      default: ""
     - name: MVN_PASSWORD
       description: Name of the secret holding the Maven repository password
       type: string
+    - name: MVN_SERVER_ID
+      description: Server identification in Maven settings.
+      type: string
+      default: "indy-mvn"
     - name: ACCESS_TOKEN
       description: Access token for OAuth.
       type: string
@@ -66,10 +71,6 @@ spec:
           cpu: 10m
           memory: 512Mi
       env:
-        - name: MVN_REPO
-          value: $(params.MVN_REPO)
-        - name: MVN_USERNAME
-          value: $(params.MVN_USERNAME)
         - name: MAVEN_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -82,4 +83,5 @@ spec:
         - --directory=/var/workdir/deployment
         - --mvn-repo=$(params.MVN_REPO)
         - --mvn-username=$(params.MVN_USERNAME)
-        - --mvn-settings=/var/workdir/settings.xml
+        - --server-id=$(params.MVN_SERVER_ID)
+        - --mvn-settings=/var/workdir/settings/settings.xml
