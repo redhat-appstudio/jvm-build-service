@@ -49,6 +49,10 @@ public class DeployCommand implements Runnable {
                 throw new RuntimeException("Deploy failed");
             }
             if (isNotEmpty(mvnSettings)) {
+                if (!Path.of(mvnSettings).toFile().exists()) {
+                    Log.errorf("Invalid Maven settings path: %s", mvnSettings);
+                    throw new RuntimeException("Invalid Maven settings");
+                }
                 System.setProperty("maven.settings", mvnSettings);
             }
             if (isNotEmpty(mvnRepo)) {
