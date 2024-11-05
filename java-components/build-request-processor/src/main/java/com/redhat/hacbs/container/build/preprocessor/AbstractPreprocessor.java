@@ -91,7 +91,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             export https_proxy=${http_proxy}
             export HTTP_PROXY=${http_proxy}
             export HTTPS_PROXY=${http_proxy}
-            export ANT_OPTS=-Dhttp.proxyHost=localhost -Dhttp.proxyPort=8080
+            export ANT_OPTS="-Dhttp.proxyHost=localhost -Dhttp.proxyPort=8080"
             #fix this when we no longer need to run as root
             export HOME=${HOME:=/root}
             # Custom base working directory.
