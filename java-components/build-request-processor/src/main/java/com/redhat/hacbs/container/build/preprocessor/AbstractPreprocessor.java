@@ -91,6 +91,8 @@ public abstract class AbstractPreprocessor implements Runnable {
             export HOME=${HOME:=/root}
             # Custom base working directory.
             export JBS_WORKDIR=${JBS_WORKDIR:=/var/workdir/workspace}
+            # TODO: Until domain-proxy is implemented disable this
+            export PROXY_ENABLED=false
 
             export LANG="en_US.UTF-8"
             export LC_ALL="en_US.UTF-8"
@@ -302,8 +304,7 @@ public abstract class AbstractPreprocessor implements Runnable {
           <proxies>
             <proxy>
               <id>indy-http</id>
-              <!-- TODO: Until domain-proxy is implemented disable this - probably needs conditional activation but settings profiles don't support interpolation -->
-              <active>false</active>
+              <active>${PROXY_ENABLED}</active>
               <protocol>http</protocol>
               <host>domain-proxy</host>
               <port>80</port>
@@ -314,7 +315,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             </proxy>
             <proxy>
               <id>indy-https</id>
-              <active>false</active>
+              <active>${PROXY_ENABLED}</active>
               <protocol>https</protocol>
               <host>domain-proxy</host>
               <port>80</port>

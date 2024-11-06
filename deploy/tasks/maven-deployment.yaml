@@ -78,6 +78,8 @@ spec:
               key: mavenpassword
         - name: ACCESS_TOKEN
           value: $(params.ACCESS_TOKEN)
+        - name: PROXY_ENABLED
+          value: "false"
       args:
         - deploy
         - --directory=/var/workdir/deployment
