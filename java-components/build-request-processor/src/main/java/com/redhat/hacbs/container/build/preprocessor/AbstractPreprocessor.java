@@ -278,24 +278,7 @@ public abstract class AbstractPreprocessor implements Runnable {
           </activeProfiles>
 
           <interactiveMode>false</interactiveMode>
-          <!--
-            Needed for Maven 3.9+. Switched to native resolver
-            https://maven.apache.org/guides/mini/guide-resolver-transport.html
-          -->
-          <servers>
-            <server>
-              <id>indy-mvn</id>
-              <configuration>
-                <connectionTimeout>60000</connectionTimeout>
-                <httpHeaders>
-                  <property>
-                    <name>Authorization</name>
-                    <value>Bearer ${ACCESS_TOKEN}</value>
-                  </property>
-                </httpHeaders>
-              </configuration>
-            </server>
-          </servers>
+
           <proxies>
             <proxy>
               <id>indy-http</id>
