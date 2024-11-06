@@ -84,4 +84,4 @@ spec:
         - --mvn-repo=$(params.MVN_REPO)
         - --mvn-username=$(params.MVN_USERNAME)
         - --server-id=$(params.MVN_SERVER_ID)
-        - --mvn-settings=/var/workdir/settings/settings.xml
+      #  - --mvn-settings=/var/workdir/settings/settings.xml
