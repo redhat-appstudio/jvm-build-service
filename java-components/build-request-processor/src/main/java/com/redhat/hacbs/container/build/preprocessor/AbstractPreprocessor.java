@@ -110,7 +110,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             export MAVEN_HOME=${MAVEN_HOME:=/opt/maven/3.8.8}
             export GRADLE_USER_HOME="${JBS_WORKDIR}/software/settings/.gradle"
 
-            mkdir -p ${JBS_WORKDIR}/logs ${JBS_WORKDIR}/packages ${JBS_WORKDIR}/settings ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
+            mkdir -p ${JBS_WORKDIR}/logs ${JBS_WORKDIR}/packages ${HOME}/.sbt/1.0 ${GRADLE_USER_HOME} ${HOME}/.m2
             cd ${JBS_WORKDIR}/source
 
             if [ -n "${JAVA_HOME}" ]; then
@@ -124,7 +124,6 @@ public abstract class AbstractPreprocessor implements Runnable {
         runBuild += getMavenSetup();
 
         runBuild += """
-                cp -a ${HOME}/.m2/*.xml ${JBS_WORKDIR}/settings
             fi
 
             if [ -n "${GRADLE_HOME}" ]; then
@@ -200,14 +199,12 @@ public abstract class AbstractPreprocessor implements Runnable {
                     COPY --from=0 /var/workdir/ /var/workdir/
                     RUN /opt/jboss/container/java/run/run-java.sh copy-artifacts --source-path=/var/workdir/workspace/source --deploy-path=/var/workdir/workspace/artifacts
                     FROM scratch
-                    COPY --from=1 /var/workdir/workspace/settings /settings/
                     COPY --from=1 /var/workdir/workspace/artifacts /deployment/
                     """.formatted(buildRequestProcessorImage);
         } else {
             containerFile +=
                 """
                     FROM scratch
-                    COPY --from=0 /var/workdir/workspace/settings /settings/
                     COPY --from=0 /var/workdir/workspace/artifacts /deployment/
                     """;
         }
@@ -242,15 +239,6 @@ public abstract class AbstractPreprocessor implements Runnable {
               <mirrorOf>*</mirrorOf>
             </mirror>
           </mirrors>
-          <proxies>
-            <proxy>
-              <id>domain-proxy</id>
-              <active>true</active>
-              <protocol>http</protocol>
-              <host>localhost</host>
-              <port>8080</port>
-            </proxy>
-          </proxies>
         EOF
             else
                 cat >${HOME}/.m2/settings.xml <<EOF
@@ -299,24 +287,16 @@ public abstract class AbstractPreprocessor implements Runnable {
           </activeProfiles>
 
           <interactiveMode>false</interactiveMode>
-          <!--
-            Needed for Maven 3.9+. Switched to native resolver
-            https://maven.apache.org/guides/mini/guide-resolver-transport.html
-          -->
-          <servers>
-            <server>
-              <id>indy-mvn</id>
-              <configuration>
-                <connectionTimeout>120000</connectionTimeout>
-                <httpHeaders>
-                  <property>
-                    <name>Authorization</name>
-                    <value>Bearer ${ACCESS_TOKEN}</value>
-                  </property>
-                </httpHeaders>
-              </configuration>
-            </server>
-          </servers>
+
+          <proxies>
+            <proxy>
+              <id>domain-proxy</id>
+              <active>true</active>
+              <protocol>http</protocol>
+              <host>localhost</host>
+              <port>8080</port>
+            </proxy>
+          </proxies>
 
         </settings>
         EOF

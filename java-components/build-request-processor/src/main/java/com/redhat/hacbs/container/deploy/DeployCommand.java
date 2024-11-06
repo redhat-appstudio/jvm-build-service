@@ -2,6 +2,7 @@ package com.redhat.hacbs.container.deploy;
 
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -24,6 +25,9 @@ public class DeployCommand implements Runnable {
     // Maven Repo Deployment specification
     @CommandLine.Option(names = "--mvn-username")
     String mvnUser;
+
+    @ConfigProperty(name = "access.token")
+    Optional<String> accessToken;
 
     @ConfigProperty(name = "maven.password")
     Optional<String> mvnPassword;
@@ -54,6 +58,38 @@ public class DeployCommand implements Runnable {
                     throw new RuntimeException("Invalid Maven settings");
                 }
                 System.setProperty("maven.settings", mvnSettings);
+            }
+            if (isNotEmpty(accessToken)) {
+                String servers = """
+                    <settings>
+                        <!--
+                            Needed for Maven 3.9+. Switched to native resolver
+                            https://maven.apache.org/guides/mini/guide-resolver-transport.html
+                        -->
+                        <servers>
+                            <server>
+                                <id>indy-mvn</id>
+                                <configuration>
+                                    <connectionTimeout>60000</connectionTimeout>
+                                    <httpHeaders>
+                                        <property>
+                                            <name>Authorization</name>
+                                            <value>Bearer ${ACCESS_TOKEN}</value>
+                                        </property>
+                                    </httpHeaders>
+                                </configuration>
+                            </server>
+                        </servers>
+                    </settings>
+                    """;
+                if (isNotEmpty(mvnSettings)) {
+                    // TODO: Would need to merge the two files. NYI for now as I don't think we need this pattern
+                    throw new RuntimeException("Merging settings.xml not supported");
+                } else {
+                    Path settings = Path.of(deploymentPath.getParent().toString(), "settings.xml");
+                    Files.write(settings, servers.getBytes());
+                    System.setProperty("maven.settings", settings.toString());
+                }
             }
             if (isNotEmpty(mvnRepo)) {
                 // Maven Repo Deployment
