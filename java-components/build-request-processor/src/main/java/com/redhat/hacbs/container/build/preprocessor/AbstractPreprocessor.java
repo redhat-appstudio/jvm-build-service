@@ -307,7 +307,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             <server>
               <id>indy-mvn</id>
               <configuration>
-                <connectionTimeout>60000</connectionTimeout>
+                <connectionTimeout>120000</connectionTimeout>
                 <httpHeaders>
                   <property>
                     <name>Authorization</name>
@@ -371,10 +371,10 @@ public abstract class AbstractPreprocessor implements Runnable {
             org.gradle.console=plain
 
             # Increase timeouts
-            systemProp.org.gradle.internal.http.connectionTimeout=600000
-            systemProp.org.gradle.internal.http.socketTimeout=600000
-            systemProp.http.socketTimeout=600000
-            systemProp.http.connectionTimeout=600000
+            systemProp.org.gradle.internal.http.connectionTimeout=1200000
+            systemProp.org.gradle.internal.http.socketTimeout=1200000
+            systemProp.http.socketTimeout=1200000
+            systemProp.http.connectionTimeout=1200000
 
             # Settings for <https://github.com/vanniktech/gradle-maven-publish-plugin>
             RELEASE_REPOSITORY_URL=file://${JBS_WORKDIR}/artifacts
