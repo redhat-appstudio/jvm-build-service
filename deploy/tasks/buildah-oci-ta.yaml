@@ -511,8 +511,8 @@ spec:
         declare IMAGE
 
         if [ "$use_domain_proxy" == "true" ]; then
-          # With expansion
-          cat >> /app/build-script.sh << EOF
+          # Without expansion
+          cat >> /app/build-script.sh << 'EOF'
         #!/bin/sh
         ip link set lo up
         /app/domain-proxy-client-runner &
