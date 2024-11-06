@@ -611,9 +611,8 @@ use-archive oci:$URL@$AARCHIVE=%s`, orasOptions, registryArgsWithDefaults(jbsCon
 		{
 			Name:     DeployTaskName,
 			RunAfter: append(runAfterBuild, PostBuildTaskName),
-			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-				{Name: WorkspaceSource, Workspace: WorkspaceSource},
-			},
+			// Don't need to specify WorkspacePipelineTaskBinding as the deploy task is using
+			// an independent volume.
 			TaskRef: &tektonpipeline.TaskRef{
 				// Can't specify name and resolver as they clash.
 				ResolverRef: deployResolver,
