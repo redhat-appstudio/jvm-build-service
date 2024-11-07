@@ -19,7 +19,7 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "deploy")
 public class DeployCommand implements Runnable {
 
-    @CommandLine.Option(names = "--directory")
+    @CommandLine.Option(names = "--directory", required = true)
     String artifactDirectory;
 
     // Maven Repo Deployment specification
@@ -35,7 +35,7 @@ public class DeployCommand implements Runnable {
     @CommandLine.Option(names = "--mvn-settings")
     String mvnSettings;
 
-    @CommandLine.Option(names = "--mvn-repo")
+    @CommandLine.Option(names = "--mvn-repo", required = true)
     String mvnRepo;
 
     @CommandLine.Option(names = "--server-id")
@@ -59,7 +59,7 @@ public class DeployCommand implements Runnable {
                 }
                 System.setProperty("maven.settings", mvnSettings);
             }
-            if (isNotEmpty(accessToken)) {
+            if (accessToken.isPresent()) {
                 String servers = """
                     <settings>
                         <!--
@@ -91,12 +91,9 @@ public class DeployCommand implements Runnable {
                     System.setProperty("maven.settings", settings.toString());
                 }
             }
-            if (isNotEmpty(mvnRepo)) {
-                // Maven Repo Deployment
-                MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo, serverId, deploymentPath);
-                deployer.deploy();
-            }
-
+            // Maven Repo Deployment
+            MavenRepositoryDeployer deployer = new MavenRepositoryDeployer(mvnCtx, mvnUser, mvnPassword.orElse(""), mvnRepo, serverId, deploymentPath);
+            deployer.deploy();
         } catch (Exception e) {
             Log.error("Deployment failed", e);
             throw new RuntimeException(e);
