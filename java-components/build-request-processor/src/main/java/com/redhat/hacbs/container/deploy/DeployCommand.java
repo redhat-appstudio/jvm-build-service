@@ -59,7 +59,7 @@ public class DeployCommand implements Runnable {
                 }
                 System.setProperty("maven.settings", mvnSettings);
             }
-            if (isNotEmpty(accessToken)) {
+            if (accessToken.isPresent()) {
                 String servers = """
                     <settings>
                         <!--
