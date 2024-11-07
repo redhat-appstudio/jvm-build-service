@@ -4,4 +4,4 @@ if [ -n "${ENFORCE_VERSION}" ]; then
 fi
 
 echo "Running Maven command with arguments: $@"
-mvn -V -B -e "$@" | tee ${JBS_WORKDIR}/logs/maven.log
+mvn -X -V -B -e "$@" | tee ${JBS_WORKDIR}/logs/maven.log
