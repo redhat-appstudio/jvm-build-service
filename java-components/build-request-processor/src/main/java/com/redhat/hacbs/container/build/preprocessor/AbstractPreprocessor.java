@@ -279,11 +279,24 @@ public abstract class AbstractPreprocessor implements Runnable {
                 </altDeploymentRepository>
               </properties>
             </profile>
+            <profile>
+                <id>global-timeout-settings</id>
+                <activation>
+                    <activeByDefault>true</activeByDefault>
+                </activation>
+                <properties>
+                    <maven.wagon.http.connectionTimeout>1200000</maven.wagon.http.connectionTimeout>
+                    <maven.wagon.http.requestTimeout>1200000</maven.wagon.http.requestTimeout>
+                    <maven.wagon.http.ssl.connectionTimeout>1200000</maven.wagon.http.ssl.connectionTimeout>
+                    <maven.wagon.http.ssl.requestTimeout>1200000</maven.wagon.http.ssl.requestTimeout>
+                </properties>
+            </profile>
           </profiles>
 
           <activeProfiles>
             <activeProfile>secondary</activeProfile>
             <activeProfile>local-deployment</activeProfile>
+            <activeProfile>global-timeout-settings</activeProfile>
           </activeProfiles>
 
           <interactiveMode>false</interactiveMode>
