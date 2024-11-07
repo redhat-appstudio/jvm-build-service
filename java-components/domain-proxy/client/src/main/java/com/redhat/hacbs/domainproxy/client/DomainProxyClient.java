@@ -46,6 +46,7 @@ public class DomainProxyClient {
             try (final ServerSocket serverSocket = new ServerSocket(clientHttpPort)) {
                 while (running) {
                     final Socket socket = serverSocket.accept();
+                    socket.setSoTimeout(1200000);
                     final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(domainSocket);
                     final SocketChannel channel = SocketChannel.open(address);
                     // Write from socket to channel
