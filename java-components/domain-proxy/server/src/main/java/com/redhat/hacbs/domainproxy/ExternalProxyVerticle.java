@@ -72,6 +72,7 @@ public class ExternalProxyVerticle extends AbstractVerticle {
     private void handleGetRequest(final HttpServerRequest request) {
         Log.info("Handling HTTP GET Request");
         if (isTargetWhitelisted(request.authority().host(), request)) {
+            Log.infof("Target URI %s", request.uri());
             webClient.getAbs(request.uri()).send(asyncResult -> {
                 if (asyncResult.succeeded()) {
                     final HttpResponse<Buffer> response = asyncResult.result();
@@ -98,6 +99,7 @@ public class ExternalProxyVerticle extends AbstractVerticle {
         Log.info("Handling HTTPS CONNECT request"); //
         final String targetHost = request.authority().host();
         if (isTargetWhitelisted(targetHost, request)) {
+            Log.infof("Target URI %s", request.uri());
             int targetPort = request.authority().port();
             if (targetPort == -1) {
                 targetPort = HTTPS_PORT;
@@ -128,9 +130,9 @@ public class ExternalProxyVerticle extends AbstractVerticle {
     }
 
     private boolean isTargetWhitelisted(final String targetHost, final HttpServerRequest request) {
-        Log.infof("Target %s", targetHost);
+        Log.infof("Target host %s", targetHost);
         if (!proxyTargetWhitelist.contains(targetHost) && !nonProxyHosts.contains(targetHost)) {
-            Log.error("Target is not whitelisted or a non-proxy host");
+            Log.error("Target host is not whitelisted or a non-proxy host");
             request.response()
                     .setStatusCode(HttpResponseStatus.NOT_FOUND.code())
                     .setStatusMessage(HttpResponseStatus.NOT_FOUND.reasonPhrase())
