@@ -101,7 +101,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             export LC_ALL="en_US.UTF-8"
             export JAVA_HOME=${JAVA_HOME:=%s}
             # If we run out of memory we want the JVM to die with error code 134
-            export MAVEN_OPTS="-XX:+CrashOnOutOfMemoryError"
+            export MAVEN_OPTS="-Dmaven.wagon.httpconnectionManager.ttlSeconds=30 -Dmaven.wagon.http.retryHandler.count=3 -Daether.connector.http.connectionMaxTtl=30 -XX:+CrashOnOutOfMemoryError"
             # If we run out of memory we want the JVM to die with error code 134
             export JAVA_OPTS="-XX:+CrashOnOutOfMemoryError"
             export %s_HOME=${%s_HOME:=/opt/%s/%s}
