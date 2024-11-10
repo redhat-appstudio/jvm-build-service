@@ -41,9 +41,25 @@ spec:
       description: Name of the processor image. Useful to override for development.
       type: string
       default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
+    - name: caTrustConfigMapKey
+      description: The name of the key in the ConfigMap that contains the
+        CA bundle data.
+      type: string
+      default: ca-bundle.crt
+    - name: caTrustConfigMapName
+      description: The name of the ConfigMap to read CA bundle data from.
+      type: string
+      default: trusted-ca
   volumes:
     - name: workdir
       emptyDir: {}
+    - name: trusted-ca
+      configMap:
+        name: $(params.caTrustConfigMapName)
+        items:
+          - key: $(params.caTrustConfigMapKey)
+            path: ca-bundle.crt
+        optional: true
   stepTemplate:
     volumeMounts:
       - mountPath: /var/workdir
@@ -74,6 +90,10 @@ spec:
         requests:
           cpu: 10m
           memory: 512Mi
+      volumeMounts:
+        - mountPath: /mnt/trusted-ca
+          name: trusted-ca
+          readOnly: true
       env:
         - name: MAVEN_PASSWORD
           valueFrom:
@@ -88,3 +108,13 @@ spec:
         - --mvn-repo=$(params.MVN_REPO)
         - --mvn-username=$(params.MVN_USERNAME)
         - --server-id=$(params.MVN_SERVER_ID)
+      script: |
+        #!/bin/bash
+        set -e
+        ca_bundle=/mnt/trusted-ca/ca-bundle.crt
+        if [ -f "$ca_bundle" ]; then
+          echo "INFO: Using mounted CA bundle: $ca_bundle"
+          cp -vf $ca_bundle /etc/pki/ca-trust/source/anchors
+          update-ca-trust
+        fi
+        /opt/jboss/container/java/run/run-java.sh $@

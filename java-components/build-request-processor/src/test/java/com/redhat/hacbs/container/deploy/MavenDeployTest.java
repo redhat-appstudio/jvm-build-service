@@ -64,6 +64,7 @@ public class MavenDeployTest {
         DeployCommand deployCommand = new DeployCommand();
         deployCommand.mvnCtx = mvnContext;
         deployCommand.mvnPassword = Optional.empty();
+        deployCommand.accessToken = Optional.empty();
         deployCommand.mvnRepo = deployment.toAbsolutePath().toUri().toString();
         deployCommand.artifactDirectory = onDiskRepo.toString();
 
