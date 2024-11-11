@@ -5,7 +5,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 
 import org.jboss.logging.Logger;
@@ -30,7 +30,7 @@ public final class CommonIOUtil {
                     LOG.infof("Wrote %d bytes to channel", r);
                     bytesWritten += r;
                 }
-            } catch (final AsynchronousCloseException ignore) {
+            } catch (final ClosedChannelException ignore) {
                 LOG.info("Channel closed");
             } catch (final SocketException ignore) {
                 LOG.info("Socket closed");
@@ -73,7 +73,7 @@ public final class CommonIOUtil {
                     buf.clear();
                     bytesWritten += r;
                 }
-            } catch (final AsynchronousCloseException ignore) {
+            } catch (final ClosedChannelException ignore) {
                 LOG.info("Channel closed");
             } catch (final SocketException ignore) {
                 LOG.info("Socket closed");
