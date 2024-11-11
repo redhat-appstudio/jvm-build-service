@@ -73,6 +73,8 @@ public final class CommonIOUtil {
                 }
             } catch (final AsynchronousCloseException ignore) {
                 LOG.info("Channel closed");
+            } catch (final SocketException ignore) {
+                LOG.info("Socket closed");
             } catch (final Exception e) {
                 LOG.errorf(e, "Error writing from channel to socket");
             } finally {
