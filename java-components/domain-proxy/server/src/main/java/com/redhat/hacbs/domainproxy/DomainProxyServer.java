@@ -46,31 +46,29 @@ public class DomainProxyServer {
     @PostConstruct
     public void start() {
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO remove
-        new Thread(() -> {
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try {
-                    Files.delete(Path.of(domainSocket));
-                } catch (final IOException e) {
-                    Log.errorf(e, "Error deleting domain socket");
-                }
-            }));
-            try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
-                final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(domainSocket);
-                serverChannel.bind(address);
-                while (running) {
-                    final SocketChannel channel = serverChannel.accept();
-                    final Socket socket = new Socket(LOCALHOST, httpServerPort);
-                    socket.setSoTimeout(1200000);
-                    // Write from socket to channel
-                    Thread.startVirtualThread(createSocketToChannelWriter(byteBufferSize, socket, channel));
-                    // Write from channel to socket
-                    Thread.startVirtualThread(createChannelToSocketWriter(byteBufferSize, channel, socket));
-                }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                Files.delete(Path.of(domainSocket));
             } catch (final IOException e) {
-                Log.errorf(e, "Error initialising domain proxy server");
+                Log.errorf(e, "Error deleting domain socket");
             }
-            Quarkus.asyncExit();
-        }).start();
+        }));
+        try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
+            final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(domainSocket);
+            serverChannel.bind(address);
+            while (running) {
+                final SocketChannel channel = serverChannel.accept();
+                final Socket socket = new Socket(LOCALHOST, httpServerPort);
+                socket.setSoTimeout(1200000);
+                // Write from socket to channel
+                Thread.startVirtualThread(createSocketToChannelWriter(byteBufferSize, socket, channel));
+                // Write from channel to socket
+                Thread.startVirtualThread(createChannelToSocketWriter(byteBufferSize, channel, socket));
+            }
+        } catch (final IOException e) {
+            Log.errorf(e, "Error initialising domain proxy server");
+        }
+        Quarkus.asyncExit();
     }
 
     @PreDestroy

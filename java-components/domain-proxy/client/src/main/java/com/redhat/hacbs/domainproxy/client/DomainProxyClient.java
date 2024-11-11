@@ -42,23 +42,21 @@ public class DomainProxyClient {
     public void start() {
         Log.info("Starting domain proxy client...");
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO remove
-        new Thread(() -> {
-            try (final ServerSocket serverSocket = new ServerSocket(clientHttpPort)) {
-                while (running) {
-                    final Socket socket = serverSocket.accept();
-                    socket.setSoTimeout(1200000);
-                    final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(domainSocket);
-                    final SocketChannel channel = SocketChannel.open(address);
-                    // Write from socket to channel
-                    Thread.startVirtualThread(createSocketToChannelWriter(byteBufferSize, socket, channel));
-                    // Write from channel to socket
-                    Thread.startVirtualThread(createChannelToSocketWriter(byteBufferSize, channel, socket));
-                }
-            } catch (final IOException e) {
-                Log.errorf(e, "Error initialising domain proxy client");
+        try (final ServerSocket serverSocket = new ServerSocket(clientHttpPort)) {
+            while (running) {
+                final Socket socket = serverSocket.accept();
+                socket.setSoTimeout(1200000);
+                final UnixDomainSocketAddress address = UnixDomainSocketAddress.of(domainSocket);
+                final SocketChannel channel = SocketChannel.open(address);
+                // Write from socket to channel
+                Thread.startVirtualThread(createSocketToChannelWriter(byteBufferSize, socket, channel));
+                // Write from channel to socket
+                Thread.startVirtualThread(createChannelToSocketWriter(byteBufferSize, channel, socket));
             }
-            Quarkus.asyncExit();
-        }).start();
+        } catch (final IOException e) {
+            Log.errorf(e, "Error initialising domain proxy client");
+        }
+        Quarkus.asyncExit();
     }
 
     @PreDestroy
