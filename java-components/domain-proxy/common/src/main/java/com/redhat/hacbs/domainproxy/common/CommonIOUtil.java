@@ -30,6 +30,8 @@ public final class CommonIOUtil {
                     LOG.infof("Wrote %d bytes to channel", r);
                     bytesWritten += r;
                 }
+            } catch (final AsynchronousCloseException ignore) {
+                LOG.info("Channel closed");
             } catch (final SocketException ignore) {
                 LOG.info("Socket closed");
             } catch (final SocketTimeoutException ignore) {
@@ -39,7 +41,7 @@ public final class CommonIOUtil {
             } finally {
                 try {
                     channel.close();
-                } catch (final Exception e) {
+                } catch (final IOException e) {
                     LOG.errorf(e, "Error closing channel");
                 }
                 try {
@@ -75,7 +77,9 @@ public final class CommonIOUtil {
                 LOG.info("Channel closed");
             } catch (final SocketException ignore) {
                 LOG.info("Socket closed");
-            } catch (final Exception e) {
+            } catch (final SocketTimeoutException ignore) {
+                LOG.info("Socket timed out");
+            } catch (final IOException e) {
                 LOG.errorf(e, "Error writing from channel to socket");
             } finally {
                 try {
