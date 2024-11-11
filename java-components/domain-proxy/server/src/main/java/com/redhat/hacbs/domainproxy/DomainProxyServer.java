@@ -59,7 +59,7 @@ public class DomainProxyServer {
             while (running) {
                 final SocketChannel channel = serverChannel.accept();
                 final Socket socket = new Socket(LOCALHOST, httpServerPort);
-                socket.setSoTimeout(1000);
+                socket.setSoTimeout(10000);
                 // Write from socket to channel
                 Thread.startVirtualThread(createSocketToChannelWriter(byteBufferSize, socket, channel));
                 // Write from channel to socket
