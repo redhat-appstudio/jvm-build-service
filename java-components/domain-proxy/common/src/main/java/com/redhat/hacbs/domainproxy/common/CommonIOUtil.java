@@ -24,7 +24,7 @@ public final class CommonIOUtil {
             int bytesWritten = 0;
             LOG.info("Writing from socket to channel");
             try {
-                while (socket.isConnected() && channel.isConnected() && socket.getInputStream().available() > 0 && (r = socket.getInputStream().read(buf)) > 0) {
+                while ((r = socket.getInputStream().read(buf)) > 0) {
                     LOG.infof("Read %d bytes from socket", r);
                     channel.write(ByteBuffer.wrap(buf, 0, r));
                     LOG.infof("Wrote %d bytes to channel", r);
@@ -65,7 +65,7 @@ public final class CommonIOUtil {
             int bytesWritten = 0;
             LOG.info("Writing from channel to socket");
             try {
-                while (channel.isConnected() && socket.isConnected() && (r = channel.read(buf)) > 0) {
+                while ((r = channel.read(buf)) > 0) {
                     LOG.infof("Read %d bytes from channel", r);
                     buf.flip();
                     socket.getOutputStream().write(buf.array(), buf.arrayOffset(), buf.remaining());
