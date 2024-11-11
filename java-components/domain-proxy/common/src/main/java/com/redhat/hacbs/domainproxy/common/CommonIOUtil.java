@@ -25,10 +25,12 @@ public final class CommonIOUtil {
             LOG.info("Writing from socket to channel");
             try {
                 while ((r = socket.getInputStream().read(buf)) > 0) {
-                    LOG.infof("Read %d bytes from socket", r);
-                    channel.write(ByteBuffer.wrap(buf, 0, r));
-                    LOG.infof("Wrote %d bytes to channel", r);
-                    bytesWritten += r;
+                    synchronized (channel) {
+                        LOG.infof("Read %d bytes from socket", r);
+                        channel.write(ByteBuffer.wrap(buf, 0, r));
+                        LOG.infof("Wrote %d bytes to channel", r);
+                        bytesWritten += r;
+                    }
                 }
             } catch (final ClosedChannelException ignore) {
                 LOG.info("Channel closed");
@@ -66,12 +68,14 @@ public final class CommonIOUtil {
             LOG.info("Writing from channel to socket");
             try {
                 while ((r = channel.read(buf)) > 0) {
-                    LOG.infof("Read %d bytes from channel", r);
-                    buf.flip();
-                    socket.getOutputStream().write(buf.array(), buf.arrayOffset(), buf.remaining());
-                    LOG.infof("Wrote %d bytes to socket", r);
-                    buf.clear();
-                    bytesWritten += r;
+                    synchronized (socket) {
+                        LOG.infof("Read %d bytes from channel", r);
+                        buf.flip();
+                        socket.getOutputStream().write(buf.array(), buf.arrayOffset(), buf.remaining());
+                        LOG.infof("Wrote %d bytes to socket", r);
+                        buf.clear();
+                        bytesWritten += r;
+                    }
                 }
             } catch (final ClosedChannelException ignore) {
                 LOG.info("Channel closed");
