@@ -17,12 +17,13 @@ public final class CommonIOUtil {
             final SocketChannel channel) {
         // Write from socket to channel
         return () -> {
+            Thread.currentThread().setName("SocketToChannelWriter");
             int r;
             final byte[] buf = new byte[byteBufferSize];
             int bytesWritten = 0;
             LOG.info("Writing from socket to channel");
             try {
-                while ((r = socket.getInputStream().read(buf)) > 0) {
+                while (!socket.isClosed() && socket.isConnected() && (r = socket.getInputStream().read(buf)) > 0) {
                     LOG.infof("Read %d bytes from socket", r);
                     channel.write(ByteBuffer.wrap(buf, 0, r));
                     LOG.infof("Wrote %d bytes to channel", r);
@@ -52,13 +53,14 @@ public final class CommonIOUtil {
             final Socket socket) {
         // Write from channel to socket
         return () -> {
+            Thread.currentThread().setName("ChannelToSocketWriter");
             int r;
             final ByteBuffer buf = ByteBuffer.allocate(byteBufferSize);
             buf.clear();
             int bytesWritten = 0;
             LOG.info("Writing from channel to socket");
             try {
-                while ((r = channel.read(buf)) > 0) {
+                while (channel.isOpen() && channel.isConnected() && (r = channel.read(buf)) > 0) {
                     LOG.infof("Read %d bytes from channel", r);
                     buf.flip();
                     socket.getOutputStream().write(buf.array(), buf.arrayOffset(), buf.remaining());
