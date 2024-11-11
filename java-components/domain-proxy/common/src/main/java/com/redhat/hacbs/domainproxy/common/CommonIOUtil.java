@@ -3,6 +3,7 @@ package com.redhat.hacbs.domainproxy.common;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.SocketChannel;
@@ -23,7 +24,7 @@ public final class CommonIOUtil {
             int bytesWritten = 0;
             LOG.info("Writing from socket to channel");
             try {
-                while (!socket.isClosed() && socket.isConnected() && (r = socket.getInputStream().read(buf)) > 0) {
+                while (socket.isConnected() && channel.isConnected() && socket.getInputStream().available() > 0 && (r = socket.getInputStream().read(buf)) > 0) {
                     LOG.infof("Read %d bytes from socket", r);
                     channel.write(ByteBuffer.wrap(buf, 0, r));
                     LOG.infof("Wrote %d bytes to channel", r);
@@ -31,6 +32,8 @@ public final class CommonIOUtil {
                 }
             } catch (final SocketException ignore) {
                 LOG.info("Socket closed");
+            } catch (final SocketTimeoutException ignore) {
+                LOG.info("Socket timed out");
             } catch (final IOException e) {
                 LOG.errorf(e, "Error writing from socket to channel");
             } finally {
@@ -60,7 +63,7 @@ public final class CommonIOUtil {
             int bytesWritten = 0;
             LOG.info("Writing from channel to socket");
             try {
-                while (channel.isOpen() && channel.isConnected() && (r = channel.read(buf)) > 0) {
+                while (channel.isConnected() && socket.isConnected() && (r = channel.read(buf)) > 0) {
                     LOG.infof("Read %d bytes from channel", r);
                     buf.flip();
                     socket.getOutputStream().write(buf.array(), buf.arrayOffset(), buf.remaining());
