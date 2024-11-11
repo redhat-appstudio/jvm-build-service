@@ -279,24 +279,11 @@ public abstract class AbstractPreprocessor implements Runnable {
                 </altDeploymentRepository>
               </properties>
             </profile>
-            <profile>
-                <id>global-timeout-settings</id>
-                <activation>
-                    <activeByDefault>true</activeByDefault>
-                </activation>
-                <properties>
-                    <maven.wagon.http.connectionTimeout>1200000</maven.wagon.http.connectionTimeout>
-                    <maven.wagon.http.requestTimeout>1200000</maven.wagon.http.requestTimeout>
-                    <maven.wagon.http.ssl.connectionTimeout>1200000</maven.wagon.http.ssl.connectionTimeout>
-                    <maven.wagon.http.ssl.requestTimeout>1200000</maven.wagon.http.ssl.requestTimeout>
-                </properties>
-            </profile>
           </profiles>
 
           <activeProfiles>
             <activeProfile>secondary</activeProfile>
             <activeProfile>local-deployment</activeProfile>
-            <activeProfile>global-timeout-settings</activeProfile>
           </activeProfiles>
 
           <interactiveMode>false</interactiveMode>
@@ -364,10 +351,10 @@ public abstract class AbstractPreprocessor implements Runnable {
             org.gradle.console=plain
 
             # Increase timeouts
-            systemProp.org.gradle.internal.http.connectionTimeout=1200000
-            systemProp.org.gradle.internal.http.socketTimeout=1200000
-            systemProp.http.socketTimeout=1200000
-            systemProp.http.connectionTimeout=1200000
+            systemProp.org.gradle.internal.http.connectionTimeout=600000
+            systemProp.org.gradle.internal.http.socketTimeout=600000
+            systemProp.http.socketTimeout=600000
+            systemProp.http.connectionTimeout=600000
 
             # Settings for <https://github.com/vanniktech/gradle-maven-publish-plugin>
             RELEASE_REPOSITORY_URL=file://${JBS_WORKDIR}/artifacts
