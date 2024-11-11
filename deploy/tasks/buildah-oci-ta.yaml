@@ -142,7 +142,7 @@ spec:
     - name: BYTE_BUFFER_SIZE
       description: The byte buffer size to use for the domain proxy.
       type: string
-      default: 2048
+      default: 1024
     - name: PROXY_TARGET_WHITELIST
       description: Comma separated whitelist of target hosts for the domain proxy.
       type: string

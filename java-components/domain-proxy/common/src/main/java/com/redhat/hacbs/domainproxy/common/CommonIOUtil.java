@@ -13,6 +13,7 @@ import org.jboss.logging.Logger;
 public final class CommonIOUtil {
 
     private static final Logger LOG = Logger.getLogger(CommonIOUtil.class);
+    private static final Object CLOSE_LOCK = new Object();
 
     public static Runnable createSocketToChannelWriter(final int byteBufferSize, final Socket socket,
             final SocketChannel channel) {
@@ -39,16 +40,7 @@ public final class CommonIOUtil {
             } catch (final IOException e) {
                 LOG.errorf(e, "Error writing from socket to channel");
             } finally {
-                try {
-                    channel.close();
-                } catch (final IOException e) {
-                    LOG.errorf(e, "Error closing channel");
-                }
-                try {
-                    socket.close();
-                } catch (final IOException e) {
-                    LOG.errorf(e, "Error closing socket");
-                }
+                closeSocketAndChannel(socket, channel);
             }
             LOG.infof("Wrote %d bytes from socket to channel", bytesWritten);
         };
@@ -61,7 +53,6 @@ public final class CommonIOUtil {
             Thread.currentThread().setName("ChannelToSocketWriter");
             int r;
             final ByteBuffer buf = ByteBuffer.allocate(byteBufferSize);
-            buf.clear();
             int bytesWritten = 0;
             LOG.info("Writing from channel to socket");
             try {
@@ -82,18 +73,28 @@ public final class CommonIOUtil {
             } catch (final IOException e) {
                 LOG.errorf(e, "Error writing from channel to socket");
             } finally {
-                try {
-                    channel.close();
-                } catch (final IOException e) {
-                    LOG.errorf(e, "Error closing channel");
-                }
-                try {
-                    socket.close();
-                } catch (final IOException e) {
-                    LOG.errorf(e, "Error closing socket");
-                }
+                closeSocketAndChannel(socket, channel);
             }
             LOG.infof("Wrote %d bytes from channel to socket", bytesWritten);
         };
+    }
+
+    private static void closeSocketAndChannel(final Socket socket, final SocketChannel channel) {
+        synchronized (CLOSE_LOCK) {
+            try {
+                if (channel != null && channel.isOpen()) {
+                    channel.close();
+                }
+            } catch (final IOException e) {
+                LOG.errorf(e, "Error closing channel");
+            }
+            try {
+                if (socket != null && !socket.isClosed()) {
+                    socket.close();
+                }
+            } catch (final IOException e) {
+                LOG.errorf(e, "Error closing socket");
+            }
+        }
     }
 }
