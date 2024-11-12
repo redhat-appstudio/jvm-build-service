@@ -80,7 +80,7 @@ public final class CommonIOUtil {
     }
 
     private static void closeSocketAndChannel(final Socket socket, final SocketChannel channel) {
-        synchronized (CLOSE_LOCK) {
+        synchronized (CLOSE_LOCK) { // TODO is this necessary?
             try {
                 if (channel != null && channel.isOpen()) {
                     channel.close();
