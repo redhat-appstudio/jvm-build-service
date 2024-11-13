@@ -1,4 +1,4 @@
-package com.redhat.hacbs.domainproxy;
+package com.redhat.hacbs.domainproxy.server;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;

@@ -1,10 +1,10 @@
-package com.redhat.hacbs.domainproxy;
+package com.redhat.hacbs.domainproxy.server;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static com.redhat.hacbs.domainproxy.DomainProxyServer.LOCALHOST;
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.LOCALHOST;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

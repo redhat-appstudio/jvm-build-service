@@ -1,6 +1,6 @@
-package com.redhat.hacbs.domainproxy;
+package com.redhat.hacbs.domainproxy.server;
 
-import static com.redhat.hacbs.domainproxy.DomainProxyServer.LOCALHOST;
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.LOCALHOST;
 
 import java.util.Map;
 

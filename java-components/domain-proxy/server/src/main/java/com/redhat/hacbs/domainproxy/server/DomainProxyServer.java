@@ -1,4 +1,4 @@
-package com.redhat.hacbs.domainproxy.client;
+package com.redhat.hacbs.domainproxy.server;
 
 import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.LOCALHOST;
 import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.SELECTOR_TIMEOUT_MS;
@@ -12,6 +12,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,15 +32,15 @@ import io.quarkus.runtime.Startup;
 
 @Startup
 @Singleton
-public class DomainProxyClient {
+public class DomainProxyServer {
 
     @Inject
-    @ConfigProperty(name = "client-domain-socket")
+    @ConfigProperty(name = "server-domain-socket")
     String domainSocket;
 
     @Inject
-    @ConfigProperty(name = "client-http-port")
-    int clientHttpPort;
+    @ConfigProperty(name = "server-http-port")
+    int httpServerPort;
 
     @Inject
     @ConfigProperty(name = "byte-buffer-size")
@@ -49,12 +51,17 @@ public class DomainProxyClient {
 
     @PostConstruct
     public void start() {
-        Log.info("Starting domain proxy client...");
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO Remove
-        try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.INET);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                Files.delete(Path.of(domainSocket));
+            } catch (final IOException e) {
+                Log.errorf(e, "Error deleting domain socket");
+            }
+        }));
+        try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
                 final Selector selector = Selector.open()) {
-            final InetSocketAddress address = new InetSocketAddress(LOCALHOST, clientHttpPort);
-            serverChannel.bind(address);
+            serverChannel.bind(UnixDomainSocketAddress.of(domainSocket));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
             while (running.get()) {
@@ -65,11 +72,11 @@ public class DomainProxyClient {
                         keys.remove();
                         if (key.isAcceptable()) {
                             if (key.channel() instanceof final ServerSocketChannel keyChannel) {
-                                final SocketChannel httpClientChannel = keyChannel.accept();
-                                final SocketChannel domainSocketChannel = SocketChannel
-                                        .open(UnixDomainSocketAddress.of(domainSocket));
+                                final SocketChannel domainSocketChannel = keyChannel.accept();
+                                final SocketChannel httpServerChannel = SocketChannel
+                                        .open(new InetSocketAddress(LOCALHOST, httpServerPort));
                                 executor.submit(
-                                        () -> createChannelToChannelBiDirectionalHandler(byteBufferSize, httpClientChannel,
+                                        () -> createChannelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
                                                 domainSocketChannel).run());
                             }
                         }
@@ -77,7 +84,7 @@ public class DomainProxyClient {
                 }
             }
         } catch (final IOException e) {
-            Log.errorf(e, "Error initialising domain proxy client");
+            Log.errorf(e, "Error initialising domain proxy server");
         }
         Quarkus.asyncExit();
     }
