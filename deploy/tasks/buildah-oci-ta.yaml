@@ -392,7 +392,6 @@ spec:
 
         BUILDAH_ARGS=()
         use_domain_proxy=false
-        DOMAIN_PROXY_ARGS=()
 
         if [ "${HERMETIC}" == "true" ]; then
           BUILDAH_ARGS+=("--pull=never")
@@ -403,14 +402,7 @@ spec:
           echo "Build will be executed with network isolation"
           if [ "${DOMAIN_PROXY}" == "true" ]; then
             use_domain_proxy=true
-            if [ -n "${BYTE_BUFFER_SIZE}" ]; then
-              DOMAIN_PROXY_ARGS+=("BYTE_BUFFER_SIZE=${BYTE_BUFFER_SIZE}")
-            fi
-            if [ -n "${PROXY_TARGET_WHITELIST}" ]; then
-              DOMAIN_PROXY_ARGS+=("PROXY_TARGET_WHITELIST=${PROXY_TARGET_WHITELIST}")
-            fi
             echo "Build will be executed with domain proxy"
-            echo ${DOMAIN_PROXY_ARGS[@]} # TODO remove
             /app/domain-proxy-server-runner &
             server_pid=$!
           fi

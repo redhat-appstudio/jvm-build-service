@@ -14,9 +14,20 @@ public final class CommonIOUtil {
     private static final Logger LOG = Logger.getLogger(CommonIOUtil.class);
 
     public static final String LOCALHOST = "localhost";
-    public static final int SELECTOR_TIMEOUT_MS = 1000;
+    public static final int TIMEOUT_MS = 250;
 
     private CommonIOUtil() {
+    }
+
+    private enum Operation {
+        READ("Read"),
+        WRITE("Wrote");
+
+        final String descriptor;
+
+        Operation(final String descriptor) {
+            this.descriptor = descriptor;
+        }
     }
 
     public static Runnable createChannelToChannelBiDirectionalHandler(final int byteBufferSize,
@@ -24,48 +35,56 @@ public final class CommonIOUtil {
             final SocketChannel rightChannel) {
         return () -> {
             Thread.currentThread().setName("ChannelToChannelBiDirectionalHandler");
-            int bytesRead = 0, bytesWritten = 0;
+            LOG.info("Connections opened");
+            int bytesRead = 0;
+            int bytesWritten = 0;
             final ByteBuffer buffer = ByteBuffer.allocate(byteBufferSize);
             try (final Selector selector = Selector.open()) {
                 leftChannel.configureBlocking(false);
                 rightChannel.configureBlocking(false);
                 leftChannel.register(selector, SelectionKey.OP_READ);
                 rightChannel.register(selector, SelectionKey.OP_WRITE);
+                long bytesTransferredTime = System.currentTimeMillis();
                 while (leftChannel.isOpen() && rightChannel.isOpen()) {
-                    if (selector.select(SELECTOR_TIMEOUT_MS) > 0) {
+                    if (selector.selectNow() > 0) {
                         final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
                         while (keys.hasNext()) {
                             final SelectionKey key = keys.next();
                             keys.remove();
+                            int bytesTransferred = 0;
                             if (key.isReadable()) {
+                                final Operation operation = Operation.READ;
                                 if (key.channel() == leftChannel) {
-                                    final int bytes = transferData(leftChannel, rightChannel, buffer);
-                                    if (bytes == 0) {
-                                        return;
-                                    }
-                                    bytesRead += bytes;
+                                    bytesTransferred = transferData(leftChannel, rightChannel, buffer, operation);
+                                    bytesRead += bytesTransferred;
                                 } else if (key.channel() == rightChannel) {
-                                    final int bytes = transferData(rightChannel, leftChannel, buffer);
-                                    if (bytes == 0) {
-                                        return;
-                                    }
-                                    bytesRead += bytes;
+                                    bytesTransferred = transferData(rightChannel, leftChannel, buffer, operation);
+                                    bytesRead += bytesTransferred;
                                 }
                             }
                             if (key.isWritable()) {
+                                final Operation operation = Operation.WRITE;
                                 if (key.channel() == leftChannel) {
-                                    bytesWritten += transferData(leftChannel, rightChannel, buffer);
+                                    bytesTransferred = transferData(leftChannel, rightChannel, buffer, operation);
+                                    bytesWritten += bytesTransferred;
                                 } else if (key.channel() == rightChannel) {
-                                    bytesWritten += transferData(rightChannel, leftChannel, buffer);
+                                    bytesTransferred = transferData(rightChannel, leftChannel, buffer, operation);
+                                    bytesWritten += bytesTransferred;
                                 }
                             }
+                            if (bytesTransferred > 0) {
+                                bytesTransferredTime = System.currentTimeMillis();
+                            }
                         }
+                    }
+                    if (System.currentTimeMillis() - bytesTransferredTime > TIMEOUT_MS) {
+                        break;
                     }
                 }
             } catch (final IOException e) {
                 LOG.errorf(e, "Error in bi-directional channel handling");
             } finally {
-                closeSocketChannel(leftChannel, rightChannel);
+                closeConnections(leftChannel, rightChannel);
                 LOG.infof("Read %d bytes between channels", bytesRead);
                 LOG.infof("Wrote %d bytes between channels", bytesWritten);
             }
@@ -73,21 +92,22 @@ public final class CommonIOUtil {
     }
 
     private static int transferData(final SocketChannel sourceChannel, final SocketChannel destinationChannel,
-            final ByteBuffer buffer)
+            final ByteBuffer buffer, final Operation operation)
             throws IOException {
         buffer.clear();
-        final int bytesRead = sourceChannel.read(buffer);
-        if (bytesRead == -1) {
+        final int bytesTransferred = sourceChannel.read(buffer);
+        if (bytesTransferred <= 0) {
             return 0;
         }
         buffer.flip();
         while (buffer.hasRemaining()) {
             destinationChannel.write(buffer);
         }
-        return bytesRead;
+        logBytes(sourceChannel, destinationChannel, operation, bytesTransferred);
+        return bytesTransferred;
     }
 
-    private static void closeSocketChannel(final SocketChannel sourceChannel, final SocketChannel destinationChannel) {
+    private static void closeConnections(final SocketChannel sourceChannel, final SocketChannel destinationChannel) {
         try {
             if (sourceChannel != null && sourceChannel.isOpen()) {
                 sourceChannel.close();
@@ -101,6 +121,17 @@ public final class CommonIOUtil {
             }
         } catch (final IOException e) {
             LOG.errorf(e, "Error closing destination channel");
+        }
+        LOG.info("Connections closed");
+    }
+
+    private static void logBytes(final SocketChannel sourceChannel, final SocketChannel destinationChannel,
+            final Operation operation,
+            final int bytesTransferred) throws IOException {
+        if (bytesTransferred > 0) {
+            LOG.infof("%s %d bytes from %s channel to %s channel", operation.descriptor, bytesTransferred,
+                    sourceChannel.getRemoteAddress().getClass().getSimpleName(),
+                    destinationChannel.getRemoteAddress().getClass().getSimpleName());
         }
     }
 }

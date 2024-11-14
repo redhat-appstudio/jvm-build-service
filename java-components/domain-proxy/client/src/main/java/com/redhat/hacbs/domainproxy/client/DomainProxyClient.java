@@ -1,7 +1,6 @@
 package com.redhat.hacbs.domainproxy.client;
 
 import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.LOCALHOST;
-import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.SELECTOR_TIMEOUT_MS;
 import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.createChannelToChannelBiDirectionalHandler;
 
 import java.io.IOException;
@@ -59,7 +58,7 @@ public class DomainProxyClient {
                 serverChannel.configureBlocking(false);
                 serverChannel.register(selector, SelectionKey.OP_ACCEPT);
                 while (running.get()) {
-                    if (selector.select(SELECTOR_TIMEOUT_MS) > 0) {
+                    if (selector.selectNow() > 0) {
                         final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
                         while (keys.hasNext()) {
                             final SelectionKey key = keys.next();
