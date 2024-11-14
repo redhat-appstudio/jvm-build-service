@@ -2,6 +2,8 @@
 
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 
+export PROXY_TARGET_WHITELIST=localhost
+
 server/target/domain-proxy-server-999-SNAPSHOT-runner &
 server_pid=$!
 

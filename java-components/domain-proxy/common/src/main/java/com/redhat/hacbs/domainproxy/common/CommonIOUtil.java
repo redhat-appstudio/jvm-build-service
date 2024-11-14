@@ -90,10 +90,14 @@ public final class CommonIOUtil {
                 try {
                     final String leftChannelName = leftChannel.getRemoteAddress().getClass().getSimpleName();
                     final String rightChannelName = rightChannel.getRemoteAddress().getClass().getSimpleName();
-                    LOG.infof("Read %d total bytes from % channel to %s channel", leftChannelName, rightChannelName, bytesReadLeft);
-                    LOG.infof("Read %d total bytes from % channel to %s channel", rightChannelName, leftChannelName, bytesReadRight);
-                    LOG.infof("Wrote %d total bytes from % channel to %s channel", leftChannelName, rightChannelName, bytesWrittenLeft);
-                    LOG.infof("Wrote %d total bytes from % channel to %s channel", rightChannelName, leftChannelName, bytesWrittenRight);
+                    LOG.infof("Read %d total bytes from % channel to %s channel", leftChannelName, rightChannelName,
+                            bytesReadLeft);
+                    LOG.infof("Read %d total bytes from % channel to %s channel", rightChannelName, leftChannelName,
+                            bytesReadRight);
+                    LOG.infof("Wrote %d total bytes from % channel to %s channel", leftChannelName, rightChannelName,
+                            bytesWrittenLeft);
+                    LOG.infof("Wrote %d total bytes from % channel to %s channel", rightChannelName, leftChannelName,
+                            bytesWrittenRight);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
