@@ -14,7 +14,7 @@ public final class CommonIOUtil {
     private static final Logger LOG = Logger.getLogger(CommonIOUtil.class);
 
     public static final String LOCALHOST = "localhost";
-    public static final int TIMEOUT_MS = 250;
+    public static final int TIMEOUT_MS = 1000;
 
     private CommonIOUtil() {
     }
@@ -36,8 +36,10 @@ public final class CommonIOUtil {
         return () -> {
             Thread.currentThread().setName("ChannelToChannelBiDirectionalHandler");
             LOG.info("Connections opened");
-            int bytesRead = 0;
-            int bytesWritten = 0;
+            int bytesReadLeft = 0;
+            int bytesReadRight = 0;
+            int bytesWrittenLeft = 0;
+            int bytesWrittenRight = 0;
             final ByteBuffer buffer = ByteBuffer.allocate(byteBufferSize);
             try (final Selector selector = Selector.open()) {
                 leftChannel.configureBlocking(false);
@@ -56,20 +58,20 @@ public final class CommonIOUtil {
                                 final Operation operation = Operation.READ;
                                 if (key.channel() == leftChannel) {
                                     bytesTransferred = transferData(leftChannel, rightChannel, buffer, operation);
-                                    bytesRead += bytesTransferred;
+                                    bytesReadLeft += bytesTransferred;
                                 } else if (key.channel() == rightChannel) {
                                     bytesTransferred = transferData(rightChannel, leftChannel, buffer, operation);
-                                    bytesRead += bytesTransferred;
+                                    bytesReadRight += bytesTransferred;
                                 }
                             }
                             if (key.isWritable()) {
                                 final Operation operation = Operation.WRITE;
                                 if (key.channel() == leftChannel) {
                                     bytesTransferred = transferData(leftChannel, rightChannel, buffer, operation);
-                                    bytesWritten += bytesTransferred;
+                                    bytesWrittenLeft += bytesTransferred;
                                 } else if (key.channel() == rightChannel) {
                                     bytesTransferred = transferData(rightChannel, leftChannel, buffer, operation);
-                                    bytesWritten += bytesTransferred;
+                                    bytesWrittenRight += bytesTransferred;
                                 }
                             }
                             if (bytesTransferred > 0) {
@@ -85,8 +87,18 @@ public final class CommonIOUtil {
                 LOG.errorf(e, "Error in bi-directional channel handling");
             } finally {
                 closeConnections(leftChannel, rightChannel);
-                LOG.infof("Read %d bytes between channels", bytesRead);
-                LOG.infof("Wrote %d bytes between channels", bytesWritten);
+                try {
+                    final String leftChannelName = leftChannel.getRemoteAddress().getClass().getSimpleName();
+                    final String rightChannelName = rightChannel.getRemoteAddress().getClass().getSimpleName();
+                    LOG.infof("Read %d total bytes from % channel to %s channel", leftChannelName, rightChannelName, bytesReadLeft);
+                    LOG.infof("Read %d total bytes from % channel to %s channel", rightChannelName, leftChannelName, bytesReadRight);
+                    LOG.infof("Wrote %d total bytes from % channel to %s channel", leftChannelName, rightChannelName, bytesWrittenLeft);
+                    LOG.infof("Wrote %d total bytes from % channel to %s channel", rightChannelName, leftChannelName, bytesWrittenRight);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                LOG.infof("Read %d total bytes between channels overall", bytesReadLeft + bytesReadRight);
+                LOG.infof("Wrote %d total bytes between channels overall", bytesWrittenLeft + bytesWrittenRight);
             }
         };
     }
