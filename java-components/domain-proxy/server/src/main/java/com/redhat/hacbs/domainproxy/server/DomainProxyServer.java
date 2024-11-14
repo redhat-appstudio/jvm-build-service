@@ -52,41 +52,43 @@ public class DomainProxyServer {
     @PostConstruct
     public void start() {
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO Remove
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                Files.delete(Path.of(domainSocket));
-            } catch (final IOException e) {
-                Log.errorf(e, "Error deleting domain socket");
-            }
-        }));
-        try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
-                final Selector selector = Selector.open()) {
-            serverChannel.bind(UnixDomainSocketAddress.of(domainSocket));
-            serverChannel.configureBlocking(false);
-            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-            while (running.get()) {
-                if (selector.select(SELECTOR_TIMEOUT_MS) > 0) {
-                    final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
-                    while (keys.hasNext()) {
-                        final SelectionKey key = keys.next();
-                        keys.remove();
-                        if (key.isAcceptable()) {
-                            if (key.channel() instanceof final ServerSocketChannel keyChannel) {
-                                final SocketChannel domainSocketChannel = keyChannel.accept();
-                                final SocketChannel httpServerChannel = SocketChannel
-                                        .open(new InetSocketAddress(LOCALHOST, httpServerPort));
-                                executor.submit(
-                                        () -> createChannelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
-                                                domainSocketChannel).run());
+        new Thread(() -> {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    Files.delete(Path.of(domainSocket));
+                } catch (final IOException e) {
+                    Log.errorf(e, "Error deleting domain socket");
+                }
+            }));
+            try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
+                    final Selector selector = Selector.open()) {
+                serverChannel.bind(UnixDomainSocketAddress.of(domainSocket));
+                serverChannel.configureBlocking(false);
+                serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+                while (running.get()) {
+                    if (selector.select(SELECTOR_TIMEOUT_MS) > 0) {
+                        final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+                        while (keys.hasNext()) {
+                            final SelectionKey key = keys.next();
+                            keys.remove();
+                            if (key.isAcceptable()) {
+                                if (key.channel() instanceof final ServerSocketChannel keyChannel) {
+                                    final SocketChannel domainSocketChannel = keyChannel.accept();
+                                    final SocketChannel httpServerChannel = SocketChannel
+                                            .open(new InetSocketAddress(LOCALHOST, httpServerPort));
+                                    executor.submit(
+                                            createChannelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
+                                                    domainSocketChannel));
+                                }
                             }
                         }
                     }
                 }
+            } catch (final IOException e) {
+                Log.errorf(e, "Error initialising domain proxy server");
             }
-        } catch (final IOException e) {
-            Log.errorf(e, "Error initialising domain proxy server");
-        }
-        Quarkus.asyncExit();
+            Quarkus.asyncExit();
+        }).start();
     }
 
     @PreDestroy
