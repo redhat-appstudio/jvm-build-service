@@ -1,5 +1,7 @@
 package com.redhat.hacbs.domainproxy.common;
 
+import static java.lang.Thread.currentThread;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -30,11 +32,11 @@ public final class CommonIOUtil {
         }
     }
 
-    public static Runnable createChannelToChannelBiDirectionalHandler(final int byteBufferSize,
+    public static Runnable channelToChannelBiDirectionalHandler(final int byteBufferSize,
             final SocketChannel leftChannel,
             final SocketChannel rightChannel) {
         return () -> {
-            Thread.currentThread().setName("ChannelToChannelBiDirectionalHandler");
+            currentThread().setName("channelToChannelHandler");
             LOG.info("Connections opened");
             int bytesReadLeft = 0;
             int bytesReadRight = 0;

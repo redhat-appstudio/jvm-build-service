@@ -1,7 +1,9 @@
 package com.redhat.hacbs.domainproxy.client;
 
 import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.LOCALHOST;
-import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.createChannelToChannelBiDirectionalHandler;
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.TIMEOUT_MS;
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.channelToChannelBiDirectionalHandler;
+import static java.lang.Thread.currentThread;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -14,7 +16,6 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -43,49 +44,49 @@ public class DomainProxyClient {
     @ConfigProperty(name = "byte-buffer-size")
     int byteBufferSize;
 
-    private final AtomicBoolean running = new AtomicBoolean(true);
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    private ExecutorService executor;
 
     @PostConstruct
     public void start() {
         Log.info("Starting domain proxy client...");
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO Remove
-        new Thread(() -> {
-            try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.INET);
-                    final Selector selector = Selector.open()) {
-                final InetSocketAddress address = new InetSocketAddress(LOCALHOST, clientHttpPort);
-                serverChannel.bind(address);
-                serverChannel.configureBlocking(false);
-                serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-                while (running.get()) {
-                    if (selector.selectNow() > 0) {
-                        final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
-                        while (keys.hasNext()) {
-                            final SelectionKey key = keys.next();
-                            keys.remove();
-                            if (key.isAcceptable()) {
-                                if (key.channel() instanceof final ServerSocketChannel keyChannel) {
-                                    final SocketChannel httpClientChannel = keyChannel.accept();
-                                    final SocketChannel domainSocketChannel = SocketChannel
-                                            .open(UnixDomainSocketAddress.of(domainSocket));
-                                    executor.submit(
-                                            createChannelToChannelBiDirectionalHandler(byteBufferSize, httpClientChannel,
-                                                    domainSocketChannel));
-                                }
-                            }
+        executor = Executors.newVirtualThreadPerTaskExecutor();
+        executor.submit(this::startClient);
+    }
+
+    private void startClient() {
+        try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.INET);
+                final Selector selector = Selector.open()) {
+            currentThread().setName("connectionHandler");
+            final InetSocketAddress address = new InetSocketAddress(LOCALHOST, clientHttpPort);
+            serverChannel.bind(address);
+            serverChannel.configureBlocking(false);
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            while (!currentThread().isInterrupted()) {
+                if (selector.select(TIMEOUT_MS) > 0) {
+                    final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+                    while (keys.hasNext()) {
+                        final SelectionKey key = keys.next();
+                        keys.remove();
+                        if (key.isAcceptable()) {
+                            final ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
+                            final SocketChannel httpClientChannel = keyChannel.accept();
+                            final SocketChannel domainSocketChannel = SocketChannel
+                                    .open(UnixDomainSocketAddress.of(domainSocket));
+                            executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpClientChannel,
+                                    domainSocketChannel));
                         }
                     }
                 }
-            } catch (final IOException e) {
-                Log.errorf(e, "Error initialising domain proxy client");
             }
-            Quarkus.asyncExit();
-        }).start();
+        } catch (final IOException e) {
+            Log.errorf(e, "Error initialising domain proxy client");
+        }
+        Quarkus.asyncExit();
     }
 
     @PreDestroy
     public void stop() {
-        running.set(false);
-        executor.shutdown();
+        executor.shutdownNow();
     }
 }

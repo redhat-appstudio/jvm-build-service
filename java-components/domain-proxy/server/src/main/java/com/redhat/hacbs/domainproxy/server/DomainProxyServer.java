@@ -1,7 +1,9 @@
 package com.redhat.hacbs.domainproxy.server;
 
 import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.LOCALHOST;
-import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.createChannelToChannelBiDirectionalHandler;
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.TIMEOUT_MS;
+import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.channelToChannelBiDirectionalHandler;
+import static java.lang.Thread.currentThread;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -16,7 +18,6 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -45,54 +46,52 @@ public class DomainProxyServer {
     @ConfigProperty(name = "byte-buffer-size")
     int byteBufferSize;
 
-    private final AtomicBoolean running = new AtomicBoolean(true);
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    private ExecutorService executor;
 
     @PostConstruct
     public void start() {
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO Remove
-        new Thread(() -> {
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try {
-                    Files.delete(Path.of(domainSocket));
-                } catch (final IOException e) {
-                    Log.errorf(e, "Error deleting domain socket");
-                }
-            }));
-            try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
-                    final Selector selector = Selector.open()) {
-                serverChannel.bind(UnixDomainSocketAddress.of(domainSocket));
-                serverChannel.configureBlocking(false);
-                serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-                while (running.get()) {
-                    if (selector.selectNow() > 0) {
-                        final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
-                        while (keys.hasNext()) {
-                            final SelectionKey key = keys.next();
-                            keys.remove();
-                            if (key.isAcceptable()) {
-                                if (key.channel() instanceof final ServerSocketChannel keyChannel) {
-                                    final SocketChannel domainSocketChannel = keyChannel.accept();
-                                    final SocketChannel httpServerChannel = SocketChannel
-                                            .open(new InetSocketAddress(LOCALHOST, httpServerPort));
-                                    executor.submit(
-                                            createChannelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
-                                                    domainSocketChannel));
-                                }
-                            }
+        executor = Executors.newVirtualThreadPerTaskExecutor();
+        executor.submit(this::startServer);
+    }
+
+    private void startServer() {
+        try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
+                final Selector selector = Selector.open()) {
+            currentThread().setName("connectionHandler");
+            serverChannel.bind(UnixDomainSocketAddress.of(domainSocket));
+            serverChannel.configureBlocking(false);
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            while (!currentThread().isInterrupted()) {
+                if (selector.select(TIMEOUT_MS) > 0) {
+                    final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+                    while (keys.hasNext()) {
+                        final SelectionKey key = keys.next();
+                        keys.remove();
+                        if (key.isAcceptable()) {
+                            final ServerSocketChannel keyChannel = (ServerSocketChannel) key.channel();
+                            final SocketChannel domainSocketChannel = keyChannel.accept();
+                            final SocketChannel httpServerChannel = SocketChannel
+                                    .open(new InetSocketAddress(LOCALHOST, httpServerPort));
+                            executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
+                                    domainSocketChannel));
                         }
                     }
                 }
-            } catch (final IOException e) {
-                Log.errorf(e, "Error initialising domain proxy server");
             }
-            Quarkus.asyncExit();
-        }).start();
+        } catch (final IOException e) {
+            Log.errorf(e, "Error initialising domain proxy server");
+        }
+        Quarkus.asyncExit();
     }
 
     @PreDestroy
     public void stop() {
-        running.set(false);
-        executor.shutdown();
+        executor.shutdownNow();
+        try {
+            Files.deleteIfExists(Path.of(domainSocket));
+        } catch (final IOException e) {
+            Log.errorf(e, "Error deleting domain socket");
+        }
     }
 }
