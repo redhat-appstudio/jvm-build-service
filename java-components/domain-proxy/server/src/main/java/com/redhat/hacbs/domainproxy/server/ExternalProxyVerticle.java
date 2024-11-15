@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.Quarkus;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -65,6 +66,7 @@ public class ExternalProxyVerticle extends AbstractVerticle {
                 Log.infof("Server is now listening on port %d", httpServerPort);
             } else {
                 Log.errorf(result.cause(), "Failed to bind server");
+                Quarkus.asyncExit();
             }
         });
     }

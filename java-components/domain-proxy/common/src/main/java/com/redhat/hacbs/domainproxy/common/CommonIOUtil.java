@@ -38,6 +38,8 @@ public final class CommonIOUtil {
         return () -> {
             currentThread().setName("channelToChannelHandler");
             LOG.info("Connections opened");
+            final String leftChannelName = getChannelName(leftChannel);
+            final String rightChannelName = getChannelName(rightChannel);
             int bytesReadLeft = 0;
             int bytesReadRight = 0;
             int bytesWrittenLeft = 0;
@@ -46,8 +48,8 @@ public final class CommonIOUtil {
             try (final Selector selector = Selector.open()) {
                 leftChannel.configureBlocking(false);
                 rightChannel.configureBlocking(false);
-                leftChannel.register(selector, SelectionKey.OP_READ);
-                rightChannel.register(selector, SelectionKey.OP_WRITE);
+                leftChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+                rightChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
                 long bytesTransferredTime = System.currentTimeMillis();
                 while (leftChannel.isOpen() && rightChannel.isOpen()) {
                     if (selector.selectNow() > 0) {
@@ -89,20 +91,14 @@ public final class CommonIOUtil {
                 LOG.errorf(e, "Error in bi-directional channel handling");
             } finally {
                 closeConnections(leftChannel, rightChannel);
-                try {
-                    final String leftChannelName = leftChannel.getRemoteAddress().getClass().getSimpleName();
-                    final String rightChannelName = rightChannel.getRemoteAddress().getClass().getSimpleName();
-                    LOG.infof("Read %d total bytes from % channel to %s channel", leftChannelName, rightChannelName,
-                            bytesReadLeft);
-                    LOG.infof("Read %d total bytes from % channel to %s channel", rightChannelName, leftChannelName,
-                            bytesReadRight);
-                    LOG.infof("Wrote %d total bytes from % channel to %s channel", leftChannelName, rightChannelName,
-                            bytesWrittenLeft);
-                    LOG.infof("Wrote %d total bytes from % channel to %s channel", rightChannelName, leftChannelName,
-                            bytesWrittenRight);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                LOG.infof("Read %d total bytes from %s channel to %s channel", bytesReadLeft, leftChannelName,
+                        rightChannelName);
+                LOG.infof("Read %d total bytes from %s channel to %s channel", bytesReadRight, rightChannelName,
+                        leftChannelName);
+                LOG.infof("Wrote %d total bytes from %s channel to %s channel", bytesWrittenLeft, leftChannelName,
+                        rightChannelName);
+                LOG.infof("Wrote %d total bytes from %s channel to %s channel", bytesWrittenRight, rightChannelName,
+                        leftChannelName);
                 LOG.infof("Read %d total bytes between channels overall", bytesReadLeft + bytesReadRight);
                 LOG.infof("Wrote %d total bytes between channels overall", bytesWrittenLeft + bytesWrittenRight);
             }
@@ -125,31 +121,43 @@ public final class CommonIOUtil {
         return bytesTransferred;
     }
 
-    private static void closeConnections(final SocketChannel sourceChannel, final SocketChannel destinationChannel) {
-        try {
-            if (sourceChannel != null && sourceChannel.isOpen()) {
-                sourceChannel.close();
-            }
-        } catch (final IOException e) {
-            LOG.errorf(e, "Error closing source channel");
+    private static void closeConnections(final SocketChannel leftChannel, final SocketChannel rightChannel) {
+        if (leftChannel != null) {
+            closeConnection(leftChannel);
         }
-        try {
-            if (destinationChannel != null && destinationChannel.isOpen()) {
-                destinationChannel.close();
-            }
-        } catch (final IOException e) {
-            LOG.errorf(e, "Error closing destination channel");
+        if (rightChannel != null) {
+            closeConnection(rightChannel);
         }
         LOG.info("Connections closed");
     }
 
+    private static void closeConnection(final SocketChannel channel) {
+        try {
+            if (channel.isOpen()) {
+                channel.close();
+            }
+        } catch (final IOException e) {
+            LOG.errorf(e, "Error closing %s channel", getChannelName(channel));
+        }
+    }
+
     private static void logBytes(final SocketChannel sourceChannel, final SocketChannel destinationChannel,
             final Operation operation,
-            final int bytesTransferred) throws IOException {
+            final int bytesTransferred) {
         if (bytesTransferred > 0) {
             LOG.infof("%s %d bytes from %s channel to %s channel", operation.descriptor, bytesTransferred,
-                    sourceChannel.getRemoteAddress().getClass().getSimpleName(),
-                    destinationChannel.getRemoteAddress().getClass().getSimpleName());
+                    getChannelName(sourceChannel),
+                    getChannelName(destinationChannel));
         }
+    }
+
+    private static String getChannelName(final SocketChannel channel) {
+        String channelName = "unknown";
+        try {
+            channelName = channel.getRemoteAddress().getClass().getSimpleName();
+        } catch (final IOException e) {
+            LOG.errorf(e, "Error getting channel name");
+        }
+        return channelName;
     }
 }
