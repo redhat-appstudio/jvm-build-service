@@ -83,9 +83,9 @@ public final class CommonIOUtil {
                             }
                         }
                     }
-//                    if (System.currentTimeMillis() - bytesTransferredTime > TIMEOUT_MS) {
-//                        break;
-//                    }
+                    //                    if (System.currentTimeMillis() - bytesTransferredTime > TIMEOUT_MS) {
+                    //                        break;
+                    //                    }
                 }
             } catch (final IOException e) {
                 LOG.errorf(e, "Error in bi-directional channel handling");
