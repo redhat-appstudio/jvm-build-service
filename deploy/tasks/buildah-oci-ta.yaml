@@ -399,7 +399,6 @@ spec:
           date >> /app/netstat-output.txt
           netstat -a >> /app/netstat-output.txt
           echo "--------------------------------------" >> /app/netstat-output.txt
-          sleep 5
           done
         EOF
 
