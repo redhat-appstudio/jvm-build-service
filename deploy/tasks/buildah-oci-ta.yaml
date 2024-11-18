@@ -399,11 +399,11 @@ spec:
           date >> /app/netstat-output.txt
           netstat -a >> /app/netstat-output.txt
           echo "--------------------------------------" >> /app/netstat-output.txt
-          sleep 30
           done
         EOF
 
         chmod +x /app/capture-netstat.sh
+        nohup /app/capture-netstat.sh &
 
         if [ "${HERMETIC}" == "true" ]; then
           BUILDAH_ARGS+=("--pull=never")
@@ -521,7 +521,6 @@ spec:
         ip link set lo up
         /app/domain-proxy-client-runner &
         client_pid=$!
-        nohup /app/capture-netstat.sh &
         EOF
 
           # With expansion
