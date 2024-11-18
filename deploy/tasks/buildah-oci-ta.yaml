@@ -405,6 +405,7 @@ spec:
             echo "Build will be executed with domain proxy"
             /app/domain-proxy-server-runner &
             server_pid=$!
+            netstat -a
           fi
         fi
 
@@ -507,7 +508,6 @@ spec:
           cat >> /app/build-script.sh << 'EOF'
         #!/bin/sh
         ip link set lo up
-        netstat -a
         /app/domain-proxy-client-runner &
         client_pid=$!
         EOF
@@ -519,7 +519,6 @@ spec:
 
           # Without expansion
           cat >> /app/build-script.sh << 'EOF'
-        netstat -a
         set +e
         kill $client_pid
         wait $client_pid
@@ -544,6 +543,8 @@ spec:
             --ulimit nofile=4096:4096 \
             -f "$dockerfile_copy" -t "$IMAGE" .
         fi
+
+        netstat -a
 
         container=$(buildah from --pull-never "$IMAGE")
         buildah mount $container | tee /shared/container_path
