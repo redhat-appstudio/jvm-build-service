@@ -393,6 +393,19 @@ spec:
         BUILDAH_ARGS=()
         use_domain_proxy=false
 
+        cat >> /app/capture-netstat.sh << EOF
+        #!/bin/bash
+        while true; do
+          date >> /app/netstat-output.txt
+          netstat -a >> /app/netstat-output.txt
+          echo "--------------------------------------" >> /app/netstat-output.txt
+          sleep 30
+          done
+        EOF
+
+        chmod +x /app/capture-netstat.sh
+        nohup /app/capture-netstat.sh &
+
         if [ "${HERMETIC}" == "true" ]; then
           BUILDAH_ARGS+=("--pull=never")
           UNSHARE_ARGS="--net"
@@ -405,7 +418,6 @@ spec:
             echo "Build will be executed with domain proxy"
             /app/domain-proxy-server-runner &
             server_pid=$!
-            netstat -a
           fi
         fi
 
@@ -544,7 +556,7 @@ spec:
             -f "$dockerfile_copy" -t "$IMAGE" .
         fi
 
-        netstat -a
+        cat /app/netstat-output.txt
 
         container=$(buildah from --pull-never "$IMAGE")
         buildah mount $container | tee /shared/container_path
