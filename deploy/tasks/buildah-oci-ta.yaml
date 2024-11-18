@@ -507,6 +507,7 @@ spec:
           cat >> /app/build-script.sh << 'EOF'
         #!/bin/sh
         ip link set lo up
+        netstat -a
         /app/domain-proxy-client-runner &
         client_pid=$!
         EOF
@@ -518,6 +519,7 @@ spec:
 
           # Without expansion
           cat >> /app/build-script.sh << 'EOF'
+        netstat -a
         set +e
         kill $client_pid
         wait $client_pid
