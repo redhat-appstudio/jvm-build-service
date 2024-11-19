@@ -158,6 +158,9 @@ spec:
     - name: INTERNAL_NON_PROXY_HOSTS
       description: Comma separated list of target hosts that bypass the proxy used internally by the domain proxy.
       type: string
+    - name: CACHE_HOST
+      description: Cache host.
+      type: string
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built
@@ -257,6 +260,8 @@ spec:
         value: $(params.INTERNAL_PROXY_PASSWORD)
       - name: INTERNAL_NON_PROXY_HOSTS
         value: $(params.INTERNAL_NON_PROXY_HOSTS)
+      - name: CACHE_HOST
+        value: $(params.CACHE_HOST)
     volumeMounts:
       - mountPath: /shared
         name: shared
@@ -525,7 +530,10 @@ spec:
 
           # With expansion
           cat >> /app/build-script.sh << EOF
-        buildah build $VOLUME_MOUNTS ${BUILDAH_ARGS[@]} ${LABELS[@]} --tls-verify=$TLSVERIFY --no-cache --ulimit nofile=4096:4096 -f "$dockerfile_copy" -t $IMAGE .
+        for ((i=1; i<=10000; i++)); do
+        echo "request #$i"
+        curl -v -x http://localhost:8080 "http://${CACHE_HOST}/v2/cache/rebuild-central/1658389751000/org/sonatype/oss/oss-parent/7/oss-parent-7.pom"
+        done
         EOF
 
           # Without expansion

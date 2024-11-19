@@ -587,6 +587,13 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 						StringVal: whitelistUrl.Host + ",localhost",
 					},
 				},
+				{
+					Name: "CACHE_HOST",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: whitelistUrl.Host,
+					},
+				},
 			},
 		}}, ps.Tasks...)
 
