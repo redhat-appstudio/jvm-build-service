@@ -1,6 +1,7 @@
 package com.redhat.hacbs.domainproxy.server;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -44,6 +45,8 @@ public class ExternalProxyVerticle extends AbstractVerticle {
     private final NetClient netClient;
     private final HttpServer httpServer;
 
+    private AtomicInteger counter = new AtomicInteger(0);
+
     public ExternalProxyVerticle(final Vertx vertx) {
         webClient = WebClient.create(vertx, new WebClientOptions());
         netClient = vertx.createNetClient(new NetClientOptions());
@@ -73,6 +76,8 @@ public class ExternalProxyVerticle extends AbstractVerticle {
 
     private void handleGetRequest(final HttpServerRequest request) {
         Log.info("Handling HTTP GET Request");
+        counter.incrementAndGet();
+        Log.infof("Request no: %d", counter.get());
         if (isTargetWhitelisted(request.authority().host(), request)) {
             Log.infof("Target URI %s", request.uri());
             webClient.getAbs(request.uri()).send(asyncResult -> {
@@ -98,7 +103,7 @@ public class ExternalProxyVerticle extends AbstractVerticle {
     }
 
     private void handleConnectRequest(final HttpServerRequest request) {
-        Log.info("Handling HTTPS CONNECT request"); //
+        Log.info("Handling HTTPS CONNECT request");
         final String targetHost = request.authority().host();
         if (isTargetWhitelisted(targetHost, request)) {
             Log.infof("Target URI %s", request.uri());
