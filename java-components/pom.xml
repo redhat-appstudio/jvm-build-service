@@ -83,6 +83,7 @@
         <module>common-images</module>
         <module>common-maven</module>
         <module>domain-proxy</module>
+        <module>driver</module>
     </modules>
 
     <dependencyManagement>
@@ -145,6 +146,11 @@
                 <artifactId>common-maven</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+                <artifactId>driver</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>io.quarkiverse.quinoa</groupId>
@@ -181,6 +187,11 @@
                 <groupId>io.quarkiverse.mavenresolver</groupId>
                 <artifactId>quarkus-maven-resolver</artifactId>
                 <version>0.0.4</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkiverse.tektonclient</groupId>
+                <artifactId>quarkus-tekton-client</artifactId>
+                <version>1.0.1</version>
             </dependency>
 
             <dependency>

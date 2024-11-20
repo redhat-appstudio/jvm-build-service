@@ -1,0 +1,76 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: run-mw-pipeline-
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+      # TODO: This will eventually be build-definitions repository
+      - name: url
+        value: "https://gitlab.cee.redhat.com/project-ncl/konflux-integration.git"
+      - name: revision
+        value: "main"
+      - name: pathInRepo
+        value: ".tekton/mw-pipeline-v0.1.yaml"
+
+  workspaces:
+    - name: source
+      # TODO: If we have a custom git step we can share this with prebuild thereby eliminating the
+      #   need for a volumeClaimTemplate
+      #
+      # emptyDir: {} - does not share the data between tasks
+      # When the volume is created from a template in a PipelineRun or TaskRun it will be deleted when the PipelineRun or TaskRun is deleted.
+      volumeClaimTemplate:
+        metadata:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+        status: {}
+  params:
+    - name: URL
+      value: "%{URL}"
+    - name: REVISION
+      value: "%{REVISION}"
+    - name: BUILD_TOOL
+      value: "%{BUILD_TOOL}"
+    - name: BUILD_TOOL_VERSION
+      value: "%{BUILD_TOOL_VERSION}"
+    - name: JAVA_VERSION
+      value: "%{JAVA_VERSION}"
+    - name: BUILD_SCRIPT
+      value: |
+        %{BUILD_SCRIPT}
+    - name: MVN_REPO_DEPLOY_URL
+      value: "%{MVN_REPO_DEPLOY_URL}"
+    - name: MVN_REPO_DEPENDENCIES_URL
+      value: "%{MVN_REPO_DEPENDENCIES_URL}"
+    - name: ACCESS_TOKEN
+      value: "%{ACCESS_TOKEN}"
+    - name: BUILD_ID
+      value: "%{BUILD_ID}"
+    - name: caTrustConfigMapName
+      value: custom-ca
+    - name: ENABLE_INDY_PROXY
+      value: "true"
+  # TODO: Should PNC set both limits and requests? See
+  #   https://home.robusta.dev/blog/kubernetes-memory-limit
+  #   https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  taskRunSpecs:
+    - pipelineTaskName: buildah-oci-ta
+      stepSpecs:
+        - name: build
+          computeResources:
+            limits:
+              # Default in buildah-oci-ta is 4Gi
+              # TODO: Configure as %{MEMORY}
+              memory: 5Gi
+            requests:
+              # Default in buildah-oci-ta is 1Gi
+              memory: 5Gi
+  taskRunTemplate:
+    podTemplate:
+      env:
