@@ -2,9 +2,7 @@ package com.redhat.hacbs.domainproxy.common;
 
 import static java.lang.Thread.currentThread;
 
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
@@ -12,8 +10,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Iterator;
 
 import org.jboss.logging.Logger;
@@ -176,22 +172,22 @@ public final class CommonIOUtil {
 
         // Create a PrintWriter to write the thread dump to a file
         //try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-            // Get the ThreadMXBean instance
-            ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+        // Get the ThreadMXBean instance
+        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
 
-            // Get all thread IDs
-            long[] threadIds = threadMXBean.getAllThreadIds();
-            ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadIds, Integer.MAX_VALUE);
+        // Get all thread IDs
+        long[] threadIds = threadMXBean.getAllThreadIds();
+        ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadIds, Integer.MAX_VALUE);
 
-            // Write the thread information to the file
-            for (ThreadInfo threadInfo : threadInfos) {
-                threadDumpStr += "Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName() + "\n";
-                threadDumpStr += "Thread State: " + threadInfo.getThreadState() + "\n";
-                StackTraceElement[] stackTrace = threadInfo.getStackTrace();
-                for (StackTraceElement stackTraceElement : stackTrace) {
-                    threadDumpStr += "\t" + stackTraceElement + "\n";
-                }
+        // Write the thread information to the file
+        for (ThreadInfo threadInfo : threadInfos) {
+            threadDumpStr += "Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName() + "\n";
+            threadDumpStr += "Thread State: " + threadInfo.getThreadState() + "\n";
+            StackTraceElement[] stackTrace = threadInfo.getStackTrace();
+            for (StackTraceElement stackTraceElement : stackTrace) {
+                threadDumpStr += "\t" + stackTraceElement + "\n";
             }
+        }
         //}
 
         LOG.infof(threadDumpStr);
