@@ -171,8 +171,7 @@ public final class CommonIOUtil {
     public static void threadDump() throws IOException {
         // Create a timestamp with milliseconds for the file name
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
-        String fileName = "/app/thread_dump_" + timestamp + ".txt";
-        String threadDumpStr = "";
+        String fileName = "/tmp/thread_dump_" + timestamp + ".txt";
 
         // Create a PrintWriter to write the thread dump to a file
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
@@ -185,15 +184,16 @@ public final class CommonIOUtil {
 
             // Write the thread information to the file
             for (ThreadInfo threadInfo : threadInfos) {
-                threadDumpStr += "Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName() + "\n";
-                threadDumpStr += "Thread State: " + threadInfo.getThreadState() + "\n";
+                writer.println("Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName());
+                writer.println("Thread State: " + threadInfo.getThreadState());
                 StackTraceElement[] stackTrace = threadInfo.getStackTrace();
                 for (StackTraceElement stackTraceElement : stackTrace) {
-                    threadDumpStr += "\t" + stackTraceElement + "\n";
+                    writer.println("\t" + stackTraceElement);
                 }
+                writer.println();
             }
         }
 
-        LOG.info(threadDumpStr);
+        LOG.infof("Thread dump written to file: %s", fileName);
     }
 }
