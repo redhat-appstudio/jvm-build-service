@@ -190,6 +190,6 @@ public final class CommonIOUtil {
         }
         //}
 
-        LOG.infof(threadDumpStr);
+        LOG.info(threadDumpStr);
     }
 }
