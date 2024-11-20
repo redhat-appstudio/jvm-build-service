@@ -2,11 +2,18 @@ package com.redhat.hacbs.domainproxy.common;
 
 import static java.lang.Thread.currentThread;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Iterator;
 
 import org.jboss.logging.Logger;
@@ -159,5 +166,34 @@ public final class CommonIOUtil {
             LOG.errorf(e, "Error getting channel name");
         }
         return channelName;
+    }
+
+    public static void threadDump() throws IOException {
+        // Create a timestamp with milliseconds for the file name
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
+        String fileName = "/app/thread_dump_" + timestamp + ".txt";
+
+        // Create a PrintWriter to write the thread dump to a file
+        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
+            // Get the ThreadMXBean instance
+            ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+
+            // Get all thread IDs
+            long[] threadIds = threadMXBean.getAllThreadIds();
+            ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadIds, Integer.MAX_VALUE);
+
+            // Write the thread information to the file
+            for (ThreadInfo threadInfo : threadInfos) {
+                writer.println("Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName());
+                writer.println("Thread State: " + threadInfo.getThreadState());
+                StackTraceElement[] stackTrace = threadInfo.getStackTrace();
+                for (StackTraceElement stackTraceElement : stackTrace) {
+                    writer.println("\t" + stackTraceElement);
+                }
+                writer.println();
+            }
+        }
+
+        LOG.infof("Thread dump written to file: %s", fileName);
     }
 }

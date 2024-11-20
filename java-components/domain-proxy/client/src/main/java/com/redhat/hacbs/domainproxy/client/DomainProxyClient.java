@@ -24,6 +24,8 @@ import jakarta.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.redhat.hacbs.domainproxy.common.CommonIOUtil;
+
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.Startup;
@@ -75,11 +77,13 @@ public class DomainProxyClient {
                                     .open(UnixDomainSocketAddress.of(domainSocket));
                             executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpClientChannel,
                                     domainSocketChannel));
+                            Thread.sleep(TIMEOUT_MS); // Make sure virtual thread is running
+                            CommonIOUtil.threadDump();
                         }
                     }
                 }
             }
-        } catch (final IOException e) {
+        } catch (final IOException | InterruptedException e) {
             Log.errorf(e, "Error initialising domain proxy client");
         }
         Quarkus.asyncExit();
