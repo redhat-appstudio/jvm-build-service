@@ -77,13 +77,12 @@ public class DomainProxyServer {
                                     .open(new InetSocketAddress(LOCALHOST, httpServerPort));
                             executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
                                     domainSocketChannel));
-                            Thread.sleep(TIMEOUT_MS); // Make sure virtual thread is running
                             CommonIOUtil.threadDump();
                         }
                     }
                 }
             }
-        } catch (final IOException | InterruptedException e) {
+        } catch (final IOException e) {
             Log.errorf(e, "Error initialising domain proxy server");
         }
         Quarkus.asyncExit();

@@ -77,13 +77,12 @@ public class DomainProxyClient {
                                     .open(UnixDomainSocketAddress.of(domainSocket));
                             executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpClientChannel,
                                     domainSocketChannel));
-                            Thread.sleep(TIMEOUT_MS); // Make sure virtual thread is running
                             CommonIOUtil.threadDump();
                         }
                     }
                 }
             }
-        } catch (final IOException | InterruptedException e) {
+        } catch (final IOException e) {
             Log.errorf(e, "Error initialising domain proxy client");
         }
         Quarkus.asyncExit();
