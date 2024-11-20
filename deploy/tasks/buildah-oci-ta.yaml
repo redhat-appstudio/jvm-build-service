@@ -552,8 +552,6 @@ spec:
             -f "$dockerfile_copy" -t "$IMAGE" .
         fi
 
-        cat /tmp/thread_dump_*
-
         container=$(buildah from --pull-never "$IMAGE")
         buildah mount $container | tee /shared/container_path
         # delete symlinks - they may point outside the container rootfs, messing with SBOM scanners

@@ -170,11 +170,12 @@ public final class CommonIOUtil {
 
     public static void threadDump() throws IOException {
         // Create a timestamp with milliseconds for the file name
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
-        String fileName = "/tmp/thread_dump_" + timestamp + ".txt";
+        //String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
+        //String fileName = "/app/thread_dump_" + timestamp + ".txt";
+        String threadDumpStr = "";
 
         // Create a PrintWriter to write the thread dump to a file
-        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
+        //try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
             // Get the ThreadMXBean instance
             ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
 
@@ -184,16 +185,15 @@ public final class CommonIOUtil {
 
             // Write the thread information to the file
             for (ThreadInfo threadInfo : threadInfos) {
-                writer.println("Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName());
-                writer.println("Thread State: " + threadInfo.getThreadState());
+                threadDumpStr += "Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName() + "\n";
+                threadDumpStr += "Thread State: " + threadInfo.getThreadState() + "\n";
                 StackTraceElement[] stackTrace = threadInfo.getStackTrace();
                 for (StackTraceElement stackTraceElement : stackTrace) {
-                    writer.println("\t" + stackTraceElement);
+                    threadDumpStr += "\t" + stackTraceElement + "\n";
                 }
-                writer.println();
             }
-        }
+        //}
 
-        LOG.infof("Thread dump written to file: %s", fileName);
+        LOG.infof(threadDumpStr);
     }
 }
