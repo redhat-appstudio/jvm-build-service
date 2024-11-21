@@ -90,20 +90,27 @@ public class ExternalProxyVerticle extends AbstractVerticle {
         if (isTargetWhitelisted(request.authority().host(), request)) {
             Log.infof("Target URI %s", request.uri());
             final long startTime = System.currentTimeMillis();
-            webClient.getAbs(request.uri()).send(asyncResult -> {
-                Log.infof("Request %d took %d ms", requestNo, System.currentTimeMillis() - startTime);
-                if (asyncResult.succeeded()) {
-                    final HttpResponse<Buffer> response = asyncResult.result();
-                    if (response.statusCode() != HttpResponseStatus.OK.code()) {
-                        Log.errorf("Response code: %d, message: %s, body: %s", response.statusCode(), response.statusMessage(),
+            vertx.executeBlocking(promise -> {
+                webClient.getAbs(request.uri()).send(asyncResult -> {
+                    Log.infof("Request %d took %d ms", requestNo, System.currentTimeMillis() - startTime);
+                    if (asyncResult.succeeded()) {
+                        final HttpResponse<Buffer> response = asyncResult.result();
+                        if (response.statusCode() != HttpResponseStatus.OK.code()) {
+                            Log.errorf("Response code: %d, message: %s, body: %s", response.statusCode(),
+                                    response.statusMessage(),
                                 response.bodyAsString());
-                    }
-                    request.response()
+                        }
+                        request.response()
                             .setStatusCode(response.statusCode())
                             .headers().addAll(response.headers());
-                    request.response().end(response.body());
-                } else {
-                    handleErrorResponse(request, asyncResult.cause(), "Failed to get response");
+                        request.response().end(response.body());
+                    } else {
+                        handleErrorResponse(request, asyncResult.cause(), "Failed to get response");
+                    }
+                });
+            }, res -> {
+                if (res.failed()) {
+                    Log.errorf(res.cause(), "Failed to process GET request asynchronously");
                 }
             });
         }
@@ -116,28 +123,34 @@ public class ExternalProxyVerticle extends AbstractVerticle {
         final String targetHost = request.authority().host();
         if (isTargetWhitelisted(targetHost, request)) {
             Log.infof("Target URI %s", request.uri());
-            int targetPort = request.authority().port();
-            if (targetPort == -1) {
-                targetPort = HTTPS_PORT;
-            }
             final long startTime = System.currentTimeMillis();
-            netClient.connect(targetPort, targetHost, targetConnect -> {
-                Log.infof("Request %d took %d ms", requestNo, System.currentTimeMillis() - startTime);
-                if (targetConnect.succeeded()) {
-                    final NetSocket targetSocket = targetConnect.result();
-                    request.toNetSocket().onComplete(sourceConnect -> {
-                        if (sourceConnect.succeeded()) {
-                            final NetSocket sourceSocket = sourceConnect.result();
-                            sourceSocket.handler(targetSocket::write);
-                            targetSocket.handler(sourceSocket::write);
-                            sourceSocket.closeHandler(v -> targetSocket.close());
-                            targetSocket.closeHandler(v -> sourceSocket.close());
-                        } else {
-                            handleErrorResponse(request, sourceConnect.cause(), "Failed to connect to source");
-                        }
-                    });
-                } else {
-                    handleErrorResponse(request, targetConnect.cause(), "Failed to connect to target");
+            vertx.executeBlocking(promise -> {
+                int targetPort = request.authority().port();
+                if (targetPort == -1) {
+                    targetPort = HTTPS_PORT;
+                }
+                netClient.connect(targetPort, targetHost, targetConnect -> {
+                    Log.infof("Request %d took %d ms", requestNo, System.currentTimeMillis() - startTime);
+                    if (targetConnect.succeeded()) {
+                        final NetSocket targetSocket = targetConnect.result();
+                        request.toNetSocket().onComplete(sourceConnect -> {
+                            if (sourceConnect.succeeded()) {
+                                final NetSocket sourceSocket = sourceConnect.result();
+                                sourceSocket.handler(targetSocket::write);
+                                targetSocket.handler(sourceSocket::write);
+                                sourceSocket.closeHandler(v -> targetSocket.close());
+                                targetSocket.closeHandler(v -> sourceSocket.close());
+                            } else {
+                                handleErrorResponse(request, sourceConnect.cause(), "Failed to connect to source");
+                            }
+                        });
+                    } else {
+                        handleErrorResponse(request, targetConnect.cause(), "Failed to connect to target");
+                    }
+                });
+            }, res -> {
+                if (res.failed()) {
+                    Log.errorf(res.cause(), "Failed to process CONNECT request asynchronously");
                 }
             });
         }
