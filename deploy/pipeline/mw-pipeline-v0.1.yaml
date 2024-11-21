@@ -39,6 +39,8 @@ spec:
       type: string
     - name: ENABLE_INDY_PROXY
       type: string
+    - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
+      type: string
   workspaces:
     - name: source
       description: Workspace containing the source code
@@ -75,6 +77,8 @@ spec:
       runAfter:
         - git-clone
       params:
+        - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
+          value: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
         - name: IMAGE_URL
           value: $(params.QUAY_REPO):trusted-source-$(context.pipelineRun.name)
         - name: NAME
@@ -143,6 +147,8 @@ spec:
       runAfter:
         - buildah-oci-ta
       params:
+        - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
+          value: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
         - name: IMAGE_URL
           value: $(tasks.buildah-oci-ta.results.IMAGE_URL)
         - name: IMAGE_DIGEST

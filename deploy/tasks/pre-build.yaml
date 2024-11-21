@@ -57,7 +57,8 @@ spec:
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       description: Name of the processor image. Useful to override for development.
       type: string
-      default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
+      default: "quay.io/ncross/hacbs-jvm-build-request-processor:latest"
+      # default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
   results:
     - name: PRE_BUILD_IMAGE_DIGEST
       description: Digest of the image just built
