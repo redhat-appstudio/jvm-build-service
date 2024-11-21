@@ -98,11 +98,11 @@ public class ExternalProxyVerticle extends AbstractVerticle {
                         if (response.statusCode() != HttpResponseStatus.OK.code()) {
                             Log.errorf("Response code: %d, message: %s, body: %s", response.statusCode(),
                                     response.statusMessage(),
-                                response.bodyAsString());
+                                    response.bodyAsString());
                         }
                         request.response()
-                            .setStatusCode(response.statusCode())
-                            .headers().addAll(response.headers());
+                                .setStatusCode(response.statusCode())
+                                .headers().addAll(response.headers());
                         request.response().end(response.body());
                     } else {
                         handleErrorResponse(request, asyncResult.cause(), "Failed to get response");
