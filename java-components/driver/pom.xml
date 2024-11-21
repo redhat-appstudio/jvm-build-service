@@ -25,10 +25,6 @@
             <artifactId>quarkus-oidc-client</artifactId>
         </dependency>
         <dependency>
-            <groupId>info.picocli</groupId>
-            <artifactId>picocli-shell-jline2</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.quarkiverse.tektonclient</groupId>
             <artifactId>quarkus-tekton-client</artifactId>
         </dependency>
@@ -39,10 +35,6 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-kubernetes-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-picocli</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>

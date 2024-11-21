@@ -1,0 +1,156 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: mw-pipeline
+spec:
+  params:
+    - name: URL
+      description: Repository URL to clone from
+      type: string
+    - name: REVISION
+      description: 'Revision to checkout. (branch, tag, sha, ref, etc...)'
+      type: string
+      default: main
+    - name: BUILD_SCRIPT
+      description: 'The build script to embed with the Containerfile'
+      type: string
+      default: |
+        date
+    - name: BUILD_TOOL
+      type: string
+    - name: BUILD_TOOL_VERSION
+      type: string
+    - name: JAVA_VERSION
+      type: string
+    - name: MVN_REPO_DEPLOY_URL
+      description: Maven repository to deploy to
+      type: string
+      default: http://indyhost/ #TODO remove default
+    - name: MVN_REPO_DEPENDENCIES_URL
+      description: Maven repository to get dependencies from
+      type: string
+    - name: ACCESS_TOKEN
+      type: string
+    - name: BUILD_ID
+      type: string
+    - name: caTrustConfigMapName
+      type: string
+    - name: ENABLE_INDY_PROXY
+      type: string
+  workspaces:
+    - name: source
+      description: Workspace containing the source code
+    # - name: ssh-directory
+    # configMap:
+    #   name: ssh-directory
+  tasks:
+    - name: git-clone
+      params:
+        - name: url
+          value: $(params.URL)
+        - name: revision
+          value: $(params.REVISION)
+        - name: verbose
+          value: 'true'
+        - name: subdirectory
+          value: ''
+      taskRef:
+        resolver: bundles
+        params:
+          - name: name
+            value: git-clone
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-git-clone:0.1
+          - name: kind
+            value: task
+      workspaces:
+        - name: output
+          workspace: source
+        # - name: ssh-directory
+        #   workspace: ssh-directory
+    - name: pre-build
+      runAfter:
+        - git-clone
+      params:
+        - name: IMAGE_URL
+          # value: 'quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc-konflux-trusted-source:{{revision}}'
+          value: 'quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc:trusted-source-$(context.pipelineRun.name)'
+        - name: NAME
+          value: $(context.pipelineRun.name)
+        - name: RECIPE_IMAGE
+          value: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service-builder-images/ubi8:latest"
+        - name: BUILD_TOOL
+          value: $(params.BUILD_TOOL)
+        - name: BUILD_TOOL_VERSION
+          value: $(params.BUILD_TOOL_VERSION)
+        - name: JAVA_VERSION
+          value: $(params.JAVA_VERSION)
+        - name: BUILD_SCRIPT
+          value: $(params.BUILD_SCRIPT)
+        # TODO: Below is needed for deploy-pre-build-source step and could be skipped if its removed.
+        - name: SCM_URL
+          value: $(params.URL)
+        - name: SCM_HASH
+          value: $(params.REVISION)
+      taskRef:
+        resolver: http
+        params:
+          - name: url
+            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/tasks/pre-build.yaml
+      workspaces:
+        - name: source
+          workspace: source
+
+    - name: buildah-oci-ta
+      runAfter:
+        - pre-build
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.pre-build.results.PRE_BUILD_IMAGE_DIGEST)
+        - name: HERMETIC
+          value: "false"
+        - name: IMAGE # output image
+          value: quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc:build-$(context.pipelineRun.name)
+        - name: DOCKERFILE # local path to the containerfile
+          value: .jbs/Containerfile
+        - name: caTrustConfigMapName
+          value: $(params.caTrustConfigMapName)
+        - name: ENABLE_INDY_PROXY
+          value: $(params.ENABLE_INDY_PROXY)
+        - name: BUILD_ARGS  #TODO this should be baked in the OCI source image only a ACCESS_TOKEN should be passed
+          value:
+            - PROXY_URL=$(params.MVN_REPO_DEPENDENCIES_URL)
+            - BUILD_ID=$(params.BUILD_ID)
+            - ACCESS_TOKEN=$(params.ACCESS_TOKEN)
+      taskRef:
+        #resolver: bundles
+        #params:
+        #  - name: name
+        #    value: buildah-oci-ta
+        #  - name: bundle
+        #    value: quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.2
+        #  - name: kind
+        #    value: task
+
+        resolver: http
+        params:
+          - name: url
+            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/tasks/buildah-oci-ta.yaml
+
+    - name: maven-deployment
+      runAfter:
+        - buildah-oci-ta
+      params:
+        - name: IMAGE_URL
+          value: $(tasks.buildah-oci-ta.results.IMAGE_URL)
+        - name: IMAGE_DIGEST
+          value: $(tasks.buildah-oci-ta.results.IMAGE_DIGEST)
+        - name: MVN_REPO
+          value: $(params.MVN_REPO_DEPLOY_URL)
+        - name: ACCESS_TOKEN
+          value: $(params.ACCESS_TOKEN)
+      taskRef:
+        resolver: http
+        params:
+          - name: url
+            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/tasks/maven-deployment.yaml

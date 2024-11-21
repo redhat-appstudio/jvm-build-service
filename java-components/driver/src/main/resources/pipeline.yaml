@@ -4,20 +4,15 @@ metadata:
   generateName: run-mw-pipeline-
 spec:
   pipelineRef:
-    resolver: git
+    resolver: http
     params:
       # TODO: This will eventually be build-definitions repository
       - name: url
-        value: "https://gitlab.cee.redhat.com/project-ncl/konflux-integration.git"
-      - name: revision
-        value: "main"
-      - name: pathInRepo
-        value: ".tekton/mw-pipeline-v0.1.yaml"
+        value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/pipeline/mw-pipeline-v0.1.yaml
 
   workspaces:
     - name: source
-      # TODO: If we have a custom git step we can share this with prebuild thereby eliminating the
-      #   need for a volumeClaimTemplate
+      # TODO: If we have a custom git step we can share this with prebuild thereby eliminating the need for a volumeClaimTemplate
       #
       # emptyDir: {} - does not share the data between tasks
       # When the volume is created from a template in a PipelineRun or TaskRun it will be deleted when the PipelineRun or TaskRun is deleted.
@@ -55,7 +50,7 @@ spec:
     - name: caTrustConfigMapName
       value: custom-ca
     - name: ENABLE_INDY_PROXY
-      value: "true"
+      value: "false"
   # TODO: Should PNC set both limits and requests? See
   #   https://home.robusta.dev/blog/kubernetes-memory-limit
   #   https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
