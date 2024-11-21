@@ -6,9 +6,6 @@ import static com.redhat.hacbs.domainproxy.common.CommonIOUtil.channelToChannelB
 import static java.lang.Thread.currentThread;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 import java.net.InetSocketAddress;
 import java.net.StandardProtocolFamily;
 import java.net.UnixDomainSocketAddress;
@@ -20,13 +17,14 @@ import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.redhat.hacbs.domainproxy.common.CommonIOUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import com.redhat.hacbs.domainproxy.common.CommonIOUtil;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
@@ -54,7 +52,7 @@ public class DomainProxyClient {
     public void start() {
         Log.info("Starting domain proxy client...");
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO Remove
-        executor = Executors.newVirtualThreadPerTaskExecutor();
+        executor = Executors.newCachedThreadPool();
         executor.submit(this::startClient);
     }
 
