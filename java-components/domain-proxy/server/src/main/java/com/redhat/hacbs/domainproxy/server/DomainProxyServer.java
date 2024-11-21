@@ -53,7 +53,7 @@ public class DomainProxyServer {
     @PostConstruct
     public void start() {
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO Remove
-        executor = Executors.newCachedThreadPool();
+        executor = Executors.newVirtualThreadPerTaskExecutor();
         executor.submit(this::startServer);
     }
 
@@ -77,9 +77,7 @@ public class DomainProxyServer {
                                     .open(new InetSocketAddress(LOCALHOST, httpServerPort));
                             executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
                                     domainSocketChannel));
-                            Log.info("Before thread dump");
                             CommonIOUtil.threadDump();
-                            Log.info("After thread dump");
                         }
                     }
                 }

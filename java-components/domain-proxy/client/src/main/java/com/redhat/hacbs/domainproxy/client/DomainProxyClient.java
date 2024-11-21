@@ -52,7 +52,7 @@ public class DomainProxyClient {
     public void start() {
         Log.info("Starting domain proxy client...");
         Log.infof("Byte buffer size %d", byteBufferSize); // TODO Remove
-        executor = Executors.newCachedThreadPool();
+        executor = Executors.newVirtualThreadPerTaskExecutor();
         executor.submit(this::startClient);
     }
 
@@ -77,9 +77,7 @@ public class DomainProxyClient {
                                     .open(UnixDomainSocketAddress.of(domainSocket));
                             executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpClientChannel,
                                     domainSocketChannel));
-                            Log.info("Before thread dump");
                             CommonIOUtil.threadDump();
-                            Log.info("After thread dump");
                         }
                     }
                 }

@@ -3,14 +3,12 @@ package com.redhat.hacbs.domainproxy.common;
 import static java.lang.Thread.currentThread;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.Map;
 
 import org.jboss.logging.Logger;
 
@@ -164,36 +162,20 @@ public final class CommonIOUtil {
         return channelName;
     }
 
-    public static void threadDump() throws IOException {
-        // Create a timestamp with milliseconds for the file name
-        //String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
-        //String fileName = "/app/thread_dump_" + timestamp + ".txt";
-        LOG.info("Thread dump");
+    public static void threadDump() {
+        LOG.info("Before thread dump");
         String threadDumpStr = "";
-
-        // Create a PrintWriter to write the thread dump to a file
-        //try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-        // Get the ThreadMXBean instance
-        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-
-        // Get all thread IDs
-        long[] threadIds = threadMXBean.getAllThreadIds();
-        ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadIds, Integer.MAX_VALUE);
-
-        // Write the thread information to the file
-        for (ThreadInfo threadInfo : threadInfos) {
-            LOG.info("Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName());
-            LOG.info("Thread State: " + threadInfo.getThreadState());
-            threadDumpStr += "Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName() + "\n";
-            threadDumpStr += "Thread State: " + threadInfo.getThreadState() + "\n";
-            StackTraceElement[] stackTrace = threadInfo.getStackTrace();
-            for (StackTraceElement stackTraceElement : stackTrace) {
-                LOG.info("\t" + stackTraceElement);
-                threadDumpStr += "\t" + stackTraceElement + "\n";
+        Map<Thread, StackTraceElement[]> threadMap = Thread.getAllStackTraces();
+        for (Map.Entry<Thread, StackTraceElement[]> entry : threadMap.entrySet()) {
+            Thread thread = entry.getKey();
+            StackTraceElement[] stackTrace = entry.getValue();
+            threadDumpStr += "Thread: " + thread.getName() + " [ID: " + thread.getId() + "]\n";
+            threadDumpStr += "Thread Type: " + (thread.isVirtual() ? "Virtual" : "Platform") + "\n";
+            for (StackTraceElement ste : stackTrace) {
+                threadDumpStr += "\t" + ste + "\n";
             }
         }
-        //}
-
         LOG.info(threadDumpStr);
+        LOG.info("After thread dump");
     }
 }
