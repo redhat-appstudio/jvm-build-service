@@ -39,7 +39,7 @@ public class Pipeline extends Base implements Runnable {
                 .javaVersion(javaVersion)
                 .buildScript(buildScript)
                 .repositoryDeployUrl(deploy)
-                .repositoryDependencyUrl(deploy)
+                .repositoryDependencyUrl(dependencies)
                 .repositoryBuildContentId("test-maven-konflux-int-0001")
                 .build();
         try {

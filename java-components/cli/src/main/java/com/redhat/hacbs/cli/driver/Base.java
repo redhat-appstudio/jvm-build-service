@@ -28,8 +28,11 @@ public abstract class Base {
     @CommandLine.Option(names = "-s", description = "Build Script", required = true)
     String buildScript;
 
-    @CommandLine.Option(names = "-d", description = "Deploy URL", required = true)
+    @CommandLine.Option(names = "--deploy", description = "Deploy URL", required = true)
     String deploy;
+
+    @CommandLine.Option(names = "--dependencies", description = "Dependencies URL", required = true)
+    String dependencies;
 
     @ConfigProperty(name = "access.token")
     Optional<String> accessToken;
