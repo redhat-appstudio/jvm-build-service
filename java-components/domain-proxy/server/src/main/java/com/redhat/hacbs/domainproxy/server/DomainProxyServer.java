@@ -22,14 +22,13 @@ import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.redhat.hacbs.domainproxy.common.CommonIOUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import com.redhat.hacbs.domainproxy.common.CommonIOUtil;
 
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
@@ -81,7 +80,7 @@ public class DomainProxyServer {
                             executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
                                     domainSocketChannel));
                             Log.info("Before thread dump");
-                            threadDump();
+                            CommonIOUtil.threadDump();
                             Log.info("After thread dump");
                         }
                     }
@@ -91,35 +90,6 @@ public class DomainProxyServer {
             Log.errorf(e, "Error initialising domain proxy server");
         }
         Quarkus.asyncExit();
-    }
-
-    private static void threadDump() throws IOException {
-        // Create a timestamp with milliseconds for the file name
-        //String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
-        //String fileName = "/app/thread_dump_" + timestamp + ".txt";
-        Log.info("Thread dump");
-        String threadDumpStr = "";
-
-        // Create a PrintWriter to write the thread dump to a file
-        //try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-        // Get the ThreadMXBean instance
-        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-
-        // Get all thread IDs
-        long[] threadIds = threadMXBean.getAllThreadIds();
-        ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadIds, Integer.MAX_VALUE);
-
-        // Write the thread information to the file
-        for (ThreadInfo threadInfo : threadInfos) {
-            threadDumpStr += "Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName() + "\n";
-            threadDumpStr += "Thread State: " + threadInfo.getThreadState() + "\n";
-            StackTraceElement[] stackTrace = threadInfo.getStackTrace();
-            for (StackTraceElement stackTraceElement : stackTrace) {
-                threadDumpStr += "\t" + stackTraceElement + "\n";
-            }
-        }
-        //}
-        Log.info(threadDumpStr);
     }
 
     @PreDestroy

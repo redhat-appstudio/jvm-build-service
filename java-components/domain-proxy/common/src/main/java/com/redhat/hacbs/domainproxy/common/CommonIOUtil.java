@@ -168,6 +168,7 @@ public final class CommonIOUtil {
         // Create a timestamp with milliseconds for the file name
         //String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
         //String fileName = "/app/thread_dump_" + timestamp + ".txt";
+        LOG.info("Thread dump");
         String threadDumpStr = "";
 
         // Create a PrintWriter to write the thread dump to a file
@@ -181,10 +182,13 @@ public final class CommonIOUtil {
 
         // Write the thread information to the file
         for (ThreadInfo threadInfo : threadInfos) {
+            LOG.info("Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName());
+            LOG.info("Thread State: " + threadInfo.getThreadState());
             threadDumpStr += "Thread ID: " + threadInfo.getThreadId() + " Name: " + threadInfo.getThreadName() + "\n";
             threadDumpStr += "Thread State: " + threadInfo.getThreadState() + "\n";
             StackTraceElement[] stackTrace = threadInfo.getStackTrace();
             for (StackTraceElement stackTraceElement : stackTrace) {
+                LOG.info("\t" + stackTraceElement);
                 threadDumpStr += "\t" + stackTraceElement + "\n";
             }
         }
