@@ -8,7 +8,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-import java.util.Map;
 
 import org.jboss.logging.Logger;
 
@@ -38,7 +37,6 @@ public final class CommonIOUtil {
             final SocketChannel rightChannel) {
         return () -> {
             currentThread().setName("channelToChannelHandler");
-            CommonIOUtil.threadDump();
             LOG.info("Connections opened");
             final String leftChannelName = getChannelName(leftChannel);
             final String rightChannelName = getChannelName(rightChannel);
@@ -161,23 +159,5 @@ public final class CommonIOUtil {
             LOG.errorf(e, "Error getting channel name");
         }
         return channelName;
-    }
-
-    public static void threadDump() {
-        LOG.info("Before thread dump");
-        String threadDumpStr = "";
-        Map<Thread, StackTraceElement[]> threadMap = Thread.getAllStackTraces();
-        LOG.info("Thread dump count: " + threadMap.size());
-        for (Map.Entry<Thread, StackTraceElement[]> entry : threadMap.entrySet()) {
-            Thread thread = entry.getKey();
-            StackTraceElement[] stackTrace = entry.getValue();
-            threadDumpStr += "Thread: " + thread.getName() + " [ID: " + thread.getId() + "]\n";
-            threadDumpStr += "Thread Type: " + (thread.isVirtual() ? "Virtual" : "Platform") + "\n";
-            for (StackTraceElement ste : stackTrace) {
-                threadDumpStr += "\t" + ste + "\n";
-            }
-        }
-        LOG.info(threadDumpStr);
-        LOG.info("After thread dump");
     }
 }
