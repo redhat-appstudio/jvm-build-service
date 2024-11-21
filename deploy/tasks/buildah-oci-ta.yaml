@@ -518,7 +518,7 @@ spec:
 
           # With expansion
           cat >> /app/build-script.sh << EOF
-        for ((i=1; i<=17; i++)); do
+        for ((i=1; i<=30; i++)); do
         echo "request #$i"
         curl --max-time 30 -v -x http://localhost:8080 "http://${CACHE_HOST}/v2/cache/rebuild-central/1658389751000/org/sonatype/oss/oss-parent/7/oss-parent-7.pom"
         sleep 0.1
