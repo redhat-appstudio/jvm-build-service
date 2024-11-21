@@ -77,7 +77,6 @@ public class DomainProxyClient {
                                     .open(UnixDomainSocketAddress.of(domainSocket));
                             executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpClientChannel,
                                     domainSocketChannel));
-                            CommonIOUtil.threadDump();
                         }
                     }
                 }

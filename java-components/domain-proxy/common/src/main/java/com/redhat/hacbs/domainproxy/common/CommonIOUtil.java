@@ -38,6 +38,7 @@ public final class CommonIOUtil {
             final SocketChannel rightChannel) {
         return () -> {
             currentThread().setName("channelToChannelHandler");
+            CommonIOUtil.threadDump();
             LOG.info("Connections opened");
             final String leftChannelName = getChannelName(leftChannel);
             final String rightChannelName = getChannelName(rightChannel);

@@ -77,7 +77,6 @@ public class DomainProxyServer {
                                     .open(new InetSocketAddress(LOCALHOST, httpServerPort));
                             executor.submit(channelToChannelBiDirectionalHandler(byteBufferSize, httpServerChannel,
                                     domainSocketChannel));
-                            CommonIOUtil.threadDump();
                         }
                     }
                 }
