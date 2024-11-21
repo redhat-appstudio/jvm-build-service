@@ -26,6 +26,8 @@ spec:
               storage: 1Gi
         status: {}
   params:
+    - name: QUAY_REPO
+      value: "%{QUAY_REPO}"
     - name: URL
       value: "%{URL}"
     - name: REVISION

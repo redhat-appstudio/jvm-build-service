@@ -46,10 +46,11 @@ public class Driver {
     ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
     private String accessToken;
+    private String quayRepo;
 
-    public void addAccessToken(String accessToken) {
-        System.err.println("### oidc " + oidcClient);
+    public void addValues(String accessToken, String quayRepo) {
         this.accessToken = accessToken;
+        this.quayRepo = quayRepo;
     }
 
     public void create(BuildRequest buildRequest) throws IOException {
@@ -62,6 +63,7 @@ public class Driver {
         }
 
         Map<String, String> templateProperties = new HashMap<>();
+        templateProperties.put("QUAY_REPO", quayRepo);
         templateProperties.put("URL", buildRequest.getScmUrl());
         templateProperties.put("REVISION", buildRequest.getScmRevision());
         templateProperties.put("BUILD_TOOL", buildRequest.getBuildTool());

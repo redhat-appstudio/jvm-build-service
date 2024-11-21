@@ -4,6 +4,8 @@ metadata:
   name: mw-pipeline
 spec:
   params:
+    - name: QUAY_REPO
+      type: string
     - name: URL
       description: Repository URL to clone from
       type: string
@@ -73,8 +75,7 @@ spec:
         - git-clone
       params:
         - name: IMAGE_URL
-          # value: 'quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc-konflux-trusted-source:{{revision}}'
-          value: 'quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc:trusted-source-$(context.pipelineRun.name)'
+          value: $(params.QUAY_REPO):trusted-source-$(context.pipelineRun.name)
         - name: NAME
           value: $(context.pipelineRun.name)
         - name: RECIPE_IMAGE
@@ -110,7 +111,7 @@ spec:
         - name: HERMETIC
           value: "false"
         - name: IMAGE # output image
-          value: quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc:build-$(context.pipelineRun.name)
+          value: $(params.QUAY_REPO):build-$(context.pipelineRun.name)
         - name: DOCKERFILE # local path to the containerfile
           value: .jbs/Containerfile
         - name: caTrustConfigMapName

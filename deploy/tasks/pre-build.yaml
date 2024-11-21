@@ -80,6 +80,7 @@ spec:
           cpu: 10m
           memory: 512Mi
       script: |
+        ls -lR $(workspaces.source.path)
         /opt/jboss/container/java/run/run-java.sh $(params.BUILD_TOOL)-prepare --java-version=$(params.JAVA_VERSION) --build-tool-version=$(params.BUILD_TOOL_VERSION) --recipe-image=$(params.RECIPE_IMAGE) --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE) --disabled-plugins=$(params.BUILD_PLUGINS) $(workspaces.source.path)/source
       env:
         - name: BUILD_SCRIPT
@@ -117,6 +118,7 @@ spec:
     - name: create-pre-build-image
       image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:52f1391e6f1c472fd10bb838f64fae2ed3320c636f536014978a5ddbdfc6b3af
       script: |
+        ls -lR $(workspaces.source.path)
         echo "Creating pre-build-image archive"
         create-archive --store $(params.IMAGE_URL) $(results.PRE_BUILD_IMAGE_DIGEST.path)=$(workspaces.source.path)/source
       env:
