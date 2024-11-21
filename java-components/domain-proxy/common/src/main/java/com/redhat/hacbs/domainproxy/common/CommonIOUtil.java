@@ -167,6 +167,7 @@ public final class CommonIOUtil {
         LOG.info("Before thread dump");
         String threadDumpStr = "";
         Map<Thread, StackTraceElement[]> threadMap = Thread.getAllStackTraces();
+        LOG.info("Thread dump count: " + threadMap.size());
         for (Map.Entry<Thread, StackTraceElement[]> entry : threadMap.entrySet()) {
             Thread thread = entry.getKey();
             StackTraceElement[] stackTrace = entry.getValue();

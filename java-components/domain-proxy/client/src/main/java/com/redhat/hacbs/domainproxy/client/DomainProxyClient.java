@@ -24,8 +24,6 @@ import jakarta.inject.Singleton;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.redhat.hacbs.domainproxy.common.CommonIOUtil;
-
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.Startup;
