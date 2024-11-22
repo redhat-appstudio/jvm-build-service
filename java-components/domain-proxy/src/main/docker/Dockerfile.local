@@ -1,5 +1,5 @@
 FROM quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
 USER 0
-RUN microdnf install -y iproute net-tools
+RUN microdnf install -y iproute net-tools java-21-openjdk.x86_64
 COPY java-components/domain-proxy/client/target/domain-proxy-client-999-SNAPSHOT-runner /app/domain-proxy-client-runner
 COPY java-components/domain-proxy/server/target/domain-proxy-server-999-SNAPSHOT-runner /app/domain-proxy-server-runner
