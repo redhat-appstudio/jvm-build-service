@@ -1,5 +1,7 @@
 package com.redhat.hacbs.container.build.preprocessor.maven;
 
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -31,8 +33,6 @@ import com.redhat.hacbs.container.build.preprocessor.AbstractPreprocessor;
 
 import io.quarkus.logging.Log;
 import picocli.CommandLine;
-
-import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 /**
  * A simple preprocessor that attempts to fix problematic maven build files.

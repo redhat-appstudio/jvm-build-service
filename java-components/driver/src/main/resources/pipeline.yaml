@@ -41,6 +41,19 @@ spec:
       value: "%{JAVA_VERSION}"
     - name: BUILD_SCRIPT
       value: |
+        update-ca-trust
+
+        # Go through certificates and insert them into the cacerts
+        for cert in /etc/pki/ca-trust/source/anchors/*; do
+          echo "inserting $cert into java cacerts"
+          keytool -import -alias $(basename $cert)-ca \
+            -file $cert \
+            -keystore /etc/pki/java/cacerts \
+            -storepass changeit --noprompt
+        done;
+
+        echo "Building the project ..."
+
         %{BUILD_SCRIPT}
     - name: MVN_REPO_DEPLOY_URL
       value: "%{MVN_REPO_DEPLOY_URL}"
@@ -55,7 +68,7 @@ spec:
     - name: ENABLE_INDY_PROXY
       value: "false"
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
-      value: quay.io/ncross/hacbs-jvm-build-request-processor:latest
+      value: "quay.io/ncross/hacbs-jvm-build-request-processor:latest"
       # "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
   # TODO: Should PNC set both limits and requests? See
   #   https://home.robusta.dev/blog/kubernetes-memory-limit
