@@ -33,7 +33,6 @@
         <profile>
             <id>native</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
                 <property>
                     <name>native</name>
                 </property>

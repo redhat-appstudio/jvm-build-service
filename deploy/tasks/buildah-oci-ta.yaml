@@ -410,7 +410,7 @@ spec:
           if [ "${DOMAIN_PROXY}" == "true" ]; then
             use_domain_proxy=true
             echo "Build will be executed with domain proxy"
-            /app/domain-proxy-server-runner &
+            java -jar /domain-proxy-server/quarkus-app/quarkus-run.jar &
             server_pid=$!
           fi
         fi
@@ -514,7 +514,7 @@ spec:
           cat >> /app/build-script.sh << 'EOF'
         #!/bin/sh
         ip link set lo up
-        /app/domain-proxy-client-runner &
+        java -jar /domain-proxy-client/quarkus-app/quarkus-run.jar &
         client_pid=$!
         EOF
 
