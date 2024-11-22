@@ -87,6 +87,7 @@ public class DomainProxyClient {
 
     @PreDestroy
     public void stop() {
+        Log.info("Shutting down domain proxy client...");
         executor.shutdownNow();
     }
 }
