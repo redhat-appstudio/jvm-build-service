@@ -411,6 +411,7 @@ spec:
             use_domain_proxy=true
             echo "Build will be executed with domain proxy"
             java -jar /domain-proxy-server/quarkus-app/quarkus-run.jar &
+            sleep 10
           fi
         fi
 
@@ -514,6 +515,7 @@ spec:
         #!/bin/sh
         ip link set lo up
         java -jar /domain-proxy-client/quarkus-app/quarkus-run.jar &
+        sleep 10
         EOF
 
           # With expansion
