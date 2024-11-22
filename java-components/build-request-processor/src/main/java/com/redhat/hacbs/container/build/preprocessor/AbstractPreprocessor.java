@@ -72,7 +72,6 @@ public abstract class AbstractPreprocessor implements Runnable {
         }
 
         Log.warnf("### Using tool %s with version %s and javaHome %s", type, buildToolVersion, javaVersion);
-        Log.warnf("### ENV %s", System.getenv("jvm-build-service"));
 
         String javaHome;
         if (javaVersion.equals("7") || javaVersion.equals("8")) {
@@ -153,7 +152,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             // Now add in the build script from either JBS or PNC. This might contain e.g. "mvn -Pfoo install"
             runBuild += buildScript;
         }
-        Log.warnf("### runBuild is\n%s", runBuild);
+        Log.debugf("### runBuild is\n%s", runBuild);
 
         try {
             Path runBuildSh = Paths.get(jbsDirectory.toString(), "run-build.sh");
