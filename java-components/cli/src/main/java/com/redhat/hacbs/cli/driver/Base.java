@@ -34,6 +34,9 @@ public abstract class Base {
     @CommandLine.Option(names = "--dependencies", description = "Dependencies URL", required = true)
     String dependencies;
 
+    @CommandLine.Option(names = "-i", description = "Recipe Image", defaultValue = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service-builder-images/ubi8:latest")
+    String recipeImage;
+
     @ConfigProperty(name = "access.token")
     Optional<String> accessToken;
 

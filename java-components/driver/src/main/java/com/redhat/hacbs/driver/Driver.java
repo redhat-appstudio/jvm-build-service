@@ -66,6 +66,7 @@ public class Driver {
         templateProperties.put("QUAY_REPO", quayRepo);
         templateProperties.put("URL", buildRequest.getScmUrl());
         templateProperties.put("REVISION", buildRequest.getScmRevision());
+        templateProperties.put("RECIPE_IMAGE", buildRequest.getRecipeImage());
         templateProperties.put("BUILD_TOOL", buildRequest.getBuildTool());
         templateProperties.put("BUILD_TOOL_VERSION", buildRequest.getBuildToolVersion());
         templateProperties.put("JAVA_VERSION", buildRequest.getJavaVersion());

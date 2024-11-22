@@ -33,6 +33,8 @@ spec:
       value: "%{URL}"
     - name: REVISION
       value: "%{REVISION}"
+    - name: RECIPE_IMAGE
+      value: "%{RECIPE_IMAGE}"
     - name: BUILD_TOOL
       value: "%{BUILD_TOOL}"
     - name: BUILD_TOOL_VERSION

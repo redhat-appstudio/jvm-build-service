@@ -14,6 +14,7 @@ import lombok.extern.jackson.Jacksonized;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BuildRequest {
 
+    private final String recipeImage;
     private final String buildTool;
     private final String buildToolVersion;
     private final String javaVersion;

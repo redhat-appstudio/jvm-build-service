@@ -41,6 +41,7 @@ public class Pipeline extends Base implements Runnable {
                 .repositoryDeployUrl(deploy)
                 .repositoryDependencyUrl(dependencies)
                 .repositoryBuildContentId("test-maven-konflux-int-0001")
+                .recipeImage(recipeImage)
                 .build();
         try {
             driver.create(request);

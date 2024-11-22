@@ -18,6 +18,8 @@ spec:
       type: string
       default: |
         date
+    - name: RECIPE_IMAGE
+      type: string
     - name: BUILD_TOOL
       type: string
     - name: BUILD_TOOL_VERSION
@@ -56,9 +58,6 @@ spec:
           value: $(params.REVISION)
         - name: verbose
           value: 'true'
-        # TODO: Unclear why this was added ; causes knock-on effects that the directory layout is then wrong.
-        # - name: subdirectory
-        #   value: ''
       taskRef:
         resolver: bundles
         params:
@@ -84,7 +83,7 @@ spec:
         - name: NAME
           value: $(context.pipelineRun.name)
         - name: RECIPE_IMAGE
-          value: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service-builder-images/ubi8:latest"
+          value: $(params.RECIPE_IMAGE)
         - name: BUILD_TOOL
           value: $(params.BUILD_TOOL)
         - name: BUILD_TOOL_VERSION
