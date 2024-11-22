@@ -624,18 +624,31 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		}
 	}
 
+	trueBool := true
+	pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{
+		PipelineTaskName: DeployTaskName,
+		PodTemplate: &pod.Template{
+			Env: []v1.EnvVar{
+				{
+					Name:      "MAVEN_PASSWORD",
+					ValueFrom: &v1.EnvVarSource{SecretKeyRef: &v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: v1alpha1.MavenSecretName}, Key: v1alpha1.MavenSecretKey, Optional: &trueBool}},
+				},
+			},
+		},
+	}}
+
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.CITests] == "true" {
 		log.Info(fmt.Sprintf("Configuring resources for %#v", BuildTaskName))
 		podMemR, _ := resource.ParseQuantity("1792Mi")
 		podMemL, _ := resource.ParseQuantity("3584Mi")
 		podCPU, _ := resource.ParseQuantity("500m")
-		pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{
+		pr.Spec.TaskRunSpecs = append(pr.Spec.TaskRunSpecs, tektonpipeline.PipelineTaskRunSpec{
 			PipelineTaskName: BuildTaskName,
 			ComputeResources: &v1.ResourceRequirements{
 				Requests: v1.ResourceList{"memory": podMemR, "cpu": podCPU},
 				Limits:   v1.ResourceList{"memory": podMemL, "cpu": podCPU},
 			},
-		}}
+		})
 	}
 	// TODO: DisableTLS defaults to true. Further the tls workspace has been removed from the build pipeline so an alternate method would be needed.
 	//if !jbsConfig.Spec.CacheSettings.DisableTLS {
