@@ -95,11 +95,6 @@ spec:
           name: trusted-ca
           readOnly: true
       env:
-        - name: MAVEN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: $(params.MVN_PASSWORD)
-              key: mavenpassword
         - name: ACCESS_TOKEN
           value: $(params.ACCESS_TOKEN)
       args:
