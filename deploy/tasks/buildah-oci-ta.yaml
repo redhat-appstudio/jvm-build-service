@@ -411,7 +411,6 @@ spec:
             use_domain_proxy=true
             echo "Build will be executed with domain proxy"
             java -jar /domain-proxy-server/quarkus-app/quarkus-run.jar &
-            server_pid=$!
           fi
         fi
 
@@ -511,15 +510,14 @@ spec:
 
         if [ "$use_domain_proxy" == "true" ]; then
           # Without expansion
-          cat >> /app/build-script.sh << 'EOF'
+          cat >> /build-script.sh << 'EOF'
         #!/bin/sh
         ip link set lo up
         java -jar /domain-proxy-client/quarkus-app/quarkus-run.jar &
-        client_pid=$!
         EOF
 
           # With expansion
-          cat >> /app/build-script.sh << EOF
+          cat >> /build-script.sh << EOF
         for ((i=1; i<=30; i++)); do
         echo "request #$i"
         curl --max-time 30 -v -x http://localhost:8080 "http://${CACHE_HOST}/v2/cache/rebuild-central/1658389751000/org/sonatype/oss/oss-parent/7/oss-parent-7.pom"
@@ -528,21 +526,19 @@ spec:
         EOF
 
           # Without expansion
-          cat >> /app/build-script.sh << 'EOF'
+          cat >> /build-script.sh << 'EOF'
         set +e
-        kill $client_pid
-        wait $client_pid
+        killall -9 java
         set -e
         EOF
 
-          cat /app/build-script.sh
-          chmod +x /app/build-script.sh
+          cat /build-script.sh
+          chmod +x /build-script.sh
 
-          unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- /app/build-script.sh
+          unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- /build-script.sh
 
           set +e
-          kill $server_pid
-          wait $server_pid
+          killall -9 java
           set -e
         else
           unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- buildah build \
