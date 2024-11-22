@@ -21,14 +21,17 @@ public class Pipeline extends Base implements Runnable {
     @Inject
     Driver driver;
 
-    @CommandLine.Option(names = "-q", description = "Quay repo", defaultValue = "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc")
+    @CommandLine.Option(names = "--quay", description = "Quay repo", defaultValue = "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc")
     String quayRepo;
+
+    @CommandLine.Option(names = "--processor", description = "Request Process Image", defaultValue = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest")
+    String processor;
 
     @ActivateRequestContext // https://github.com/quarkusio/quarkus/issues/8758
     @Override
     public void run() {
         logger.info("### in here with driver {}", driver);
-        driver.addValues(accessToken.orElse("NO_TOKEN"), quayRepo);
+        driver.addValues(accessToken.orElse(""), quayRepo, processor);
 
         BuildRequest request = BuildRequest.builder()
                 .namespace(namespace)

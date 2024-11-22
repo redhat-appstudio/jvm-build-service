@@ -47,10 +47,12 @@ public class Driver {
 
     private String accessToken;
     private String quayRepo;
+    private String processor;
 
-    public void addValues(String accessToken, String quayRepo) {
+    public void addValues(String accessToken, String quayRepo, String processor) {
         this.accessToken = accessToken;
         this.quayRepo = quayRepo;
+        this.processor = processor;
     }
 
     public void create(BuildRequest buildRequest) throws IOException {
@@ -63,6 +65,7 @@ public class Driver {
         }
 
         Map<String, String> templateProperties = new HashMap<>();
+        templateProperties.put("REQUEST_PROCESSOR", processor);
         templateProperties.put("QUAY_REPO", quayRepo);
         templateProperties.put("URL", buildRequest.getScmUrl());
         templateProperties.put("REVISION", buildRequest.getScmRevision());
@@ -93,7 +96,9 @@ public class Driver {
      * @return fresh access token
      */
     public String getFreshAccessToken() {
-        return oidcClient.getTokens().await().indefinitely().getAccessToken();
+        var result = oidcClient.getTokens().await().indefinitely().getAccessToken();
+        System.err.println("### result " + result);
+        return result;
     }
 
     private <T> T createModelNode(String resourceDefinition, Map<String, String> properties, Class<T> clazz) {

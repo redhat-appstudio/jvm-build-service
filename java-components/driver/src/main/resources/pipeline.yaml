@@ -70,8 +70,7 @@ spec:
     - name: ENABLE_INDY_PROXY
       value: "false"
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
-      value: "quay.io/ncross/hacbs-jvm-build-request-processor:latest"
-      # "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
+      value: "%{REQUEST_PROCESSOR}"
   # TODO: Should PNC set both limits and requests? See
   #   https://home.robusta.dev/blog/kubernetes-memory-limit
   #   https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
