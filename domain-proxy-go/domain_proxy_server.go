@@ -101,6 +101,7 @@ func (dps *DomainProxyServer) handleRequest(conn net.Conn) {
 	} else if req.Method == http.MethodConnect {
 		dps.handleConnectRequest(conn, w, req)
 	} else {
+		log.Printf("Method not allowed: %s", req.Method)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		conn.Close()
 	}
