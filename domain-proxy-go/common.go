@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	Timeout               = 1 * time.Second
+	Timeout               = 10 * time.Second
 	ByteBufferSizeKey     = "BYTE_BUFFER_SIZE"
 	DefaultByteBufferSize = 1024
 	DomainSocketKey       = "DOMAIN_SOCKET"
