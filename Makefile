@@ -69,7 +69,7 @@ dev-image-controller:
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 
 dev: dev-image-controller
-	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev && cd ../domain-proxy-go && go build -o domain-proxy-server domainproxy_server.go common.go && go build -o domain-proxy-client domain_proxy_client.go common.go && cd ..
+	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev && cd ../domain-proxy-go && go build -o domain-proxy-server domain_proxy_server.go common.go && go build -o domain-proxy-client domain_proxy_client.go common.go && cd ..
 	docker build . -f domain-proxy-go/Dockerfile.local -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 
