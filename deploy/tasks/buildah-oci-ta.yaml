@@ -398,8 +398,6 @@ spec:
         BUILDAH_ARGS=()
         use_domain_proxy=false
 
-        java -version
-
         if [ "${HERMETIC}" == "true" ]; then
           BUILDAH_ARGS+=("--pull=never")
           UNSHARE_ARGS="--net"
