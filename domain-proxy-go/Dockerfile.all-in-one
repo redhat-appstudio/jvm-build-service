@@ -3,13 +3,13 @@ USER 0
 WORKDIR /work
 COPY ./ .
 
-RUN go build -o domain_proxy_server domain_proxy_server.go common.go
-RUN go build -o domain_proxy_client domain_proxy_client.go common.go
+RUN go build -o domain-proxy-server domain_proxy_server.go common.go
+RUN go build -o domain-proxy-client domain_proxy_client.go common.go
 
 FROM quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
 USER 0
 RUN microdnf install -y iproute
 WORKDIR /work/
 
-COPY --from=builder /work/domain-proxy-go/domain_proxy_server /app/domain_proxy_server
-COPY --from=builder /work/domain-proxy-go/domain_proxy_client /app/domain_proxy_client
+COPY --from=builder /work/domain-proxy-go/domain-proxy-server /app/domain-proxy-server
+COPY --from=builder /work/domain-proxy-go/domain-proxy-client /app/domain-proxy-client
