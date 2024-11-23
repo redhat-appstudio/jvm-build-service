@@ -16,7 +16,7 @@ public final class CommonIOUtil {
     private static final Logger LOG = Logger.getLogger(CommonIOUtil.class);
 
     public static final String LOCALHOST = "localhost";
-    public static final int TIMEOUT_MS = 1000;
+    public static final int TIMEOUT_MS = 10000;
 
     private CommonIOUtil() {
     }
