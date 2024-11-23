@@ -410,8 +410,8 @@ spec:
           if [ "${DOMAIN_PROXY}" == "true" ]; then
             use_domain_proxy=true
             echo "Build will be executed with domain proxy"
-            java -jar /domain-proxy-server/quarkus-app/quarkus-run.jar &
-            sleep 10
+            /app/domain_proxy_server &
+            server_pid=$!
           fi
         fi
 
@@ -514,8 +514,8 @@ spec:
           cat >> /build-script.sh << 'EOF'
         #!/bin/sh
         ip link set lo up
-        java -jar /domain-proxy-client/quarkus-app/quarkus-run.jar &
-        sleep 10
+        /app/domain_proxy_client &
+        client_pid=$!
         EOF
 
           # With expansion
@@ -530,7 +530,8 @@ spec:
           # Without expansion
           cat >> /build-script.sh << 'EOF'
         set +e
-        killall -9 java
+        kill $client_pid
+        wait $client_pid
         set -e
         EOF
 
@@ -540,7 +541,8 @@ spec:
           unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- /build-script.sh
 
           set +e
-          killall -9 java
+          kill $server_pid
+          wait $server_pid
           set -e
         else
           unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- buildah build \
