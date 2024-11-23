@@ -34,9 +34,9 @@ func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize in
 		done <- struct{}{}
 	}()
 	buf := make([]byte, bufferSize)
+	sourceConn.SetReadDeadline(time.Now().Add(Timeout))
+	targetConn.SetWriteDeadline(time.Now().Add(Timeout))
 	for {
-		sourceConn.SetReadDeadline(time.Now().Add(Timeout))
-		targetConn.SetWriteDeadline(time.Now().Add(Timeout))
 		n, err := sourceConn.Read(buf)
 		if err != nil {
 			if err != io.EOF {
@@ -45,6 +45,8 @@ func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize in
 			return
 		}
 		if n > 0 {
+			sourceConn.SetReadDeadline(time.Now().Add(Timeout))
+			targetConn.SetWriteDeadline(time.Now().Add(Timeout))
 			_, err = targetConn.Write(buf[:n])
 			if err != nil {
 				log.Printf("Error writing to target: %v", err)

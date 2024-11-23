@@ -19,7 +19,7 @@ import (
 const (
 	HttpsPort                    = 443
 	ProxyTargetWhitelistKey      = "PROXY_TARGET_WHITELIST"
-	DefaultProxyTargetWhitelist  = "repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
+	DefaultProxyTargetWhitelist  = "neverssl.com,repo1.maven.org,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
 	InternalNonProxyHostsKey     = "INTERNAL_NON_PROXY_HOSTS"
 	DefaultInternalNonProxyHosts = "localhost"
 )
@@ -112,7 +112,11 @@ func (dps *DomainProxyServer) handleHttpRequest(w http.ResponseWriter, r *http.R
 	if dps.isTargetWhitelisted(targetHost, w) {
 		log.Printf("Target URI %s", r.RequestURI)
 		startTime := time.Now()
-		client := http.Client{Timeout: Timeout}
+		client := &http.Client{
+			Transport: &http.Transport{
+				IdleConnTimeout: Timeout,
+			},
+		}
 		req, err := http.NewRequest(r.Method, r.RequestURI, r.Body)
 		if err != nil {
 			dps.handleErrorResponse(w, err, "Failed to create request")
