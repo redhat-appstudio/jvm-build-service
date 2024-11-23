@@ -113,7 +113,13 @@ func (dps *DomainProxyServer) handleHttpRequest(w http.ResponseWriter, r *http.R
 		log.Printf("Target URI %s", r.RequestURI)
 		startTime := time.Now()
 		client := http.Client{Timeout: Timeout}
-		resp, err := client.Get(r.RequestURI)
+		req, err := http.NewRequest(r.Method, r.RequestURI, r.Body)
+		if err != nil {
+			dps.handleErrorResponse(w, err, "Failed to create request")
+			return
+		}
+		req.Header = r.Header
+		resp, err := client.Do(req)
 		if err != nil {
 			dps.handleErrorResponse(w, err, "Failed to get response")
 			return
