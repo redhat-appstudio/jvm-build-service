@@ -58,10 +58,10 @@ public class ExternalProxyVerticle extends AbstractVerticle {
         Log.info("Starting domain proxy server...");
         Log.infof("Proxy target whitelist: %s", proxyTargetWhitelist); // TODO remove
         httpServer.requestHandler(request -> {
-            if (request.method() == HttpMethod.GET) {
-                handleGetRequest(request);
-            } else if (request.method() == HttpMethod.CONNECT) {
+            if (request.method() == HttpMethod.CONNECT) {
                 handleConnectRequest(request);
+            } else {
+                handleHttpRequest(request);
             }
         });
         httpServer.listen(httpServerPort, result -> {
@@ -74,8 +74,8 @@ public class ExternalProxyVerticle extends AbstractVerticle {
         });
     }
 
-    private void handleGetRequest(final HttpServerRequest request) {
-        Log.info("Handling HTTP GET Request");
+    private void handleHttpRequest(final HttpServerRequest request) {
+        Log.infof("Handling HTTP %s Request", request.method().name());
         final int requestNo = counter.incrementAndGet();
         Log.infof("Request no: %d", requestNo);
         if (isTargetWhitelisted(request.authority().host(), request)) {
@@ -102,7 +102,7 @@ public class ExternalProxyVerticle extends AbstractVerticle {
     }
 
     private void handleConnectRequest(final HttpServerRequest request) {
-        Log.info("Handling HTTPS CONNECT request");
+        Log.infof("Handling HTTPS %s request", request.method().name());
         final int requestNo = counter.incrementAndGet();
         Log.infof("Request no: %d", requestNo);
         final String targetHost = request.authority().host();

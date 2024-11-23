@@ -19,7 +19,7 @@ import (
 const (
 	HttpsPort                    = 443
 	ProxyTargetWhitelistKey      = "PROXY_TARGET_WHITELIST"
-	DefaultProxyTargetWhitelist  = "neverssl.com,repo1.maven.org,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
+	DefaultProxyTargetWhitelist  = "repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
 	InternalNonProxyHostsKey     = "INTERNAL_NON_PROXY_HOSTS"
 	DefaultInternalNonProxyHosts = "localhost"
 )

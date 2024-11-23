@@ -56,6 +56,7 @@ public class DomainProxyServer {
     }
 
     private void startServer() {
+        deleteDomainSocket();
         try (final ServerSocketChannel serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
                 final Selector selector = Selector.open()) {
             currentThread().setName("connectionHandler");
@@ -88,6 +89,10 @@ public class DomainProxyServer {
     @PreDestroy
     public void stop() {
         executor.shutdownNow();
+        deleteDomainSocket();
+    }
+
+    private void deleteDomainSocket() {
         try {
             Files.deleteIfExists(Path.of(domainSocket));
         } catch (final IOException e) {
