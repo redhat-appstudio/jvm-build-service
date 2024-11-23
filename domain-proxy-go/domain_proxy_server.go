@@ -96,19 +96,15 @@ func (dps *DomainProxyServer) handleRequest(conn net.Conn) {
 		return
 	}
 	w := &responseWriter{conn: conn}
-	if req.Method == http.MethodGet {
-		dps.handleGetRequest(w, req)
-	} else if req.Method == http.MethodConnect {
-		dps.handleConnectRequest(conn, w, req)
+	if req.Method == http.MethodConnect {
+		dps.handleHttpsRequest(conn, w, req)
 	} else {
-		log.Printf("Method not allowed: %s", req.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		conn.Close()
+		dps.handleHttpRequest(w, req)
 	}
 }
 
-func (dps *DomainProxyServer) handleGetRequest(w http.ResponseWriter, r *http.Request) {
-	log.Println("Handling HTTP GET Request")
+func (dps *DomainProxyServer) handleHttpRequest(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Handling HTTP %s Request", r.Method)
 	requestNo := dps.counter
 	log.Printf("Request %d", requestNo)
 	hostPort := strings.Split(r.Host, ":")
@@ -136,8 +132,8 @@ func (dps *DomainProxyServer) handleGetRequest(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func (dps *DomainProxyServer) handleConnectRequest(sourceConn net.Conn, w http.ResponseWriter, r *http.Request) {
-	log.Println("Handling HTTPS CONNECT request")
+func (dps *DomainProxyServer) handleHttpsRequest(sourceConn net.Conn, w http.ResponseWriter, r *http.Request) {
+	log.Printf("Handling HTTPS %s Request", r.Method)
 	requestNo := dps.counter
 	log.Printf("Request %d", requestNo)
 	hostPort := strings.Split(r.Host, ":")
