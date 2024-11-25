@@ -19,6 +19,8 @@ public class BuildRequest {
     private final String buildToolVersion;
     private final String javaVersion;
 
+    // TODO: Is this related to the name of the project (i.e. name returned from /v2/projects/{id}) or the build-config
+    private final String projectName;
     private final String scmUrl;
     // TODO: Do we need both?
     private final String scmRevision;

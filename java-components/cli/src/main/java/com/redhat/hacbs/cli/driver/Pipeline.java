@@ -1,7 +1,5 @@
 package com.redhat.hacbs.cli.driver;
 
-import java.io.IOException;
-
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 
@@ -30,8 +28,9 @@ public class Pipeline extends Base implements Runnable {
     @ActivateRequestContext // https://github.com/quarkusio/quarkus/issues/8758
     @Override
     public void run() {
-        logger.info("### in here with driver {}", driver);
-        driver.addValues(accessToken.orElse(""), quayRepo, processor);
+        driver.setQuayRepo(quayRepo);
+        driver.setProcessor(processor);
+        driver.setAccessToken(accessToken.orElse(""));
 
         BuildRequest request = BuildRequest.builder()
                 .namespace(namespace)
@@ -46,11 +45,6 @@ public class Pipeline extends Base implements Runnable {
                 .repositoryBuildContentId("test-maven-konflux-int-0001")
                 .recipeImage(recipeImage)
                 .build();
-        try {
-            driver.create(request);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        driver.create(request);
     }
 }

@@ -12,6 +12,7 @@ import jakarta.inject.Inject;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringSubstitutor;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,11 +28,14 @@ import com.redhat.hacbs.driver.dto.BuildRequest;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.tekton.pipeline.v1.PipelineRun;
 import io.quarkus.oidc.client.OidcClient;
+import lombok.Setter;
 
 @RequestScoped
 public class Driver {
 
     private static final Logger logger = LoggerFactory.getLogger(Driver.class);
+
+    private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
     @Inject
     OidcClient oidcClient;
@@ -43,25 +47,26 @@ public class Driver {
     @Inject
     KubernetesClient client;
 
-    ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-
+    @Setter
     private String accessToken;
-    private String quayRepo;
-    private String processor;
 
-    public void addValues(String accessToken, String quayRepo, String processor) {
-        this.accessToken = accessToken;
-        this.quayRepo = quayRepo;
-        this.processor = processor;
-    }
+    @Setter
+    private String quayRepo = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest";
 
-    public void create(BuildRequest buildRequest) throws IOException {
+    @Setter
+    private String processor = "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc";
+
+    public void create(BuildRequest buildRequest) {
         IndyTokenResponseDTO tokenResponseDTO = new IndyTokenResponseDTO(accessToken);
 
         if (isEmpty(accessToken)) {
+            logger.info("Establishing token from Indy using clientId {}",
+                    ConfigProvider.getConfig().getConfigValue("quarkus.oidc.client-id").getValue());
             tokenResponseDTO = indyService.getAuthToken(
                     new IndyTokenRequestDTO(buildRequest.getRepositoryBuildContentId()),
                     "Bearer " + getFreshAccessToken());
+            logger.debug("### new access token: {}", tokenResponseDTO.getToken()); // TODO: REMOVE
+
         }
 
         Map<String, String> templateProperties = new HashMap<>();
@@ -79,14 +84,17 @@ public class Driver {
         templateProperties.put("ACCESS_TOKEN", tokenResponseDTO.getToken());
         templateProperties.put("BUILD_ID", buildRequest.getRepositoryBuildContentId());
 
-        String pipeline = IOUtils.resourceToString("pipeline.yaml", StandardCharsets.UTF_8,
-                Thread.currentThread().getContextClassLoader());
+        String pipeline = "";
+        try {
+            pipeline = IOUtils.resourceToString("pipeline.yaml", StandardCharsets.UTF_8,
+                    Thread.currentThread().getContextClassLoader());
+        } catch (IOException e) {
+            // TODO: process
+        }
 
         PipelineRun run = createModelNode(pipeline, templateProperties, PipelineRun.class);
 
         var created = client.resource(run).inNamespace(buildRequest.getNamespace()).create();
-
-        System.err.println("### " + created);
     }
 
     /**
@@ -97,7 +105,7 @@ public class Driver {
      */
     public String getFreshAccessToken() {
         var result = oidcClient.getTokens().await().indefinitely().getAccessToken();
-        System.err.println("### result " + result);
+        logger.debug("### access token: {}", result); // TODO: REMOVE
         return result;
     }
 

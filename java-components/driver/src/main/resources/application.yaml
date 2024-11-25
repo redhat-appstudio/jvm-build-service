@@ -1,10 +1,12 @@
 quarkus:
+  application:
+    name: konflux-build-driver
   shutdown:
     timeout: 300
-#  log:
-#    category:
-#      "org.jboss.pnc":
-#        level: DEBUG
+  log:
+    category:
+      "com.redhat.hacbs":
+        level: DEBUG
 #    console:
 #      format: "%d{HH:mm:ss,SSS} %-5p traceId=%X{traceId}, parentId=%X{parentId}, spanId=%X{spanId}, sampled=%X{sampled} [%c{3.}] (%t) %s%e mdc:[%X]%n"
 #  http:
