@@ -135,11 +135,12 @@ public class ExternalProxyVerticle extends AbstractVerticle {
     private boolean isTargetWhitelisted(final String targetHost, final HttpServerRequest request) {
         Log.infof("Target host %s", targetHost);
         if (!proxyTargetWhitelist.contains(targetHost) && !nonProxyHosts.contains(targetHost)) {
-            Log.error("Target host is not whitelisted or a non-proxy host");
+            final String errorMessage = "Target host is not whitelisted, nor a non-proxy host";
+            Log.error(errorMessage);
             request.response()
-                    .setStatusCode(HttpResponseStatus.NOT_FOUND.code())
-                    .setStatusMessage(HttpResponseStatus.NOT_FOUND.reasonPhrase())
-                    .end("The requested resource was not found.");
+                    .setStatusCode(HttpResponseStatus.FORBIDDEN.code())
+                    .setStatusMessage(HttpResponseStatus.FORBIDDEN.reasonPhrase())
+                    .end(errorMessage);
             return false;
         }
         return true;
