@@ -167,6 +167,17 @@ spec:
         secretName: $(params.ENTITLEMENT_SECRET)
     - name: shared
       emptyDir: {}
+    - name: indy-generic-proxy-stage-secrets
+      secret:
+        optional: true
+        secretName: indy-generic-proxy-secrets
+    - name: indy-generic-proxy-stage-config
+      configMap:
+        items:
+          - key: application.yaml
+            path: application.yaml
+        name: indy-generic-proxy-stage-config
+        optional: true
     - name: trusted-ca
       configMap:
         items:
