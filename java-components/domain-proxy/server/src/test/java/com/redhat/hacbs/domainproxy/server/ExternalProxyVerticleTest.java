@@ -100,7 +100,7 @@ class ExternalProxyVerticleTest {
         httpRequest().get(
                 "http://repo1.maven.org/maven2/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar")
                 .then()
-                .statusCode(HttpResponseStatus.NOT_FOUND.code());
+                .statusCode(HttpResponseStatus.FORBIDDEN.code());
     }
 
     @Test
@@ -108,6 +108,6 @@ class ExternalProxyVerticleTest {
         httpsRequest().get(
                 "https://repo1.maven.org/maven2/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar")
                 .then()
-                .statusCode(HttpResponseStatus.NOT_FOUND.code());
+                .statusCode(HttpResponseStatus.FORBIDDEN.code());
     }
 }
