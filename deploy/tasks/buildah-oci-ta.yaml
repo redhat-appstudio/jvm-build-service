@@ -489,7 +489,7 @@ spec:
             BUILDAH_ARGS+=("--secret=id=${ADDITIONAL_SECRET}/${filename},src=$ADDITIONAL_SECRET_TMP/${filename}")
           done < <(find $ADDITIONAL_SECRET_TMP -maxdepth 1 -type f -exec basename {} \;)
         fi
-        
+
         if [ -f "$ca_bundle" ]; then
           cp -r --preserve=mode /mnt/trusted-ca /tmp/trusted-ca
           VOLUME_MOUNTS+=(--volume /tmp/trusted-ca:/etc/pki/ca-trust/source/anchors)
@@ -723,3 +723,24 @@ spec:
         requests:
           cpu: 100m
           memory: 256Mi
+  sidecars:
+    - name: indy-generic-proxy
+      image: quay.io/factory2/indy-generic-proxy-service:latest-stage-mpplus
+      volumeMounts:
+        - name: indy-generic-proxy-stage-secrets
+          readOnly: true
+          mountPath: /mnt/secrets-generic-proxy
+        - name: indy-generic-proxy-stage-config
+          readOnly: true
+          mountPath: /deployment/config
+      computeResources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+        requests:
+          cpu: 200m
+          memory: 512Mi
+      script: |
+        if [ "$(params.ENABLE_INDY_PROXY)" == "true" ]; then
+          /usr/local/bin/dumb-init /deployment/start-service.sh
+        fi
