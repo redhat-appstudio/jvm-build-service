@@ -110,4 +110,6 @@ class ExternalProxyVerticleTest {
                 .then()
                 .statusCode(HttpResponseStatus.FORBIDDEN.code());
     }
+
+    // TODO Add HTTP Head tests for HTTP and HTTPS
 }
