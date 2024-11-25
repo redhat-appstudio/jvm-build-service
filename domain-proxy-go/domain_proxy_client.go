@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 const (
@@ -17,21 +18,25 @@ const (
 )
 
 type DomainProxyClient struct {
-	domainSocket   string
-	serverHttpPort int
-	byteBufferSize int
-	listener       net.Listener
-	executor       *sync.WaitGroup
-	shutdownChan   chan struct{}
+	domainSocket      string
+	serverHttpPort    int
+	byteBufferSize    int
+	connectionTimeout time.Duration
+	idleTimeout       time.Duration
+	listener          net.Listener
+	executor          *sync.WaitGroup
+	shutdownChan      chan struct{}
 }
 
-func NewDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize int) *DomainProxyClient {
+func NewDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize int, connectionTimeout, idleTimeout time.Duration) *DomainProxyClient {
 	return &DomainProxyClient{
-		domainSocket:   domainSocket,
-		serverHttpPort: serverHttpPort,
-		byteBufferSize: byteBufferSize,
-		executor:       &sync.WaitGroup{},
-		shutdownChan:   make(chan struct{}),
+		domainSocket:      domainSocket,
+		serverHttpPort:    serverHttpPort,
+		byteBufferSize:    byteBufferSize,
+		connectionTimeout: connectionTimeout,
+		idleTimeout:       idleTimeout,
+		executor:          &sync.WaitGroup{},
+		shutdownChan:      make(chan struct{}),
 	}
 }
 
@@ -51,7 +56,7 @@ func (dpc *DomainProxyClient) startClient() {
 	defer dpc.executor.Done()
 	log.Println("HTTP server listening on port", dpc.serverHttpPort)
 	for {
-		conn, err := dpc.listener.Accept()
+		serverConn, err := dpc.listener.Accept()
 		if err != nil {
 			select {
 			case <-dpc.shutdownChan:
@@ -61,14 +66,14 @@ func (dpc *DomainProxyClient) startClient() {
 				continue
 			}
 		}
-		domainConn, err := net.DialTimeout("unix", dpc.domainSocket, Timeout)
+		domainConn, err := net.DialTimeout("unix", dpc.domainSocket, dpc.connectionTimeout)
 		if err != nil {
 			log.Printf("Failed to connect to domain socket: %v", err)
-			conn.Close()
+			serverConn.Close()
 			continue
 		}
 		dpc.executor.Add(1)
-		go ChannelToChannelBiDirectionalHandler(dpc.byteBufferSize, conn, domainConn, dpc.executor)
+		go ChannelToChannelBiDirectionalHandler(serverConn, domainConn, dpc.byteBufferSize, dpc.idleTimeout, dpc.executor)
 	}
 }
 
@@ -86,7 +91,7 @@ func GetServerHttpPort() int {
 }
 
 func main() {
-	client := NewDomainProxyClient(GetDomainSocket(), GetServerHttpPort(), GetByteBufferSize())
+	client := NewDomainProxyClient(GetDomainSocket(), GetServerHttpPort(), GetByteBufferSize(), GetConnectionTimeout(), GetIdleTimeout())
 	client.Start()
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

@@ -403,7 +403,7 @@ spec:
           if [ "${DOMAIN_PROXY}" == "true" ]; then
             use_domain_proxy=true
             echo "Build will be executed with domain proxy"
-            /app/domain-proxy-server-runner &
+            /app/domain-proxy-server &
             server_pid=$!
           fi
         fi
@@ -507,7 +507,7 @@ spec:
           cat >> /app/build-script.sh << 'EOF'
         #!/bin/sh
         ip link set lo up
-        /app/domain-proxy-client-runner &
+        /app/domain-proxy-client &
         client_pid=$!
         EOF
 

@@ -27,6 +27,8 @@ const (
 type DomainProxyServer struct {
 	domainSocket         string
 	byteBufferSize       int
+	connectionTimeout    time.Duration
+	idleTimeout          time.Duration
 	proxyTargetWhitelist map[string]bool
 	nonProxyHosts        map[string]bool
 	counter              int
@@ -35,10 +37,12 @@ type DomainProxyServer struct {
 	shutdownChan         chan struct{}
 }
 
-func NewDomainProxyServer(domainSocket string, byteBufferSize int, proxyTargetWhitelist, nonProxyHosts map[string]bool) *DomainProxyServer {
+func NewDomainProxyServer(domainSocket string, byteBufferSize int, connectionTimeout, idleTimeout time.Duration, proxyTargetWhitelist, nonProxyHosts map[string]bool) *DomainProxyServer {
 	return &DomainProxyServer{
 		domainSocket:         domainSocket,
 		byteBufferSize:       byteBufferSize,
+		connectionTimeout:    connectionTimeout,
+		idleTimeout:          idleTimeout,
 		proxyTargetWhitelist: proxyTargetWhitelist,
 		nonProxyHosts:        nonProxyHosts,
 		counter:              0,
@@ -87,7 +91,7 @@ func (dps *DomainProxyServer) startServer() {
 func (dps *DomainProxyServer) handleRequest(conn net.Conn) {
 	defer dps.executor.Done()
 	dps.counter++
-	conn.SetReadDeadline(time.Now().Add(Timeout))
+	conn.SetDeadline(time.Now().Add(dps.idleTimeout))
 	reader := bufio.NewReader(conn)
 	req, err := http.ReadRequest(reader)
 	if err != nil {
@@ -114,7 +118,7 @@ func (dps *DomainProxyServer) handleHttpRequest(w http.ResponseWriter, r *http.R
 		startTime := time.Now()
 		client := &http.Client{
 			Transport: &http.Transport{
-				IdleConnTimeout: Timeout,
+				IdleConnTimeout: dps.idleTimeout,
 			},
 		}
 		req, err := http.NewRequest(r.Method, r.RequestURI, r.Body)
@@ -157,7 +161,7 @@ func (dps *DomainProxyServer) handleHttpsRequest(sourceConn net.Conn, w http.Res
 	if dps.isTargetWhitelisted(targetHost, w) {
 		log.Printf("Target URI %s", r.RequestURI)
 		startTime := time.Now()
-		targetConn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), Timeout)
+		targetConn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
 		if err != nil {
 			dps.handleErrorResponse(w, err, "Failed to connect to target")
 			return
@@ -169,7 +173,7 @@ func (dps *DomainProxyServer) handleHttpsRequest(sourceConn net.Conn, w http.Res
 			return
 		}
 		dps.executor.Add(1)
-		go ChannelToChannelBiDirectionalHandler(dps.byteBufferSize, sourceConn, targetConn, dps.executor)
+		go ChannelToChannelBiDirectionalHandler(sourceConn, targetConn, dps.byteBufferSize, dps.idleTimeout, dps.executor)
 	}
 }
 
@@ -236,6 +240,8 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 func main() {
 	server := NewDomainProxyServer(GetDomainSocket(),
 		GetByteBufferSize(),
+		GetConnectionTimeout(),
+		GetIdleTimeout(),
 		GetCsvEnvVariable(ProxyTargetWhitelistKey, DefaultProxyTargetWhitelist),
 		GetCsvEnvVariable(InternalNonProxyHostsKey, DefaultInternalNonProxyHosts), // TODO Implement Non-proxy logic
 	)

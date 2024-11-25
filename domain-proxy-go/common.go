@@ -12,30 +12,36 @@ import (
 )
 
 const (
-	Timeout               = 30 * time.Second
-	ByteBufferSizeKey     = "BYTE_BUFFER_SIZE"
-	DefaultByteBufferSize = 1024
-	DomainSocketKey       = "DOMAIN_SOCKET"
-	DefaultDomainSocket   = "/tmp/domain-socket.sock"
+	ByteBufferSizeKey        = "BYTE_BUFFER_SIZE"
+	DefaultByteBufferSize    = 1024
+	DomainSocketKey          = "DOMAIN_SOCKET"
+	DefaultDomainSocket      = "/tmp/domain-socket.sock"
+	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
+	DefaultConnectionTimeout = 1000 * time.Millisecond
+	IdleTimeoutKey           = "IDLE_TIMEOUT"
+	DefaultIdleTimeout       = 10000 * time.Millisecond
 )
 
-func ChannelToChannelBiDirectionalHandler(byteBufferSize int, leftConn, rightConn net.Conn, executor *sync.WaitGroup) {
+func ChannelToChannelBiDirectionalHandler(leftConn, rightConn net.Conn, byteBufferSize int, idleTimeout time.Duration, executor *sync.WaitGroup) {
 	defer executor.Done()
 	done := make(chan struct{})
-	go Transfer(leftConn, rightConn, done, byteBufferSize)
-	go Transfer(rightConn, leftConn, done, byteBufferSize)
+	var mutex sync.Mutex
+	go Transfer(leftConn, rightConn, done, byteBufferSize, idleTimeout, &mutex)
+	go Transfer(rightConn, leftConn, done, byteBufferSize, idleTimeout, &mutex)
 	<-done
 	<-done
 	CloseConnections(leftConn, rightConn)
 }
 
-func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize int) {
+func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration, mutex *sync.Mutex) {
 	defer func() {
 		done <- struct{}{}
 	}()
 	buf := make([]byte, bufferSize)
-	sourceConn.SetReadDeadline(time.Now().Add(Timeout))
-	targetConn.SetWriteDeadline(time.Now().Add(Timeout))
+	mutex.Lock()
+	sourceConn.SetDeadline(time.Now().Add(idleTimeout))
+	targetConn.SetDeadline(time.Now().Add(idleTimeout))
+	mutex.Unlock()
 	for {
 		n, err := sourceConn.Read(buf)
 		if err != nil {
@@ -45,8 +51,10 @@ func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize in
 			return
 		}
 		if n > 0 {
-			sourceConn.SetReadDeadline(time.Now().Add(Timeout))
-			targetConn.SetWriteDeadline(time.Now().Add(Timeout))
+			mutex.Lock()
+			sourceConn.SetDeadline(time.Now().Add(idleTimeout))
+			targetConn.SetDeadline(time.Now().Add(idleTimeout))
+			mutex.Unlock()
 			_, err = targetConn.Write(buf[:n])
 			if err != nil {
 				log.Printf("Error writing to target: %v", err)
@@ -98,6 +106,20 @@ func GetCsvEnvVariable(key, defaultValue string) map[string]bool {
 	return parseCsvToMap(valuesStr)
 }
 
+func GetMillisecondsEnvVariable(key string, defaultValue time.Duration) time.Duration {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		log.Printf("Environment variable %s is not set, using default value: %d", key, defaultValue.Milliseconds())
+		return defaultValue
+	}
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		log.Printf("Invalid environment variable %s: %v, using default value: %d", key, err, defaultValue.Milliseconds())
+		return defaultValue
+	}
+	return time.Duration(value) * time.Millisecond
+}
+
 func parseCsvToMap(csvString string) map[string]bool {
 	valuesStr := strings.Split(csvString, ",")
 	values := make(map[string]bool)
@@ -114,4 +136,12 @@ func GetByteBufferSize() int {
 
 func GetDomainSocket() string {
 	return GetEnvVariable(DomainSocketKey, DefaultDomainSocket)
+}
+
+func GetConnectionTimeout() time.Duration {
+	return GetMillisecondsEnvVariable(ConnectionTimeoutKey, DefaultConnectionTimeout)
+}
+
+func GetIdleTimeout() time.Duration {
+	return GetMillisecondsEnvVariable(IdleTimeoutKey, DefaultIdleTimeout)
 }
