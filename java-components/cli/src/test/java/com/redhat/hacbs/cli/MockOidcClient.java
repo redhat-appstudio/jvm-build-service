@@ -11,7 +11,9 @@ import io.quarkus.test.Mock;
 import io.smallrye.mutiny.Uni;
 
 /**
- * From <a href="https://github.com/project-ncl/build-driver/blob/main/src/test/java/org/jboss/pnc/builddriver/MockOidcClient.java">PNC BuildDriver</a>
+ * From <a href=
+ * "https://github.com/project-ncl/build-driver/blob/main/src/test/java/org/jboss/pnc/builddriver/MockOidcClient.java">PNC
+ * BuildDriver</a>
  */
 @Mock
 public class MockOidcClient implements OidcClient {

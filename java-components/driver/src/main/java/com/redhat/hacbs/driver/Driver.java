@@ -4,15 +4,19 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringSubstitutor;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +60,9 @@ public class Driver {
     @Setter
     private String processor = "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc";
 
+    @ConfigProperty(name = "build-driver.pipeline")
+    Optional<String> customPipeline;
+
     public void create(BuildRequest buildRequest) {
         IndyTokenResponseDTO tokenResponseDTO = new IndyTokenResponseDTO(accessToken);
 
@@ -86,8 +93,12 @@ public class Driver {
 
         String pipeline = "";
         try {
-            pipeline = IOUtils.resourceToString("pipeline.yaml", StandardCharsets.UTF_8,
-                    Thread.currentThread().getContextClassLoader());
+            if (customPipeline.isEmpty()) {
+                pipeline = IOUtils.resourceToString("pipeline.yaml", StandardCharsets.UTF_8,
+                        Thread.currentThread().getContextClassLoader());
+            } else {
+                pipeline = FileUtils.readFileToString(Path.of(customPipeline.get()).toFile(), StandardCharsets.UTF_8);
+            }
         } catch (IOException e) {
             // TODO: process
         }
