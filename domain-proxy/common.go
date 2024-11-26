@@ -26,7 +26,7 @@ const (
 func BiDirectionalTransfer(leftConn, rightConn net.Conn, byteBufferSize int, idleTimeout time.Duration, executor *sync.WaitGroup) {
 	defer executor.Done()
 	defer CloseConnections(leftConn, rightConn)
-	done := make(chan struct{})
+	done := make(chan struct{}, 2)
 	leftConn.SetDeadline(time.Now().Add(idleTimeout))
 	rightConn.SetDeadline(time.Now().Add(idleTimeout))
 	go Transfer(leftConn, rightConn, done, byteBufferSize, idleTimeout)
@@ -66,6 +66,8 @@ func handleConnectionError(err error) {
 		log.Printf("Connection timed out")
 	} else if err != io.EOF {
 		log.Printf("Error using connection: %v", err)
+	} else if err == io.EOF {
+		log.Printf("EOF")
 	}
 }
 

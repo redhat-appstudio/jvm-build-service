@@ -134,16 +134,17 @@ func (dps *DomainProxyServer) handleHttpRequest(w http.ResponseWriter, r *http.R
 			return
 		}
 		defer resp.Body.Close()
-		log.Printf("Request %d took %d ms", requestNo, time.Since(startTime).Milliseconds())
 		for k, v := range resp.Header {
 			for _, vv := range v {
 				w.Header().Add(k, vv)
 			}
 		}
 		w.WriteHeader(resp.StatusCode)
-		if _, err := io.CopyBuffer(w, resp.Body, make([]byte, dps.byteBufferSize)); err != nil {
+		if _, err = io.CopyBuffer(w, resp.Body, make([]byte, dps.byteBufferSize)); err != nil {
 			log.Printf("Error copying response body: %v", err)
 		}
+		log.Printf("Request %d took %d ms", requestNo, time.Since(startTime).Milliseconds())
+		// TODO log bytes written/read
 	}
 }
 
@@ -165,16 +166,20 @@ func (dps *DomainProxyServer) handleHttpsRequest(sourceConn net.Conn, w http.Res
 		targetConn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
 		if err != nil {
 			dps.handleErrorResponse(w, err, "Failed to connect to target")
+			sourceConn.Close()
 			return
 		}
-		log.Printf("Request %d took %d ms", requestNo, time.Since(startTime).Milliseconds())
-		if _, err := fmt.Fprint(sourceConn, "HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
+		if _, err = fmt.Fprint(sourceConn, "HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
+			dps.handleErrorResponse(w, err, "Failed to send request to target")
 			targetConn.Close()
 			sourceConn.Close()
 			return
 		}
 		dps.executor.Add(1)
-		go BiDirectionalTransfer(sourceConn, targetConn, dps.byteBufferSize, dps.idleTimeout, dps.executor)
+		go func() {
+			BiDirectionalTransfer(sourceConn, targetConn, dps.byteBufferSize, dps.idleTimeout, dps.executor)
+			log.Printf("Request %d took %d ms", requestNo, (time.Since(startTime) - dps.idleTimeout).Milliseconds())
+		}()
 	}
 }
 
