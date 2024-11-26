@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -41,12 +40,12 @@ func NewDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize in
 }
 
 func (dpc *DomainProxyClient) Start() {
-	log.Println("Starting domain proxy client...")
-	log.Printf("Byte buffer size %d", dpc.byteBufferSize) // TODO Remove
+	Logger.Println("Starting domain proxy client...")
+	Logger.Printf("Byte buffer size %d", dpc.byteBufferSize) // TODO Remove
 	var err error
 	dpc.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", Localhost, dpc.serverHttpPort))
 	if err != nil {
-		log.Fatalf("Failed to start HTTP server: %v", err)
+		Logger.Fatalf("Failed to start HTTP server: %v", err)
 	}
 	dpc.executor.Add(1)
 	go dpc.startClient()
@@ -54,7 +53,7 @@ func (dpc *DomainProxyClient) Start() {
 
 func (dpc *DomainProxyClient) startClient() {
 	defer dpc.executor.Done()
-	log.Println("HTTP server listening on port", dpc.serverHttpPort)
+	Logger.Println("HTTP server listening on port", dpc.serverHttpPort)
 	for {
 		serverConn, err := dpc.listener.Accept()
 		if err != nil {
@@ -62,13 +61,13 @@ func (dpc *DomainProxyClient) startClient() {
 			case <-dpc.shutdownChan:
 				return
 			default:
-				log.Printf("Failed to accept connection: %v", err)
+				Logger.Printf("Failed to accept connection: %v", err)
 				continue
 			}
 		}
 		domainConn, err := net.DialTimeout("unix", dpc.domainSocket, dpc.connectionTimeout)
 		if err != nil {
-			log.Printf("Failed to connect to domain socket: %v", err)
+			Logger.Printf("Failed to connect to domain socket: %v", err)
 			serverConn.Close()
 			continue
 		}
@@ -78,10 +77,10 @@ func (dpc *DomainProxyClient) startClient() {
 }
 
 func (dpc *DomainProxyClient) Stop() {
-	log.Println("Shutting down domain proxy client...")
+	Logger.Println("Shutting down domain proxy client...")
 	close(dpc.shutdownChan)
 	if err := dpc.listener.Close(); err != nil {
-		log.Printf("Error closing listener: %v", err)
+		Logger.Printf("Error closing listener: %v", err)
 	}
 	dpc.executor.Wait()
 }
@@ -91,6 +90,7 @@ func GetServerHttpPort() int {
 }
 
 func main() {
+	InitLogger("Domain Proxy Client")
 	client := NewDomainProxyClient(GetDomainSocket(), GetServerHttpPort(), GetByteBufferSize(), GetConnectionTimeout(), GetIdleTimeout())
 	client.Start()
 	sigs := make(chan os.Signal, 1)

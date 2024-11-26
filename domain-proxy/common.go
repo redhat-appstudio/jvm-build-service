@@ -23,6 +23,12 @@ const (
 	DefaultIdleTimeout       = 1000 * time.Millisecond
 )
 
+var Logger *log.Logger
+
+func InitLogger(appName string) {
+	Logger = log.New(os.Stdout, appName+" ", log.LstdFlags|log.Lshortfile)
+}
+
 func BiDirectionalTransfer(leftConn, rightConn net.Conn, byteBufferSize int, idleTimeout time.Duration, executor *sync.WaitGroup) {
 	defer executor.Done()
 	defer CloseConnections(leftConn, rightConn)
@@ -46,14 +52,14 @@ func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize in
 			handleConnectionError(err)
 			return
 		} else if n > 0 {
-			log.Printf("%d bytes read", n)
+			Logger.Printf("%d bytes read", n)
 			sourceConn.SetReadDeadline(time.Now().Add(idleTimeout))
 			n, err = targetConn.Write(buf[:n])
 			if err != nil {
 				handleConnectionError(err)
 				return
 			} else if n > 0 {
-				log.Printf("%d bytes written", n)
+				Logger.Printf("%d bytes written", n)
 				targetConn.SetWriteDeadline(time.Now().Add(idleTimeout))
 			}
 		}
@@ -63,11 +69,11 @@ func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize in
 func handleConnectionError(err error) {
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {
-		log.Printf("Connection timed out")
+		Logger.Printf("Connection timed out")
 	} else if err != io.EOF {
-		log.Printf("Error using connection: %v", err)
+		Logger.Printf("Error using connection: %v", err)
 	} else if err == io.EOF {
-		log.Printf("EOF")
+		Logger.Printf("EOF")
 	}
 }
 
@@ -78,13 +84,13 @@ func CloseConnections(leftConn, rightConn net.Conn) {
 	if rightConn != nil {
 		rightConn.Close()
 	}
-	log.Println("Connections closed")
+	Logger.Println("Connections closed")
 }
 
 func GetEnvVariable(key, defaultValue string) string {
 	value := os.Getenv(key)
 	if value == "" {
-		log.Printf("Environment variable %s is not set, using default value: %s", key, defaultValue)
+		Logger.Printf("Environment variable %s is not set, using default value: %s", key, defaultValue)
 		return defaultValue
 	}
 	return value
@@ -93,12 +99,12 @@ func GetEnvVariable(key, defaultValue string) string {
 func GetIntEnvVariable(key string, defaultValue int) int {
 	valueStr := os.Getenv(key)
 	if valueStr == "" {
-		log.Printf("Environment variable %s is not set, using default value: %d", key, defaultValue)
+		Logger.Printf("Environment variable %s is not set, using default value: %d", key, defaultValue)
 		return defaultValue
 	}
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		log.Printf("Invalid environment variable %s: %v, using default value: %d", key, err, defaultValue)
+		Logger.Printf("Invalid environment variable %s: %v, using default value: %d", key, err, defaultValue)
 		return defaultValue
 	}
 	return value
@@ -107,7 +113,7 @@ func GetIntEnvVariable(key string, defaultValue int) int {
 func GetCsvEnvVariable(key, defaultValue string) map[string]bool {
 	valuesStr := os.Getenv(key)
 	if valuesStr == "" {
-		log.Printf("Environment variable %s is not set, using default value: %s", key, defaultValue)
+		Logger.Printf("Environment variable %s is not set, using default value: %s", key, defaultValue)
 		return parseCsvToMap(defaultValue)
 	}
 	return parseCsvToMap(valuesStr)
@@ -116,12 +122,12 @@ func GetCsvEnvVariable(key, defaultValue string) map[string]bool {
 func GetMillisecondsEnvVariable(key string, defaultValue time.Duration) time.Duration {
 	valueStr := os.Getenv(key)
 	if valueStr == "" {
-		log.Printf("Environment variable %s is not set, using default value: %d", key, defaultValue.Milliseconds())
+		Logger.Printf("Environment variable %s is not set, using default value: %d", key, defaultValue.Milliseconds())
 		return defaultValue
 	}
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		log.Printf("Invalid environment variable %s: %v, using default value: %d", key, err, defaultValue.Milliseconds())
+		Logger.Printf("Invalid environment variable %s: %v, using default value: %d", key, err, defaultValue.Milliseconds())
 		return defaultValue
 	}
 	return time.Duration(value) * time.Millisecond
