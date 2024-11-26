@@ -14,13 +14,13 @@ import (
 
 const (
 	ByteBufferSizeKey        = "BYTE_BUFFER_SIZE"
-	DefaultByteBufferSize    = 10485760
+	DefaultByteBufferSize    = 1024
 	DomainSocketKey          = "DOMAIN_SOCKET"
 	DefaultDomainSocket      = "/tmp/domain-socket.sock"
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
 	DefaultConnectionTimeout = 1000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
-	DefaultIdleTimeout       = 1000 * time.Millisecond
+	DefaultIdleTimeout       = 30000 * time.Millisecond
 )
 
 var Logger *log.Logger
@@ -41,27 +41,20 @@ func BiDirectionalTransfer(leftConn, rightConn net.Conn, byteBufferSize int, idl
 	<-done
 }
 
-func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration) {
+func Transfer(sourceConn, targetConn net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration) {
 	defer func() {
 		done <- struct{}{}
 	}()
 	buf := make([]byte, bufferSize)
 	for {
-		n, err := sourceConn.Read(buf)
+		n, err := io.CopyBuffer(sourceConn, targetConn, buf)
 		if err != nil {
 			handleConnectionError(err)
 			return
 		} else if n > 0 {
-			Logger.Printf("%d bytes read", n)
 			sourceConn.SetReadDeadline(time.Now().Add(idleTimeout))
-			n, err = targetConn.Write(buf[:n])
-			if err != nil {
-				handleConnectionError(err)
-				return
-			} else if n > 0 {
-				Logger.Printf("%d bytes written", n)
-				targetConn.SetWriteDeadline(time.Now().Add(idleTimeout))
-			}
+			targetConn.SetWriteDeadline(time.Now().Add(idleTimeout))
+			Logger.Printf("%d bytes transferred", n)
 		}
 	}
 }

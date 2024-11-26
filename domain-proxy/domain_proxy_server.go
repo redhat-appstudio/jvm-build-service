@@ -196,7 +196,7 @@ func (dps *DomainProxyServer) Stop() {
 	if err := dps.listener.Close(); err != nil {
 		Logger.Printf("Error closing listener: %v", err)
 	}
-	dps.executor.Wait()
+	//dps.executor.Wait()
 	if _, err := os.Stat(dps.domainSocket); err == nil {
 		if err := os.Remove(dps.domainSocket); err != nil {
 			Logger.Printf("Error deleting domain socket: %v", err)

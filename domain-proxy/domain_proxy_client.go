@@ -82,7 +82,7 @@ func (dpc *DomainProxyClient) Stop() {
 	if err := dpc.listener.Close(); err != nil {
 		Logger.Printf("Error closing listener: %v", err)
 	}
-	dpc.executor.Wait()
+	//dpc.executor.Wait()
 }
 
 func GetServerHttpPort() int {
