@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -16,6 +15,7 @@ import (
 )
 
 const (
+	HttpPort                     = 80
 	HttpsPort                    = 443
 	ProxyTargetWhitelistKey      = "PROXY_TARGET_WHITELIST"
 	DefaultProxyTargetWhitelist  = "repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
@@ -103,47 +103,35 @@ func (dps *DomainProxyServer) handleRequest(conn net.Conn) {
 	if req.Method == http.MethodConnect {
 		dps.handleHttpsRequest(conn, w, req)
 	} else {
-		dps.handleHttpRequest(w, req)
+		dps.handleHttpRequest(conn, w, req)
 	}
 }
 
-func (dps *DomainProxyServer) handleHttpRequest(w http.ResponseWriter, r *http.Request) {
+func (dps *DomainProxyServer) handleHttpRequest(sourceConn net.Conn, w http.ResponseWriter, r *http.Request) {
 	Logger.Printf("Handling HTTP %s Request", r.Method)
 	requestNo := dps.counter
 	Logger.Printf("Request %d", requestNo)
-	hostPort := strings.Split(r.Host, ":")
-	targetHost := hostPort[0]
+	targetHost, targetPort := getTargetHostAndPort(r.Host, HttpPort)
 	if dps.isTargetWhitelisted(targetHost, w) {
 		Logger.Printf("Target URI %s", r.RequestURI)
 		startTime := time.Now()
-		client := &http.Client{
-			Transport: &http.Transport{
-				IdleConnTimeout: dps.idleTimeout,
-			},
-		}
-		req, err := http.NewRequest(r.Method, r.RequestURI, r.Body)
+		targetConn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
 		if err != nil {
-			dps.handleErrorResponse(w, err, "Failed to create request")
+			dps.handleErrorResponse(w, err, "Failed to connect to target")
+			sourceConn.Close()
 			return
 		}
-		req.Header = r.Header
-		resp, err := client.Do(req)
-		if err != nil {
-			dps.handleErrorResponse(w, err, "Failed to get response")
+		if err = r.Write(targetConn); err != nil {
+			dps.handleErrorResponse(w, err, "Failed to send request to target")
+			targetConn.Close()
+			sourceConn.Close()
 			return
 		}
-		defer resp.Body.Close()
-		for k, v := range resp.Header {
-			for _, vv := range v {
-				w.Header().Add(k, vv)
-			}
-		}
-		w.WriteHeader(resp.StatusCode)
-		if _, err = io.CopyBuffer(w, resp.Body, make([]byte, dps.byteBufferSize)); err != nil {
-			Logger.Printf("Error copying response body: %v", err)
-		}
-		Logger.Printf("Request %d took %d ms", requestNo, time.Since(startTime).Milliseconds())
-		// TODO log bytes written/read
+		dps.executor.Add(1)
+		go func() {
+			BiDirectionalTransfer(sourceConn, targetConn, dps.byteBufferSize, dps.idleTimeout, dps.executor)
+			Logger.Printf("Request %d took %d ms", requestNo, time.Since(startTime).Milliseconds())
+		}()
 	}
 }
 
@@ -151,14 +139,7 @@ func (dps *DomainProxyServer) handleHttpsRequest(sourceConn net.Conn, w http.Res
 	Logger.Printf("Handling HTTPS %s Request", r.Method)
 	requestNo := dps.counter
 	Logger.Printf("Request %d", requestNo)
-	hostPort := strings.Split(r.Host, ":")
-	targetHost := hostPort[0]
-	targetPort := HttpsPort
-	if len(hostPort) > 1 {
-		if port, err := strconv.Atoi(hostPort[1]); err == nil {
-			targetPort = port
-		}
-	}
+	targetHost, targetPort := getTargetHostAndPort(r.Host, HttpsPort)
 	if dps.isTargetWhitelisted(targetHost, w) {
 		Logger.Printf("Target URI %s", r.RequestURI)
 		startTime := time.Now()
@@ -180,6 +161,18 @@ func (dps *DomainProxyServer) handleHttpsRequest(sourceConn net.Conn, w http.Res
 			Logger.Printf("Request %d took %d ms", requestNo, (time.Since(startTime) - dps.idleTimeout).Milliseconds())
 		}()
 	}
+}
+
+func getTargetHostAndPort(host string, defaultPort int) (string, int) {
+	hostAndPort := strings.Split(host, ":")
+	targetHost := hostAndPort[0]
+	targetPort := defaultPort
+	if len(hostAndPort) > 1 {
+		if port, err := strconv.Atoi(hostAndPort[1]); err == nil {
+			targetPort = port
+		}
+	}
+	return targetHost, targetPort
 }
 
 func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, w http.ResponseWriter) bool {
