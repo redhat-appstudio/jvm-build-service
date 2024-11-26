@@ -18,9 +18,9 @@ const (
 	DomainSocketKey          = "DOMAIN_SOCKET"
 	DefaultDomainSocket      = "/tmp/domain-socket.sock"
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
-	DefaultConnectionTimeout = 1000 * time.Millisecond
+	DefaultConnectionTimeout = 10000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
-	DefaultIdleTimeout       = 1000 * time.Millisecond
+	DefaultIdleTimeout       = 10000 * time.Millisecond
 )
 
 var Logger *log.Logger
