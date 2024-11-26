@@ -139,7 +139,7 @@ func (dps *DomainProxyServer) handleHttpRequest(w http.ResponseWriter, r *http.R
 			}
 		}
 		w.WriteHeader(resp.StatusCode)
-		if _, err = io.CopyBuffer(w, resp.Body, make([]byte, dps.byteBufferSize)); err != nil {
+		if _, err = io.Copy(w, resp.Body); err != nil {
 			Logger.Printf("Error copying response body: %v", err)
 		}
 		Logger.Printf("Request %d took %d ms", requestNo, time.Since(startTime).Milliseconds())
