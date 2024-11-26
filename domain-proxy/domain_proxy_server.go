@@ -100,6 +100,7 @@ func (dps *DomainProxyServer) handleRequest(conn net.Conn) {
 		return
 	}
 	w := &responseWriter{conn: conn}
+	conn.SetDeadline(time.Now().Add(dps.idleTimeout))
 	if req.Method == http.MethodConnect {
 		dps.handleHttpsRequest(conn, w, req)
 	} else {
@@ -173,7 +174,7 @@ func (dps *DomainProxyServer) handleHttpsRequest(sourceConn net.Conn, w http.Res
 			return
 		}
 		dps.executor.Add(1)
-		go ChannelToChannelBiDirectionalHandler(sourceConn, targetConn, dps.byteBufferSize, dps.idleTimeout, dps.executor)
+		go BiDirectionalTransfer(sourceConn, targetConn, dps.byteBufferSize, dps.idleTimeout, dps.executor)
 	}
 }
 

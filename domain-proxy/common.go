@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -19,48 +20,52 @@ const (
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
 	DefaultConnectionTimeout = 1000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
-	DefaultIdleTimeout       = 10000 * time.Millisecond
+	DefaultIdleTimeout       = 1000 * time.Millisecond
 )
 
-func ChannelToChannelBiDirectionalHandler(leftConn, rightConn net.Conn, byteBufferSize int, idleTimeout time.Duration, executor *sync.WaitGroup) {
+func BiDirectionalTransfer(leftConn, rightConn net.Conn, byteBufferSize int, idleTimeout time.Duration, executor *sync.WaitGroup) {
 	defer executor.Done()
+	defer CloseConnections(leftConn, rightConn)
 	done := make(chan struct{})
-	var mutex sync.Mutex
-	go Transfer(leftConn, rightConn, done, byteBufferSize, idleTimeout, &mutex)
-	go Transfer(rightConn, leftConn, done, byteBufferSize, idleTimeout, &mutex)
+	leftConn.SetDeadline(time.Now().Add(idleTimeout))
+	rightConn.SetDeadline(time.Now().Add(idleTimeout))
+	go Transfer(leftConn, rightConn, done, byteBufferSize, idleTimeout)
+	go Transfer(rightConn, leftConn, done, byteBufferSize, idleTimeout)
 	<-done
 	<-done
-	CloseConnections(leftConn, rightConn)
 }
 
-func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration, mutex *sync.Mutex) {
+func Transfer(targetConn, sourceConn net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration) {
 	defer func() {
 		done <- struct{}{}
 	}()
 	buf := make([]byte, bufferSize)
-	mutex.Lock()
-	sourceConn.SetDeadline(time.Now().Add(idleTimeout))
-	targetConn.SetDeadline(time.Now().Add(idleTimeout))
-	mutex.Unlock()
 	for {
 		n, err := sourceConn.Read(buf)
 		if err != nil {
-			if err != io.EOF {
-				log.Printf("Error reading from source: %v", err)
-			}
+			handleConnectionError(err)
 			return
-		}
-		if n > 0 {
-			mutex.Lock()
-			sourceConn.SetDeadline(time.Now().Add(idleTimeout))
-			targetConn.SetDeadline(time.Now().Add(idleTimeout))
-			mutex.Unlock()
-			_, err = targetConn.Write(buf[:n])
+		} else if n > 0 {
+			log.Printf("%d bytes read", n)
+			sourceConn.SetReadDeadline(time.Now().Add(idleTimeout))
+			n, err = targetConn.Write(buf[:n])
 			if err != nil {
-				log.Printf("Error writing to target: %v", err)
+				handleConnectionError(err)
 				return
+			} else if n > 0 {
+				log.Printf("%d bytes written", n)
+				targetConn.SetWriteDeadline(time.Now().Add(idleTimeout))
 			}
 		}
+	}
+}
+
+func handleConnectionError(err error) {
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		log.Printf("Connection timed out")
+	} else if err != io.EOF {
+		log.Printf("Error using connection: %v", err)
 	}
 }
 

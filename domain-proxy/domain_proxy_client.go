@@ -73,7 +73,7 @@ func (dpc *DomainProxyClient) startClient() {
 			continue
 		}
 		dpc.executor.Add(1)
-		go ChannelToChannelBiDirectionalHandler(serverConn, domainConn, dpc.byteBufferSize, dpc.idleTimeout, dpc.executor)
+		go BiDirectionalTransfer(serverConn, domainConn, dpc.byteBufferSize, dpc.idleTimeout, dpc.executor)
 	}
 }
 

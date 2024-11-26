@@ -24,9 +24,9 @@ spec:
   - name: output-image
     value: quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/domain-proxy:{{revision}}
   - name: dockerfile
-    value: /java-components/domain-proxy/src/main/docker/Dockerfile.all-in-one
+    value: /domain-proxy/Dockerfile.all-in-one
   - name: path-context
-    value: java-components
+    value: domain-proxy
   pipelineSpec:
     finally:
     - name: show-sbom
