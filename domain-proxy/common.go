@@ -72,8 +72,6 @@ func handleConnectionError(err error) {
 		Logger.Printf("Connection timed out")
 	} else if err != io.EOF {
 		Logger.Printf("Error using connection: %v", err)
-	} else if err == io.EOF {
-		Logger.Printf("EOF")
 	}
 }
 
