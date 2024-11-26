@@ -14,7 +14,7 @@ import (
 
 const (
 	ByteBufferSizeKey        = "BYTE_BUFFER_SIZE"
-	DefaultByteBufferSize    = 1024
+	DefaultByteBufferSize    = 10485760
 	DomainSocketKey          = "DOMAIN_SOCKET"
 	DefaultDomainSocket      = "/tmp/domain-socket.sock"
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
