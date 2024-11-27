@@ -13,13 +13,13 @@ import (
 
 const (
 	ByteBufferSizeKey        = "BYTE_BUFFER_SIZE"
-	DefaultByteBufferSize    = 1024
+	DefaultByteBufferSize    = 32768
 	DomainSocketKey          = "DOMAIN_SOCKET"
 	DefaultDomainSocket      = "/tmp/domain-socket.sock"
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
-	DefaultConnectionTimeout = 1000 * time.Millisecond
+	DefaultConnectionTimeout = 10000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
-	DefaultIdleTimeout       = 30000 * time.Millisecond
+	DefaultIdleTimeout       = 60000 * time.Millisecond
 )
 
 var Logger *log.Logger

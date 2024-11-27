@@ -33,7 +33,7 @@ spec:
     - name: BUILD_ARGS
       description: Array of --build-arg values ("arg=value" strings)
       type: array
-      default: []
+      default: [ ]
     - name: BUILD_ARGS_FILE
       description: Path to a file with build arguments, see https://www.mankier.com/1/buildah-build#--build-arg-file
       type: string
@@ -76,7 +76,7 @@ spec:
       description: Additional key=value labels that should be applied to the
         image
       type: array
-      default: []
+      default: [ ]
     - name: PREFETCH_INPUT
       description: In case it is not empty, the prefetched content should
         be made available to the build.
@@ -142,7 +142,7 @@ spec:
     - name: BYTE_BUFFER_SIZE
       description: The byte buffer size to use for the domain proxy.
       type: string
-      default: 1024
+      default: 32768
     - name: PROXY_TARGET_WHITELIST
       description: Comma separated whitelist of target hosts for the domain proxy.
       type: string
@@ -189,7 +189,7 @@ spec:
         optional: true
         secretName: $(params.ENTITLEMENT_SECRET)
     - name: shared
-      emptyDir: {}
+      emptyDir: { }
     - name: trusted-ca
       configMap:
         items:
@@ -198,9 +198,9 @@ spec:
         name: $(params.caTrustConfigMapName)
         optional: true
     - name: varlibcontainers
-      emptyDir: {}
+      emptyDir: { }
     - name: workdir
-      emptyDir: {}
+      emptyDir: { }
   stepTemplate:
     env:
       - name: ACTIVATION_KEY
