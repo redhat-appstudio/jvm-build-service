@@ -44,6 +44,8 @@ public class Pipeline extends Base implements Runnable {
                 .repositoryDependencyUrl(dependencies)
                 .repositoryBuildContentId("test-maven-konflux-int-0001")
                 .recipeImage(recipeImage)
+                // Just use default from buildah-oci-ta for now.
+                .podMemoryOverride("4Gi")
                 .build();
         driver.create(request);
     }

@@ -145,7 +145,20 @@ public abstract class AbstractPreprocessor implements Runnable {
             fi
             echo "PATH:$PATH"
 
+            update-ca-trust
+
+            # Go through certificates and insert them into the cacerts
+            for cert in $(find /etc/pki/ca-trust/source/anchors -type f); do
+              echo "Inserting $cert into java cacerts"
+              keytool -import -alias $(basename $cert)-ca \\
+                -file $cert \\
+                -keystore /etc/pki/java/cacerts \\
+                -storepass changeit --noprompt
+            done
+
             # End of generic build script
+
+            echo "Building the project ..."
             """;
 
         if (isNotEmpty(buildScript)) {

@@ -39,6 +39,5 @@ public class BuildRequest {
 
     private final String namespace;
 
-    // TODO: NYI
-    // private final String podMemoryOverride;
+    private final String podMemoryOverride;
 }

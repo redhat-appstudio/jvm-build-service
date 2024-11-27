@@ -9,8 +9,6 @@ spec:
       # TODO: This will eventually be build-definitions repository
       - name: url
         value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/pipeline/mw-pipeline-v0.1.yaml
-        #value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/pipeline/mw-pipeline-v0.1.yaml
-
   workspaces:
     - name: source
       # TODO: If we have a custom git step we can share this with prebuild thereby eliminating the need for a volumeClaimTemplate
@@ -27,50 +25,10 @@ spec:
               storage: 1Gi
         status: {}
   params:
-    - name: QUAY_REPO
-      value: "%{QUAY_REPO}"
-    - name: URL
-      value: "%{URL}"
-    - name: REVISION
-      value: "%{REVISION}"
-    - name: RECIPE_IMAGE
-      value: "%{RECIPE_IMAGE}"
-    - name: BUILD_TOOL
-      value: "%{BUILD_TOOL}"
-    - name: BUILD_TOOL_VERSION
-      value: "%{BUILD_TOOL_VERSION}"
-    - name: JAVA_VERSION
-      value: "%{JAVA_VERSION}"
-    - name: BUILD_SCRIPT
-      value: |
-        update-ca-trust
-
-        # Go through certificates and insert them into the cacerts
-        for cert in /etc/pki/ca-trust/source/anchors/*; do
-          echo "inserting $cert into java cacerts"
-          keytool -import -alias $(basename $cert)-ca \
-            -file $cert \
-            -keystore /etc/pki/java/cacerts \
-            -storepass changeit --noprompt
-        done;
-
-        echo "Building the project ..."
-
-        %{BUILD_SCRIPT}
-    - name: MVN_REPO_DEPLOY_URL
-      value: "%{MVN_REPO_DEPLOY_URL}"
-    - name: MVN_REPO_DEPENDENCIES_URL
-      value: "%{MVN_REPO_DEPENDENCIES_URL}"
-    - name: ACCESS_TOKEN
-      value: "%{ACCESS_TOKEN}"
-    - name: BUILD_ID
-      value: "%{BUILD_ID}"
     - name: caTrustConfigMapName
       value: custom-ca
     - name: ENABLE_INDY_PROXY
       value: "false"
-    - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
-      value: "%{REQUEST_PROCESSOR}"
   # TODO: Should PNC set both limits and requests? See
   #   https://home.robusta.dev/blog/kubernetes-memory-limit
   #   https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -79,13 +37,7 @@ spec:
       stepSpecs:
         - name: build
           computeResources:
-            limits:
-              # Default in buildah-oci-ta is 4Gi
-              # TODO: Configure as %{MEMORY}
-              memory: 5Gi
-            requests:
-              # Default in buildah-oci-ta is 1Gi
-              memory: 5Gi
+            # limits/requests memory are configured dynamically in Driver.
   taskRunTemplate:
     podTemplate:
       env:

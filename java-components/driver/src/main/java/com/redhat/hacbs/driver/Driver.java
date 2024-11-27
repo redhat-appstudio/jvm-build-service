@@ -3,7 +3,6 @@ package com.redhat.hacbs.driver;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,24 +11,22 @@ import java.util.Optional;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.text.StringSubstitutor;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.redhat.hacbs.driver.clients.IndyService;
 import com.redhat.hacbs.driver.clients.IndyTokenRequestDTO;
 import com.redhat.hacbs.driver.clients.IndyTokenResponseDTO;
 import com.redhat.hacbs.driver.dto.BuildRequest;
 
+import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.tekton.client.TektonClient;
+import io.fabric8.tekton.pipeline.v1.ParamBuilder;
 import io.fabric8.tekton.pipeline.v1.PipelineRun;
 import io.quarkus.oidc.client.OidcClient;
 import lombok.Setter;
@@ -39,15 +36,12 @@ public class Driver {
 
     private static final Logger logger = LoggerFactory.getLogger(Driver.class);
 
-    private static final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-
     @Inject
     OidcClient oidcClient;
 
     @RestClient
     IndyService indyService;
 
-    // TODO: Could use KubernetesClient or OpenShiftClient
     @Inject
     KubernetesClient client;
 
@@ -72,40 +66,55 @@ public class Driver {
             tokenResponseDTO = indyService.getAuthToken(
                     new IndyTokenRequestDTO(buildRequest.getRepositoryBuildContentId()),
                     "Bearer " + getFreshAccessToken());
-            logger.debug("### new access token: {}", tokenResponseDTO.getToken()); // TODO: REMOVE
-
         }
 
         Map<String, String> templateProperties = new HashMap<>();
-        templateProperties.put("REQUEST_PROCESSOR", processor);
-        templateProperties.put("QUAY_REPO", quayRepo);
-        templateProperties.put("URL", buildRequest.getScmUrl());
-        templateProperties.put("REVISION", buildRequest.getScmRevision());
-        templateProperties.put("RECIPE_IMAGE", buildRequest.getRecipeImage());
+        templateProperties.put("ACCESS_TOKEN", tokenResponseDTO.getToken());
+        templateProperties.put("BUILD_ID", buildRequest.getRepositoryBuildContentId());
+        templateProperties.put("BUILD_SCRIPT", buildRequest.getBuildScript());
         templateProperties.put("BUILD_TOOL", buildRequest.getBuildTool());
         templateProperties.put("BUILD_TOOL_VERSION", buildRequest.getBuildToolVersion());
         templateProperties.put("JAVA_VERSION", buildRequest.getJavaVersion());
-        templateProperties.put("BUILD_SCRIPT", buildRequest.getBuildScript());
-        templateProperties.put("MVN_REPO_DEPLOY_URL", buildRequest.getRepositoryDeployUrl());
         templateProperties.put("MVN_REPO_DEPENDENCIES_URL", buildRequest.getRepositoryDependencyUrl());
-        templateProperties.put("ACCESS_TOKEN", tokenResponseDTO.getToken());
-        templateProperties.put("BUILD_ID", buildRequest.getRepositoryBuildContentId());
+        templateProperties.put("MVN_REPO_DEPLOY_URL", buildRequest.getRepositoryDeployUrl());
+        templateProperties.put("QUAY_REPO", quayRepo);
+        templateProperties.put("RECIPE_IMAGE", buildRequest.getRecipeImage());
+        templateProperties.put("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE", processor);
+        templateProperties.put("REVISION", buildRequest.getScmRevision());
+        templateProperties.put("URL", buildRequest.getScmUrl());
 
-        String pipeline = "";
+        PipelineRun pipelineRun = null;
         try {
+            var tc = client.adapt(TektonClient.class);
+            // Various ways to create the initial PipelineRun object. We can use an objectmapper,
+            // client.getKubernetesSerialization() or the load calls on the Fabric8 objects.
             if (customPipeline.isEmpty()) {
-                pipeline = IOUtils.resourceToString("pipeline.yaml", StandardCharsets.UTF_8,
-                        Thread.currentThread().getContextClassLoader());
+                pipelineRun = tc.v1().pipelineRuns()
+                        .load(IOUtils.resourceToURL("pipeline.yaml", Thread.currentThread().getContextClassLoader())).item();
             } else {
-                pipeline = FileUtils.readFileToString(Path.of(customPipeline.get()).toFile(), StandardCharsets.UTF_8);
+                pipelineRun = tc.v1().pipelineRuns().load(Path.of(customPipeline.get()).toFile()).item();
             }
         } catch (IOException e) {
+            e.printStackTrace();
             // TODO: process
         }
+        pipelineRun = pipelineRun.edit().editOrNewSpec()
+                .addAllToParams(templateProperties.entrySet().stream()
+                        .map(t -> new ParamBuilder().withName(t.getKey()).withNewValue(t.getValue()).build()).toList())
+                .editFirstTaskRunSpec()
+                .editFirstStepSpec()
+                .editComputeResources()
+                .addToLimits("memory", new Quantity(buildRequest.getPodMemoryOverride()))
+                .addToRequests("memory", new Quantity(buildRequest.getPodMemoryOverride()))
+                .endComputeResources()
+                .endStepSpec()
+                .endTaskRunSpec()
+                .endSpec().build();
 
-        PipelineRun run = createModelNode(pipeline, templateProperties, PipelineRun.class);
-
-        var created = client.resource(run).inNamespace(buildRequest.getNamespace()).create();
+        System.err.println("### Got p " + pipelineRun);
+        // PipelineRun run = createModelNode(pipeline, templateProperties, PipelineRun.class);
+        //run.getSpec().setParams();
+        var created = client.resource(pipelineRun).inNamespace(buildRequest.getNamespace()).create();
     }
 
     /**
@@ -115,22 +124,6 @@ public class Driver {
      * @return fresh access token
      */
     public String getFreshAccessToken() {
-        var result = oidcClient.getTokens().await().indefinitely().getAccessToken();
-        logger.debug("### access token: {}", result); // TODO: REMOVE
-        return result;
-    }
-
-    private <T> T createModelNode(String resourceDefinition, Map<String, String> properties, Class<T> clazz) {
-        String definition = StringSubstitutor.replace(resourceDefinition, properties, "%{", "}");
-
-        if (logger.isTraceEnabled()) {
-            logger.trace("Node definition: {}", definition);
-        }
-
-        try {
-            return yamlMapper.readValue(definition, clazz);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return oidcClient.getTokens().await().indefinitely().getAccessToken();
     }
 }
