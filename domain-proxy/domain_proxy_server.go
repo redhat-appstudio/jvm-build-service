@@ -111,9 +111,12 @@ func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn)
 
 func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, writer http.ResponseWriter, request *http.Request) {
 	connectionNo := dps.httpConnectionCounter.Add(1)
-	Logger.Printf("Handling %s Connection %d", DomainSocketToHttp, connectionNo)
 	targetHost, targetPort := getTargetHostAndPort(request.Host, HttpPort)
+	Logger.Printf("Handling %s Connection %d with target host %s and port %d", DomainSocketToHttp, connectionNo, targetHost, targetPort)
 	if !dps.isTargetWhitelisted(targetHost, writer) {
+		if err := sourceConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
 		return
 	}
 	startTime := time.Now()
@@ -142,9 +145,12 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 
 func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, writer http.ResponseWriter, request *http.Request) {
 	connectionNo := dps.httpsConnectionCounter.Add(1)
-	Logger.Printf("Handling %s Connection %d", DomainSocketToHttps, connectionNo)
 	targetHost, targetPort := getTargetHostAndPort(request.Host, HttpsPort)
+	Logger.Printf("Handling %s Connection %d with target host %s and port %d", DomainSocketToHttps, connectionNo, targetHost, targetPort)
 	if !dps.isTargetWhitelisted(targetHost, writer) {
+		if err := sourceConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
 		return
 	}
 	startTime := time.Now()
@@ -184,9 +190,8 @@ func getTargetHostAndPort(host string, defaultPort int) (string, int) {
 }
 
 func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, writer http.ResponseWriter) bool {
-	Logger.Printf("Target host %s", targetHost)
 	if !dps.proxyTargetWhitelist[targetHost] && !dps.nonProxyHosts[targetHost] {
-		message := "Target host is not whitelisted nor a non-proxy host"
+		message := fmt.Sprintf("Target host %s is not whitelisted nor a non-proxy host", targetHost)
 		Logger.Println(message)
 		http.Error(writer, message, http.StatusForbidden)
 		return false
