@@ -11,5 +11,5 @@ USER 0
 RUN microdnf install -y iproute
 WORKDIR /work/
 
-COPY --from=builder /work/domain-proxy/domain-proxy-server /app/domain-proxy-server
-COPY --from=builder /work/domain-proxy/domain-proxy-client /app/domain-proxy-client
+COPY --from=builder /work/domain-proxy-server /app/domain-proxy-server
+COPY --from=builder /work/domain-proxy-client /app/domain-proxy-client
