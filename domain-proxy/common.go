@@ -19,7 +19,7 @@ const (
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
 	DefaultConnectionTimeout = 1000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
-	DefaultIdleTimeout       = 10000 * time.Millisecond
+	DefaultIdleTimeout       = 30000 * time.Millisecond
 )
 
 var Logger *log.Logger
