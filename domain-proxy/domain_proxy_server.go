@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -21,19 +21,21 @@ const (
 	DefaultProxyTargetWhitelist  = "repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
 	InternalNonProxyHostsKey     = "INTERNAL_NON_PROXY_HOSTS"
 	DefaultInternalNonProxyHosts = "localhost"
+	DomainSocketToHttp           = "Domain Socket <-> HTTP"
+	DomainSocketToHttps          = "Domain Socket <-> HTTPS"
 )
 
 type DomainProxyServer struct {
-	domainSocket         string
-	byteBufferSize       int
-	connectionTimeout    time.Duration
-	idleTimeout          time.Duration
-	proxyTargetWhitelist map[string]bool
-	nonProxyHosts        map[string]bool
-	counter              int
-	listener             net.Listener
-	executor             *sync.WaitGroup
-	shutdownChan         chan struct{}
+	domainSocket           string
+	byteBufferSize         int
+	connectionTimeout      time.Duration
+	idleTimeout            time.Duration
+	proxyTargetWhitelist   map[string]bool
+	nonProxyHosts          map[string]bool
+	httpConnectionCounter  atomic.Uint64
+	httpsConnectionCounter atomic.Uint64
+	listener               net.Listener
+	shutdownChan           chan struct{}
 }
 
 func NewDomainProxyServer(domainSocket string, byteBufferSize int, connectionTimeout, idleTimeout time.Duration, proxyTargetWhitelist, nonProxyHosts map[string]bool) *DomainProxyServer {
@@ -44,8 +46,6 @@ func NewDomainProxyServer(domainSocket string, byteBufferSize int, connectionTim
 		idleTimeout:          idleTimeout,
 		proxyTargetWhitelist: proxyTargetWhitelist,
 		nonProxyHosts:        nonProxyHosts,
-		counter:              0,
-		executor:             &sync.WaitGroup{},
 		shutdownChan:         make(chan struct{}),
 	}
 }
@@ -54,12 +54,10 @@ func (dps *DomainProxyServer) Start() {
 	Logger.Println("Starting domain proxy server...")
 	Logger.Printf("Byte buffer size %d", dps.byteBufferSize)              // TODO Remove
 	Logger.Printf("Proxy target whitelist: %v", dps.proxyTargetWhitelist) // TODO Remove
-	dps.executor.Add(1)
 	go dps.startServer()
 }
 
 func (dps *DomainProxyServer) startServer() {
-	defer dps.executor.Done()
 	if _, err := os.Stat(dps.domainSocket); err == nil {
 		if err := os.Remove(dps.domainSocket); err != nil {
 			Logger.Fatalf("Failed to delete existing domain socket: %v", err)
@@ -70,97 +68,107 @@ func (dps *DomainProxyServer) startServer() {
 	if err != nil {
 		Logger.Fatalf("Failed to start domain socket listener: %v", err)
 	}
-	Logger.Println("Domain socket server listening on", dps.domainSocket)
+	Logger.Printf("Domain socket server listening on %s", dps.domainSocket)
 	for {
-		conn, err := dps.listener.Accept()
-		if err != nil {
+		if domainConnection, err := dps.listener.Accept(); err != nil {
 			select {
 			case <-dps.shutdownChan:
 				return
 			default:
-				Logger.Printf("Failed to accept connection: %v", err)
-				continue
+				Logger.Printf("Failed to accept domain socket connection: %v", err)
 			}
+		} else {
+			go dps.handleConnectionRequest(domainConnection)
 		}
-		dps.executor.Add(1)
-		go dps.handleRequest(conn)
 	}
 }
 
-func (dps *DomainProxyServer) handleRequest(conn net.Conn) {
-	defer dps.executor.Done()
-	dps.counter++
-	conn.SetDeadline(time.Now().Add(dps.idleTimeout))
-	reader := bufio.NewReader(conn)
-	req, err := http.ReadRequest(reader)
-	if err != nil {
-		Logger.Printf("Failed to read request: %v", err)
-		conn.Close()
+func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn) {
+	if err := domainConnection.SetDeadline(time.Now().Add(dps.idleTimeout)); err != nil {
+		handleSetDeadlineError(domainConnection, err)
 		return
 	}
-	w := &responseWriter{conn: conn}
-	conn.SetDeadline(time.Now().Add(dps.idleTimeout))
-	if req.Method == http.MethodConnect {
-		dps.handleHttpsRequest(conn, w, req)
+	reader := bufio.NewReader(domainConnection)
+	request, err := http.ReadRequest(reader)
+	if err != nil {
+		Logger.Printf("Failed to read request: %v", err)
+		if err = domainConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
+		return
+	}
+	writer := &responseWriter{connection: domainConnection}
+	if err = domainConnection.SetDeadline(time.Now().Add(dps.idleTimeout)); err != nil {
+		handleSetDeadlineError(domainConnection, err)
+		return
+	}
+	if request.Method == http.MethodConnect {
+		dps.handleHttpsConnection(domainConnection, writer, request)
 	} else {
-		dps.handleHttpRequest(conn, w, req)
+		dps.handleHttpConnection(domainConnection, writer, request)
 	}
 }
 
-func (dps *DomainProxyServer) handleHttpRequest(sourceConn net.Conn, w http.ResponseWriter, r *http.Request) {
-	Logger.Printf("Handling HTTP %s Request", r.Method)
-	requestNo := dps.counter
-	Logger.Printf("Request %d", requestNo)
-	targetHost, targetPort := getTargetHostAndPort(r.Host, HttpPort)
-	if dps.isTargetWhitelisted(targetHost, w) {
-		Logger.Printf("Target URI %s", r.RequestURI)
-		startTime := time.Now()
-		targetConn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
-		if err != nil {
-			dps.handleErrorResponse(w, err, "Failed to connect to target")
-			sourceConn.Close()
-			return
-		}
-		if err = r.Write(targetConn); err != nil {
-			dps.handleErrorResponse(w, err, "Failed to send request to target")
-			targetConn.Close()
-			sourceConn.Close()
-			return
-		}
-		dps.executor.Add(1)
-		go func() {
-			BiDirectionalTransfer(sourceConn, targetConn, dps.byteBufferSize, dps.idleTimeout, dps.executor)
-			Logger.Printf("Request %d took %d ms", requestNo, time.Since(startTime).Milliseconds())
-		}()
+func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, writer http.ResponseWriter, request *http.Request) {
+	connectionNo := dps.httpConnectionCounter.Add(1)
+	Logger.Printf("Handling %s Connection %d", DomainSocketToHttp, connectionNo)
+	targetHost, targetPort := getTargetHostAndPort(request.Host, HttpPort)
+	if !dps.isTargetWhitelisted(targetHost, writer) {
+		return
 	}
+	startTime := time.Now()
+	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
+	if err != nil {
+		dps.handleErrorResponse(writer, err, "Failed to connect to target")
+		if err = sourceConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
+		return
+	} else if err = request.Write(targetConnection); err != nil {
+		dps.handleErrorResponse(writer, err, "Failed to send request to target")
+		if err = targetConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
+		if err = sourceConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
+		return
+	}
+	go func() {
+		BiDirectionalTransfer(sourceConnection, targetConnection, dps.byteBufferSize, dps.idleTimeout, DomainSocketToHttp, connectionNo)
+		Logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttp, connectionNo, time.Since(startTime).Milliseconds())
+	}()
 }
 
-func (dps *DomainProxyServer) handleHttpsRequest(sourceConn net.Conn, w http.ResponseWriter, r *http.Request) {
-	Logger.Printf("Handling HTTPS %s Request", r.Method)
-	requestNo := dps.counter
-	Logger.Printf("Request %d", requestNo)
-	targetHost, targetPort := getTargetHostAndPort(r.Host, HttpsPort)
-	if dps.isTargetWhitelisted(targetHost, w) {
-		Logger.Printf("Target URI %s", r.RequestURI)
-		startTime := time.Now()
-		targetConn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
-		if err != nil {
-			dps.handleErrorResponse(w, err, "Failed to connect to target")
-			sourceConn.Close()
-			return
-		}
-		if _, err = fmt.Fprint(sourceConn, "HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
-			dps.handleErrorResponse(w, err, "Failed to send request to target")
-			targetConn.Close()
-			sourceConn.Close()
-			return
-		}
-		dps.executor.Add(1)
-		go func() {
-			BiDirectionalTransfer(sourceConn, targetConn, dps.byteBufferSize, dps.idleTimeout, dps.executor)
-			Logger.Printf("Request %d took %d ms", requestNo, (time.Since(startTime) - dps.idleTimeout).Milliseconds())
-		}()
+func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, writer http.ResponseWriter, request *http.Request) {
+	connectionNo := dps.httpsConnectionCounter.Add(1)
+	Logger.Printf("Handling %s Connection %d", DomainSocketToHttps, connectionNo)
+	targetHost, targetPort := getTargetHostAndPort(request.Host, HttpsPort)
+	if !dps.isTargetWhitelisted(targetHost, writer) {
+		return
 	}
+	startTime := time.Now()
+	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
+	if err != nil {
+		dps.handleErrorResponse(writer, err, "Failed to connect to target")
+		if err = sourceConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
+		return
+	} else if _, err = writer.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n")); err != nil {
+		dps.handleErrorResponse(writer, err, "Failed to send request to target")
+		if err = targetConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
+		if err = sourceConnection.Close(); err != nil {
+			HandleConnectionCloseError(err)
+		}
+		return
+	}
+	go func() {
+		BiDirectionalTransfer(sourceConnection, targetConnection, dps.byteBufferSize, dps.idleTimeout, DomainSocketToHttps, connectionNo)
+		Logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttps, connectionNo, time.Since(startTime).Milliseconds())
+	}()
 }
 
 func getTargetHostAndPort(host string, defaultPort int) (string, int) {
@@ -175,37 +183,37 @@ func getTargetHostAndPort(host string, defaultPort int) (string, int) {
 	return targetHost, targetPort
 }
 
-func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, w http.ResponseWriter) bool {
+func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, writer http.ResponseWriter) bool {
 	Logger.Printf("Target host %s", targetHost)
 	if !dps.proxyTargetWhitelist[targetHost] && !dps.nonProxyHosts[targetHost] {
-		Logger.Println("Target host is not whitelisted or a non-proxy host")
-		http.Error(w, "The requested resource was not found.", http.StatusNotFound)
+		message := "Target host is not whitelisted nor a non-proxy host"
+		Logger.Println(message)
+		http.Error(writer, message, http.StatusForbidden)
 		return false
 	}
 	return true
 }
 
-func (dps *DomainProxyServer) handleErrorResponse(w http.ResponseWriter, err error, message string) {
+func (dps *DomainProxyServer) handleErrorResponse(writer http.ResponseWriter, err error, message string) {
 	Logger.Printf("%s: %v", message, err)
-	http.Error(w, message+": "+err.Error(), http.StatusBadGateway)
+	http.Error(writer, message+": "+err.Error(), http.StatusBadGateway)
 }
 
 func (dps *DomainProxyServer) Stop() {
 	Logger.Println("Shutting down domain proxy server...")
 	close(dps.shutdownChan)
 	if err := dps.listener.Close(); err != nil {
-		Logger.Printf("Error closing listener: %v", err)
+		HandleListenerCloseError(err)
 	}
-	//dps.executor.Wait()
 	if _, err := os.Stat(dps.domainSocket); err == nil {
 		if err := os.Remove(dps.domainSocket); err != nil {
-			Logger.Printf("Error deleting domain socket: %v", err)
+			Logger.Printf("Failed to delete domain socket: %v", err)
 		}
 	}
 }
 
 type responseWriter struct {
-	conn       net.Conn
+	connection net.Conn
 	header     http.Header
 	statusCode int
 }
@@ -218,7 +226,7 @@ func (rw *responseWriter) Header() http.Header {
 }
 
 func (rw *responseWriter) Write(data []byte) (int, error) {
-	return rw.conn.Write(data)
+	return rw.connection.Write(data)
 }
 
 func (rw *responseWriter) WriteHeader(statusCode int) {
@@ -230,8 +238,8 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 		}
 	}
 	headers += "\r\n"
-	if _, err := rw.conn.Write([]byte(headers)); err != nil {
-		Logger.Printf("Error writing headers to connection: %v", err)
+	if _, err := rw.connection.Write([]byte(headers)); err != nil {
+		Logger.Printf("Failed to write headers to connection: %v", err)
 	}
 }
 
@@ -245,8 +253,8 @@ func main() {
 		GetCsvEnvVariable(InternalNonProxyHostsKey, DefaultInternalNonProxyHosts), // TODO Implement Non-proxy logic
 	)
 	server.Start()
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	<-signals
 	server.Stop()
 }

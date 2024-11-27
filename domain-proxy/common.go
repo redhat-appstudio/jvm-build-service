@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -20,7 +19,7 @@ const (
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
 	DefaultConnectionTimeout = 1000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
-	DefaultIdleTimeout       = 30000 * time.Millisecond
+	DefaultIdleTimeout       = 10000 * time.Millisecond
 )
 
 var Logger *log.Logger
@@ -29,53 +28,78 @@ func InitLogger(appName string) {
 	Logger = log.New(os.Stdout, appName+" ", log.LstdFlags|log.Lshortfile)
 }
 
-func BiDirectionalTransfer(leftConn, rightConn net.Conn, byteBufferSize int, idleTimeout time.Duration, executor *sync.WaitGroup) {
-	defer executor.Done()
-	defer CloseConnections(leftConn, rightConn)
+func BiDirectionalTransfer(leftConnection, rightConnection net.Conn, byteBufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
+	defer CloseConnection(leftConnection, rightConnection, connectionType, connectionNo)
 	done := make(chan struct{}, 2)
-	leftConn.SetDeadline(time.Now().Add(idleTimeout))
-	rightConn.SetDeadline(time.Now().Add(idleTimeout))
-	go Transfer(leftConn, rightConn, done, byteBufferSize, idleTimeout)
-	go Transfer(rightConn, leftConn, done, byteBufferSize, idleTimeout)
+	if err := leftConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
+		handleSetDeadlineError(leftConnection, err)
+		return
+	}
+	if err := rightConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
+		handleSetDeadlineError(rightConnection, err)
+		return
+	}
+	go Transfer(leftConnection, rightConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
+	go Transfer(rightConnection, leftConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
 	<-done
 	<-done
 }
 
-func Transfer(sourceConn, targetConn net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration) {
+func Transfer(sourceConnection, targetConnection net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
 	defer func() {
 		done <- struct{}{}
 	}()
 	buf := make([]byte, bufferSize)
 	for {
-		n, err := io.CopyBuffer(sourceConn, targetConn, buf)
-		if err != nil {
-			handleConnectionError(err)
+		if n, err := io.CopyBuffer(sourceConnection, targetConnection, buf); err != nil {
+			handleConnectionError(err, connectionType, connectionNo)
 			return
 		} else if n > 0 {
-			sourceConn.SetReadDeadline(time.Now().Add(idleTimeout))
-			targetConn.SetWriteDeadline(time.Now().Add(idleTimeout))
-			Logger.Printf("%d bytes transferred", n)
+			if err = sourceConnection.SetReadDeadline(time.Now().Add(idleTimeout)); err != nil {
+				handleSetDeadlineError(sourceConnection, err)
+				return
+			}
+			if err = targetConnection.SetWriteDeadline(time.Now().Add(idleTimeout)); err != nil {
+				handleSetDeadlineError(targetConnection, err)
+				return
+			}
+			Logger.Printf("%d bytes transferred for %s connection %d", n, connectionType, connectionNo)
 		}
 	}
 }
 
-func handleConnectionError(err error) {
-	var netErr net.Error
-	if errors.As(err, &netErr) && netErr.Timeout() {
-		Logger.Printf("Connection timed out")
-	} else if err != io.EOF {
-		Logger.Printf("Error using connection: %v", err)
+func handleSetDeadlineError(connection net.Conn, err error) {
+	Logger.Printf("Failed to set deadline: %v", err)
+	if err = connection.Close(); err != nil {
+		HandleConnectionCloseError(err)
 	}
 }
 
-func CloseConnections(leftConn, rightConn net.Conn) {
-	if leftConn != nil {
-		leftConn.Close()
+func HandleConnectionCloseError(err error) {
+	Logger.Printf("Failed to close connection: %v", err)
+}
+
+func HandleListenerCloseError(err error) {
+	Logger.Printf("Failed to close listener: %v", err)
+}
+
+func handleConnectionError(err error, connectionType string, connectionNo uint64) {
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		Logger.Printf("%s connection %d timed out", connectionType, connectionNo)
+	} else if err != io.EOF {
+		Logger.Printf("Failed to transfer data using %s connection %d: %v", connectionType, connectionNo, err)
 	}
-	if rightConn != nil {
-		rightConn.Close()
+}
+
+func CloseConnection(leftConnection, rightConnection net.Conn, connectionType string, connectionNo uint64) {
+	if err := leftConnection.Close(); err != nil {
+		HandleConnectionCloseError(err)
 	}
-	Logger.Println("Connections closed")
+	if err := rightConnection.Close(); err != nil {
+		HandleConnectionCloseError(err)
+	}
+	Logger.Printf("%s connection %d closed", connectionType, connectionNo)
 }
 
 func GetEnvVariable(key, defaultValue string) string {
