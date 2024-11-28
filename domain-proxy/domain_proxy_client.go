@@ -41,7 +41,6 @@ func NewDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize in
 
 func (dpc *DomainProxyClient) Start() {
 	Logger.Println("Starting domain proxy client...")
-	Logger.Printf("Byte buffer size %d", dpc.byteBufferSize) // TODO Remove
 	var err error
 	dpc.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", Localhost, dpc.serverHttpPort))
 	if err != nil {

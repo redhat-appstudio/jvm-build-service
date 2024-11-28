@@ -52,8 +52,6 @@ func NewDomainProxyServer(domainSocket string, byteBufferSize int, connectionTim
 
 func (dps *DomainProxyServer) Start() {
 	Logger.Println("Starting domain proxy server...")
-	Logger.Printf("Byte buffer size %d", dps.byteBufferSize)              // TODO Remove
-	Logger.Printf("Proxy target whitelist: %v", dps.proxyTargetWhitelist) // TODO Remove
 	go dps.startServer()
 }
 

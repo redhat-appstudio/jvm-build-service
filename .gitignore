@@ -48,5 +48,3 @@ deploy/**/ci-final/**
 
 # Ignore default domain proxy output directory
 output/
-
-maven-wrapper.jar
