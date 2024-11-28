@@ -91,6 +91,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             export https_proxy=${http_proxy}
             export HTTP_PROXY=${http_proxy}
             export HTTPS_PROXY=${http_proxy}
+            export ANT_OPTS="-Dhttp.proxyHost=localhost -Dhttp.proxyPort=8080"
             #fix this when we no longer need to run as root
             export HOME=${HOME:=/root}
             # Custom base working directory.
@@ -389,7 +390,6 @@ public abstract class AbstractPreprocessor implements Runnable {
                 <property name="cache-url" value="${PROXY_URL}"/>
                 <property name="default-pattern" value="[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
                 <property name="local-pattern" value="\\${user.home}/.m2/repository/[organisation]/[module]/[revision]/[module]-[revision](-[classifier]).[ext]"/>
-                <property name="ivy.autoproxy" value="true" />
                 <settings defaultResolver="defaultChain"/>
                 <resolvers>
                     <ibiblio name="default" root="\\${cache-url}" pattern="\\${default-pattern}" m2compatible="true"/>
