@@ -10,7 +10,7 @@ import (
 
 func main() {
 	InitLogger("Domain Proxy Client")
-	client := NewDomainProxyClient(GetDomainSocket(), GetServerHttpPort(), GetByteBufferSize(), GetConnectionTimeout(), GetIdleTimeout())
+	client := NewDomainProxyClient()
 	client.Start()
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)

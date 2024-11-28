@@ -37,7 +37,7 @@ type DomainProxyServer struct {
 	shutdownChan           chan struct{}
 }
 
-func NewDomainProxyServer(domainSocket string, byteBufferSize int, connectionTimeout, idleTimeout time.Duration, proxyTargetWhitelist, nonProxyHosts map[string]bool) *DomainProxyServer {
+func newDomainProxyServer(domainSocket string, byteBufferSize int, connectionTimeout, idleTimeout time.Duration, proxyTargetWhitelist, nonProxyHosts map[string]bool) *DomainProxyServer {
 	return &DomainProxyServer{
 		domainSocket:         domainSocket,
 		byteBufferSize:       byteBufferSize,
@@ -47,6 +47,16 @@ func NewDomainProxyServer(domainSocket string, byteBufferSize int, connectionTim
 		nonProxyHosts:        nonProxyHosts,
 		shutdownChan:         make(chan struct{}),
 	}
+}
+
+func NewDomainProxyServer() *DomainProxyServer {
+	return newDomainProxyServer(GetDomainSocket(),
+		GetByteBufferSize(),
+		GetConnectionTimeout(),
+		GetIdleTimeout(),
+		GetCsvEnvVariable(ProxyTargetWhitelistKey, DefaultProxyTargetWhitelist),
+		GetCsvEnvVariable(InternalNonProxyHostsKey, DefaultInternalNonProxyHosts), // TODO Implement Non-proxy logic
+	)
 }
 
 func (dps *DomainProxyServer) Start() {

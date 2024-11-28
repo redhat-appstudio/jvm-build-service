@@ -10,13 +10,7 @@ import (
 
 func main() {
 	InitLogger("Domain Proxy Server")
-	server := NewDomainProxyServer(GetDomainSocket(),
-		GetByteBufferSize(),
-		GetConnectionTimeout(),
-		GetIdleTimeout(),
-		GetCsvEnvVariable(ProxyTargetWhitelistKey, DefaultProxyTargetWhitelist),
-		GetCsvEnvVariable(InternalNonProxyHostsKey, DefaultInternalNonProxyHosts), // TODO Implement Non-proxy logic
-	)
+	server := NewDomainProxyServer()
 	server.Start()
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)

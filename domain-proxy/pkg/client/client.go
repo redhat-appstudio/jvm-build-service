@@ -26,7 +26,7 @@ type DomainProxyClient struct {
 	shutdownChan          chan struct{}
 }
 
-func NewDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize int, connectionTimeout, idleTimeout time.Duration) *DomainProxyClient {
+func newDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize int, connectionTimeout, idleTimeout time.Duration) *DomainProxyClient {
 	return &DomainProxyClient{
 		domainSocket:      domainSocket,
 		serverHttpPort:    serverHttpPort,
@@ -35,6 +35,15 @@ func NewDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize in
 		idleTimeout:       idleTimeout,
 		shutdownChan:      make(chan struct{}),
 	}
+}
+
+func NewDomainProxyClient() *DomainProxyClient {
+	return newDomainProxyClient(GetDomainSocket(),
+		GetServerHttpPort(),
+		GetByteBufferSize(),
+		GetConnectionTimeout(),
+		GetIdleTimeout(),
+	)
 }
 
 func (dpc *DomainProxyClient) Start() {
