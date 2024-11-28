@@ -15,6 +15,9 @@ const (
 	HttpToDomainSocket    = "HTTP <-> Domain Socket"
 )
 
+var logger = NewLogger("Domain Proxy Client")
+var common = NewCommon(logger)
+
 type DomainProxyClient struct {
 	domainSocket          string
 	serverHttpPort        int
@@ -38,33 +41,33 @@ func newDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize in
 }
 
 func NewDomainProxyClient() *DomainProxyClient {
-	return newDomainProxyClient(GetDomainSocket(),
+	return newDomainProxyClient(common.GetDomainSocket(),
 		GetServerHttpPort(),
-		GetByteBufferSize(),
-		GetConnectionTimeout(),
-		GetIdleTimeout(),
+		common.GetByteBufferSize(),
+		common.GetConnectionTimeout(),
+		common.GetIdleTimeout(),
 	)
 }
 
 func (dpc *DomainProxyClient) Start() {
-	Logger.Println("Starting domain proxy client...")
+	logger.Println("Starting domain proxy client...")
 	var err error
 	dpc.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", Localhost, dpc.serverHttpPort))
 	if err != nil {
-		Logger.Fatalf("Failed to start HTTP server: %v", err)
+		logger.Fatalf("Failed to start HTTP server: %v", err)
 	}
 	go dpc.startClient()
 }
 
 func (dpc *DomainProxyClient) startClient() {
-	Logger.Printf("HTTP server listening on port %d", dpc.serverHttpPort)
+	logger.Printf("HTTP server listening on port %d", dpc.serverHttpPort)
 	for {
 		if serverConnection, err := dpc.listener.Accept(); err != nil {
 			select {
 			case <-dpc.shutdownChan:
 				return
 			default:
-				Logger.Printf("Failed to accept server connection: %v", err)
+				logger.Printf("Failed to accept server connection: %v", err)
 			}
 		} else {
 			go dpc.handleConnectionRequest(serverConnection)
@@ -74,30 +77,32 @@ func (dpc *DomainProxyClient) startClient() {
 
 func (dpc *DomainProxyClient) handleConnectionRequest(serverConnection net.Conn) {
 	connectionNo := dpc.httpConnectionCounter.Add(1)
-	Logger.Printf("Handling %s Connection %d", HttpToDomainSocket, connectionNo)
+	logger.Printf("Handling %s Connection %d", HttpToDomainSocket, connectionNo)
 	startTime := time.Now()
 	domainConnection, err := net.DialTimeout("unix", dpc.domainSocket, dpc.connectionTimeout)
 	if err != nil {
-		Logger.Printf("Failed to connect to domain socket: %v", err)
+		logger.Printf("Failed to connect to domain socket: %v", err)
 		if err = serverConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		return
 	}
 	go func() {
-		BiDirectionalTransfer(serverConnection, domainConnection, dpc.byteBufferSize, dpc.idleTimeout, HttpToDomainSocket, connectionNo)
-		Logger.Printf("%s Connection %d ended after %d ms", HttpToDomainSocket, connectionNo, time.Since(startTime).Milliseconds())
+		common.BiDirectionalTransfer(serverConnection, domainConnection, dpc.byteBufferSize, dpc.idleTimeout, HttpToDomainSocket, connectionNo)
+		logger.Printf("%s Connection %d ended after %d ms", HttpToDomainSocket, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
 
 func (dpc *DomainProxyClient) Stop() {
-	Logger.Println("Shutting down domain proxy client...")
+	logger.Println("Shutting down domain proxy client...")
 	close(dpc.shutdownChan)
-	if err := dpc.listener.Close(); err != nil {
-		HandleListenerCloseError(err)
+	if dpc.listener != nil {
+		if err := dpc.listener.Close(); err != nil {
+			common.HandleListenerCloseError(err)
+		}
 	}
 }
 
 func GetServerHttpPort() int {
-	return GetIntEnvVariable(ServerHttpPortKey, DefaultServerHttpPort)
+	return common.GetIntEnvVariable(ServerHttpPortKey, DefaultServerHttpPort)
 }

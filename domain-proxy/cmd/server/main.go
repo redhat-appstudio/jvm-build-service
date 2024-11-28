@@ -1,7 +1,6 @@
 package main
 
 import (
-	. "github.com/redhat-appstudio/jvm-build-service/domain-proxy/pkg/common"
 	. "github.com/redhat-appstudio/jvm-build-service/domain-proxy/pkg/server"
 	"os"
 	"os/signal"
@@ -9,7 +8,6 @@ import (
 )
 
 func main() {
-	InitLogger("Domain Proxy Server")
 	server := NewDomainProxyServer()
 	server.Start()
 	signals := make(chan os.Signal, 1)

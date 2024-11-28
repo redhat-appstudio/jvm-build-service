@@ -24,6 +24,9 @@ const (
 	DomainSocketToHttps          = "Domain Socket <-> HTTPS"
 )
 
+var logger = NewLogger("Domain Proxy Server")
+var common = NewCommon(logger)
+
 type DomainProxyServer struct {
 	domainSocket           string
 	byteBufferSize         int
@@ -50,39 +53,39 @@ func newDomainProxyServer(domainSocket string, byteBufferSize int, connectionTim
 }
 
 func NewDomainProxyServer() *DomainProxyServer {
-	return newDomainProxyServer(GetDomainSocket(),
-		GetByteBufferSize(),
-		GetConnectionTimeout(),
-		GetIdleTimeout(),
-		GetCsvEnvVariable(ProxyTargetWhitelistKey, DefaultProxyTargetWhitelist),
-		GetCsvEnvVariable(InternalNonProxyHostsKey, DefaultInternalNonProxyHosts), // TODO Implement Non-proxy logic
+	return newDomainProxyServer(common.GetDomainSocket(),
+		common.GetByteBufferSize(),
+		common.GetConnectionTimeout(),
+		common.GetIdleTimeout(),
+		GetProxyTargetWhitelist(),
+		GetInternalNonProxyHosts(), // TODO Implement Non-proxy logic
 	)
 }
 
 func (dps *DomainProxyServer) Start() {
-	Logger.Println("Starting domain proxy server...")
+	logger.Println("Starting domain proxy server...")
 	go dps.startServer()
 }
 
 func (dps *DomainProxyServer) startServer() {
 	if _, err := os.Stat(dps.domainSocket); err == nil {
 		if err := os.Remove(dps.domainSocket); err != nil {
-			Logger.Fatalf("Failed to delete existing domain socket: %v", err)
+			logger.Fatalf("Failed to delete existing domain socket: %v", err)
 		}
 	}
 	var err error
 	dps.listener, err = net.Listen("unix", dps.domainSocket)
 	if err != nil {
-		Logger.Fatalf("Failed to start domain socket listener: %v", err)
+		logger.Fatalf("Failed to start domain socket listener: %v", err)
 	}
-	Logger.Printf("Domain socket server listening on %s", dps.domainSocket)
+	logger.Printf("Domain socket server listening on %s", dps.domainSocket)
 	for {
 		if domainConnection, err := dps.listener.Accept(); err != nil {
 			select {
 			case <-dps.shutdownChan:
 				return
 			default:
-				Logger.Printf("Failed to accept domain socket connection: %v", err)
+				logger.Printf("Failed to accept domain socket connection: %v", err)
 			}
 		} else {
 			go dps.handleConnectionRequest(domainConnection)
@@ -92,21 +95,21 @@ func (dps *DomainProxyServer) startServer() {
 
 func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn) {
 	if err := domainConnection.SetDeadline(time.Now().Add(dps.idleTimeout)); err != nil {
-		HandleSetDeadlineError(domainConnection, err)
+		common.HandleSetDeadlineError(domainConnection, err)
 		return
 	}
 	reader := bufio.NewReader(domainConnection)
 	request, err := http.ReadRequest(reader)
 	if err != nil {
-		Logger.Printf("Failed to read request: %v", err)
+		logger.Printf("Failed to read request: %v", err)
 		if err = domainConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		return
 	}
 	writer := &responseWriter{connection: domainConnection}
 	if err = domainConnection.SetDeadline(time.Now().Add(dps.idleTimeout)); err != nil {
-		HandleSetDeadlineError(domainConnection, err)
+		common.HandleSetDeadlineError(domainConnection, err)
 		return
 	}
 	if request.Method == http.MethodConnect {
@@ -119,10 +122,10 @@ func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn)
 func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, writer http.ResponseWriter, request *http.Request) {
 	connectionNo := dps.httpConnectionCounter.Add(1)
 	targetHost, targetPort := getTargetHostAndPort(request.Host, HttpPort)
-	Logger.Printf("Handling %s Connection %d with target host %s and port %d", DomainSocketToHttp, connectionNo, targetHost, targetPort)
+	logger.Printf("Handling %s Connection %d with target host %s and port %d", DomainSocketToHttp, connectionNo, targetHost, targetPort)
 	if !dps.isTargetWhitelisted(targetHost, writer) {
 		if err := sourceConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		return
 	}
@@ -131,32 +134,32 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 	if err != nil {
 		dps.handleErrorResponse(writer, err, "Failed to connect to target")
 		if err = sourceConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		return
 	} else if err = request.Write(targetConnection); err != nil {
 		dps.handleErrorResponse(writer, err, "Failed to send request to target")
 		if err = targetConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		if err = sourceConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		return
 	}
 	go func() {
-		BiDirectionalTransfer(sourceConnection, targetConnection, dps.byteBufferSize, dps.idleTimeout, DomainSocketToHttp, connectionNo)
-		Logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttp, connectionNo, time.Since(startTime).Milliseconds())
+		common.BiDirectionalTransfer(sourceConnection, targetConnection, dps.byteBufferSize, dps.idleTimeout, DomainSocketToHttp, connectionNo)
+		logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttp, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
 
 func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, writer http.ResponseWriter, request *http.Request) {
 	connectionNo := dps.httpsConnectionCounter.Add(1)
 	targetHost, targetPort := getTargetHostAndPort(request.Host, HttpsPort)
-	Logger.Printf("Handling %s Connection %d with target host %s and port %d", DomainSocketToHttps, connectionNo, targetHost, targetPort)
+	logger.Printf("Handling %s Connection %d with target host %s and port %d", DomainSocketToHttps, connectionNo, targetHost, targetPort)
 	if !dps.isTargetWhitelisted(targetHost, writer) {
 		if err := sourceConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		return
 	}
@@ -165,22 +168,22 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 	if err != nil {
 		dps.handleErrorResponse(writer, err, "Failed to connect to target")
 		if err = sourceConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		return
 	} else if _, err = writer.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n")); err != nil {
 		dps.handleErrorResponse(writer, err, "Failed to send request to target")
 		if err = targetConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		if err = sourceConnection.Close(); err != nil {
-			HandleConnectionCloseError(err)
+			common.HandleConnectionCloseError(err)
 		}
 		return
 	}
 	go func() {
-		BiDirectionalTransfer(sourceConnection, targetConnection, dps.byteBufferSize, dps.idleTimeout, DomainSocketToHttps, connectionNo)
-		Logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttps, connectionNo, time.Since(startTime).Milliseconds())
+		common.BiDirectionalTransfer(sourceConnection, targetConnection, dps.byteBufferSize, dps.idleTimeout, DomainSocketToHttps, connectionNo)
+		logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttps, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
 
@@ -199,7 +202,7 @@ func getTargetHostAndPort(host string, defaultPort int) (string, int) {
 func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, writer http.ResponseWriter) bool {
 	if !dps.proxyTargetWhitelist[targetHost] && !dps.nonProxyHosts[targetHost] {
 		message := fmt.Sprintf("Target host %s is not whitelisted nor a non-proxy host", targetHost)
-		Logger.Println(message)
+		logger.Println(message)
 		http.Error(writer, message, http.StatusForbidden)
 		return false
 	}
@@ -207,19 +210,21 @@ func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, writer http
 }
 
 func (dps *DomainProxyServer) handleErrorResponse(writer http.ResponseWriter, err error, message string) {
-	Logger.Printf("%s: %v", message, err)
+	logger.Printf("%s: %v", message, err)
 	http.Error(writer, message+": "+err.Error(), http.StatusBadGateway)
 }
 
 func (dps *DomainProxyServer) Stop() {
-	Logger.Println("Shutting down domain proxy server...")
+	logger.Println("Shutting down domain proxy server...")
 	close(dps.shutdownChan)
-	if err := dps.listener.Close(); err != nil {
-		HandleListenerCloseError(err)
+	if dps.listener != nil {
+		if err := dps.listener.Close(); err != nil {
+			common.HandleListenerCloseError(err)
+		}
 	}
 	if _, err := os.Stat(dps.domainSocket); err == nil {
 		if err := os.Remove(dps.domainSocket); err != nil {
-			Logger.Printf("Failed to delete domain socket: %v", err)
+			logger.Printf("Failed to delete domain socket: %v", err)
 		}
 	}
 }
@@ -251,6 +256,14 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 	}
 	headers += "\r\n"
 	if _, err := rw.connection.Write([]byte(headers)); err != nil {
-		Logger.Printf("Failed to write headers to connection: %v", err)
+		logger.Printf("Failed to write headers to connection: %v", err)
 	}
+}
+
+func GetProxyTargetWhitelist() map[string]bool {
+	return common.GetCsvEnvVariable(ProxyTargetWhitelistKey, DefaultProxyTargetWhitelist)
+}
+
+func GetInternalNonProxyHosts() map[string]bool {
+	return common.GetCsvEnvVariable(InternalNonProxyHostsKey, DefaultInternalNonProxyHosts)
 }
