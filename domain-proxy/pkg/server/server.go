@@ -1,16 +1,15 @@
-package main
+package server
 
 import (
 	"bufio"
 	"fmt"
+	. "github.com/redhat-appstudio/jvm-build-service/domain-proxy/pkg/common"
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 )
 
@@ -18,7 +17,7 @@ const (
 	HttpPort                     = 80
 	HttpsPort                    = 443
 	ProxyTargetWhitelistKey      = "PROXY_TARGET_WHITELIST"
-	DefaultProxyTargetWhitelist  = "repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
+	DefaultProxyTargetWhitelist  = "gariscus.com,neverssl.com,repo1.maven.org,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
 	InternalNonProxyHostsKey     = "INTERNAL_NON_PROXY_HOSTS"
 	DefaultInternalNonProxyHosts = "localhost"
 	DomainSocketToHttp           = "Domain Socket <-> HTTP"
@@ -83,7 +82,7 @@ func (dps *DomainProxyServer) startServer() {
 
 func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn) {
 	if err := domainConnection.SetDeadline(time.Now().Add(dps.idleTimeout)); err != nil {
-		handleSetDeadlineError(domainConnection, err)
+		HandleSetDeadlineError(domainConnection, err)
 		return
 	}
 	reader := bufio.NewReader(domainConnection)
@@ -97,7 +96,7 @@ func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn)
 	}
 	writer := &responseWriter{connection: domainConnection}
 	if err = domainConnection.SetDeadline(time.Now().Add(dps.idleTimeout)); err != nil {
-		handleSetDeadlineError(domainConnection, err)
+		HandleSetDeadlineError(domainConnection, err)
 		return
 	}
 	if request.Method == http.MethodConnect {
@@ -244,20 +243,4 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 	if _, err := rw.connection.Write([]byte(headers)); err != nil {
 		Logger.Printf("Failed to write headers to connection: %v", err)
 	}
-}
-
-func main() {
-	InitLogger("Domain Proxy Server")
-	server := NewDomainProxyServer(GetDomainSocket(),
-		GetByteBufferSize(),
-		GetConnectionTimeout(),
-		GetIdleTimeout(),
-		GetCsvEnvVariable(ProxyTargetWhitelistKey, DefaultProxyTargetWhitelist),
-		GetCsvEnvVariable(InternalNonProxyHostsKey, DefaultInternalNonProxyHosts), // TODO Implement Non-proxy logic
-	)
-	server.Start()
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	<-signals
-	server.Stop()
 }

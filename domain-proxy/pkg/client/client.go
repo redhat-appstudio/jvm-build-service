@@ -1,12 +1,10 @@
-package main
+package client
 
 import (
 	"fmt"
+	. "github.com/redhat-appstudio/jvm-build-service/domain-proxy/pkg/common"
 	"net"
-	"os"
-	"os/signal"
 	"sync/atomic"
-	"syscall"
 	"time"
 )
 
@@ -93,14 +91,4 @@ func (dpc *DomainProxyClient) Stop() {
 
 func GetServerHttpPort() int {
 	return GetIntEnvVariable(ServerHttpPortKey, DefaultServerHttpPort)
-}
-
-func main() {
-	InitLogger("Domain Proxy Client")
-	client := NewDomainProxyClient(GetDomainSocket(), GetServerHttpPort(), GetByteBufferSize(), GetConnectionTimeout(), GetIdleTimeout())
-	client.Start()
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	<-signals
-	client.Stop()
 }

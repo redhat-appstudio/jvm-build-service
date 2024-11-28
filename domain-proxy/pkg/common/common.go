@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"errors"
@@ -32,11 +32,11 @@ func BiDirectionalTransfer(leftConnection, rightConnection net.Conn, byteBufferS
 	defer CloseConnection(leftConnection, rightConnection, connectionType, connectionNo)
 	done := make(chan struct{}, 2)
 	if err := leftConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
-		handleSetDeadlineError(leftConnection, err)
+		HandleSetDeadlineError(leftConnection, err)
 		return
 	}
 	if err := rightConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
-		handleSetDeadlineError(rightConnection, err)
+		HandleSetDeadlineError(rightConnection, err)
 		return
 	}
 	go Transfer(leftConnection, rightConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
@@ -56,11 +56,11 @@ func Transfer(sourceConnection, targetConnection net.Conn, done chan struct{}, b
 			return
 		} else if n > 0 {
 			if err = sourceConnection.SetReadDeadline(time.Now().Add(idleTimeout)); err != nil {
-				handleSetDeadlineError(sourceConnection, err)
+				HandleSetDeadlineError(sourceConnection, err)
 				return
 			}
 			if err = targetConnection.SetWriteDeadline(time.Now().Add(idleTimeout)); err != nil {
-				handleSetDeadlineError(targetConnection, err)
+				HandleSetDeadlineError(targetConnection, err)
 				return
 			}
 			Logger.Printf("%d bytes transferred for %s connection %d", n, connectionType, connectionNo)
@@ -68,7 +68,7 @@ func Transfer(sourceConnection, targetConnection net.Conn, done chan struct{}, b
 	}
 }
 
-func handleSetDeadlineError(connection net.Conn, err error) {
+func HandleSetDeadlineError(connection net.Conn, err error) {
 	Logger.Printf("Failed to set deadline: %v", err)
 	if err = connection.Close(); err != nil {
 		HandleConnectionCloseError(err)

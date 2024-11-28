@@ -70,7 +70,7 @@ dev-image-controller:
 
 dev: dev-image-controller
 	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev
-	cd domain-proxy && go build -o domain-proxy-server domain_proxy_server.go common.go && go build -o domain-proxy-client domain_proxy_client.go common.go
+	cd domain-proxy && go build -o domain-proxy-server github.com/redhat-appstudio/jvm-build-service/domain-proxy/cmd/server && go build -o domain-proxy-client github.com/redhat-appstudio/jvm-build-service/domain-proxy/cmd/client
 	docker build . -f domain-proxy/Dockerfile.local -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 

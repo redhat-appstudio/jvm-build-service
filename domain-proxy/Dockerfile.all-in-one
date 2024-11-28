@@ -3,8 +3,8 @@ USER 0
 WORKDIR /work
 COPY ./ .
 
-RUN go build -o domain-proxy-server domain_proxy_server.go common.go
-RUN go build -o domain-proxy-client domain_proxy_client.go common.go
+RUN go build -o domain-proxy-server github.com/redhat-appstudio/jvm-build-service/domain-proxy/cmd/server
+RUN go build -o domain-proxy-client github.com/redhat-appstudio/jvm-build-service/domain-proxy/cmd/client
 
 FROM quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
 USER 0
