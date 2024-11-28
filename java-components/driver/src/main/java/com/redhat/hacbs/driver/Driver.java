@@ -64,24 +64,24 @@ public class Driver {
             logger.info("Establishing token from Indy using clientId {}",
                     ConfigProvider.getConfig().getConfigValue("quarkus.oidc.client-id").getValue());
             tokenResponseDTO = indyService.getAuthToken(
-                    new IndyTokenRequestDTO(buildRequest.getRepositoryBuildContentId()),
+                    new IndyTokenRequestDTO(buildRequest.repositoryBuildContentId()),
                     "Bearer " + getFreshAccessToken());
         }
 
         Map<String, String> templateProperties = new HashMap<>();
-        templateProperties.put("ACCESS_TOKEN", tokenResponseDTO.getToken());
-        templateProperties.put("BUILD_ID", buildRequest.getRepositoryBuildContentId());
-        templateProperties.put("BUILD_SCRIPT", buildRequest.getBuildScript());
-        templateProperties.put("BUILD_TOOL", buildRequest.getBuildTool());
-        templateProperties.put("BUILD_TOOL_VERSION", buildRequest.getBuildToolVersion());
-        templateProperties.put("JAVA_VERSION", buildRequest.getJavaVersion());
-        templateProperties.put("MVN_REPO_DEPENDENCIES_URL", buildRequest.getRepositoryDependencyUrl());
-        templateProperties.put("MVN_REPO_DEPLOY_URL", buildRequest.getRepositoryDeployUrl());
+        templateProperties.put("ACCESS_TOKEN", tokenResponseDTO.token());
+        templateProperties.put("BUILD_ID", buildRequest.repositoryBuildContentId());
+        templateProperties.put("BUILD_SCRIPT", buildRequest.buildScript());
+        templateProperties.put("BUILD_TOOL", buildRequest.buildTool());
+        templateProperties.put("BUILD_TOOL_VERSION", buildRequest.buildToolVersion());
+        templateProperties.put("JAVA_VERSION", buildRequest.javaVersion());
+        templateProperties.put("MVN_REPO_DEPENDENCIES_URL", buildRequest.repositoryDependencyUrl());
+        templateProperties.put("MVN_REPO_DEPLOY_URL", buildRequest.repositoryDeployUrl());
         templateProperties.put("QUAY_REPO", quayRepo);
-        templateProperties.put("RECIPE_IMAGE", buildRequest.getRecipeImage());
+        templateProperties.put("RECIPE_IMAGE", buildRequest.recipeImage());
         templateProperties.put("JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE", processor);
-        templateProperties.put("REVISION", buildRequest.getScmRevision());
-        templateProperties.put("URL", buildRequest.getScmUrl());
+        templateProperties.put("REVISION", buildRequest.scmRevision());
+        templateProperties.put("URL", buildRequest.scmUrl());
 
         PipelineRun pipelineRun = null;
         try {
@@ -104,17 +104,16 @@ public class Driver {
                 .editFirstTaskRunSpec()
                 .editFirstStepSpec()
                 .editComputeResources()
-                .addToLimits("memory", new Quantity(buildRequest.getPodMemoryOverride()))
-                .addToRequests("memory", new Quantity(buildRequest.getPodMemoryOverride()))
+                .addToLimits("memory", new Quantity(buildRequest.podMemoryOverride()))
+                .addToRequests("memory", new Quantity(buildRequest.podMemoryOverride()))
                 .endComputeResources()
                 .endStepSpec()
                 .endTaskRunSpec()
                 .endSpec().build();
 
         System.err.println("### Got p " + pipelineRun);
-        // PipelineRun run = createModelNode(pipeline, templateProperties, PipelineRun.class);
-        //run.getSpec().setParams();
-        var created = client.resource(pipelineRun).inNamespace(buildRequest.getNamespace()).create();
+        var created = client.resource(pipelineRun).inNamespace(buildRequest.namespace()).create();
+        System.err.println("### Got c " + created);
     }
 
     /**

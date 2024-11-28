@@ -45,7 +45,7 @@ public interface IndyService {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @POST
-    public IndyTokenResponseDTO getAuthToken(
+    IndyTokenResponseDTO getAuthToken(
             IndyTokenRequestDTO indyTokenRequestDTO,
             @HeaderParam("Authorization") String accessToken);
 }
