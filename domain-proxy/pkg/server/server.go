@@ -17,7 +17,7 @@ const (
 	HttpPort                     = 80
 	HttpsPort                    = 443
 	ProxyTargetWhitelistKey      = "PROXY_TARGET_WHITELIST"
-	DefaultProxyTargetWhitelist  = "repo1.maven.org,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
+	DefaultProxyTargetWhitelist  = "localhost,repo1.maven.org,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
 	InternalNonProxyHostsKey     = "INTERNAL_NON_PROXY_HOSTS"
 	DefaultInternalNonProxyHosts = "localhost"
 	DomainSocketToHttp           = "Domain Socket <-> HTTP"
@@ -200,8 +200,8 @@ func getTargetHostAndPort(host string, defaultPort int) (string, int) {
 }
 
 func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, writer http.ResponseWriter) bool {
-	if !dps.proxyTargetWhitelist[targetHost] && !dps.nonProxyHosts[targetHost] {
-		message := fmt.Sprintf("Target host %s is not whitelisted nor a non-proxy host", targetHost)
+	if !dps.proxyTargetWhitelist[targetHost] {
+		message := fmt.Sprintf("Target host %s is not whitelisted", targetHost)
 		logger.Println(message)
 		http.Error(writer, message, http.StatusForbidden)
 		return false
