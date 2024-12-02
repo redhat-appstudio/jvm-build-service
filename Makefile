@@ -44,6 +44,8 @@ minikube-test:
 build:
 	go build -o out/jvmbuildservice cmd/controller/main.go
 	env GOOS=linux GOARCH=amd64 GOTOOLCHAIN=auto GOSUMDB=sum.golang.org go build -mod=vendor -o out/jvmbuildservice ./cmd/controller
+	go build -o out/domainproxyserver cmd/domainproxy/server/main.go
+	go build -o out/domainproxyclient cmd/domainproxy/client/main.go
 
 clean:
 	rm -rf out
@@ -60,19 +62,18 @@ generate: generate-crds
 verify-generate-deepcopy-client: generate-deepcopy-client
 	hack/verify-codegen.sh
 
-dev-image-controller:
+dev-image: build
 	@if [ -z "$$QUAY_USERNAME" ]; then \
             echo "ERROR: QUAY_USERNAME is not set"; \
             exit 1; \
     fi
 	docker build . -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
-
-dev: dev-image-controller
-	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev
-	cd domain-proxy && go build -o domain-proxy-server github.com/redhat-appstudio/jvm-build-service/domain-proxy/cmd/server && go build -o domain-proxy-client github.com/redhat-appstudio/jvm-build-service/domain-proxy/cmd/client
-	docker build . -f domain-proxy/Dockerfile.local -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
+	docker build . -f cmd/domainproxy/docker/Dockerfile.local -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
+
+dev: dev-image
+	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev
 
 dev-openshift: dev
 	./deploy/openshift-development.sh

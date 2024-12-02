@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	. "github.com/redhat-appstudio/jvm-build-service/domain-proxy/pkg/common"
+	. "github.com/redhat-appstudio/jvm-build-service/pkg/domainproxy/common"
 	"net"
 	"sync/atomic"
 	"time"

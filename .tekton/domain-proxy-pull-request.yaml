@@ -27,9 +27,9 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: dockerfile
-    value: /domain-proxy/Dockerfile.all-in-one
+    value: /cmd/domainproxy/docker/Dockerfile.all-in-one
   - name: path-context
-    value: domain-proxy
+    value: cmd/domainproxy/docker
   pipelineSpec:
     finally:
     - name: show-sbom

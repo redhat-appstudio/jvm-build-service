@@ -1,7 +1,7 @@
 package main
 
 import (
-	. "github.com/redhat-appstudio/jvm-build-service/domain-proxy/pkg/server"
+	. "github.com/redhat-appstudio/jvm-build-service/pkg/domainproxy/server"
 	"os"
 	"os/signal"
 	"syscall"
