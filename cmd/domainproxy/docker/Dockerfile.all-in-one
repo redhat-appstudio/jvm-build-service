@@ -1,4 +1,4 @@
-FROM golang:alpine AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.22.5-1731639025@sha256:45170b6e45114849b5d2c0e55d730ffa4a709ddf5f58b9e810548097b085e78f as builder
 USER 0
 WORKDIR /work
 COPY ./ .
