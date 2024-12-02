@@ -74,6 +74,9 @@ func TestDomainProxy(t *testing.T) {
 	}
 	// HTTP Get stub
 	pom, err := os.ReadFile("testdata/bar-1.0.pom")
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = container.Client.StubFor(
 		wiremock.Get(wiremock.URLEqualTo("/com/foo/bar/1.0/bar-1.0.pom")).
 			WillReturnResponse(
@@ -113,7 +116,13 @@ func TestDomainProxy(t *testing.T) {
 	defer domainProxyClient.Stop()
 	// Get Wiremock container details
 	mappedHttpPort, err := container.MappedPort(ctx, WireMockHttpPort)
+	if err != nil {
+		t.Fatal(err)
+	}
 	mappedHttpsPort, err := container.MappedPort(ctx, WireMockHttpsPort)
+	if err != nil {
+		t.Fatal(err)
+	}
 	wireMockHttpUrl := "http://" + Localhost + ":" + mappedHttpPort.Port()
 	wireMockHttpsUrl := "https://" + Localhost + ":" + mappedHttpsPort.Port()
 	// Create HTTP client
