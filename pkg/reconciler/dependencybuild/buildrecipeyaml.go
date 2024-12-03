@@ -584,7 +584,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "INTERNAL_PROXY_PASSWORD",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "${ACCESS_TOKEN}",
+						StringVal: "${ACCESS_TOKEN}", // TODO how to get the access token value?
 					},
 				},
 				{

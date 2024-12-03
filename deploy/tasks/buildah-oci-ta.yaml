@@ -329,9 +329,6 @@ spec:
           exit 1
         fi
 
-        echo "Env variables:"
-        env
-
         dockerfile_copy=$(mktemp --tmpdir "$(basename "$dockerfile_path").XXXXXX")
         cp "$dockerfile_path" "$dockerfile_copy"
 
