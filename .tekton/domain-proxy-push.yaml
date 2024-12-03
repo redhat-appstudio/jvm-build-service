@@ -26,7 +26,7 @@ spec:
   - name: dockerfile
     value: /cmd/domainproxy/docker/Dockerfile.all-in-one
   - name: path-context
-    value: ""
+    value: .
   pipelineSpec:
     finally:
     - name: show-sbom
