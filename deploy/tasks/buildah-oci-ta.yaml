@@ -146,8 +146,11 @@ spec:
     - name: PROXY_TARGET_WHITELIST
       description: Comma separated whitelist of target hosts for the domain proxy.
       type: string
-    - name: INTERNAL_PROXY_ADDRESS
-      description: Host and port of proxy used internally by the domain proxy.
+    - name: INTERNAL_PROXY_HOST
+      description: Host of proxy used internally by the domain proxy.
+      type: string
+    - name: INTERNAL_PROXY_PORT
+      description: Port of proxy used internally by the domain proxy.
       type: string
     - name: INTERNAL_PROXY_USER
       description: User of proxy used internally by the domain proxy.
@@ -249,8 +252,10 @@ spec:
         value: $(params.BYTE_BUFFER_SIZE)
       - name: PROXY_TARGET_WHITELIST
         value: $(params.PROXY_TARGET_WHITELIST)
-      - name: INTERNAL_PROXY_ADDRESS
-        value: $(params.INTERNAL_PROXY_ADDRESS)
+      - name: INTERNAL_PROXY_HOST
+        value: $(params.INTERNAL_PROXY_HOST)
+      - name: INTERNAL_PROXY_PORT
+        value: $(params.INTERNAL_PROXY_PORT)
       - name: INTERNAL_PROXY_USER
         value: $(params.INTERNAL_PROXY_USER)
       - name: INTERNAL_PROXY_PASSWORD
@@ -323,6 +328,9 @@ spec:
           echo "Cannot find Dockerfile $DOCKERFILE"
           exit 1
         fi
+
+        echo "Env variables:"
+        env
 
         dockerfile_copy=$(mktemp --tmpdir "$(basename "$dockerfile_path").XXXXXX")
         cp "$dockerfile_path" "$dockerfile_copy"

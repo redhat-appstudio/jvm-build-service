@@ -560,17 +560,24 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "INTERNAL_PROXY_ADDRESS",
+					Name: "INTERNAL_PROXY_HOST",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "indy-generic-proxy:80",
+						StringVal: "indy-generic-proxy",
+					},
+				},
+				{
+					Name: "INTERNAL_PROXY_PORT",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "80",
 					},
 				},
 				{
 					Name: "INTERNAL_PROXY_USER",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: "${BUILD_ID}+tracking",
+						StringVal: buildId + "+tracking",
 					},
 				},
 				{
