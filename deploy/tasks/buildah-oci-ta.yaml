@@ -143,6 +143,18 @@ spec:
       description: The byte buffer size to use for the domain proxy.
       type: string
       default: 32768
+    - name: DOMAIN_SOCKET
+      description: The domain socket to use for the domain proxy.
+      type: string
+      default: /tmp/domain-socket.sock
+    - name: CONNECTION_TIMEOUT
+      description: The connection timeout in milliseconds to use for the domain proxy.
+      type: string
+      default: 10000
+    - name: IDLE_TIMEOUT
+      description: The idle timeout in milliseconds to use for the domain proxy.
+      type: string
+      default: 120000
     - name: PROXY_TARGET_WHITELIST
       description: Comma separated whitelist of target hosts for the domain proxy.
       type: string
@@ -250,6 +262,12 @@ spec:
         value: $(params.DOMAIN_PROXY)
       - name: BYTE_BUFFER_SIZE
         value: $(params.BYTE_BUFFER_SIZE)
+      - name: DOMAIN_SOCKET
+        value: $(params.DOMAIN_SOCKET)
+      - name: CONNECTION_TIMEOUT
+        value: $(params.CONNECTION_TIMEOUT)
+      - name: IDLE_TIMEOUT
+        value: $(params.IDLE_TIMEOUT)
       - name: PROXY_TARGET_WHITELIST
         value: $(params.PROXY_TARGET_WHITELIST)
       - name: INTERNAL_PROXY_HOST

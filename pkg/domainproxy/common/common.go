@@ -26,6 +26,13 @@ type Common struct {
 	logger *log.Logger
 }
 
+type SharedParams struct {
+	ByteBufferSize    int
+	DomainSocket      string
+	ConnectionTimeout time.Duration
+	IdleTimeout       time.Duration
+}
+
 func NewCommon(logger *log.Logger) *Common {
 	return &Common{
 		logger: logger,
@@ -34,6 +41,15 @@ func NewCommon(logger *log.Logger) *Common {
 
 func NewLogger(appName string) *log.Logger {
 	return log.New(os.Stdout, appName+" ", log.LstdFlags|log.Lshortfile)
+}
+
+func (c *Common) NewSharedParams() SharedParams {
+	return SharedParams{
+		ByteBufferSize:    c.getByteBufferSize(),
+		DomainSocket:      c.getDomainSocket(),
+		ConnectionTimeout: c.getConnectionTimeout(),
+		IdleTimeout:       c.getIdleTimeout(),
+	}
 }
 
 func (c *Common) BiDirectionalTransfer(leftConnection, rightConnection net.Conn, byteBufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
@@ -166,18 +182,18 @@ func (c *Common) parseCsvToMap(csvString string) map[string]bool {
 	return values
 }
 
-func (c *Common) GetByteBufferSize() int {
+func (c *Common) getByteBufferSize() int {
 	return c.GetIntEnvVariable(ByteBufferSizeKey, DefaultByteBufferSize)
 }
 
-func (c *Common) GetDomainSocket() string {
+func (c *Common) getDomainSocket() string {
 	return c.GetEnvVariable(DomainSocketKey, DefaultDomainSocket)
 }
 
-func (c *Common) GetConnectionTimeout() time.Duration {
+func (c *Common) getConnectionTimeout() time.Duration {
 	return c.GetMillisecondsEnvVariable(ConnectionTimeoutKey, DefaultConnectionTimeout)
 }
 
-func (c *Common) GetIdleTimeout() time.Duration {
+func (c *Common) getIdleTimeout() time.Duration {
 	return c.GetMillisecondsEnvVariable(IdleTimeoutKey, DefaultIdleTimeout)
 }

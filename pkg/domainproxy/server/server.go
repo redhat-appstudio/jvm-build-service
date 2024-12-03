@@ -18,6 +18,14 @@ const (
 	HttpsPort                    = 443
 	ProxyTargetWhitelistKey      = "PROXY_TARGET_WHITELIST"
 	DefaultProxyTargetWhitelist  = "localhost,repo1.maven.org,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
+	InternalProxyHostKey         = "INTERNAL_PROXY_HOST"
+	DefaultInternalProxyHost     = "indy-generic-proxy"
+	InternalProxyPortKey         = "INTERNAL_PROXY_PORT"
+	DefaultInternalProxyPort     = 80
+	InternalProxyUserKey         = "INTERNAL_PROXY_USER"
+	DefaultInternalProxyUser     = ""
+	InternalProxyPasswordKey     = "INTERNAL_PROXY_PASSWORD"
+	DefaultInternalProxyPassword = ""
 	InternalNonProxyHostsKey     = "INTERNAL_NON_PROXY_HOSTS"
 	DefaultInternalNonProxyHosts = "localhost"
 	DomainSocketToHttp           = "Domain Socket <-> HTTP"
@@ -28,38 +36,30 @@ var logger = NewLogger("Domain Proxy Server")
 var common = NewCommon(logger)
 
 type DomainProxyServer struct {
-	domainSocket           string
-	byteBufferSize         int
-	connectionTimeout      time.Duration
-	idleTimeout            time.Duration
+	sharedParams           SharedParams
 	proxyTargetWhitelist   map[string]bool
-	nonProxyHosts          map[string]bool
+	internalProxyHost      string
+	internalProxyPort      int
+	internalProxyUser      string
+	internalProxyPassword  string
+	internalNonProxyHosts  map[string]bool
 	httpConnectionCounter  atomic.Uint64
 	httpsConnectionCounter atomic.Uint64
 	listener               net.Listener
 	shutdownChan           chan struct{}
 }
 
-func newDomainProxyServer(domainSocket string, byteBufferSize int, connectionTimeout, idleTimeout time.Duration, proxyTargetWhitelist, nonProxyHosts map[string]bool) *DomainProxyServer {
-	return &DomainProxyServer{
-		domainSocket:         domainSocket,
-		byteBufferSize:       byteBufferSize,
-		connectionTimeout:    connectionTimeout,
-		idleTimeout:          idleTimeout,
-		proxyTargetWhitelist: proxyTargetWhitelist,
-		nonProxyHosts:        nonProxyHosts,
-		shutdownChan:         make(chan struct{}),
-	}
-}
-
 func NewDomainProxyServer() *DomainProxyServer {
-	return newDomainProxyServer(common.GetDomainSocket(),
-		common.GetByteBufferSize(),
-		common.GetConnectionTimeout(),
-		common.GetIdleTimeout(),
-		GetProxyTargetWhitelist(),
-		GetInternalNonProxyHosts(), // TODO Implement Non-proxy logic
-	)
+	return &DomainProxyServer{
+		sharedParams:          common.NewSharedParams(),
+		proxyTargetWhitelist:  getProxyTargetWhitelist(),
+		internalProxyHost:     getInternalProxyHost(), // TODO Implement internal proxy logic
+		internalProxyPort:     getInternalProxyPort(),
+		internalProxyUser:     getInternalProxyUser(),
+		internalProxyPassword: getInternalProxyPassword(),
+		internalNonProxyHosts: getInternalNonProxyHosts(), // TODO Implement internal non-proxy hosts logic
+		shutdownChan:          make(chan struct{}),
+	}
 }
 
 func (dps *DomainProxyServer) Start() {
@@ -68,17 +68,18 @@ func (dps *DomainProxyServer) Start() {
 }
 
 func (dps *DomainProxyServer) startServer() {
-	if _, err := os.Stat(dps.domainSocket); err == nil {
-		if err := os.Remove(dps.domainSocket); err != nil {
+	sharedParams := dps.sharedParams
+	if _, err := os.Stat(sharedParams.DomainSocket); err == nil {
+		if err := os.Remove(sharedParams.DomainSocket); err != nil {
 			logger.Fatalf("Failed to delete existing domain socket: %v", err)
 		}
 	}
 	var err error
-	dps.listener, err = net.Listen("unix", dps.domainSocket)
+	dps.listener, err = net.Listen("unix", sharedParams.DomainSocket)
 	if err != nil {
 		logger.Fatalf("Failed to start domain socket listener: %v", err)
 	}
-	logger.Printf("Domain socket server listening on %s", dps.domainSocket)
+	logger.Printf("Domain socket server listening on %s", sharedParams.DomainSocket)
 	for {
 		if domainConnection, err := dps.listener.Accept(); err != nil {
 			select {
@@ -94,7 +95,8 @@ func (dps *DomainProxyServer) startServer() {
 }
 
 func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn) {
-	if err := domainConnection.SetDeadline(time.Now().Add(dps.idleTimeout)); err != nil {
+	sharedParams := dps.sharedParams
+	if err := domainConnection.SetDeadline(time.Now().Add(sharedParams.IdleTimeout)); err != nil {
 		common.HandleSetDeadlineError(domainConnection, err)
 		return
 	}
@@ -108,7 +110,7 @@ func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn)
 		return
 	}
 	writer := &responseWriter{connection: domainConnection}
-	if err = domainConnection.SetDeadline(time.Now().Add(dps.idleTimeout)); err != nil {
+	if err = domainConnection.SetDeadline(time.Now().Add(sharedParams.IdleTimeout)); err != nil {
 		common.HandleSetDeadlineError(domainConnection, err)
 		return
 	}
@@ -130,7 +132,8 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 		return
 	}
 	startTime := time.Now()
-	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
+	sharedParams := dps.sharedParams
+	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
 	if err != nil {
 		dps.handleErrorResponse(writer, err, "Failed to connect to target")
 		if err = sourceConnection.Close(); err != nil {
@@ -148,7 +151,7 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 		return
 	}
 	go func() {
-		common.BiDirectionalTransfer(sourceConnection, targetConnection, dps.byteBufferSize, dps.idleTimeout, DomainSocketToHttp, connectionNo)
+		common.BiDirectionalTransfer(sourceConnection, targetConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, DomainSocketToHttp, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttp, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
@@ -164,7 +167,8 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 		return
 	}
 	startTime := time.Now()
-	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), dps.connectionTimeout)
+	sharedParams := dps.sharedParams
+	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
 	if err != nil {
 		dps.handleErrorResponse(writer, err, "Failed to connect to target")
 		if err = sourceConnection.Close(); err != nil {
@@ -182,7 +186,7 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 		return
 	}
 	go func() {
-		common.BiDirectionalTransfer(sourceConnection, targetConnection, dps.byteBufferSize, dps.idleTimeout, DomainSocketToHttps, connectionNo)
+		common.BiDirectionalTransfer(sourceConnection, targetConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, DomainSocketToHttps, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttps, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
@@ -222,8 +226,9 @@ func (dps *DomainProxyServer) Stop() {
 			common.HandleListenerCloseError(err)
 		}
 	}
-	if _, err := os.Stat(dps.domainSocket); err == nil {
-		if err := os.Remove(dps.domainSocket); err != nil {
+	sharedParams := dps.sharedParams
+	if _, err := os.Stat(sharedParams.DomainSocket); err == nil {
+		if err := os.Remove(sharedParams.DomainSocket); err != nil {
 			logger.Printf("Failed to delete domain socket: %v", err)
 		}
 	}
@@ -260,10 +265,26 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 	}
 }
 
-func GetProxyTargetWhitelist() map[string]bool {
+func getProxyTargetWhitelist() map[string]bool {
 	return common.GetCsvEnvVariable(ProxyTargetWhitelistKey, DefaultProxyTargetWhitelist)
 }
 
-func GetInternalNonProxyHosts() map[string]bool {
+func getInternalProxyHost() string {
+	return common.GetEnvVariable(InternalProxyHostKey, DefaultInternalProxyHost)
+}
+
+func getInternalProxyPort() int {
+	return common.GetIntEnvVariable(InternalProxyPortKey, DefaultInternalProxyPort)
+}
+
+func getInternalProxyUser() string {
+	return common.GetEnvVariable(InternalProxyUserKey, DefaultInternalProxyUser)
+}
+
+func getInternalProxyPassword() string {
+	return common.GetEnvVariable(InternalProxyPasswordKey, DefaultInternalProxyPassword)
+}
+
+func getInternalNonProxyHosts() map[string]bool {
 	return common.GetCsvEnvVariable(InternalNonProxyHostsKey, DefaultInternalNonProxyHosts)
 }

@@ -19,34 +19,19 @@ var logger = NewLogger("Domain Proxy Client")
 var common = NewCommon(logger)
 
 type DomainProxyClient struct {
-	domainSocket          string
+	sharedParams          SharedParams
 	serverHttpPort        int
-	byteBufferSize        int
-	connectionTimeout     time.Duration
-	idleTimeout           time.Duration
 	httpConnectionCounter atomic.Uint64
 	listener              net.Listener
 	shutdownChan          chan struct{}
 }
 
-func newDomainProxyClient(domainSocket string, serverHttpPort, byteBufferSize int, connectionTimeout, idleTimeout time.Duration) *DomainProxyClient {
-	return &DomainProxyClient{
-		domainSocket:      domainSocket,
-		serverHttpPort:    serverHttpPort,
-		byteBufferSize:    byteBufferSize,
-		connectionTimeout: connectionTimeout,
-		idleTimeout:       idleTimeout,
-		shutdownChan:      make(chan struct{}),
-	}
-}
-
 func NewDomainProxyClient() *DomainProxyClient {
-	return newDomainProxyClient(common.GetDomainSocket(),
-		GetServerHttpPort(),
-		common.GetByteBufferSize(),
-		common.GetConnectionTimeout(),
-		common.GetIdleTimeout(),
-	)
+	return &DomainProxyClient{
+		sharedParams:   common.NewSharedParams(),
+		serverHttpPort: getServerHttpPort(),
+		shutdownChan:   make(chan struct{}),
+	}
 }
 
 func (dpc *DomainProxyClient) Start() {
@@ -79,7 +64,8 @@ func (dpc *DomainProxyClient) handleConnectionRequest(serverConnection net.Conn)
 	connectionNo := dpc.httpConnectionCounter.Add(1)
 	logger.Printf("Handling %s Connection %d", HttpToDomainSocket, connectionNo)
 	startTime := time.Now()
-	domainConnection, err := net.DialTimeout("unix", dpc.domainSocket, dpc.connectionTimeout)
+	sharedParams := dpc.sharedParams
+	domainConnection, err := net.DialTimeout("unix", sharedParams.DomainSocket, sharedParams.ConnectionTimeout)
 	if err != nil {
 		logger.Printf("Failed to connect to domain socket: %v", err)
 		if err = serverConnection.Close(); err != nil {
@@ -88,7 +74,7 @@ func (dpc *DomainProxyClient) handleConnectionRequest(serverConnection net.Conn)
 		return
 	}
 	go func() {
-		common.BiDirectionalTransfer(serverConnection, domainConnection, dpc.byteBufferSize, dpc.idleTimeout, HttpToDomainSocket, connectionNo)
+		common.BiDirectionalTransfer(serverConnection, domainConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, HttpToDomainSocket, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", HttpToDomainSocket, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
@@ -103,6 +89,6 @@ func (dpc *DomainProxyClient) Stop() {
 	}
 }
 
-func GetServerHttpPort() int {
+func getServerHttpPort() int {
 	return common.GetIntEnvVariable(ServerHttpPortKey, DefaultServerHttpPort)
 }
