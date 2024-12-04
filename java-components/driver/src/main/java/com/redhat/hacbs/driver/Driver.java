@@ -64,9 +64,6 @@ public class Driver {
     @ConfigProperty(name = "konflux-build-driver.pipeline-resolver")
     String resolverTarget;
 
-    @ConfigProperty(name = "build-driver.pipeline")
-    Optional<String> customPipeline;
-
     public BuildResponse create(BuildRequest buildRequest) {
         IndyTokenResponseDTO tokenResponseDTO = new IndyTokenResponseDTO(accessToken);
 
@@ -98,12 +95,8 @@ public class Driver {
             var tc = client.adapt(TektonClient.class);
             // Various ways to create the initial PipelineRun object. We can use an objectmapper,
             // client.getKubernetesSerialization() or the load calls on the Fabric8 objects.
-            if (customPipeline.isEmpty()) {
-                pipelineRun = tc.v1().pipelineRuns()
+            pipelineRun = tc.v1().pipelineRuns()
                         .load(IOUtils.resourceToURL("pipeline.yaml", Thread.currentThread().getContextClassLoader())).item();
-            } else {
-                pipelineRun = tc.v1().pipelineRuns().load(Path.of(customPipeline.get()).toFile()).item();
-            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
