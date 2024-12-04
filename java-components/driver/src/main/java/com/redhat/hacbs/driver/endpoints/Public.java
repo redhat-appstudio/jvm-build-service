@@ -22,6 +22,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import com.redhat.hacbs.driver.Driver;
 import com.redhat.hacbs.driver.dto.BuildRequest;
 import com.redhat.hacbs.driver.dto.BuildResponse;
+import com.redhat.hacbs.driver.dto.CancelRequest;
 import com.redhat.hacbs.driver.util.Info;
 
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -66,17 +68,13 @@ public class Public {
         return result;
     }
 
-    // TODO: Is delete possible in konflux?
-    //
-    //    /**
-    //     * Cancel the build execution.
-    //     */
-    //    @PUT
-    //    @Path("/cancel")
-    //    public CompletionStage<Response> cancel(BuildCancelRequest buildCancelRequest) {
-    //        logger.info("Requested cancel: {}", buildCancelRequest.getBuildExecutionId());
-    //        return driver.cancel(buildCancelRequest).thenApply((r) -> Response.status(r.getCode()).build());
-    //    }
+    @PUT
+    @Path("/cancel")
+    @RunOnVirtualThread
+    public void cancel(CancelRequest cancelRequest) {
+        logger.info("Requested cancel: {}", cancelRequest.pipelineId());
+        driver.cancel(cancelRequest);
+    }
 
     @Path("/version")
     @GET

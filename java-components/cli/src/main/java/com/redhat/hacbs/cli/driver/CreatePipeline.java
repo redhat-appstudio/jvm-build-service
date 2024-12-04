@@ -12,10 +12,10 @@ import com.redhat.hacbs.driver.dto.BuildResponse;
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "pipeline", mixinStandardHelpOptions = true, description = "Creates a pipeline")
-public class Pipeline extends Base implements Runnable {
+@CommandLine.Command(name = "create-pipeline", mixinStandardHelpOptions = true, description = "Creates a pipeline")
+public class CreatePipeline extends Base implements Runnable {
 
-    private static final Logger logger = LoggerFactory.getLogger(Pipeline.class);
+    private static final Logger logger = LoggerFactory.getLogger(CreatePipeline.class);
 
     @Inject
     Driver driver;

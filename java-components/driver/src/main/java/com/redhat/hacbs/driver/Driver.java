@@ -3,12 +3,10 @@ package com.redhat.hacbs.driver;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -96,7 +94,7 @@ public class Driver {
             // Various ways to create the initial PipelineRun object. We can use an objectmapper,
             // client.getKubernetesSerialization() or the load calls on the Fabric8 objects.
             pipelineRun = tc.v1().pipelineRuns()
-                        .load(IOUtils.resourceToURL("pipeline.yaml", Thread.currentThread().getContextClassLoader())).item();
+                    .load(IOUtils.resourceToURL("pipeline.yaml", Thread.currentThread().getContextClassLoader())).item();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -126,13 +124,14 @@ public class Driver {
         var tc = client.adapt(TektonClient.class);
         var pipeline = tc.v1beta1().pipelineRuns().inNamespace(request.namespace()).withName(request.pipelineId()).get();
 
-        logger.info("Retrieved pipeline {}", pipeline);
+        logger.info("Retrieved pipeline {}", pipeline.getMetadata().getName());
 
         List<Condition> conditions = new ArrayList<>();
         // https://tekton.dev/docs/pipelines/pipelineruns/#monitoring-execution-status
         Condition cancelCondition = new Condition();
         cancelCondition.setType("Succeeded");
         cancelCondition.setStatus("False");
+        // https://github.com/tektoncd/community/blob/main/teps/0058-graceful-pipeline-run-termination.md
         cancelCondition.setReason("CancelledRunFinally");
         cancelCondition.setMessage("The PipelineRun was cancelled");
         conditions.add(cancelCondition);
@@ -140,9 +139,6 @@ public class Driver {
         pipeline.getStatus().setConditions(conditions);
 
         tc.v1beta1().pipelineRuns().inNamespace(request.namespace()).resource(pipeline).updateStatus();
-        // https://tekton.dev/docs/pipelines/pipelineruns/#gracefully-cancelling-a-pipelinerun
-        //        tc.v1beta1().pipelineRuns().updateStatus().inNamespace(request.namespace()).withName(request.pipelineId()).patch()
-        //                .edit(p -> p.edit().editOrNewSpec().withStatus("CancelledRunFinally").endSpec().build());
     }
 
     /**
