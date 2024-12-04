@@ -158,21 +158,31 @@ spec:
     - name: PROXY_TARGET_WHITELIST
       description: Comma separated whitelist of target hosts for the domain proxy.
       type: string
+      default: ""
+    - name: INTERNAL_PROXY
+      description: Determines if internal proxy will be used when domain proxy is enabled.
+      type: string
+      default: "false"
     - name: INTERNAL_PROXY_HOST
       description: Host of proxy used internally by the domain proxy.
       type: string
+      default: ""
     - name: INTERNAL_PROXY_PORT
       description: Port of proxy used internally by the domain proxy.
       type: string
+      default: ""
     - name: INTERNAL_PROXY_USER
       description: User of proxy used internally by the domain proxy.
       type: string
+      default: ""
     - name: INTERNAL_PROXY_PASSWORD
       description: Password of proxy used internally by the domain proxy.
       type: string
+      default: ""
     - name: INTERNAL_NON_PROXY_HOSTS
       description: Comma separated list of target hosts that bypass the proxy used internally by the domain proxy.
       type: string
+      default: ""
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built
@@ -270,6 +280,8 @@ spec:
         value: $(params.IDLE_TIMEOUT)
       - name: PROXY_TARGET_WHITELIST
         value: $(params.PROXY_TARGET_WHITELIST)
+      - name: INTERNAL_PROXY
+        value: $(params.INTERNAL_PROXY)
       - name: INTERNAL_PROXY_HOST
         value: $(params.INTERNAL_PROXY_HOST)
       - name: INTERNAL_PROXY_PORT

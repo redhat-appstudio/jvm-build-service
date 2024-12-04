@@ -182,6 +182,20 @@ func (c *Common) parseCsvToMap(csvString string) map[string]bool {
 	return values
 }
 
+func (c *Common) GetBoolEnvVariable(key string, defaultValue bool) bool {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		c.logger.Printf("Environment variable %s is not set, using default value: %t", key, defaultValue)
+		return defaultValue
+	}
+	value, err := strconv.ParseBool(valueStr)
+	if err != nil {
+		c.logger.Printf("Invalid environment variable %s: %v, using default value: %t", key, err, defaultValue)
+		return defaultValue
+	}
+	return value
+}
+
 func (c *Common) getByteBufferSize() int {
 	return c.GetIntEnvVariable(ByteBufferSizeKey, DefaultByteBufferSize)
 }
