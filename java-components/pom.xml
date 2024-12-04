@@ -60,7 +60,7 @@
         <maven-indexer.version>7.1.5</maven-indexer.version>
         <maven-resolver.version>1.9.22</maven-resolver.version>
         <maven-release.version>3.1.1</maven-release.version>
-        <quarkus-jgit.version>3.3.1</quarkus-jgit.version>
+        <quarkus-jgit.version>3.3.3</quarkus-jgit.version>
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
         <github-api.version>1.322</github-api.version>
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
