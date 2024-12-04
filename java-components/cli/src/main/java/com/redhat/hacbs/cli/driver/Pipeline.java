@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.redhat.hacbs.driver.Driver;
 import com.redhat.hacbs.driver.dto.BuildRequest;
+import com.redhat.hacbs.driver.dto.BuildResponse;
 
 import picocli.CommandLine;
 
@@ -19,7 +20,7 @@ public class Pipeline extends Base implements Runnable {
     @Inject
     Driver driver;
 
-    @CommandLine.Option(names = "--quay", description = "Quay repo", defaultValue = "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc")
+    @CommandLine.Option(names = "--quay", description = "Quay repo", defaultValue = "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc-konflux")
     String quayRepo;
 
     @CommandLine.Option(names = "--processor", description = "Request Process Image", defaultValue = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest")
@@ -47,6 +48,8 @@ public class Pipeline extends Base implements Runnable {
                 // Just use default from buildah-oci-ta for now.
                 .podMemoryOverride("4Gi")
                 .build();
-        driver.create(request);
+        BuildResponse b = driver.create(request);
+
+        logger.info("Got response {}", b);
     }
 }

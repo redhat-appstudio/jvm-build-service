@@ -4,11 +4,11 @@ metadata:
   generateName: run-mw-pipeline-
 spec:
   pipelineRef:
+    # TODO: Might want in future to change this to OCI bundle reference?
     resolver: http
     params:
-      # TODO: This will eventually be build-definitions repository
       - name: url
-        value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/pipeline/mw-pipeline-v0.1.yaml
+        value: ""
   workspaces:
     - name: source
       # TODO: If we have a custom git step we can share this with prebuild thereby eliminating the need for a volumeClaimTemplate

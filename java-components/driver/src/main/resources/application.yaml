@@ -1,3 +1,8 @@
+konflux-build-driver:
+  quay-repo: "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc-konflux"
+  konflux-processor: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
+  # TODO: This will eventually be build-definitions repository
+  pipeline-resolver: "https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/pipeline/mw-pipeline-v0.1.yaml"
 quarkus:
   application:
     name: konflux-build-driver
