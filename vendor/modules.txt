@@ -157,7 +157,7 @@ github.com/klauspost/compress/internal/cpuinfo
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
-# github.com/konflux-ci/image-controller v0.0.0-20241106111942-98d78b2e0f48
+# github.com/konflux-ci/image-controller v0.0.0-20241128141349-9986c9955e05
 ## explicit; go 1.21
 github.com/konflux-ci/image-controller/api/v1alpha1
 # github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
