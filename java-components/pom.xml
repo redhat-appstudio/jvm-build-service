@@ -56,7 +56,7 @@
         <!-- Dependencies -->
         <asm.version>9.7.1</asm.version>
         <assertj.version>3.26.3</assertj.version>
-        <gradle-tooling-api.version>8.10.2</gradle-tooling-api.version>
+        <gradle-tooling-api.version>8.11.1</gradle-tooling-api.version>
         <maven-indexer.version>7.1.5</maven-indexer.version>
         <maven-resolver.version>1.9.22</maven-resolver.version>
         <maven-release.version>3.1.1</maven-release.version>
