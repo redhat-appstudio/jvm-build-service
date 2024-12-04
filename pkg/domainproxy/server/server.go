@@ -18,7 +18,9 @@ const (
 	HttpPort                     = 80
 	HttpsPort                    = 443
 	ProxyTargetWhitelistKey      = "PROXY_TARGET_WHITELIST"
-	DefaultProxyTargetWhitelist  = "localhost,repo1.maven.org,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
+	DefaultProxyTargetWhitelist  = "localhost,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
+	InternalProxyKey             = "INTERNAL_PROXY"
+	DefaultInternalProxy         = false
 	InternalProxyHostKey         = "INTERNAL_PROXY_HOST"
 	DefaultInternalProxyHost     = "indy-generic-proxy"
 	InternalProxyPortKey         = "INTERNAL_PROXY_PORT"
