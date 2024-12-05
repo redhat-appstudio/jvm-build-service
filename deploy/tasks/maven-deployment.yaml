@@ -29,6 +29,8 @@ spec:
     - name: MVN_PASSWORD
       description: Name of the secret holding the Maven repository password
       type: string
+      # https://github.com/tektoncd/pipeline/issues/8249
+      default: ""
     - name: MVN_SERVER_ID
       description: Server identification in Maven settings.
       type: string

@@ -1,5 +1,7 @@
 package com.redhat.hacbs.container.build.preprocessor.maven;
 
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -128,13 +130,14 @@ public class MavenPrepareCommand extends AbstractPreprocessor {
 
         if (disabledPlugins != null) {
             for (String s : disabledPlugins) {
-                String[] ga = s.split(":");
+                if (isNotEmpty(s)) {
+                    String[] ga = s.split(":");
 
-                if (ga.length != 2) {
-                    throw new IOException("Error parsing groupId/artifactId:  " + s);
+                    if (ga.length != 2) {
+                        throw new IOException("Error parsing groupId/artifactId:  " + s);
+                    }
+                    toRemove.add(new PluginInfo(ga[0], ga[1]));
                 }
-
-                toRemove.add(new PluginInfo(ga[0], ga[1]));
             }
         }
 

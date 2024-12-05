@@ -4,6 +4,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.jboss</groupId>
+        <artifactId>jboss-parent</artifactId>
+        <version>47</version>
+    </parent>
+
     <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
     <artifactId>jvm-build-service-parent</artifactId>
     <version>999-SNAPSHOT</version>
@@ -40,6 +46,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.release>21</maven.compiler.release>
 
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
@@ -83,6 +91,7 @@
         <module>common-images</module>
         <module>common-maven</module>
         <module>domain-proxy</module>
+        <module>driver</module>
     </modules>
 
     <dependencyManagement>
@@ -145,6 +154,11 @@
                 <artifactId>common-maven</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
+                <artifactId>driver</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>io.quarkiverse.quinoa</groupId>
@@ -181,6 +195,11 @@
                 <groupId>io.quarkiverse.mavenresolver</groupId>
                 <artifactId>quarkus-maven-resolver</artifactId>
                 <version>0.0.4</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkiverse.tektonclient</groupId>
+                <artifactId>quarkus-tekton-client</artifactId>
+                <version>1.0.1</version>
             </dependency>
 
             <dependency>

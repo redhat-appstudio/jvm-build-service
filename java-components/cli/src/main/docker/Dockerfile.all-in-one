@@ -1,9 +1,18 @@
 FROM registry.access.redhat.com/ubi8/openjdk-21@sha256:5ab904e6262629fca79d6f65fa859bfa376405522d2f660bdbfaaae2742586f1 AS builder
 
+USER root
+RUN microdnf --setopt=install_weak_deps=0 --setopt=tsflags=nodocs install -y git
+
+USER 185
 WORKDIR /work
 COPY ./ .
 
-RUN mvn -V -B package -pl cli -am -DskipTests
+# Quarkus GitInfo causes injection failure if there isn't a git commit to use.
+RUN git init && \
+    git config user.email "HACBS@redhat.com" && \
+    git config user.name "HACBS" && \
+    git add cli && git commit -m "CLI" -a && \
+    mvn -V -B package -pl cli -am -DskipTests
 
 FROM registry.access.redhat.com/ubi8/openjdk-21-runtime@sha256:0a8cf41082f11f5bc56bd9438851e54593e17051df49592e953fb59376c7d539
 WORKDIR /work/
