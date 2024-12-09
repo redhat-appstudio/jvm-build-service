@@ -585,7 +585,7 @@ spec:
           cpu: 500m
           memory: 1Gi
     - name: analyse-dependencies-java-sbom
-      image: quay.io/redhat-appstudio/hacbs-jvm-build-request-processor:127ee0c223a2b56a9bd20a6f2eaeed3bd6015f77
+      image: quay.io/redhat-appstudio/hacbs-jvm-build-request-processor:127ee0c223a2b56a9bd20a6f2eaeed3bd6015f77@sha256:530d1932dc47d05da42a3a329a05eb30fe7105aa9e0d3f0d682dfa015e33b4ac
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
@@ -736,7 +736,7 @@ spec:
           memory: 256Mi
   sidecars:
     - name: indy-generic-proxy
-      image: quay.io/factory2/indy-generic-proxy-service:latest-stage-mpplus
+      image: quay.io/factory2/indy-generic-proxy-service:latest-stage-mpplus@sha256:b3ad31701412a2bf82949b94e7bdbe09c7bcb94e0e009344a9638d78fbb9c833
       volumeMounts:
         - name: indy-generic-proxy-stage-secrets
           readOnly: true
