@@ -91,7 +91,6 @@
         <module>common-images</module>
         <module>common-maven</module>
         <module>domain-proxy</module>
-        <module>driver</module>
     </modules>
 
     <dependencyManagement>
@@ -200,6 +199,11 @@
                 <groupId>io.quarkiverse.tektonclient</groupId>
                 <artifactId>quarkus-tekton-client</artifactId>
                 <version>1.0.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jboss.pnc</groupId>
+                <artifactId>konflux-build-driver</artifactId>
+                <version>1.0.0-SNAPSHOT</version>
             </dependency>
 
             <dependency>
@@ -399,6 +403,16 @@
 
     <repositories>
         <repository>
+            <id>oss.sonatype.org-snapshot</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
             <id>gradle-dependencies</id>
             <name>Gradle releases repository</name>
             <url>https://repo.gradle.org/artifactory/libs-releases</url>
@@ -407,6 +421,7 @@
             </snapshots>
         </repository>
     </repositories>
+
     <profiles>
         <profile>
             <id>local</id>

@@ -24,12 +24,6 @@
             <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
             <artifactId>hacbs-resource-model</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>driver</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>info.picocli</groupId>
             <artifactId>picocli-shell-jline2</artifactId>
@@ -69,6 +63,10 @@
         <dependency>
             <groupId>com.google.cloud.tools</groupId>
             <artifactId>jib-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.pnc</groupId>
+            <artifactId>konflux-build-driver</artifactId>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
@@ -115,6 +113,7 @@
             <artifactId>wiremock</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
     <build>
         <plugins>

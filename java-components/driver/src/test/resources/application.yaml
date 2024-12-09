@@ -1,9 +1,0 @@
-quarkus:
-  oidc:
-    enabled: false
-  oidc-client:
-    enabled: false
-  log:
-    category:
-      "com.redhat.hacbs":
-        level: DEBUG
