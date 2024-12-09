@@ -20,7 +20,7 @@ const (
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
 	DefaultConnectionTimeout = 10000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
-	DefaultIdleTimeout       = 20000 * time.Millisecond
+	DefaultIdleTimeout       = 30000 * time.Millisecond
 	TCP                      = "tcp"
 	UNIX                     = "unix"
 )

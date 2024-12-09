@@ -154,7 +154,7 @@ spec:
     - name: IDLE_TIMEOUT
       description: The idle timeout in milliseconds to use for the domain proxy.
       type: string
-      default: 20000
+      default: 30000
     - name: PROXY_TARGET_WHITELIST
       description: Comma separated whitelist of target hosts for the domain proxy.
       type: string
