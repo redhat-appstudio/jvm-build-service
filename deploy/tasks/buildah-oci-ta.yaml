@@ -183,6 +183,10 @@ spec:
       description: Comma separated list of target hosts that bypass the proxy used internally by the domain proxy.
       type: string
       default: ""
+    - name: SERVER_HTTP_PORT
+      description: The HTTP port to use for the domain proxy.
+      type: string
+      default: 8080
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built
@@ -292,6 +296,8 @@ spec:
         value: $(params.INTERNAL_PROXY_PASSWORD)
       - name: INTERNAL_NON_PROXY_HOSTS
         value: $(params.INTERNAL_NON_PROXY_HOSTS)
+      - name: SERVER_HTTP_PORT
+        value: $(params.SERVER_HTTP_PORT)
     volumeMounts:
       - mountPath: /shared
         name: shared
