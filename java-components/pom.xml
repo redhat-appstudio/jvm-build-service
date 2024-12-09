@@ -64,7 +64,7 @@
         <!-- Dependencies -->
         <asm.version>9.7.1</asm.version>
         <assertj.version>3.26.3</assertj.version>
-        <gradle-tooling-api.version>8.10.2</gradle-tooling-api.version>
+        <gradle-tooling-api.version>8.11.1</gradle-tooling-api.version>
         <maven-indexer.version>7.1.5</maven-indexer.version>
         <maven-resolver.version>1.9.22</maven-resolver.version>
         <maven-release.version>3.1.1</maven-release.version>
@@ -72,7 +72,7 @@
         <!-- QuarkusGitHub extension uses same version as GitHubAPI -->
         <github-api.version>1.322</github-api.version>
         <quarkus-github-api.version>${github-api.version}.0</quarkus-github-api.version>
-        <quarkus-github-app.version>2.7.0</quarkus-github-app.version>
+        <quarkus-github-app.version>2.8.1</quarkus-github-app.version>
         <quarkus-quinoa.version>2.5.0</quarkus-quinoa.version>
 
         <format.skip>false</format.skip>
@@ -188,7 +188,7 @@
             <dependency>
                 <groupId>io.quarkiverse.openapi.generator</groupId>
                 <artifactId>quarkus-openapi-generator</artifactId>
-                <version>2.4.7</version>
+                <version>2.7.0-lts</version>
             </dependency>
             <dependency>
                 <groupId>io.quarkiverse.mavenresolver</groupId>
@@ -199,6 +199,11 @@
                 <groupId>io.quarkiverse.tektonclient</groupId>
                 <artifactId>quarkus-tekton-client</artifactId>
                 <version>1.0.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jboss.pnc</groupId>
+                <artifactId>konflux-build-driver</artifactId>
+                <version>1.0.0-SNAPSHOT</version>
             </dependency>
 
             <dependency>
@@ -307,7 +312,7 @@
             <dependency>
                 <groupId>org.wiremock</groupId>
                 <artifactId>wiremock</artifactId>
-                <version>3.9.2</version>
+                <version>3.10.0</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
@@ -398,6 +403,16 @@
 
     <repositories>
         <repository>
+            <id>oss.sonatype.org-snapshot</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
             <id>gradle-dependencies</id>
             <name>Gradle releases repository</name>
             <url>https://repo.gradle.org/artifactory/libs-releases</url>
@@ -406,6 +421,7 @@
             </snapshots>
         </repository>
     </repositories>
+
     <profiles>
         <profile>
             <id>local</id>
@@ -556,7 +572,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.10.1</version>
+                        <version>3.11.2</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>

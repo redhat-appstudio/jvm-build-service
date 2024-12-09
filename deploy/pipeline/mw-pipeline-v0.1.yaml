@@ -101,7 +101,7 @@ spec:
         resolver: http
         params:
           - name: url
-            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/tasks/pre-build.yaml
+            value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/pre-build.yaml
       workspaces:
         - name: source
           workspace: source
@@ -140,7 +140,7 @@ spec:
         resolver: http
         params:
           - name: url
-            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/tasks/buildah-oci-ta.yaml
+            value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/buildah-oci-ta.yaml
 
     - name: maven-deployment
       runAfter:
@@ -160,4 +160,4 @@ spec:
         resolver: http
         params:
           - name: url
-            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/tasks/maven-deployment.yaml
+            value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/maven-deployment.yaml
