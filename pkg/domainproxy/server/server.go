@@ -252,7 +252,9 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 			return
 		} else if proxyResponse.StatusCode != http.StatusOK {
 			proxyResponse.Header.Set("Connection", "close")
-			proxyResponse.Write(sourceConnection)
+			if err := proxyResponse.Write(sourceConnection); err != nil {
+				dps.handleErrorResponse(writer, err, "Failed to send internal proxy response to source", true)
+			}
 			if err = targetConnection.Close(); err != nil {
 				common.HandleConnectionCloseError(err)
 			}

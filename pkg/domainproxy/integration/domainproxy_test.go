@@ -69,7 +69,9 @@ func mockHandler(t *testing.T) http.HandlerFunc {
 			}
 			w.Header().Set("Content-Type", ContentType)
 			w.WriteHeader(http.StatusOK)
-			w.Write(pom)
+			if _, err := w.Write(pom); err != nil {
+				t.Fatal(err)
+			}
 		} else if r.Method == http.MethodHead && r.URL.Path == MockUrlPath {
 			// Mock HEAD response
 			w.Header().Set("Content-Type", ContentType)
@@ -120,7 +122,7 @@ func startInternalProxyServer(t *testing.T, onRequestFunction func(req *http.Req
 	}
 	go func() {
 		if err := internalProxyServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 	return internalProxyServer
