@@ -3,12 +3,11 @@ package com.redhat.hacbs.cli.driver;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 
+import org.jboss.pnc.konfluxbuilddriver.Driver;
+import org.jboss.pnc.konfluxbuilddriver.dto.BuildRequest;
+import org.jboss.pnc.konfluxbuilddriver.dto.BuildResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.redhat.hacbs.driver.Driver;
-import com.redhat.hacbs.driver.dto.BuildRequest;
-import com.redhat.hacbs.driver.dto.BuildResponse;
 
 import picocli.CommandLine;
 
@@ -20,18 +19,26 @@ public class CreatePipeline extends Base implements Runnable {
     @Inject
     Driver driver;
 
-    @CommandLine.Option(names = "--quay", description = "Quay repo", defaultValue = "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc-konflux")
-    String quayRepo;
+    @CommandLine.Option(names = "-i", description = "Recipe Image", defaultValue = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service-builder-images/ubi8:latest")
+    String recipeImage;
 
-    @CommandLine.Option(names = "--processor", description = "Request Process Image", defaultValue = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest")
-    String processor;
+    // Not possible to set Quarkus configuration via CLI due to
+    // https://github.com/quarkusio/quarkus/issues/19128
+    // Therefore create an application.properties file in the directory where the CLI is run
+    // and configure the values there manually.
+    //
+    //    @CommandLine.Option(names = "--quay", description = "Quay repo", defaultValue = "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc-konflux")
+    //    String quayRepo;
+    //
+    //    @CommandLine.Option(names = "--processor", description = "Request Process Image", defaultValue = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest")
+    //    String processor;
 
     @ActivateRequestContext // https://github.com/quarkusio/quarkus/issues/8758
     @Override
     public void run() {
-        driver.setQuayRepo(quayRepo);
-        driver.setProcessor(processor);
-        driver.setAccessToken(accessToken.orElse(""));
+        //        driver.setQuayRepo(quayRepo);
+        //        driver.setProcessor(processor);
+        //        driver.setAccessToken(accessToken.orElse(""));
 
         BuildRequest request = BuildRequest.builder()
                 .namespace(namespace)
