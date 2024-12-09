@@ -1,54 +1,48 @@
 package integration
 
 import (
-	"context"
 	"crypto/md5"
 	"crypto/tls"
 	"encoding/hex"
+	"errors"
+	"fmt"
+	"github.com/elazarl/goproxy"
 	. "github.com/redhat-appstudio/jvm-build-service/pkg/domainproxy/client"
 	. "github.com/redhat-appstudio/jvm-build-service/pkg/domainproxy/common"
 	. "github.com/redhat-appstudio/jvm-build-service/pkg/domainproxy/server"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/wiremock/go-wiremock"
-	. "github.com/wiremock/wiremock-testcontainers-go"
 	"io"
 	"math/rand"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 const (
-	WireMockHttpPort  = "8080"
-	WireMockHttpsPort = "8443"
-	WireMockProtocol  = "/tcp"
-	ProxyUrl          = "http://" + Localhost + ":8081"
-	ContentType       = "text/xml"
-	Md5Hash           = "ea3ca57f8f99d1d210d1b438c9841440"
-	ContentLength     = "403"
+	DomainProxyPort    = "8081"
+	InternalProxyPort  = "8082"
+	DomainProxyUrl     = "http://" + Localhost + ":" + DomainProxyPort
+	ContentType        = "text/xml"
+	Md5Hash            = "ea3ca57f8f99d1d210d1b438c9841440"
+	ContentLength      = "403"
+	MockUrlPath        = "/com/foo/bar/1.0/bar-1.0.pom"
+	NonExistentUrlPath = "/com/foo/bar/1.0/bar-2.0.pom"
+	NonWhitelistedUrl  = "repo1.maven.org/maven2/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar"
+	NonExistentHost    = "foo.bar"
+	User               = "foo"
+	Password           = "bar"
 )
 
-type containerCustomizer struct{}
-
-func (c containerCustomizer) Customize(req *testcontainers.GenericContainerRequest) error {
-	req.ExposedPorts = []string{WireMockHttpPort + WireMockProtocol, WireMockHttpsPort + WireMockProtocol}
-	req.WaitingFor = wait.ForListeningPort(WireMockHttpPort)
-	req.Cmd = []string{"--port", WireMockHttpPort, "--https-port", WireMockHttpsPort}
-	return nil
-}
-
 func createClient(t *testing.T) *http.Client {
-	proxy, err := url.Parse(ProxyUrl)
+	proxyUrl, err := url.Parse(DomainProxyUrl)
 	if err != nil {
 		t.Fatal(err)
 	}
 	transport := &http.Transport{
-		Proxy:           http.ProxyURL(proxy),
+		Proxy:           http.ProxyURL(proxyUrl),
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	return &http.Client{
@@ -61,82 +55,109 @@ func getMd5Hash(bytes []byte) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func head(urlMatchingPair wiremock.URLMatcher) *wiremock.StubRule {
-	return wiremock.NewStubRule(http.MethodHead, urlMatchingPair)
+func getRandomDomainSocket() string {
+	return "/tmp/domain-socket-" + strconv.Itoa(rand.Int()) + ".sock"
 }
 
-func TestDomainProxy(t *testing.T) {
-	// Start Wiremock container
-	ctx := context.Background()
-	container, err := RunContainerAndStopOnCleanup(ctx, t, containerCustomizer{})
-	if err != nil {
-		t.Fatal(err)
+func mockHandler(t *testing.T) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == MockUrlPath {
+			// Mock GET response
+			pom, err := os.ReadFile("testdata/bar-1.0.pom")
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.Header().Set("Content-Type", ContentType)
+			w.WriteHeader(http.StatusOK)
+			w.Write(pom)
+		} else if r.Method == http.MethodHead && r.URL.Path == MockUrlPath {
+			// Mock HEAD response
+			w.Header().Set("Content-Type", ContentType)
+			w.Header().Set("Content-Length", ContentLength)
+			w.WriteHeader(http.StatusOK)
+		} else {
+			http.NotFound(w, r)
+		}
 	}
-	// HTTP Get stub
-	pom, err := os.ReadFile("testdata/bar-1.0.pom")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = container.Client.StubFor(
-		wiremock.Get(wiremock.URLEqualTo("/com/foo/bar/1.0/bar-1.0.pom")).
-			WillReturnResponse(
-				wiremock.NewResponse().
-					WithHeader("Content-Type", ContentType).
-					WithBody(string(pom)).
-					WithStatus(http.StatusOK),
-			),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// HTTP Head stub
-	err = container.Client.StubFor(
-		head(wiremock.URLEqualTo("/com/foo/bar/1.0/bar-1.0.pom")).
-			WillReturnResponse(
-				wiremock.NewResponse().
-					WithHeader("Content-Type", ContentType).
-					WithHeader("Content-Length", ContentLength).
-					WithStatus(http.StatusOK),
-			),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Set env variables
-	os.Setenv(DomainSocketKey, "/tmp/domain-socket-"+strconv.Itoa(rand.Int())+".sock")
-	os.Setenv(ServerHttpPortKey, "8081")
-	os.Setenv(ProxyTargetWhitelistKey, "localhost,foo.bar")
-	// Start services
+}
+
+func startDomainProxy() (*DomainProxyServer, *DomainProxyClient) {
 	domainProxyServer := NewDomainProxyServer()
 	go domainProxyServer.Start()
 	domainProxyClient := NewDomainProxyClient()
 	go domainProxyClient.Start()
-	time.Sleep(1 * time.Second)
-	defer domainProxyServer.Stop()
-	defer domainProxyClient.Stop()
-	// Get Wiremock container details
-	mappedHttpPort, err := container.MappedPort(ctx, WireMockHttpPort)
+	return domainProxyServer, domainProxyClient
+}
+
+func stopDomainProxy(domainProxyServer *DomainProxyServer, domainProxyClient *DomainProxyClient) {
+	domainProxyServer.Stop()
+	domainProxyClient.Stop()
+}
+
+func startMockServers(t *testing.T) (*httptest.Server, *httptest.Server) {
+	mockHandler := mockHandler(t)
+	mockHttpServer := httptest.NewServer(mockHandler)
+	mockHttpsServer := httptest.NewUnstartedServer(mockHandler)
+	mockHttpsServer.StartTLS()
+	return mockHttpServer, mockHttpsServer
+}
+
+func stopMockServers(mockHttpServer *httptest.Server, mockHttpsServer *httptest.Server) {
+	mockHttpServer.Close()
+	mockHttpsServer.Close()
+}
+
+func startInternalProxyServer(t *testing.T, onRequestFunction func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response), onConnectFunction func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string)) *http.Server {
+	internalProxy := goproxy.NewProxyHttpServer()
+	internalProxy.Verbose = true
+	if onRequestFunction != nil {
+		internalProxy.OnRequest().DoFunc(onRequestFunction)
+		internalProxy.OnRequest().HandleConnectFunc(onConnectFunction)
+	}
+	internalProxyServer := &http.Server{
+		Addr:    Localhost + ":" + InternalProxyPort,
+		Handler: internalProxy,
+	}
+	go func() {
+		if err := internalProxyServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			t.Fatal(err)
+		}
+	}()
+	return internalProxyServer
+}
+
+func stopInternalProxyServer(t *testing.T, internalProxyServer *http.Server) {
+	err := internalProxyServer.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
-	mappedHttpsPort, err := container.MappedPort(ctx, WireMockHttpsPort)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wireMockHttpUrl := "http://" + Localhost + ":" + mappedHttpPort.Port()
-	wireMockHttpsUrl := "https://" + Localhost + ":" + mappedHttpsPort.Port()
+}
+
+func commonTestBehaviour(t *testing.T, qualifier string) {
+	// Set env variables
+	t.Setenv(DomainSocketKey, getRandomDomainSocket())
+	t.Setenv(ServerHttpPortKey, DomainProxyPort)
+	t.Setenv(ProxyTargetWhitelistKey, "127.0.0.1,foo.bar")
+	// Start services
+	domainProxyServer, domainProxyClient := startDomainProxy()
+	defer stopDomainProxy(domainProxyServer, domainProxyClient)
+	// Start mock HTTP and HTTPS servers
+	mockHttpServer, mockHttpsServer := startMockServers(t)
+	defer stopMockServers(mockHttpServer, mockHttpsServer)
+	mockHttpUrl := mockHttpServer.URL
+	mockHttpsUrl := mockHttpsServer.URL
 	// Create HTTP client
 	httpClient := createClient(t)
 
-	t.Run("Test HTTP GET dependency", func(t *testing.T) {
-		response, err := httpClient.Get(wireMockHttpUrl + "/com/foo/bar/1.0/bar-1.0.pom")
+	t.Run(fmt.Sprintf("Test HTTP GET dependency%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Get(mockHttpUrl + MockUrlPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		if response.StatusCode != http.StatusOK {
 			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusOK)
 		}
-		defer response.Body.Close()
 		pom, err := io.ReadAll(response.Body)
 		if err != nil {
 			t.Fatal(err)
@@ -147,15 +168,15 @@ func TestDomainProxy(t *testing.T) {
 		}
 	})
 
-	t.Run("Test HTTPS GET dependency", func(t *testing.T) {
-		response, err := httpClient.Get(wireMockHttpsUrl + "/com/foo/bar/1.0/bar-1.0.pom")
+	t.Run(fmt.Sprintf("Test HTTPS GET dependency%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Get(mockHttpsUrl + MockUrlPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		if response.StatusCode != http.StatusOK {
 			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusOK)
 		}
-		defer response.Body.Close()
 		pom, err := io.ReadAll(response.Body)
 		if err != nil {
 			t.Fatal(err)
@@ -166,101 +187,199 @@ func TestDomainProxy(t *testing.T) {
 		}
 	})
 
-	t.Run("Test HTTP GET non-existent dependency", func(t *testing.T) {
-		response, err := httpClient.Get(wireMockHttpUrl + "/com/foo/bar/1.0/bar-2.0.pom")
+	t.Run(fmt.Sprintf("Test HTTP GET non-existent dependency%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Get(mockHttpUrl + NonExistentUrlPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		if response.StatusCode != http.StatusNotFound {
 			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusNotFound)
 		}
 	})
 
-	t.Run("Test HTTPS GET non-existent dependency", func(t *testing.T) {
-		response, err := httpClient.Get(wireMockHttpsUrl + "/com/foo/bar/1.0/bar-2.0.pom")
+	t.Run(fmt.Sprintf("Test HTTPS GET non-existent dependency%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Get(mockHttpsUrl + NonExistentUrlPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		if response.StatusCode != http.StatusNotFound {
 			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusNotFound)
 		}
 	})
 
-	t.Run("Test HTTP non-whitelisted host", func(t *testing.T) {
-		response, err := httpClient.Get("http://repo1.maven.org/maven2/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar")
+	t.Run(fmt.Sprintf("Test HTTP non-whitelisted host%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Get("http://" + NonWhitelistedUrl)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		if response.StatusCode != http.StatusForbidden {
 			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusForbidden)
 		}
 	})
 
-	t.Run("Test HTTPS non-whitelisted host", func(t *testing.T) {
-		_, err := httpClient.Get("https://repo1.maven.org/maven2/org/apache/maven/plugins/maven-jar-plugin/3.4.1/maven-jar-plugin-3.4.1.jar")
+	t.Run(fmt.Sprintf("Test HTTPS non-whitelisted host%s", qualifier), func(t *testing.T) {
+		_, err := httpClient.Get("https://" + NonWhitelistedUrl)
 		statusText := http.StatusText(http.StatusForbidden)
 		if !strings.Contains(err.Error(), statusText) {
 			t.Fatalf("Actual error %s did not contain expected HTTP status text %s", err.Error(), statusText)
 		}
 	})
 
-	t.Run("Test HTTP non-existent host", func(t *testing.T) {
-		response, err := httpClient.Get("http://foo.bar")
+	t.Run(fmt.Sprintf("Test HTTP non-existent host%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Get("http://" + NonExistentHost)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if response.StatusCode != http.StatusBadGateway {
-			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusBadGateway)
+		defer response.Body.Close()
+		if response.StatusCode != http.StatusInternalServerError {
+			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusInternalServerError)
 		}
 	})
 
-	t.Run("Test HTTPS non-existent host", func(t *testing.T) {
-		_, err := httpClient.Get("https://foo.bar")
+	t.Run(fmt.Sprintf("Test HTTPS non-existent host%s", qualifier), func(t *testing.T) {
+		_, err := httpClient.Get("https://" + NonExistentHost)
 		statusText := http.StatusText(http.StatusBadGateway)
 		if !strings.Contains(err.Error(), statusText) {
 			t.Fatalf("Actual error %s did not contain expected HTTP status text %s", err.Error(), statusText)
 		}
 	})
 
-	t.Run("Test HTTP HEAD dependency", func(t *testing.T) {
-		response, err := httpClient.Head(wireMockHttpUrl + "/com/foo/bar/1.0/bar-1.0.pom")
+	t.Run(fmt.Sprintf("Test HTTP HEAD dependency%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Head(mockHttpUrl + MockUrlPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		actualContentLength := response.Header.Get("Content-Length")
 		if actualContentLength != ContentLength {
 			t.Fatalf("Actual content length %s did not match expected content length %s", actualContentLength, ContentLength)
 		}
 	})
 
-	t.Run("Test HTTPS HEAD dependency", func(t *testing.T) {
-		response, err := httpClient.Head(wireMockHttpsUrl + "/com/foo/bar/1.0/bar-1.0.pom")
+	t.Run(fmt.Sprintf("Test HTTPS HEAD dependency%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Head(mockHttpsUrl + MockUrlPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		actualContentLength := response.Header.Get("Content-Length")
 		if actualContentLength != ContentLength {
 			t.Fatalf("Actual content length %s did not match expected content length %s", actualContentLength, ContentLength)
 		}
 	})
 
-	t.Run("Test HTTP HEAD non-existent dependency", func(t *testing.T) {
-		response, err := httpClient.Head(wireMockHttpUrl + "/com/foo/bar/1.0/bar-2.0.pom")
+	t.Run(fmt.Sprintf("Test HTTP HEAD non-existent dependency%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Head(mockHttpUrl + NonExistentUrlPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		if response.StatusCode != http.StatusNotFound {
 			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusNotFound)
 		}
 	})
 
-	t.Run("Test HTTPS HEAD non-existent dependency", func(t *testing.T) {
-		response, err := httpClient.Head(wireMockHttpsUrl + "/com/foo/bar/1.0/bar-2.0.pom")
+	t.Run(fmt.Sprintf("Test HTTPS HEAD non-existent dependency%s", qualifier), func(t *testing.T) {
+		response, err := httpClient.Head(mockHttpsUrl + NonExistentUrlPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer response.Body.Close()
 		if response.StatusCode != http.StatusNotFound {
 			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusNotFound)
+		}
+	})
+}
+
+func commonInternalProxyTestBehaviour(t *testing.T, qualifier string, onRequestFunction func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response), onConnectFunction func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string)) {
+	// Start internal proxy
+	internalProxyServer := startInternalProxyServer(t, onRequestFunction, onConnectFunction)
+	// Set env variables
+	t.Setenv(InternalProxyKey, "true")
+	t.Setenv(InternalProxyHostKey, Localhost)
+	t.Setenv(InternalProxyPortKey, InternalProxyPort)
+	t.Setenv(InternalNonProxyHostsKey, "example.com")
+	// Run tests with internal proxy
+	commonTestBehaviour(t, qualifier)
+	// Stop internal proxy
+	stopInternalProxyServer(t, internalProxyServer)
+	// Set non-proxy hosts env variable
+	t.Setenv(InternalNonProxyHostsKey, "127.0.0.1,foo.bar")
+	// Run tests without internal proxy
+	commonTestBehaviour(t, qualifier+" and non-proxy host")
+}
+
+func TestDomainProxy(t *testing.T) {
+	commonTestBehaviour(t, "")
+}
+
+func TestDomainProxyWithInternalProxy(t *testing.T) {
+	commonInternalProxyTestBehaviour(t, " with internal proxy", nil, nil)
+}
+
+func TestDomainProxyWithInternalProxyAndAuthentication(t *testing.T) {
+	// Set env variables
+	t.Setenv(InternalProxyUserKey, User)
+	t.Setenv(InternalProxyPasswordKey, Password)
+	basicAuth := "Basic " + GetBasicAuth(User, Password)
+	// Create internal proxy HTTP auth handler
+	onRequestFunction := func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+		if req.Header.Get("Proxy-Authorization") != basicAuth {
+			return nil, goproxy.NewResponse(req, goproxy.ContentTypeText, http.StatusProxyAuthRequired, http.StatusText(http.StatusProxyAuthRequired))
+		}
+		return req, nil
+	}
+	// Create internal proxy HTTPS auth handler
+	onConnectionFunction := func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+		req := ctx.Req
+		authHeader := req.Header.Get("Proxy-Authorization")
+		if authHeader != basicAuth {
+			ctx.Resp = goproxy.NewResponse(req, goproxy.ContentTypeText, http.StatusProxyAuthRequired, http.StatusText(http.StatusProxyAuthRequired))
+			return goproxy.RejectConnect, host
+		}
+		return goproxy.OkConnect, host
+	}
+	// Run tests with internal proxy and authentication
+	commonInternalProxyTestBehaviour(t, " with internal proxy and authentication", onRequestFunction, onConnectionFunction)
+
+	// Set invalid authentication env variables
+	t.Setenv(DomainSocketKey, getRandomDomainSocket())
+	t.Setenv(InternalProxyUserKey, "123")
+	t.Setenv(InternalProxyPasswordKey, "456")
+	t.Setenv(InternalNonProxyHostsKey, "example.com")
+	// Start internal proxy
+	internalProxyServer := startInternalProxyServer(t, onRequestFunction, onConnectionFunction)
+	defer stopInternalProxyServer(t, internalProxyServer)
+	// Start services
+	domainProxyServer, domainProxyClient := startDomainProxy()
+	defer stopDomainProxy(domainProxyServer, domainProxyClient)
+	// Start mock HTTP and HTTPS servers
+	mockHttpServer, mockHttpsServer := startMockServers(t)
+	defer stopMockServers(mockHttpServer, mockHttpsServer)
+	mockHttpUrl := mockHttpServer.URL
+	mockHttpsUrl := mockHttpsServer.URL
+	// Create HTTP client
+	httpClient := createClient(t)
+
+	t.Run("Test HTTP GET dependency with internal proxy and invalid authentication", func(t *testing.T) {
+		response, err := httpClient.Get(mockHttpUrl + MockUrlPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer response.Body.Close()
+		if response.StatusCode != http.StatusProxyAuthRequired {
+			t.Fatalf("Actual HTTP status %d did not match expected HTTP status %d", response.StatusCode, http.StatusProxyAuthRequired)
+		}
+	})
+
+	t.Run("Test HTTPS GET dependency with internal proxy and invalid authentication", func(t *testing.T) {
+		_, err := httpClient.Get(mockHttpsUrl + MockUrlPath)
+		statusText := http.StatusText(http.StatusProxyAuthRequired)
+		if !strings.Contains(err.Error(), statusText) {
+			t.Fatalf("Actual error %s did not contain expected HTTP status text %s", err.Error(), statusText)
 		}
 	})
 }

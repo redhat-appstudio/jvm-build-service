@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"fmt"
 	. "github.com/redhat-appstudio/jvm-build-service/pkg/domainproxy/common"
@@ -50,10 +51,12 @@ type DomainProxyServer struct {
 	httpConnectionCounter  atomic.Uint64
 	httpsConnectionCounter atomic.Uint64
 	listener               net.Listener
-	shutdownChan           chan struct{}
+	runningContext         context.Context
+	initiateShutdown       context.CancelFunc
 }
 
 func NewDomainProxyServer() *DomainProxyServer {
+	runningContext, initiateShutdown := context.WithCancel(context.Background())
 	return &DomainProxyServer{
 		sharedParams:          common.NewSharedParams(),
 		proxyTargetWhitelist:  getProxyTargetWhitelist(),
@@ -63,7 +66,8 @@ func NewDomainProxyServer() *DomainProxyServer {
 		internalProxyUser:     getInternalProxyUser(),
 		internalProxyPassword: getInternalProxyPassword(),
 		internalNonProxyHosts: getInternalNonProxyHosts(),
-		shutdownChan:          make(chan struct{}),
+		runningContext:        runningContext,
+		initiateShutdown:      initiateShutdown,
 	}
 }
 
@@ -86,15 +90,20 @@ func (dps *DomainProxyServer) startServer() {
 	}
 	logger.Printf("Domain socket server listening on %s", sharedParams.DomainSocket)
 	for {
-		if domainConnection, err := dps.listener.Accept(); err != nil {
-			select {
-			case <-dps.shutdownChan:
-				return
-			default:
-				logger.Printf("Failed to accept domain socket connection: %v", err)
+		select {
+		case <-dps.runningContext.Done():
+			return
+		default:
+			if domainConnection, err := dps.listener.Accept(); err != nil {
+				select {
+				case <-dps.runningContext.Done():
+					return
+				default:
+					logger.Printf("Failed to accept domain socket connection: %v", err)
+				}
+			} else {
+				go dps.handleConnectionRequest(domainConnection)
 			}
-		} else {
-			go dps.handleConnectionRequest(domainConnection)
 		}
 	}
 }
@@ -131,8 +140,8 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 	targetHost, targetPort := getTargetHostAndPort(request.Host, HttpPort)
 	actualTargetHost, actualTargetPort := targetHost, targetPort
 	targetConnectionName := "target"
-	useProxy := dps.useInternalProxy(targetHost)
-	if useProxy {
+	useInternalProxy := dps.useInternalProxy(targetHost)
+	if useInternalProxy {
 		targetHost, targetPort = dps.internalProxyHost, dps.internalProxyPort
 		logger.Printf("Handling %s Connection %d with internal proxy %s:%d and target %s:%d", DomainSocketToHttp, connectionNo, targetHost, targetPort, actualTargetHost, actualTargetPort)
 		targetConnectionName = "internal proxy"
@@ -147,32 +156,39 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 	}
 	startTime := time.Now()
 	sharedParams := dps.sharedParams
-	if useProxy {
+	request.Header.Set("Connection", "close")
+	if useInternalProxy {
 		request.Header.Set("Host", fmt.Sprintf("%s:%d", actualTargetHost, actualTargetPort))
-		request.Header.Set("Proxy-Connection", "Keep-Alive")
 		if dps.internalProxyUser != "" && dps.internalProxyPassword != "" {
-			request.Header.Set("Proxy-Authorization", "Basic "+dps.getBasicAuth())
+			request.Header.Set("Proxy-Authorization", "Basic "+GetBasicAuth(dps.internalProxyUser, dps.internalProxyPassword))
 		}
 	}
 	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
 	if err != nil {
-		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to connect to %s", targetConnectionName))
+		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to connect to %s", targetConnectionName), false)
 		if err = sourceConnection.Close(); err != nil {
 			common.HandleConnectionCloseError(err)
 		}
 		return
-	} else if err = request.Write(targetConnection); err != nil {
-		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to send request to %s", targetConnectionName))
-		if err = targetConnection.Close(); err != nil {
-			common.HandleConnectionCloseError(err)
+	} else {
+		if useInternalProxy {
+			err = request.WriteProxy(targetConnection)
+		} else {
+			err = request.Write(targetConnection)
 		}
-		if err = sourceConnection.Close(); err != nil {
-			common.HandleConnectionCloseError(err)
+		if err != nil {
+			dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to send request to %s", targetConnectionName), false)
+			if err = targetConnection.Close(); err != nil {
+				common.HandleConnectionCloseError(err)
+			}
+			if err = sourceConnection.Close(); err != nil {
+				common.HandleConnectionCloseError(err)
+			}
+			return
 		}
-		return
 	}
 	go func() {
-		common.BiDirectionalTransfer(sourceConnection, targetConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, DomainSocketToHttp, connectionNo)
+		common.BiDirectionalTransfer(dps.runningContext, sourceConnection, targetConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, DomainSocketToHttp, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttp, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
@@ -182,8 +198,8 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 	targetHost, targetPort := getTargetHostAndPort(request.Host, HttpsPort)
 	actualTargetHost, actualTargetPort := targetHost, targetPort
 	targetConnectionName := "target"
-	useProxy := dps.useInternalProxy(targetHost)
-	if useProxy {
+	useInternalProxy := dps.useInternalProxy(targetHost)
+	if useInternalProxy {
 		targetHost, targetPort = dps.internalProxyHost, dps.internalProxyPort
 		logger.Printf("Handling %s Connection %d with internal proxy %s:%d and target %s:%d", DomainSocketToHttps, connectionNo, targetHost, targetPort, actualTargetHost, actualTargetPort)
 		targetConnectionName = "internal proxy"
@@ -198,22 +214,23 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 	}
 	startTime := time.Now()
 	sharedParams := dps.sharedParams
+	request.Header.Set("Connection", "close")
 	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
 	if err != nil {
-		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to connect to %s", targetConnectionName))
+		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to connect to %s", targetConnectionName), true)
 		if err = sourceConnection.Close(); err != nil {
 			common.HandleConnectionCloseError(err)
 		}
 		return
 	}
-	if useProxy {
-		proxyConnectRequest := fmt.Sprintf("CONNECT %s:%d HTTP/1.1\r\nHost: %s:%d\r\nProxy-Connection: Keep-Alive\r\n", actualTargetHost, actualTargetPort, actualTargetHost, actualTargetPort)
+	if useInternalProxy {
+		proxyConnectRequest := fmt.Sprintf("CONNECT %s:%d HTTP/1.1\r\nHost: %s:%d\r\nConnection: close\r\n", actualTargetHost, actualTargetPort, actualTargetHost, actualTargetPort)
 		if dps.internalProxyUser != "" && dps.internalProxyPassword != "" {
-			proxyConnectRequest += fmt.Sprintf("Proxy-Authorization: Basic %s\r\n", dps.getBasicAuth())
+			proxyConnectRequest += fmt.Sprintf("Proxy-Authorization: Basic %s\r\n", GetBasicAuth(dps.internalProxyUser, dps.internalProxyPassword))
 		}
 		proxyConnectRequest += "\r\n"
 		if _, err = targetConnection.Write([]byte(proxyConnectRequest)); err != nil {
-			dps.handleErrorResponse(writer, err, "Failed to send connect request to internal proxy")
+			dps.handleErrorResponse(writer, err, "Failed to send connect request to internal proxy", true)
 			if err = targetConnection.Close(); err != nil {
 				common.HandleConnectionCloseError(err)
 			}
@@ -224,8 +241,18 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 		}
 		proxyReader := bufio.NewReader(targetConnection)
 		proxyResponse, err := http.ReadResponse(proxyReader, request)
-		if err != nil || proxyResponse.StatusCode != http.StatusOK {
-			dps.handleErrorResponse(writer, err, "Failed to establish tunnel with internal proxy")
+		if err != nil {
+			dps.handleErrorResponse(writer, err, "Failed to establish tunnel with internal proxy", true)
+			if err = targetConnection.Close(); err != nil {
+				common.HandleConnectionCloseError(err)
+			}
+			if err = sourceConnection.Close(); err != nil {
+				common.HandleConnectionCloseError(err)
+			}
+			return
+		} else if proxyResponse.StatusCode != http.StatusOK {
+			proxyResponse.Header.Set("Connection", "close")
+			proxyResponse.Write(sourceConnection)
 			if err = targetConnection.Close(); err != nil {
 				common.HandleConnectionCloseError(err)
 			}
@@ -235,8 +262,8 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 			return
 		}
 	}
-	if _, err = writer.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n")); err != nil {
-		dps.handleErrorResponse(writer, err, "Failed to send response to source")
+	if _, err = writer.Write([]byte("HTTP/1.1 200 Connection Established\r\nConnection: close\r\n\r\n")); err != nil {
+		dps.handleErrorResponse(writer, err, "Failed to send response to source", true)
 		if err = targetConnection.Close(); err != nil {
 			common.HandleConnectionCloseError(err)
 		}
@@ -246,7 +273,7 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 		return
 	}
 	go func() {
-		common.BiDirectionalTransfer(sourceConnection, targetConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, DomainSocketToHttps, connectionNo)
+		common.BiDirectionalTransfer(dps.runningContext, sourceConnection, targetConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, DomainSocketToHttps, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttps, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
@@ -274,21 +301,33 @@ func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, writer http
 }
 
 func (dps *DomainProxyServer) useInternalProxy(targetHost string) bool {
-	return dps.internalProxy && !dps.internalNonProxyHosts[targetHost]
+	if dps.internalProxy {
+		if !dps.internalNonProxyHosts[targetHost] {
+			return true
+		} else {
+			logger.Printf("Target host %s is non-proxy host", targetHost)
+		}
+	}
+	return false
 }
 
-func (dps *DomainProxyServer) getBasicAuth() string {
-	return base64.StdEncoding.EncodeToString([]byte(dps.internalProxyUser + ":" + dps.internalProxyPassword))
+func GetBasicAuth(user string, password string) string {
+	return base64.StdEncoding.EncodeToString([]byte(user + ":" + password))
 }
 
-func (dps *DomainProxyServer) handleErrorResponse(writer http.ResponseWriter, err error, message string) {
+func (dps *DomainProxyServer) handleErrorResponse(writer http.ResponseWriter, err error, message string, isHttps bool) {
 	logger.Printf("%s: %v", message, err)
-	http.Error(writer, message+": "+err.Error(), http.StatusBadGateway)
+	writer.Header().Set("Connection", "close")
+	status := http.StatusInternalServerError
+	if isHttps {
+		status = http.StatusBadGateway
+	}
+	http.Error(writer, message+": "+err.Error(), status)
 }
 
 func (dps *DomainProxyServer) Stop() {
 	logger.Println("Shutting down domain proxy server...")
-	close(dps.shutdownChan)
+	dps.initiateShutdown()
 	if dps.listener != nil {
 		if err := dps.listener.Close(); err != nil {
 			common.HandleListenerCloseError(err)
@@ -322,6 +361,7 @@ func (rw *responseWriter) Write(data []byte) (int, error) {
 func (rw *responseWriter) WriteHeader(statusCode int) {
 	rw.statusCode = statusCode
 	headers := fmt.Sprintf("HTTP/1.1 %d %s\r\n", statusCode, http.StatusText(statusCode))
+	headers += "Connection: close\r\n"
 	for k, v := range rw.Header() {
 		for _, vv := range v {
 			headers += fmt.Sprintf("%s: %s\r\n", k, vv)

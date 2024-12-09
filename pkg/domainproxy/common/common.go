@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log"
@@ -17,9 +18,9 @@ const (
 	DomainSocketKey          = "DOMAIN_SOCKET"
 	DefaultDomainSocket      = "/tmp/domain-socket.sock"
 	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
-	DefaultConnectionTimeout = 10000 * time.Millisecond
+	DefaultConnectionTimeout = 1000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
-	DefaultIdleTimeout       = 120000 * time.Millisecond
+	DefaultIdleTimeout       = 30000 * time.Millisecond
 )
 
 type Common struct {
@@ -52,7 +53,7 @@ func (c *Common) NewSharedParams() SharedParams {
 	}
 }
 
-func (c *Common) BiDirectionalTransfer(leftConnection, rightConnection net.Conn, byteBufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
+func (c *Common) BiDirectionalTransfer(runningContext context.Context, leftConnection, rightConnection net.Conn, byteBufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
 	defer c.CloseConnection(leftConnection, rightConnection, connectionType, connectionNo)
 	done := make(chan struct{}, 2)
 	if err := leftConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
@@ -63,31 +64,36 @@ func (c *Common) BiDirectionalTransfer(leftConnection, rightConnection net.Conn,
 		c.HandleSetDeadlineError(rightConnection, err)
 		return
 	}
-	go c.Transfer(leftConnection, rightConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
-	go c.Transfer(rightConnection, leftConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
+	go c.Transfer(runningContext, leftConnection, rightConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
+	go c.Transfer(runningContext, rightConnection, leftConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
 	<-done
 	<-done
 }
 
-func (c *Common) Transfer(sourceConnection, targetConnection net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
+func (c *Common) Transfer(runningContext context.Context, sourceConnection, targetConnection net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
 	defer func() {
 		done <- struct{}{}
 	}()
 	buf := make([]byte, bufferSize)
 	for {
-		if n, err := io.CopyBuffer(sourceConnection, targetConnection, buf); err != nil {
-			c.handleConnectionError(err, connectionType, connectionNo)
+		select {
+		case <-runningContext.Done():
 			return
-		} else if n > 0 {
-			if err = sourceConnection.SetReadDeadline(time.Now().Add(idleTimeout)); err != nil {
-				c.HandleSetDeadlineError(sourceConnection, err)
+		default:
+			if n, err := io.CopyBuffer(sourceConnection, targetConnection, buf); err != nil {
+				c.handleConnectionError(err, connectionType, connectionNo)
 				return
+			} else if n > 0 {
+				if err = sourceConnection.SetReadDeadline(time.Now().Add(idleTimeout)); err != nil {
+					c.HandleSetDeadlineError(sourceConnection, err)
+					return
+				}
+				if err = targetConnection.SetWriteDeadline(time.Now().Add(idleTimeout)); err != nil {
+					c.HandleSetDeadlineError(targetConnection, err)
+					return
+				}
+				c.logger.Printf("%d bytes transferred for %s connection %d", n, connectionType, connectionNo)
 			}
-			if err = targetConnection.SetWriteDeadline(time.Now().Add(idleTimeout)); err != nil {
-				c.HandleSetDeadlineError(targetConnection, err)
-				return
-			}
-			c.logger.Printf("%d bytes transferred for %s connection %d", n, connectionType, connectionNo)
 		}
 	}
 }

@@ -8,10 +8,10 @@ import (
 )
 
 func main() {
-	client := NewDomainProxyClient()
-	client.Start()
+	domainProxyClient := NewDomainProxyClient()
+	domainProxyClient.Start()
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	<-signals
-	client.Stop()
+	domainProxyClient.Stop()
 }

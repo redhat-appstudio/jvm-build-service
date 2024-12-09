@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	. "github.com/redhat-appstudio/jvm-build-service/pkg/domainproxy/common"
 	"net"
@@ -23,14 +24,17 @@ type DomainProxyClient struct {
 	serverHttpPort        int
 	httpConnectionCounter atomic.Uint64
 	listener              net.Listener
-	shutdownChan          chan struct{}
+	shutdownContext       context.Context
+	initiateShutdown      context.CancelFunc
 }
 
 func NewDomainProxyClient() *DomainProxyClient {
+	shutdownContext, initiateShutdown := context.WithCancel(context.Background())
 	return &DomainProxyClient{
-		sharedParams:   common.NewSharedParams(),
-		serverHttpPort: getServerHttpPort(),
-		shutdownChan:   make(chan struct{}),
+		sharedParams:     common.NewSharedParams(),
+		serverHttpPort:   getServerHttpPort(),
+		shutdownContext:  shutdownContext,
+		initiateShutdown: initiateShutdown,
 	}
 }
 
@@ -47,15 +51,20 @@ func (dpc *DomainProxyClient) Start() {
 func (dpc *DomainProxyClient) startClient() {
 	logger.Printf("HTTP server listening on port %d", dpc.serverHttpPort)
 	for {
-		if serverConnection, err := dpc.listener.Accept(); err != nil {
-			select {
-			case <-dpc.shutdownChan:
-				return
-			default:
-				logger.Printf("Failed to accept server connection: %v", err)
+		select {
+		case <-dpc.shutdownContext.Done():
+			return
+		default:
+			if serverConnection, err := dpc.listener.Accept(); err != nil {
+				select {
+				case <-dpc.shutdownContext.Done():
+					return
+				default:
+					logger.Printf("Failed to accept server connection: %v", err)
+				}
+			} else {
+				go dpc.handleConnectionRequest(serverConnection)
 			}
-		} else {
-			go dpc.handleConnectionRequest(serverConnection)
 		}
 	}
 }
@@ -74,14 +83,14 @@ func (dpc *DomainProxyClient) handleConnectionRequest(serverConnection net.Conn)
 		return
 	}
 	go func() {
-		common.BiDirectionalTransfer(serverConnection, domainConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, HttpToDomainSocket, connectionNo)
+		common.BiDirectionalTransfer(dpc.shutdownContext, serverConnection, domainConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, HttpToDomainSocket, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", HttpToDomainSocket, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
 
 func (dpc *DomainProxyClient) Stop() {
 	logger.Println("Shutting down domain proxy client...")
-	close(dpc.shutdownChan)
+	dpc.initiateShutdown()
 	if dpc.listener != nil {
 		if err := dpc.listener.Close(); err != nil {
 			common.HandleListenerCloseError(err)
