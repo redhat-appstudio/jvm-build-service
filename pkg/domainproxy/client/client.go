@@ -38,18 +38,19 @@ func NewDomainProxyClient() *DomainProxyClient {
 	}
 }
 
-func (dpc *DomainProxyClient) Start() {
+func (dpc *DomainProxyClient) Start(ready chan<- bool) {
 	logger.Println("Starting domain proxy client...")
 	var err error
-	dpc.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", Localhost, dpc.serverHttpPort))
+	dpc.listener, err = net.Listen(TCP, fmt.Sprintf("%s:%d", Localhost, dpc.serverHttpPort))
 	if err != nil {
 		logger.Fatalf("Failed to start HTTP server: %v", err)
 	}
-	go dpc.startClient()
+	go dpc.startClient(ready)
 }
 
-func (dpc *DomainProxyClient) startClient() {
+func (dpc *DomainProxyClient) startClient(ready chan<- bool) {
 	logger.Printf("HTTP server listening on port %d", dpc.serverHttpPort)
+	ready <- true
 	for {
 		select {
 		case <-dpc.shutdownContext.Done():
@@ -74,7 +75,7 @@ func (dpc *DomainProxyClient) handleConnectionRequest(serverConnection net.Conn)
 	logger.Printf("Handling %s Connection %d", HttpToDomainSocket, connectionNo)
 	startTime := time.Now()
 	sharedParams := dpc.sharedParams
-	domainConnection, err := net.DialTimeout("unix", sharedParams.DomainSocket, sharedParams.ConnectionTimeout)
+	domainConnection, err := net.DialTimeout(UNIX, sharedParams.DomainSocket, sharedParams.ConnectionTimeout)
 	if err != nil {
 		logger.Printf("Failed to connect to domain socket: %v", err)
 		if err = serverConnection.Close(); err != nil {

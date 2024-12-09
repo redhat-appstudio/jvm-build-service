@@ -71,12 +71,8 @@ func NewDomainProxyServer() *DomainProxyServer {
 	}
 }
 
-func (dps *DomainProxyServer) Start() {
+func (dps *DomainProxyServer) Start(ready chan<- bool) {
 	logger.Println("Starting domain proxy server...")
-	go dps.startServer()
-}
-
-func (dps *DomainProxyServer) startServer() {
 	sharedParams := dps.sharedParams
 	if _, err := os.Stat(sharedParams.DomainSocket); err == nil {
 		if err := os.Remove(sharedParams.DomainSocket); err != nil {
@@ -84,11 +80,17 @@ func (dps *DomainProxyServer) startServer() {
 		}
 	}
 	var err error
-	dps.listener, err = net.Listen("unix", sharedParams.DomainSocket)
+	dps.listener, err = net.Listen(UNIX, sharedParams.DomainSocket)
 	if err != nil {
 		logger.Fatalf("Failed to start domain socket listener: %v", err)
 	}
+	go dps.startServer(ready)
+}
+
+func (dps *DomainProxyServer) startServer(ready chan<- bool) {
+	sharedParams := dps.sharedParams
 	logger.Printf("Domain socket server listening on %s", sharedParams.DomainSocket)
+	ready <- true
 	for {
 		select {
 		case <-dps.runningContext.Done():
@@ -163,7 +165,7 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 			request.Header.Set("Proxy-Authorization", "Basic "+GetBasicAuth(dps.internalProxyUser, dps.internalProxyPassword))
 		}
 	}
-	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
+	targetConnection, err := net.DialTimeout(TCP, fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
 	if err != nil {
 		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to connect to %s", targetConnectionName), false)
 		if err = sourceConnection.Close(); err != nil {
@@ -215,7 +217,7 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 	startTime := time.Now()
 	sharedParams := dps.sharedParams
 	request.Header.Set("Connection", "close")
-	targetConnection, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
+	targetConnection, err := net.DialTimeout(TCP, fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
 	if err != nil {
 		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to connect to %s", targetConnectionName), true)
 		if err = sourceConnection.Close(); err != nil {

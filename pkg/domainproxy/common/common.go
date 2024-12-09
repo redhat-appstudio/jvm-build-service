@@ -21,6 +21,8 @@ const (
 	DefaultConnectionTimeout = 1000 * time.Millisecond
 	IdleTimeoutKey           = "IDLE_TIMEOUT"
 	DefaultIdleTimeout       = 30000 * time.Millisecond
+	TCP                      = "tcp"
+	UNIX                     = "unix"
 )
 
 type Common struct {

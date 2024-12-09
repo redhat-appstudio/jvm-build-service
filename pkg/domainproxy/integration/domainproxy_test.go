@@ -85,9 +85,13 @@ func mockHandler(t *testing.T) http.HandlerFunc {
 
 func startDomainProxy() (*DomainProxyServer, *DomainProxyClient) {
 	domainProxyServer := NewDomainProxyServer()
-	go domainProxyServer.Start()
+	serverReady := make(chan bool)
+	go domainProxyServer.Start(serverReady)
+	<-serverReady
+	clientReady := make(chan bool)
 	domainProxyClient := NewDomainProxyClient()
-	go domainProxyClient.Start()
+	go domainProxyClient.Start(clientReady)
+	<-clientReady
 	return domainProxyServer, domainProxyClient
 }
 

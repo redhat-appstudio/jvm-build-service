@@ -9,7 +9,9 @@ import (
 
 func main() {
 	domainProxyClient := NewDomainProxyClient()
-	domainProxyClient.Start()
+	ready := make(chan bool)
+	domainProxyClient.Start(ready)
+	<-ready
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	<-signals
