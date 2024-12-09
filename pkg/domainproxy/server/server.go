@@ -158,6 +158,8 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 	}
 	startTime := time.Now()
 	sharedParams := dps.sharedParams
+	logger.Printf("Request headers:\n%v", request.Header)
+	request.Header.Del("Proxy-Connection")
 	request.Header.Set("Connection", "close")
 	if useInternalProxy {
 		request.Header.Set("Host", fmt.Sprintf("%s:%d", actualTargetHost, actualTargetPort))
@@ -216,6 +218,8 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 	}
 	startTime := time.Now()
 	sharedParams := dps.sharedParams
+	logger.Printf("Request headers:\n%v", request.Header)
+	request.Header.Del("Proxy-Connection")
 	request.Header.Set("Connection", "close")
 	targetConnection, err := net.DialTimeout(TCP, fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
 	if err != nil {
