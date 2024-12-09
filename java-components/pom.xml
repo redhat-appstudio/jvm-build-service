@@ -403,6 +403,16 @@
 
     <repositories>
         <repository>
+            <id>oss.sonatype.org-snapshot</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
             <id>gradle-dependencies</id>
             <name>Gradle releases repository</name>
             <url>https://repo.gradle.org/artifactory/libs-releases</url>
@@ -411,6 +421,7 @@
             </snapshots>
         </repository>
     </repositories>
+
     <profiles>
         <profile>
             <id>local</id>
