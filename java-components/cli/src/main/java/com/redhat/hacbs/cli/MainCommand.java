@@ -6,6 +6,7 @@ import jakarta.enterprise.inject.Vetoed;
 
 import com.redhat.hacbs.cli.artifacts.ArtifactCommand;
 import com.redhat.hacbs.cli.builds.BuildCommand;
+import com.redhat.hacbs.cli.driver.DriverCommand;
 import com.redhat.hacbs.cli.rebuilt.RebuiltCommand;
 import com.redhat.hacbs.cli.settings.SetupCommand;
 
@@ -20,7 +21,8 @@ import picocli.CommandLine.Spec;
         ArtifactCommand.class,
         RebuiltCommand.class,
         SetupCommand.class,
-        DiagnosticCommand.class
+        DiagnosticCommand.class,
+        DriverCommand.class
 })
 @Vetoed
 public class MainCommand {

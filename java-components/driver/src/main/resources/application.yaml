@@ -1,0 +1,66 @@
+konflux-build-driver:
+  quay-repo: "quay.io/redhat-user-workloads-stage/pnc-devel-tenant/pnc-konflux"
+  konflux-processor: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
+  # TODO: This will eventually be build-definitions repository
+  pipeline-resolver: "https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/NCL8774/deploy/pipeline/mw-pipeline-v0.1.yaml"
+quarkus:
+  application:
+    name: konflux-build-driver
+  shutdown:
+    timeout: 300
+  log:
+    category:
+      "com.redhat.hacbs":
+        level: DEBUG
+#    console:
+#      format: "%d{HH:mm:ss,SSS} %-5p traceId=%X{traceId}, parentId=%X{parentId}, spanId=%X{spanId}, sampled=%X{sampled} [%c{3.}] (%t) %s%e mdc:[%X]%n"
+#  http:
+#    cors:
+#      ~: true
+#      origins: "/.*/"
+#  kubernetes-client:
+#    connection-timeout: PT30S
+#    request-timeout: PT30S
+    #namespace: default
+    #token: secretToken
+  oidc:
+    auth-server-url: https://keycloak-host/auth/realms/pncredhat
+    client-id: client
+    credentials:
+      secret: secret
+  #     tls:
+  #       verification: none
+#      keycloak:
+#        policy-enforcer:
+#          enable: false
+  oidc-client:
+    auth-server-url: https://keycloak-host/auth/realms/pncredhat
+    client-id: service-account
+    credentials:
+      secret: secret-of-service-account
+  rest-client:
+    indy-service:
+      url: "http://localhost:8080"
+#"%test":
+#  quarkus:
+#    oidc:
+#      enabled: false
+#    oidc-client:
+#      enabled: false
+#    log:
+#      console:
+#        json: false
+#  environment-driver:
+#    http-client:
+#      connect-timeout: 1
+#      request-timeout: 3
+#    build-agent:
+#      ping-path: PingHandler
+#      host: localhost
+#      running-wait-for: 3
+#
+#"%dev":
+#  quarkus:
+#    log:
+#      console:
+#        json: false

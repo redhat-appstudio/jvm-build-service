@@ -1,46 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
-         xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
         <artifactId>jvm-build-service-parent</artifactId>
         <version>999-SNAPSHOT</version>
     </parent>
-    <artifactId>cli</artifactId>
-    <description>
-        A CLI that can be used to work with JVM build service builds.
-    </description>
+    <artifactId>driver</artifactId>
+    <description>Driver</description>
+
+    <properties>
+        <version.lombok>1.18.32</version.lombok>
+        <version.commons-text>1.12.0</version.commons-text>
+    </properties>
+
     <dependencies>
         <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>common-tools</artifactId>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-oidc</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-classfile-tracker</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-resource-model</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>driver</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>info.picocli</groupId>
-            <artifactId>picocli-shell-jline2</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkiverse.githubapi</groupId>
-            <artifactId>quarkus-github-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.fabric8</groupId>
-            <artifactId>tekton-client</artifactId>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-oidc-client</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -48,35 +29,51 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-kubernetes-client</artifactId>
+            <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-picocli</artifactId>
+            <artifactId>quarkus-rest-client-jackson</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.quarkiverse.jgit</groupId>
-            <artifactId>quarkus-jgit</artifactId>
+            <groupId>io.quarkiverse.tektonclient</groupId>
+            <artifactId>quarkus-tekton-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>${version.commons-text}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest-client-reactive</artifactId>
+            <artifactId>quarkus-info</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-build-recipes-database</artifactId>
+            <groupId>org.jboss.pnc</groupId>
+            <artifactId>pnc-api</artifactId>
+            <version>3.0.0</version>
         </dependency>
+        <!-- Can't just import PNC environment-driver code as it uses Quarkus 2.16 versus 3.x (javax -> jakarta)  -->
+<!--        <dependency>-->
+<!--            <groupId>org.jboss.pnc</groupId>-->
+<!--            <artifactId>environment-driver</artifactId>-->
+<!--            <version>3.0.0</version>-->
+<!--        </dependency>-->
+
         <dependency>
-            <groupId>com.google.cloud.tools</groupId>
-            <artifactId>jib-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>commons-logging-jboss-logging</artifactId>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${version.lombok}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit5-mockito</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -85,34 +82,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.github.redhat-appstudio.jvmbuild</groupId>
-            <artifactId>hacbs-cache</artifactId>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>localstack</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-test-kubernetes-client</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.github.stefanbirkner</groupId>
-            <artifactId>system-lambda</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.wiremock</groupId>
-            <artifactId>wiremock</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -143,6 +114,17 @@
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifestEntries combine.children="append">
+                            <Build-Time>${maven.build.timestamp}</Build-Time>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <profiles>
@@ -166,11 +148,8 @@
                                 </goals>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <native.image.path>
-                                            ${project.build.directory}/${project.build.finalName}-runner
-                                        </native.image.path>
-                                        <java.util.logging.manager>org.jboss.logmanager.LogManager
-                                        </java.util.logging.manager>
+                                        <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                                         <maven.home>${maven.home}</maven.home>
                                     </systemPropertyVariables>
                                 </configuration>
