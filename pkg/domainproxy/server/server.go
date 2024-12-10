@@ -126,10 +126,6 @@ func (dps *DomainProxyServer) handleConnectionRequest(domainConnection net.Conn)
 		return
 	}
 	writer := &responseWriter{connection: domainConnection}
-	if err = domainConnection.SetDeadline(time.Now().Add(sharedParams.IdleTimeout)); err != nil {
-		common.HandleSetDeadlineError(domainConnection, err)
-		return
-	}
 	if request.Method == http.MethodConnect {
 		dps.handleHttpsConnection(domainConnection, writer, request)
 	} else {
@@ -173,25 +169,31 @@ func (dps *DomainProxyServer) handleHttpConnection(sourceConnection net.Conn, wr
 			common.HandleConnectionCloseError(err)
 		}
 		return
+	}
+	if err = targetConnection.SetDeadline(time.Now().Add(sharedParams.IdleTimeout)); err != nil {
+		common.HandleSetDeadlineError(targetConnection, err)
+		if err = sourceConnection.Close(); err != nil {
+			common.HandleConnectionCloseError(err)
+		}
+		return
+	}
+	if useInternalProxy {
+		err = request.WriteProxy(targetConnection)
 	} else {
-		if useInternalProxy {
-			err = request.WriteProxy(targetConnection)
-		} else {
-			err = request.Write(targetConnection)
+		err = request.Write(targetConnection)
+	}
+	if err != nil {
+		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to send request to %s", targetConnectionName), false)
+		if err = targetConnection.Close(); err != nil {
+			common.HandleConnectionCloseError(err)
 		}
-		if err != nil {
-			dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to send request to %s", targetConnectionName), false)
-			if err = targetConnection.Close(); err != nil {
-				common.HandleConnectionCloseError(err)
-			}
-			if err = sourceConnection.Close(); err != nil {
-				common.HandleConnectionCloseError(err)
-			}
-			return
+		if err = sourceConnection.Close(); err != nil {
+			common.HandleConnectionCloseError(err)
 		}
+		return
 	}
 	go func() {
-		common.BiDirectionalTransfer(dps.runningContext, sourceConnection, targetConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, DomainSocketToHttp, connectionNo)
+		common.BiDirectionalTransfer(dps.runningContext, sourceConnection, targetConnection, sharedParams.ByteBufferSize, DomainSocketToHttp, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttp, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }
@@ -222,6 +224,13 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 	targetConnection, err := net.DialTimeout(TCP, fmt.Sprintf("%s:%d", targetHost, targetPort), sharedParams.ConnectionTimeout)
 	if err != nil {
 		dps.handleErrorResponse(writer, err, fmt.Sprintf("Failed to connect to %s", targetConnectionName), true)
+		if err = sourceConnection.Close(); err != nil {
+			common.HandleConnectionCloseError(err)
+		}
+		return
+	}
+	if err = targetConnection.SetDeadline(time.Now().Add(sharedParams.IdleTimeout)); err != nil {
+		common.HandleSetDeadlineError(targetConnection, err)
 		if err = sourceConnection.Close(); err != nil {
 			common.HandleConnectionCloseError(err)
 		}
@@ -279,7 +288,7 @@ func (dps *DomainProxyServer) handleHttpsConnection(sourceConnection net.Conn, w
 		return
 	}
 	go func() {
-		common.BiDirectionalTransfer(dps.runningContext, sourceConnection, targetConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, DomainSocketToHttps, connectionNo)
+		common.BiDirectionalTransfer(dps.runningContext, sourceConnection, targetConnection, sharedParams.ByteBufferSize, DomainSocketToHttps, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", DomainSocketToHttps, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }

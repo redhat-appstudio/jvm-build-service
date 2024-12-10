@@ -71,10 +71,14 @@ func (dpc *DomainProxyClient) startClient(ready chan<- bool) {
 }
 
 func (dpc *DomainProxyClient) handleConnectionRequest(serverConnection net.Conn) {
+	sharedParams := dpc.sharedParams
+	if err := serverConnection.SetDeadline(time.Now().Add(sharedParams.IdleTimeout)); err != nil {
+		common.HandleSetDeadlineError(serverConnection, err)
+		return
+	}
 	connectionNo := dpc.httpConnectionCounter.Add(1)
 	logger.Printf("Handling %s Connection %d", HttpToDomainSocket, connectionNo)
 	startTime := time.Now()
-	sharedParams := dpc.sharedParams
 	domainConnection, err := net.DialTimeout(UNIX, sharedParams.DomainSocket, sharedParams.ConnectionTimeout)
 	if err != nil {
 		logger.Printf("Failed to connect to domain socket: %v", err)
@@ -83,8 +87,15 @@ func (dpc *DomainProxyClient) handleConnectionRequest(serverConnection net.Conn)
 		}
 		return
 	}
+	if err := domainConnection.SetDeadline(time.Now().Add(sharedParams.IdleTimeout)); err != nil {
+		common.HandleSetDeadlineError(domainConnection, err)
+		if err = serverConnection.Close(); err != nil {
+			common.HandleConnectionCloseError(err)
+		}
+		return
+	}
 	go func() {
-		common.BiDirectionalTransfer(dpc.shutdownContext, serverConnection, domainConnection, sharedParams.ByteBufferSize, sharedParams.IdleTimeout, HttpToDomainSocket, connectionNo)
+		common.BiDirectionalTransfer(dpc.shutdownContext, serverConnection, domainConnection, sharedParams.ByteBufferSize, HttpToDomainSocket, connectionNo)
 		logger.Printf("%s Connection %d ended after %d ms", HttpToDomainSocket, connectionNo, time.Since(startTime).Milliseconds())
 	}()
 }

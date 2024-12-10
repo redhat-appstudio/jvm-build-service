@@ -55,23 +55,15 @@ func (c *Common) NewSharedParams() SharedParams {
 	}
 }
 
-func (c *Common) BiDirectionalTransfer(runningContext context.Context, leftConnection, rightConnection net.Conn, byteBufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
+func (c *Common) BiDirectionalTransfer(runningContext context.Context, leftConnection, rightConnection net.Conn, byteBufferSize int, connectionType string, connectionNo uint64) {
 	defer c.CloseConnection(leftConnection, rightConnection, connectionType, connectionNo)
-	if err := leftConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
-		c.HandleSetDeadlineError(leftConnection, err)
-		return
-	}
-	if err := rightConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
-		c.HandleSetDeadlineError(rightConnection, err)
-		return
-	}
 	transferContext, terminateTransfer := context.WithCancel(runningContext)
-	go c.Transfer(transferContext, terminateTransfer, leftConnection, rightConnection, byteBufferSize, idleTimeout, connectionType, connectionNo)
-	go c.Transfer(transferContext, terminateTransfer, rightConnection, leftConnection, byteBufferSize, idleTimeout, connectionType, connectionNo)
+	go c.Transfer(transferContext, terminateTransfer, leftConnection, rightConnection, byteBufferSize, connectionType, connectionNo)
+	go c.Transfer(transferContext, terminateTransfer, rightConnection, leftConnection, byteBufferSize, connectionType, connectionNo)
 	<-transferContext.Done()
 }
 
-func (c *Common) Transfer(transferContext context.Context, terminateTransfer context.CancelFunc, sourceConnection, targetConnection net.Conn, bufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
+func (c *Common) Transfer(transferContext context.Context, terminateTransfer context.CancelFunc, sourceConnection, targetConnection net.Conn, bufferSize int, connectionType string, connectionNo uint64) {
 	defer terminateTransfer()
 	buf := make([]byte, bufferSize)
 	for {
@@ -83,14 +75,6 @@ func (c *Common) Transfer(transferContext context.Context, terminateTransfer con
 				c.handleConnectionError(err, connectionType, connectionNo)
 				return
 			} else if n > 0 {
-				if err = sourceConnection.SetReadDeadline(time.Now().Add(idleTimeout)); err != nil {
-					c.HandleSetDeadlineError(sourceConnection, err)
-					return
-				}
-				if err = targetConnection.SetWriteDeadline(time.Now().Add(idleTimeout)); err != nil {
-					c.HandleSetDeadlineError(targetConnection, err)
-					return
-				}
 				c.logger.Printf("%d bytes transferred for %s connection %d", n, connectionType, connectionNo)
 			} else {
 				return
