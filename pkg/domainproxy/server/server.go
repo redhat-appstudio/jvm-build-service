@@ -18,19 +18,19 @@ import (
 const (
 	HttpPort                     = 80
 	HttpsPort                    = 443
-	ProxyTargetWhitelistKey      = "PROXY_TARGET_WHITELIST"
-	DefaultProxyTargetWhitelist  = "localhost,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
-	InternalProxyKey             = "INTERNAL_PROXY"
-	DefaultInternalProxy         = false
-	InternalProxyHostKey         = "INTERNAL_PROXY_HOST"
+	TargetWhitelistKey           = "DOMAIN_PROXY_TARGET_WHITELIST"
+	DefaultTargetWhitelist       = "neverssl.com,repo1.maven.org,localhost,repo.maven.apache.org,repository.jboss.org,packages.confluent.io,jitpack.io,repo.gradle.org,plugins.gradle.org"
+	EnableInternalProxyKey       = "DOMAIN_PROXY_ENABLE_INTERNAL_PROXY"
+	DefaultEnableInternalProxy   = false
+	InternalProxyHostKey         = "DOMAIN_PROXY_INTERNAL_PROXY_HOST"
 	DefaultInternalProxyHost     = "indy-generic-proxy"
-	InternalProxyPortKey         = "INTERNAL_PROXY_PORT"
+	InternalProxyPortKey         = "DOMAIN_PROXY_INTERNAL_PROXY_PORT"
 	DefaultInternalProxyPort     = 80
-	InternalProxyUserKey         = "INTERNAL_PROXY_USER"
+	InternalProxyUserKey         = "DOMAIN_PROXY_INTERNAL_PROXY_USER"
 	DefaultInternalProxyUser     = ""
-	InternalProxyPasswordKey     = "INTERNAL_PROXY_PASSWORD"
+	InternalProxyPasswordKey     = "DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD"
 	DefaultInternalProxyPassword = ""
-	InternalNonProxyHostsKey     = "INTERNAL_NON_PROXY_HOSTS"
+	InternalNonProxyHostsKey     = "DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS"
 	DefaultInternalNonProxyHosts = "localhost"
 	DomainSocketToHttp           = "Domain Socket <-> HTTP"
 	DomainSocketToHttps          = "Domain Socket <-> HTTPS"
@@ -41,8 +41,8 @@ var common = NewCommon(logger)
 
 type DomainProxyServer struct {
 	sharedParams           SharedParams
-	proxyTargetWhitelist   map[string]bool
-	internalProxy          bool
+	targetWhitelist        map[string]bool
+	enableInternalProxy    bool
 	internalProxyHost      string
 	internalProxyPort      int
 	internalProxyUser      string
@@ -59,8 +59,8 @@ func NewDomainProxyServer() *DomainProxyServer {
 	runningContext, initiateShutdown := context.WithCancel(context.Background())
 	return &DomainProxyServer{
 		sharedParams:          common.NewSharedParams(),
-		proxyTargetWhitelist:  getProxyTargetWhitelist(),
-		internalProxy:         getInternalProxy(),
+		targetWhitelist:       getTargetWhitelist(),
+		enableInternalProxy:   getEnableInternalProxy(),
 		internalProxyHost:     getInternalProxyHost(),
 		internalProxyPort:     getInternalProxyPort(),
 		internalProxyUser:     getInternalProxyUser(),
@@ -306,7 +306,7 @@ func getTargetHostAndPort(host string, defaultPort int) (string, int) {
 }
 
 func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, writer http.ResponseWriter) bool {
-	if !dps.proxyTargetWhitelist[targetHost] {
+	if !dps.targetWhitelist[targetHost] {
 		message := fmt.Sprintf("Target host %s is not whitelisted", targetHost)
 		logger.Println(message)
 		http.Error(writer, message, http.StatusForbidden)
@@ -316,7 +316,7 @@ func (dps *DomainProxyServer) isTargetWhitelisted(targetHost string, writer http
 }
 
 func (dps *DomainProxyServer) useInternalProxy(targetHost string) bool {
-	if dps.internalProxy {
+	if dps.enableInternalProxy {
 		if !dps.internalNonProxyHosts[targetHost] {
 			return true
 		} else {
@@ -388,12 +388,12 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 	}
 }
 
-func getProxyTargetWhitelist() map[string]bool {
-	return common.GetCsvEnvVariable(ProxyTargetWhitelistKey, DefaultProxyTargetWhitelist)
+func getTargetWhitelist() map[string]bool {
+	return common.GetCsvEnvVariable(TargetWhitelistKey, DefaultTargetWhitelist)
 }
 
-func getInternalProxy() bool {
-	return common.GetBoolEnvVariable(InternalProxyKey, DefaultInternalProxy)
+func getEnableInternalProxy() bool {
+	return common.GetBoolEnvVariable(EnableInternalProxyKey, DefaultEnableInternalProxy)
 }
 
 func getInternalProxyHost() string {

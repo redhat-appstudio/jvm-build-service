@@ -142,8 +142,8 @@ func stopInternalProxyServer(t *testing.T, internalProxyServer *http.Server) {
 func commonTestBehaviour(t *testing.T, qualifier string) {
 	// Set env variables
 	t.Setenv(DomainSocketKey, getRandomDomainSocket())
-	t.Setenv(ServerHttpPortKey, DomainProxyPort)
-	t.Setenv(ProxyTargetWhitelistKey, "127.0.0.1,foo.bar")
+	t.Setenv(HttpPortKey, DomainProxyPort)
+	t.Setenv(TargetWhitelistKey, "127.0.0.1,foo.bar")
 	// Start services
 	domainProxyServer, domainProxyClient := startDomainProxy()
 	defer stopDomainProxy(domainProxyServer, domainProxyClient)
@@ -304,7 +304,7 @@ func commonInternalProxyTestBehaviour(t *testing.T, qualifier string, onRequestF
 	// Start internal proxy
 	internalProxyServer := startInternalProxyServer(t, onRequestFunction, onConnectFunction)
 	// Set env variables
-	t.Setenv(InternalProxyKey, "true")
+	t.Setenv(EnableInternalProxyKey, "true")
 	t.Setenv(InternalProxyHostKey, Localhost)
 	t.Setenv(InternalProxyPortKey, InternalProxyPort)
 	t.Setenv(InternalNonProxyHostsKey, "example.com")

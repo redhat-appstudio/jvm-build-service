@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	Localhost             = "localhost"
-	ServerHttpPortKey     = "SERVER_HTTP_PORT"
-	DefaultServerHttpPort = 8080
-	HttpToDomainSocket    = "HTTP <-> Domain Socket"
+	Localhost          = "localhost"
+	HttpPortKey        = "DOMAIN_PROXY_HTTP_PORT"
+	DefaultHttpPort    = 8080
+	HttpToDomainSocket = "HTTP <-> Domain Socket"
 )
 
 var logger = NewLogger("Domain Proxy Client")
@@ -21,7 +21,7 @@ var common = NewCommon(logger)
 
 type DomainProxyClient struct {
 	sharedParams          SharedParams
-	serverHttpPort        int
+	httpPort              int
 	httpConnectionCounter atomic.Uint64
 	listener              net.Listener
 	shutdownContext       context.Context
@@ -32,7 +32,7 @@ func NewDomainProxyClient() *DomainProxyClient {
 	shutdownContext, initiateShutdown := context.WithCancel(context.Background())
 	return &DomainProxyClient{
 		sharedParams:     common.NewSharedParams(),
-		serverHttpPort:   getServerHttpPort(),
+		httpPort:         getHttpPort(),
 		shutdownContext:  shutdownContext,
 		initiateShutdown: initiateShutdown,
 	}
@@ -41,7 +41,7 @@ func NewDomainProxyClient() *DomainProxyClient {
 func (dpc *DomainProxyClient) Start(ready chan<- bool) {
 	logger.Println("Starting domain proxy client...")
 	var err error
-	dpc.listener, err = net.Listen(TCP, fmt.Sprintf("%s:%d", Localhost, dpc.serverHttpPort))
+	dpc.listener, err = net.Listen(TCP, fmt.Sprintf("%s:%d", Localhost, dpc.httpPort))
 	if err != nil {
 		logger.Fatalf("Failed to start HTTP server: %v", err)
 	}
@@ -49,7 +49,7 @@ func (dpc *DomainProxyClient) Start(ready chan<- bool) {
 }
 
 func (dpc *DomainProxyClient) startClient(ready chan<- bool) {
-	logger.Printf("HTTP server listening on port %d", dpc.serverHttpPort)
+	logger.Printf("HTTP server listening on port %d", dpc.httpPort)
 	ready <- true
 	for {
 		select {
@@ -110,6 +110,6 @@ func (dpc *DomainProxyClient) Stop() {
 	}
 }
 
-func getServerHttpPort() int {
-	return common.GetIntEnvVariable(ServerHttpPortKey, DefaultServerHttpPort)
+func getHttpPort() int {
+	return common.GetIntEnvVariable(HttpPortKey, DefaultHttpPort)
 }

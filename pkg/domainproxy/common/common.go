@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	ByteBufferSizeKey        = "BYTE_BUFFER_SIZE"
+	ByteBufferSizeKey        = "DOMAIN_PROXY_BYTE_BUFFER_SIZE"
 	DefaultByteBufferSize    = 32768
-	DomainSocketKey          = "DOMAIN_SOCKET"
+	DomainSocketKey          = "DOMAIN_PROXY_DOMAIN_SOCKET"
 	DefaultDomainSocket      = "/tmp/domain-socket.sock"
-	ConnectionTimeoutKey     = "CONNECTION_TIMEOUT"
+	ConnectionTimeoutKey     = "DOMAIN_PROXY_CONNECTION_TIMEOUT"
 	DefaultConnectionTimeout = 10000 * time.Millisecond
-	IdleTimeoutKey           = "IDLE_TIMEOUT"
+	IdleTimeoutKey           = "DOMAIN_PROXY_IDLE_TIMEOUT"
 	DefaultIdleTimeout       = 30000 * time.Millisecond
 	TCP                      = "tcp"
 	UNIX                     = "unix"

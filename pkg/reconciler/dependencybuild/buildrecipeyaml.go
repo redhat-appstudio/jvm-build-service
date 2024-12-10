@@ -546,49 +546,49 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "DOMAIN_PROXY",
+					Name: "ENABLE_DOMAIN_PROXY",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: "true",
 					},
 				},
 				{
-					Name: "PROXY_TARGET_WHITELIST",
+					Name: "DOMAIN_PROXY_TARGET_WHITELIST",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: whitelistUrl.Host + ",localhost,cdn-ubi.redhat.com,repo1.maven.org,repo.scala-sbt.org,scala.jfrog.io,repo.typesafe.com,jfrog-prod-usw2-shared-oregon-main.s3.amazonaws.com",
 					},
 				},
 				{
-					Name: "INTERNAL_PROXY_HOST",
+					Name: "DOMAIN_PROXY_INTERNAL_PROXY_HOST",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: "indy-generic-proxy",
 					},
 				},
 				{
-					Name: "INTERNAL_PROXY_PORT",
+					Name: "DOMAIN_PROXY_INTERNAL_PROXY_PORT",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: "80",
 					},
 				},
 				{
-					Name: "INTERNAL_PROXY_USER",
+					Name: "DOMAIN_PROXY_INTERNAL_PROXY_USER",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: buildId + "+tracking",
 					},
 				},
 				{
-					Name: "INTERNAL_PROXY_PASSWORD",
+					Name: "DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: "${ACCESS_TOKEN}", // TODO how to get the access token value?
 					},
 				},
 				{
-					Name: "INTERNAL_NON_PROXY_HOSTS",
+					Name: "DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: whitelistUrl.Host + ",localhost",
