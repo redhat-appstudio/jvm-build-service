@@ -57,7 +57,7 @@ func (c *Common) NewSharedParams() SharedParams {
 
 func (c *Common) BiDirectionalTransfer(runningContext context.Context, leftConnection, rightConnection net.Conn, byteBufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
 	defer c.CloseConnection(leftConnection, rightConnection, connectionType, connectionNo)
-	done := make(chan struct{}, 2)
+	transferContext, terminateTransfer := context.WithCancel(runningContext)
 	if err := leftConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
 		c.HandleSetDeadlineError(leftConnection, err)
 		return
@@ -66,20 +66,17 @@ func (c *Common) BiDirectionalTransfer(runningContext context.Context, leftConne
 		c.HandleSetDeadlineError(rightConnection, err)
 		return
 	}
-	go c.Transfer(runningContext, leftConnection, rightConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
-	go c.Transfer(runningContext, rightConnection, leftConnection, done, byteBufferSize, idleTimeout, connectionType, connectionNo)
-	<-done
-	<-done
+	go c.Transfer(transferContext, terminateTransfer, leftConnection, rightConnection, byteBufferSize, idleTimeout, connectionType, connectionNo)
+	go c.Transfer(transferContext, terminateTransfer, rightConnection, leftConnection, byteBufferSize, idleTimeout, connectionType, connectionNo)
+	<-transferContext.Done()
 }
 
-func (c *Common) Transfer(runningContext context.Context, sourceConnection, targetConnection net.Conn, done chan struct{}, bufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
-	defer func() {
-		done <- struct{}{}
-	}()
+func (c *Common) Transfer(transferContext context.Context, terminateTransfer context.CancelFunc, sourceConnection, targetConnection net.Conn, bufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
+	defer terminateTransfer()
 	buf := make([]byte, bufferSize)
 	for {
 		select {
-		case <-runningContext.Done():
+		case <-transferContext.Done():
 			return
 		default:
 			if n, err := io.CopyBuffer(sourceConnection, targetConnection, buf); err != nil {
@@ -95,6 +92,8 @@ func (c *Common) Transfer(runningContext context.Context, sourceConnection, targ
 					return
 				}
 				c.logger.Printf("%d bytes transferred for %s connection %d", n, connectionType, connectionNo)
+			} else {
+				return
 			}
 		}
 	}
@@ -117,10 +116,12 @@ func (c *Common) HandleListenerCloseError(err error) {
 
 func (c *Common) handleConnectionError(err error, connectionType string, connectionNo uint64) {
 	var netErr net.Error
-	if errors.As(err, &netErr) && netErr.Timeout() {
-		c.logger.Printf("%s connection %d timed out", connectionType, connectionNo)
-	} else if err != io.EOF {
-		c.logger.Printf("Failed to transfer data using %s connection %d: %v", connectionType, connectionNo, err)
+	if !errors.Is(err, net.ErrClosed) {
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			c.logger.Printf("%s connection %d timed out", connectionType, connectionNo)
+		} else if err != io.EOF {
+			c.logger.Printf("Failed to transfer data using %s connection %d: %v", connectionType, connectionNo, err)
+		}
 	}
 }
 
