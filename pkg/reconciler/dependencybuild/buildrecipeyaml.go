@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -133,7 +134,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 }
 */
 
-func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, buildId string, existingImages map[string]string, orasOptions string) (*tektonpipeline.PipelineSpec, string, error) {
+func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfig *v1alpha1.JBSConfig, systemConfig *v1alpha1.SystemConfig, recipe *v1alpha1.BuildRecipe, db *v1alpha1.DependencyBuild, paramValues []tektonpipeline.Param, buildRequestProcessorImage string, domainProxyImage string, buildId string, existingImages map[string]string, orasOptions string) (*tektonpipeline.PipelineSpec, string, error) {
 
 	// Rather than tagging with hash of json build recipe, buildrequestprocessor image and db.Name as the former two
 	// could change with new image versions just use db.Name (which is a hash of scm url/tag/path so should be stable)
@@ -480,6 +481,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		},
 	}
 
+	whitelistUrl, err := url.Parse(cacheUrl)
+	if err != nil {
+		return nil, "", err
+	}
 	ps.Tasks = append([]tektonpipeline.PipelineTask{
 		{
 			Name:     BuildTaskName,
@@ -524,6 +529,69 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 							// This allows us to set environment variables that can be picked up by our Containerfile/build script.
 							PipelineParamProxyUrl + "=" + cacheUrl,
 						},
+					},
+				},
+				{
+					Name: "HERMETIC",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "true",
+					},
+				},
+				{
+					Name: "BUILD_IMAGE",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: domainProxyImage,
+					},
+				},
+				{
+					Name: "ENABLE_DOMAIN_PROXY",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "true",
+					},
+				},
+				{
+					Name: "DOMAIN_PROXY_TARGET_WHITELIST",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: whitelistUrl.Host + ",localhost,cdn-ubi.redhat.com,repo1.maven.org,repo.scala-sbt.org,scala.jfrog.io,repo.typesafe.com,jfrog-prod-usw2-shared-oregon-main.s3.amazonaws.com",
+					},
+				},
+				{
+					Name: "DOMAIN_PROXY_INTERNAL_PROXY_HOST",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "indy-generic-proxy",
+					},
+				},
+				{
+					Name: "DOMAIN_PROXY_INTERNAL_PROXY_PORT",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "80",
+					},
+				},
+				{
+					Name: "DOMAIN_PROXY_INTERNAL_PROXY_USER",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: buildId + "+tracking",
+					},
+				},
+				{
+					Name: "DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "${ACCESS_TOKEN}", // TODO how to get the access token value?
+					},
+				},
+				{
+					Name: "DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: whitelistUrl.Host + ",localhost",
 					},
 				},
 			},

@@ -629,7 +629,7 @@ func runDbTests(path string, testSet string, ta *testArgs) {
 		pf.Stop()
 
 		ta.t.Run(fmt.Sprintf("buildrecipe is deleted with dependencybuild for %s", s), func(t *testing.T) {
-			defer GenerateStatusReport(ta.ns, jvmClient, kubeClient, tektonClient)
+			// can't generate status report here because we delete dependency build
 			err = wait.PollUntilContextTimeout(context.TODO(), ta.interval, time.Hour, true, func(ctx context.Context) (done bool, err error) {
 				err = jvmClient.JvmbuildserviceV1alpha1().DependencyBuilds(ta.ns).Delete(context.TODO(), db.Name, metav1.DeleteOptions{})
 				if err != nil {
@@ -743,7 +743,7 @@ func getMavenRepoDetails(ta *testArgs) (*MavenRepoDetails, *portforward.PortForw
 	mavenRepository := os.Getenv("MAVEN_REPOSITORY")
 	mavenRepository = strings.ReplaceAll(mavenRepository, "http://jvm-build-maven-repo."+ta.ns+".svc.cluster.local", fmt.Sprintf("http://127.0.0.1:%d", localPort))
 	mavenPassword := os.Getenv("MAVEN_PASSWORD")
-	fmt.Printf("Retrieved maven repository %#v\n", mavenRepository)
+	ta.t.Logf("retrieved maven repository %#v\n", mavenRepository)
 	return &MavenRepoDetails{Username: mavenUsername, Url: mavenRepository, Password: mavenPassword}, &pf
 }
 

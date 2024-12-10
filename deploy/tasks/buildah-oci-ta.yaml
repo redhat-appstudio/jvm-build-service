@@ -131,10 +131,62 @@ spec:
       description: The name of the ConfigMap to read CA bundle data from.
       type: string
       default: trusted-ca
-    - name: ENABLE_INDY_PROXY
+    - name: BUILD_IMAGE
+      description: The buildah image to use.
       type: string
-      description: Enable the indy generic proxy (true/false)
+      default: quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
+    - name: ENABLE_DOMAIN_PROXY
+      description: Determines if domain proxy will be used when hermetic mode is enabled.
+      type: string
       default: "false"
+    - name: DOMAIN_PROXY_BYTE_BUFFER_SIZE
+      description: The byte buffer size to use for the domain proxy.
+      type: string
+      default: 32768
+    - name: DOMAIN_PROXY_DOMAIN_SOCKET
+      description: The domain socket to use for the domain proxy.
+      type: string
+      default: /tmp/domain-socket.sock
+    - name: DOMAIN_PROXY_CONNECTION_TIMEOUT
+      description: The connection timeout in milliseconds to use for the domain proxy.
+      type: string
+      default: 10000
+    - name: DOMAIN_PROXY_IDLE_TIMEOUT
+      description: The idle timeout in milliseconds to use for the domain proxy.
+      type: string
+      default: 30000
+    - name: DOMAIN_PROXY_TARGET_WHITELIST
+      description: Comma separated whitelist of target hosts for the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_ENABLE_INTERNAL_PROXY
+      description: Determines if internal proxy will be used when domain proxy is enabled.
+      type: string
+      default: "false"
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_HOST
+      description: Host of proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_PORT
+      description: Port of proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_USER
+      description: User of proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD
+      description: Password of proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS
+      description: Comma separated list of target hosts that bypass the proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_HTTP_PORT
+      description: The HTTP port to use for the domain proxy.
+      type: string
+      default: 8080
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built
@@ -167,17 +219,6 @@ spec:
         secretName: $(params.ENTITLEMENT_SECRET)
     - name: shared
       emptyDir: {}
-    - name: indy-generic-proxy-stage-secrets
-      secret:
-        optional: true
-        secretName: indy-generic-proxy-secrets
-    - name: indy-generic-proxy-stage-config
-      configMap:
-        items:
-          - key: application.yaml
-            path: application.yaml
-        name: indy-generic-proxy-stage-config
-        optional: true
     - name: trusted-ca
       configMap:
         items:
@@ -203,6 +244,8 @@ spec:
         value: $(params.BUILD_ARGS_FILE)
       - name: CONTEXT
         value: $(params.CONTEXT)
+      - name: DOCKERFILE
+        value: $(params.DOCKERFILE)
       - name: ENTITLEMENT_SECRET
         value: $(params.ENTITLEMENT_SECRET)
       - name: HERMETIC
@@ -229,6 +272,32 @@ spec:
         value: $(params.YUM_REPOS_D_SRC)
       - name: YUM_REPOS_D_TARGET
         value: $(params.YUM_REPOS_D_TARGET)
+      - name: ENABLE_DOMAIN_PROXY
+        value: $(params.ENABLE_DOMAIN_PROXY)
+      - name: DOMAIN_PROXY_BYTE_BUFFER_SIZE
+        value: $(params.DOMAIN_PROXY_BYTE_BUFFER_SIZE)
+      - name: DOMAIN_PROXY_DOMAIN_SOCKET
+        value: $(params.DOMAIN_PROXY_DOMAIN_SOCKET)
+      - name: DOMAIN_PROXY_CONNECTION_TIMEOUT
+        value: $(params.DOMAIN_PROXY_CONNECTION_TIMEOUT)
+      - name: DOMAIN_PROXY_IDLE_TIMEOUT
+        value: $(params.DOMAIN_PROXY_IDLE_TIMEOUT)
+      - name: DOMAIN_PROXY_TARGET_WHITELIST
+        value: $(params.DOMAIN_PROXY_TARGET_WHITELIST)
+      - name: DOMAIN_PROXY_ENABLE_INTERNAL_PROXY
+        value: $(params.DOMAIN_PROXY_ENABLE_INTERNAL_PROXY)
+      - name: DOMAIN_PROXY_INTERNAL_PROXY_HOST
+        value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_HOST)
+      - name: DOMAIN_PROXY_INTERNAL_PROXY_PORT
+        value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_PORT)
+      - name: DOMAIN_PROXY_INTERNAL_PROXY_USER
+        value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_USER)
+      - name: DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD
+        value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD)
+      - name: DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS
+        value: $(params.DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS)
+      - name: DOMAIN_PROXY_HTTP_PORT
+        value: $(params.DOMAIN_PROXY_HTTP_PORT)
     volumeMounts:
       - mountPath: /shared
         name: shared
@@ -242,7 +311,7 @@ spec:
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
         - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
     - name: build
-      image: quay.io/konflux-ci/buildah-task:latest@sha256:b2d6c32d1e05e91920cd4475b2761d58bb7ee11ad5dff3ecb59831c7572b4d0c
+      image: $(params.BUILD_IMAGE)
       args:
         - --build-args
         - $(params.BUILD_ARGS[*])
@@ -264,8 +333,6 @@ spec:
       env:
         - name: COMMIT_SHA
           value: $(params.COMMIT_SHA)
-        - name: DOCKERFILE
-          value: $(params.DOCKERFILE)
       script: |
         #!/bin/bash
         set -e
@@ -280,10 +347,6 @@ spec:
           dockerfile_path="$(pwd)/$SOURCE_CODE_DIR/$CONTEXT/$DOCKERFILE"
         elif [ -e "$SOURCE_CODE_DIR/$DOCKERFILE" ]; then
           dockerfile_path="$(pwd)/$SOURCE_CODE_DIR/$DOCKERFILE"
-        elif [ -e "$DOCKERFILE" ]; then
-          # Custom Dockerfile location is mainly used for instrumented builds for SAST scanning and analyzing.
-          # Instrumented builds use this step as their base and also need to provide modified Dockerfile.
-          dockerfile_path="$DOCKERFILE"
         elif echo "$DOCKERFILE" | grep -q "^https\?://"; then
           echo "Fetch Dockerfile from $DOCKERFILE"
           dockerfile_path=$(mktemp --suffix=-Dockerfile)
@@ -333,28 +396,28 @@ spec:
         LABELS=()
         # Split `args` into two sets of arguments.
         while [[ $# -gt 0 ]]; do
-          case $1 in
-          --build-args)
-            shift
-            # Note: this may result in multiple --build-arg=KEY=value flags with the same KEY being
-            # passed to buildah. In that case, the *last* occurrence takes precedence. This is why
-            # we append BUILD_ARGS after the content of the BUILD_ARGS_FILE - they take precedence.
-            while [[ $# -gt 0 && $1 != --* ]]; do
-              build_args+=("$1")
-              shift
+            case $1 in
+                --build-args)
+                    shift
+                    # Note: this may result in multiple --build-arg=KEY=value flags with the same KEY being
+                    # passed to buildah. In that case, the *last* occurrence takes precedence. This is why
+                    # we append BUILD_ARGS after the content of the BUILD_ARGS_FILE - they take precedence.
+                    while [[ $# -gt 0 && $1 != --* ]]; do
+                                                          build_args+=("$1")
+                                                                              shift
             done
-            ;;
-          --labels)
-            shift
-            while [[ $# -gt 0 && $1 != --* ]]; do
-              LABELS+=("--label" "$1")
-              shift
+                    ;;
+                --labels)
+                    shift
+                    while [[ $# -gt 0 && $1 != --* ]]; do
+                                                          LABELS+=("--label" "$1")
+                                                                                    shift
             done
-            ;;
-          *)
-            echo "unexpected argument: $1" >&2
-            exit 2
-            ;;
+                    ;;
+                *)
+                    echo "unexpected argument: $1" >&2
+                    exit 2
+                    ;;
           esac
         done
 
@@ -369,16 +432,21 @@ spec:
         )
 
         BUILDAH_ARGS=()
-        UNSHARE_ARGS=()
+        use_domain_proxy=false
 
         if [ "${HERMETIC}" == "true" ]; then
           BUILDAH_ARGS+=("--pull=never")
-          UNSHARE_ARGS+=("--net")
-
+          UNSHARE_ARGS="--net"
           for image in $BASE_IMAGES; do
             unshare -Ufp --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -- buildah pull $image
           done
           echo "Build will be executed with network isolation"
+          if [ "${DOMAIN_PROXY}" == "true" ]; then
+            use_domain_proxy=true
+            echo "Build will be executed with domain proxy"
+            /app/domain-proxy-server &
+            server_pid=$!
+          fi
         fi
 
         if [ -n "${TARGET_STAGE}" ]; then
@@ -399,18 +467,16 @@ spec:
           BUILDAH_ARGS+=("--skip-unused-stages=false")
         fi
 
-        VOLUME_MOUNTS=()
-
         if [ -f "/var/workdir/cachi2/cachi2.env" ]; then
           cp -r "/var/workdir/cachi2" /tmp/
           chmod -R go+rwX /tmp/cachi2
-          VOLUME_MOUNTS+=(--volume /tmp/cachi2:/cachi2)
+          VOLUME_MOUNTS="--volume /tmp/cachi2:/cachi2"
           # Read in the whole file (https://unix.stackexchange.com/questions/533277), then
           # for each RUN ... line insert the cachi2.env command *after* any options like --mount
           sed -E -i \
-            -e 'H;1h;$!d;x' \
-            -e 's@^\s*(run((\s|\\\n)+-\S+)*(\s|\\\n)+)@\1. /cachi2/cachi2.env \&\& \\\n    @igM' \
-            "$dockerfile_copy"
+              -e 'H;1h;$!d;x' \
+              -e 's@^\s*(run((\s|\\\n)+-\S+)*(\s|\\\n)+)@\1. /cachi2/cachi2.env \&\& \\\n    @igM' \
+              "$dockerfile_copy"
           echo "Prefetched content will be made available"
 
           prefetched_repo_for_my_arch="/tmp/cachi2/output/deps/rpm/$(uname -m)/repos.d/cachi2.repo"
@@ -431,7 +497,7 @@ spec:
         if [ -d "${YUM_REPOS_D_FETCHED}" ]; then
           chmod -R go+rwX ${YUM_REPOS_D_FETCHED}
           mount_point=$(realpath ${YUM_REPOS_D_FETCHED})
-          VOLUME_MOUNTS+=(--volume "${mount_point}:${YUM_REPOS_D_TARGET}")
+          VOLUME_MOUNTS="${VOLUME_MOUNTS} --volume ${mount_point}:${YUM_REPOS_D_TARGET}"
         fi
 
         DEFAULT_LABELS=(
@@ -448,47 +514,20 @@ spec:
         ACTIVATION_KEY_PATH="/activation-key"
         ENTITLEMENT_PATH="/entitlement"
 
-        # 1. do not enable activation key and entitlement at same time. If both vars are provided, prefer activation key.
-        # 2. Activation-keys will be used when the key 'org' exists in the activation key secret.
-        # 3. try to pre-register and mount files to the correct location so that users do no need to modify Dockerfiles.
-        # 3. If the Dockerfile contains the string "subcription-manager register", add the activation-keys volume
-        #    to buildah but don't pre-register for backwards compatibility. In this case mount an empty directory on
-        #    shared emptydir volume to "/etc/pki/entitlement" to prevent certificates from being included in the produced
-        #    container.
+        # do not enable activation key and entitlement at same time. If both vars are provided, prefer activation key.
+        # when activation keys are used an empty directory on shared emptydir volume to "/etc/pki/entitlement" to prevent certificates from being included in the produced container
+        # To use activation key file 'org' must exist, which means the key 'org' must exist in the key/value secret
 
-        REGISTERED="false"
         if [ -e /activation-key/org ]; then
           cp -r --preserve=mode "$ACTIVATION_KEY_PATH" /tmp/activation-key
           mkdir /shared/rhsm-tmp
-          VOLUME_MOUNTS+=(--volume /tmp/activation-key:/activation-key -v /shared/rhsm-tmp:/etc/pki/entitlement:Z)
+          VOLUME_MOUNTS="${VOLUME_MOUNTS} --volume /tmp/activation-key:/activation-key -v /shared/rhsm-tmp:/etc/pki/entitlement:Z"
           echo "Adding activation key to the build"
 
-          if ! grep subscription-manager "$dockerfile_path" | grep -q register; then
-            # user is not running registration in the Containerfile: pre-register.
-            echo "Pre-registering with subscription manager."
-            subscription-manager register --org "$(cat /tmp/activation-key/org)" --activationkey "$(cat /tmp/activation-key/activationkey)"
-            REGISTERED=$?
-            # copy generated certificates to /shared/rhsm-tmp
-            cp /etc/pki/entitlement/*.pem /shared/rhsm-tmp
-
-            # and then mount get /etc/rhsm/ca/redhat-uep.pem into /run/secrets/rhsm/ca
-            VOLUME_MOUNTS+=(--volume /etc/rhsm/ca/redhat-uep.pem:/run/secrets/rhsm/ca/redhat-uep.pem)
-          fi
-
-        # was: if [ -d "$ACTIVATION_KEY_PATH" ]; then
         elif find /entitlement -name "*.pem" >>null; then
           cp -r --preserve=mode "$ENTITLEMENT_PATH" /tmp/entitlement
-          VOLUME_MOUNTS+=(--volume /tmp/entitlement:/etc/pki/entitlement)
+          VOLUME_MOUNTS="${VOLUME_MOUNTS} --volume /tmp/entitlement:/etc/pki/entitlement"
           echo "Adding the entitlement to the build"
-        fi
-
-        if [ -n "$ADDITIONAL_VOLUME_MOUNTS" ]; then
-          # ADDITIONAL_VOLUME_MOUNTS allows to specify more volumes for the build.
-          # This is primarily used in instrumented builds for SAST scanning and analyzing.
-          # Instrumented builds use this step as their base and add some other tools.
-          while read -r volume_mount; do
-            VOLUME_MOUNTS+=("--volume=$volume_mount")
-          done <<<"$ADDITIONAL_VOLUME_MOUNTS"
         fi
 
         ADDITIONAL_SECRET_PATH="/additional-secret"
@@ -501,34 +540,49 @@ spec:
           done < <(find $ADDITIONAL_SECRET_TMP -maxdepth 1 -type f -exec basename {} \;)
         fi
 
-        if [ -f "$ca_bundle" ]; then
-          cp -r --preserve=mode /mnt/trusted-ca /tmp/trusted-ca
-          VOLUME_MOUNTS+=(--volume /tmp/trusted-ca:/etc/pki/ca-trust/source/anchors)
-          echo "Adding the trusted-ca to the build"
-        fi
-
         # Prevent ShellCheck from giving a warning because 'image' is defined and 'IMAGE' is not.
         declare IMAGE
 
-        buildah_cmd_array=(
-          buildah build
-          "${VOLUME_MOUNTS[@]}"
-          "${BUILDAH_ARGS[@]}"
-          "${LABELS[@]}"
-          --tls-verify="$TLSVERIFY" --no-cache
-          --ulimit nofile=4096:4096
-          -f "$dockerfile_copy" -t "$IMAGE" .
-        )
-        buildah_cmd=$(printf "%q " "${buildah_cmd_array[@]}")
+        if [ "$use_domain_proxy" == "true" ]; then
+          # Without expansion
+          cat >> /app/build-script.sh << 'EOF'
+        #!/bin/sh
+        ip link set lo up
+        /app/domain-proxy-client &
+        client_pid=$!
+        EOF
 
-        if [ "${HERMETIC}" == "true" ]; then
-          # enabling loopback adapter enables Bazel builds to work in hermetic mode.
-          command="ip link set lo up && $buildah_cmd"
+          # With expansion
+          cat >> /app/build-script.sh << EOF
+        buildah build $VOLUME_MOUNTS ${BUILDAH_ARGS[@]} ${LABELS[@]} --tls-verify=$TLSVERIFY --no-cache --ulimit nofile=4096:4096 -f "$dockerfile_copy" -t $IMAGE .
+        EOF
+
+          # Without expansion
+          cat >> /app/build-script.sh << 'EOF'
+        set +e
+        kill $client_pid
+        wait $client_pid
+        set -e
+        EOF
+
+          cat /app/build-script.sh
+          chmod +x /app/build-script.sh
+
+          unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- /app/build-script.sh
+
+          set +e
+          kill $server_pid
+          wait $server_pid
+          set -e
         else
-          command="$buildah_cmd"
+          unshare -Uf $UNSHARE_ARGS --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w ${SOURCE_CODE_DIR}/$CONTEXT -- buildah build \
+            $VOLUME_MOUNTS \
+            "${BUILDAH_ARGS[@]}" \
+            "${LABELS[@]}" \
+            --tls-verify=$TLSVERIFY --no-cache \
+            --ulimit nofile=4096:4096 \
+            -f "$dockerfile_copy" -t "$IMAGE" .
         fi
-
-        unshare -Uf "${UNSHARE_ARGS[@]}" --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w "${SOURCE_CODE_DIR}/$CONTEXT" -- sh -c "$command"
 
         container=$(buildah from --pull-never "$IMAGE")
         buildah mount $container | tee /shared/container_path
@@ -548,11 +602,6 @@ spec:
 
         # Needed to generate base images SBOM
         echo "$BASE_IMAGES" >/shared/base_images_from_dockerfile
-
-        # unregister pod from subscription manager
-        if [ "$REGISTERED" == "0" ]; then
-          subscription-manager unregister
-        fi
       computeResources:
         limits:
           cpu: "4"
@@ -638,7 +687,7 @@ spec:
       securityContext:
         runAsUser: 0
     - name: inject-sbom-and-push
-      image: quay.io/konflux-ci/buildah-task:latest@sha256:b2d6c32d1e05e91920cd4475b2761d58bb7ee11ad5dff3ecb59831c7572b4d0c
+      image: quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /var/lib/containers
@@ -683,8 +732,8 @@ spec:
             docker://$IMAGE && break || status=$?
         done
         if [ "$status" -ne 0 ]; then
-          echo "Failed to push sbom image to registry after ${max_run} tries"
-          exit 1
+            echo "Failed to push sbom image to registry after ${max_run} tries"
+            exit 1
         fi
 
         cat "/var/workdir"/image-digest | tee $(results.IMAGE_DIGEST.path)
@@ -734,24 +783,3 @@ spec:
         requests:
           cpu: 100m
           memory: 256Mi
-  sidecars:
-    - name: indy-generic-proxy
-      image: quay.io/factory2/indy-generic-proxy-service:latest-stage-mpplus
-      volumeMounts:
-        - name: indy-generic-proxy-stage-secrets
-          readOnly: true
-          mountPath: /mnt/secrets-generic-proxy
-        - name: indy-generic-proxy-stage-config
-          readOnly: true
-          mountPath: /deployment/config
-      computeResources:
-        limits:
-          cpu: 1
-          memory: 2Gi
-        requests:
-          cpu: 200m
-          memory: 512Mi
-      script: |
-        if [ "$(params.ENABLE_INDY_PROXY)" == "true" ]; then
-          /usr/local/bin/dumb-init /deployment/start-service.sh
-        fi
