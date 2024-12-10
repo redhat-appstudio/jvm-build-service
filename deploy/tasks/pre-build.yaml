@@ -118,9 +118,13 @@ spec:
     - name: create-pre-build-image
       image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:52f1391e6f1c472fd10bb838f64fae2ed3320c636f536014978a5ddbdfc6b3af
       script: |
+        set -x
+        echo "IMAGE is $(params.IMAGE_URL)"
+        ls -lR $HOME/.docker || true
+        cat $HOME/.docker/config.json
         echo "Creating pre-build-image archive"
+        select-oci-auth.sh $(params.IMAGE_URL)
         create-archive --store $(params.IMAGE_URL) $(results.PRE_BUILD_IMAGE_DIGEST.path)=$(workspaces.source.path)/source
       env:
         - name: IMAGE_URL
           value: $(params.IMAGE_URL)
-
