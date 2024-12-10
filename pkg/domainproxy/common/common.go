@@ -57,7 +57,6 @@ func (c *Common) NewSharedParams() SharedParams {
 
 func (c *Common) BiDirectionalTransfer(runningContext context.Context, leftConnection, rightConnection net.Conn, byteBufferSize int, idleTimeout time.Duration, connectionType string, connectionNo uint64) {
 	defer c.CloseConnection(leftConnection, rightConnection, connectionType, connectionNo)
-	transferContext, terminateTransfer := context.WithCancel(runningContext)
 	if err := leftConnection.SetDeadline(time.Now().Add(idleTimeout)); err != nil {
 		c.HandleSetDeadlineError(leftConnection, err)
 		return
@@ -66,6 +65,7 @@ func (c *Common) BiDirectionalTransfer(runningContext context.Context, leftConne
 		c.HandleSetDeadlineError(rightConnection, err)
 		return
 	}
+	transferContext, terminateTransfer := context.WithCancel(runningContext)
 	go c.Transfer(transferContext, terminateTransfer, leftConnection, rightConnection, byteBufferSize, idleTimeout, connectionType, connectionNo)
 	go c.Transfer(transferContext, terminateTransfer, rightConnection, leftConnection, byteBufferSize, idleTimeout, connectionType, connectionNo)
 	<-transferContext.Done()
