@@ -86,6 +86,11 @@ public abstract class AbstractPreprocessor implements Runnable {
             set -o pipefail
             set -e
 
+            export http_proxy=http://localhost:8080
+            export https_proxy=${http_proxy}
+            export HTTP_PROXY=${http_proxy}
+            export HTTPS_PROXY=${http_proxy}
+            export ANT_OPTS="-Dhttp.proxyHost=localhost -Dhttp.proxyPort=8080"
             #fix this when we no longer need to run as root
             export HOME=${HOME:=/root}
             # Custom base working directory.
@@ -187,6 +192,10 @@ public abstract class AbstractPreprocessor implements Runnable {
             WORKDIR /var/workdir
             ARG PROXY_URL=""
             ENV PROXY_URL=$PROXY_URL
+            ENV http_proxy=http://localhost:8080
+            ENV https_proxy=${http_proxy}
+            ENV HTTP_PROXY=${http_proxy}
+            ENV HTTPS_PROXY=${http_proxy}
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
             RUN /var/workdir/run-build.sh
@@ -293,26 +302,11 @@ public abstract class AbstractPreprocessor implements Runnable {
 
           <proxies>
             <proxy>
-              <id>indy-http</id>
-              <!-- TODO: Until domain-proxy is implemented disable this - probably needs conditional activation but settings profiles don't support interpolation -->
-              <active>false</active>
+              <id>domain-proxy</id>
+              <active>true</active>
               <protocol>http</protocol>
-              <host>domain-proxy</host>
-              <port>80</port>
-              <!-- <username>build-ADDTW3JAGHYAA+tracking</username> -->
-              <username>${BUILD_ID}+tracking</username>
-              <password>${ACCESS_TOKEN}</password>
-              <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
-            </proxy>
-            <proxy>
-              <id>indy-https</id>
-              <active>false</active>
-              <protocol>https</protocol>
-              <host>domain-proxy</host>
-              <port>80</port>
-              <username>${BUILD_ID}+tracking</username>
-              <password>${ACCESS_TOKEN}</password>
-              <nonProxyHosts>${PROXY_URL}|localhost</nonProxyHosts>
+              <host>localhost</host>
+              <port>8080</port>
             </proxy>
           </proxies>
 

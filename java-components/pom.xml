@@ -90,7 +90,6 @@
         <module>common-tools</module>
         <module>common-images</module>
         <module>common-maven</module>
-        <module>domain-proxy</module>
     </modules>
 
     <dependencyManagement>
