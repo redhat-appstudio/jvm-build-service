@@ -187,6 +187,10 @@ spec:
       description: The HTTP port to use for the domain proxy.
       type: string
       default: 8080
+    - name: ENABLE_INDY_PROXY
+      type: string
+      description: Enable the indy generic proxy (true/false)
+      default: "false"
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built
@@ -219,6 +223,17 @@ spec:
         secretName: $(params.ENTITLEMENT_SECRET)
     - name: shared
       emptyDir: {}
+    - name: indy-generic-proxy-secrets
+      secret:
+        optional: true
+        secretName: indy-generic-proxy-secrets
+    - name: indy-generic-proxy-config
+      configMap:
+        items:
+          - key: application.yaml
+            path: application.yaml
+        name: indy-generic-proxy-config
+        optional: true
     - name: trusted-ca
       configMap:
         items:
@@ -840,3 +855,24 @@ spec:
         requests:
           cpu: 100m
           memory: 256Mi
+  sidecars:
+    - name: indy-generic-proxy
+      image: quay.io/factory2/indy-generic-proxy-service:latest-stage-mpplus
+      volumeMounts:
+        - name: indy-generic-proxy-secrets
+          readOnly: true
+          mountPath: /mnt/secrets-generic-proxy
+        - name: indy-generic-proxy-config
+          readOnly: true
+          mountPath: /deployment/config
+      computeResources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+        requests:
+          cpu: 200m
+          memory: 512Mi
+      script: |
+        if [ "$(params.ENABLE_INDY_PROXY)" == "true" ]; then
+          /usr/local/bin/dumb-init /deployment/start-service.sh
+        fi
