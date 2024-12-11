@@ -165,7 +165,6 @@ spec:
           - name: url
             value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/maven-deployment.yaml
 
-
   finally:
     - name: notification
       displayName: "Notify PNC driver"
@@ -187,7 +186,6 @@ spec:
           - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
             description: Name of the processor image. Useful to override for development.
             type: string
-            default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
           - name: NOTIFICATION_CONTEXT
             description: Notification context
             type: string
@@ -202,26 +200,3 @@ spec:
               - --context=$(params.NOTIFICATION_CONTEXT)
               - --status=$(params.STATUS)
               - --build-id=$(params.BUILD_ID)
-#            script: |
-#              #!/bin/bash
-#              set -x
-#              data=""
-#              if [ $(params.STATUS) == "Failed" ]; then
-#                echo "Looks like one or more tasks returned failure!"
-#                data={\"status\":\"$(params.STATUS)\"}
-#              else
-#                echo "Notify PNC on pipeline completion"
-#                data={\"status\":\"$(params.STATUS)\"}
-#              fi
-#              echo "Send notification >>\n$data"
-#              #        curl -v -X POST -H "Content-Type: application/json" \
-#              #          -H "Authorization: Bearer $(params.ACCESS_TOKEN)" \
-#              #          --data $data \
-#              echo "### context: $(params.NOTIFICATION_CONTEXT)"
-#              /opt/jboss/container/java/run/run-java.sh $@
-
-#      taskRef:
-#        resolver: http
-#        params:
-#          - name: url
-#            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/BR3/deploy/tasks/notification.yaml

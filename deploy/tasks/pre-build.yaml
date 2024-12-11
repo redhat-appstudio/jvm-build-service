@@ -120,10 +120,8 @@ spec:
       script: |
         set -x
         echo "IMAGE is $(params.IMAGE_URL)"
-        ls -lR $HOME/.docker || true
-        cat $HOME/.docker/config.json
+        cat $HOME/.docker/config.json || true
         echo "Creating pre-build-image archive"
-        select-oci-auth.sh $(params.IMAGE_URL)
         create-archive --store $(params.IMAGE_URL) $(results.PRE_BUILD_IMAGE_DIGEST.path)=$(workspaces.source.path)/source
       env:
         - name: IMAGE_URL
