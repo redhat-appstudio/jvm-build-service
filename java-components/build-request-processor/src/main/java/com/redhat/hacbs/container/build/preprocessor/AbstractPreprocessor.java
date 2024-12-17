@@ -198,7 +198,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             ENV HTTPS_PROXY=${http_proxy}
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
-            RUN /var/workdir/run-build.sh
+            RUN /var/workdir/run-build.sh 2>&1 | tee /var/workdir/build.log
             """.formatted(recipeImage);
 
         if (type == ToolType.ANT) {
@@ -212,12 +212,14 @@ public abstract class AbstractPreprocessor implements Runnable {
                     RUN /opt/jboss/container/java/run/run-java.sh copy-artifacts --source-path=/var/workdir/workspace/source --deploy-path=/var/workdir/workspace/artifacts
                     FROM scratch
                     COPY --from=1 /var/workdir/workspace/artifacts /deployment/
+                    COPY --from=0 /var/workdir/build.log /log/
                     """.formatted(buildRequestProcessorImage);
         } else {
             containerFile +=
                 """
                     FROM scratch
                     COPY --from=0 /var/workdir/workspace/artifacts /deployment/
+                    COPY --from=0 /var/workdir/build.log /log/
                     """;
         }
 
