@@ -11,6 +11,7 @@ import com.redhat.hacbs.container.deploy.BuildVerifyCommand;
 import com.redhat.hacbs.container.deploy.CopyArtifactsCommand;
 import com.redhat.hacbs.container.deploy.DeployCommand;
 import com.redhat.hacbs.container.deploy.DeployPreBuildSourceCommand;
+import com.redhat.hacbs.container.notification.NotifyCommand;
 import com.redhat.hacbs.container.verifier.VerifyBuiltArtifactsCommand;
 
 import io.quarkus.picocli.runtime.annotations.TopCommand;
@@ -27,6 +28,7 @@ import picocli.CommandLine;
         LookupBuildInfoCommand.class,
         LookupScmLocationCommand.class,
         DeployCommand.class,
+        NotifyCommand.class,
         MavenPrepareCommand.class,
         SBTPrepareCommand.class,
         VerifyBuiltArtifactsCommand.class

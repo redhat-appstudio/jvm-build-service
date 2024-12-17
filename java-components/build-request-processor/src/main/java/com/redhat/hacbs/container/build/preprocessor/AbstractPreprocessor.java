@@ -221,8 +221,6 @@ public abstract class AbstractPreprocessor implements Runnable {
                     """;
         }
 
-        Log.warnf("### containerFile is\n%s", containerFile);
-
         return containerFile;
     }
 

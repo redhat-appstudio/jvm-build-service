@@ -43,6 +43,9 @@ spec:
       type: string
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       type: string
+    - name: NOTIFICATION_CONTEXT
+      type: string
+      default: ""
   workspaces:
     - name: source
       description: Workspace containing the source code
@@ -101,7 +104,7 @@ spec:
         resolver: http
         params:
           - name: url
-            value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/pre-build.yaml
+            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/BR3/deploy/tasks/pre-build.yaml
       workspaces:
         - name: source
           workspace: source
@@ -161,3 +164,39 @@ spec:
         params:
           - name: url
             value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/maven-deployment.yaml
+
+  finally:
+    - name: notification
+      displayName: "Notify PNC driver"
+      params:
+        - name: ACCESS_TOKEN
+          value: $(params.ACCESS_TOKEN)
+        - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
+          value: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+        - name: NOTIFICATION_CONTEXT
+          value: $(params.NOTIFICATION_CONTEXT)
+        - name: STATUS
+          value: $(tasks.status)
+      taskSpec:
+        params:
+          - name: ACCESS_TOKEN
+            description: Access token for OAuth.
+            type: string
+            default: ""
+          - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
+            description: Name of the processor image. Useful to override for development.
+            type: string
+          - name: NOTIFICATION_CONTEXT
+            description: Notification context
+            type: string
+          - name: STATUS
+            description: Aggregate tasks status
+            type: string
+        steps:
+          - name: notification
+            image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+            args:
+              - notify
+              - --context=$(params.NOTIFICATION_CONTEXT)
+              - --status=$(params.STATUS)
+              - --build-id=$(params.BUILD_ID)
