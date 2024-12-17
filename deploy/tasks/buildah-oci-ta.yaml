@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: 0.12.1
     tekton.dev/tags: image-build, konflux
   labels:
-    app.kubernetes.io/version: "0.2"
+    app.kubernetes.io/version: 0.2.1
     build.appstudio.redhat.com/build_type: docker
 spec:
   description: |-
@@ -131,6 +131,62 @@ spec:
       description: The name of the ConfigMap to read CA bundle data from.
       type: string
       default: trusted-ca
+    - name: BUILD_IMAGE
+      description: The buildah image to use.
+      type: string
+      default: quay.io/konflux-ci/buildah-task:latest@sha256:b2d6c32d1e05e91920cd4475b2761d58bb7ee11ad5dff3ecb59831c7572b4d0c
+    - name: ENABLE_DOMAIN_PROXY
+      description: Determines if domain proxy will be used when hermetic mode is enabled.
+      type: string
+      default: "false"
+    - name: DOMAIN_PROXY_BYTE_BUFFER_SIZE
+      description: The byte buffer size to use for the domain proxy.
+      type: string
+      default: 32768
+    - name: DOMAIN_PROXY_DOMAIN_SOCKET
+      description: The domain socket to use for the domain proxy.
+      type: string
+      default: /tmp/domain-socket.sock
+    - name: DOMAIN_PROXY_CONNECTION_TIMEOUT
+      description: The connection timeout in milliseconds to use for the domain proxy.
+      type: string
+      default: 10000
+    - name: DOMAIN_PROXY_IDLE_TIMEOUT
+      description: The idle timeout in milliseconds to use for the domain proxy.
+      type: string
+      default: 30000
+    - name: DOMAIN_PROXY_TARGET_WHITELIST
+      description: Comma separated whitelist of target hosts for the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_ENABLE_INTERNAL_PROXY
+      description: Determines if internal proxy will be used when domain proxy is enabled.
+      type: string
+      default: "false"
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_HOST
+      description: Host of proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_PORT
+      description: Port of proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_USER
+      description: User of proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD
+      description: Password of proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS
+      description: Comma separated list of target hosts that bypass the proxy used internally by the domain proxy.
+      type: string
+      default: ""
+    - name: DOMAIN_PROXY_HTTP_PORT
+      description: The HTTP port to use for the domain proxy.
+      type: string
+      default: 8080
     - name: ENABLE_INDY_PROXY
       type: string
       description: Enable the indy generic proxy (true/false)
@@ -167,16 +223,16 @@ spec:
         secretName: $(params.ENTITLEMENT_SECRET)
     - name: shared
       emptyDir: {}
-    - name: indy-generic-proxy-stage-secrets
+    - name: indy-generic-proxy-secrets
       secret:
         optional: true
         secretName: indy-generic-proxy-secrets
-    - name: indy-generic-proxy-stage-config
+    - name: indy-generic-proxy-config
       configMap:
         items:
           - key: application.yaml
             path: application.yaml
-        name: indy-generic-proxy-stage-config
+        name: indy-generic-proxy-config
         optional: true
     - name: trusted-ca
       configMap:
@@ -229,6 +285,32 @@ spec:
         value: $(params.YUM_REPOS_D_SRC)
       - name: YUM_REPOS_D_TARGET
         value: $(params.YUM_REPOS_D_TARGET)
+      - name: ENABLE_DOMAIN_PROXY
+        value: $(params.ENABLE_DOMAIN_PROXY)
+      - name: DOMAIN_PROXY_BYTE_BUFFER_SIZE
+        value: $(params.DOMAIN_PROXY_BYTE_BUFFER_SIZE)
+      - name: DOMAIN_PROXY_DOMAIN_SOCKET
+        value: $(params.DOMAIN_PROXY_DOMAIN_SOCKET)
+      - name: DOMAIN_PROXY_CONNECTION_TIMEOUT
+        value: $(params.DOMAIN_PROXY_CONNECTION_TIMEOUT)
+      - name: DOMAIN_PROXY_IDLE_TIMEOUT
+        value: $(params.DOMAIN_PROXY_IDLE_TIMEOUT)
+      - name: DOMAIN_PROXY_TARGET_WHITELIST
+        value: $(params.DOMAIN_PROXY_TARGET_WHITELIST)
+      - name: DOMAIN_PROXY_ENABLE_INTERNAL_PROXY
+        value: $(params.DOMAIN_PROXY_ENABLE_INTERNAL_PROXY)
+      - name: DOMAIN_PROXY_INTERNAL_PROXY_HOST
+        value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_HOST)
+      - name: DOMAIN_PROXY_INTERNAL_PROXY_PORT
+        value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_PORT)
+      - name: DOMAIN_PROXY_INTERNAL_PROXY_USER
+        value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_USER)
+      - name: DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD
+        value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD)
+      - name: DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS
+        value: $(params.DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS)
+      - name: DOMAIN_PROXY_HTTP_PORT
+        value: $(params.DOMAIN_PROXY_HTTP_PORT)
     volumeMounts:
       - mountPath: /shared
         name: shared
@@ -236,13 +318,13 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:e0e457b6af10e44ff6b90208a9e69adc863a865e1c062c4cb84bf3846037d74d
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:52f1391e6f1c472fd10bb838f64fae2ed3320c636f536014978a5ddbdfc6b3af
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
         - $(params.CACHI2_ARTIFACT)=/var/workdir/cachi2
     - name: build
-      image: quay.io/konflux-ci/buildah-task:latest@sha256:b2d6c32d1e05e91920cd4475b2761d58bb7ee11ad5dff3ecb59831c7572b4d0c
+      image: $(params.BUILD_IMAGE)
       args:
         - --build-args
         - $(params.BUILD_ARGS[*])
@@ -268,7 +350,7 @@ spec:
           value: $(params.DOCKERFILE)
       script: |
         #!/bin/bash
-        set -e
+        set -euo pipefail
         ca_bundle=/mnt/trusted-ca/ca-bundle.crt
         if [ -f "$ca_bundle" ]; then
           echo "INFO: Using mounted CA bundle: $ca_bundle"
@@ -305,7 +387,7 @@ spec:
         dockerfile_copy=$(mktemp --tmpdir "$(basename "$dockerfile_path").XXXXXX")
         cp "$dockerfile_path" "$dockerfile_copy"
 
-        if [ -n "$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR" ] && grep -q '^\s*RUN \(./\)\?mvn' "$dockerfile_copy"; then
+        if [ -n "${JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR-}" ] && grep -q '^\s*RUN \(./\)\?mvn' "$dockerfile_copy"; then
           sed -i -e "s|^\s*RUN \(\(./\)\?mvn\)\(.*\)|RUN echo \"<settings><mirrors><mirror><id>mirror.default</id><url>http://$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR/v1/cache/default/0/</url><mirrorOf>*</mirrorOf></mirror></mirrors></settings>\" > /tmp/settings.yaml; \1 -s /tmp/settings.yaml \3|g" "$dockerfile_copy"
           touch /var/lib/containers/java
         fi
@@ -363,9 +445,9 @@ spec:
           BUILD_ARG_FLAGS+=("--build-arg=$build_arg")
         done
 
+        dockerfile-json "${BUILD_ARG_FLAGS[@]}" "$dockerfile_copy" >/shared/parsed_dockerfile.json
         BASE_IMAGES=$(
-          dockerfile-json "${BUILD_ARG_FLAGS[@]}" "$dockerfile_copy" |
-            jq -r '.Stages[] | select(.From | .Stage or .Scratch | not) | .BaseName | select(test("^oci-archive:") | not)'
+          jq -r '.Stages[] | select(.From | .Stage or .Scratch | not) | .BaseName | select(test("^oci-archive:") | not)' /shared/parsed_dockerfile.json
         )
 
         BUILDAH_ARGS=()
@@ -456,23 +538,28 @@ spec:
         #    shared emptydir volume to "/etc/pki/entitlement" to prevent certificates from being included in the produced
         #    container.
 
-        REGISTERED="false"
         if [ -e /activation-key/org ]; then
           cp -r --preserve=mode "$ACTIVATION_KEY_PATH" /tmp/activation-key
-          mkdir /shared/rhsm-tmp
-          VOLUME_MOUNTS+=(--volume /tmp/activation-key:/activation-key -v /shared/rhsm-tmp:/etc/pki/entitlement:Z)
+          mkdir -p /shared/rhsm/etc/pki/entitlement
+          mkdir -p /shared/rhsm/etc/pki/consumer
+
+          VOLUME_MOUNTS+=(-v /tmp/activation-key:/activation-key
+            -v /shared/rhsm/etc/pki/entitlement:/etc/pki/entitlement:Z
+            -v /shared/rhsm/etc/pki/consumer:/etc/pki/consumer:Z)
           echo "Adding activation key to the build"
 
-          if ! grep subscription-manager "$dockerfile_path" | grep -q register; then
+          if ! grep -E "^[^#]*subscription-manager.[^#]*register" "$dockerfile_path"; then
             # user is not running registration in the Containerfile: pre-register.
             echo "Pre-registering with subscription manager."
             subscription-manager register --org "$(cat /tmp/activation-key/org)" --activationkey "$(cat /tmp/activation-key/activationkey)"
-            REGISTERED=$?
-            # copy generated certificates to /shared/rhsm-tmp
-            cp /etc/pki/entitlement/*.pem /shared/rhsm-tmp
+            trap 'subscription-manager unregister || true' EXIT
+
+            # copy generated certificates to /shared volume
+            cp /etc/pki/entitlement/*.pem /shared/rhsm/etc/pki/entitlement
+            cp /etc/pki/consumer/*.pem /shared/rhsm/etc/pki/consumer
 
             # and then mount get /etc/rhsm/ca/redhat-uep.pem into /run/secrets/rhsm/ca
-            VOLUME_MOUNTS+=(--volume /etc/rhsm/ca/redhat-uep.pem:/run/secrets/rhsm/ca/redhat-uep.pem)
+            VOLUME_MOUNTS+=(--volume /etc/rhsm/ca/redhat-uep.pem:/etc/rhsm/ca/redhat-uep.pem:Z)
           fi
 
         # was: if [ -d "$ACTIVATION_KEY_PATH" ]; then
@@ -482,7 +569,7 @@ spec:
           echo "Adding the entitlement to the build"
         fi
 
-        if [ -n "$ADDITIONAL_VOLUME_MOUNTS" ]; then
+        if [ -n "${ADDITIONAL_VOLUME_MOUNTS-}" ]; then
           # ADDITIONAL_VOLUME_MOUNTS allows to specify more volumes for the build.
           # This is primarily used in instrumented builds for SAST scanning and analyzing.
           # Instrumented builds use this step as their base and add some other tools.
@@ -528,7 +615,46 @@ spec:
           command="$buildah_cmd"
         fi
 
-        unshare -Uf "${UNSHARE_ARGS[@]}" --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w "${SOURCE_CODE_DIR}/$CONTEXT" -- sh -c "$command"
+        # disable host subcription manager integration
+        find /usr/share/rhel/secrets -type l -exec unlink {} \;
+
+        if [ "${HERMETIC}" == "true" ] && [ "${ENABLE_DOMAIN_PROXY}" == "true" ]; then
+          echo "Build will be executed with domain proxy"
+          /app/domain-proxy-server &
+          server_pid=$!
+
+          # Without expansion
+          cat >> /app/build-script.sh << 'EOF'
+        #!/bin/sh
+        /app/domain-proxy-client &
+        client_pid=$!
+        EOF
+
+          # With expansion
+          cat >> /app/build-script.sh << EOF
+        $command
+        EOF
+
+          # Without expansion
+          cat >> /app/build-script.sh << 'EOF'
+        set +e
+        kill $client_pid
+        wait $client_pid
+        set -e
+        EOF
+
+          cat /app/build-script.sh
+          chmod +x /app/build-script.sh
+
+          unshare -Uf "${UNSHARE_ARGS[@]}" --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w "${SOURCE_CODE_DIR}/$CONTEXT" -- /app/build-script.sh
+
+          set +e
+          kill $server_pid
+          wait $server_pid
+          set -e
+        else
+          unshare -Uf "${UNSHARE_ARGS[@]}" --keep-caps -r --map-users 1,1,65536 --map-groups 1,1,65536 -w "${SOURCE_CODE_DIR}/$CONTEXT" -- sh -c "$command"
+        fi
 
         container=$(buildah from --pull-never "$IMAGE")
         buildah mount $container | tee /shared/container_path
@@ -543,16 +669,13 @@ spec:
 
         touch /shared/base_images_digests
         for image in $BASE_IMAGES; do
-          buildah images --format '{{ .Name }}:{{ .Tag }}@{{ .Digest }}' --filter reference="$image" >>/shared/base_images_digests
+          base_image_digest=$(buildah images --format '{{ .Name }}:{{ .Tag }}@{{ .Digest }}' --filter reference="$image")
+          # In some cases, there might be BASE_IMAGES, but not any associated digest. This happens
+          # if buildah did not use that particular image during build because it was skipped
+          if [ -n "$base_image_digest" ]; then
+            echo "$image $base_image_digest" >>/shared/base_images_digests
+          fi
         done
-
-        # Needed to generate base images SBOM
-        echo "$BASE_IMAGES" >/shared/base_images_from_dockerfile
-
-        # unregister pod from subscription manager
-        if [ "$REGISTERED" == "0" ]; then
-          subscription-manager unregister
-        fi
       computeResources:
         limits:
           cpu: "4"
@@ -564,6 +687,67 @@ spec:
         capabilities:
           add:
             - SETFCAP
+    - name: push
+      image: quay.io/konflux-ci/buildah-task:latest@sha256:b2d6c32d1e05e91920cd4475b2761d58bb7ee11ad5dff3ecb59831c7572b4d0c
+      workingDir: /var/workdir
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+        - mountPath: /mnt/trusted-ca
+          name: trusted-ca
+          readOnly: true
+      script: |
+        #!/bin/bash
+        set -e
+
+        ca_bundle=/mnt/trusted-ca/ca-bundle.crt
+        if [ -f "$ca_bundle" ]; then
+          echo "INFO: Using mounted CA bundle: $ca_bundle"
+          cp -vf $ca_bundle /etc/pki/ca-trust/source/anchors
+          update-ca-trust
+        fi
+
+        retries=5
+        # Push to a unique tag based on the TaskRun name to avoid race conditions
+        echo "Pushing to ${IMAGE%:*}:${TASKRUN_NAME}"
+        if ! buildah push \
+          --retry "$retries" \
+          --tls-verify="$TLSVERIFY" \
+          "$IMAGE" \
+          "docker://${IMAGE%:*}:$(context.taskRun.name)"; then
+          echo "Failed to push sbom image to ${IMAGE%:*}:$(context.taskRun.name) after ${retries} tries"
+          exit 1
+        fi
+
+        # Push to a tag based on the git revision
+        echo "Pushing to ${IMAGE}"
+        if ! buildah push \
+          --retry "$retries" \
+          --tls-verify="$TLSVERIFY" \
+          --digestfile "/var/workdir/image-digest" "$IMAGE" \
+          "docker://$IMAGE"; then
+          echo "Failed to push sbom image to $IMAGE after ${retries} tries"
+          exit 1
+        fi
+
+        cat "/var/workdir"/image-digest | tee $(results.IMAGE_DIGEST.path)
+        echo -n "$IMAGE" | tee $(results.IMAGE_URL.path)
+        {
+          echo -n "${IMAGE}@"
+          cat "/var/workdir/image-digest"
+        } >"$(results.IMAGE_REF.path)"
+      computeResources:
+        limits:
+          cpu: "4"
+          memory: 4Gi
+        requests:
+          cpu: "1"
+          memory: 1Gi
+      securityContext:
+        capabilities:
+          add:
+            - SETFCAP
+        runAsUser: 0
     - name: sbom-syft-generate
       image: registry.access.redhat.com/rh-syft-tech-preview/syft-rhel9:1.4.1@sha256:34d7065427085a31dc4949bd283c001b91794d427e1e4cdf1b21ea4faf9fee3f
       workingDir: /var/workdir/source
@@ -608,7 +792,7 @@ spec:
       securityContext:
         runAsUser: 0
     - name: prepare-sboms
-      image: quay.io/redhat-appstudio/sbom-utility-scripts-image@sha256:53a3041dff341b7fd1765b9cc2c324625d19e804b2eaff10a6e6d9dcdbde3a91
+      image: quay.io/redhat-appstudio/sbom-utility-scripts-image@sha256:e1347023ef1e83d52813c26384f551e3a03e482539d17a647955603e7ea6b579
       workingDir: /var/workdir
       script: |
         echo "Merging contents of sbom-source.json and sbom-image.json into sbom-cyclonedx.json"
@@ -620,14 +804,23 @@ spec:
           mv sbom-temp.json sbom-cyclonedx.json
         fi
 
-        echo "Creating sbom-purl.json"
-        python3 /scripts/create_purl_sbom.py
-
         echo "Adding base images data to sbom-cyclonedx.json"
         python3 /scripts/base_images_sbom_script.py \
           --sbom=sbom-cyclonedx.json \
-          --base-images-from-dockerfile=/shared/base_images_from_dockerfile \
+          --parsed-dockerfile=/shared/parsed_dockerfile.json \
           --base-images-digests=/shared/base_images_digests
+
+        echo "Adding image reference to sbom"
+        IMAGE_URL="$(cat "$(results.IMAGE_URL.path)")"
+        IMAGE_DIGEST="$(cat "$(results.IMAGE_DIGEST.path)")"
+
+        python3 /scripts/add_image_reference.py \
+          --image-url "$IMAGE_URL" \
+          --image-digest "$IMAGE_DIGEST" \
+          --input-file sbom-cyclonedx.json \
+          --output-file /tmp/sbom-cyclonedx.tmp.json
+
+        mv /tmp/sbom-cyclonedx.tmp.json sbom-cyclonedx.json
       computeResources:
         limits:
           cpu: 200m
@@ -637,88 +830,16 @@ spec:
           memory: 256Mi
       securityContext:
         runAsUser: 0
-    - name: inject-sbom-and-push
-      image: quay.io/konflux-ci/buildah-task:latest@sha256:b2d6c32d1e05e91920cd4475b2761d58bb7ee11ad5dff3ecb59831c7572b4d0c
+    - name: upload-sbom
+      image: quay.io/konflux-ci/appstudio-utils:48c311af02858e2422d6229600e9959e496ddef1@sha256:91ddd999271f65d8ec8487b10f3dd378f81aa894e11b9af4d10639fd52bba7e8
       workingDir: /var/workdir
       volumeMounts:
-        - mountPath: /var/lib/containers
-          name: varlibcontainers
         - mountPath: /mnt/trusted-ca
           name: trusted-ca
           readOnly: true
       script: |
         #!/bin/bash
-        set -e
 
-        ca_bundle=/mnt/trusted-ca/ca-bundle.crt
-        if [ -f "$ca_bundle" ]; then
-          echo "INFO: Using mounted CA bundle: $ca_bundle"
-          cp -vf $ca_bundle /etc/pki/ca-trust/source/anchors
-          update-ca-trust
-        fi
-
-        base_image_name=$(buildah inspect --format '{{ index .ImageAnnotations "org.opencontainers.image.base.name"}}' $IMAGE | cut -f1 -d'@')
-        base_image_digest=$(buildah inspect --format '{{ index .ImageAnnotations "org.opencontainers.image.base.digest"}}' $IMAGE)
-        container=$(buildah from --pull-never $IMAGE)
-        buildah copy $container sbom-cyclonedx.json sbom-purl.json /root/buildinfo/content_manifests/
-        buildah config -a org.opencontainers.image.base.name=${base_image_name} -a org.opencontainers.image.base.digest=${base_image_digest} $container
-
-        BUILDAH_ARGS=()
-        if [ "${SQUASH}" == "true" ]; then
-          BUILDAH_ARGS+=("--squash")
-        fi
-
-        buildah commit "${BUILDAH_ARGS[@]}" $container $IMAGE
-
-        status=-1
-        max_run=5
-        sleep_sec=10
-        for run in $(seq 1 $max_run); do
-          status=0
-          [ "$run" -gt 1 ] && sleep $sleep_sec
-          echo "Pushing sbom image to registry"
-          buildah push \
-            --tls-verify=$TLSVERIFY \
-            --digestfile /var/workdir/image-digest $IMAGE \
-            docker://$IMAGE && break || status=$?
-        done
-        if [ "$status" -ne 0 ]; then
-          echo "Failed to push sbom image to registry after ${max_run} tries"
-          exit 1
-        fi
-
-        cat "/var/workdir"/image-digest | tee $(results.IMAGE_DIGEST.path)
-        echo -n "$IMAGE" | tee $(results.IMAGE_URL.path)
-        {
-          echo -n "${IMAGE}@"
-          cat "/var/workdir/image-digest"
-        } >"$(results.IMAGE_REF.path)"
-
-        # Remove tag from IMAGE while allowing registry to contain a port number.
-        sbom_repo="${IMAGE%:*}"
-        sbom_digest="$(sha256sum sbom-cyclonedx.json | cut -d' ' -f1)"
-        # The SBOM_BLOB_URL is created by `cosign attach sbom`.
-        echo -n "${sbom_repo}@sha256:${sbom_digest}" | tee "$(results.SBOM_BLOB_URL.path)"
-      computeResources:
-        limits:
-          cpu: "4"
-          memory: 4Gi
-        requests:
-          cpu: "1"
-          memory: 1Gi
-      securityContext:
-        capabilities:
-          add:
-            - SETFCAP
-        runAsUser: 0
-    - name: upload-sbom
-      image: quay.io/konflux-ci/appstudio-utils:ab6b0b8e40e440158e7288c73aff1cf83a2cc8a9@sha256:24179f0efd06c65d16868c2d7eb82573cce8e43533de6cea14fec3b7446e0b14
-      workingDir: /var/workdir
-      volumeMounts:
-        - mountPath: /mnt/trusted-ca
-          name: trusted-ca
-          readOnly: true
-      script: |
         ca_bundle=/mnt/trusted-ca/ca-bundle.crt
         if [ -f "$ca_bundle" ]; then
           echo "INFO: Using mounted CA bundle: $ca_bundle"
@@ -727,6 +848,12 @@ spec:
         fi
 
         cosign attach sbom --sbom sbom-cyclonedx.json --type cyclonedx "$(cat "$(results.IMAGE_REF.path)")"
+
+        # Remove tag from IMAGE while allowing registry to contain a port number.
+        sbom_repo="${IMAGE%:*}"
+        sbom_digest="$(sha256sum sbom-cyclonedx.json | cut -d' ' -f1)"
+        # The SBOM_BLOB_URL is created by `cosign attach sbom`.
+        echo -n "${sbom_repo}@sha256:${sbom_digest}" | tee "$(results.SBOM_BLOB_URL.path)"
       computeResources:
         limits:
           cpu: 200m
@@ -738,10 +865,10 @@ spec:
     - name: indy-generic-proxy
       image: quay.io/factory2/indy-generic-proxy-service:latest-stage-mpplus
       volumeMounts:
-        - name: indy-generic-proxy-stage-secrets
+        - name: indy-generic-proxy-secrets
           readOnly: true
           mountPath: /mnt/secrets-generic-proxy
-        - name: indy-generic-proxy-stage-config
+        - name: indy-generic-proxy-config
           readOnly: true
           mountPath: /deployment/config
       computeResources:
