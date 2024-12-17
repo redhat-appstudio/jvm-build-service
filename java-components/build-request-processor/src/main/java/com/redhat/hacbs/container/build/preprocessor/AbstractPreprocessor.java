@@ -189,7 +189,7 @@ public abstract class AbstractPreprocessor implements Runnable {
             ENV PROXY_URL=$PROXY_URL
             COPY .jbs/run-build.sh /var/workdir
             COPY . /var/workdir/workspace/source/
-            RUN /var/workdir/run-build.sh | tee /var/workdir/build.log
+            RUN /var/workdir/run-build.sh 2>&1 | tee /var/workdir/build.log
             """.formatted(recipeImage);
 
         if (type == ToolType.ANT) {
