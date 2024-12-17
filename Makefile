@@ -44,6 +44,8 @@ minikube-test:
 build:
 	go build -o out/jvmbuildservice cmd/controller/main.go
 	env GOOS=linux GOARCH=amd64 GOTOOLCHAIN=auto GOSUMDB=sum.golang.org go build -mod=vendor -o out/jvmbuildservice ./cmd/controller
+	go build -o out/domainproxyserver cmd/domainproxy/server/main.go
+	go build -o out/domainproxyclient cmd/domainproxy/client/main.go
 
 clean:
 	rm -rf out
@@ -60,13 +62,15 @@ generate: generate-crds
 verify-generate-deepcopy-client: generate-deepcopy-client
 	hack/verify-codegen.sh
 
-dev-image:
+dev-image: build
 	@if [ -z "$$QUAY_USERNAME" ]; then \
             echo "ERROR: QUAY_USERNAME is not set"; \
             exit 1; \
     fi
 	docker build . -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-controller:"$${JBS_QUAY_IMAGE_TAG:-dev}"
+	docker build . -f cmd/domainproxy/docker/Dockerfile.local -t quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
+	docker push quay.io/$(QUAY_USERNAME)/hacbs-jvm-domain-proxy:"$${JBS_QUAY_IMAGE_TAG:-dev}"
 
 dev: dev-image
 	cd java-components && mvn clean install -Dlocal -DskipTests -Ddev
