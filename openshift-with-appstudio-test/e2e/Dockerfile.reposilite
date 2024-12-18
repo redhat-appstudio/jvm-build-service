@@ -1,3 +1,3 @@
 #This file is used to enable renovate to update the digests. It is updated by renovate then substituted into the golang code.
 
-FROM dzikoysk/reposilite:latest@sha256:d7c4ba2598c98551f557721a4cd9e6e3d889b56418b99eca9ca64b4f5bc4ac2e
+FROM dzikoysk/reposilite:latest@sha256:1322154c05528b1e4bd8cf97c43af177d70986f28c8bdd1b7df95d9987da6d06
