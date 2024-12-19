@@ -32,8 +32,6 @@ spec:
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       description: Name of the processor image. Useful to override for development.
       type: string
-      default: "quay.io/ncross/hacbs-jvm-build-request-processor:latest"
-      # default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
   results:
     - name: PRE_BUILD_IMAGE_DIGEST
       description: Digest of the image just built
@@ -53,17 +51,20 @@ spec:
         requests:
           cpu: 10m
           memory: 512Mi
-      script: |
-        /opt/jboss/container/java/run/run-java.sh prepare --type=$(params.BUILD_TOOL) --java-version=$(params.JAVA_VERSION) --build-tool-version=$(params.BUILD_TOOL_VERSION) --recipe-image=$(params.RECIPE_IMAGE) --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE) $(workspaces.source.path)/source
+      args:
+        - prepare
+        - --build-tool-version=$(params.BUILD_TOOL_VERSION)
+        - --java-version=$(params.JAVA_VERSION)
+        - --recipe-image=$(params.RECIPE_IMAGE)
+        - --request-processor-image=$(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+        - --type=$(params.BUILD_TOOL)
+        - $(workspaces.source.path)/source
       env:
         - name: BUILD_SCRIPT
           value: $(params.BUILD_SCRIPT)
     - name: create-pre-build-image
       image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:52f1391e6f1c472fd10bb838f64fae2ed3320c636f536014978a5ddbdfc6b3af
       script: |
-        set -x
-        echo "IMAGE is $(params.IMAGE_URL)"
-        cat $HOME/.docker/config.json || true
         echo "Creating pre-build-image archive"
         create-archive --store $(params.IMAGE_URL) $(results.PRE_BUILD_IMAGE_DIGEST.path)=$(workspaces.source.path)/source
       env:

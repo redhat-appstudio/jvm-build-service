@@ -29,16 +29,18 @@ public abstract class AbstractPreprocessor implements Runnable {
     protected List<String> disabledPlugins;
 
     @CommandLine.Option(names = "--recipe-image", required = true)
-    String recipeImage;
+    protected String recipeImage;
 
     @CommandLine.Option(names = "--request-processor-image", required = true)
-    String buildRequestProcessorImage;
+    protected String buildRequestProcessorImage;
 
     @CommandLine.Option(names = "--java-version", required = true)
-    String javaVersion;
+    protected String javaVersion;
 
     @CommandLine.Option(names = "--build-tool-version", required = true)
-    String buildToolVersion;
+    protected String buildToolVersion;
+
+    protected ToolType type;
 
     protected enum ToolType {
         ANT,
@@ -51,8 +53,6 @@ public abstract class AbstractPreprocessor implements Runnable {
             return name().toLowerCase();
         }
     }
-
-    protected ToolType type;
 
     /**
      * This section creates two files within a <code>.jbs</code> subdirectory. The Containerfile is used

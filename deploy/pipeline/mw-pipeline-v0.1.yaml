@@ -68,6 +68,7 @@ spec:
       type: string
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       type: string
+      default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/konflux-tooling:latest"
     - name: NOTIFICATION_CONTEXT
       type: string
       default: ""
