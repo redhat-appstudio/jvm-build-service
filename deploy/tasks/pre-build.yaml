@@ -11,7 +11,7 @@ metadata:
     build.appstudio.redhat.com/build_type: docker
 spec:
   description: |-
-    Sets up pre-build running the preprocessor, pushing the source and creating the OCI image.
+    Sets up pre-build running the preprocessor creating the OCI image.
   params:
     - name: IMAGE_URL
       description: URL of the OCI image to use.
