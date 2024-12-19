@@ -16,7 +16,8 @@ import picocli.CommandLine;
  * We keep all the options the same between maven, gradle, sbt and ant for now to keep the pipeline setup simpler.
  * Some of these may be ignored by different processors
  */
-public abstract class AbstractPreprocessor implements Runnable {
+@CommandLine.Command(name = "prepare")
+public class AbstractPreprocessor implements Runnable {
 
     /**
      * Equivalent to <code>$(workspaces.source.path)/source</code>
@@ -40,6 +41,7 @@ public abstract class AbstractPreprocessor implements Runnable {
     @CommandLine.Option(names = "--build-tool-version", required = true)
     protected String buildToolVersion;
 
+    @CommandLine.Option(names = "--type")
     protected ToolType type;
 
     protected enum ToolType {

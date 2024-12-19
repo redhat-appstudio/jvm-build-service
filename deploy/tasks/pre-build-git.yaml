@@ -1,0 +1,82 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: pre-build-git
+  annotations:
+    tekton.dev/pipelines.minVersion: 0.12.1
+    tekton.dev/tags: image-build, konflux
+  labels:
+    app.kubernetes.io/version: "0.1"
+    build.appstudio.redhat.com/build_type: docker
+spec:
+  description: |-
+    Sets up pre-build for pushing the source.
+  params:
+    - name: NAME
+      description: Name of the pipeline run (i.e. unique dependency build name)
+      type: string
+    - name: GIT_IDENTITY
+      description: Git username. If empty, deploy-pre-build-source step will be skipped.
+      type: string
+      default: ""
+    - name: GIT_URL
+      description: String to determine whether we're using gitlab or github
+      type: string
+      default: "github"
+    - name: GIT_SSL_VERIFICATION
+      description: Whether to disable ssl verification
+      type: string
+      default: "false"
+    - name: GIT_REUSE_REPOSITORY
+      description: Whether to reuse existing git repository or create new one
+      type: string
+      default: "false"
+    - name: SCM_URL
+      description: Reference to the git repository
+      type: string
+    - name: SCM_HASH
+      description: Git hash
+      type: string
+    - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
+      description: Name of the processor image. Useful to override for development.
+      type: string
+      default: "quay.io/ncross/hacbs-jvm-build-request-processor:latest"
+      # default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
+  results:
+    - name: GIT_ARCHIVE
+      description: Git archive information
+  workspaces:
+    - description: The git repo will be cloned onto the volume backing this Workspace.
+      name: source
+      mountPath: /var/workdir
+  steps:
+    - name: create-pre-build-source
+      image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+      securityContext:
+        runAsUser: 0
+      computeResources:
+        limits:
+          cpu: 300m
+          memory: 512Mi
+        requests:
+          cpu: 10m
+          memory: 512Mi
+      env:
+        - name: GIT_DEPLOY_TOKEN
+          valueFrom:
+            secretKeyRef:
+              optional: true
+              name: jvm-build-git-repo-secrets
+              key: gitdeploytoken
+      args:
+        - deploy-pre-build-source
+        - --source-path=$(workspaces.source.path)/source
+        - --task-run-name=$(context.taskRun.name)
+        - --scm-uri=$(params.SCM_URL)
+        - --scm-commit=$(params.SCM_HASH)
+        - --image-id=$(params.NAME)
+        - --git-identity=$(params.GIT_IDENTITY)
+        - --git-url=$(params.GIT_URL)
+        - --git-disable-ssl-verification=$(params.GIT_SSL_VERIFICATION)
+        - --git-reuse-repository=$(params.GIT_REUSE_REPOSITORY)

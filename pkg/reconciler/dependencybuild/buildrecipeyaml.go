@@ -26,11 +26,12 @@ const (
 	WorkspaceSource      = "source"
 	WorkspaceTls         = "tls"
 
-	GitTaskName       = "git-clone"
-	PreBuildTaskName  = "pre-build"
-	BuildTaskName     = "build"
-	PostBuildTaskName = "post-build"
-	DeployTaskName    = "deploy"
+	GitTaskName         = "git-clone"
+	PreBuildTaskName    = "pre-build"
+	PreBuildGitTaskName = "pre-build-git"
+	BuildTaskName       = "build"
+	PostBuildTaskName   = "post-build"
+	DeployTaskName      = "deploy"
 
 	DomainProxyImage = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/domain-proxy:latest"
 )
@@ -275,7 +276,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 	preBuildImageRequired := preBuildImage == ""
 	if preBuildImageRequired {
 		preBuildImage = "$(tasks." + PreBuildTaskName + ".results." + PipelineResultPreBuildImageDigest + ")"
-		runAfter = []string{PreBuildTaskName}
+		runAfter = []string{PreBuildGitTaskName}
 	}
 	runAfterBuild = append(runAfter, BuildTaskName)
 
@@ -306,6 +307,19 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: v1alpha1.KonfluxPreBuildDefinitions,
+					},
+				},
+			},
+		}
+		preBuildGitResolver := tektonpipeline.ResolverRef{
+			// We can use either a http or git resolver. Using http as avoids cloning an entire repository.
+			Resolver: "http",
+			Params: []tektonpipeline.Param{
+				{
+					Name: "url",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: v1alpha1.KonfluxPreBuildGitDefinitions,
 					},
 				},
 			},
@@ -369,6 +383,79 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
+					Name: "RECIPE_IMAGE",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: recipe.Image,
+					},
+				},
+				{
+					Name: "BUILD_TOOL",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: tool,
+					},
+				},
+				{
+					Name: "BUILD_TOOL_VERSION",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: recipe.ToolVersion,
+					},
+				},
+				{
+					Name: "JAVA_VERSION",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: recipe.JavaVersion,
+					},
+				},
+				{
+					Name: "BUILD_SCRIPT",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: konfluxScript,
+					},
+				},
+				// This will break various parts of JBS as the PNC tooling does NOT support disabling plugins on
+				// a per build basis.
+				//
+				//{
+				//	Name: "BUILD_PLUGINS",
+				//	Value: tektonpipeline.ParamValue{
+				//		Type:      tektonpipeline.ParamTypeString,
+				//		StringVal: strings.Join(recipe.DisabledPlugins, ","),
+				//	},
+				//},
+				{
+					Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/konflux-tooling:latest",
+					},
+				},
+			},
+		}}
+		fmt.Printf("### RECIPE : DISABLEDPLUGINS %#v \n", recipe.DisabledPlugins)
+		pipelinePreBuildGitTask := []tektonpipeline.PipelineTask{{
+			Name:     PreBuildGitTaskName,
+			RunAfter: []string{PreBuildTaskName},
+			TaskRef: &tektonpipeline.TaskRef{
+				// Can't specify name and resolver as they clash.
+				ResolverRef: preBuildGitResolver,
+			},
+			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
+				{Name: WorkspaceSource, Workspace: WorkspaceSource},
+			},
+			Params: []tektonpipeline.Param{
+				{
+					Name: "NAME",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: imageId,
+					},
+				},
+				{
 					Name: "GIT_IDENTITY",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
@@ -411,48 +498,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "RECIPE_IMAGE",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: recipe.Image,
-					},
-				},
-				{
-					Name: "BUILD_TOOL",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: tool,
-					},
-				},
-				{
-					Name: "BUILD_TOOL_VERSION",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: recipe.ToolVersion,
-					},
-				},
-				{
-					Name: "JAVA_VERSION",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: recipe.JavaVersion,
-					},
-				},
-				{
-					Name: "BUILD_SCRIPT",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: konfluxScript,
-					},
-				},
-				{
-					Name: "BUILD_PLUGINS",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: strings.Join(recipe.DisabledPlugins, ","),
-					},
-				},
-				{
 					Name: "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
@@ -463,9 +508,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		}}
 		ps.Tasks = append(pipelineGitTask, ps.Tasks...)
 		ps.Tasks = append(pipelinePreBuildTask, ps.Tasks...)
+		ps.Tasks = append(pipelinePreBuildGitTask, ps.Tasks...)
 		ps.Results = []tektonpipeline.PipelineResult{
 			{Name: PipelineResultPreBuildImageDigest, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultPreBuildImageDigest + ")"}},
-			{Name: PipelineResultGitArchive, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultGitArchive + ")"}},
+			{Name: PipelineResultGitArchive, Value: tektonpipeline.ResultValue{Type: tektonpipeline.ParamTypeString, StringVal: "$(tasks." + PreBuildGitTaskName + ".results." + PipelineResultGitArchive + ")"}},
 		}
 	}
 
@@ -754,6 +800,10 @@ use-archive oci:$URL@$AARCHIVE=%s`, orasOptions, registryArgsWithDefaults(jbsCon
 			Value: value})
 		index := 0
 		if preBuildImageRequired {
+			index += 1
+			ps.Tasks[index].Params = append(ps.Tasks[index].Params, tektonpipeline.Param{
+				Name:  i.Name,
+				Value: value})
 			index += 1
 			ps.Tasks[index].Params = append(ps.Tasks[index].Params, tektonpipeline.Param{
 				Name:  i.Name,
