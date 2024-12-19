@@ -56,9 +56,6 @@ public class NotificationTest {
             .uri(new URI(wireMockServer.baseUrl() + "/internal/completed"))
             .build();
 
-        System.err.println("### wiremock uri: " + wireMockServer.baseUrl());
-        // {"method":"PUT","uri":"http://localhost:8081/internal/completed","headers":[{"name":"Content-Type","value":"application/json"}],"attachment":null}
-
         NotifyCommand notifyCommand = new NotifyCommand();
         notifyCommand.status = "Succeeded";
         notifyCommand.buildId = "1234";
