@@ -41,6 +41,10 @@ spec:
       type: string
     - name: ENABLE_INDY_PROXY
       type: string
+    - name: INDY_PROXY_CLIENT_ID
+      type: string
+    - name: INDY_PROXY_CLIENT_CREDENTIAL
+      type: string
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       type: string
     - name: NOTIFICATION_CONTEXT
@@ -125,6 +129,10 @@ spec:
           value: $(params.caTrustConfigMapName)
         - name: ENABLE_INDY_PROXY
           value: $(params.ENABLE_INDY_PROXY)
+        - name: INDY_PROXY_CLIENT_ID
+          value: $(params.INDY_PROXY_CLIENT_ID)
+        - name: INDY_PROXY_CLIENT_CREDENTIAL
+          value: $(params.INDY_PROXY_CLIENT_CREDENTIAL)
         - name: BUILD_ARGS  #TODO this should be baked in the OCI source image only a ACCESS_TOKEN should be passed
           value:
             - PROXY_URL=$(params.MVN_REPO_DEPENDENCIES_URL)
