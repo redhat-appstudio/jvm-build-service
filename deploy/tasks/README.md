@@ -12,9 +12,9 @@ It should be base-lined to the most recent definition from Konflux build-definit
 ### Domain Proxy
 Adds Domain Proxy to the build:
 * https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L134-L189
-* https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L288-L313
-* https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L327
-* https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L621-L657
+* https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L296-L321
+* https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L335
+* https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L629-L665
 
 ### Indy Sidecar
 Adds Indy configuration to the build:
@@ -25,5 +25,5 @@ Adds Indy configuration to the build:
 
 ### Trusted CA
 Adds the trusted ca to the build:
-* https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L591-L595
+* https://github.com/redhat-appstudio/jvm-build-service/blob/main/deploy/tasks/buildah-oci-ta.yaml#L599-L603
 
