@@ -43,6 +43,3 @@ deploy/**/ci-final/**
 
 # Ignore Gradle build output directory
 **/gradle/build/
-
-# Ignore default domain proxy output directory
-output/

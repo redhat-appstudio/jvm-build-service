@@ -73,6 +73,8 @@ const (
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	DeploySuffix         = "-deploy"
+
+	DomainProxyImage = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/domain-proxy:latest"
 )
 
 type ReconcileDependencyBuild struct {
@@ -537,10 +539,6 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	domainProxyImage, err := r.domainProxyImage(ctx)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 	pr.Namespace = db.Namespace
 	// we do not use generate name since
 	// 1. it was used in creating the db and the db name has random ids
@@ -596,7 +594,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 		Pipeline: &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 		Tasks:    &v12.Duration{Duration: time.Hour * v1alpha1.DefaultTimeout},
 	}
-	pr.Spec.PipelineSpec, diagnosticContainerfile, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, domainProxyImage, attempt.BuildId, preBuildImages, orasOptions)
+	pr.Spec.PipelineSpec, diagnosticContainerfile, err = createPipelineSpec(log, attempt.Recipe.Tool, db.Status.CommitTime, jbsConfig, &systemConfig, attempt.Recipe, db, paramValues, buildRequestProcessorImage, attempt.BuildId, preBuildImages, orasOptions)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -1321,11 +1319,6 @@ func (r *ReconcileDependencyBuild) failedDueToMemory(ctx context.Context, log lo
 
 func (r *ReconcileDependencyBuild) buildRequestProcessorImage(ctx context.Context) (string, error) {
 	image, err := util.GetImageName(ctx, r.client, "build-request-processor", "JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE")
-	return image, err
-}
-
-func (r *ReconcileDependencyBuild) domainProxyImage(ctx context.Context) (string, error) {
-	image, err := util.GetImageName(ctx, r.client, "domain-proxy", "JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE")
 	return image, err
 }
 

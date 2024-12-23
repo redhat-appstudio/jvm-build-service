@@ -153,7 +153,6 @@ export QUAY_USERNAME=<your-quay-io-account-username>
 export JVM_BUILD_SERVICE_IMAGE=
 export JVM_BUILD_SERVICE_CACHE_IMAGE=
 export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=
-export JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE=
 ./deploy/openshift-ci.sh
 make openshift-e2e
 ----

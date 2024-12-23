@@ -76,7 +76,6 @@ jobs:
           export JVM_BUILD_SERVICE_IMAGE=quay.io/$JBS_QUAY_ORG/$JBS_QUAY_IMAGE_CONTROLLER:$JBS_QUAY_IMAGE_TAG
           export JVM_BUILD_SERVICE_CACHE_IMAGE=quay.io/$JBS_QUAY_ORG/konflux-jbs-pnc-tenant/jvm-build-service/cache:$JBS_QUAY_IMAGE_TAG
           export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=quay.io/$JBS_QUAY_ORG/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:$JBS_QUAY_IMAGE_TAG
-          export JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE=quay.io/$JBS_QUAY_ORG/konflux-jbs-pnc-tenant/jvm-build-service/domain-proxy:$JBS_QUAY_IMAGE_TAG
 
           echo "Using worker namespace $JBS_WORKER_NAMESPACE DEV_IP $DEV_IP JVM_BUILD_SERVICE_IMAGE $JVM_BUILD_SERVICE_IMAGE"
 
@@ -140,7 +139,6 @@ jobs:
           export JVM_BUILD_SERVICE_IMAGE=quay.io/$JBS_QUAY_ORG/$JBS_QUAY_IMAGE_CONTROLLER:$JBS_QUAY_IMAGE_TAG
           export JVM_BUILD_SERVICE_CACHE_IMAGE=quay.io/$JBS_QUAY_ORG/konflux-jbs-pnc-tenant/jvm-build-service/cache:$JBS_QUAY_IMAGE_TAG
           export JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=quay.io/$JBS_QUAY_ORG/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:$JBS_QUAY_IMAGE_TAG
-          export JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE=quay.io/$JBS_QUAY_ORG/konflux-jbs-pnc-tenant/jvm-build-service/domain-proxy:$JBS_QUAY_IMAGE_TAG
 
           echo "Using worker namespace $JBS_WORKER_NAMESPACE DEV_IP $DEV_IP JVM_BUILD_SERVICE_IMAGE $JVM_BUILD_SERVICE_IMAGE"
 

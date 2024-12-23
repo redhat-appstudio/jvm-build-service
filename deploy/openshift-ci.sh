@@ -11,8 +11,6 @@ echo "jvm build service jvm cache image:"
 echo ${JVM_BUILD_SERVICE_CACHE_IMAGE}
 echo "jvm build service jvm reqprocessor image:"
 echo ${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}
-echo "jvm build service jvm domain proxy image:"
-echo ${JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE}
 
 function waitFor() {
     endTime=$(( $(date +%s) + 600 ))
@@ -52,4 +50,3 @@ oc set env deployment/hacbs-jvm-operator -n jvm-build-service \
 JVM_BUILD_SERVICE_IMAGE=${JVM_BUILD_SERVICE_IMAGE} \
 JVM_BUILD_SERVICE_CACHE_IMAGE=${JVM_BUILD_SERVICE_CACHE_IMAGE} \
 JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE=${JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE}
-JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE=${JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE}

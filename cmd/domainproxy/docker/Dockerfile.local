@@ -1,5 +1,0 @@
-FROM quay.io/konflux-ci/buildah-task:latest@sha256:5cbd487022fb7ac476cbfdea25513b810f7e343ec48f89dc6a4e8c3c39fa37a2
-USER 0
-COPY out/domainproxyserver /app/domain-proxy-server
-COPY out/domainproxyclient /app/domain-proxy-client
-
