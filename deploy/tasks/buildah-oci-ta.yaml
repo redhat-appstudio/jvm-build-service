@@ -191,6 +191,14 @@ spec:
       type: string
       description: Enable the indy generic proxy (true/false)
       default: "false"
+    - name: INDY_PROXY_CLIENT_ID
+      type: string
+      description: The client ID used by indy proxy to communicate with Indy.
+      default: ""
+    - name: INDY_PROXY_CLIENT_CREDENTIAL
+      type: string
+      description: The client credential used by indy proxy to communicate with Indy.
+      default: ""
   results:
     - name: IMAGE_DIGEST
       description: Digest of the image just built
@@ -880,5 +888,7 @@ spec:
           memory: 512Mi
       script: |
         if [ "$(params.ENABLE_INDY_PROXY)" == "true" ]; then
-          /usr/local/bin/dumb-init /deployment/start-service.sh
+          export QUARKUS_OIDC_CLIENT_CLIENT_ID="$(params.INDY_PROXY_CLIENT_ID)"
+          export QUARKUS_OIDC_CLIENT_CREDENTIALS_SECRET="$(params.INDY_PROXY_CLIENT_CREDENTIAL)"
+          /deployment/start-service.sh
         fi
