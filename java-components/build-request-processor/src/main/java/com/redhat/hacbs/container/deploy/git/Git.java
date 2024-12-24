@@ -146,6 +146,7 @@ public abstract class Git {
             }
             var branchName = tagName + "-jbs-branch";
             var createBranch = jGit.branchList().call().stream().map(Ref::getName).noneMatch(("refs/heads/" + branchName)::equals);
+            Log.infof("Will create branch %s for tag %s and branch name %s", createBranch, tagName, branchName);
             var ref = jGit.checkout().setStartPoint(tagName).setName(branchName).setCreateBranch(createBranch).call();
             StoredConfig jConfig = jRepo.getConfig();
             Log.infof("Updating current origin of %s to %s", jConfig.getString("remote", "origin", "url"),
