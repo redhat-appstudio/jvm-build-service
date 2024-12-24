@@ -436,7 +436,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				},
 			},
 		}}
-		fmt.Printf("### RECIPE : DISABLEDPLUGINS %#v \n", recipe.DisabledPlugins)
 		pipelinePreBuildGitTask := []tektonpipeline.PipelineTask{{
 			Name:     PreBuildGitTaskName,
 			RunAfter: []string{PreBuildTaskName},
@@ -444,15 +443,19 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				// Can't specify name and resolver as they clash.
 				ResolverRef: preBuildGitResolver,
 			},
-			Workspaces: []tektonpipeline.WorkspacePipelineTaskBinding{
-				{Name: WorkspaceSource, Workspace: WorkspaceSource},
-			},
 			Params: []tektonpipeline.Param{
 				{
 					Name: "NAME",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: imageId,
+					},
+				},
+				{
+					Name: "PRE_BUILD_IMAGE_DIGEST",
+					Value: tektonpipeline.ParamValue{
+						Type:      tektonpipeline.ParamTypeString,
+						StringVal: "$(tasks." + PreBuildTaskName + ".results." + PipelineResultPreBuildImageDigest + ")",
 					},
 				},
 				{

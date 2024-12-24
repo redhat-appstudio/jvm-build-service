@@ -50,5 +50,5 @@ const (
 	KonfluxPreBuildDefinitions    = "https://raw.githubusercontent.com/rnc/jvm-build-service/BR1/deploy/tasks/pre-build.yaml"
 	KonfluxPreBuildGitDefinitions = "https://raw.githubusercontent.com/rnc/jvm-build-service/BR1/deploy/tasks/pre-build-git.yaml"
 	KonfluxBuildDefinitions       = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/buildah-oci-ta.yaml"
-	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/maven-deployment.yaml"
+	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/rnc/jvm-build-service/BR1/deploy/tasks/maven-deployment.yaml"
 )

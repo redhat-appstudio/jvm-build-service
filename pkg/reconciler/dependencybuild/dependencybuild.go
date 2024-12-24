@@ -666,7 +666,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 			log.Info(fmt.Sprintf("handleStateBuilding: pipelinerun %s:%s already exists, not retrying", pr.Namespace, pr.Name))
 			return reconcile.Result{}, nil
 		}
-		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "PipelineRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run", db.Namespace, db.Name)
+		r.eventRecorder.Eventf(db, v1.EventTypeWarning, "PipelineRunCreationFailed", "The DependencyBuild %s/%s failed to create its build pipeline run with %#v", db.Namespace, db.Name, err)
 		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, r.client.Status().Update(ctx, db)
