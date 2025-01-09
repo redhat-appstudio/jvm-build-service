@@ -66,7 +66,7 @@ spec:
       type: string
     - name: INDY_PROXY_CLIENT_CREDENTIAL
       type: string
-    - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
+    - name: PNC_KONFLUX_TOOLING_IMAGE
       type: string
       default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/konflux-tooling:latest"
     - name: NOTIFICATION_CONTEXT
@@ -105,8 +105,8 @@ spec:
       runAfter:
         - git-clone
       params:
-        - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
-          value: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+        - name: PNC_KONFLUX_TOOLING_IMAGE
+          value: $(params.PNC_KONFLUX_TOOLING_IMAGE)
         - name: IMAGE_URL
           value: $(params.QUAY_REPO):trusted-source-$(context.pipelineRun.name)
         - name: NAME
@@ -130,7 +130,7 @@ spec:
         resolver: http
         params:
           - name: url
-            value: https://raw.githubusercontent.com/rnc/jvm-build-service/refs/heads/BR1/deploy/tasks/pre-build.yaml
+            value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/pre-build.yaml
       workspaces:
         - name: source
           workspace: source
@@ -199,8 +199,8 @@ spec:
       runAfter:
         - buildah-oci-ta
       params:
-        - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
-          value: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+        - name: PNC_KONFLUX_TOOLING_IMAGE
+          value: $(params.PNC_KONFLUX_TOOLING_IMAGE)
         - name: IMAGE_URL
           value: $(tasks.buildah-oci-ta.results.IMAGE_URL)
         - name: IMAGE_DIGEST
@@ -221,8 +221,8 @@ spec:
       params:
         - name: ACCESS_TOKEN
           value: $(params.ACCESS_TOKEN)
-        - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
-          value: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+        - name: PNC_KONFLUX_TOOLING_IMAGE
+          value: $(params.PNC_KONFLUX_TOOLING_IMAGE)
         - name: NOTIFICATION_CONTEXT
           value: $(params.NOTIFICATION_CONTEXT)
         - name: STATUS
@@ -233,8 +233,8 @@ spec:
             description: Access token for OAuth.
             type: string
             default: ""
-          - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
-            description: Name of the processor image. Useful to override for development.
+          - name: PNC_KONFLUX_TOOLING_IMAGE
+            description: Name of the tooling image.
             type: string
           - name: NOTIFICATION_CONTEXT
             description: Notification context
@@ -244,7 +244,7 @@ spec:
             type: string
         steps:
           - name: notification
-            image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+            image: $(params.PNC_KONFLUX_TOOLING_IMAGE)
             args:
               - notify
               - --context=$(params.NOTIFICATION_CONTEXT)
