@@ -13,7 +13,6 @@ spec:
   description: |-
     Buildah task builds source code into a container image and pushes the image into container registry using buildah tool.
     In addition it generates a SBOM file, injects the SBOM file into final container image and pushes the SBOM file as separate image using cosign tool.
-    When [Java dependency rebuild](https://redhat-appstudio.github.io/docs.stonesoup.io/Documentation/main/cli/proc_enabled_java_dependencies.html) is enabled it triggers rebuilds of Java artifacts.
     When prefetch-dependencies task was activated it is using its artifacts to run build in hermetic environment.
   params:
     - name: ACTIVATION_KEY
@@ -82,6 +81,15 @@ spec:
         be made available to the build.
       type: string
       default: ""
+    - name: PRIVILEGED_NESTED
+      description: Whether to enable privileged mode
+      type: string
+      default: "false"
+    - name: SKIP_SBOM_GENERATION
+      description: Skip SBOM-related operations. This will likely cause EC
+        policies to fail if enabled
+      type: string
+      default: "false"
     - name: SKIP_UNUSED_STAGES
       description: Whether to skip stages in Containerfile that seem unused
         by subsequent stages
@@ -206,15 +214,9 @@ spec:
       description: Image reference of the built image
     - name: IMAGE_URL
       description: Image repository and tag where the built image was pushed
-    - name: JAVA_COMMUNITY_DEPENDENCIES
-      description: The Java dependencies that came from community sources
-        such as Maven central.
     - name: SBOM_BLOB_URL
       description: Reference of SBOM blob digest to enable digest-based verification
         from provenance
-      type: string
-    - name: SBOM_JAVA_COMPONENTS_COUNT
-      description: The counting of Java components by publisher in JSON format
       type: string
   volumes:
     - name: activation-key
@@ -254,6 +256,13 @@ spec:
     - name: workdir
       emptyDir: {}
   stepTemplate:
+    computeResources:
+      limits:
+        cpu: "4"
+        memory: 4Gi
+      requests:
+        cpu: "1"
+        memory: 1Gi
     env:
       - name: ACTIVATION_KEY
         value: $(params.ACTIVATION_KEY)
@@ -275,6 +284,10 @@ spec:
         value: $(params.IMAGE)
       - name: IMAGE_EXPIRES_AFTER
         value: $(params.IMAGE_EXPIRES_AFTER)
+      - name: PRIVILEGED_NESTED
+        value: $(params.PRIVILEGED_NESTED)
+      - name: SKIP_SBOM_GENERATION
+        value: $(params.SKIP_SBOM_GENERATION)
       - name: SKIP_UNUSED_STAGES
         value: $(params.SKIP_UNUSED_STAGES)
       - name: SOURCE_CODE_DIR
@@ -326,7 +339,7 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:52f1391e6f1c472fd10bb838f64fae2ed3320c636f536014978a5ddbdfc6b3af
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:ff35e09ff5c89e54538b50abae241a765b2b7868f05d62c4835bebf0978f3659
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
@@ -371,8 +384,7 @@ spec:
         elif [ -e "$SOURCE_CODE_DIR/$DOCKERFILE" ]; then
           dockerfile_path="$(pwd)/$SOURCE_CODE_DIR/$DOCKERFILE"
         elif [ -e "$DOCKERFILE" ]; then
-          # Custom Dockerfile location is mainly used for instrumented builds for SAST scanning and analyzing.
-          # Instrumented builds use this step as their base and also need to provide modified Dockerfile.
+          # Instrumented builds (SAST) use this custom dockerffile step as their base
           dockerfile_path="$DOCKERFILE"
         elif echo "$DOCKERFILE" | grep -q "^https\?://"; then
           echo "Fetch Dockerfile from $DOCKERFILE"
@@ -394,11 +406,6 @@ spec:
 
         dockerfile_copy=$(mktemp --tmpdir "$(basename "$dockerfile_path").XXXXXX")
         cp "$dockerfile_path" "$dockerfile_copy"
-
-        if [ -n "${JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR-}" ] && grep -q '^\s*RUN \(./\)\?mvn' "$dockerfile_copy"; then
-          sed -i -e "s|^\s*RUN \(\(./\)\?mvn\)\(.*\)|RUN echo \"<settings><mirrors><mirror><id>mirror.default</id><url>http://$JVM_BUILD_WORKSPACE_ARTIFACT_CACHE_PORT_80_TCP_ADDR/v1/cache/default/0/</url><mirrorOf>*</mirrorOf></mirror></mirrors></settings>\" > /tmp/settings.yaml; \1 -s /tmp/settings.yaml \3|g" "$dockerfile_copy"
-          touch /var/lib/containers/java
-        fi
 
         # Fixing group permission on /var/lib/containers
         chown root:root /var/lib/containers
@@ -428,7 +435,7 @@ spec:
             shift
             # Note: this may result in multiple --build-arg=KEY=value flags with the same KEY being
             # passed to buildah. In that case, the *last* occurrence takes precedence. This is why
-            # we append BUILD_ARGS after the content of the BUILD_ARGS_FILE - they take precedence.
+            # we append BUILD_ARGS after the content of the BUILD_ARGS_FILE
             while [[ $# -gt 0 && $1 != --* ]]; do
               build_args+=("$1")
               shift
@@ -476,6 +483,12 @@ spec:
         fi
 
         BUILDAH_ARGS+=("${BUILD_ARG_FLAGS[@]}")
+
+        if [ "${PRIVILEGED_NESTED}" == "true" ]; then
+          BUILDAH_ARGS+=("--security-opt=label=disable")
+          BUILDAH_ARGS+=("--cap-add=all")
+          BUILDAH_ARGS+=("--device=/dev/fuse")
+        fi
 
         if [ -n "${ADD_CAPABILITIES}" ]; then
           BUILDAH_ARGS+=("--cap-add=${ADD_CAPABILITIES}")
@@ -538,15 +551,15 @@ spec:
         ACTIVATION_KEY_PATH="/activation-key"
         ENTITLEMENT_PATH="/entitlement"
 
+        # 0. if hermetic=true, skip all subscription related stuff
         # 1. do not enable activation key and entitlement at same time. If both vars are provided, prefer activation key.
         # 2. Activation-keys will be used when the key 'org' exists in the activation key secret.
         # 3. try to pre-register and mount files to the correct location so that users do no need to modify Dockerfiles.
         # 3. If the Dockerfile contains the string "subcription-manager register", add the activation-keys volume
-        #    to buildah but don't pre-register for backwards compatibility. In this case mount an empty directory on
-        #    shared emptydir volume to "/etc/pki/entitlement" to prevent certificates from being included in the produced
-        #    container.
+        #    to buildah but don't pre-register for backwards compatibility. Mount an empty directory on
+        #    shared emptydir volume to "/etc/pki/entitlement" to prevent certificates from being included
 
-        if [ -e /activation-key/org ]; then
+        if [ "${HERMETIC}" != "true" ] && [ -e /activation-key/org ]; then
           cp -r --preserve=mode "$ACTIVATION_KEY_PATH" /tmp/activation-key
           mkdir -p /shared/rhsm/etc/pki/entitlement
           mkdir -p /shared/rhsm/etc/pki/consumer
@@ -570,8 +583,7 @@ spec:
             VOLUME_MOUNTS+=(--volume /etc/rhsm/ca/redhat-uep.pem:/etc/rhsm/ca/redhat-uep.pem:Z)
           fi
 
-        # was: if [ -d "$ACTIVATION_KEY_PATH" ]; then
-        elif find /entitlement -name "*.pem" >>null; then
+        elif [ "${HERMETIC}" != "true" ] && find /entitlement -name "*.pem" >>null; then
           cp -r --preserve=mode "$ENTITLEMENT_PATH" /tmp/entitlement
           VOLUME_MOUNTS+=(--volume /tmp/entitlement:/etc/pki/entitlement)
           echo "Adding the entitlement to the build"
@@ -579,8 +591,7 @@ spec:
 
         if [ -n "${ADDITIONAL_VOLUME_MOUNTS-}" ]; then
           # ADDITIONAL_VOLUME_MOUNTS allows to specify more volumes for the build.
-          # This is primarily used in instrumented builds for SAST scanning and analyzing.
-          # Instrumented builds use this step as their base and add some other tools.
+          # Instrumented builds (SAST) use this step as their base and add some other tools.
           while read -r volume_mount; do
             VOLUME_MOUNTS+=("--volume=$volume_mount")
           done <<<"$ADDITIONAL_VOLUME_MOUNTS"
@@ -665,23 +676,26 @@ spec:
         fi
 
         container=$(buildah from --pull-never "$IMAGE")
+
+        # Save the SBOM produced by Cachi2 so it can be merged into the final SBOM later
+        if [ -f "/tmp/cachi2/output/bom.json" ]; then
+          echo "Making copy of sbom-cachi2.json"
+          cp /tmp/cachi2/output/bom.json ./sbom-cachi2.json
+        fi
+
         buildah mount $container | tee /shared/container_path
         # delete symlinks - they may point outside the container rootfs, messing with SBOM scanners
         find $(cat /shared/container_path) -xtype l -delete
         echo $container >/shared/container_name
 
-        # Save the SBOM produced by Cachi2 so it can be merged into the final SBOM later
-        if [ -f "/tmp/cachi2/output/bom.json" ]; then
-          cp /tmp/cachi2/output/bom.json ./sbom-cachi2.json
-        fi
-
         touch /shared/base_images_digests
+        echo "Recording base image digests used"
         for image in $BASE_IMAGES; do
           base_image_digest=$(buildah images --format '{{ .Name }}:{{ .Tag }}@{{ .Digest }}' --filter reference="$image")
           # In some cases, there might be BASE_IMAGES, but not any associated digest. This happens
           # if buildah did not use that particular image during build because it was skipped
           if [ -n "$base_image_digest" ]; then
-            echo "$image $base_image_digest" >>/shared/base_images_digests
+            echo "$image $base_image_digest" | tee -a /shared/base_images_digests
           fi
         done
       computeResources:
@@ -691,6 +705,20 @@ spec:
         requests:
           cpu: "1"
           memory: 2Gi
+      securityContext:
+        capabilities:
+          add:
+            - SETFCAP
+    - name: icm
+      image: quay.io/konflux-ci/icm-injection-scripts:latest@sha256:462980e94ba689b5f56c3d5dfb3358cd8c685300daf65a71532f11898935e7f1
+      workingDir: /var/workdir
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      script: |
+        #!/bin/bash
+        set -euo pipefail
+        /scripts/inject-icm.sh "$IMAGE"
       securityContext:
         capabilities:
           add:
@@ -765,44 +793,22 @@ spec:
         - mountPath: /shared
           name: shared
       script: |
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
+          echo "Skipping SBOM generation"
+          exit 0
+        fi
         echo "Running syft on the source directory"
         syft dir:"/var/workdir/$SOURCE_CODE_DIR/$CONTEXT" --output cyclonedx-json="/var/workdir/sbom-source.json"
         echo "Running syft on the image filesystem"
         syft dir:"$(cat /shared/container_path)" --output cyclonedx-json="/var/workdir/sbom-image.json"
-      computeResources:
-        limits:
-          cpu: "2"
-          memory: 4Gi
-        requests:
-          cpu: 500m
-          memory: 1Gi
-    - name: analyse-dependencies-java-sbom
-      image: quay.io/redhat-appstudio/hacbs-jvm-build-request-processor:127ee0c223a2b56a9bd20a6f2eaeed3bd6015f77
-      volumeMounts:
-        - mountPath: /var/lib/containers
-          name: varlibcontainers
-        - mountPath: /shared
-          name: shared
-      script: |
-        if [ -f /var/lib/containers/java ]; then
-          /opt/jboss/container/java/run/run-java.sh analyse-dependencies path $(cat /shared/container_path) -s /var/workdir/sbom-image.json --task-run-name $(context.taskRun.name) --publishers $(results.SBOM_JAVA_COMPONENTS_COUNT.path)
-          sed -i 's/^/ /' $(results.SBOM_JAVA_COMPONENTS_COUNT.path) # Workaround for SRVKP-2875
-        else
-          touch $(results.JAVA_COMMUNITY_DEPENDENCIES.path)
-        fi
-      computeResources:
-        limits:
-          cpu: 200m
-          memory: 512Mi
-        requests:
-          cpu: 100m
-          memory: 256Mi
-      securityContext:
-        runAsUser: 0
     - name: prepare-sboms
-      image: quay.io/redhat-appstudio/sbom-utility-scripts-image@sha256:e1347023ef1e83d52813c26384f551e3a03e482539d17a647955603e7ea6b579
+      image: quay.io/redhat-appstudio/sbom-utility-scripts-image@sha256:9f1fd11d9c3c517ecc112d192ad361d16ecf6ce00b83b109c93cf3d1c644a357
       workingDir: /var/workdir
       script: |
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
+          echo "Skipping SBOM generation"
+          exit 0
+        fi
         echo "Merging contents of sbom-source.json and sbom-image.json into sbom-cyclonedx.json"
         python3 /scripts/merge_syft_sboms.py
 
@@ -847,6 +853,10 @@ spec:
           readOnly: true
       script: |
         #!/bin/bash
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
+          echo "Skipping SBOM generation"
+          exit 0
+        fi
 
         ca_bundle=/mnt/trusted-ca/ca-bundle.crt
         if [ -f "$ca_bundle" ]; then
