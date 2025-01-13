@@ -155,8 +155,8 @@ spec:
       description: The idle timeout in milliseconds to use for the domain proxy.
       type: string
       default: 30000
-    - name: DOMAIN_PROXY_TARGET_WHITELIST
-      description: Comma separated whitelist of target hosts for the domain proxy.
+    - name: DOMAIN_PROXY_TARGET_ALLOWLIST
+      description: Comma separated list of allowed target hosts for the domain proxy.
       type: string
       default: ""
     - name: DOMAIN_PROXY_ENABLE_INTERNAL_PROXY
@@ -303,8 +303,8 @@ spec:
         value: $(params.DOMAIN_PROXY_CONNECTION_TIMEOUT)
       - name: DOMAIN_PROXY_IDLE_TIMEOUT
         value: $(params.DOMAIN_PROXY_IDLE_TIMEOUT)
-      - name: DOMAIN_PROXY_TARGET_WHITELIST
-        value: $(params.DOMAIN_PROXY_TARGET_WHITELIST)
+      - name: DOMAIN_PROXY_TARGET_ALLOWLIST
+        value: $(params.DOMAIN_PROXY_TARGET_ALLOWLIST)
       - name: DOMAIN_PROXY_ENABLE_INTERNAL_PROXY
         value: $(params.DOMAIN_PROXY_ENABLE_INTERNAL_PROXY)
       - name: DOMAIN_PROXY_INTERNAL_PROXY_HOST

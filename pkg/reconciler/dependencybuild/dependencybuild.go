@@ -73,8 +73,6 @@ const (
 
 	PipelineRunFinalizer = "jvmbuildservice.io/finalizer"
 	DeploySuffix         = "-deploy"
-
-	DomainProxyImage = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/domain-proxy:latest"
 )
 
 type ReconcileDependencyBuild struct {
