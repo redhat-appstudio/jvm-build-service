@@ -47,7 +47,8 @@ type SystemConfigList struct {
 
 const (
 	KonfluxGitDefinition          = "https://raw.githubusercontent.com/konflux-ci/build-definitions/refs/heads/main/task/git-clone/0.1/git-clone.yaml"
-	KonfluxPreBuildDefinitions    = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/pre-build.yaml"
-	KonfluxBuildDefinitions       = "https://raw.githubusercontent.com/tecarter94/jvm-build-service/rename-domain-proxy-whitelist/deploy/tasks/buildah-oci-ta.yaml"
-	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/maven-deployment.yaml"
+	KonfluxPreBuildDefinitions    = "https://raw.githubusercontent.com/rnc/jvm-build-service/BR1/deploy/tasks/pre-build.yaml"
+	KonfluxPreBuildGitDefinitions = "https://raw.githubusercontent.com/rnc/jvm-build-service/BR1/deploy/tasks/pre-build-git.yaml"
+	KonfluxBuildDefinitions       = "https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/main/deploy/tasks/buildah-oci-ta.yaml"
+	KonfluxMavenDeployDefinitions = "https://raw.githubusercontent.com/rnc/jvm-build-service/BR1/deploy/tasks/maven-deployment.yaml"
 )

@@ -42,7 +42,6 @@ spec:
     - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
       description: Name of the processor image. Useful to override for development.
       type: string
-      default: "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/jvm-build-service/build-request-processor:latest"
     - name: caTrustConfigMapKey
       description: The name of the key in the ConfigMap that contains the
         CA bundle data.
