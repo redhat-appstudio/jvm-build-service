@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,6 +31,8 @@ const (
 	BuildTaskName     = "build"
 	PostBuildTaskName = "post-build"
 	DeployTaskName    = "deploy"
+
+	DomainProxyImage = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/domain-proxy:latest"
 )
 
 //go:embed scripts/maven-build.sh
@@ -481,7 +484,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 		},
 	}
 
-	whitelistUrl, err := url.Parse(cacheUrl)
+	allowlistUrl, err := url.Parse(cacheUrl)
 	if err != nil {
 		return nil, "", err
 	}
@@ -542,7 +545,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "BUILD_IMAGE",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: DomainProxyImage,
+						StringVal: domainProxyImage(),
 					},
 				},
 				{
@@ -553,10 +556,10 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					},
 				},
 				{
-					Name: "DOMAIN_PROXY_TARGET_WHITELIST",
+					Name: "DOMAIN_PROXY_TARGET_ALLOWLIST",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: whitelistUrl.Host + ",localhost,cdn-ubi.redhat.com,repo1.maven.org,repo.scala-sbt.org,scala.jfrog.io,repo.typesafe.com,jfrog-prod-usw2-shared-oregon-main.s3.amazonaws.com",
+						StringVal: allowlistUrl.Host + ",localhost,cdn-ubi.redhat.com,repo1.maven.org,repo.scala-sbt.org,scala.jfrog.io,repo.typesafe.com,jfrog-prod-usw2-shared-oregon-main.s3.amazonaws.com",
 					},
 				},
 				{
@@ -591,7 +594,7 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 					Name: "DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS",
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
-						StringVal: whitelistUrl.Host + ",localhost",
+						StringVal: allowlistUrl.Host + ",localhost",
 					},
 				},
 			},
@@ -990,4 +993,12 @@ func settingOrDefault(setting, def string) string {
 		return def
 	}
 	return setting
+}
+
+func domainProxyImage() string {
+	domainProxyImage := os.Getenv("JVM_BUILD_SERVICE_DOMAIN_PROXY_IMAGE")
+	if len(domainProxyImage) == 0 {
+		domainProxyImage = DomainProxyImage
+	}
+	return domainProxyImage
 }
