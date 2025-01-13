@@ -39,6 +39,27 @@ spec:
       type: string
     - name: caTrustConfigMapName
       type: string
+    - name: DOMAIN_PROXY_TARGET_ALLOWLIST
+      type: string
+      default: "localhost,gateway.indy.corp.stage.redhat.com,cdn-ubi.redhat.com,repo1.maven.org,repo.scala-sbt.org,scala.jfrog.io,repo.typesafe.com,jfrog-prod-usw2-shared-oregon-main.s3.amazonaws.com"
+    - name: DOMAIN_PROXY_ENABLE_INTERNAL_PROXY
+      type: string
+      default: "true"
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_HOST
+      type: string
+      default: "localhost"
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_PORT
+      type: string
+      default: "8081"
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_USER
+      type: string
+      default: "$(params.BUILD_ID)+tracking"
+    - name: DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD
+      type: string
+      default: "$(params.ACCESS_TOKEN)"
+    - name: DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS
+      type: string
+      default: "localhost,gateway.indy.corp.stage.redhat.com"
     - name: ENABLE_INDY_PROXY
       type: string
     - name: INDY_PROXY_CLIENT_ID
@@ -138,6 +159,26 @@ spec:
             - PROXY_URL=$(params.MVN_REPO_DEPENDENCIES_URL)
             - BUILD_ID=$(params.BUILD_ID)
             - ACCESS_TOKEN=$(params.ACCESS_TOKEN)
+        - name: BUILD_IMAGE
+          value: quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/domain-proxy:latest
+        - name: HERMETIC
+          value: "true"
+        - name: ENABLE_DOMAIN_PROXY
+          value: "true"
+        - name: DOMAIN_PROXY_TARGET_ALLOWLIST
+          value: $(params.DOMAIN_PROXY_TARGET_ALLOWLIST)
+        - name: DOMAIN_PROXY_ENABLE_INTERNAL_PROXY
+          value: $(params.DOMAIN_PROXY_ENABLE_INTERNAL_PROXY)
+        - name: DOMAIN_PROXY_INTERNAL_PROXY_HOST
+          value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_HOST)
+        - name: DOMAIN_PROXY_INTERNAL_PROXY_PORT
+          value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_PORT)
+        - name: DOMAIN_PROXY_INTERNAL_PROXY_USER
+          value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_USER)
+        - name: DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD
+          value: $(params.DOMAIN_PROXY_INTERNAL_PROXY_PASSWORD)
+        - name: DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS
+          value: $(params.DOMAIN_PROXY_INTERNAL_NON_PROXY_HOSTS)
       taskRef:
         #resolver: bundles
         #params:
