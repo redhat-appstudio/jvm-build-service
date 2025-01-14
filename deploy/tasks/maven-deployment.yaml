@@ -39,8 +39,8 @@ spec:
       description: Access token for OAuth.
       type: string
       default: ""
-    - name: JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE
-      description: Name of the processor image. Useful to override for development.
+    - name: PNC_KONFLUX_TOOLING_IMAGE
+      description: Name of the tooling image.
       type: string
     - name: caTrustConfigMapKey
       description: The name of the key in the ConfigMap that contains the
@@ -81,7 +81,7 @@ spec:
         - name: IMAGE_URL
           value: $(params.IMAGE_URL)
     - name: deploy
-      image: $(params.JVM_BUILD_SERVICE_REQPROCESSOR_IMAGE)
+      image: $(params.PNC_KONFLUX_TOOLING_IMAGE)
       securityContext:
         runAsUser: 0
       computeResources:
