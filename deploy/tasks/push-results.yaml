@@ -41,9 +41,11 @@ spec:
       default: ""
     - name: BUILD_ID
       type: string
+      default: ""
     - name: BIFROST_URL
       description: bifrost url to upload log
       type: string
+      default: ""
     - name: PNC_KONFLUX_TOOLING_IMAGE
       description: Name of the tooling image.
       type: string
