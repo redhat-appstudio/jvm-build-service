@@ -11,7 +11,7 @@ metadata:
     build.appstudio.redhat.com/build_type: docker
 spec:
   description: |-
-    Takes a OCI archive and deploys the result
+    Takes a OCI archive and deploys the result and uploads log to Bifrost
   params:
     - name: IMAGE_URL
       description: Reference to the OCI archive
@@ -39,6 +39,11 @@ spec:
       description: Access token for OAuth.
       type: string
       default: ""
+    - name: BUILD_ID
+      type: string
+    - name: BIFROST_URL
+      description: bifrost url to upload log
+      type: string
     - name: PNC_KONFLUX_TOOLING_IMAGE
       description: Name of the tooling image.
       type: string
@@ -80,7 +85,7 @@ spec:
           value: $(params.IMAGE_DIGEST)
         - name: IMAGE_URL
           value: $(params.IMAGE_URL)
-    - name: deploy
+    - name: uplaod-artifacts
       image: $(params.PNC_KONFLUX_TOOLING_IMAGE)
       securityContext:
         runAsUser: 0
@@ -104,6 +109,42 @@ spec:
         - --mvn-repo=$(params.MVN_REPO)
         - --mvn-username=$(params.MVN_USERNAME)
         - --server-id=$(params.MVN_SERVER_ID)
+      script: |
+        #!/bin/bash
+        set -e
+        ca_bundle=/mnt/trusted-ca/ca-bundle.crt
+        if [ -f "$ca_bundle" ]; then
+          echo "INFO: Using mounted CA bundle: $ca_bundle"
+          cp -vf $ca_bundle /etc/pki/ca-trust/source/anchors
+          update-ca-trust
+        fi
+        /opt/jboss/container/java/run/run-java.sh $@
+    - name: upload-log
+      image: $(params.PNC_KONFLUX_TOOLING_IMAGE)
+      securityContext:
+        runAsUser: 0
+      computeResources:
+        limits:
+          cpu: 300m
+          memory: 512Mi
+        requests:
+          cpu: 10m
+          memory: 512Mi
+      volumeMounts:
+        - mountPath: /mnt/trusted-ca
+          name: trusted-ca
+          readOnly: true
+      env:
+        - name: ACCESS_TOKEN
+          value: $(params.ACCESS_TOKEN)
+      args:
+        - upload-log
+        - --file=/var/workdir/log/build.log
+        - --bifrost-url=$(params.BIFROST_URL)
+        - --process-context=$(params.BUILD_ID)
+        - --process-context-variant=""
+        - --tmp=false
+        - --request-context=""
       script: |
         #!/bin/bash
         set -e

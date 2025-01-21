@@ -72,6 +72,9 @@ spec:
     - name: NOTIFICATION_CONTEXT
       type: string
       default: ""
+    - name: BIFROST_URL
+      type: string
+      default: ""
   workspaces:
     - name: source
       description: Workspace containing the source code
@@ -195,7 +198,7 @@ spec:
           - name: url
             value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/buildah-oci-ta.yaml
 
-    - name: maven-deployment
+    - name: push-results
       runAfter:
         - buildah-oci-ta
       params:
@@ -209,11 +212,15 @@ spec:
           value: $(params.MVN_REPO_DEPLOY_URL)
         - name: ACCESS_TOKEN
           value: $(params.ACCESS_TOKEN)
+        - name: BUILD_ID
+          value: $(params.BUILD_ID)
+        - name: BIFROST_URL
+          value: $(params.BIFROST_URL)
       taskRef:
         resolver: http
         params:
           - name: url
-            value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/maven-deployment.yaml
+            value: https://raw.githubusercontent.com/redhat-appstudio/jvm-build-service/refs/heads/main/deploy/tasks/push-results.yaml
 
   finally:
     - name: notification
