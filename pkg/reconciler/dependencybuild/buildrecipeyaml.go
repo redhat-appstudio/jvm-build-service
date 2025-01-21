@@ -74,7 +74,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				Name: "url",
 				Value: tektonpipeline.ParamValue{
 					Type:      tektonpipeline.ParamTypeString,
-					StringVal: v1alpha1.KonfluxMavenDeployDefinitions,
+					StringVal: v1alpha1.KonfluxDeployDefinitions,
 				},
 			},
 		},
@@ -723,7 +723,7 @@ use-archive oci:$URL@$AARCHIVE=%s`, orasOptions, registryArgsWithDefaults(jbsCon
 				Name: "url",
 				Value: tektonpipeline.ParamValue{
 					Type:      tektonpipeline.ParamTypeString,
-					StringVal: v1alpha1.KonfluxMavenDeployDefinitions,
+					StringVal: v1alpha1.KonfluxDeployDefinitions,
 				},
 			},
 		},

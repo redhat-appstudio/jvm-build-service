@@ -85,7 +85,7 @@ spec:
           value: $(params.IMAGE_DIGEST)
         - name: IMAGE_URL
           value: $(params.IMAGE_URL)
-    - name: uplaod-artifacts
+    - name: upload-artifacts
       image: $(params.PNC_KONFLUX_TOOLING_IMAGE)
       securityContext:
         runAsUser: 0
