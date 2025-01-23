@@ -626,7 +626,7 @@ func (r *ReconcileDependencyBuild) handleStateBuilding(ctx context.Context, db *
 
 	trueBool := true
 	pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{
-		PipelineTaskName: DeployTaskName,
+		PipelineTaskName: UploadTaskName,
 		PodTemplate: &pod.Template{
 			Env: []v1.EnvVar{
 				{
@@ -1452,11 +1452,11 @@ func (r *ReconcileDependencyBuild) handleStateDeploying(ctx context.Context, db 
 		}
 	}
 	if jbsConfig.Annotations != nil && jbsConfig.Annotations[jbsconfig.CITests] == "true" {
-		log.Info(fmt.Sprintf("Configuring resources for %#v", DeployTaskName))
+		log.Info(fmt.Sprintf("Configuring resources for %#v", UploadTaskName))
 		podMem, _ := resource.ParseQuantity("1024Mi")
 		podCPU, _ := resource.ParseQuantity("250m")
 		pr.Spec.TaskRunSpecs = []tektonpipeline.PipelineTaskRunSpec{{
-			PipelineTaskName: DeployTaskName,
+			PipelineTaskName: UploadTaskName,
 			ComputeResources: &v1.ResourceRequirements{
 				Requests: v1.ResourceList{"memory": podMem, "cpu": podCPU},
 				Limits:   v1.ResourceList{"memory": podMem, "cpu": podCPU},

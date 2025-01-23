@@ -31,7 +31,7 @@ const (
 	PreBuildGitTaskName = "pre-build-git"
 	BuildTaskName       = "build"
 	PostBuildTaskName   = "post-build"
-	DeployTaskName      = "deploy"
+	UploadTaskName      = "upload-artifacts"
 
 	DomainProxyImage       = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/domain-proxy:latest"
 	PNCKonfluxToolingImage = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/konflux-tooling:latest"
@@ -74,7 +74,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 				Name: "url",
 				Value: tektonpipeline.ParamValue{
 					Type:      tektonpipeline.ParamTypeString,
-					StringVal: v1alpha1.KonfluxMavenDeployDefinitions,
+					StringVal: v1alpha1.KonfluxDeployDefinitions,
 				},
 			},
 		},
@@ -83,7 +83,7 @@ func createDeployPipelineSpec(jbsConfig *v1alpha1.JBSConfig, buildRequestProcess
 		Params: []tektonpipeline.ParamSpec{{Name: PipelineResultImageDigest, Type: tektonpipeline.ParamTypeString}},
 		Tasks: []tektonpipeline.PipelineTask{
 			{
-				Name: DeployTaskName,
+				Name: UploadTaskName,
 				TaskRef: &tektonpipeline.TaskRef{
 					// Can't specify name and resolver as they clash.
 					ResolverRef: resolver,
@@ -723,14 +723,14 @@ use-archive oci:$URL@$AARCHIVE=%s`, orasOptions, registryArgsWithDefaults(jbsCon
 				Name: "url",
 				Value: tektonpipeline.ParamValue{
 					Type:      tektonpipeline.ParamTypeString,
-					StringVal: v1alpha1.KonfluxMavenDeployDefinitions,
+					StringVal: v1alpha1.KonfluxDeployDefinitions,
 				},
 			},
 		},
 	}
 	ps.Tasks = append([]tektonpipeline.PipelineTask{
 		{
-			Name:     DeployTaskName,
+			Name:     UploadTaskName,
 			RunAfter: append(runAfterBuild, PostBuildTaskName),
 			// Don't need to specify WorkspacePipelineTaskBinding as the deploy task is using
 			// an independent volume.
