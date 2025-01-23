@@ -3,8 +3,8 @@ package com.redhat.hacbs.cli.driver;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 
+import org.jboss.pnc.api.konfluxbuilddriver.dto.CancelRequest;
 import org.jboss.pnc.konfluxbuilddriver.Driver;
-import org.jboss.pnc.konfluxbuilddriver.dto.CancelRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
