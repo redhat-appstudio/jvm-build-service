@@ -3,9 +3,9 @@ package com.redhat.hacbs.cli.driver;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 
+import org.jboss.pnc.api.konfluxbuilddriver.dto.BuildRequest;
+import org.jboss.pnc.api.konfluxbuilddriver.dto.BuildResponse;
 import org.jboss.pnc.konfluxbuilddriver.Driver;
-import org.jboss.pnc.konfluxbuilddriver.dto.BuildRequest;
-import org.jboss.pnc.konfluxbuilddriver.dto.BuildResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
