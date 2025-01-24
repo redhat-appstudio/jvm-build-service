@@ -144,8 +144,6 @@ spec:
       params:
         - name: SOURCE_ARTIFACT
           value: $(tasks.pre-build.results.PRE_BUILD_IMAGE_DIGEST)
-        - name: HERMETIC
-          value: "false"
         - name: IMAGE # output image
           value: $(params.QUAY_REPO):build-$(context.pipelineRun.name)
         - name: DOCKERFILE # local path to the containerfile
