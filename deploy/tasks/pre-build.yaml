@@ -56,6 +56,9 @@ spec:
         - --tooling-image=$(params.PNC_KONFLUX_TOOLING_IMAGE)
         - --type=$(params.BUILD_TOOL)
         - $(workspaces.source.path)/source
+      script: |
+        #!/bin/bash
+        JAVA_OPTS="-DsocksProxyHost=does.not.exist $JAVA_OPTS" /opt/jboss/container/java/run/run-java.sh $@
       env:
         - name: BUILD_SCRIPT
           value: $(params.BUILD_SCRIPT)
