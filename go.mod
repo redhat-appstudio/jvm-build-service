@@ -2,7 +2,7 @@ module github.com/redhat-appstudio/jvm-build-service
 
 go 1.22.0
 
-toolchain go1.22.6
+toolchain go1.23.3
 
 require (
 	github.com/go-logr/logr v1.4.2
