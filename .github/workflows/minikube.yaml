@@ -4,7 +4,7 @@ on:
     branches: [ main ]
 jobs:
   wait-for-images:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Wait for Images
         run: |
@@ -36,7 +36,7 @@ jobs:
           - "build-systems"
           - "commons"
     needs: [wait-for-images]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     name: Minikube Artifact Build Matrix
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -99,7 +99,7 @@ jobs:
         dbtestsets:
           - "jakartaee"
     needs: [wait-for-images]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     name: Minikube Dependency Build Matrix
     steps:
       - name: Free Disk Space (Ubuntu)
