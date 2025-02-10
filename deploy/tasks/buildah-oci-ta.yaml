@@ -785,7 +785,7 @@ spec:
             - SETFCAP
         runAsUser: 0
     - name: sbom-syft-generate
-      image: registry.access.redhat.com/rh-syft-tech-preview/syft-rhel9:1.4.1@sha256:34d7065427085a31dc4949bd283c001b91794d427e1e4cdf1b21ea4faf9fee3f
+      image: registry.access.redhat.com/rh-syft-tech-preview/syft-rhel9:1.19.0@sha256:070ecb89de5104bb64fbf399a991a975e7d4d7e0cea0f7beb1e591b5591991c8
       workingDir: /var/workdir/source
       volumeMounts:
         - mountPath: /var/lib/containers
