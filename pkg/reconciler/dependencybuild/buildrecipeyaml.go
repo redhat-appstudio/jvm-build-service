@@ -33,8 +33,7 @@ const (
 	PostBuildTaskName   = "post-build"
 	UploadTaskName      = "upload-artifacts"
 
-	DomainProxyImage       = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/domain-proxy:latest"
-	PNCKonfluxToolingImage = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/konflux-tooling:latest"
+	DomainProxyImage = "quay.io/redhat-user-workloads/konflux-jbs-pnc-tenant/domain-proxy:latest"
 )
 
 //go:embed scripts/maven-build.sh
@@ -428,13 +427,6 @@ func createPipelineSpec(log logr.Logger, tool string, commitTime int64, jbsConfi
 				//		StringVal: strings.Join(recipe.DisabledPlugins, ","),
 				//	},
 				//},
-				{
-					Name: "PNC_KONFLUX_TOOLING_IMAGE",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: PNCKonfluxToolingImage,
-					},
-				},
 			},
 		}}
 		pipelinePreBuildGitTask := []tektonpipeline.PipelineTask{{
@@ -779,13 +771,6 @@ use-archive oci:$URL@$AARCHIVE=%s`, orasOptions, registryArgsWithDefaults(jbsCon
 					Value: tektonpipeline.ParamValue{
 						Type:      tektonpipeline.ParamTypeString,
 						StringVal: "jbs-server",
-					},
-				},
-				{
-					Name: "PNC_KONFLUX_TOOLING_IMAGE",
-					Value: tektonpipeline.ParamValue{
-						Type:      tektonpipeline.ParamTypeString,
-						StringVal: PNCKonfluxToolingImage,
 					},
 				},
 			},

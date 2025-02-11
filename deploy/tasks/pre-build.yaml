@@ -24,9 +24,6 @@ spec:
     - name: IMAGE_URL
       description: URL of the OCI image to use.
       type: string
-    - name: PNC_KONFLUX_TOOLING_IMAGE
-      description: Name of the tooling image.
-      type: string
     - name: RECIPE_IMAGE
       description: The image from the build recipe to use
   results:
@@ -38,7 +35,7 @@ spec:
       mountPath: /var/workdir
   steps:
     - name: preprocessor
-      image: $(params.PNC_KONFLUX_TOOLING_IMAGE)
+      image: quay.io/konflux-ci/pnc-konflux-tooling:latest
       securityContext:
         runAsUser: 0
       computeResources:
@@ -53,7 +50,7 @@ spec:
         - --build-tool-version=$(params.BUILD_TOOL_VERSION)
         - --java-version=$(params.JAVA_VERSION)
         - --recipe-image=$(params.RECIPE_IMAGE)
-        - --tooling-image=$(params.PNC_KONFLUX_TOOLING_IMAGE)
+        - --tooling-image=quay.io/konflux-ci/pnc-konflux-tooling:latest
         - --type=$(params.BUILD_TOOL)
         - $(workspaces.source.path)/source
       env:
