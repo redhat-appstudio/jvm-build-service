@@ -46,9 +46,6 @@ spec:
       description: bifrost url to upload log
       type: string
       default: ""
-    - name: PNC_KONFLUX_TOOLING_IMAGE
-      description: Name of the tooling image.
-      type: string
     - name: caTrustConfigMapKey
       description: The name of the key in the ConfigMap that contains the
         CA bundle data.
@@ -88,7 +85,7 @@ spec:
         - name: IMAGE_URL
           value: $(params.IMAGE_URL)
     - name: upload-artifacts
-      image: $(params.PNC_KONFLUX_TOOLING_IMAGE)
+      image: quay.io/konflux-ci/pnc-konflux-tooling:latest
       securityContext:
         runAsUser: 0
       computeResources:
@@ -122,7 +119,7 @@ spec:
         fi
         /opt/jboss/container/java/run/run-java.sh $@
     - name: upload-log
-      image: $(params.PNC_KONFLUX_TOOLING_IMAGE)
+      image: quay.io/konflux-ci/pnc-konflux-tooling:latest
       securityContext:
         runAsUser: 0
       computeResources:
