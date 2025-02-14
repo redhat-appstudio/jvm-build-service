@@ -881,7 +881,7 @@ spec:
           memory: 256Mi
   sidecars:
     - name: indy-generic-proxy
-      image: quay.io/factory2/indy-generic-proxy-service:latest-stage-mpplus
+      image: quay.io/factory2/indy-generic-proxy-service:latest-stage-mpplus@sha256:1b74f69780ea99fff728a0682d7843c8f22233076f0fd8ac4b1147421d006dac
       volumeMounts:
         - name: indy-generic-proxy-secrets
           readOnly: true
