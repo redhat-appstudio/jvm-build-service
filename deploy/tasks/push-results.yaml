@@ -85,7 +85,7 @@ spec:
         - name: IMAGE_URL
           value: $(params.IMAGE_URL)
     - name: upload-artifacts
-      image: quay.io/konflux-ci/pnc-konflux-tooling:latest
+      image: quay.io/konflux-ci/pnc-konflux-tooling:latest@sha256:8c1c50b01c8dc5e3847f2ace4da8d28d255935b15c14d043bb2e819941697b29
       securityContext:
         runAsUser: 0
       computeResources:
@@ -119,7 +119,7 @@ spec:
         fi
         /opt/jboss/container/java/run/run-java.sh $@
     - name: upload-log
-      image: quay.io/konflux-ci/pnc-konflux-tooling:latest
+      image: quay.io/konflux-ci/pnc-konflux-tooling:latest@sha256:8c1c50b01c8dc5e3847f2ace4da8d28d255935b15c14d043bb2e819941697b29
       securityContext:
         runAsUser: 0
       computeResources:
