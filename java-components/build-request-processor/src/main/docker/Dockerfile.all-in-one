@@ -5,7 +5,7 @@ COPY ./ .
 
 RUN mvn -V -B package -pl build-request-processor -am -Dmaven.test.skip
 
-FROM registry.access.redhat.com/ubi8/openjdk-21-runtime@sha256:300a7835f9628ac265419526966d0c56cfc74d80236006a31a299c62026067c6
+FROM registry.access.redhat.com/ubi8/openjdk-21-runtime@sha256:68c8532c590995959f6881c9f4822d408bae6abd4196806301024d95aaf4f94e
 USER 0
 WORKDIR /work/
 
