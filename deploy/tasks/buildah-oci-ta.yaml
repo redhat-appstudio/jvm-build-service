@@ -710,7 +710,7 @@ spec:
           add:
             - SETFCAP
     - name: icm
-      image: quay.io/konflux-ci/icm-injection-scripts:latest@sha256:b96d9cc90f51b0c5dcf8d77929cc28dc9dfe44cfb1e84503ac1d25e50e4d2fe6
+      image: quay.io/konflux-ci/icm-injection-scripts:latest@sha256:32df6cf96c74101e1f6d2f06a800337542d2d32e990d3236b95a4575613a2f7c
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /var/lib/containers
