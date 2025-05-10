@@ -392,7 +392,8 @@ spec:
       - name: IMAGE
         value: $(tasks.build-container.results.IMAGE_URL)
       - name: ADDITIONAL_TAGS
-        value: ["latest"]
+        value:
+        - latest
       runAfter:
       - build-container
       taskRef:
@@ -434,7 +435,8 @@ spec:
       optional: true
     - name: netrc
       optional: true
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-build-request-processor
   workspaces:
   - name: workspace
     volumeClaimTemplate:
