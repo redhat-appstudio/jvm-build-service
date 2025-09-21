@@ -1,23 +1,42 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [ "github>konflux-ci/mintmaker//config/renovate/renovate.json" ],
+  "extends": [
+    "github>konflux-ci/mintmaker//config/renovate/renovate.json"
+  ],
   "pinDigests": true,
-  "postUpdateOptions": ["gomodTidy"],
-  "addLabels": ["ok-to-test"],
-  "ignoreDeps": ["github.com/tektoncd/cli", "github.com/tektoncd/pipeline", "github.com/openshift/client-go", "knative.dev/pkg"],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "addLabels": [
+    "ok-to-test"
+  ],
+  "ignoreDeps": [
+    "github.com/tektoncd/cli",
+    "github.com/tektoncd/pipeline",
+    "github.com/openshift/client-go",
+    "knative.dev/pkg"
+  ],
   "packageRules": [
     {
-      "matchManagers": ["npm"],
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
       "automerge": true
     },
     {
       "description": "Ignore internal dependencies",
-      "matchPackagePatterns": ["^io.github.redhat-appstudio.jvmbuild:"],
       "matchCurrentValue": "/-SNAPSHOT$/",
-      "enabled": false
+      "enabled": false,
+      "matchPackageNames": [
+        "/^io.github.redhat-appstudio.jvmbuild:/"
+      ]
     }
   ],
-  "enabledManagers": [
-  ]
+  "enabledManagers": []
 }
