@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/client_model v0.6.1
 	github.com/tektoncd/pipeline v0.59.2
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	k8s.io/api v0.29.2
 	k8s.io/apiextensions-apiserver v0.29.2
 	k8s.io/apimachinery v0.29.2
