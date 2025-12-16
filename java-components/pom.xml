@@ -62,7 +62,7 @@
         <kubernetes-client.version>6.13.5</kubernetes-client.version>
 
         <!-- Dependencies -->
-        <asm.version>9.7.1</asm.version>
+        <asm.version>9.9.1</asm.version>
         <assertj.version>3.26.3</assertj.version>
         <gradle-tooling-api.version>8.11.1</gradle-tooling-api.version>
         <maven-indexer.version>7.1.5</maven-indexer.version>
