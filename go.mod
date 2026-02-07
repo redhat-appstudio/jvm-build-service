@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.6
 
 require (
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/google/go-containerregistry v0.20.1 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/konflux-ci/image-controller v0.0.0-20241128141349-9986c9955e05
