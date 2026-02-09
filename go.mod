@@ -1,8 +1,8 @@
 module github.com/redhat-appstudio/jvm-build-service
 
-go 1.22.0
+go 1.23
 
-toolchain go1.22.6
+toolchain go1.24.13
 
 require (
 	github.com/go-logr/logr v1.4.2
@@ -65,7 +65,7 @@ require (
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
