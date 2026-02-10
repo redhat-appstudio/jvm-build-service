@@ -1,8 +1,6 @@
 module github.com/redhat-appstudio/jvm-build-service
 
-go 1.22.0
-
-toolchain go1.22.6
+go 1.23
 
 require (
 	github.com/go-logr/logr v1.4.2
@@ -23,7 +21,7 @@ require (
 	k8s.io/client-go v0.29.2
 	k8s.io/code-generator v0.29.2
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/utils v0.0.0-20241210054802-24370beab758
+	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 	knative.dev/pkg v0.0.0-20240201013110-e85c3cf6d5f1
 	sigs.k8s.io/controller-runtime v0.17.3
 	sigs.k8s.io/yaml v1.4.0
