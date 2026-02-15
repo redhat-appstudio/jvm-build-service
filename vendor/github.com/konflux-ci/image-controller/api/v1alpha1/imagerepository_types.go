@@ -1,5 +1,5 @@
 /*
-Copyright 2023 Red Hat, Inc.
+Copyright 2023-2025 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -127,8 +127,9 @@ type ImageRepositoryStatus struct {
 type ImageRepositoryState string
 
 const (
-	ImageRepositoryStateReady  ImageRepositoryState = "ready"
-	ImageRepositoryStateFailed ImageRepositoryState = "failed"
+	ImageRepositoryStateReady   ImageRepositoryState = "ready"
+	ImageRepositoryStateFailed  ImageRepositoryState = "failed"
+	ImageRepositoryStateWaiting ImageRepositoryState = "waiting"
 )
 
 // ImageStatus shows actual generated image repository parameters.
@@ -182,7 +183,7 @@ type ImageRepository struct {
 	Status ImageRepositoryStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ImageRepositoryList contains a list of ImageRepository
 type ImageRepositoryList struct {
