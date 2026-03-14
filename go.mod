@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/konflux-ci/image-controller v0.0.0-20241128141349-9986c9955e05
 	github.com/onsi/gomega v1.34.2
-	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5 // indirect
+	github.com/openshift/api 5e946e2d43b7 // indirect
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/client_model v0.6.1
