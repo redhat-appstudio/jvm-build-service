@@ -14,12 +14,9 @@
 package fsm
 
 import (
+	"log/slog"
 	"regexp"
 	"strings"
-
-	"github.com/go-kit/log"
-
-	"github.com/prometheus/statsd_exporter/pkg/level"
 )
 
 type mappingState struct {
@@ -69,7 +66,7 @@ func NewFSM(metricTypes []string, maxPossibleTransitions int, orderingDisabled b
 // AddState adds a mapping rule into the existing FSM.
 // The maxPossibleTransitions parameter sets the expected count of transitions left.
 // The result parameter sets the generic type to be returned when fsm found a match in GetMapping.
-func (f *FSM) AddState(match string, matchMetricType string, maxPossibleTransitions int, result interface{}) int {
+func (f *FSM) AddState(match, matchMetricType string, maxPossibleTransitions int, result interface{}) int {
 	// first split by "."
 	matchFields := strings.Split(match, ".")
 	// fill into our FSM
@@ -128,7 +125,7 @@ func (f *FSM) AddState(match string, matchMetricType string, maxPossibleTransiti
 // GetMapping using the fsm to find matching rules according to given statsdMetric and statsdMetricType.
 // If it finds a match, the final state and the captured strings are returned;
 // if there's no match found, nil and a empty list will be returned.
-func (f *FSM) GetMapping(statsdMetric string, statsdMetricType string) (*mappingState, []string) {
+func (f *FSM) GetMapping(statsdMetric, statsdMetricType string) (*mappingState, []string) {
 	matchFields := strings.Split(statsdMetric, ".")
 	currentState := f.root.transitions[statsdMetricType]
 
@@ -171,7 +168,8 @@ func (f *FSM) GetMapping(statsdMetric string, statsdMetricType string) (*mapping
 						if !present || fieldsLeft > altState.maxRemainingLength || fieldsLeft < altState.minRemainingLength {
 						} else {
 							// push to backtracking stack
-							newCursor := fsmBacktrackStackCursor{prev: backtrackCursor, state: altState,
+							newCursor := fsmBacktrackStackCursor{
+								prev: backtrackCursor, state: altState,
 								fieldIndex:   i,
 								captureIndex: captureIdx, currentCapture: field,
 							}
@@ -234,7 +232,7 @@ func (f *FSM) GetMapping(statsdMetric string, statsdMetricType string) (*mapping
 
 // TestIfNeedBacktracking tests if backtrack is needed for given list of mappings
 // and whether ordering is disabled.
-func TestIfNeedBacktracking(mappings []string, orderingDisabled bool, logger log.Logger) bool {
+func TestIfNeedBacktracking(mappings []string, orderingDisabled bool, logger *slog.Logger) bool {
 	backtrackingNeeded := false
 	// A has * in rules, but there's other transisitions at the same state,
 	// this makes A the cause of backtracking
@@ -246,11 +244,11 @@ func TestIfNeedBacktracking(mappings []string, orderingDisabled bool, logger log
 		l := len(strings.Split(mapping, "."))
 		ruleByLength[l] = append(ruleByLength[l], mapping)
 
-		metricRe := strings.Replace(mapping, ".", "\\.", -1)
-		metricRe = strings.Replace(metricRe, "*", "([^.]*)", -1)
+		metricRe := strings.ReplaceAll(mapping, ".", "\\.")
+		metricRe = strings.ReplaceAll(metricRe, "*", "([^.]*)")
 		regex, err := regexp.Compile("^" + metricRe + "$")
 		if err != nil {
-			level.Warn(logger).Log("msg", "Invalid match, cannot compile regex in mapping", "mapping", mapping, "err", err)
+			logger.Warn("Invalid match, cannot compile regex in mapping", "mapping", mapping, "err", err)
 		}
 		// put into array no matter there's error or not, we will skip later if regex is nil
 		ruleREByLength[l] = append(ruleREByLength[l], regex)
@@ -275,8 +273,8 @@ func TestIfNeedBacktracking(mappings []string, orderingDisabled bool, logger log
 				}
 				// translate the substring of r1 from 0 to the index of current * into regex
 				// A.B.C.*.E.* will becomes ^A\.B\.C\. and ^A\.B\.C\.\*\.E\.
-				reStr := strings.Replace(r1[:index], ".", "\\.", -1)
-				reStr = strings.Replace(reStr, "*", "\\*", -1)
+				reStr := strings.ReplaceAll(r1[:index], ".", "\\.")
+				reStr = strings.ReplaceAll(reStr, "*", "\\*")
 				re := regexp.MustCompile("^" + reStr)
 				for i2, r2 := range rules {
 					if i2 == i1 {
@@ -293,7 +291,7 @@ func TestIfNeedBacktracking(mappings []string, orderingDisabled bool, logger log
 				if i2 != i1 && len(re1.FindStringSubmatchIndex(r2)) > 0 {
 					// log if we care about ordering and the superset occurs before
 					if !orderingDisabled && i1 < i2 {
-						level.Warn(logger).Log("msg", "match is a super set of match but in a lower order, the first will never be matched", "first_match", r1, "second_match", r2)
+						logger.Warn("match is a super set of match but in a lower order, the first will never be matched", "first_match", r1, "second_match", r2)
 					}
 					currentRuleNeedBacktrack = false
 				}
@@ -311,7 +309,7 @@ func TestIfNeedBacktracking(mappings []string, orderingDisabled bool, logger log
 			}
 
 			if currentRuleNeedBacktrack {
-				level.Warn(logger).Log("msg", "backtracking required because of match. Performance may be degraded", "match", r1)
+				logger.Warn("backtracking required because of match. Performance may be degraded", "match", r1)
 				backtrackingNeeded = true
 			}
 		}
